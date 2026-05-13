@@ -727,8 +727,8 @@ export default function UsersPage() {
                               key={a}
                               className="text-center p-2 text-[10px] font-black uppercase tracking-widest text-slate-600 w-14"
                             >
-                              <SmartTooltip side="bottom" content={ACTION_DESCRIPTIONS[a] || ""}>
-                                <span className="cursor-help">{ACTION_LABELS[a]}</span>
+                              <SmartTooltip side="bottom" fill content={ACTION_DESCRIPTIONS[a] || ""}>
+                                <div className="w-full text-center cursor-help">{ACTION_LABELS[a]}</div>
                               </SmartTooltip>
                             </th>
                           ))}

@@ -7,6 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 function fmt(n) {
   return Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -166,21 +167,27 @@ export default function SalesReturnDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setPrintOpen(true)}
-            className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all">
-            <Printer className="h-4 w-4" /> طباعة
-          </button>
-          {!isCancelled && !isAmended && (
-            <button onClick={() => setCancelOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
-              <Trash2 className="h-4 w-4" /> إلغاء المرتجع
+          <PermissionGate page="sales_returns" action="print">
+            <button onClick={() => setPrintOpen(true)}
+              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all">
+              <Printer className="h-4 w-4" /> طباعة
             </button>
+          </PermissionGate>
+          {!isCancelled && !isAmended && (
+            <PermissionGate page="sales_returns" action="delete">
+              <button onClick={() => setCancelOpen(true)}
+                className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
+                <Trash2 className="h-4 w-4" /> إلغاء المرتجع
+              </button>
+            </PermissionGate>
           )}
           {!isCancelled && !isAmended && (
-            <button onClick={handleAmend}
-              className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
-              <Pencil className="h-4 w-4" /> تعديل المرتجع
-            </button>
+            <PermissionGate page="sales_returns" action="edit">
+              <button onClick={handleAmend}
+                className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
+                <Pencil className="h-4 w-4" /> تعديل المرتجع
+              </button>
+            </PermissionGate>
           )}
         </div>
       </header>

@@ -4,7 +4,6 @@ export const ACTION_LABELS = {
   edit: "تعديل",
   delete: "حذف",
   print: "طباعة",
-  create_sale: "إنشاء فاتورة",
   void: "إلغاء",
   hold: "تعليق",
   discount: "خصم",
@@ -14,10 +13,31 @@ export const ACTION_LABELS = {
   adjust: "تسوية",
   transfer: "تحويل",
   export: "تصدير",
+  create: "إنشاء",
+  restore: "استعادة",
+};
+
+export const ACTION_DESCRIPTIONS = {
+  view: "مشاهدة وعرض محتوى الصفحة والبيانات",
+  add: "إضافة سجلات وبيانات جديدة",
+  edit: "تعديل وتحديث السجلات والبيانات الموجودة",
+  delete: "حذف السجلات والبيانات نهائياً",
+  print: "طباعة التقارير والفواتير والمستندات",
+  void: "إلغاء الفواتير والمعاملات المالية",
+  hold: "تعليق الفاتورة مؤقتاً لاستكمالها لاحقاً",
+  discount: "منح خصومات على فواتير البيع",
+  manage_permissions: "تعديل صلاحيات المستخدمين الآخرين",
+  edit_general: "تعديل الإعدادات العامة للنظام",
+  edit_security: "تعديل إعدادات الأمان والحماية",
+  adjust: "إجراء تسويات يدوية على المخزون",
+  transfer: "تحويل الأصناف بين المخازن والفروع",
+  export: "تصدير البيانات والتقارير إلى ملفات خارجية",
+  create: "إنشاء نسخ احتياطية جديدة",
+  restore: "استعادة النظام من نسخة احتياطية",
 };
 
 export const PAGE_PERMISSIONS = {
-  pos: { label: 'نقطة البيع', actions: ['view', 'create_sale', 'void', 'hold', 'discount', 'print'] },
+  pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -53,7 +73,6 @@ export const PAGE_PERMISSIONS = {
   employees: { label: 'الموظفين', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   settings: { label: 'الإعدادات العامة', actions: ['view', 'edit_general', 'edit_security'] },
   dashboard: { label: 'لوحة التحكم', actions: ['view'] },
-  sales: { label: 'فواتير المبيعات', actions: ['view', 'add', 'edit', 'void', 'print'] },
   stock: { label: 'المخزون', actions: ['view', 'add', 'edit', 'delete', 'adjust', 'transfer', 'print'] },
   payments: { label: 'المدفوعات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   notifications: { label: 'الإشعارات', actions: ['view', 'edit'] },
@@ -72,5 +91,7 @@ export const ROLE_PRESETS = {
   user: DEFAULT_USER_PERMISSIONS,
 };
 
-// All available actions
-export const ALL_ACTIONS = ['view', 'add', 'edit', 'delete', 'print'];
+// Ordered list of all unique actions across all pages (for matrix column headers)
+const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore'];
+export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

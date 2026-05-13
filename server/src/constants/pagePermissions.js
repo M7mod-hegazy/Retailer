@@ -1,7 +1,7 @@
 const PAGE_PERMISSIONS = {
-  pos: { label: 'نقطة البيع', actions: ['view','add','edit','delete','print'] },
+  pos: { label: 'نقطة البيع', actions: ['view','add','edit','delete','void','hold','discount','print'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view','add','edit','delete','print'] },
-  analytics: { label: 'التحليلات والمبيعات', actions: ['view','add','edit','delete','print'] },
+  analytics: { label: 'التحليلات والمبيعات', actions: ['view','export'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view','add','edit','delete','print'] },
   purchase_orders: { label: 'أوامر الشراء', actions: ['view','add','edit','delete','print'] },
   purchase_returns: { label: 'مرتجع المشتريات', actions: ['view','add','edit','delete','print'] },
@@ -30,10 +30,16 @@ const PAGE_PERMISSIONS = {
   banks: { label: 'البنوك', actions: ['view','add','edit','delete','print'] },
   units: { label: 'وحدات القياس', actions: ['view','add','edit','delete','print'] },
   financial_categories: { label: 'أقسام الحركات المالية', actions: ['view','add','edit','delete','print'] },
-  reports: { label: 'مركز التقارير', actions: ['view','add','edit','delete','print'] },
+  reports: { label: 'مركز التقارير', actions: ['view','export'] },
   users: { label: 'المستخدمين', actions: ['view','add','edit','delete','print'] },
   employees: { label: 'الموظفين', actions: ['view','add','edit','delete','print'] },
-  settings: { label: 'الإعدادات العامة', actions: ['view','add','edit','delete','print'] },
+  settings: { label: 'الإعدادات العامة', actions: ['view','edit_general','edit_security'] },
+  dashboard: { label: 'لوحة التحكم', actions: ['view'] },
+  stock: { label: 'المخزون', actions: ['view','add','edit','delete','adjust','transfer','print'] },
+  payments: { label: 'المدفوعات', actions: ['view','add','edit','delete','print'] },
+  notifications: { label: 'الإشعارات', actions: ['view','edit'] },
+  employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view','add'] },
+  backup: { label: 'النسخ الاحتياطي', actions: ['view','create','restore'] },
 };
 
 // Default permissions for new user role (POS only)
@@ -43,16 +49,12 @@ const DEFAULT_USER_PERMISSIONS = {
 
 // Role permission presets
 const ROLE_PRESETS = {
-  admin: null, // null means full access (handled by role check)
+  admin: null,
   user: DEFAULT_USER_PERMISSIONS,
 };
-
-// All available actions
-const ALL_ACTIONS = ['view', 'add', 'edit', 'delete', 'print'];
 
 module.exports = {
   PAGE_PERMISSIONS,
   DEFAULT_USER_PERMISSIONS,
   ROLE_PRESETS,
-  ALL_ACTIONS,
 };

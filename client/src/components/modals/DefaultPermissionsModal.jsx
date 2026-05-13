@@ -7,7 +7,9 @@ import {
   PAGE_PERMISSIONS,
   DEFAULT_USER_PERMISSIONS,
   ALL_ACTIONS,
+  ACTION_DESCRIPTIONS,
 } from "../../constants/pagePermissions";
+import SmartTooltip from "../ui/SmartTooltip";
 
 const ACTION_LABELS = {
   view: "رؤية",
@@ -132,7 +134,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4"
           >
-            <div className="bg-white rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col w-full max-w-3xl" dir="rtl">
+            <div className="bg-white rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col w-full max-w-5xl" dir="rtl">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50">
                 <div className="flex flex-col gap-1">
@@ -219,7 +221,9 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                                 key={a}
                                 className="text-center p-2 text-[10px] font-black uppercase tracking-widest text-slate-600 w-14"
                               >
-                                {ACTION_LABELS[a]}
+                                <SmartTooltip side="bottom" fill content={ACTION_DESCRIPTIONS[a] || ""}>
+                                  <div className="w-full text-center cursor-help">{ACTION_LABELS[a]}</div>
+                                </SmartTooltip>
                               </th>
                             ))}
                           </tr>

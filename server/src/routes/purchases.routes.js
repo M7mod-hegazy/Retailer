@@ -81,7 +81,7 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   res.json({ success: true, data: purchases, summary: { count: purchases.length, total } });
 });
 
-router.get("/returns", requirePagePermission("purchases", "view"), (req, res) => {
+router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, res) => {
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);
   const { search = "", supplier_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
@@ -110,7 +110,7 @@ router.get("/returns", requirePagePermission("purchases", "view"), (req, res) =>
   res.json({ success: true, data: returns, summary: { count: returns.length, total } });
 });
 
-router.get("/returns/:id", requirePagePermission("purchases", "view"), (req, res, next) => {
+router.get("/returns/:id", requirePagePermission("purchase_returns", "view"), (req, res, next) => {
     try {
       const db = getDb();
       ensurePurchaseReturnSettlementSchema(db);
@@ -726,7 +726,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
   } catch (error) { next(error); }
 });
 
-router.post("/:id/void", requirePagePermission("purchases", "add"), (req, res, next) => {
+router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res, next) => {
   const db = getDb();
   try {
     db.transaction(() => {
@@ -796,7 +796,7 @@ function getPurchaseReturnWithLines(db, returnId) {
   return { ...pr, lines };
 }
 
-router.post("/returns/:id/cancel", requirePagePermission("purchases", "add"), (req, res, next) => {
+router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "delete"), (req, res, next) => {
   const db = getDb();
   try {
     const { reason, user_id } = req.body || {};
@@ -920,7 +920,7 @@ function editPurchaseReturn(db, returnId, payload) {
   })();
 }
 
-router.put("/returns/:id", requirePagePermission("purchases", "edit"), (req, res, next) => {
+router.put("/returns/:id", requirePagePermission("purchase_returns", "edit"), (req, res, next) => {
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);
   try {
@@ -929,7 +929,7 @@ router.put("/returns/:id", requirePagePermission("purchases", "edit"), (req, res
   } catch (e) { next(e); }
 });
 
-router.put("/returns/:id/amend", requirePagePermission("purchases", "edit"), (req, res, next) => {
+router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit"), (req, res, next) => {
   const db = getDb();
   try {
     const payload = req.body || {};

@@ -226,7 +226,7 @@ export default function InvoiceDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           {!isCancelled && !isAmended && (
-            <PermissionGate page="sales" action="void">
+            <PermissionGate page="pos" action="void">
               <button
                 onClick={() => setCancelOpen(true)}
                 className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all"
@@ -235,7 +235,7 @@ export default function InvoiceDetailPage() {
               </button>
             </PermissionGate>
           )}
-          <PermissionGate page="sales" action="print">
+          <PermissionGate page="pos" action="print">
             <button
               onClick={() => setPrintOpen(true)}
               className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all"
@@ -244,7 +244,7 @@ export default function InvoiceDetailPage() {
             </button>
           </PermissionGate>
           {!isCancelled && !isAmended && (
-            <PermissionGate page="sales" action="edit">
+            <PermissionGate page="pos" action="edit">
               <button
                 onClick={() => setAmendOpen(true)}
                 className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all"

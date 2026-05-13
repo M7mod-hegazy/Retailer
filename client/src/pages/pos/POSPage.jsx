@@ -1778,7 +1778,7 @@ export default function POSPage() {
                   </button>
                 </PermissionGate>
                 <div className="flex gap-2">
-                  <PermissionGate page="pos" action="create_sale">
+                  <PermissionGate page="pos" action="add">
                     <button
                       type="button"
                       onClick={() => setSaveOnlyConfirmOpen(true)}
@@ -3201,7 +3201,7 @@ export default function POSPage() {
                   </button>
                 </PermissionGate>
                 <div className="flex gap-2">
-                  <PermissionGate page="pos" action="create_sale">
+                  <PermissionGate page="pos" action="add">
                     <button type="button" onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}>
                       حفظ فقط
                     </button>

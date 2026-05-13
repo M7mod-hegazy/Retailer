@@ -8,6 +8,7 @@ import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
 import toast from "react-hot-toast";
+import PermissionGate from "../ui/PermissionGate";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -288,8 +289,12 @@ export default function POSTodayModal({ open, onClose }) {
     { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (inv) => (
       <div className="flex gap-1">
-        <button onClick={() => navigate(`/invoices/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
-        <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
+        <PermissionGate page="pos" action="view">
+          <button onClick={() => navigate(`/invoices/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+        </PermissionGate>
+        <PermissionGate page="pos" action="void">
+          <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
+        </PermissionGate>
       </div>
     )},
   ];

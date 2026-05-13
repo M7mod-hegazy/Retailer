@@ -79,7 +79,7 @@ router.get("/last-price/:itemId", requirePagePermission("pos", "view"), (req, re
   }
 });
 
-router.get("/returns", requirePagePermission("pos", "view"), (req, res) => {
+router.get("/returns", requirePagePermission("sales_returns", "view"), (req, res) => {
   try {
     const db = getDb();
     const { search = "", customer_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
@@ -112,7 +112,7 @@ router.get("/returns", requirePagePermission("pos", "view"), (req, res) => {
   }
 });
 
-router.get("/returns/:id", requirePagePermission("pos", "view"), (req, res, next) => {
+router.get("/returns/:id", requirePagePermission("sales_returns", "view"), (req, res, next) => {
     try {
         const sr = getReturnDetails(Number(req.params.id));
         if (!sr) throw new Error("Return not found");
@@ -120,14 +120,14 @@ router.get("/returns/:id", requirePagePermission("pos", "view"), (req, res, next
     } catch (e) { next(e); }
 });
 
-router.post("/general-return", requirePagePermission("pos", "add"), (req, res, next) => {
+router.post("/general-return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
     const result = createGeneralReturn({ ...req.body, user_id: req.user?.id || req.body.user_id || null });
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
 
-router.post("/returns/:id/cancel", requirePagePermission("pos", "add"), (req, res, next) => {
+router.post("/returns/:id/cancel", requirePagePermission("sales_returns", "delete"), (req, res, next) => {
   try {
     const { reason, user_id } = req.body || {};
     const result = cancelSalesReturn(Number(req.params.id), reason, req.user?.id || user_id || null);
@@ -135,21 +135,21 @@ router.post("/returns/:id/cancel", requirePagePermission("pos", "add"), (req, re
   } catch (e) { next(e); }
 });
 
-router.put("/returns/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
+router.put("/returns/:id", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
   try {
     const result = editSalesReturn(Number(req.params.id), req.body || {}, req.user?.id || req.body?.user_id || null);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
 
-router.put("/returns/:id/amend", requirePagePermission("pos", "edit"), (req, res, next) => {
+router.put("/returns/:id/amend", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
   try {
     const result = amendSalesReturn(Number(req.params.id), req.body || {}, req.user?.id || req.body?.user_id || null);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
 
-router.post("/general-purchase-return", requirePagePermission("pos", "add"), (req, res, next) => {
+router.post("/general-purchase-return", requirePagePermission("purchases", "add"), (req, res, next) => {
   try {
     const db = getDb();
     const { lines, supplier_id, refund_method, notes, reason } = req.body;
@@ -295,7 +295,7 @@ router.post("/:id/return", requirePagePermission("pos", "add"), (req, res, next)
   }
 });
 
-router.post("/:id/void", requirePagePermission("pos", "add"), (req, res, next) => {
+router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) => {
   try {
     if (!req.body.reason) {
       const error = new Error("Void reason is required");
