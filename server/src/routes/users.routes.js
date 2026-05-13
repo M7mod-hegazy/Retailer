@@ -12,7 +12,7 @@ router.use(authRequired);
 router.get("/", requirePagePermission("users", "view"), (_req, res) => {
   const rows = getDb()
     .prepare(
-      "SELECT id, full_name, username, role, is_active, last_login_at, created_at FROM users WHERE COALESCE(is_system_account, 0) = 0 ORDER BY id DESC",
+      "SELECT id, full_name, username, role, is_active, can_view_updates, last_login_at, created_at FROM users WHERE COALESCE(is_system_account, 0) = 0 ORDER BY id DESC",
     )
     .all();
   res.json({ success: true, data: rows });
@@ -44,14 +44,16 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
     }
 
     // Store password as plaintext (local desktop app — admin needs to view/manage)
+    const can_view_updates = payload.can_view_updates ? 1 : 0;
+
     const db = getDb();
     const info = db.prepare(
-      "INSERT INTO users (full_name, username, password_hash, role) VALUES (?, ?, ?, ?)"
-    ).run(full_name, username, password, role);
+      "INSERT INTO users (full_name, username, password_hash, role, can_view_updates) VALUES (?, ?, ?, ?, ?)"
+    ).run(full_name, username, password, role, can_view_updates);
 
     res.status(201).json({
       success: true,
-      data: db.prepare("SELECT id, full_name, username, role, is_active, password_hash AS password FROM users WHERE id = ?").get(info.lastInsertRowid),
+      data: db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(info.lastInsertRowid),
     });
   } catch (error) {
     next(error);
@@ -61,7 +63,7 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
 router.get("/:id", requireRole("admin"), (req, res, next) => {
   try {
     const user = getDb()
-      .prepare("SELECT id, full_name, username, role, is_active, password_hash AS password FROM users WHERE id = ?")
+      .prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?")
       .get(req.params.id);
     if (!user) {
       const err = new Error("User not found"); err.status = 404; throw err;
@@ -94,6 +96,9 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
     const is_active = payload.is_active !== undefined
       ? (payload.is_active === false || payload.is_active === 0 ? 0 : 1)
       : existing.is_active;
+    const can_view_updates = payload.can_view_updates !== undefined
+      ? (payload.can_view_updates === false || payload.can_view_updates === 0 ? 0 : 1)
+      : (existing.can_view_updates || 0);
 
     // Check username uniqueness if changed
     if (username !== existing.username) {
@@ -107,17 +112,17 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
 
     if (payload.password) {
       db.prepare(
-        "UPDATE users SET full_name = ?, username = ?, password_hash = ?, role = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-      ).run(full_name, username, String(payload.password), role, is_active, req.params.id);
+        "UPDATE users SET full_name = ?, username = ?, password_hash = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(full_name, username, String(payload.password), role, is_active, can_view_updates, req.params.id);
     } else {
       db.prepare(
-        "UPDATE users SET full_name = ?, username = ?, role = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-      ).run(full_name, username, role, is_active, req.params.id);
+        "UPDATE users SET full_name = ?, username = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(full_name, username, role, is_active, can_view_updates, req.params.id);
     }
 
     res.json({
       success: true,
-      data: db.prepare("SELECT id, full_name, username, role, is_active, password_hash AS password FROM users WHERE id = ?")
+      data: db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?")
         .get(req.params.id),
     });
   } catch (error) {

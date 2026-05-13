@@ -25,10 +25,11 @@ import {
   DEFAULT_USER_PERMISSIONS,
   ALL_ACTIONS,
   ACTION_LABELS,
+  ACTION_DESCRIPTIONS,
 } from "../../constants/pagePermissions";
 import PermissionGate from "../../components/ui/PermissionGate";
 
-const EMPTY_FORM = { full_name: "", username: "", password: "", role: "user", is_active: true };
+const EMPTY_FORM = { full_name: "", username: "", password: "", role: "user", is_active: true, can_view_updates: false };
 const CREATE_TEMPLATE_ROLE = { user: "user", admin: "admin", none: "user" };
 
 function buildEmptyPermissions() {
@@ -114,6 +115,7 @@ export default function UsersPage() {
       password: "",
       role: row.role || "user",
       is_active: row.is_active !== 0,
+      can_view_updates: row.can_view_updates === 1 || row.can_view_updates === true,
     });
     setPermTemplate(row.role === "admin" ? "admin" : "user");
     setShowPassword(false);
@@ -443,7 +445,7 @@ export default function UsersPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-7 bg-white/95 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
+            className="lg:col-span-6 bg-white/95 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
           >
             <DataTable
               columns={columns}
@@ -459,7 +461,7 @@ export default function UsersPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className={`lg:col-span-5 sticky top-10 flex flex-col rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-hidden transition-all ${
+            className={`lg:col-span-6 sticky top-10 flex flex-col rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-hidden transition-all ${
               editingRow
                 ? "bg-amber-50/95 border-amber-300 ring-4 ring-amber-500/10"
                 : "bg-white/95 border-slate-100"
@@ -632,6 +634,21 @@ export default function UsersPage() {
                   </>
                 )}
 
+                {/* can_view_updates checkbox */}
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!form.can_view_updates}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, can_view_updates: e.target.checked }))
+                    }
+                    className="h-4 w-4 accent-zinc-900 cursor-pointer"
+                  />
+                  <span className={`text-[12px] font-bold ${editingRow ? "text-amber-900/80" : "text-slate-600"}`}>
+                    عرض التحديثات
+                  </span>
+                </label>
+
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   type="submit"
@@ -698,7 +715,7 @@ export default function UsersPage() {
                     جاري التحميل...
                   </div>
                 ) : (
-                  <div className="rounded-xl bg-white border border-slate-200 overflow-hidden max-h-[50vh] overflow-y-auto">
+                  <div className="rounded-xl bg-white border border-slate-200 overflow-x-auto max-h-[50vh] overflow-y-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-slate-50 sticky top-0 z-10">
                         <tr>
@@ -710,7 +727,9 @@ export default function UsersPage() {
                               key={a}
                               className="text-center p-2 text-[10px] font-black uppercase tracking-widest text-slate-600 w-14"
                             >
-                              {ACTION_LABELS[a]}
+                              <SmartTooltip side="bottom" content={ACTION_DESCRIPTIONS[a] || ""}>
+                                <span className="cursor-help">{ACTION_LABELS[a]}</span>
+                              </SmartTooltip>
                             </th>
                           ))}
                         </tr>
