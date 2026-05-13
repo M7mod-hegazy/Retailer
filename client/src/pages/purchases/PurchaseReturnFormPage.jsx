@@ -7,6 +7,7 @@ import {
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import PermissionGate from "../../components/ui/PermissionGate";
 import Modal from "../../components/ui/Modal";
 import PurchaseReturnTodayModal from "../../components/purchases/PurchaseReturnTodayModal";
 import PurchasePickerTodayModal from "../../components/purchases/PurchasePickerTodayModal";
@@ -503,19 +504,25 @@ export default function PurchaseReturnFormPage() {
             <Printer className="h-4 w-4" /> طباعة
           </button>
           {isEditMode && isLocked && (
-            <button onClick={() => setShowEditWarnModal(true)} className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-5 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
-              <Pencil className="h-4 w-4" /> تعديل
-            </button>
+            <PermissionGate page="purchase_returns" action="edit">
+              <button onClick={() => setShowEditWarnModal(true)} className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-5 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
+                <Pencil className="h-4 w-4" /> تعديل
+              </button>
+            </PermissionGate>
           )}
           {isEditMode && !isLocked && (
-            <button onClick={() => setMessage({ text: "حذف المرتجع غير متاح حالياً", type: "error" })} className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
-              <Trash2 className="h-4 w-4" /> حذف
-            </button>
+            <PermissionGate page="purchase_returns" action="delete">
+              <button onClick={() => setMessage({ text: "حذف المرتجع غير متاح حالياً", type: "error" })} className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
+                <Trash2 className="h-4 w-4" /> حذف
+              </button>
+            </PermissionGate>
           )}
           {mode && !isLocked && (
-            <button onClick={handleSave} disabled={isSaving || !total} className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-              {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
-            </button>
+            <PermissionGate page="purchase_returns" action={isEditMode ? "edit" : "add"}>
+              <button onClick={handleSave} disabled={isSaving || !total} className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+              </button>
+            </PermissionGate>
           )}
         </div>
       </header>

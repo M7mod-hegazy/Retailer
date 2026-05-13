@@ -9,6 +9,7 @@ import BackupSettingsTab from "./BackupSettingsTab";
 import { usePageTour } from "../../hooks/usePageTour";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PrintingSettingsPanel from "./PrintingSettingsPanel";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const tabs = [
   { id: "identity", label: "هوية التطبيق", hint: "الاسم والشعار وبيانات الفرع" },
@@ -194,13 +195,15 @@ export default function SettingsPage() {
           <h1 className="text-[24px] font-black text-slate-900">{isRTL ? "تهيئة وتخصيص الفرع" : "System Configuration"}</h1>
           <p className="text-[13px] font-bold text-slate-400">التحكم المركزي في الهوية والطباعة واللغة والنسخ الاحتياطي</p>
         </div>
-        <button 
-          onClick={handleSubmit}
-          disabled={saving}
-          className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" /> {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
-        </button>
+        <PermissionGate page="settings" action="edit_general">
+          <button 
+            onClick={handleSubmit}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" /> {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Main Workspace */}

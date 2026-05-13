@@ -1,13 +1,28 @@
 import React from "react";
 import Modal from "./Modal";
 import Button from "./Button";
+import { ShieldAlert } from "lucide-react";
+import { PAGE_PERMISSIONS, ACTION_LABELS } from "../../constants/pagePermissions";
 
-export default function PermissionDeniedModal({ open, onClose }) {
+export default function PermissionDeniedModal({ open, onClose, page, action }) {
+  const pageMeta = PAGE_PERMISSIONS?.[page];
+  const pageLabel = pageMeta?.label || page;
+  const actionLabel = ACTION_LABELS?.[action] || action;
+
   return (
     <Modal open={open} title="غير مصرح" onClose={onClose} maxWidth="max-w-sm">
-      <p className="mb-4 text-sm text-text-secondary">
-        ليس لديك صلاحية لتنفيذ هذا الإجراء
-      </p>
+      <div className="flex flex-col items-center gap-4 py-4">
+        <div className="h-14 w-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center">
+          <ShieldAlert className="h-7 w-7 text-rose-500" />
+        </div>
+        <p className="text-sm font-bold text-center text-text-primary leading-relaxed">
+          ليس لديك صلاحية <span className="text-rose-600">{actionLabel}</span>{" "}
+          في <span className="text-rose-600">{pageLabel}</span>
+        </p>
+        <p className="text-[11px] font-mono text-text-secondary bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+          {page}:{action}
+        </p>
+      </div>
       <div className="flex justify-end">
         <Button variant="ghost" onClick={onClose}>
           إغلاق

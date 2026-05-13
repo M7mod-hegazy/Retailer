@@ -18,6 +18,7 @@ import Highlight from "../../components/ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
 import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -690,11 +691,13 @@ export default function PurchaseFormPage() {
             <Receipt className="h-3.5 w-3.5" /> مشتريات اليوم
           </button>
           {/* Delete button — always visible */}
-          <button onClick={() => setDeleteConfirmOpen(true)}
-            className="flex h-7 items-center gap-1.5 rounded-sm border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-bold text-rose-600 hover:bg-rose-100 transition-all">
-            <Trash2 className="h-3.5 w-3.5" />
-            {isEditMode ? "حذف" : "مسح"}
-          </button>
+          <PermissionGate page="purchases" action="delete">
+            <button onClick={() => setDeleteConfirmOpen(true)}
+              className="flex h-7 items-center gap-1.5 rounded-sm border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-bold text-rose-600 hover:bg-rose-100 transition-all">
+              <Trash2 className="h-3.5 w-3.5" />
+              {isEditMode ? "حذف" : "مسح"}
+            </button>
+          </PermissionGate>
           {isEditMode && isLocked ? (
             <button onClick={() => setEditWarnOpen(true)}
               className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
@@ -702,18 +705,24 @@ export default function PurchaseFormPage() {
             </button>
           ) : (
             <>
-              <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
-                className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-slate-50 transition-all disabled:opacity-40">
-                <Printer className="h-3 w-3" /> معاينة وطباعة
-              </button>
-              <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length}
-                className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm">
-                {isSaving ? "جاري..." : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
-              </button>
-              <button onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving}
-                className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-40">
-                <Save className="h-3 w-3" /> حفظ فقط
-              </button>
+              <PermissionGate page="purchases" action="print">
+                <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
+                  className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-slate-50 transition-all disabled:opacity-40">
+                  <Printer className="h-3 w-3" /> معاينة وطباعة
+                </button>
+              </PermissionGate>
+              <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
+                <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length}
+                  className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm">
+                  {isSaving ? "جاري..." : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
+                </button>
+              </PermissionGate>
+              <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
+                <button onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving}
+                  className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-40">
+                  <Save className="h-3 w-3" /> حفظ فقط
+                </button>
+              </PermissionGate>
               <button onClick={() => setNewInvoiceModalOpen(true)}
                 className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
                 <FilePlus className="h-3 w-3" /> جديدة

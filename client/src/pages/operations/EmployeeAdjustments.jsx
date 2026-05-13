@@ -6,6 +6,7 @@ import api from "../../services/api";
 import DataGrid from "../../components/ui/DataGrid";
 import PageWrapper from "../../components/ui/PageWrapper";
 import Button from "../../components/ui/Button";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 export default function EmployeeAdjustments() {
   const { t, i18n } = useTranslation();
@@ -143,9 +144,11 @@ export default function EmployeeAdjustments() {
           </div>
 
           <div className="flex justify-end pt-4 border-t border-border-subtle">
-            <Button type="submit" disabled={loading}>
-              إضافة
-            </Button>
+            <PermissionGate page="employee_adjustments" action="add">
+              <Button type="submit" disabled={loading}>
+                إضافة
+              </Button>
+            </PermissionGate>
           </div>
         </form>
       </div>

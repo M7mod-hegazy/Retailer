@@ -13,6 +13,7 @@ import {
   Save,
   ChevronLeft,
   Info,
+  CheckCircle2,
   Calendar,
   X,
   ImageIcon,
@@ -25,6 +26,7 @@ import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -208,13 +210,15 @@ export default function QuotationFormPage() {
         </div>
 
         <div className="flex items-center gap-2">
-           <button 
-             onClick={handleSave}
-             disabled={isSaving}
-             className="flex h-9 items-center gap-2 rounded-sm bg-slate-800 px-6 text-[13px] font-black text-white hover:bg-slate-700 transition-all shadow-sm"
-           >
-             <Save className="h-4 w-4" /> {isSaving ? "جاري الحفظ..." : "حفظ العرض"}
-           </button>
+           <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
+             <button 
+               onClick={handleSave}
+               disabled={isSaving}
+               className="flex h-9 items-center gap-2 rounded-sm bg-slate-800 px-6 text-[13px] font-black text-white hover:bg-slate-700 transition-all shadow-sm"
+             >
+               <Save className="h-4 w-4" /> {isSaving ? "جاري الحفظ..." : "حفظ العرض"}
+             </button>
+           </PermissionGate>
         </div>
       </header>
 
@@ -435,16 +439,20 @@ export default function QuotationFormPage() {
                </div>
 
                <div className="grid grid-cols-2 gap-3">
-                  <button className="flex h-11 items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white text-[13px] font-black text-slate-700 hover:bg-slate-50">
-                     <Printer className="h-4 w-4 text-slate-400" /> معاينة
-                  </button>
-                  <button 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex h-11 items-center justify-center gap-2 rounded-sm bg-slate-800 text-[13px] font-black text-white hover:bg-slate-700 shadow-md transition-all active:scale-95"
-                  >
-                     <Save className="h-4 w-4" /> حفظ العرض
-                  </button>
+                  <PermissionGate page="quotations" action="print">
+                    <button className="flex h-11 items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white text-[13px] font-black text-slate-700 hover:bg-slate-50">
+                       <Printer className="h-4 w-4 text-slate-400" /> معاينة
+                    </button>
+                  </PermissionGate>
+                  <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
+                    <button 
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex h-11 items-center justify-center gap-2 rounded-sm bg-slate-800 text-[13px] font-black text-white hover:bg-slate-700 shadow-md transition-all active:scale-95"
+                    >
+                       <Save className="h-4 w-4" /> حفظ العرض
+                    </button>
+                  </PermissionGate>
                </div>
                
                <div className="flex items-center gap-3 rounded-sm border border-amber-100 bg-amber-50 p-3">

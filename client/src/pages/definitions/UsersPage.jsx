@@ -24,15 +24,9 @@ import {
   PAGE_PERMISSIONS,
   DEFAULT_USER_PERMISSIONS,
   ALL_ACTIONS,
+  ACTION_LABELS,
 } from "../../constants/pagePermissions";
-
-const ACTION_LABELS = {
-  view: "رؤية",
-  add: "إضافة",
-  edit: "تعديل",
-  delete: "حذف",
-  print: "طباعة",
-};
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const EMPTY_FORM = { full_name: "", username: "", password: "", role: "user", is_active: true };
 const CREATE_TEMPLATE_ROLE = { user: "user", admin: "admin", none: "user" };
@@ -71,6 +65,8 @@ export default function UsersPage() {
   const [permLoading, setPermLoading] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
 
+  const [permSaved, setPermSaved] = useState(false);
+  const [infoSaved, setInfoSaved] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // For new-user creation template
@@ -135,13 +131,20 @@ export default function UsersPage() {
     if (isAdmin) {
       setPermLoading(true);
       try {
-        const res = await api.get(`/api/users/${row.id}/permissions`);
-        const loaded = res.data?.data || {};
-        const merged = buildEmptyPermissions();
-        Object.entries(loaded).forEach(([k, v]) => {
-          if (merged[k] !== undefined && Array.isArray(v)) merged[k] = v;
-        });
-        setPermissions(merged);
+        if (row.role === "admin" || row.role === "dev") {
+          // Admin/dev have full access — show all checked
+          const full = buildEmptyPermissions();
+          Object.keys(full).forEach((k) => { full[k] = [...ALL_ACTIONS]; });
+          setPermissions(full);
+        } else {
+          const res = await api.get(`/api/users/${row.id}/permissions`);
+          const loaded = res.data?.data || {};
+          const merged = buildEmptyPermissions();
+          Object.entries(loaded).forEach(([k, v]) => {
+            if (merged[k] !== undefined && Array.isArray(v)) merged[k] = v;
+          });
+          setPermissions(merged);
+        }
       } catch {
         setPermissions(buildEmptyPermissions());
       } finally {
@@ -185,6 +188,8 @@ export default function UsersPage() {
           }));
         }
         loadRows();
+        setInfoSaved(true);
+        setTimeout(() => setInfoSaved(false), 2000);
       } else {
         const role = CREATE_TEMPLATE_ROLE[createTemplate] || "user";
         const payload = { ...form, role };
@@ -266,6 +271,16 @@ export default function UsersPage() {
         permissions: compact,
       });
       toast.success("✓ تم حفظ الصلاحيات بنجاح");
+      // Re-fetch to stay in sync with server
+      const res = await api.get(`/api/users/${editingRow.id}/permissions`);
+      const loaded = res.data?.data || {};
+      const merged = buildEmptyPermissions();
+      Object.entries(loaded).forEach(([k, v]) => {
+        if (merged[k] !== undefined && Array.isArray(v)) merged[k] = v;
+      });
+      setPermissions(merged);
+      setPermSaved(true);
+      setTimeout(() => setPermSaved(false), 2000);
     } catch (err) {
       const code = err?.response?.data?.error;
       if (code === "cannot_modify_admin_permissions") {
@@ -334,32 +349,36 @@ export default function UsersPage() {
         cell: (info) => (
           <div className="flex items-center justify-center gap-1">
             <SmartTooltip content="تعديل">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  startEdit(info.row.original);
-                }}
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
-                  editingRow?.id === info.row.original.id
-                    ? "bg-zinc-950 text-white shadow-md"
-                    : "text-slate-400 hover:bg-slate-100 hover:text-zinc-900"
-                }`}
-              >
-                <Edit3 className="h-4 w-4" />
-              </motion.button>
+              <PermissionGate page="users" action="edit">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEdit(info.row.original);
+                  }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
+                    editingRow?.id === info.row.original.id
+                      ? "bg-zinc-950 text-white shadow-md"
+                      : "text-slate-400 hover:bg-slate-100 hover:text-zinc-900"
+                  }`}
+                >
+                  <Edit3 className="h-4 w-4" />
+                </motion.button>
+              </PermissionGate>
             </SmartTooltip>
             <SmartTooltip content="حذف">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(info.row.original.id);
-                }}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
-              >
-                <Trash2 className="h-4 w-4" />
-              </motion.button>
+              <PermissionGate page="users" action="delete">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(info.row.original.id);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </motion.button>
+              </PermissionGate>
             </SmartTooltip>
           </div>
         ),
@@ -369,6 +388,7 @@ export default function UsersPage() {
   );
 
   const showPermissionsTab = isAdmin && editingRow;
+  const isEditingAdmin = editingRow?.role === "admin" || editingRow?.role === "dev";
 
   return (
     <div
@@ -616,14 +636,22 @@ export default function UsersPage() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSubmitting}
+                  animate={infoSaved ? { scale: [1, 1.02, 1] } : {}}
                   className={`w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all shadow-xl disabled:opacity-50 ${
-                    editingRow
-                      ? "bg-amber-600 hover:bg-amber-700"
-                      : "bg-zinc-950 hover:bg-zinc-800"
+                    infoSaved
+                      ? "bg-emerald-500"
+                      : editingRow
+                        ? "bg-amber-600 hover:bg-amber-700"
+                        : "bg-zinc-950 hover:bg-zinc-800"
                   }`}
                 >
                   {isSubmitting ? (
                     "جاري المعالجة..."
+                  ) : infoSaved ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      تم الحفظ
+                    </>
                   ) : (
                     <>
                       {editingRow ? (

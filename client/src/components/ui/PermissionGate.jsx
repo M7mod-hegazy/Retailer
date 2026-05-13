@@ -23,7 +23,12 @@ export default function PermissionGate({ page, action, children }) {
   return (
     <>
       {wrappedChild}
-      <PermissionDeniedModal open={denied} onClose={() => setDenied(false)} />
+      <PermissionDeniedModal
+        open={denied}
+        onClose={() => setDenied(false)}
+        page={page}
+        action={action}
+      />
     </>
   );
 }

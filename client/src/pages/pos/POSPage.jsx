@@ -55,6 +55,7 @@ import { usePosStore } from "../../stores/posStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
 import { useNavigate, useLocation } from "react-router-dom";
+import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 
@@ -253,12 +254,16 @@ function HeldDropdown({ heldInvoices, onResume, onDiscard, onClose }) {
               </div>
             </div>
             <div className="flex gap-1.5 shrink-0">
-              <button onClick={() => { onResume(h.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-95" title="استئناف">
-                <PlayCircle className="h-5 w-5" />
-              </button>
-              <button onClick={() => onDiscard(h.id)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all active:scale-95" title="حذف">
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <PermissionGate page="pos" action="hold">
+                <button onClick={() => { onResume(h.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-95" title="استئناف">
+                  <PlayCircle className="h-5 w-5" />
+                </button>
+              </PermissionGate>
+              <PermissionGate page="pos" action="void">
+                <button onClick={() => onDiscard(h.id)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all active:scale-95" title="حذف">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </PermissionGate>
             </div>
           </div>
         ))}
@@ -1351,15 +1356,17 @@ export default function POSPage() {
             >
               <ListTodo className="h-4 w-4" />
             </button>
-            <button
-              onClick={() => setPrintPreview(true)}
-              disabled={!lines.length || isSaving || hasBlockingErrors}
-              className={`flex h-9 items-center gap-2 rounded-sm px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
-                ${hasBlockingErrors && lines.length ? "bg-rose-600" : "bg-slate-800 hover:bg-slate-700"}`}
-            >
-              <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
-              {hasBlockingErrors && <span className="ml-1.5 rounded-full bg-rose-400 text-white text-[9px] font-black px-1.5 py-0.5">{blockingErrorCount}</span>}
-            </button>
+            <PermissionGate page="pos" action="print">
+              <button
+                onClick={() => setPrintPreview(true)}
+                disabled={!lines.length || isSaving || hasBlockingErrors}
+                className={`flex h-9 items-center gap-2 rounded-sm px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
+                  ${hasBlockingErrors && lines.length ? "bg-rose-600" : "bg-slate-800 hover:bg-slate-700"}`}
+              >
+                <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
+                {hasBlockingErrors && <span className="ml-1.5 rounded-full bg-rose-400 text-white text-[9px] font-black px-1.5 py-0.5">{blockingErrorCount}</span>}
+              </button>
+            </PermissionGate>
           </div>
         </header>
 
@@ -1761,30 +1768,36 @@ export default function POSPage() {
             {/* Action Buttons */}
             <div className="mt-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-2.5">
-                <button
-                  onClick={() => setPrintPreview(true)}
-                  disabled={!lines.length || isSaving || hasBlockingErrors}
-                  className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}
-                >
-                  <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
-                </button>
-                <div className="flex gap-2">
+                <PermissionGate page="pos" action="print">
                   <button
-                    type="button"
-                    onClick={() => setSaveOnlyConfirmOpen(true)}
+                    onClick={() => setPrintPreview(true)}
                     disabled={!lines.length || isSaving || hasBlockingErrors}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}
+                    className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}
                   >
-                    حفظ فقط
+                    <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setCancelModalOpen(true)}
-                    disabled={!lines.length}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    <Trash2 className="h-4 w-4" /> إلغاء
-                  </button>
+                </PermissionGate>
+                <div className="flex gap-2">
+                  <PermissionGate page="pos" action="create_sale">
+                    <button
+                      type="button"
+                      onClick={() => setSaveOnlyConfirmOpen(true)}
+                      disabled={!lines.length || isSaving || hasBlockingErrors}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}
+                    >
+                      حفظ فقط
+                    </button>
+                  </PermissionGate>
+                  <PermissionGate page="pos" action="void">
+                    <button
+                      type="button"
+                      onClick={() => setCancelModalOpen(true)}
+                      disabled={!lines.length}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" /> إلغاء
+                    </button>
+                  </PermissionGate>
                   <button
                     type="button"
                     onClick={() => setNewInvoiceModalOpen(true)}
@@ -2361,20 +2374,14 @@ export default function POSPage() {
             <div className="flex justify-center gap-3 pt-2">
               <button type="button" onClick={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }}
                 className="rounded-sm border border-slate-200 px-5 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
-              <button type="button" onClick={confirmSupervisorOverride}
-                className="rounded-sm bg-amber-600 px-5 py-2.5 text-[13px] font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
+              <PermissionGate page="pos" action="discount">
+                <button type="button" onClick={confirmSupervisorOverride}
+                  className="rounded-sm bg-amber-600 px-5 py-2.5 text-[13px] font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
+              </PermissionGate>
             </div>
           </div>
         </Modal>
-
-        {/* Toast */}
-        {saveMessage && (
-          <div className="absolute left-1/2 top-4 z-[150] -translate-x-1/2 rounded-sm border border-rose-200 bg-rose-50 px-5 py-2.5 font-bold text-[13px] text-rose-700 shadow-xl">
-            {saveMessage}
-          </div>
-        )}
-
-        {/* Set Default View Modal */}
+                      {/* Set Default View Modal */}
         <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
           <div className="flex flex-col gap-4 mt-2">
             <p className="text-[13px] font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
@@ -3188,16 +3195,22 @@ export default function POSPage() {
 
               {/* Main Actions */}
               <div className="flex flex-col gap-2 mt-1">
-                <button type="button" onClick={() => setPrintPreview(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[14px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}>
-                  <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
-                </button>
+                <PermissionGate page="pos" action="print">
+                  <button type="button" onClick={() => setPrintPreview(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[14px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}>
+                    <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
+                  </button>
+                </PermissionGate>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}>
-                    حفظ فقط
-                  </button>
-                  <button type="button" onClick={() => setCancelModalOpen(true)} disabled={!lines.length} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                    <Trash2 className="h-4 w-4" /> إلغاء
-                  </button>
+                  <PermissionGate page="pos" action="create_sale">
+                    <button type="button" onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}>
+                      حفظ فقط
+                    </button>
+                  </PermissionGate>
+                  <PermissionGate page="pos" action="void">
+                    <button type="button" onClick={() => setCancelModalOpen(true)} disabled={!lines.length} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                      <Trash2 className="h-4 w-4" /> إلغاء
+                    </button>
+                  </PermissionGate>
                   <button
                     type="button"
                     onClick={() => setNewInvoiceModalOpen(true)}
@@ -3415,8 +3428,10 @@ export default function POSPage() {
           <div className="flex justify-center gap-3 pt-2">
             <button type="button" onClick={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }}
               className="rounded-sm border border-slate-200 px-5 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
-            <button type="button" onClick={confirmSupervisorOverride}
-              className="rounded-sm bg-amber-600 px-5 py-2.5 text-[13px] font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
+            <PermissionGate page="pos" action="discount">
+              <button type="button" onClick={confirmSupervisorOverride}
+                className="rounded-sm bg-amber-600 px-5 py-2.5 text-[13px] font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
+            </PermissionGate>
           </div>
         </div>
       </Modal>

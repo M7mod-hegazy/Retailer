@@ -151,8 +151,8 @@ export default function App() {
                     <Route path="definitions/customers/:id" element={<PermissionRoute page="customers"><CustomerProfilePage /></PermissionRoute>} />
                     <Route path="definitions/suppliers" element={<PermissionRoute page="suppliers"><SuppliersListPage /></PermissionRoute>} />
                     <Route path="definitions/suppliers/:id" element={<PermissionRoute page="suppliers"><SupplierProfilePage /></PermissionRoute>} />
-                    <Route path="definitions/expense-categories" element={<ExpenseCategoriesPage />} />
-                    <Route path="definitions/revenue-categories" element={<RevenueCategoriesPage />} />
+                    <Route path="definitions/expense-categories" element={<PermissionRoute page="financial_categories"><ExpenseCategoriesPage /></PermissionRoute>} />
+                    <Route path="definitions/revenue-categories" element={<PermissionRoute page="financial_categories"><RevenueCategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/financial-categories" element={<PermissionRoute page="financial_categories"><FinancialCategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/units" element={<PermissionRoute page="units"><UnitsPage /></PermissionRoute>} />
                     <Route path="definitions/warehouses" element={<PermissionRoute page="warehouses"><WarehousesPage /></PermissionRoute>} />
@@ -162,10 +162,10 @@ export default function App() {
                     <Route path="definitions/users" element={<PermissionRoute page="users"><UsersPage /></PermissionRoute>} />
                     <Route path="definitions/employees" element={<PermissionRoute page="employees"><EmployeesPage /></PermissionRoute>} />
                     <Route path="pos" element={<PermissionRoute page="pos"><POSPage /></PermissionRoute>} />
-                    <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+                    <Route path="invoices/:id" element={<PermissionRoute page="sales"><InvoiceDetailPage /></PermissionRoute>} />
                     <Route path="daily-treasury" element={<PermissionRoute page="daily_treasury"><DailyTreasuryPage /></PermissionRoute>} />
                     <Route path="operations/payment-methods" element={<PermissionRoute page="payment_methods"><PaymentMethodsPage /></PermissionRoute>} />
-                    <Route path="operations/payment-transactions" element={<PaymentTransactionsPage />} />
+                    <Route path="operations/payment-transactions" element={<PermissionRoute page="payments"><PaymentTransactionsPage /></PermissionRoute>} />
                     <Route path="sales/returns" element={<PermissionRoute page="sales_returns"><SalesReturnsListPage /></PermissionRoute>} />
                     <Route path="sales/returns/new" element={<PermissionRoute page="sales_returns"><SalesReturnFormPage /></PermissionRoute>} />
                     <Route path="sales/returns/amend" element={<PermissionRoute page="sales_returns"><SalesReturnFormPage /></PermissionRoute>} />
@@ -179,8 +179,8 @@ export default function App() {
                     <Route path="purchases/returns/amend" element={<PermissionRoute page="purchase_returns"><PurchaseReturnFormPage /></PermissionRoute>} />
                     <Route path="purchases/returns/:id" element={<PermissionRoute page="purchase_returns"><PurchaseReturnDetailPage /></PermissionRoute>} />
                     <Route path="pos/sales-returns/:id" element={<PermissionRoute page="sales_returns"><SalesReturnDetailPage /></PermissionRoute>} />
-                    <Route path="payments" element={<PaymentsListPage />} />
-                    <Route path="payments/new" element={<PaymentFormPage />} />
+                    <Route path="payments" element={<PermissionRoute page="payments"><PaymentsListPage /></PermissionRoute>} />
+                    <Route path="payments/new" element={<PermissionRoute page="payments"><PaymentFormPage /></PermissionRoute>} />
                     <Route path="accounts/customers" element={<PermissionRoute page="customer_accounts"><CustomerAccountsPage /></PermissionRoute>} />
                     <Route path="accounts/suppliers" element={<PermissionRoute page="supplier_accounts"><SupplierAccountsPage /></PermissionRoute>} />
                     <Route path="operations/ajal-tracker" element={<Navigate to="/accounts/customers" replace />} />
@@ -190,7 +190,7 @@ export default function App() {
                     <Route path="operations/installments" element={<PermissionRoute page="installments"><InstallmentsPage /></PermissionRoute>} />
                     <Route path="operations/bank-operations" element={<PermissionRoute page="bank_operations"><BankOperationsPage /></PermissionRoute>} />
                     <Route path="operations/bulk-price-update" element={<PermissionRoute page="bulk_price_update"><BulkPriceUpdatePage /></PermissionRoute>} />
-                    <Route path="operations/employee-adjustments" element={<EmployeeAdjustmentsPage />} />
+                    <Route path="operations/employee-adjustments" element={<PermissionRoute page="employee_adjustments"><EmployeeAdjustmentsPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer" element={<PermissionRoute page="branch_transfer"><BranchTransferPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer/new" element={<PermissionRoute page="branch_transfer"><BranchTransferFormPage /></PermissionRoute>} />
                     <Route path="operations/quotations" element={<PermissionRoute page="quotations"><QuotationsPage /></PermissionRoute>} />
@@ -199,13 +199,13 @@ export default function App() {
                     <Route path="reports/source/:sourceKey/:classificationId/:dataMode" element={<PermissionRoute page="reports"><SourceWorkspacePage /></PermissionRoute>} />
                     <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><ReportWorkspacePage /></PermissionRoute>} />
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
-                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />
                     <Route path="definitions/promotions" element={<PermissionRoute page="promotions"><PromotionsPage /></PermissionRoute>} />
                     <Route path="expenses" element={<PermissionRoute page="expenses"><ExpensesListPage /></PermissionRoute>} />
                     <Route path="revenues" element={<PermissionRoute page="revenues"><RevenuesListPage /></PermissionRoute>} />
                     <Route path="withdrawals" element={<PermissionRoute page="withdrawals"><WithdrawalsListPage /></PermissionRoute>} />
-                    <Route path="stock/levels" element={<StockLevelsPage />} />
-                    <Route path="stock/movements" element={<StockMovementsPage />} />
+                    <Route path="stock/levels" element={<PermissionRoute page="stock"><StockLevelsPage /></PermissionRoute>} />
+                    <Route path="stock/movements" element={<PermissionRoute page="stock"><StockMovementsPage /></PermissionRoute>} />
                     <Route path="stock/transfer" element={<PermissionRoute page="stock_transfer"><StockTransferPage /></PermissionRoute>} />
                     <Route path="stock/physical-count" element={<PermissionRoute page="physical_count"><PhysicalCountPage /></PermissionRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

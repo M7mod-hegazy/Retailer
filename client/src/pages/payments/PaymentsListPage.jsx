@@ -7,7 +7,7 @@ import {
   User, 
   DollarSign, 
   Filter, 
-  Download, 
+  Download,
   ChevronRight,
   Eye,
   MoreVertical,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -91,12 +92,14 @@ export default function PaymentsListPage() {
         </div>
         <div className="flex items-center gap-2">
           <TodayInvoicesButton variant="ghost" />
-          <Link
-            to="/payments/new"
-            className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 hover:shadow-xl active:scale-95"
-          >
-            <Plus className="h-4 w-4" /> إضافة حركة مالية
-          </Link>
+          <PermissionGate page="payments" action="add">
+            <Link
+              to="/payments/new"
+              className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 hover:shadow-xl active:scale-95"
+            >
+              <Plus className="h-4 w-4" /> إضافة حركة مالية
+            </Link>
+          </PermissionGate>
         </div>
       </div>
 
@@ -154,9 +157,11 @@ export default function PaymentsListPage() {
                 className="rounded-sm border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-[12px] font-bold text-slate-600 outline-none hover:border-slate-300 focus:border-slate-800" 
               />
             </div>
-            <button className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-              <Download className="h-3.5 w-3.5" /> تصدير PDF
-            </button>
+            <PermissionGate page="payments" action="export">
+              <button className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                <Download className="h-3.5 w-3.5" /> تصدير PDF
+              </button>
+            </PermissionGate>
           </div>
           <div className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-widest">
              <Filter className="h-3 w-3" />

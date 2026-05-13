@@ -4,6 +4,7 @@ import { Plus, RotateCcw, X, Printer, Eye, Pencil } from "lucide-react";
 import api from "../../services/api";
 import DataGrid from "../../components/ui/DataGrid";
 import SearchInput from "../../components/ui/SearchInput";
+import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 
@@ -86,12 +87,14 @@ export default function SalesReturnsListPage() {
             عرض وإدارة جميع مرتجعات فواتير المبيعات
           </p>
         </div>
-        <button
-          onClick={() => navigate("/sales/returns/new")}
-          className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-500 transition-all active:scale-95"
-        >
-          <Plus className="h-4 w-4" /> مرتجع جديد
-        </button>
+        <PermissionGate page="sales_returns" action="add">
+          <button
+            onClick={() => navigate("/sales/returns/new")}
+            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-500 transition-all active:scale-95"
+          >
+            <Plus className="h-4 w-4" /> مرتجع جديد
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Invoice filter banner */}
@@ -268,17 +271,19 @@ export default function SalesReturnsListPage() {
                   >
                     <Printer className="h-4 w-4" />
                   </button>
-                  <button
-                    onClick={() =>
-                      navigate("/sales/returns/new", {
-                        state: { edit_return_id: row.id },
-                      })
-                    }
-                    title="تعديل"
-                    className="flex h-7 items-center gap-1 px-2 rounded-lg text-emerald-600 hover:bg-emerald-50 text-[11px] font-black transition-colors"
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> تعديل
-                  </button>
+                  <PermissionGate page="sales_returns" action="edit">
+                    <button
+                      onClick={() =>
+                        navigate("/sales/returns/new", {
+                          state: { edit_return_id: row.id },
+                        })
+                      }
+                      title="تعديل"
+                      className="flex h-7 items-center gap-1 px-2 rounded-lg text-emerald-600 hover:bg-emerald-50 text-[11px] font-black transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> تعديل
+                    </button>
+                  </PermissionGate>
                 </div>
               ),
             },

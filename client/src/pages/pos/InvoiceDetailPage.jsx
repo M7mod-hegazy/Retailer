@@ -9,6 +9,7 @@ import api from "../../services/api";
 import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
 
 function CancelReasonModal({ title, onConfirm, onClose }) {
@@ -225,26 +226,32 @@ export default function InvoiceDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           {!isCancelled && !isAmended && (
-            <button
-              onClick={() => setCancelOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all"
-            >
-              <Trash2 className="h-4 w-4" /> إلغاء الفاتورة
-            </button>
+            <PermissionGate page="sales" action="void">
+              <button
+                onClick={() => setCancelOpen(true)}
+                className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all"
+              >
+                <Trash2 className="h-4 w-4" /> إلغاء الفاتورة
+              </button>
+            </PermissionGate>
           )}
-          <button
-            onClick={() => setPrintOpen(true)}
-            className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all"
-          >
-            <Printer className="h-4 w-4" /> طباعة
-          </button>
-          {!isCancelled && !isAmended && (
+          <PermissionGate page="sales" action="print">
             <button
-              onClick={() => setAmendOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all"
+              onClick={() => setPrintOpen(true)}
+              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all"
             >
-              <Pencil className="h-4 w-4" /> تعديل الفاتورة
+              <Printer className="h-4 w-4" /> طباعة
             </button>
+          </PermissionGate>
+          {!isCancelled && !isAmended && (
+            <PermissionGate page="sales" action="edit">
+              <button
+                onClick={() => setAmendOpen(true)}
+                className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all"
+              >
+                <Pencil className="h-4 w-4" /> تعديل الفاتورة
+              </button>
+            </PermissionGate>
           )}
         </div>
       </header>

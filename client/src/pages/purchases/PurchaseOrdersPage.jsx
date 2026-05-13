@@ -14,6 +14,7 @@ import useDebounce from "../../hooks/useDebounce";
 import SearchInput from "../../components/ui/SearchInput";
 import { adaptForServer } from "../../utils/search";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const STATUS_MAP = {
   pending:            { label: "قيد الانتظار",   cls: "bg-amber-50 text-amber-700 border-amber-100" },
@@ -172,9 +173,11 @@ export default function PurchaseOrdersPage() {
         </div>
         <div className="flex items-center gap-2">
           <TodayInvoicesButton variant="pill" />
-          <Link to="/purchases/orders/new" className="flex items-center gap-2 rounded-lg bg-slate-800 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-slate-700 transition-all active:scale-95">
-            <Plus className="h-4 w-4" /> طلب توريد جديد
-          </Link>
+          <PermissionGate page="purchase_orders" action="add">
+            <Link to="/purchases/orders/new" className="flex items-center gap-2 rounded-lg bg-slate-800 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-slate-700 transition-all active:scale-95">
+              <Plus className="h-4 w-4" /> طلب توريد جديد
+            </Link>
+          </PermissionGate>
         </div>
       </div>
 
@@ -284,16 +287,20 @@ export default function PurchaseOrdersPage() {
                       <Eye className="h-4 w-4" />
                     </button>
                     {canApprove && (
-                      <button onClick={() => setConfirmApprove(row.id)}
-                        className="flex h-7 items-center gap-1 px-2 rounded-lg text-blue-600 hover:bg-blue-50 text-[11px] font-black transition-colors">
-                        <BadgeCheck className="h-4 w-4" /> اعتماد
-                      </button>
+                      <PermissionGate page="purchase_orders" action="edit">
+                        <button onClick={() => setConfirmApprove(row.id)}
+                          className="flex h-7 items-center gap-1 px-2 rounded-lg text-blue-600 hover:bg-blue-50 text-[11px] font-black transition-colors">
+                          <BadgeCheck className="h-4 w-4" /> اعتماد
+                        </button>
+                      </PermissionGate>
                     )}
                     {canReceive && (
-                      <button onClick={() => openReceiveModal(row.id)}
-                        className="flex h-7 items-center gap-1 px-2 rounded-lg bg-slate-800 text-white text-[11px] font-black hover:bg-slate-700 transition-colors">
-                        <PackageCheck className="h-3.5 w-3.5" /> استلام
-                      </button>
+                      <PermissionGate page="purchase_orders" action="edit">
+                        <button onClick={() => openReceiveModal(row.id)}
+                          className="flex h-7 items-center gap-1 px-2 rounded-lg bg-slate-800 text-white text-[11px] font-black hover:bg-slate-700 transition-colors">
+                          <PackageCheck className="h-3.5 w-3.5" /> استلام
+                        </button>
+                      </PermissionGate>
                     )}
                     <div className="relative" ref={openMenu === row.id ? menuRef : null}>
                       <button onClick={() => setOpenMenu(openMenu === row.id ? null : row.id)}
@@ -303,10 +310,12 @@ export default function PurchaseOrdersPage() {
                       {openMenu === row.id && (
                         <div className="absolute left-0 top-full mt-1 z-20 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
                           {canCancel && (
-                            <button onClick={() => { setConfirmCancel(row.id); setOpenMenu(null); }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
-                              <XCircle className="h-3.5 w-3.5" /> إلغاء الأمر
-                            </button>
+                            <PermissionGate page="purchase_orders" action="edit">
+                              <button onClick={() => { setConfirmCancel(row.id); setOpenMenu(null); }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
+                                <XCircle className="h-3.5 w-3.5" /> إلغاء الأمر
+                              </button>
+                            </PermissionGate>
                           )}
                         </div>
                       )}

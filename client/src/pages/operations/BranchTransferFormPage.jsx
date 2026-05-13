@@ -13,6 +13,7 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -524,24 +525,28 @@ export default function BranchTransferFormPage() {
                <span className={`text-5xl font-black font-mono text-${theme.primary}-600 drop-shadow-sm`}>{totalQty.toLocaleString("ar-EG")}</span>
              </div>
              
-             <div className="flex flex-col gap-3">
-               <button
-                 onClick={() => setPreviewOpen(true)}
-                 disabled={isSaving || !lines.length}
-                 className={`w-full h-[52px] flex items-center justify-center gap-2.5 rounded-[12px] text-[15px] font-black text-white transition-all shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.12)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 bg-gradient-to-l ${theme.gradient}`}
-               >
-                 <Printer className="h-5 w-5" />
-                 طباعة ومراجعة المستند
-               </button>
-               
-               <button
-                 onClick={() => handleSave(false)}
-                 disabled={isSaving || !lines.length}
-                 className="w-full h-[46px] flex items-center justify-center gap-2 rounded-[12px] bg-slate-100 border border-slate-200 text-[14px] font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 <CheckCircle className="h-4 w-4" /> حفظ بدون أثر طباعي
-               </button>
-             </div>
+              <div className="flex flex-col gap-3">
+                <PermissionGate page="branch_transfer" action="print">
+                  <button
+                    onClick={() => setPreviewOpen(true)}
+                    disabled={isSaving || !lines.length}
+                    className={`w-full h-[52px] flex items-center justify-center gap-2.5 rounded-[12px] text-[15px] font-black text-white transition-all shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.12)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 bg-gradient-to-l ${theme.gradient}`}
+                  >
+                    <Printer className="h-5 w-5" />
+                    طباعة ومراجعة المستند
+                  </button>
+                </PermissionGate>
+                
+                <PermissionGate page="branch_transfer" action="add">
+                  <button
+                    onClick={() => handleSave(false)}
+                    disabled={isSaving || !lines.length}
+                    className="w-full h-[46px] flex items-center justify-center gap-2 rounded-[12px] bg-slate-100 border border-slate-200 text-[14px] font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <CheckCircle className="h-4 w-4" /> حفظ بدون أثر طباعي
+                  </button>
+                </PermissionGate>
+              </div>
           </div>
 
         </div>

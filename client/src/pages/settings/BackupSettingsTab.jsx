@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { Download, UploadCloud, AlertTriangle } from 'lucide-react';
+import PermissionGate from "../../components/ui/PermissionGate";
 
 export default function BackupSettingsTab() {
   const [restoring, setRestoring] = useState(false);
@@ -32,9 +33,11 @@ export default function BackupSettingsTab() {
           </div>
         </div>
         <div className="shrink-0">
-          <button type="button" onClick={handleCreate} className="flex h-9 items-center justify-center rounded-sm bg-slate-900 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-md">
-            إنشاء نسخة الآن
-          </button>
+          <PermissionGate page="backup" action="create">
+            <button type="button" onClick={handleCreate} className="flex h-9 items-center justify-center rounded-sm bg-slate-900 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-md">
+              إنشاء نسخة الآن
+            </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -51,19 +54,21 @@ export default function BackupSettingsTab() {
           </div>
         </div>
         <div className="shrink-0">
-          <label className="flex h-9 items-center justify-center rounded-sm bg-rose-600 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-md cursor-pointer">
-            {restoring ? "جارٍ الاستعادة..." : "استعادة بيانات"}
-            <input
-              type="file"
-              accept=".db"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                setPendingRestore({ file, resetInput: () => { event.target.value = ""; } });
-              }}
-            />
-          </label>
+          <PermissionGate page="backup" action="restore">
+            <label className="flex h-9 items-center justify-center rounded-sm bg-rose-600 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-md cursor-pointer">
+              {restoring ? "جارٍ الاستعادة..." : "استعادة بيانات"}
+              <input
+                type="file"
+                accept=".db"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setPendingRestore({ file, resetInput: () => { event.target.value = ""; } });
+                }}
+              />
+            </label>
+          </PermissionGate>
         </div>
       </div>
 

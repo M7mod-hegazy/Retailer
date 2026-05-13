@@ -9,6 +9,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import DataTable from "../../components/ui/DataTable";
 import SmartTooltip from "../../components/ui/SmartTooltip";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 function createInitialState(fields, source = {}) {
   return fields.reduce((acc, field) => ({ ...acc, [field.name]: source[field.name] ?? field.initialValue ?? "" }), {});
@@ -219,22 +220,26 @@ export default function FinancialCategoriesPage() {
         cell: (info) => (
           <div className="flex items-center justify-center gap-1">
             <SmartTooltip content="تعديل هذا السجل">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
-              >
-                <Edit3 className="h-4 w-4" />
-              </motion.button>
+              <PermissionGate page="financial_categories" action="edit">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                >
+                  <Edit3 className="h-4 w-4" />
+                </motion.button>
+              </PermissionGate>
             </SmartTooltip>
             <SmartTooltip content="حذف نهائي">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
-              >
-                <Trash2 className="h-4 w-4" />
-              </motion.button>
+              <PermissionGate page="financial_categories" action="delete">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </motion.button>
+              </PermissionGate>
             </SmartTooltip>
           </div>
         ),
@@ -458,24 +463,26 @@ export default function FinancialCategoriesPage() {
                 transition={{ delay: 0.8 }}
                 className="pt-4"
               >
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all shadow-xl disabled:opacity-50 ${
-                    editingRow 
-                      ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' 
-                      : 'bg-zinc-950 hover:bg-zinc-800 shadow-zinc-950/20'
-                  }`}
-                >
-                  {isSubmitting ? 'جاري المعالجة...' : (
-                    <>
-                      {editingRow ? <Edit3 className="h-4 w-4 text-amber-200" /> : <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
-                      {editingRow ? 'حفظ التعديلات' : 'تأكيد الإضافة'}
-                    </>
-                  )}
-                </motion.button>
+                <PermissionGate page="financial_categories" action={editingRow ? "edit" : "add"}>
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all shadow-xl disabled:opacity-50 ${
+                      editingRow 
+                        ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' 
+                        : 'bg-zinc-950 hover:bg-zinc-800 shadow-zinc-950/20'
+                    }`}
+                  >
+                    {isSubmitting ? 'جاري المعالجة...' : (
+                      <>
+                        {editingRow ? <Edit3 className="h-4 w-4 text-amber-200" /> : <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                        {editingRow ? 'حفظ التعديلات' : 'تأكيد الإضافة'}
+                      </>
+                    )}
+                  </motion.button>
+                </PermissionGate>
               </motion.div>
               
               {/* Quick Add Section */}

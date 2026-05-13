@@ -132,7 +132,7 @@ router.get("/:id/permissions", (req, res, next) => {
     }
 
     const user = getDb()
-      .prepare("SELECT id, page_permissions FROM users WHERE id = ?")
+      .prepare("SELECT id, role, page_permissions FROM users WHERE id = ?")
       .get(req.params.id);
 
     if (!user) {
@@ -141,14 +141,16 @@ router.get("/:id/permissions", (req, res, next) => {
       throw err;
     }
 
+    // Admin/dev users have full access — no stored permissions needed
+    if (user.role === "admin" || user.role === "dev") {
+      return res.json({ success: true, data: null });
+    }
+
     let permissions;
     if (user.page_permissions) {
       permissions = JSON.parse(user.page_permissions);
     } else {
-      const row = getDb()
-        .prepare("SELECT value FROM settings_kv WHERE key = 'default_user_permissions'")
-        .get();
-      permissions = row?.value ? JSON.parse(row.value) : {};
+      permissions = {};
     }
 
     res.json({ success: true, data: permissions });
@@ -178,10 +180,10 @@ router.put("/:id/permissions", (req, res, next) => {
     }
 
     const payload = req.body || {};
-    const permissions = payload.permissions || {};
+    const { permissions } = payload;
 
-    if (typeof permissions !== "object" || Array.isArray(permissions)) {
-      const err = new Error("Permissions must be a valid object");
+    if (permissions === undefined || permissions === null || typeof permissions !== "object" || Array.isArray(permissions)) {
+      const err = new Error("Permissions payload is required");
       err.status = 400;
       throw err;
     }

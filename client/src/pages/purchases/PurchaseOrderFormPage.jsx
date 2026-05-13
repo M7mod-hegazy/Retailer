@@ -15,7 +15,8 @@ import {
   FileSearch,
   ImageIcon,
   ZoomIn,
-  AlertTriangle
+  AlertTriangle,
+  Save
 } from "lucide-react";
 import api from "../../services/api";
 import { Link, useNavigate } from "react-router-dom";
@@ -23,6 +24,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
+import PermissionGate from "../../components/ui/PermissionGate";
 import { fuzzyFilterRows } from "../../utils/search";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
@@ -263,13 +265,15 @@ export default function PurchaseOrderFormPage() {
               {message.text}
             </div>
           )}
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex h-9 items-center gap-2 rounded-sm bg-slate-800 px-6 text-[13px] font-black text-white hover:bg-slate-700 disabled:opacity-50 transition-all shadow-sm active:scale-95"
-          >
-            {isSaving ? "جاري الحفظ..." : "إرسال طلب التوريد"}
-          </button>
+          <PermissionGate page="purchase_orders" action="add">
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex h-9 items-center gap-2 rounded-sm bg-slate-800 px-6 text-[13px] font-black text-white hover:bg-slate-700 disabled:opacity-50 transition-all shadow-sm active:scale-95"
+            >
+              {isSaving ? "جاري الحفظ..." : "إرسال طلب التوريد"}
+            </button>
+          </PermissionGate>
         </div>
       </header>
 

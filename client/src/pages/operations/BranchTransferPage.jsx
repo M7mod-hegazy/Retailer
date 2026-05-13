@@ -7,6 +7,7 @@ import {
 import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
 import SearchInput from "../../components/ui/SearchInput";
+import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
@@ -79,18 +80,22 @@ export default function BranchTransferPage() {
         </div>
         <div className="flex items-center gap-3">
           <TodayInvoicesButton variant="ghost" />
-          <button
-            onClick={() => navigate("/operations/branch-transfer/new?type=receive")}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-500 transition-all active:scale-95"
-          >
-            <ArrowDownToLine className="h-4 w-4" /> استلام بضاعة
-          </button>
-          <button
-            onClick={() => navigate("/operations/branch-transfer/new?type=send")}
-            className="flex items-center gap-2 rounded-lg bg-blue-700 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-blue-600 transition-all active:scale-95"
-          >
-            <ArrowUpFromLine className="h-4 w-4" /> تسليم بضاعة
-          </button>
+          <PermissionGate page="branch_transfer" action="add">
+            <button
+              onClick={() => navigate("/operations/branch-transfer/new?type=receive")}
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-500 transition-all active:scale-95"
+            >
+              <ArrowDownToLine className="h-4 w-4" /> استلام بضاعة
+            </button>
+          </PermissionGate>
+          <PermissionGate page="branch_transfer" action="add">
+            <button
+              onClick={() => navigate("/operations/branch-transfer/new?type=send")}
+              className="flex items-center gap-2 rounded-lg bg-blue-700 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-blue-600 transition-all active:scale-95"
+            >
+              <ArrowUpFromLine className="h-4 w-4" /> تسليم بضاعة
+            </button>
+          </PermissionGate>
         </div>
       </div>
 

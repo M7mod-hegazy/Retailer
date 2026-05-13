@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Bell, CheckSquare } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import PermissionGate from "../../components/ui/PermissionGate";
 import Button from "../../components/ui/Button";
 import PageWrapper from "../../components/ui/PageWrapper";
 
@@ -61,9 +62,11 @@ export default function NotificationsPage() {
             <p className="page-subtitle">تابع الأحداث الحرجة ورسائل التشغيل في مكان واحد.</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={markAllAsRead}>
-          <CheckSquare className="w-4 h-4" /> تحديد الكل كمقروء
-        </Button>
+        <PermissionGate page="notifications" action="edit">
+          <Button variant="ghost" onClick={markAllAsRead}>
+            <CheckSquare className="w-4 h-4" /> تحديد الكل كمقروء
+          </Button>
+        </PermissionGate>
       </div>
 
       <div className="glass-panel overflow-hidden rounded-[24px]">
@@ -87,12 +90,14 @@ export default function NotificationsPage() {
                   <p className="mb-2 text-sm text-text-secondary">{note.message}</p>
                   
                   {!note.is_read && (
-                    <button 
-                      onClick={() => markAsRead(note.id)}
-                      className="text-xs font-medium text-info-DEFAULT hover:underline"
-                    >
-                      تحديد كمقروء
-                    </button>
+                    <PermissionGate page="notifications" action="edit">
+                      <button 
+                        onClick={() => markAsRead(note.id)}
+                        className="text-xs font-medium text-info-DEFAULT hover:underline"
+                      >
+                        تحديد كمقروء
+                      </button>
+                    </PermissionGate>
                   )}
                 </div>
               </div>

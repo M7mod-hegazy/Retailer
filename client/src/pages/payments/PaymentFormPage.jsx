@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
+import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
 
 function formatMoney(v) {
@@ -287,13 +288,15 @@ export default function PaymentFormPage() {
             </div>
 
             {/* Submit */}
-            <button 
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-sm bg-slate-800 py-4 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50"
-            >
-              <CheckCircle2 className="h-5 w-5" /> {loading ? 'جاري الحفظ...' : 'تأكيد وحفظ الحركة الماليّة'}
-            </button>
+            <PermissionGate page="payments" action="add">
+              <button 
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-3 rounded-sm bg-slate-800 py-4 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-5 w-5" /> {loading ? 'جاري الحفظ...' : 'تأكيد وحفظ الحركة الماليّة'}
+              </button>
+            </PermissionGate>
           </div>
         </aside>
 

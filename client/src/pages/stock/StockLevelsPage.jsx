@@ -32,6 +32,7 @@ import PageWrapper from "../../components/ui/PageWrapper";
 import SearchInput from "../../components/ui/SearchInput";
 import { fuzzyFilterRows, adaptForServer } from "../../utils/search";
 import { Select } from "../../components/ui/Select";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const MOVEMENT_LABELS = {
@@ -678,10 +679,12 @@ export default function StockLevelsPage() {
                           <div className="flex items-center gap-2">
                             <button onClick={() => setAdjustRow(null)}
                               className="h-[34px] px-4 rounded-sm border border-sky-200 text-[12px] font-black text-sky-700 hover:bg-sky-100 transition-colors">إلغاء</button>
-                            <button onClick={submitAdjust} disabled={adjLoading}
-                              className="h-[34px] px-6 rounded-sm bg-sky-600 text-[12px] font-black text-white hover:bg-sky-700 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1.5">
-                              {adjLoading ? "جارٍ الحفظ..." : <><CheckCircle2 className="h-3.5 w-3.5" /> اعتماد التسوية</>}
-                            </button>
+                            <PermissionGate page="stock" action="adjust">
+                              <button onClick={submitAdjust} disabled={adjLoading}
+                                className="h-[34px] px-6 rounded-sm bg-sky-600 text-[12px] font-black text-white hover:bg-sky-700 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1.5">
+                                {adjLoading ? "جارٍ الحفظ..." : <><CheckCircle2 className="h-3.5 w-3.5" /> اعتماد التسوية</>}
+                              </button>
+                            </PermissionGate>
                           </div>
                         </div>
                       </td>
@@ -994,11 +997,13 @@ export default function StockLevelsPage() {
                       مسح التحديد
                     </button>
                   </div>
-                  <button onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-[13px] shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
-                    <CheckCircle2 className="h-4 w-4" />
-                    {txSubmitting ? "جاري التحويل..." : "تنفيذ التحويل"}
-                  </button>
+                  <PermissionGate page="stock" action="transfer">
+                    <button onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-[13px] shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {txSubmitting ? "جاري التحويل..." : "تنفيذ التحويل"}
+                    </button>
+                  </PermissionGate>
                 </div>
               </div>
             )}
@@ -1113,8 +1118,12 @@ export default function StockLevelsPage() {
                       return (
                          <div className="flex items-center justify-center gap-1.5">
                             <button onClick={() => openMovementDetails(mv.id)} className="rounded border border-slate-200 px-2 py-1 text-[11px] font-black text-slate-700 hover:bg-slate-50"><Eye className="h-3 w-3 inline mr-1" /> عرض</button>
-                            <button onClick={() => startEditMovement(mv)} className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-black text-blue-700 hover:bg-blue-100"><Pencil className="h-3 w-3 inline mr-1" /> تعديل</button>
-                            <button onClick={() => setDeleteMovement(mv)} disabled={!canDelete} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-black text-rose-700 hover:bg-rose-100 disabled:opacity-40"><Trash2 className="h-3 w-3 inline mr-1" /> حذف</button>
+                             <PermissionGate page="stock" action="edit">
+                               <button onClick={() => startEditMovement(mv)} className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-black text-blue-700 hover:bg-blue-100"><Pencil className="h-3 w-3 inline mr-1" /> تعديل</button>
+                             </PermissionGate>
+                             <PermissionGate page="stock" action="delete">
+                               <button onClick={() => setDeleteMovement(mv)} disabled={!canDelete} className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-black text-rose-700 hover:bg-rose-100 disabled:opacity-40"><Trash2 className="h-3 w-3 inline mr-1" /> حذف</button>
+                             </PermissionGate>
                          </div>
                       );
                     }
