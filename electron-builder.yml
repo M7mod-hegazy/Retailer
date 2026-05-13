@@ -31,5 +31,11 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: ElHegazi Retailer
 
+publish:
+  provider: github
+  owner: M7mod-Hegazy
+  repo: retailer
+  releaseType: release
+
 buildDependenciesFromSource: true
 npmRebuild: true
