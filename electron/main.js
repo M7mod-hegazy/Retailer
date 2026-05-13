@@ -131,8 +131,8 @@ function createMainWindow() {
   // Auto-updater (production only)
   if (!isDev) {
     try {
-      const { setupAutoUpdater } = require("./updater");
-      setupAutoUpdater(mainWindow);
+      const { setupUpdater } = require("./updater");
+      setupUpdater(mainWindow);
     } catch (_err) {
       // updater not available — continue
     }

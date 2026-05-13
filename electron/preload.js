@@ -6,6 +6,16 @@ const allowedChannels = {
   print: ["print:receipt", "print:preview"],
   dialogs: ["dialog:open-file", "dialog:save-file"],
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
+  update: [
+    "update:available",
+    "update:not-available",
+    "update:progress",
+    "update:downloaded",
+    "update:error",
+    "update:check",
+    "update:download",
+    "update:install-now",
+  ],
 };
 
 const api = {

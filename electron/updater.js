@@ -1,48 +1,44 @@
-const { autoUpdater } = require("electron-updater");
-const { dialog } = require("electron");
+const { autoUpdater } = require('electron-updater')
+const { ipcMain } = require('electron')
 
-function setupAutoUpdater(mainWindow) {
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.verifyUpdateCodeSignature = false
 
-  autoUpdater.on("update-available", (info) => {
-    dialog
-      .showMessageBox(mainWindow, {
-        type: "info",
-        title: "تحديث متاح",
-        message: `يتوفر إصدار جديد (${info.version}). هل تريد تنزيله الآن؟`,
-        buttons: ["تنزيل", "لاحقاً"],
-        defaultId: 0,
-      })
-      .then((result) => {
-        if (result.response === 0) {
-          autoUpdater.downloadUpdate();
-        }
-      });
-  });
+let mainWindow = null
 
-  autoUpdater.on("update-downloaded", () => {
-    dialog
-      .showMessageBox(mainWindow, {
-        type: "info",
-        title: "تم التنزيل",
-        message: "تم تنزيل التحديث. سيتم تثبيته عند إعادة التشغيل.",
-        buttons: ["إعادة التشغيل الآن", "لاحقاً"],
-        defaultId: 0,
-      })
-      .then((result) => {
-        if (result.response === 0) {
-          autoUpdater.quitAndInstall();
-        }
-      });
-  });
+function setupUpdater(win) {
+  mainWindow = win
 
-  autoUpdater.on("error", (err) => {
-    console.error("Auto-updater error:", err.message);
-  });
+  autoUpdater.checkForUpdates().catch(() => {})
 
-  // Check for updates silently on app start
-  autoUpdater.checkForUpdates().catch(() => {});
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {})
+  }, 4 * 60 * 60 * 1000)
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update:available', info)
+  })
+
+  autoUpdater.on('update-not-available', () => {
+    mainWindow?.webContents.send('update:not-available')
+  })
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update:progress', progress)
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    mainWindow?.webContents.send('update:downloaded', info)
+  })
+
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update:error', err.message)
+  })
 }
 
-module.exports = { setupAutoUpdater };
+ipcMain.handle('update:check', () => autoUpdater.checkForUpdates().catch(() => {}))
+ipcMain.handle('update:download', () => autoUpdater.downloadUpdate())
+ipcMain.handle('update:install-now', () => autoUpdater.quitAndInstall())
+
+module.exports = { setupUpdater }
