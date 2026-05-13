@@ -7,10 +7,12 @@ import {
   Settings, LogOut, Radar, ChevronDown, Search, PackageSearch,
   FileSpreadsheet, Boxes, ClipboardList, Landmark, Tags, ShieldCheck,
   Activity, UsersRound, Scale, Menu, ChevronLeft, Truck, Coins, Store,
-  BadgePercent, Banknote, HeartHandshake, Briefcase, Fingerprint, CreditCard
+  BadgePercent, Banknote, HeartHandshake, Briefcase, Fingerprint, CreditCard,
+  ArrowUpCircle
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useCanView } from "../../hooks/usePermission";
+import { useUpdateStore } from "../../stores/updateStore";
 
 const PRIMARY_MENU = [
   { path: "/dashboard", label: "مساحة العمل", icon: LayoutDashboard, pageKey: "dashboard" },
@@ -75,6 +77,7 @@ const NAV_MODULES = [
       { path: "/definitions/users", label: "المستخدمين", icon: Fingerprint, pageKey: "users" },
       { path: "/definitions/employees", label: "الموظفين", icon: UsersRound, pageKey: "employees" },
       { path: "/settings", label: "الإعدادات العامة", icon: Settings, pageKey: "settings" },
+      { path: "/updates", label: "التحديثات", icon: ArrowUpCircle, pageKey: "updates" },
     ],
   },
 ];
@@ -85,6 +88,7 @@ function usePermissionFilter() {
     if (!pageKey) return true;
     if (!user) return false;
     if (user.role === "dev" || user.role === "admin") return true;
+    if (pageKey === "updates") return !!user.can_view_updates;
     return Array.isArray(permissions?.[pageKey]) && permissions[pageKey].includes("view");
   };
 }
@@ -105,7 +109,7 @@ function useCategoryCount() {
   return count;
 }
 
-function PopoverMenu({ module, onItemClick, onMouseEnter, onMouseLeave }) {
+function PopoverMenu({ module, onItemClick, onMouseEnter, onMouseLeave, updateAvailable }) {
   return (
     <div
       onMouseEnter={onMouseEnter}
@@ -121,7 +125,12 @@ function PopoverMenu({ module, onItemClick, onMouseEnter, onMouseLeave }) {
           onClick={onItemClick}
           className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-bold text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
         >
-          <item.icon className="h-4 w-4 shrink-0 text-zinc-400" strokeWidth={1.5} />
+          <div className="relative shrink-0">
+            <item.icon className="h-4 w-4 text-zinc-400" strokeWidth={1.5} />
+            {item.pageKey === "updates" && updateAvailable && (
+              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </div>
           <span>{item.label}</span>
         </Link>
       ))}
@@ -133,6 +142,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const updateAvailable = useUpdateStore((state) => state.available);
   const logout = useAuthStore((state) => state.logout);
   const [activeAccordion, setActiveAccordion] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -282,6 +292,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                       setHoveredModule(module);
                     }}
                     onMouseLeave={() => setHoveredModule(null)}
+                    updateAvailable={updateAvailable}
                   />
                 )}
 
@@ -311,6 +322,9 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                                   <div className="absolute right-[-14px] top-1/2 -translate-y-1/2 w-1 h-3.5 bg-emerald-500 rounded-full shadow-sm" />
                                 )}
                                 <span className="text-[11.5px]">{item.label}</span>
+                                {item.pageKey === "updates" && updateAvailable && (
+                                  <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+                                )}
                               </div>
                               {item.path === "/definitions/items" && categoryCount !== null && (
                                 <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none ${
