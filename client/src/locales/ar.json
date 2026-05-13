@@ -202,5 +202,25 @@
   "r52_title": "عمليات المستخدمين",
   "r52_desc": "تتبع أنشطة المستخدمين التفصيلية.",
   "r60_title": "إنذار هامش الربح",
-  "r60_desc": "الأصناف التي يقل هامش ربحها عن الحد الأدنى."
+  "r60_desc": "الأصناف التي يقل هامش ربحها عن الحد الأدنى.",
+
+  "nav.updates": "التحديثات",
+  "updates.current_version": "الإصدار الحالي",
+  "updates.available": "تحديث متاح",
+  "updates.up_to_date": "التطبيق محدث",
+  "updates.download": "تحميل التحديث",
+  "updates.install_now": "تثبيت الآن",
+  "updates.install_on_restart": "سيتم التثبيت عند إعادة التشغيل",
+  "updates.checking": "جاري التحقق...",
+  "updates.release_notes": "ملاحظات الإصدار",
+  "updates.last_checked": "آخر فحص",
+  "updates.last_updated": "آخر تحديث",
+  "updates.downloading": "جاري التحميل",
+  "updates.error": "خطأ في التحديث",
+  "updates.retry": "إعادة المحاولة",
+  "updates.check_now": "تحقق الآن",
+  "updates.version": "الإصدار",
+  "updates.ready_to_install": "التحديث جاهز للتثبيت",
+  "updates.install_on_next_restart": "تثبيت عند إعادة التشغيل",
+  "users.can_view_updates": "صلاحية عرض التحديثات"
 }

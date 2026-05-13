@@ -202,5 +202,25 @@
   "r52_title": "User Activity",
   "r52_desc": "Detailed user activity tracking.",
   "r60_title": "Margin Health Alert",
-  "r60_desc": "Items below minimum margin threshold."
+  "r60_desc": "Items below minimum margin threshold.",
+
+  "nav.updates": "Updates",
+  "updates.current_version": "Current Version",
+  "updates.available": "Update Available",
+  "updates.up_to_date": "Up to Date",
+  "updates.download": "Download Update",
+  "updates.install_now": "Install Now",
+  "updates.install_on_restart": "Will install on next restart",
+  "updates.checking": "Checking for updates...",
+  "updates.release_notes": "Release Notes",
+  "updates.last_checked": "Last Checked",
+  "updates.last_updated": "Last Updated",
+  "updates.downloading": "Downloading",
+  "updates.error": "Update Error",
+  "updates.retry": "Try Again",
+  "updates.check_now": "Check Now",
+  "updates.version": "Version",
+  "updates.ready_to_install": "Update Ready to Install",
+  "updates.install_on_next_restart": "Install on Next Restart",
+  "users.can_view_updates": "View Updates Permission"
 }
