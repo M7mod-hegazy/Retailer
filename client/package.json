@@ -33,6 +33,7 @@
     "react-hook-form": "^7.72.1",
     "react-hot-toast": "^2.6.0",
     "react-i18next": "^17.0.4",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.30.3",
     "react-window": "^2.2.7",
     "recharts": "^3.8.1",
