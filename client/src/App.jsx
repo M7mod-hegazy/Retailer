@@ -8,6 +8,7 @@ import ScreenLock from "./components/auth/ScreenLock";
 import GlobalSearchPage from "./pages/search/GlobalSearchPage";
 import FullPageLoader from "./components/ui/FullPageLoader";
 import { useCanView } from "./hooks/usePermission";
+import { useUpdateStore } from "./stores/updateStore";
 const UnauthorizedPage = lazy(() => import("./pages/auth/UnauthorizedPage"));
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -118,6 +119,21 @@ function SetupGuard({ children }) {
 }
 
 export default function App() {
+  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError } = useUpdateStore();
+
+  useEffect(() => {
+    const cleanups = [
+      window.electronAPI?.on('update:available', (info) => setAvailable(info)),
+      window.electronAPI?.on('update:not-available', () => setNotAvailable()),
+      window.electronAPI?.on('update:progress', (p) => setProgress(p)),
+      window.electronAPI?.on('update:downloaded', (info) => setDownloaded(info)),
+      window.electronAPI?.on('update:error', (e) => setError(e)),
+    ];
+    return () => {
+      cleanups.forEach((cleanup) => cleanup?.());
+    };
+  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError]);
+
   return (
     <Suspense fallback={<FullPageLoader />}>
       <ScreenLock />
@@ -162,7 +178,7 @@ export default function App() {
                     <Route path="definitions/users" element={<PermissionRoute page="users"><UsersPage /></PermissionRoute>} />
                     <Route path="definitions/employees" element={<PermissionRoute page="employees"><EmployeesPage /></PermissionRoute>} />
                     <Route path="pos" element={<PermissionRoute page="pos"><POSPage /></PermissionRoute>} />
-                    <Route path="invoices/:id" element={<PermissionRoute page="sales"><InvoiceDetailPage /></PermissionRoute>} />
+                    <Route path="invoices/:id" element={<PermissionRoute page="pos"><InvoiceDetailPage /></PermissionRoute>} />
                     <Route path="daily-treasury" element={<PermissionRoute page="daily_treasury"><DailyTreasuryPage /></PermissionRoute>} />
                     <Route path="operations/payment-methods" element={<PermissionRoute page="payment_methods"><PaymentMethodsPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<PermissionRoute page="payments"><PaymentTransactionsPage /></PermissionRoute>} />
