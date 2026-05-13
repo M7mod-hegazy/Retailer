@@ -1,0 +1,288 @@
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, RotateCcw, X, Eye, Pencil } from "lucide-react";
+import api from "../../services/api";
+import DataGrid from "../../components/ui/DataGrid";
+import SearchInput from "../../components/ui/SearchInput";
+import PermissionGate from "../../components/ui/PermissionGate";
+import useDebounce from "../../hooks/useDebounce";
+import toast from "react-hot-toast";
+
+const REASON_MAP = {
+  defective: "عيب في المنتج",
+  wrong_order: "خطأ في الطلب",
+  damaged_shipping: "تلف أثناء الشحن",
+  not_as_described: "لا يطابق الوصف",
+  other: "أخرى",
+};
+
+const SETTLEMENT_MAP = {
+  account: "حساب المورد",
+  cash: "نقداً",
+};
+
+const STATUS_MAP = {
+  active: { label: "نشط", cls: "bg-amber-50 text-amber-700 border-amber-100" },
+  cancelled: { label: "ملغى", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_MAP[status] || STATUS_MAP.active;
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${s.cls}`}>
+      {s.label}
+    </span>
+  );
+}
+
+function formatMoney(v) {
+  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+}
+
+export default function PurchaseReturnsListPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const purchaseIdFilter = searchParams.get("purchase_id") || "";
+
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      if (purchaseIdFilter) params.set("purchase_id", purchaseIdFilter);
+      const res = await api.get(`/api/purchases/returns?${params}`);
+      setRows(res.data.data || []);
+    } catch {
+      toast.error("فشل تحميل بيانات المرتجعات");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadData();
+  }, [debouncedSearch, dateFrom, dateTo, purchaseIdFilter]);
+
+  function clearPurchaseFilter() {
+    searchParams.delete("purchase_id");
+    setSearchParams(searchParams);
+  }
+
+  return (
+    <div className="standard-page-container font-sans flex flex-col gap-6" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-[24px] font-black text-slate-800">قائمة مرتجعات المشتريات</h1>
+          <p className="text-[13px] font-bold text-slate-400 mt-0.5">
+            عرض وإدارة جميع مرتجعات فواتير المشتريات
+          </p>
+        </div>
+        <PermissionGate page="purchase_returns" action="add">
+          <button
+            onClick={() => navigate("/purchases/returns/new")}
+            className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-amber-400 transition-all active:scale-95"
+          >
+            <Plus className="h-4 w-4" /> مرتجع جديد
+          </button>
+        </PermissionGate>
+      </div>
+
+      {/* Purchase filter banner */}
+      {purchaseIdFilter && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50 px-5 py-3">
+          <span className="text-[13px] font-black text-amber-700">
+            عرض مرتجعات أمر الشراء #{purchaseIdFilter}
+          </span>
+          <button
+            onClick={clearPurchaseFilter}
+            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-[12px] font-bold text-amber-600 hover:bg-amber-100 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" /> إزالة التصفية
+          </button>
+        </div>
+      )}
+
+      {/* Table card */}
+      <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/50 px-5 py-3">
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="بحث برقم المرتجع أو اسم المورد..."
+            className="flex-1 min-w-[160px]"
+            size="md"
+          />
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-black text-slate-400 whitespace-nowrap">من:</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-black text-slate-400 whitespace-nowrap">إلى:</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
+            />
+          </div>
+          <span className="mr-auto text-[11px] font-bold text-slate-400">{rows.length} مرتجع</span>
+        </div>
+
+        <DataGrid
+          data={rows}
+          rowKey="id"
+          loading={loading}
+          emptyMessage={debouncedSearch ? "لا توجد مرتجعات مطابقة للبحث" : "لا توجد مرتجعات مشتريات"}
+          emptyIcon={<RotateCcw className="h-10 w-10 opacity-30 mb-2" />}
+          className="border-0"
+          columns={[
+            {
+              id: "doc_no",
+              header: "رقم المرتجع",
+              width: 130,
+              sortable: true,
+              headerClass: "text-center",
+              cellClass: "text-center font-mono text-[13px] font-black text-slate-800 border-l border-slate-100",
+              render: (r) => r.doc_no || `PR-${String(r.id).padStart(5, "0")}`,
+            },
+            {
+              id: "created_at",
+              header: "التاريخ",
+              width: 120,
+              sortable: true,
+              headerClass: "text-center",
+              cellClass: "text-center text-slate-500 text-[12px] font-medium border-l border-slate-100",
+              render: (r) => new Date(r.created_at).toLocaleDateString("ar-EG"),
+            },
+            {
+              id: "original_purchase_no",
+              header: "رقم أمر الشراء",
+              width: 160,
+              sortable: true,
+              headerClass: "text-center",
+              cellClass: "text-center font-mono text-[12px] border-l border-slate-100",
+              render: (r) =>
+                r.original_purchase_no && r.purchase_id ? (
+                  <Link
+                    to={`/purchases/${r.purchase_id}`}
+                    className="font-black text-amber-600 hover:underline"
+                  >
+                    {r.original_purchase_no}
+                  </Link>
+                ) : (
+                  <span className="text-slate-400">{r.original_purchase_no || "—"}</span>
+                ),
+            },
+            {
+              id: "supplier_name",
+              header: "المورد",
+              width: 180,
+              sortable: true,
+              headerClass: "text-right px-3",
+              cellClass: "font-bold text-slate-700 px-3 border-l border-slate-100",
+              render: (r) =>
+                r.supplier_id ? (
+                  <Link
+                    to={`/definitions/suppliers/${r.supplier_id}`}
+                    className="hover:text-amber-600 hover:underline transition-colors"
+                  >
+                    {r.supplier_name || `مورد #${r.supplier_id}`}
+                  </Link>
+                ) : (
+                  <span className="text-slate-400">{r.supplier_name || "—"}</span>
+                ),
+            },
+            {
+              id: "reason",
+              header: "السبب",
+              width: 160,
+              sortable: false,
+              headerClass: "text-right px-3",
+              cellClass: "text-slate-600 text-[12px] font-medium px-3 border-l border-slate-100",
+              render: (r) => REASON_MAP[r.reason] || "أخرى",
+            },
+            {
+              id: "settlement_type",
+              header: "طريقة التسوية",
+              width: 140,
+              sortable: false,
+              headerClass: "text-center",
+              cellClass: "text-center text-slate-600 text-[12px] font-medium border-l border-slate-100",
+              render: (r) => SETTLEMENT_MAP[r.settlement_type] || r.settlement_type || "—",
+            },
+            {
+              id: "total",
+              header: "الإجمالي",
+              width: 120,
+              sortable: true,
+              headerClass: "text-left px-3",
+              cellClass: "text-left font-black font-mono text-slate-800 px-3 border-l border-slate-100",
+              render: (r) => `${formatMoney(r.total)} ج.م`,
+            },
+            {
+              id: "status",
+              header: "الحالة",
+              width: 90,
+              sortable: true,
+              headerClass: "text-center",
+              cellClass: "text-center border-l border-slate-100",
+              render: (r) => (
+                <div className="flex justify-center">
+                  <StatusBadge status={r.status} />
+                </div>
+              ),
+            },
+            {
+              id: "actions",
+              header: "إجراءات",
+              width: 140,
+              sortable: false,
+              headerClass: "text-center",
+              cellClass: "text-center p-0",
+              render: (row) => (
+                <div className="flex items-center justify-center gap-1 h-[40px] px-2">
+                  <button
+                    onClick={() => navigate(`/purchases/returns/${row.id}`)}
+                    title="عرض"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  <PermissionGate page="purchase_returns" action="edit">
+                    <button
+                      onClick={() =>
+                        navigate("/purchases/returns/new", {
+                          state: { edit_return_id: row.id },
+                        })
+                      }
+                      title="تعديل"
+                      className="flex h-7 items-center gap-1 px-2 rounded-lg text-amber-600 hover:bg-amber-50 text-[11px] font-black transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> تعديل
+                    </button>
+                  </PermissionGate>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
