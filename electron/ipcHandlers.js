@@ -5,6 +5,7 @@ const { execFileSync, execSync } = require("child_process");
 const { closeDb, getDbPath, initDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
 const { activateLicense, isLicenseValid } = require("./licenseManager");
+const { autoUpdater } = require("electron-updater");
 
 function safeDbPath() {
   return process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
@@ -66,6 +67,15 @@ function setupIpc(window) {
   ipcMain.handle("backup:create", async () => {
     const filePath = performBackup();
     return { success: true, file_path: filePath };
+  });
+
+  ipcMain.handle("update:install-now", () => {
+    try {
+      performBackup();
+    } catch (_err) {
+      // Backup failure should not block the update
+    }
+    autoUpdater.quitAndInstall();
   });
 
   ipcMain.handle("backup:restore", async (_event, payload = {}) => {

@@ -39,6 +39,5 @@ function setupUpdater(win) {
 
 ipcMain.handle('update:check', () => autoUpdater.checkForUpdates().catch(() => {}))
 ipcMain.handle('update:download', () => autoUpdater.downloadUpdate())
-ipcMain.handle('update:install-now', () => autoUpdater.quitAndInstall())
 
 module.exports = { setupUpdater }
