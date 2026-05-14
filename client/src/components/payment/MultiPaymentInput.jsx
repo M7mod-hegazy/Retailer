@@ -69,7 +69,8 @@ export default function MultiPaymentInput({
   }, [methods]);
 
   useEffect(() => {
-    if (value.length === 1 && Number(value[0].amount || 0) !== Number(totalAmount || 0)) {
+    // Only sync single-line amount when it hasn't been manually set yet (amount is 0 or unset)
+    if (value.length === 1 && Number(value[0].amount || 0) === 0) {
       emit([{ ...value[0], amount: Number(totalAmount || 0) }]);
     }
   }, [totalAmount]);

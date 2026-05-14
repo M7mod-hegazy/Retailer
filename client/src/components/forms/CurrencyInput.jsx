@@ -5,7 +5,7 @@ export default function CurrencyInput({ value = 0, onChange }) {
     <input
       type="number"
       value={value}
-      onChange={(e) => onChange(Number.parseInt(e.target.value || "0", 10))}
+      onChange={(e) => onChange(Number.parseFloat(e.target.value || "0"))}
       className="input w-full"
     />
   );

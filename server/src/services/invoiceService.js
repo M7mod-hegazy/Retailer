@@ -186,7 +186,7 @@ function createInvoice(payload) {
 
     const inv = db
       .prepare(
-        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         invoiceNo,
@@ -199,6 +199,7 @@ function createInvoice(payload) {
         remainingAmount > 0 ? (amountReceived > 0 ? "partial" : "unpaid") : "paid",
         payload.seller_id ? Number(payload.seller_id) : null,
         payload.user_id ? Number(payload.user_id) : null,
+        amountReceived,
       );
 
     db.prepare("UPDATE invoices SET created_at = ? WHERE id = ?")
@@ -338,16 +339,22 @@ function voidInvoice(invoiceId, reason, userId) {
 
     const lines = db.prepare("SELECT * FROM invoice_lines WHERE invoice_id = ?").all(invoiceId);
 
-    // 2. Reverse stock
+    // 2. Reverse stock (only quantity not already restored by sales returns)
     for (const line of lines) {
-      adjustStock({
-        item_id: line.item_id,
-        warehouse_id: line.warehouse_id || 1,
-        quantityDelta: Number(line.quantity),
-        movement_type: "void_sale",
-        reference_type: "invoice",
-        reference_id: invoiceId,
-      });
+      const returnedQty = db.prepare(
+        "SELECT COALESCE(SUM(srl.quantity), 0) AS q FROM sales_return_lines srl JOIN sales_returns sr ON sr.id = srl.sales_return_id WHERE srl.invoice_line_id = ? AND sr.status != 'cancelled'"
+      ).get(line.id)?.q || 0;
+      const qtyToRestore = Number(line.quantity) - Number(returnedQty);
+      if (qtyToRestore > 0) {
+        adjustStock({
+          item_id: line.item_id,
+          warehouse_id: line.warehouse_id || 1,
+          quantityDelta: qtyToRestore,
+          movement_type: "void_sale",
+          reference_type: "invoice",
+          reference_id: invoiceId,
+        });
+      }
     }
 
     // 3. Reverse financials
@@ -356,7 +363,8 @@ function voidInvoice(invoiceId, reason, userId) {
       try { db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE invoice_id = ? AND source_type = 'invoice'").run(invoiceId); } catch (_) {}
     } else if (invoice.payment_type === "bank_transfer") {
       if (invoice.bank_id) {
-        db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(invoice.total, invoice.bank_id);
+        const amtToReverse = invoice.amount_received ?? invoice.total;
+        db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
       }
     } else if (invoice.payment_type === "multi") {
       const allocations = db.prepare(`
@@ -375,7 +383,8 @@ function voidInvoice(invoiceId, reason, userId) {
     } else {
       // cash payment — reverse from treasury
       const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(invoice.total, tId);
+      const amtToReverse = invoice.amount_received ?? invoice.total;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
     }
 
     // 4. Audit Log
@@ -407,14 +416,20 @@ function cancelInvoice(invoiceId, reason, userId) {
 
     const lines = db.prepare("SELECT * FROM invoice_lines WHERE invoice_id = ?").all(invoiceId);
     for (const line of lines) {
-      adjustStock({
-        item_id: line.item_id,
-        warehouse_id: line.warehouse_id || 1,
-        quantityDelta: Number(line.quantity),
-        movement_type: "cancel_sale",
-        reference_type: "invoice",
-        reference_id: invoiceId,
-      });
+      const returnedQty = db.prepare(
+        "SELECT COALESCE(SUM(srl.quantity), 0) AS q FROM sales_return_lines srl JOIN sales_returns sr ON sr.id = srl.sales_return_id WHERE srl.invoice_line_id = ? AND sr.status != 'cancelled'"
+      ).get(line.id)?.q || 0;
+      const qtyToRestore = Number(line.quantity) - Number(returnedQty);
+      if (qtyToRestore > 0) {
+        adjustStock({
+          item_id: line.item_id,
+          warehouse_id: line.warehouse_id || 1,
+          quantityDelta: qtyToRestore,
+          movement_type: "cancel_sale",
+          reference_type: "invoice",
+          reference_id: invoiceId,
+        });
+      }
     }
 
     if ((invoice.payment_type === "credit" || invoice.payment_type === "installments") && invoice.customer_id) {
@@ -428,9 +443,11 @@ function cancelInvoice(invoiceId, reason, userId) {
     } else if (invoice.payment_type === "cash") {
       const tId = invoice.treasury_id ||
         db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(invoice.total, tId);
+      const amtToReverse = invoice.amount_received ?? invoice.total;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
     } else if (invoice.payment_type === "bank_transfer") {
-      if (invoice.bank_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(invoice.total, invoice.bank_id);
+      const amtToReverse = invoice.amount_received ?? invoice.total;
+      if (invoice.bank_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
     } else if (invoice.payment_type === "multi") {
       const allocs = db.prepare(`
         SELECT pa.amount, p.method, p.treasury_id, p.bank_id
@@ -492,6 +509,14 @@ function editInvoice(invoiceId, payload) {
       const lineSubtotal = Number(line.quantity) * Number(line.unit_price);
       const lineTotal = Math.max(0, lineSubtotal - lineDiscount);
       const warehouseId = Number(line.warehouse_id || 1);
+      const stockRow = db.prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(line.item_id, warehouseId);
+      const available = Number(stockRow?.quantity || 0);
+      if (available < Number(line.quantity)) {
+        const item = db.prepare("SELECT name FROM items WHERE id = ?").get(line.item_id);
+        const err = new Error(`الكمية المطلوبة (${line.quantity}) غير متوفرة في المخزن. المتاح: ${available} — الصنف: ${item?.name || line.item_id}`);
+        err.status = 400;
+        throw err;
+      }
       subtotal += lineSubtotal;
       const itemRow = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
       const snap = getSnapshotCosts(line.item_id, db);
@@ -517,8 +542,10 @@ function editInvoice(invoiceId, payload) {
     // Adjust financials by delta
     if (delta !== 0) {
       if (invoice.payment_type === 'cash') {
-        const tId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+        const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
         if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(delta, tId);
+      } else if (invoice.payment_type === 'bank_transfer' && invoice.bank_id) {
+        db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(delta, invoice.bank_id);
       } else if (invoice.payment_type === 'credit' && invoice.customer_id) {
         db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, invoice.customer_id);
         db.prepare("UPDATE ajal_debts SET original_amount = original_amount + ? WHERE invoice_id = ? AND status = 'open'").run(delta, invoiceId);

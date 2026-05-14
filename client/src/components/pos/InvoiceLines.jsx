@@ -1,11 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, ShoppingBag, MapPin } from "lucide-react";
 import { usePosStore } from "../../stores/posStore";
+import api from "../../services/api";
 
 export default function InvoiceLines() {
   const lines = usePosStore((state) => state.lines);
   const updateLine = usePosStore((state) => state.updateLine);
   const removeLine = usePosStore((state) => state.removeLine);
+  const [warehouses, setWarehouses] = useState([]);
+
+  useEffect(() => {
+    api.get("/api/warehouses")
+      .then((r) => setWarehouses(r.data.data || []))
+      .catch(() => setWarehouses([]));
+  }, []);
 
   if (lines.length === 0) {
     return (
@@ -65,11 +73,12 @@ export default function InvoiceLines() {
                   background: 'var(--bg-input)', border: '1px solid var(--border-subtle)',
                   borderRadius: '6px', color: 'var(--text-primary)', outline: 'none'
                 }}
-                defaultValue="main"
+                value={line.warehouse_id || ""}
+                onChange={(e) => updateLine(line.item_id, { warehouse_id: Number(e.target.value) || null })}
               >
-                <option value="main">المخزن الرئيسي</option>
-                <option value="branch1">فرع 1</option>
-                <option value="branch2">فرع 2</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
               </select>
             </div>
 

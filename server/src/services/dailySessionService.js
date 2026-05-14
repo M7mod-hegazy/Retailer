@@ -28,6 +28,7 @@ function ensureDailySessionSchema(db) {
   try { db.exec("ALTER TABLE purchase_returns ADD COLUMN settlement_type TEXT NOT NULL DEFAULT 'account'"); } catch (_) {}
   try { db.exec("ALTER TABLE purchase_returns ADD COLUMN treasury_id INTEGER REFERENCES treasuries(id)"); } catch (_) {}
   try { db.exec("ALTER TABLE payments ADD COLUMN invoice_id INTEGER REFERENCES invoices(id)"); } catch (_) {}
+  try { db.exec("ALTER TABLE invoices ADD COLUMN amount_received REAL"); } catch (_) {}
   // Backfill invoice_id for existing multi/installment payment splits linked via payment_allocations
   try {
     db.exec(`

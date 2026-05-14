@@ -65,6 +65,7 @@ export default function UsersPage() {
   const [permTemplate, setPermTemplate] = useState("user");
   const [permLoading, setPermLoading] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
+  const [permSearch, setPermSearch] = useState("");
 
   const [permSaved, setPermSaved] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
@@ -537,7 +538,7 @@ export default function UsersPage() {
             {activeTab === "info" && (
               <form
                 onSubmit={handleSubmit}
-                className={`p-6 flex flex-col gap-5 ${
+                className={`p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh] ${
                   editingRow ? "bg-amber-100/20" : "bg-slate-50/30"
                 }`}
               >
@@ -634,20 +635,6 @@ export default function UsersPage() {
                   </>
                 )}
 
-                {/* can_view_updates checkbox */}
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={!!form.can_view_updates}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, can_view_updates: e.target.checked }))
-                    }
-                    className="h-4 w-4 accent-zinc-900 cursor-pointer"
-                  />
-                  <span className={`text-[12px] font-bold ${editingRow ? "text-amber-900/80" : "text-slate-600"}`}>
-                    عرض التحديثات
-                  </span>
-                </label>
 
                 <motion.button
                   whileTap={{ scale: 0.98 }}
@@ -710,6 +697,15 @@ export default function UsersPage() {
                 </div>
 
                 {/* Matrix */}
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <input
+                    value={permSearch}
+                    onChange={(e) => setPermSearch(e.target.value)}
+                    placeholder="بحث في الصفحات..."
+                    className="w-full h-9 bg-white rounded-lg pr-9 pl-3 text-[12px] font-bold text-zinc-800 outline-none focus:ring-2 focus:ring-amber-400/40 border border-slate-200"
+                  />
+                </div>
                 {permLoading ? (
                   <div className="text-center py-8 text-sm font-bold text-amber-900/70">
                     جاري التحميل...
@@ -735,7 +731,9 @@ export default function UsersPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(PAGE_PERMISSIONS).map(
+                        {Object.entries(PAGE_PERMISSIONS)
+                          .filter(([, meta]) => !permSearch || meta.label.includes(permSearch))
+                          .map(
                           ([pageKey, meta]) => (
                             <tr
                               key={pageKey}

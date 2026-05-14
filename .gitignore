@@ -1,49 +1,35 @@
-# Dependencies
 node_modules/
 client/node_modules/
 server/node_modules/
-
-# Build outputs
 client/dist/
-client/.vite/
 release/
-
-# Logs
-logs/
-server/logs/
 *.log
-
-# Databases
 *.db
-server/data/
-!server/src/database/schema.db
-
-# Environment variables
+*.db-*
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDEs and Tools
-.vscode/
-.agents/
-.augment/
-.claude/
-.continue/
-.crush/
-.qoder/
-.qwen/
-.trae/
-.windsurf/
-.impeccable-live/
-
-# OS files
+.env.*
+!.env.example
+data/
+coverage/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
 .DS_Store
 Thumbs.db
-nul
-
-# Temp files
 *.tmp
-server/coverage/
-vendor-license-service/
+*.swp
+.vscode/
+.idea/
+.agents
+.augment
+.claude
+.cursor
+.continue
+.crush
+.qoder
+.qwen
+.trae
+.windsurf

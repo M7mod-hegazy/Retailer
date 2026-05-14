@@ -7,7 +7,7 @@ const { getSnapshotCosts } = require("./waccService");
 function generateAmendmentDocNo(originalDocNo, db, table) {
   const base = originalDocNo.replace(/-A\d+$/, "");
   const existing = db.prepare(
-    `SELECT doc_no FROM ${table} WHERE doc_no LIKE ? ORDER BY doc_no DESC LIMIT 1`
+    `SELECT doc_no FROM ${table} WHERE doc_no LIKE ? ORDER BY CAST(SUBSTR(doc_no, INSTR(doc_no, '-A') + 2) AS INTEGER) DESC LIMIT 1`
   ).get(`${base}-A%`);
   if (!existing) return `${base}-A1`;
   const num = parseInt(existing.doc_no.match(/-A(\d+)$/)[1]) + 1;
@@ -119,6 +119,27 @@ function createReturn(invoiceId, payload) {
       db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(
         total, invoice.customer_id,
       );
+      db.prepare("UPDATE ajal_debts SET original_amount = original_amount - ? WHERE invoice_id = ? AND status = 'open'").run(
+        total, invoiceId,
+      );
+    } else if (invoice.payment_type === "bank_transfer" && invoice.bank_id) {
+      db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(total, invoice.bank_id);
+    } else if (invoice.payment_type === "multi") {
+      const allocations = db.prepare(`
+        SELECT pa.amount, p.method, p.treasury_id, p.bank_id
+        FROM payment_allocations pa
+        LEFT JOIN payments p ON p.id = pa.payment_id
+        WHERE pa.invoice_id = ?
+      `).all(invoiceId);
+      const invoiceTotal = Number(invoice.total) || 1;
+      for (const alloc of allocations) {
+        const portion = (Number(alloc.amount) / invoiceTotal) * total;
+        if (alloc.method === "cash" && alloc.treasury_id) {
+          db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(portion, alloc.treasury_id);
+        } else if (alloc.method === "bank" && alloc.bank_id) {
+          db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(portion, alloc.bank_id);
+        }
+      }
     } else if (invoice.payment_type === "cash" || payload.refund_method === "cash_back") {
       const treasuryId =
         payload.treasury_id ||
@@ -251,6 +272,7 @@ function amendSalesReturn(returnId, payload, userId) {
   if (original.status === 'cancelled') { const e = new Error("لا يمكن تعديل مرتجع ملغى"); e.status = 400; throw e; }
   if (original.amended_by) { const e = new Error("هذا المرتجع عُدِّل بالفعل — انظر المرتجع الجديد"); e.status = 400; throw e; }
 
+  return db.transaction(() => {
   // Cancel original
   cancelSalesReturn(returnId, `تعديل — ${payload.reason.trim()}`, userId);
 
@@ -283,6 +305,7 @@ function amendSalesReturn(returnId, payload, userId) {
     original: db.prepare("SELECT * FROM sales_returns WHERE id = ?").get(original.id),
     new_return: db.prepare("SELECT * FROM sales_returns WHERE id = ?").get(newReturn.id),
   };
+  })();
 }
 
 function getReturns() {

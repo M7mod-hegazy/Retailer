@@ -88,6 +88,7 @@ function PermissionRoute({ page, children }) {
   return children;
 }
 
+
 function AuthGuard({ children }) {
   const token = useAuthStore((s) => s.token);
   if (!token) return <Navigate to="/login" replace />;
@@ -217,7 +218,7 @@ export default function App() {
                     <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><ReportWorkspacePage /></PermissionRoute>} />
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />
-                    <Route path="updates" element={<UpdatesPage />} />
+                    <Route path="updates" element={<PermissionRoute page="updates"><UpdatesPage /></PermissionRoute>} />
                     <Route path="definitions/promotions" element={<PermissionRoute page="promotions"><PromotionsPage /></PermissionRoute>} />
                     <Route path="expenses" element={<PermissionRoute page="expenses"><ExpensesListPage /></PermissionRoute>} />
                     <Route path="revenues" element={<PermissionRoute page="revenues"><RevenuesListPage /></PermissionRoute>} />

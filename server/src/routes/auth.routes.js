@@ -64,10 +64,10 @@ router.post("/login", (req, res, next) => {
   if (devEmail && devPassword && normalizedUsername === devEmail && normalizedPassword === devPassword) {
     const devToken = require("jsonwebtoken").sign(
       { sub: "__dev__", role: "dev", username: devEmail },
-      process.env.JWT_SECRET || "dev-secret",
+      process.env.JWT_SECRET,
       { expiresIn: "8h" }
     );
-    return res.json({ success: true, data: { token: devToken, user: { id: "__dev__", username: devEmail, role: "dev", page_permissions: null } } });
+    return res.json({ success: true, data: { token: devToken, user: { id: "__dev__", username: devEmail, role: "dev", page_permissions: null, can_view_updates: true } } });
   }
 
   // GAP-03: Account Lockout Check
@@ -84,7 +84,9 @@ router.post("/login", (req, res, next) => {
     // Increment failed attempts
     attemptData.count += 1;
     if (attemptData.count >= 5) {
-      attemptData.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 mins lock
+      const lockDuration = 15 * 60 * 1000;
+      attemptData.lockedUntil = Date.now() + lockDuration;
+      setTimeout(() => loginAttempts.delete(normalizedUsername), lockDuration);
     }
     loginAttempts.set(normalizedUsername, attemptData);
     
@@ -97,7 +99,7 @@ router.post("/login", (req, res, next) => {
   loginAttempts.delete(normalizedUsername);
 
   const token = issueToken(user);
-  return res.json({ success: true, data: { token, user: { id: user.id, username: user.username, role: user.role, page_permissions: user.page_permissions } } });
+  return res.json({ success: true, data: { token, user: { id: user.id, username: user.username, role: user.role, page_permissions: user.page_permissions, can_view_updates: Boolean(user.can_view_updates) } } });
 });
 
 router.post("/change-password", authRequired, (req, res, next) => {

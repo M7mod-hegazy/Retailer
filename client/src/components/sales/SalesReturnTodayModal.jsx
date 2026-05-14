@@ -313,7 +313,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
                 onFocus={() => setItemLookupOpen(true)}
                 onBlur={() => setTimeout(() => setItemLookupOpen(false), 150)}
                 onKeyDown={e => {
-                  if (e.key === "ArrowDown") { e.preventDefault(); setActiveItemIndex(i => Math.min(i + 1, filteredItems.length - 1)); setItemLookupOpen(true); }
+                  if (e.key === "ArrowDown") { e.preventDefault(); if (filteredItems.length > 0) setActiveItemIndex(i => Math.min(i + 1, filteredItems.length - 1)); setItemLookupOpen(true); }
                   else if (e.key === "ArrowUp") { e.preventDefault(); setActiveItemIndex(i => Math.max(i - 1, 0)); }
                   else if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0 && activeItemIndex >= 0) { const picked = filteredItems[activeItemIndex]; setItemSearch(picked.code || picked.barcode || picked.name); setItemLookupOpen(false); } }
                   else if (e.key === "Escape") { setItemLookupOpen(false); }

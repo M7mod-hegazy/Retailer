@@ -19,31 +19,15 @@ export default function WarehouseStockMatrix({
     );
   }
 
-  // Generate mocked distributed stock for demonstration if real array doesn't exist
-  // We assume selectedItem.stock_quantity is the total.
-  const totalStock = Number(selectedItem.stock_quantity || selectedItem.stock || 0);
-  
-  // We mock the distribution across warehouses to show the UI capability
   const stockDistribution = React.useMemo(() => {
-    // If backend provides a Map/Array, use it. Otherwise, mock it.
     if (selectedItem.stock_by_warehouse) {
-      return selectedItem.stock_by_warehouse; 
+      return selectedItem.stock_by_warehouse;
     }
-    
+    // No per-warehouse data available — show zeros
     const dist = {};
-    let remaining = totalStock;
-    warehouses.forEach((w, index) => {
-      if (index === warehouses.length - 1) {
-        dist[w.id] = remaining; // Give rest to last
-      } else {
-        // Randomly distribute for demo purposes
-        const portion = Math.floor(remaining * (Math.random() * 0.6));
-        dist[w.id] = portion;
-        remaining -= portion;
-      }
-    });
+    warehouses.forEach((w) => { dist[w.id] = 0; });
     return dist;
-  }, [selectedItem.id, warehouses, totalStock]);
+  }, [selectedItem.id, warehouses]);
 
   return (
     <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2">

@@ -1,8 +1,11 @@
 const jwt = require("jsonwebtoken");
 const { UserModel } = require("../models/user.model");
 
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
+
 function issueToken(user) {
-  return jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET || "dev-secret", { expiresIn: "8h" });
+  return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: "8h" });
 }
 
 function authRequired(req, _res, next) {
@@ -15,7 +18,7 @@ function authRequired(req, _res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || "dev-secret");
+    const payload = jwt.verify(token, JWT_SECRET);
 
     // Dev account bypass — skip DB lookup and license check entirely
     if (payload.sub === "__dev__") {

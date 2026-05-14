@@ -1,0 +1,35 @@
+appId: com.elhegazi.retailer
+productName: ElHegazi Retailer
+executableName: ElHegazi-Retailer
+copyright: Copyright (c) 2026
+
+files:
+  - electron/**/*
+  - client/dist/**/*
+  - server/**/*
+  - package.json
+
+directories:
+  output: release
+
+asar: true
+asarUnpack:
+  - "**/*.node"
+
+win:
+  icon: electron/assets/icon.ico
+
+linux:
+  icon: electron/assets
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  perMachine: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: ElHegazi Retailer
+
+buildDependenciesFromSource: true
+npmRebuild: true

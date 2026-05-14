@@ -25,7 +25,8 @@ function createInitialState(fields, source = {}) {
 
 function Highlight({ text, query }) {
   if (!query) return <span>{text}</span>;
-  const parts = String(text).split(new RegExp(`(${query})`, 'gi'));
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = String(text).split(new RegExp(`(${escaped})`, 'gi'));
   return (
     <span>
       {parts.map((part, i) => 

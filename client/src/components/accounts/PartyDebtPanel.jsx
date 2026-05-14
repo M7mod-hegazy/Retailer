@@ -146,13 +146,19 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
       for (const debt of selectedDebts) {
         if (remainingPayment <= 0) break;
         const amountForDebt = Math.min(remainingPayment, Number(debt.remaining || 0));
-        const scaledPayments = bulkPayments
+        const rawScaled = bulkPayments
           .filter((line) => Number(line.amount || 0) > 0)
           .map((line) => ({
             ...line,
             amount: Number(((Number(line.amount || 0) / totalPaid) * amountForDebt).toFixed(2)),
           }))
           .filter((line) => line.amount > 0);
+        // Absorb rounding difference into last line so scaled sum equals amountForDebt exactly
+        const scaledSum = rawScaled.reduce((s, l) => s + l.amount, 0);
+        const diff = Number((amountForDebt - scaledSum).toFixed(2));
+        const scaledPayments = rawScaled.map((l, i) =>
+          i === rawScaled.length - 1 ? { ...l, amount: Number((l.amount + diff).toFixed(2)) } : l
+        );
         await api.post(`/api/ajal-debts/${debt.id}/pay`, {
           amount: amountForDebt,
           payments: scaledPayments,

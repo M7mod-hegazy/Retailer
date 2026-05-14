@@ -122,7 +122,8 @@ export default function ScreenLock() {
   useEffect(() => {
     if (!isEligible) return undefined;
 
-    const syncFromStorage = () => {
+    const syncFromStorage = (event) => {
+      if (event.key !== LOCK_STATE_KEY) return;
       const current = readLockState();
       // Also re-check elapsed time in case the other tab didn't write locked:true yet
       const shouldLock = current.locked || Date.now() - current.lastActivity >= SESSION_TIMEOUT_MS;

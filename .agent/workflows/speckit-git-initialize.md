@@ -1,0 +1,1 @@
+Initialize a Git repository with an initial commit by invoking the `speckit-git-initialize` skill. Refer to the instructions located in `.agent/skills/speckit-git-initialize/SKILL.md` and follow them precisely.

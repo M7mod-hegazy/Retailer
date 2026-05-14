@@ -102,6 +102,11 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
 
     // Check username uniqueness if changed
     if (username !== existing.username) {
+      if (username.toLowerCase() === String(SYSTEM_OWNER_USERNAME).toLowerCase()) {
+        const err = new Error("System owner username is reserved");
+        err.status = 400;
+        throw err;
+      }
       const conflict = db.prepare("SELECT id FROM users WHERE username = ? AND id != ?").get(username, req.params.id);
       if (conflict) {
         const err = new Error("Username already taken");

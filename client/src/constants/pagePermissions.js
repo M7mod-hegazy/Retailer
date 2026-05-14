@@ -78,6 +78,7 @@ export const PAGE_PERMISSIONS = {
   notifications: { label: 'الإشعارات', actions: ['view', 'edit'] },
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view', 'add'] },
   backup: { label: 'النسخ الاحتياطي', actions: ['view', 'create', 'restore'] },
+  updates: { label: 'التحديثات', actions: ['view'] },
 };
 
 // Default permissions for new user role (POS only)

@@ -44,8 +44,10 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
   }, []);
 
   async function saveInvoice(printAfter = false) {
+    const increase = usePosStore.getState().increase;
     const payload = {
       customer_id: customer?.id || null, lines, discount, promotion_discount: promotionDiscount,
+      increase,
       payment_type: paymentType,
       treasury_id: paymentDetails.treasury_id ? Number(paymentDetails.treasury_id) : null,
       bank_id: paymentDetails.bank_id ? Number(paymentDetails.bank_id) : null,
