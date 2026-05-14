@@ -22,7 +22,6 @@ const purchasesRoutes = require("./routes/purchases.routes");
 const purchaseOrdersRoutes = require("./routes/purchaseOrders.routes");
 const paymentsRoutes = require("./routes/payments.routes");
 const chequesRoutes = require("./routes/cheques.routes");
-const installmentsRoutes = require("./routes/installments.routes");
 const expensesRoutes = require("./routes/expenses.routes");
 const revenuesRoutes = require("./routes/revenues.routes");
 const withdrawalsRoutes = require("./routes/withdrawals.routes");
@@ -91,7 +90,6 @@ function createApp() {
   app.use("/api/purchase-orders", purchaseOrdersRoutes);
   app.use("/api/payments", paymentsRoutes);
   app.use("/api/cheques", chequesRoutes);
-  app.use("/api/installments", installmentsRoutes);
   app.use("/api/expenses", expensesRoutes);
   app.use("/api/revenues", revenuesRoutes);
   app.use("/api/withdrawals", withdrawalsRoutes);

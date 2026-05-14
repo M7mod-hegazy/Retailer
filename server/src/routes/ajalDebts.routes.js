@@ -68,12 +68,46 @@ router.get("/summary", requirePagePermission("installments", "view"), (req, res)
     const partyType = normalizePartyType(req.query.party_type);
     const idCol = partyIdColumn(partyType);
     const today = new Date().toISOString().slice(0, 10);
-    const base = "FROM ajal_debts WHERE COALESCE(party_type, 'customer') = ?";
-    const open = db.prepare(`SELECT COALESCE(SUM(original_amount - paid_amount),0) AS total, COUNT(*) AS count ${base} AND status != 'paid'`).get(partyType);
-    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND (status = 'overdue' OR (due_date < ? AND status != 'paid'))`).get(partyType, today);
-    const dueToday = db.prepare(`SELECT COUNT(*) AS count ${base} AND due_date = ? AND status != 'paid'`).get(partyType, today);
-    const parties = db.prepare(`SELECT COUNT(DISTINCT ${idCol}) AS count ${base} AND status != 'paid'`).get(partyType);
-    res.json({ success: true, data: { total_owed: open.total, open_count: open.count, overdue_count: overdue.count, overdue_amount: overdue.amount, due_today: dueToday.count, debtors: parties.count } });
+
+    // Optional per-party filtering
+    const partyId = partyType === "supplier" ? req.query.supplier_id : req.query.customer_id;
+
+    const baseConds = ["COALESCE(party_type, 'customer') = ?"];
+    const baseParams = [partyType];
+    if (partyId) {
+      baseConds.push(`${idCol} = ?`);
+      baseParams.push(partyId);
+    }
+    const base = `FROM ajal_debts WHERE ${baseConds.join(" AND ")}`;
+
+    const open = db.prepare(`SELECT COALESCE(SUM(original_amount - paid_amount),0) AS total, COUNT(*) AS count ${base} AND status != 'paid'`).get(...baseParams);
+    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND (status = 'overdue' OR (due_date < ? AND status != 'paid'))`).get(...baseParams, today);
+    const dueToday = db.prepare(`SELECT COUNT(*) AS count ${base} AND due_date = ? AND status != 'paid'`).get(...baseParams, today);
+    const parties = db.prepare(`SELECT COUNT(DISTINCT ${idCol}) AS count ${base} AND status != 'paid'`).get(...baseParams);
+
+    // missed_schedule_count: schedules past due and not paid, for debts matching the party filter
+    const schedBaseConds = ["COALESCE(d.party_type, 'customer') = ?", "sch.due_date < ?", "sch.status != 'paid'"];
+    const schedParams = [partyType, today];
+    if (partyId) {
+      schedBaseConds.push(`d.${idCol} = ?`);
+      schedParams.push(partyId);
+    }
+    const missedRow = db.prepare(
+      `SELECT COUNT(*) AS count FROM ajal_schedules sch JOIN ajal_debts d ON d.id = sch.debt_id WHERE ${schedBaseConds.join(" AND ")}`
+    ).get(...schedParams);
+
+    res.json({
+      success: true,
+      data: {
+        total_owed: open.total,
+        open_count: open.count,
+        overdue_count: overdue.count,
+        overdue_amount: overdue.amount,
+        due_today: dueToday.count,
+        debtors: parties.count,
+        missed_schedule_count: missedRow.count,
+      },
+    });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
