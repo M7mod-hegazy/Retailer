@@ -27,9 +27,8 @@ function normalizePartyType(value) {
   return value === "supplier" ? "supplier" : "customer";
 }
 
-function partyWhere(alias, partyType, idColumn = null) {
+function partyWhere(alias, partyType) {
   const cond = [`COALESCE(${alias}.party_type, 'customer') = ?`];
-  if (idColumn) cond.push(`${alias}.${idColumn} = ?`);
   return cond.join(" AND ");
 }
 
@@ -81,7 +80,7 @@ router.get("/summary", requirePagePermission("installments", "view"), (req, res)
     const base = `FROM ajal_debts WHERE ${baseConds.join(" AND ")}`;
 
     const open = db.prepare(`SELECT COALESCE(SUM(original_amount - paid_amount),0) AS total, COUNT(*) AS count ${base} AND status != 'paid'`).get(...baseParams);
-    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND (status = 'overdue' OR (due_date < ? AND status != 'paid'))`).get(...baseParams, today);
+    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND (due_date < ? AND status != 'paid')`).get(...baseParams, today);
     const dueToday = db.prepare(`SELECT COUNT(*) AS count ${base} AND due_date = ? AND status != 'paid'`).get(...baseParams, today);
     const parties = db.prepare(`SELECT COUNT(DISTINCT ${idCol}) AS count ${base} AND status != 'paid'`).get(...baseParams);
 
