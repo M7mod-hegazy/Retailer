@@ -236,11 +236,9 @@ export default function CustomerAccountsPage() {
       if (found && (!selected || selected.id !== found.id)) {
         setSelected(found);
         setTabData([]);
+      } else if (!found) {
+        setSearchParams({});
       }
-    }
-    if (urlId && customers.length > 0) {
-      const found = customers.find(c => String(c.id) === String(urlId));
-      if (!found) setSearchParams({});
     }
   }, [searchParams, customers, selected]);
 
