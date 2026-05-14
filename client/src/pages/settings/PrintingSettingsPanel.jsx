@@ -1426,6 +1426,24 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
               ]} />
             )}
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-4">
+            {cf("address_font_size", "حجم خط العنوان والهاتف", null,
+              <Stepper value={get(s,"address_font_size")} onChange={v => onChange("address_font_size", v)} min={7} max={18} unit="px" />)}
+            {cf("address_alignment", "محاذاة العنوان والهاتف", null,
+              <StyledSelect value={get(s,"address_alignment") || "right"} onChange={e => onChange("address_alignment", e.target.value)} options={[
+                {value:"right", label:"يمين"},
+                {value:"center", label:"وسط"},
+                {value:"left", label:"يسار"},
+              ]} />)}
+            {cf("tax_id_font_size", "حجم خط الرقم الضريبي", null,
+              <Stepper value={get(s,"tax_id_font_size")} onChange={v => onChange("tax_id_font_size", v)} min={7} max={18} unit="px" />)}
+            {cf("tax_id_alignment", "محاذاة الرقم الضريبي", null,
+              <StyledSelect value={get(s,"tax_id_alignment") || "right"} onChange={e => onChange("tax_id_alignment", e.target.value)} options={[
+                {value:"right", label:"يمين"},
+                {value:"center", label:"وسط"},
+                {value:"left", label:"يسار"},
+              ]} />)}
+          </div>
           <div className="grid grid-cols-2 gap-2 mt-3">
             {tog("show_invoice_date",    "تاريخ الفاتورة",   "التاريخ والوقت")}
             {tog("show_customer_name",   "اسم العميل",       "في رأس الفاتورة")}

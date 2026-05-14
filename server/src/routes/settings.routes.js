@@ -27,8 +27,6 @@ function ensurePrintColumns() {
       }
     }
   };
-  // Log summary to help debug any persistence issues
-  if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
   add("show_phone",         "INTEGER DEFAULT 1");
   add("show_address",       "INTEGER DEFAULT 1");
   add("show_tax_id",        "INTEGER DEFAULT 1");
@@ -60,6 +58,8 @@ function ensurePrintColumns() {
   add("address_alignment",  "TEXT DEFAULT 'right'");
   add("tax_id_font_size",   "INTEGER DEFAULT 9");
   add("tax_id_alignment",   "TEXT DEFAULT 'right'");
+  // Log summary to help debug any persistence issues
+  if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
 }
 
 try { ensurePrintColumns(); } catch (e) { /* DB not ready yet — will be retried on first request */ }
@@ -109,7 +109,8 @@ function coerceVal(col, raw) {
 function buildUpdate(current, updates) {
   const next = { ...current, ...updates };
   const skip = new Set(["id", "created_at", "updated_at"]);
-  const cols = Object.keys(current).filter(k => !skip.has(k));
+  const SAFE_COL = /^[a-z_]+$/;
+  const cols = Object.keys(current).filter(k => !skip.has(k) && SAFE_COL.test(k));
   const setClauses = cols.map(c => `${c} = ?`);
   const params = cols.map(c => coerceVal(c, next[c]));
   const sql = `UPDATE settings SET ${setClauses.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = 1`;
@@ -126,7 +127,7 @@ router.put("/", authRequired, requirePagePermission("settings", "edit"), require
   const current = getSettings();
   const { sql, params } = buildUpdate(current, req.body || {});
   getDb().prepare(sql).run(...params);
-  req.audit("edit", "settings", req.body || {}, `⚙️ تم تحديث الإعدادات`);
+  req.audit("edit", "settings", { keys_updated: Object.keys(req.body || {}).length }, `⚙️ تم تحديث الإعدادات`);
   res.json({ success: true, data: getSettings() });
 });
 

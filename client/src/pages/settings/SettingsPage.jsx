@@ -92,6 +92,10 @@ function normalizeSettings(data) {
     if (parsed === "true") parsed = true;
     else if (parsed === "false") parsed = false;
     else if (typeof parsed === "string" && !isNaN(Number(parsed)) && parsed !== "") parsed = Number(parsed);
+    // Convert known boolean columns from DB (stored as INTEGER 0/1) to proper booleans
+    if (typeof parsed === "number" && (key.startsWith("show_") || key.startsWith("logo_on_") || key === "auto_backup_enabled")) {
+      parsed = parsed === 1;
+    }
     mapped[key] = parsed;
   });
   return mapped;
