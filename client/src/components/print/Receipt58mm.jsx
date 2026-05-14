@@ -14,15 +14,26 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
   const extraPhones = (() => { try { return JSON.parse(settings.additional_phones || '[]'); } catch { return []; } })();
   const addressAtBottom = settings.address_position === 'bottom';
 
-  const AddressBlock = () => (
-    <>
-      {settings.address && <div>{settings.address}</div>}
-      {extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`}>{a}</div>)}
-      {settings.phone && <div>هاتف: {settings.phone}</div>}
-      {extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`}>هاتف: {p}</div>)}
-      {settings.tax_id && <div>الرقم الضريبي: {settings.tax_id}</div>}
-    </>
-  );
+  const AddressBlock = () => {
+    const addrs = [settings.address, ...extraAddresses];
+    const phones = [settings.phone, ...extraPhones];
+    return (
+      <>
+        {addrs.map((addr, i) => {
+          const phone = phones[i];
+          if (!addr && !phone && i > 0) return null;
+          if (!addr && !phone) return null;
+          return (
+            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "3px", borderTop: "1px dotted #ccc", paddingTop: "3px" } : {}) }}>
+              {addr && <span>{addr}</span>}
+              {phone && <span>{phone}</span>}
+            </div>
+          );
+        })}
+        {settings.tax_id && <div style={{ marginTop: "3px" }}>الرقم الضريبي: {settings.tax_id}</div>}
+      </>
+    );
+  };
 
   return (
     <div

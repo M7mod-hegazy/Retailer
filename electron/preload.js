@@ -7,6 +7,7 @@ const allowedChannels = {
   dialogs: ["dialog:open-file", "dialog:save-file"],
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
   updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error"],
+  app: ["app:set-icon"],
 };
 
 const api = {

@@ -39,10 +39,21 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
           ) : null}
           <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e40af", margin: 0 }}>{settings.company_name}</h1>
           {settings.company_name_en && <p style={{ margin: "2px 0", color: "#666" }}>{settings.company_name_en}</p>}
-          {settings.address && <p style={{ margin: "2px 0", fontSize: "12px" }}>{settings.address}</p>}
-          {extraAddresses.filter(Boolean).map((a, i) => <p key={`addr-${i}`} style={{ margin: "2px 0", fontSize: "12px" }}>{a}</p>)}
-          {settings.phone && <p style={{ margin: "2px 0", fontSize: "12px" }}>هاتف: {settings.phone}</p>}
-          {extraPhones.filter(Boolean).map((p, i) => <p key={`ph-${i}`} style={{ margin: "2px 0", fontSize: "12px" }}>هاتف: {p}</p>)}
+          {(() => {
+            const addrs = [settings.address, ...extraAddresses];
+            const phones = [settings.phone, ...extraPhones];
+            return addrs.map((addr, i) => {
+              const phone = phones[i];
+              if (!addr && !phone && i > 0) return null;
+              if (!addr && !phone) return null;
+              return (
+                <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+                  {addr && <span style={{ fontSize: "12px" }}>{addr}</span>}
+                  {phone && <span style={{ fontSize: "12px" }}>{phone}</span>}
+                </div>
+              );
+            });
+          })()}
           {settings.tax_id && <p style={{ margin: "2px 0", fontSize: "12px" }}>الرقم الضريبي: {settings.tax_id}</p>}
         </div>
         <div style={{ textAlign: "center" }}>

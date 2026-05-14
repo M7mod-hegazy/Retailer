@@ -202,6 +202,9 @@ export default function SettingsPage() {
       await api.post("/api/settings/bulk", { settings: payload });
       originalRef.current = JSON.parse(JSON.stringify(settings));
       toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully");
+      if (window.electronAPI?.invoke) {
+        window.electronAPI.invoke("app:set-icon", { logo_url: settings.logo_url || "" }).catch(() => {});
+      }
     } catch {
       toast.error(isRTL ? "فشل حفظ الإعدادات" : "Failed to save settings");
     } finally {
@@ -332,106 +335,82 @@ export default function SettingsPage() {
                   <DenseInput label="الرقم الضريبي" value={settings.vat_number || ""} onChange={(e) => handleChange("vat_number", e.target.value)} />
                 </div>
 
-                <div className="mt-6 grid gap-x-6 gap-y-5 md:grid-cols-2">
-                  <div className="space-y-3">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">أرقام الهاتف</label>
-                    {(() => {
-                      const primary = settings.phone || "";
-                      const extras = (() => { try { return JSON.parse(settings.additional_phones || "[]"); } catch { return []; } })();
-                      const all = [primary, ...extras];
-                      return all.map((val, i) => (
-                        <div key={i} className="flex gap-2 items-center">
-                          <input
-                            type="text"
-                            value={val}
-                            onChange={(e) => {
-                              if (i === 0) {
-                                handleChange("phone", e.target.value);
-                              } else {
-                                const updated = [...extras];
-                                updated[i - 1] = e.target.value;
-                                handleChange("additional_phones", JSON.stringify(updated));
-                              }
-                            }}
-                            placeholder={`رقم ${i + 1}`}
-                            className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
-                          />
-                          {i > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = extras.filter((_, idx) => idx !== i - 1);
-                                handleChange("additional_phones", JSON.stringify(updated));
-                              }}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      ));
-                    })()}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const extras = (() => { try { return JSON.parse(settings.additional_phones || "[]"); } catch { return []; } })();
-                        handleChange("additional_phones", JSON.stringify([...extras, ""]));
-                      }}
-                      className="flex items-center gap-2 text-[12px] font-black text-emerald-600 hover:text-emerald-700 transition-colors"
-                    >
-                      <Plus className="h-4 w-4" /> إضافة رقم هاتف
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">العناوين</label>
-                    {(() => {
-                      const primary = settings.address || "";
-                      const extras = (() => { try { return JSON.parse(settings.additional_addresses || "[]"); } catch { return []; } })();
-                      const all = [primary, ...extras];
-                      return all.map((val, i) => (
-                        <div key={i} className="flex gap-2 items-start">
+                <div className="mt-6 space-y-4">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">فروع المتجر — عنوان وهاتف</label>
+                  {(() => {
+                    const primAddr = settings.address || "";
+                    const primPhone = settings.phone || "";
+                    const addrs = (() => { try { return JSON.parse(settings.additional_addresses || "[]"); } catch { return []; } })();
+                    const phones = (() => { try { return JSON.parse(settings.additional_phones || "[]"); } catch { return []; } })();
+                    const pairs = [{ address: primAddr, phone: primPhone }];
+                    for (let i = 0; i < Math.max(addrs.length, phones.length); i++) {
+                      pairs.push({ address: addrs[i] || "", phone: phones[i] || "" });
+                    }
+                    return pairs.map((pair, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <div className="flex-1">
                           <textarea
-                            value={val}
+                            value={pair.address}
                             onChange={(e) => {
                               if (i === 0) {
                                 handleChange("address", e.target.value);
                               } else {
-                                const updated = [...extras];
+                                const updated = [...addrs];
                                 updated[i - 1] = e.target.value;
                                 handleChange("additional_addresses", JSON.stringify(updated));
                               }
                             }}
-                            placeholder={`عنوان ${i + 1}`}
+                            placeholder={`عنوان الفرع ${i + 1}`}
                             rows={2}
                             className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all resize-none"
                           />
-                          {i > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = extras.filter((_, idx) => idx !== i - 1);
-                                handleChange("additional_addresses", JSON.stringify(updated));
-                              }}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
                         </div>
-                      ));
-                    })()}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const extras = (() => { try { return JSON.parse(settings.additional_addresses || "[]"); } catch { return []; } })();
-                        handleChange("additional_addresses", JSON.stringify([...extras, ""]));
-                      }}
-                      className="flex items-center gap-2 text-[12px] font-black text-emerald-600 hover:text-emerald-700 transition-colors"
-                    >
-                      <Plus className="h-4 w-4" /> إضافة عنوان
-                    </button>
-                  </div>
+                        <div className="flex-1 flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={pair.phone}
+                            onChange={(e) => {
+                              if (i === 0) {
+                                handleChange("phone", e.target.value);
+                              } else {
+                                const updated = [...phones];
+                                updated[i - 1] = e.target.value;
+                                handleChange("additional_phones", JSON.stringify(updated));
+                              }
+                            }}
+                            placeholder={`هاتف الفرع ${i + 1}`}
+                            className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
+                          />
+                        </div>
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const aUpdated = addrs.filter((_, idx) => idx !== i - 1);
+                              const pUpdated = phones.filter((_, idx) => idx !== i - 1);
+                              handleChange("additional_addresses", JSON.stringify(aUpdated));
+                              handleChange("additional_phones", JSON.stringify(pUpdated));
+                            }}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors mt-0.5"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ));
+                  })()}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const addrs = (() => { try { return JSON.parse(settings.additional_addresses || "[]"); } catch { return []; } })();
+                      const phones = (() => { try { return JSON.parse(settings.additional_phones || "[]"); } catch { return []; } })();
+                      handleChange("additional_addresses", JSON.stringify([...addrs, ""]));
+                      handleChange("additional_phones", JSON.stringify([...phones, ""]));
+                    }}
+                    className="flex items-center gap-2 text-[12px] font-black text-emerald-600 hover:text-emerald-700 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" /> إضافة فرع
+                  </button>
                 </div>
               </FieldGroup>
             )}

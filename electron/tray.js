@@ -52,4 +52,10 @@ function destroyTray() {
   }
 }
 
-module.exports = { createTray, destroyTray };
+function updateTrayIcon(image) {
+  if (tray) {
+    tray.setImage(image);
+  }
+}
+
+module.exports = { createTray, destroyTray, updateTrayIcon };

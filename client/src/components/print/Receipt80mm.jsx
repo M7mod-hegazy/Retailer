@@ -25,15 +25,26 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
   const extraPhones = (() => { try { return JSON.parse(settings.additional_phones || '[]'); } catch { return []; } })();
   const addressAtBottom = settings.address_position === 'bottom';
 
-  const AddressBlock = () => (
-    <>
-      {settings.address && <div style={{ fontSize: "10px" }}>{settings.address}</div>}
-      {extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`} style={{ fontSize: "10px" }}>{a}</div>)}
-      {settings.phone && <div style={{ fontSize: "10px" }}>هاتف: {settings.phone}</div>}
-      {extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`} style={{ fontSize: "10px" }}>هاتف: {p}</div>)}
-      {settings.tax_id && <div style={{ fontSize: "10px" }}>الرقم الضريبي: {settings.tax_id}</div>}
-    </>
-  );
+  const AddressBlock = () => {
+    const addrs = [settings.address, ...extraAddresses];
+    const phones = [settings.phone, ...extraPhones];
+    return (
+      <>
+        {addrs.map((addr, i) => {
+          const phone = phones[i];
+          if (!addr && !phone && i > 0) return null;
+          if (!addr && !phone) return null;
+          return (
+            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted #ccc", paddingTop: "4px" } : {}) }}>
+              {addr && <span style={{ fontSize: "10px" }}>{addr}</span>}
+              {phone && <span style={{ fontSize: "10px" }}>{phone}</span>}
+            </div>
+          );
+        })}
+        {settings.tax_id && <div style={{ fontSize: "10px", marginTop: "4px" }}>الرقم الضريبي: {settings.tax_id}</div>}
+      </>
+    );
+  };
 
   return (
     <div

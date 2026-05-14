@@ -41,6 +41,7 @@ const DEFAULTS = {
   show_footer: true, show_qr: true, show_logo: true,
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
   show_phone: true, show_address: true, show_tax_id: true,
+  address_position: "top",
   show_branch: true, show_invoice_date: true, show_barcode_line: false,
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
 };
@@ -235,6 +236,32 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
   });
 
   const w = get(s, "receipt_width") === "58mm" ? "58mm" : "80mm";
+  const addressAtBottom = get(s, "address_position") === "bottom";
+
+  const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
+
+  const AddressBlock = () => {
+    const addrs = [s.address, ...extraAddresses];
+    const phones = [s.phone, ...extraPhones];
+    return (
+      <>
+        {addrs.map((addr, i) => {
+          const phone = phones[i];
+          const hasAddr = get(s,"show_address") !== false && addr;
+          const hasPhone = get(s,"show_phone") !== false && phone;
+          if (!hasAddr && !hasPhone && i > 0) return null;
+          if (!hasAddr && !hasPhone) return null;
+          return (
+            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize: "9px", opacity: 0.6 }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize: "9px" }}>{phone}</span>}
+            </div>
+        )})}
+        {get(s,"show_tax_id")  !== false && <div style={{ fontSize: "9px", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+      </>
+    );
+  };
 
   return (
     <div dir="rtl" style={{ fontFamily, fontSize: `${get(s,"body_font_size")}px`, width: w, margin: "0 auto", padding: `${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color: accent, background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
@@ -243,9 +270,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
         {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight: `${get(s,"logo_max_height")}px`, objectFit: "contain", margin: "0 auto 4px" }} />}
         <div style={{ fontSize: `${get(s,"header_font_size")}px`, fontWeight: "900" }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
         {get(s,"show_branch")   !== false && <div style={hl("show_branch")}   onClick={e => { e.stopPropagation(); onElementClick("show_branch"); }}>{s.branch_name || "الفرع الرئيسي"}</div>}
-        {get(s,"show_address")  !== false && <div style={{ fontSize: "9px", opacity: 0.6, ...hl("show_address")  }} onClick={e => { e.stopPropagation(); onElementClick("show_address"); }}>{s.address || "الرياض، المملكة العربية السعودية"}</div>}
-        {get(s,"show_phone")    !== false && <div style={{ fontSize: "9px", ...hl("show_phone")    }} onClick={e => { e.stopPropagation(); onElementClick("show_phone"); }}>هاتف: {s.phone || "0501234567"}</div>}
-        {get(s,"show_tax_id")   !== false && <div style={{ fontSize: "9px", ...hl("show_tax_id")   }} onClick={e => { e.stopPropagation(); onElementClick("show_tax_id"); }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+        {!addressAtBottom && <AddressBlock />}
       </div>
 
       {get(s,"receipt_header") && <div onClick={() => onElementClick("receipt_header")} style={{ textAlign: "center", fontSize: "10px", marginBottom: "4px", fontStyle: "italic", ...hl("receipt_header") }}>{get(s,"receipt_header")}</div>}
@@ -311,6 +336,12 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       {get(s,"show_qr") !== false && (
         <div onClick={() => onElementClick("show_qr")} style={{ margin: "8px auto 0", width: `${get(s,"qr_size")}px`, height: `${get(s,"qr_size")}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888", cursor: "pointer", ...hl("show_qr") }}>QR</div>
       )}
+
+      {addressAtBottom && (
+        <div style={{ marginTop: "8px", borderTop: `1px dashed ${accent}66`, paddingTop: "6px", fontSize: "10px", textAlign: "center" }}>
+          <AddressBlock />
+        </div>
+      )}
     </div>
   );
 }
@@ -325,6 +356,31 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
   const mockTax = get(s, "show_tax") !== false ? mockSub * (taxRate / 100) : 0;
   const mockTotal = mockSub + mockTax;
   const w = size === "A5" ? "148mm" : "210mm";
+
+  const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
+  const addressAtBottom = get(s, "address_position") === "bottom";
+
+  const AddressBlock = () => {
+    const addrs = [s.address, ...extraAddresses];
+    const phones = [s.phone, ...extraPhones];
+    return (
+      <>
+        {addrs.map((addr, i) => {
+          const phone = phones[i];
+          const hasAddr = get(s,"show_address") !== false && addr;
+          const hasPhone = get(s,"show_phone") !== false && phone;
+          if (!hasAddr && !hasPhone) return null;
+          return (
+            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{phone}</span>}
+            </div>
+        )})}
+        {get(s,"show_tax_id")  !== false && <div style={{ fontSize: "9px", color: "#94a3b8", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+      </>
+    );
+  };
 
   const hl = (key) => ({
     outline: VISUAL_FIELDS.has(key) && hovered === key ? "2px solid #f59e0b" : "none",
@@ -349,9 +405,7 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
         <div>
           <div style={{ fontSize: `${get(s,"header_font_size")}px`, fontWeight: "900", color: accent }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
           {get(s,"show_branch")  !== false && <div style={{ fontSize: "11px", color: "#64748b" }}>{s.branch_name || "الفرع الرئيسي"}</div>}
-          {get(s,"show_address") !== false && <div style={{ fontSize: "9px", color: "#94a3b8" }}>{s.address || "الرياض، المملكة"}</div>}
-          {get(s,"show_phone")   !== false && <div style={{ fontSize: "9px", color: "#94a3b8" }}>هاتف: {s.phone || "0501234567"}</div>}
-          {get(s,"show_tax_id")  !== false && <div style={{ fontSize: "9px", color: "#94a3b8" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+          {!addressAtBottom && <AddressBlock />}
         </div>
       </div>
 
@@ -414,6 +468,12 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
       )}
 
       {get(s,"show_qr") !== false && <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}><div onClick={() => onElementClick("show_qr")} style={{ width: `${get(s,"qr_size")}px`, height: `${get(s,"qr_size")}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888", cursor: "pointer", ...hl("show_qr") }}>QR</div></div>}
+
+      {addressAtBottom && (
+        <div style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#94a3b8", textAlign: "center" }}>
+          <AddressBlock />
+        </div>
+      )}
     </div>
   );
 }
@@ -495,19 +555,40 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
   const w    = isA5 ? "148mm" : "210mm";
   const customBlocks = getCustomBlocks(s);
   const dashed = `1px dashed ${accent}44`;
+  const addressAtBottom = get(s, "address_position") === "bottom";
+  const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
+
+  const AddressBlock = () => {
+    const addrs = [s.address, ...extraAddresses];
+    const phones = [s.phone, ...extraPhones];
+    return (
+      <>
+        {addrs.map((addr, i) => {
+          const phone = phones[i];
+          const hasAddr = get(s,"show_address") !== false && addr;
+          const hasPhone = get(s,"show_phone") !== false && phone;
+          if (!hasAddr && !hasPhone) return null;
+          return (
+            <div key={i} style={{ display:"flex", gap:"8px", ...(i > 0 ? { marginTop:"4px", borderTop:"1px solid #e2e8f0", paddingTop:"4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{phone}</span>}
+            </div>
+        )})}
+        {get(s,"show_tax_id")  !== false && <div style={{ fontSize:"9px", color:"#94a3b8", marginTop:"4px" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+      </>
+    );
+  };
 
   return (
     <div dir="rtl" style={{ fontFamily: font, fontSize: `${get(s,"body_font_size")}px`, width: w, padding: `${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color: "#1e293b", background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
-
       {/* ── Company header ── */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`3px solid ${accent}`, paddingBottom:"10px", marginBottom:"12px" }}>
         <div>
           {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight:`${get(s,"logo_max_height")}px`, marginBottom:"4px" }} />}
           <div style={{ fontSize:`${get(s,"header_font_size")}px`, fontWeight:900, color:accent }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
           {get(s,"show_branch")  !== false && <div style={{ fontSize:"10px", color:"#64748b" }}>{s.branch_name || "الفرع الرئيسي"}</div>}
-          {get(s,"show_address") !== false && <div style={{ fontSize:"9px",  color:"#94a3b8" }}>{s.address || "الرياض، المملكة"}</div>}
-          {get(s,"show_phone")   !== false && <div style={{ fontSize:"9px",  color:"#94a3b8" }}>هاتف: {s.phone || "0501234567"}</div>}
-          {get(s,"show_tax_id")  !== false && <div style={{ fontSize:"9px",  color:"#94a3b8" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+          {!addressAtBottom && <AddressBlock />}
         </div>
         <div style={{ textAlign:"left" }}>
           <div style={{ fontSize:"18px", fontWeight:900, color:accent }}>{title}</div>
@@ -546,6 +627,12 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
             {get(s,"receipt_footer") || "شكراً لتعاملكم معنا"}
           </div>
         </>
+      )}
+
+      {addressAtBottom && (
+        <div style={{ marginTop:"12px", paddingTop:"6px", borderTop: dashed, fontSize:"10px", color:"#94a3b8", textAlign:"center" }}>
+          <AddressBlock />
+        </div>
       )}
     </div>
   );
@@ -778,6 +865,30 @@ function DailyTreasuryPreview({ s }) {
   const isA5 = (s._previewSize || "A4") === "A5";
   const w    = isA5 ? "148mm" : "210mm";
   const customBlocks = getCustomBlocks(s);
+  const addressAtBottom = get(s, "address_position") === "bottom";
+  const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
+
+  const AddressBlock = () => {
+    const addrs = [s.address, ...extraAddresses];
+    const phones = [s.phone, ...extraPhones];
+    return (
+      <>
+        {addrs.map((addr, i) => {
+          const phone = phones[i];
+          const hasAddr = get(s,"show_address") !== false && addr;
+          const hasPhone = get(s,"show_phone") !== false && phone;
+          if (!hasAddr && !hasPhone) return null;
+          return (
+            <div key={i} style={{ display:"flex", gap:"8px", ...(i > 0 ? { marginTop:"4px", borderTop:"1px solid #e2e8f0", paddingTop:"4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{phone}</span>}
+            </div>
+        )})}
+      </>
+    );
+  };
+
   return (
     <div dir="rtl" style={{ fontFamily:font, fontSize:`${get(s,"body_font_size")}px`, width:w, padding:`${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color:"#1e293b", background:"#fff", boxShadow:"0 8px 40px rgba(0,0,0,0.15)" }}>
       {/* Header */}
@@ -786,8 +897,7 @@ function DailyTreasuryPreview({ s }) {
           {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight:`${get(s,"logo_max_height")}px`, marginBottom:"4px" }} />}
           <div style={{ fontSize:`${get(s,"header_font_size")}px`, fontWeight:900, color:accent }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
           {get(s,"show_branch")  !== false && <div style={{ fontSize:"10px", color:"#64748b" }}>{s.branch_name || "الفرع الرئيسي"}</div>}
-          {get(s,"show_address") !== false && <div style={{ fontSize:"9px", color:"#94a3b8" }}>{s.address || "الرياض، المملكة"}</div>}
-          {get(s,"show_phone")   !== false && <div style={{ fontSize:"9px", color:"#94a3b8" }}>هاتف: {s.phone || "0501234567"}</div>}
+          {!addressAtBottom && <AddressBlock />}
         </div>
         <div style={{ textAlign:"left" }}>
           <div style={{ fontSize:"18px", fontWeight:900, color:accent }}>تقرير الخزينة اليومي</div>
@@ -837,6 +947,12 @@ function DailyTreasuryPreview({ s }) {
             {get(s,"receipt_footer") || "شكراً لتعاملكم معنا"}
           </div>
         </>
+      )}
+
+      {addressAtBottom && (
+        <div style={{ marginTop:"12px", paddingTop:"6px", borderTop:`1px dashed ${accent}44`, fontSize:"10px", color:"#94a3b8", textAlign:"center" }}>
+          <AddressBlock />
+        </div>
       )}
     </div>
   );
@@ -1281,6 +1397,16 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             {tog("show_address",         "العنوان",          "عنوان المتجر")}
             {tog("show_phone",           "رقم الهاتف",       "هاتف التواصل")}
             {tog("show_tax_id",          "الرقم الضريبي",    "رقم التسجيل")}
+          </div>
+          <div className="mt-3">
+            {cf("address_position", "موضع العنوان والهاتف", "في رأس المستند أو أسفله",
+              <StyledSelect value={get(s,"address_position") || "top"} onChange={e => onChange("address_position", e.target.value)} options={[
+                {value:"top", label:"في الرأس"},
+                {value:"bottom", label:"أسفل المستند"},
+              ]} />
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-3">
             {tog("show_invoice_date",    "تاريخ الفاتورة",   "التاريخ والوقت")}
             {tog("show_customer_name",   "اسم العميل",       "في رأس الفاتورة")}
             {tog("show_cashier_name",    "اسم الكاشير",      "موظف المبيعات")}

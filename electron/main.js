@@ -186,6 +186,37 @@ if (!gotTheLock) {
     // Server is ready — now open the main window
     createMainWindow();
 
+    // If the user uploaded a custom logo, apply it as the app icon
+    if (process.env.DB_PATH) {
+      try {
+        const Database = require("better-sqlite3");
+        const db = new Database(process.env.DB_PATH, { readonly: true });
+        const row = db.prepare("SELECT setting_value FROM settings WHERE setting_key = 'logo_url'").get();
+        db.close();
+        if (row && row.setting_value) {
+          const fs = require("fs");
+          const { nativeImage, BrowserWindow } = require("electron");
+          const { updateTrayIcon } = require("./tray");
+          const filename = require("path").basename(row.setting_value);
+          const uploadsDir = process.env.UPLOADS_DIR
+            ? require("path").join(process.env.UPLOADS_DIR, "uploads")
+            : require("path").join(__dirname, "../uploads");
+          const logoPath = require("path").join(uploadsDir, filename);
+          if (fs.existsSync(logoPath)) {
+            const image = nativeImage.createFromPath(logoPath);
+            if (!image.isEmpty()) {
+              const trayImage = image.resize({ width: 32, height: 32, quality: "best" });
+              const wins = BrowserWindow.getAllWindows();
+              wins.forEach((w) => { if (!w.isDestroyed()) w.setIcon(image); });
+              updateTrayIcon(trayImage);
+            }
+          }
+        }
+      } catch (_e) {
+        // non-critical — fall back to default icon
+      }
+    }
+
     // Lock the screen immediately when the system wakes from sleep
     powerMonitor.on("resume", () => {
       const wins = BrowserWindow.getAllWindows();

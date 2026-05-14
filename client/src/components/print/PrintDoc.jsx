@@ -59,14 +59,29 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
           <img src={s.logo_url} alt="" style={{ maxHeight: `${g(s, "logo_max_height")}px`, objectFit: "contain", margin: "0 auto 4px" }} />}
         <div style={{ fontSize: `${g(s, "header_font_size")}px`, fontWeight: "900" }}>{s.company_name || ""}</div>
         {g(s, "show_branch")  !== false && s.branch_name  && <div>{s.branch_name}</div>}
-        {g(s, "show_address") !== false && s.address       && <div style={{ fontSize: "9px", opacity: 0.6 }}>{s.address}</div>}
-        {g(s, "show_address") !== false && extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`} style={{ fontSize: "9px", opacity: 0.6 }}>{a}</div>)}
-        {g(s, "show_phone")   !== false && s.phone         && <div style={{ fontSize: "9px" }}>هاتف: {s.phone}</div>}
-        {g(s, "show_phone")   !== false && extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`} style={{ fontSize: "9px" }}>هاتف: {p}</div>)}
-        {g(s, "show_tax_id")  !== false && s.tax_id        && <div style={{ fontSize: "9px" }}>الرقم الضريبي: {s.tax_id}</div>}
-      </div>
+        {!addressAtBottom && (() => {
+          const addrs = [s.address, ...extraAddresses];
+          const phones = [s.phone, ...extraPhones];
+          return (
+            <>
+              {addrs.map((addr, i) => {
+                const phone = phones[i];
+                const showAddr = g(s, "show_address") !== false && addr;
+                const showPhone = g(s, "show_phone") !== false && phone;
+                if (!showAddr && !showPhone) return null;
+                return (
+                  <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
+                    {showAddr && <span style={{ fontSize: "9px", opacity: 0.6 }}>{addr}</span>}
+                    {showPhone && <span style={{ fontSize: "9px" }}>{phone}</span>}
+                  </div>
+                )})}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+              </>
+            );
+          })()}
+        </div>
 
-      {g(s, "receipt_header") && (
+        {g(s, "receipt_header") && (
         <div style={{ textAlign: "center", fontSize: "10px", marginBottom: "4px", fontStyle: "italic" }}>{g(s, "receipt_header")}</div>
       )}
       <BlockRenderer blocks={customBlocks} position="after_header" paperSize={w} accentColor={accent} hovered={null} onElementClick={noop} />
@@ -190,12 +205,33 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
       {g(s, "show_qr") !== false && (
         <div style={{ margin: "8px auto 0", width: `${g(s, "qr_size")}px`, height: `${g(s, "qr_size")}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888" }}>QR</div>
       )}
-    </div>
-  );
-}
 
-/**
- * Real-print A4/A5 document.
+      {addressAtBottom && (() => {
+        const addrs = [s.address, ...extraAddresses];
+        const phones = [s.phone, ...extraPhones];
+        return (
+          <div style={{ marginTop: "8px", borderTop: dashed, paddingTop: "6px", fontSize: "10px", textAlign: "center" }}>
+            {addrs.map((addr, i) => {
+              const phone = phones[i];
+              const showAddr = g(s, "show_address") !== false && addr;
+              const showPhone = g(s, "show_phone") !== false && phone;
+              if (!showAddr && !showPhone) return null;
+              return (
+                  <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
+                    {showAddr && <span style={{ fontSize: "9px", opacity: 0.6 }}>{addr}</span>}
+                    {showPhone && <span style={{ fontSize: "9px" }}>{phone}</span>}
+                  </div>
+                )})}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+              </div>
+            );
+          })()}
+        </div>
+      );
+    }
+
+    /**
+     * Real-print A4/A5 document.
  * Respects all settings toggles, custom text blocks, fonts, colors.
  */
 export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
@@ -207,6 +243,9 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
   const w        = size === "A5" ? "148mm" : "210mm";
   const customBlocks = getCustomBlocks(s);
   const showCode = g(s, "show_item_code") !== false;
+  const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
+  const addressAtBottom = s.address_position === 'bottom';
 
   const subtotal      = lines.reduce((sum, l) => sum + ((Number(l.unit_price) || Number(l.unit_cost) || 0) * Number(l.quantity)), 0);
   const totalDiscount = lines.reduce((sum, l) => sum + (Number(l.discount_amount) || 0), 0);
@@ -229,11 +268,26 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
             <img src={s.logo_url} alt="" style={{ maxHeight: `${g(s, "logo_max_height")}px`, objectFit: "contain", marginBottom: "4px" }} />}
           <div style={{ fontSize: `${g(s, "header_font_size")}px`, fontWeight: "900", color: accent }}>{s.company_name || ""}</div>
           {g(s, "show_branch")  !== false && s.branch_name && <div style={{ fontSize: "11px", color: "#64748b" }}>{s.branch_name}</div>}
-        {g(s, "show_address") !== false && s.address      && <div style={{ fontSize: "9px", color: "#94a3b8" }}>{s.address}</div>}
-        {g(s, "show_address") !== false && extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`} style={{ fontSize: "9px", color: "#94a3b8" }}>{a}</div>)}
-        {g(s, "show_phone")   !== false && s.phone        && <div style={{ fontSize: "9px", color: "#94a3b8" }}>هاتف: {s.phone}</div>}
-        {g(s, "show_phone")   !== false && extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`} style={{ fontSize: "9px", color: "#94a3b8" }}>هاتف: {p}</div>)}
-        {g(s, "show_tax_id")  !== false && s.tax_id       && <div style={{ fontSize: "9px", color: "#94a3b8" }}>الرقم الضريبي: {s.tax_id}</div>}
+          {!addressAtBottom && (() => {
+            const addrs = [s.address, ...extraAddresses];
+            const phones = [s.phone, ...extraPhones];
+            return (
+              <>
+                {addrs.map((addr, i) => {
+                  const phone = phones[i];
+                  const showAddr = g(s, "show_address") !== false && addr;
+                  const showPhone = g(s, "show_phone") !== false && phone;
+                  if (!showAddr && !showPhone) return null;
+                  return (
+                    <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+                      {showAddr && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{addr}</span>}
+                      {showPhone && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{phone}</span>}
+                    </div>
+                )})}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", color: "#94a3b8", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+              </>
+            );
+          })()}
         </div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontSize: "18px", fontWeight: "900", color: accent }}>{g(s, "receipt_footer") || "فاتورة"}</div>
@@ -364,6 +418,27 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
           <div style={{ width: `${g(s, "qr_size")}px`, height: `${g(s, "qr_size")}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888" }}>QR</div>
         </div>
       )}
-    </div>
-  );
-}
+
+      {addressAtBottom && (() => {
+        const addrs = [s.address, ...extraAddresses];
+        const phones = [s.phone, ...extraPhones];
+        return (
+          <div style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#94a3b8", textAlign: "center" }}>
+            {addrs.map((addr, i) => {
+              const phone = phones[i];
+              const showAddr = g(s, "show_address") !== false && addr;
+              const showPhone = g(s, "show_phone") !== false && phone;
+              if (!showAddr && !showPhone) return null;
+              return (
+                  <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+                    {showAddr && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{addr}</span>}
+                    {showPhone && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{phone}</span>}
+                  </div>
+                )})}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", color: "#94a3b8", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+              </div>
+            );
+          })()}
+        </div>
+      );
+    }
