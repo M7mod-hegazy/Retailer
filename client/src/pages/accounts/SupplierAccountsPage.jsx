@@ -183,8 +183,10 @@ export default function SupplierAccountsPage() {
     setSummaryLoading(true);
     try {
       const r = await api.get("/api/ajal-debts/summary?party_type=supplier");
-      setSummary(r.data.data || r.data || null);
-    } catch { setSummary(null); }
+      const data = r.data.data || r.data || null;
+      console.log("[SupplierAccounts] summary raw:", r.data, "→ parsed:", data);
+      setSummary(data);
+    } catch(e) { console.error("[SupplierAccounts] summary error:", e); setSummary(null); }
     finally { setSummaryLoading(false); }
   }, []);
 
@@ -192,6 +194,7 @@ export default function SupplierAccountsPage() {
     try {
       const r = await api.get("/api/ajal-debts?party_type=supplier&status=open&limit=500");
       const debts = r.data.data || [];
+      console.log("[SupplierAccounts] urgency debts:", debts.map(d => ({ id: d.id, supplier_id: d.supplier_id, party_type: d.party_type, status: d.status, remaining: d.remaining, due_date: d.due_date })));
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const soon = new Date(today); soon.setDate(soon.getDate() + 7);
