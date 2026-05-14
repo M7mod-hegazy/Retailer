@@ -501,6 +501,24 @@ export default function SettingsPage() {
                   </div>
                 </FieldGroup>
 
+                <FieldGroup title="سجل النشاط" hint="التحكم في مدة الاحتفاظ بسجلات النشاط">
+                  <div className="grid gap-x-6 gap-y-5 md:grid-cols-3 lg:grid-cols-4">
+                    <DenseSelect
+                      label="مدة حفظ سجل النشاط"
+                      value={settings.audit_log_retention_days ?? 30}
+                      onChange={(e) => handleChange("audit_log_retention_days", Number(e.target.value))}
+                      options={[
+                        { value: 15, label: "15 يوم" },
+                        { value: 30, label: "30 يوم" },
+                        { value: 60, label: "60 يوم" },
+                        { value: 90, label: "90 يوم" },
+                        { value: 180, label: "180 يوم" },
+                        { value: 365, label: "365 يوم" },
+                      ]}
+                    />
+                  </div>
+                </FieldGroup>
+
                 <FieldGroup title="النسخ الاحتياطي" hint="استيراد وتصدير قاعدة البيانات">
                   <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-sm px-4 py-3 mb-6 font-bold text-[13px] text-slate-700">
                      <input type="checkbox" checked={Boolean(settings.auto_backup_enabled)} onChange={(e) => handleChange("auto_backup_enabled", e.target.checked)} className="h-4 w-4 rounded-sm accent-slate-900 border-slate-300" />

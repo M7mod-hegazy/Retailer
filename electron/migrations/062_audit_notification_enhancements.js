@@ -22,6 +22,17 @@ module.exports = {
     };
 
     addIfMissingNotif("link", "TEXT");
+
+    // settings enhancements
+    const settingsCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
+
+    const addIfMissingSettings = (col, def) => {
+      if (!settingsCols.includes(col)) {
+        db.exec(`ALTER TABLE settings ADD COLUMN ${col} ${def}`);
+      }
+    };
+
+    addIfMissingSettings("audit_log_retention_days", "INTEGER DEFAULT 30");
   },
 
   down(db) {

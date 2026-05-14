@@ -1,4 +1,5 @@
 {
+  "history": "سجل النشاط",
   "app.title": "الحجازي للتجزئة",
   "app.ready": "تم تجهيز بنية المشروع بنجاح",
   "currency.egp": "ج.م",
@@ -222,5 +223,7 @@
   "updates.version": "الإصدار",
   "updates.ready_to_install": "التحديث جاهز للتثبيت",
   "updates.install_on_next_restart": "تثبيت عند إعادة التشغيل",
-  "users.can_view_updates": "صلاحية عرض التحديثات"
+  "users.can_view_updates": "صلاحية عرض التحديثات",
+  "audit_retention_days": "مدة حفظ سجل النشاط",
+  "days": "يوم"
 }

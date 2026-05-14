@@ -1,4 +1,5 @@
 {
+  "history": "Activity Log",
   "app.title": "ElHegazi Retailer",
   "app.ready": "Project scaffold is ready",
   "currency.egp": "EGP",
@@ -222,5 +223,7 @@
   "updates.version": "Version",
   "updates.ready_to_install": "Update Ready to Install",
   "updates.install_on_next_restart": "Install on Next Restart",
-  "users.can_view_updates": "View Updates Permission"
+  "users.can_view_updates": "View Updates Permission",
+  "audit_retention_days": "Activity Log Retention",
+  "days": "days"
 }
