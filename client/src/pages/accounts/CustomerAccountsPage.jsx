@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Users, Search, Plus, FileText, Settings, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, ChevronLeft, LayoutList } from "lucide-react";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
