@@ -14,6 +14,12 @@ const paymentLabels = {
   multi: "متعدد",
 };
 
+const getDefaultDueDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().split("T")[0];
+};
+
 export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices }) {
   const lines = usePosStore((state) => state.lines);
   const customer = usePosStore((state) => state.customer);
@@ -34,11 +40,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
   const [payments, setPayments] = useState([]);
   const [printOpen, setPrintOpen] = useState(false);
   const [printInvoice, setPrintInvoice] = useState(null);
-  const [dueDate, setDueDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toISOString().split("T")[0];
-  });
+  const [dueDate, setDueDate] = useState(getDefaultDueDate);
 
   const totals = getTotals();
   const isEmpty = lines.length === 0;
@@ -78,12 +80,14 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
       clear();
       setPaymentDetails({ treasury_id: "", bank_id: "", split_cash_amount: "", split_bank_amount: "" });
       setPayments([]);
+      setDueDate(getDefaultDueDate());
     } catch (error) {
       if (!error.response || error.code === "ERR_NETWORK") {
         await queueOfflineInvoice(payload);
         clear();
         setPaymentDetails({ treasury_id: "", bank_id: "", split_cash_amount: "", split_bank_amount: "" });
         setPayments([]);
+        setDueDate(getDefaultDueDate());
       } else {
         setMessage(error.response?.data?.message || "فشل حفظ الفاتورة");
       }
