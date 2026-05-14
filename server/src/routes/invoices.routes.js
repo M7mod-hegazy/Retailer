@@ -297,12 +297,18 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   try {
     const discount = Number(payload.discount_percent || 0);
     if (discount > 20 && invoice?.id) {
-      NotificationModel.create({
-        title: "💸 خصم كبير مطبق",
-        body: `خصم ${discount}% على الفاتورة #${invoice.id}`,
-        type: "warning",
-        link: `/invoices/${invoice.id}`,
-      });
+      const db = getDb();
+      const alreadyNotified = db.prepare(
+        "SELECT id FROM notifications WHERE title = ? AND body LIKE ? AND date(created_at) = date('now') LIMIT 1"
+      ).get('💸 خصم كبير مطبق', `%#${invoice.id}%`);
+      if (!alreadyNotified) {
+        NotificationModel.create({
+          title: "💸 خصم كبير مطبق",
+          body: `خصم ${discount}% على الفاتورة #${invoice.id}`,
+          type: "warning",
+          link: `/invoices/${invoice.id}`,
+        });
+      }
     }
   } catch (_) {}
   res.status(201).json({ success: true, data: invoice });

@@ -30,9 +30,11 @@ function cleanupAuditLogs() {
   const db = getDb();
   const settings = db.prepare("SELECT audit_log_retention_days FROM settings WHERE id = 1").get();
   const retentionDays = settings?.audit_log_retention_days || 30;
+  const days = Number(retentionDays);
+  if (!days || days < 1) return 0;
   const result = db
-    .prepare(`DELETE FROM audit_logs WHERE created_at < datetime('now', '-' || ? || ' days')`)
-    .run(retentionDays);
+    .prepare("DELETE FROM audit_logs WHERE created_at < datetime('now', ? || ' days')")
+    .run(`-${days}`);
   return result.changes;
 }
 
