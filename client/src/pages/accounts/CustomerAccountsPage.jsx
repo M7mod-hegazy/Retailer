@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Users, Search, Plus, FileText, Settings, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, ChevronLeft, LayoutList } from "lucide-react";
-import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
+import { Users, Search, Plus, FileText, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, LayoutList } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import StatementModal from "../../components/accounts/StatementModal";
@@ -65,17 +64,18 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
     return d.party_name?.toLowerCase().includes(search.toLowerCase());
   });
 
+  if (!open) return null;
+
   return (
-    <>
-      {/* Backdrop */}
-      {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />}
-      {/* Drawer */}
-      <div className={`fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`} dir="rtl">
-        <div className={`p-4 border-b border-slate-200 flex items-center justify-between bg-${accent === "blue" ? "blue" : "orange"}-50`}>
-          <h2 className="text-[15px] font-black text-slate-900">كل أقساط الأجل</h2>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose} dir="rtl">
+      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className={`p-4 border-b border-slate-200 flex items-center justify-between ${accent === "blue" ? "bg-blue-50" : "bg-orange-50"}`}>
+          <h2 className="text-[15px] font-black text-slate-900">كل الأقساط</h2>
           <button onClick={onClose}><X className="h-5 w-5 text-slate-400 hover:text-slate-600" /></button>
         </div>
 
+        {/* Filters */}
         <div className="p-3 border-b border-slate-100 space-y-2">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -86,13 +86,14 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
           <div className="flex gap-1">
             {[{ id: "open", label: "قائم" }, { id: "overdue", label: "متأخر" }, { id: "all", label: "الكل" }].map(f => (
               <button key={f.id} onClick={() => setStatusFilter(f.id)}
-                className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all ${statusFilter === f.id ? `bg-${accent === "blue" ? "blue" : "orange"}-600 text-white` : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all ${statusFilter === f.id ? (accent === "blue" ? "bg-blue-600 text-white" : "bg-orange-600 text-white") : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                 {f.label}
               </button>
             ))}
           </div>
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
@@ -124,7 +125,7 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -324,7 +325,6 @@ export default function CustomerAccountsPage() {
       setPayForm({ amount: "", method_id: "", notes: "" });
       await refreshSelected();
       changeTab("payments");
-      loadTab();
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل تسجيل الدفعة");
     } finally { setSaving(false); }
@@ -393,7 +393,6 @@ export default function CustomerAccountsPage() {
               <h1 className="text-[15px] font-black text-slate-900">حسابات العملاء</h1>
             </div>
             <div className="flex items-center gap-2">
-              <TodayInvoicesButton variant="compact" />
               <PermissionGate page="customer_accounts" action="add">
               <button onClick={() => setShowCreate(true)}
                 className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white hover:bg-blue-700 transition-colors shadow-md shadow-blue-200">

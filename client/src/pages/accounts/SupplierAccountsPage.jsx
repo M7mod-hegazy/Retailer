@@ -59,15 +59,18 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
     return d.party_name?.toLowerCase().includes(search.toLowerCase());
   });
 
+  if (!open) return null;
+
   return (
-    <>
-      {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />}
-      <div className={`fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`} dir="rtl">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose} dir="rtl">
+      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-orange-50">
-          <h2 className="text-[15px] font-black text-slate-900">كل أقساط الأجل</h2>
+          <h2 className="text-[15px] font-black text-slate-900">كل الأقساط</h2>
           <button onClick={onClose}><X className="h-5 w-5 text-slate-400 hover:text-slate-600" /></button>
         </div>
 
+        {/* Filters */}
         <div className="p-3 border-b border-slate-100 space-y-2">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -85,6 +88,7 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
           </div>
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
@@ -116,7 +120,7 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -223,8 +227,9 @@ export default function SupplierAccountsPage() {
         setSelected(found);
         setTabData([]);
       }
+      if (!found) setSearchParams({});
     }
-  }, [searchParams, suppliers]);
+  }, [searchParams, suppliers, selected]);
 
   // ── Update URL when selection changes ───────────────────
   const selectSupplier = useCallback((s, tab = "purchases") => {
