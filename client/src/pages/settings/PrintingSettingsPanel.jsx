@@ -886,9 +886,12 @@ function DailyTreasuryPreview({ s }) {
   const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
   const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
 
+  const addrAlignMap = { right: "flex-start", center: "center", left: "flex-end" };
+
   const AddressBlock = () => {
     const addrs = [s.address, ...extraAddresses];
     const phones = [s.phone, ...extraPhones];
+    const addrFlex = addrAlignMap[get(s, "address_alignment")] || "flex-start";
     return (
       <>
         {addrs.map((addr, i) => {
@@ -897,9 +900,9 @@ function DailyTreasuryPreview({ s }) {
           const hasPhone = get(s,"show_phone") !== false && phone;
           if (!hasAddr && !hasPhone) return null;
           return (
-            <div key={i} style={{ display:"flex", gap:"8px", ...(i > 0 ? { marginTop:"4px", borderTop:"1px solid #e2e8f0", paddingTop:"4px" } : {}) }}>
-              {hasAddr && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{addr}</span>}
-              {hasPhone && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{phone}</span>}
+            <div key={i} style={{ display:"flex", gap:"8px", justifyContent: addrFlex, ...(i > 0 ? { marginTop:"4px", borderTop:"1px solid #e2e8f0", paddingTop:"4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize:`${get(s,"address_font_size")}px`, color:"#94a3b8" }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize:`${get(s,"address_font_size")}px`, color:"#94a3b8" }}>{phone}</span>}
             </div>
         )})}
       </>

@@ -47,14 +47,14 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
               if (!addr && !phone && i > 0) return null;
               if (!addr && !phone) return null;
               return (
-                <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
-                  {addr && <span style={{ fontSize: "12px" }}>{addr}</span>}
-                  {phone && <span style={{ fontSize: "12px" }}>{phone}</span>}
+                <div key={i} style={{ display: "flex", gap: "8px", justifyContent: { right: "flex-start", center: "center", left: "flex-end" }[settings.address_alignment] || "flex-start", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+                  {addr && <span style={{ fontSize: `${settings.address_font_size || 9}px` }}>{addr}</span>}
+                  {phone && <span style={{ fontSize: `${settings.address_font_size || 9}px` }}>{phone}</span>}
                 </div>
               );
             });
           })()}
-          {settings.tax_id && <p style={{ margin: "2px 0", fontSize: "12px" }}>الرقم الضريبي: {settings.tax_id}</p>}
+          {settings.tax_id && <p style={{ margin: "2px 0", fontSize: `${settings.tax_id_font_size || 9}px`, textAlign: settings.tax_id_alignment || "right" }}>الرقم الضريبي: {settings.tax_id}</p>}
         </div>
         <div style={{ textAlign: "center" }}>
           <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 8px" }}>{settings.receipt_footer || "فاتورة"}</h2>

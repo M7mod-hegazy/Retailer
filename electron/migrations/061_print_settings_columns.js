@@ -42,6 +42,12 @@ module.exports = {
     addIfMissing("return_prefix",      "TEXT DEFAULT 'RET-'");
     addIfMissing("work_order_prefix",  "TEXT DEFAULT 'WO-'");
     addIfMissing("receipt_prefix",     "TEXT DEFAULT 'REC-'");
+
+    // Address / phone / tax-id formatting
+    addIfMissing("address_font_size", "INTEGER DEFAULT 9");
+    addIfMissing("address_alignment", "TEXT DEFAULT 'right'");
+    addIfMissing("tax_id_font_size",  "INTEGER DEFAULT 9");
+    addIfMissing("tax_id_alignment",  "TEXT DEFAULT 'right'");
   },
 
   down(db) {

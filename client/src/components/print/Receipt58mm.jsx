@@ -24,13 +24,13 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
           if (!addr && !phone && i > 0) return null;
           if (!addr && !phone) return null;
           return (
-            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "3px", borderTop: "1px dotted #ccc", paddingTop: "3px" } : {}) }}>
-              {addr && <span>{addr}</span>}
-              {phone && <span>{phone}</span>}
+            <div key={i} style={{ display: "flex", gap: "8px", justifyContent: { right: "flex-start", center: "center", left: "flex-end" }[settings.address_alignment] || "flex-start", ...(i > 0 ? { marginTop: "3px", borderTop: "1px dotted #ccc", paddingTop: "3px" } : {}) }}>
+              {addr && <span style={{ fontSize: `${settings.address_font_size || 9}px` }}>{addr}</span>}
+              {phone && <span style={{ fontSize: `${settings.address_font_size || 9}px` }}>{phone}</span>}
             </div>
           );
         })}
-        {settings.tax_id && <div style={{ marginTop: "3px" }}>الرقم الضريبي: {settings.tax_id}</div>}
+        {settings.tax_id && <div style={{ marginTop: "3px", fontSize: `${settings.tax_id_font_size || 9}px`, textAlign: settings.tax_id_alignment || "right" }}>الرقم الضريبي: {settings.tax_id}</div>}
       </>
     );
   };

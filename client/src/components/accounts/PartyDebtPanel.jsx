@@ -387,7 +387,7 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
                 {activePanel === "pay" && (
                   <div className="space-y-4">
                     <input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-slate-500" placeholder={`المتبقي: ${fmt(selected.remaining)}`} />
-                    <MultiPaymentInput totalAmount={Number(payAmount) || 0} value={payments} onChange={setPayments} allowPartial={true} />
+                    <MultiPaymentInput totalAmount={Number(payAmount) || 0} value={payments} onChange={setPayments} allowPartial={true} excludeCategories={["credit"]} />
                     <input value={notes} onChange={(e) => setNotes(e.target.value)} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-[12px] outline-none focus:border-slate-500" placeholder="ملاحظات" />
                     <button onClick={handlePay} disabled={!payAmount || paying} className={`w-full rounded-xl py-3 text-[13px] font-black text-white disabled:opacity-40 ${theme.main}`}>
                       {paying ? "جاري التسجيل..." : isSupplier ? "تسجيل سداد للمورد" : "تسجيل تحصيل من العميل"}

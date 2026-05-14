@@ -14,6 +14,10 @@ const DEFAULTS = {
   show_phone: true, show_address: true, show_tax_id: true,
   show_branch: true, show_invoice_date: true,
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
+  address_font_size: 9,
+  address_alignment: "right",
+  tax_id_font_size: 9,
+  tax_id_alignment: "right",
 };
 
 const g = (s, k) => (s[k] !== undefined && s[k] !== null) ? s[k] : DEFAULTS[k];
@@ -62,6 +66,8 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
         {!addressAtBottom && (() => {
           const addrs = [s.address, ...extraAddresses];
           const phones = [s.phone, ...extraPhones];
+          const addrFlexAlign = { right: "flex-start", center: "center", left: "flex-end" }[g(s, "address_alignment")] || "flex-start";
+          const taxAlign = g(s, "tax_id_alignment") || "right";
           return (
             <>
               {addrs.map((addr, i) => {
@@ -70,12 +76,12 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
                 const showPhone = g(s, "show_phone") !== false && phone;
                 if (!showAddr && !showPhone) return null;
                 return (
-                  <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
-                    {showAddr && <span style={{ fontSize: "9px", opacity: 0.6 }}>{addr}</span>}
-                    {showPhone && <span style={{ fontSize: "9px" }}>{phone}</span>}
+                  <div key={i} style={{ display: "flex", gap: "8px", justifyContent: addrFlexAlign, ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
+                    {showAddr && <span style={{ fontSize: `${g(s, "address_font_size")}px`, opacity: 0.6 }}>{addr}</span>}
+                    {showPhone && <span style={{ fontSize: `${g(s, "address_font_size")}px` }}>{phone}</span>}
                   </div>
                 )})}
-                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: `${g(s, "tax_id_font_size")}px`, marginTop: "4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id}</div>}
               </>
             );
           })()}
@@ -209,6 +215,8 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
       {addressAtBottom && (() => {
         const addrs = [s.address, ...extraAddresses];
         const phones = [s.phone, ...extraPhones];
+        const addrFlexAlign = { right: "flex-start", center: "center", left: "flex-end" }[g(s, "address_alignment")] || "flex-start";
+        const taxAlign = g(s, "tax_id_alignment") || "right";
         return (
           <div style={{ marginTop: "8px", borderTop: dashed, paddingTop: "6px", fontSize: "10px", textAlign: "center" }}>
             {addrs.map((addr, i) => {
@@ -217,12 +225,12 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
               const showPhone = g(s, "show_phone") !== false && phone;
               if (!showAddr && !showPhone) return null;
               return (
-                  <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
-                    {showAddr && <span style={{ fontSize: "9px", opacity: 0.6 }}>{addr}</span>}
-                    {showPhone && <span style={{ fontSize: "9px" }}>{phone}</span>}
+                  <div key={i} style={{ display: "flex", gap: "8px", justifyContent: addrFlexAlign, ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
+                    {showAddr && <span style={{ fontSize: `${g(s, "address_font_size")}px`, opacity: 0.6 }}>{addr}</span>}
+                    {showPhone && <span style={{ fontSize: `${g(s, "address_font_size")}px` }}>{phone}</span>}
                   </div>
                 )})}
-                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: `${g(s, "tax_id_font_size")}px`, marginTop: "4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id}</div>}
               </div>
             );
           })()}
@@ -271,6 +279,8 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
           {!addressAtBottom && (() => {
             const addrs = [s.address, ...extraAddresses];
             const phones = [s.phone, ...extraPhones];
+            const addrFlexAlign = { right: "flex-start", center: "center", left: "flex-end" }[g(s, "address_alignment")] || "flex-start";
+            const taxAlign = g(s, "tax_id_alignment") || "right";
             return (
               <>
                 {addrs.map((addr, i) => {
@@ -279,12 +289,12 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
                   const showPhone = g(s, "show_phone") !== false && phone;
                   if (!showAddr && !showPhone) return null;
                   return (
-                    <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
-                      {showAddr && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{addr}</span>}
-                      {showPhone && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{phone}</span>}
+                    <div key={i} style={{ display: "flex", gap: "8px", justifyContent: addrFlexAlign, ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+                      {showAddr && <span style={{ fontSize: `${g(s, "address_font_size")}px`, color: "#94a3b8" }}>{addr}</span>}
+                      {showPhone && <span style={{ fontSize: `${g(s, "address_font_size")}px`, color: "#94a3b8" }}>{phone}</span>}
                     </div>
                 )})}
-                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", color: "#94a3b8", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: `${g(s, "tax_id_font_size")}px`, color: "#94a3b8", marginTop: "4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id}</div>}
               </>
             );
           })()}
@@ -422,6 +432,8 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
       {addressAtBottom && (() => {
         const addrs = [s.address, ...extraAddresses];
         const phones = [s.phone, ...extraPhones];
+        const addrFlexAlign = { right: "flex-start", center: "center", left: "flex-end" }[g(s, "address_alignment")] || "flex-start";
+        const taxAlign = g(s, "tax_id_alignment") || "right";
         return (
           <div style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#94a3b8", textAlign: "center" }}>
             {addrs.map((addr, i) => {
@@ -430,12 +442,12 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
               const showPhone = g(s, "show_phone") !== false && phone;
               if (!showAddr && !showPhone) return null;
               return (
-                  <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
-                    {showAddr && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{addr}</span>}
-                    {showPhone && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{phone}</span>}
+                  <div key={i} style={{ display: "flex", gap: "8px", justifyContent: addrFlexAlign, ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+                    {showAddr && <span style={{ fontSize: `${g(s, "address_font_size")}px`, color: "#94a3b8" }}>{addr}</span>}
+                    {showPhone && <span style={{ fontSize: `${g(s, "address_font_size")}px`, color: "#94a3b8" }}>{phone}</span>}
                   </div>
                 )})}
-                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: "9px", color: "#94a3b8", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id}</div>}
+                {g(s, "show_tax_id") !== false && s.tax_id && <div style={{ fontSize: `${g(s, "tax_id_font_size")}px`, color: "#94a3b8", marginTop: "4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id}</div>}
               </div>
             );
           })()}

@@ -11,15 +11,22 @@ export default function MultiPaymentInput({
   onChange,
   disabled = false,
   allowPartial = false,
+  excludeCategories = [],
 }) {
   const { t } = useTranslation();
   const [methods, setMethods] = useState([]);
 
   useEffect(() => {
     api.get("/api/payment-methods")
-      .then((response) => setMethods(response.data.data || []))
+      .then((response) => {
+        const allMethods = response.data.data || [];
+        const filtered = allMethods.filter(
+          (m) => !excludeCategories.includes(m.category) && !excludeCategories.includes(m.type)
+        );
+        setMethods(filtered);
+      })
       .catch(() => setMethods([]));
-  }, []);
+  }, [excludeCategories]);
 
   const paid = useMemo(
     () => value.reduce((sum, line) => sum + Number(line.amount || 0), 0),

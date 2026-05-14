@@ -89,6 +89,10 @@ router.put("/", authRequired, requirePagePermission("settings", "edit"), require
             return_prefix = ?,
             work_order_prefix = ?,
             receipt_prefix = ?,
+            address_font_size = ?,
+            address_alignment = ?,
+            tax_id_font_size = ?,
+            tax_id_alignment = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = 1`,
     )
@@ -157,6 +161,10 @@ router.put("/", authRequired, requirePagePermission("settings", "edit"), require
       next.return_prefix || "RET-",
       next.work_order_prefix || "WO-",
       next.receipt_prefix || "REC-",
+      Number(next.address_font_size ?? 9),
+      next.address_alignment || "right",
+      Number(next.tax_id_font_size ?? 9),
+      next.tax_id_alignment || "right",
     );
 
   res.json({ success: true, data: getSettings() });
@@ -264,6 +272,10 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
           return_prefix = ?,
           work_order_prefix = ?,
           receipt_prefix = ?,
+          address_font_size = ?,
+          address_alignment = ?,
+          tax_id_font_size = ?,
+          tax_id_alignment = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = 1`,
   ).run(
@@ -331,6 +343,10 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
     next.return_prefix || "RET-",
     next.work_order_prefix || "WO-",
     next.receipt_prefix || "REC-",
+    Number(next.address_font_size ?? 9),
+    next.address_alignment || "right",
+    Number(next.tax_id_font_size ?? 9),
+    next.tax_id_alignment || "right",
   );
 
   res.json({ success: true, data: getSettings() });
