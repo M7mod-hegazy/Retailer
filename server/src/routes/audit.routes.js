@@ -15,7 +15,7 @@ router.get("/", requirePagePermission("history", "view"), (req, res, next) => {
     const per_page = Math.min(200, Math.max(1, parseInt(req.query.per_page) || 50));
     const offset = (page - 1) * per_page;
 
-    const conditions = [];
+    const conditions = ["al.action != 'permission_denied'"];
     const params = [];
 
     if (user_id) {

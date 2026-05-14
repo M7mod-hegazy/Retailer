@@ -41,6 +41,10 @@ const RESOURCE_LABELS = {
   payments: "المدفوعات", settings: "الإعدادات", users: "المستخدمين",
   auth: "المصادقة", returns: "المرتجعات", shifts: "الورديات",
   "purchase-orders": "أوامر الشراء", expenses: "المصروفات", revenues: "الإيرادات",
+  categories: "الفئات", reports: "التقارير", customers: "العملاء",
+  suppliers: "الموردين", warehouses: "المستودعات", items: "الأصناف",
+  treasuries: "الخزائن", banks: "البنوك", employees: "الموظفين",
+  loyalty: "برنامج الولاء", promotions: "العروض", cheques: "الشيكات",
 };
 
 export default function HistoryPage() {
