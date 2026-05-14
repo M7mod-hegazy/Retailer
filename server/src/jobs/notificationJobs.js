@@ -26,4 +26,18 @@ function startNotificationJobs() {
   return cron.schedule("*/30 * * * *", scanAndCreateNotifications, { scheduled: true });
 }
 
-module.exports = { scanAndCreateNotifications, startNotificationJobs };
+function cleanupAuditLogs() {
+  const db = getDb();
+  const settings = db.prepare("SELECT audit_log_retention_days FROM settings WHERE id = 1").get();
+  const retentionDays = settings?.audit_log_retention_days || 30;
+  const result = db
+    .prepare(`DELETE FROM audit_logs WHERE created_at < datetime('now', '-' || ? || ' days')`)
+    .run(retentionDays);
+  return result.changes;
+}
+
+function startAuditLogCleanupJob() {
+  return cron.schedule("0 2 * * *", cleanupAuditLogs, { scheduled: true });
+}
+
+module.exports = { scanAndCreateNotifications, startNotificationJobs, cleanupAuditLogs, startAuditLogCleanupJob };
