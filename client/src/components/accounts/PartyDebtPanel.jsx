@@ -6,9 +6,11 @@ import MultiPaymentInput from "../payment/MultiPaymentInput";
 import PrintPreviewModal from "../print/PrintPreviewModal";
 import AjalStatementTemplate from "../print/templates/AjalStatementTemplate";
 import AjalScheduleTemplate from "../print/templates/AjalScheduleTemplate";
+import AjalFullStatementTemplate from "../print/templates/AjalFullStatementTemplate";
 
 const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG") : "-");
+const TODAY = new Date().toISOString().slice(0, 10);
 
 const STATUS = {
   open: { label: "مفتوح", cls: "bg-blue-100 text-blue-700" },
@@ -25,6 +27,52 @@ function normalizedDebt(debt, party) {
   };
 }
 
+function ScheduleTimeline({ schedule }) {
+  if (!schedule || schedule.length === 0) return null;
+
+  // Determine status for each row
+  const firstUnpaidIdx = schedule.findIndex((row) => row.status !== "paid" && row.due_date >= TODAY);
+
+  return (
+    <div className="relative space-y-0 pr-4">
+      {schedule.map((row, idx) => {
+        const isMissed = row.status !== "paid" && row.due_date < TODAY;
+        const isNext = idx === firstUnpaidIdx;
+        const isPaid = row.status === "paid";
+
+        let circleClass = "bg-slate-300 border-slate-400 text-slate-600";
+        let lineClass = "bg-slate-200";
+        let labelClass = "text-slate-500";
+        if (isPaid) { circleClass = "bg-emerald-500 border-emerald-600 text-white"; lineClass = "bg-emerald-300"; labelClass = "text-emerald-700"; }
+        else if (isMissed) { circleClass = "bg-rose-500 border-rose-600 text-white"; lineClass = "bg-rose-200"; labelClass = "text-rose-700"; }
+        else if (isNext) { circleClass = "bg-amber-400 border-amber-500 text-white"; lineClass = "bg-amber-200"; labelClass = "text-amber-700"; }
+
+        return (
+          <div key={row.id} className="flex items-start gap-3">
+            {/* connector line + circle */}
+            <div className="flex flex-col items-center">
+              <div className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-black ${circleClass}`}>
+                {row.installment_no}
+              </div>
+              {idx < schedule.length - 1 && (
+                <div className={`h-6 w-0.5 ${lineClass}`} />
+              )}
+            </div>
+            {/* content */}
+            <div className={`flex flex-1 items-center justify-between rounded-lg px-3 py-1.5 mb-0.5 text-[11px] ${isPaid ? "bg-emerald-50" : isMissed ? "bg-rose-50" : isNext ? "bg-amber-50" : "bg-slate-50"}`}>
+              <span className={`font-black ${labelClass}`}>{fmtDate(row.due_date)}</span>
+              <span className="font-black font-mono text-slate-700">{fmt(row.amount)} ج.م</span>
+              {isPaid && <span className="text-[10px] font-black text-emerald-600">مسدد</span>}
+              {isMissed && <span className="text-[10px] font-black text-rose-600">متأخر</span>}
+              {isNext && !isMissed && <span className="text-[10px] font-black text-amber-600">القادم</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function PartyDebtPanel({ party, partyType = "customer", accent = "amber", onChanged }) {
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,18 +83,23 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
   const [payments, setPayments] = useState([]);
   const [notes, setNotes] = useState("");
   const [paying, setPaying] = useState(false);
-  const [schedForm, setSchedForm] = useState({ installments: 3, frequency: "monthly", start_date: "" });
+  const [schedForm, setSchedForm] = useState({ installments: 3, frequency: "monthly", start_date: "", custom_days: 7 });
   const [scheduling, setScheduling] = useState(false);
-  const [bulkMode, setBulkMode] = useState(false);
-  const [bulkSelected, setBulkSelected] = useState([]);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkPayments, setBulkPayments] = useState([]);
   const [printType, setPrintType] = useState(null);
+  const [whatsappTemplate, setWhatsappTemplate] = useState(null);
 
   const isSupplier = partyType === "supplier";
   const theme = accent === "orange"
     ? { main: "bg-orange-600 hover:bg-orange-700", text: "text-orange-700", border: "border-orange-200", soft: "bg-orange-50" }
     : { main: "bg-blue-600 hover:bg-blue-700", text: "text-blue-700", border: "border-blue-200", soft: "bg-blue-50" };
+
+  // Fetch WhatsApp template from settings on mount
+  useEffect(() => {
+    api.get("/api/settings").then((r) => {
+      const tmpl = r.data?.data?.whatsapp_debt_template || r.data?.whatsapp_debt_template || null;
+      if (tmpl) setWhatsappTemplate(tmpl);
+    }).catch(() => {});
+  }, []);
 
   const loadDebts = useCallback(async () => {
     if (!party?.id) return;
@@ -93,6 +146,12 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
     }, { total: 0, open: 0, overdue: 0, overdueAmount: 0, dueToday: 0 });
   }, [debts]);
 
+  // Count missed installments from selected debt's schedule
+  const missedCount = useMemo(() => {
+    if (!selected?.schedule) return 0;
+    return selected.schedule.filter((row) => row.due_date < TODAY && row.status !== "paid").length;
+  }, [selected]);
+
   async function handlePay() {
     if (!selected) return;
     const totalPaid = payments.reduce((sum, line) => sum + Number(line.amount || 0), 0);
@@ -123,6 +182,7 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
         installments: Number(schedForm.installments),
         frequency: schedForm.frequency,
         start_date: schedForm.start_date || undefined,
+        custom_days: schedForm.frequency === "custom_days" ? Number(schedForm.custom_days) : undefined,
       });
       toast.success("تم إنشاء جدول الأقساط");
       await loadDetail(selected.id);
@@ -133,58 +193,23 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
     }
   }
 
-  async function handleBulkPay() {
-    const selectedDebts = debts.filter((debt) => bulkSelected.includes(debt.id));
-    const totalRemaining = selectedDebts.reduce((sum, debt) => sum + Number(debt.remaining || 0), 0);
-    const totalPaid = bulkPayments.reduce((sum, line) => sum + Number(line.amount || 0), 0);
-    if (!selectedDebts.length || totalPaid <= 0) return toast.error("أدخل مبلغ الدفع");
-    if (totalPaid > totalRemaining) return toast.error("المبلغ أكبر من المتبقي");
-
-    setPaying(true);
-    try {
-      let remainingPayment = totalPaid;
-      for (const debt of selectedDebts) {
-        if (remainingPayment <= 0) break;
-        const amountForDebt = Math.min(remainingPayment, Number(debt.remaining || 0));
-        const rawScaled = bulkPayments
-          .filter((line) => Number(line.amount || 0) > 0)
-          .map((line) => ({
-            ...line,
-            amount: Number(((Number(line.amount || 0) / totalPaid) * amountForDebt).toFixed(2)),
-          }))
-          .filter((line) => line.amount > 0);
-        // Absorb rounding difference into last line so scaled sum equals amountForDebt exactly
-        const scaledSum = rawScaled.reduce((s, l) => s + l.amount, 0);
-        const diff = Number((amountForDebt - scaledSum).toFixed(2));
-        const scaledPayments = rawScaled.map((l, i) =>
-          i === rawScaled.length - 1 ? { ...l, amount: Number((l.amount + diff).toFixed(2)) } : l
-        );
-        await api.post(`/api/ajal-debts/${debt.id}/pay`, {
-          amount: amountForDebt,
-          payments: scaledPayments,
-          notes: "تحصيل متعدد",
-        });
-        remainingPayment -= amountForDebt;
-      }
-      toast.success("تم تسجيل الدفع المحدد");
-      setBulkOpen(false);
-      setBulkMode(false);
-      setBulkSelected([]);
-      setBulkPayments([]);
-      await loadDebts();
-      onChanged?.();
-    } catch (e) {
-      toast.error(e.response?.data?.message || "خطأ في الدفع");
-    } finally {
-      setPaying(false);
-    }
-  }
-
   function handleWhatsAppReminder(debt) {
     const name = debt.customer_name || party?.name || "";
-    const msg = isSupplier
-      ? `السلام عليكم ${name}،\nنذكركم بموعد سداد مستحق بقيمة ${fmt(debt.remaining)} ج.م\nتاريخ الاستحقاق: ${fmtDate(debt.due_date)}`
-      : `السلام عليكم ${name}،\nنذكركم بموعد سداد قسط بمبلغ ${fmt(debt.remaining)} ج.م\nتاريخ الاستحقاق: ${fmtDate(debt.due_date)}`;
+    const remaining = fmt(debt.remaining);
+    const dueDate = fmtDate(debt.due_date);
+
+    let msg;
+    if (whatsappTemplate) {
+      msg = whatsappTemplate
+        .replace(/\{name\}/g, name)
+        .replace(/\{amount\}/g, remaining)
+        .replace(/\{due_date\}/g, dueDate);
+    } else {
+      msg = isSupplier
+        ? `السلام عليكم ${name}،\nنذكركم بموعد سداد مستحق بقيمة ${remaining} ج.م\nتاريخ الاستحقاق: ${dueDate}`
+        : `السلام عليكم ${name}،\nنذكركم بموعد سداد قسط بمبلغ ${remaining} ج.م\nتاريخ الاستحقاق: ${dueDate}`;
+    }
+
     const phone = debt.customer_phone?.replace(/\D/g, "");
     if (phone) {
       window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(msg)}`, "_blank");
@@ -193,6 +218,11 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
     navigator.clipboard?.writeText(msg);
     toast.success("تم نسخ الرسالة");
   }
+
+  // Progress bar calculation
+  const paidPct = selected
+    ? Math.min(100, Math.round((Number(selected.paid_amount) / Number(selected.original_amount || 1)) * 100))
+    : 0;
 
   return (
     <div className="space-y-4">
@@ -234,17 +264,6 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
             {status === "all" ? "الكل" : STATUS[status]?.label}
           </button>
         ))}
-        <button
-          onClick={() => { setBulkMode((v) => !v); setBulkSelected([]); }}
-          className={`rounded-xl px-3 py-2 text-[11px] font-black ${bulkMode ? "bg-violet-600 text-white" : "border border-slate-200 bg-white text-slate-600"}`}
-        >
-          {bulkMode ? "إلغاء التحديد" : "دفع متعدد"}
-        </button>
-        {bulkSelected.length > 0 && (
-          <button onClick={() => setBulkOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-black text-white">
-            دفع المحدد ({bulkSelected.length})
-          </button>
-        )}
         <button onClick={loadDebts} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
           <RefreshCw className="h-4 w-4" />
         </button>
@@ -255,33 +274,21 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
           {loading ? (
             <div className="flex h-40 items-center justify-center text-[13px] font-black text-slate-400">جاري التحميل...</div>
           ) : debts.length === 0 ? (
-            <div className="flex h-40 flex-col items-center justify-center gap-2 text-slate-300">
-              <Calendar className="h-9 w-9" />
-              <span className="text-[13px] font-black">لا توجد ديون أجل لهذا الحساب</span>
+            <div className="flex h-40 flex-col items-center justify-center gap-2">
+              <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+              <span className="text-[14px] font-black text-emerald-600">هذا الحساب نظيف ✓</span>
+              <span className="text-[12px] font-bold text-slate-400">لا توجد ديون مؤجلة لهذا الحساب</span>
             </div>
           ) : (
             <table className="w-full text-[12px]">
               <thead className="bg-slate-50">
-                <tr>{["", "المستند", "الأصل", "المدفوع", "المتبقي", "الاستحقاق", "الحالة", "إجراء"].map((h) => (
+                <tr>{["المستند", "الأصل", "المدفوع", "المتبقي", "الاستحقاق", "الحالة", "إجراء"].map((h) => (
                   <th key={h} className="px-4 py-3 text-right text-[11px] font-black text-slate-500">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 {debts.map((debt) => (
                   <tr key={debt.id} onClick={() => loadDetail(debt.id)} className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${debt.status === "overdue" ? "bg-rose-50/50" : ""}`}>
-                    <td className="px-4 py-3">
-                      {bulkMode && (
-                        <input
-                          type="checkbox"
-                          checked={bulkSelected.includes(debt.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            setBulkSelected((ids) => ids.includes(debt.id) ? ids.filter((id) => id !== debt.id) : [...ids, debt.id]);
-                          }}
-                        />
-                      )}
-                    </td>
                     <td className="px-4 py-3 font-mono text-[11px] text-slate-600">{debt.invoice_no || `AJAL-${debt.id}`}</td>
                     <td className="px-4 py-3 font-black font-mono">{fmt(debt.original_amount)}</td>
                     <td className="px-4 py-3 font-mono text-emerald-700">{fmt(debt.paid_amount)}</td>
@@ -327,25 +334,48 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
                   <button onClick={() => setPrintType("schedule")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white hover:bg-violet-700">
                     <Calendar className="h-4 w-4" />
                   </button>
+                  <button onClick={() => setPrintType("full_statement")} title="طباعة كشف كامل" className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white hover:bg-teal-700">
+                    <Printer className="h-3.5 w-3.5" />
+                  </button>
                   <button onClick={() => setSelected(null)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/70 hover:text-slate-700">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-100 bg-slate-50 p-3">
-                {[["الأصل", selected.original_amount], ["المدفوع", selected.paid_amount], ["المتبقي", selected.remaining]].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-white p-2 text-center">
-                    <div className="text-[10px] font-black text-slate-400">{label}</div>
-                    <div className="text-[13px] font-black font-mono text-slate-800">{fmt(value)}</div>
+              <div className="border-b border-slate-100 bg-slate-50 p-3 space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {[["الأصل", selected.original_amount], ["المدفوع", selected.paid_amount], ["المتبقي", selected.remaining]].map(([label, value]) => (
+                    <div key={label} className="rounded-xl bg-white p-2 text-center">
+                      <div className="text-[10px] font-black text-slate-400">{label}</div>
+                      <div className="text-[13px] font-black font-mono text-slate-800">{fmt(value)}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Progress bar */}
+                <div className="px-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black text-slate-400">نسبة السداد</span>
+                    <span className="text-[10px] font-black text-emerald-700">{paidPct}٪ مسدد</span>
                   </div>
-                ))}
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-rose-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${paidPct}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex border-b border-slate-100">
                 {[["pay", "دفع"], ["schedule", "أقساط"], ["history", "السجل"]].map(([id, label]) => (
-                  <button key={id} onClick={() => setActivePanel(id)} className={`flex-1 py-2.5 text-[12px] font-black ${activePanel === id ? `${theme.text} border-b-2 border-current` : "text-slate-500 hover:text-slate-800"}`}>
+                  <button key={id} onClick={() => setActivePanel(id)} className={`relative flex-1 py-2.5 text-[12px] font-black ${activePanel === id ? `${theme.text} border-b-2 border-current` : "text-slate-500 hover:text-slate-800"}`}>
                     {label}
+                    {id === "schedule" && missedCount > 0 && (
+                      <span className="absolute -top-1 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white">
+                        {missedCount}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -364,12 +394,28 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
 
                 {activePanel === "schedule" && (
                   <div className="space-y-4">
-                    <input type="number" min="2" max="60" value={schedForm.installments} onChange={(e) => setSchedForm((f) => ({ ...f, installments: e.target.value }))} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-slate-500" />
+                    <input type="number" min="2" max="60" value={schedForm.installments} onChange={(e) => setSchedForm((f) => ({ ...f, installments: e.target.value }))} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-slate-500" placeholder="عدد الأقساط" />
                     <select value={schedForm.frequency} onChange={(e) => setSchedForm((f) => ({ ...f, frequency: e.target.value }))} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-[12px] font-bold outline-none focus:border-slate-500">
                       <option value="weekly">أسبوعي</option>
                       <option value="biweekly">كل أسبوعين</option>
                       <option value="monthly">شهري</option>
+                      <option value="quarterly">كل 3 شهور</option>
+                      <option value="custom_days">عدد أيام مخصص</option>
                     </select>
+                    {schedForm.frequency === "custom_days" && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={schedForm.custom_days}
+                          onChange={(e) => setSchedForm((f) => ({ ...f, custom_days: e.target.value }))}
+                          className="h-10 flex-1 rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-slate-500"
+                          placeholder="عدد الأيام"
+                        />
+                        <span className="text-[12px] font-bold text-slate-500 whitespace-nowrap">يوم بين كل قسط</span>
+                      </div>
+                    )}
                     <input type="date" value={schedForm.start_date} onChange={(e) => setSchedForm((f) => ({ ...f, start_date: e.target.value }))} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-[12px] outline-none focus:border-slate-500" />
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center">
                       <div className="text-[11px] font-bold text-amber-700">قسط تقريبي</div>
@@ -379,15 +425,7 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
                       {scheduling ? "جاري الجدولة..." : "إنشاء جدول الأقساط"}
                     </button>
                     {selected.schedule?.length > 0 && (
-                      <div className="space-y-1.5">
-                        {selected.schedule.map((row) => (
-                          <div key={row.id} className={`flex items-center justify-between rounded-lg px-3 py-2 text-[11px] ${row.status === "paid" ? "bg-emerald-50" : "bg-slate-50"}`}>
-                            <span className="font-black">قسط {row.installment_no}</span>
-                            <span>{fmtDate(row.due_date)}</span>
-                            <span className="font-black font-mono">{fmt(row.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <ScheduleTimeline schedule={selected.schedule} />
                     )}
                   </div>
                 )}
@@ -413,41 +451,16 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
         </div>
       </div>
 
-      {bulkOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-[460px] rounded-2xl bg-white p-6 shadow-2xl" dir="rtl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-[15px] font-black text-slate-900">دفع متعدد</h2>
-              <button onClick={() => setBulkOpen(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
-            <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
-              <div className="text-[10px] font-black text-slate-400">إجمالي المحدد</div>
-              <div className="text-[20px] font-black font-mono text-slate-900">
-                {fmt(debts.filter((debt) => bulkSelected.includes(debt.id)).reduce((sum, debt) => sum + Number(debt.remaining || 0), 0))} ج.م
-              </div>
-            </div>
-            <MultiPaymentInput
-              totalAmount={debts.filter((debt) => bulkSelected.includes(debt.id)).reduce((sum, debt) => sum + Number(debt.remaining || 0), 0)}
-              value={bulkPayments}
-              onChange={setBulkPayments}
-              allowPartial={true}
-            />
-            <button onClick={handleBulkPay} disabled={paying || !bulkPayments.length} className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-40">
-              {paying ? "جاري التسجيل..." : "تأكيد الدفع"}
-            </button>
-          </div>
-        </div>
-      )}
-
       {selected && printType && (
         <PrintPreviewModal
           open={!!printType}
           onClose={() => setPrintType(null)}
-          docType={printType === "schedule" ? "ajal_schedule" : "ajal_statement"}
-          renderContent={(settings) => printType === "schedule"
-            ? <AjalScheduleTemplate debt={selected} settings={settings} />
-            : <AjalStatementTemplate debt={selected} settings={settings} />
-          }
+          docType={printType === "schedule" ? "ajal_schedule" : printType === "full_statement" ? "ajal_full_statement" : "ajal_statement"}
+          renderContent={(settings) => {
+            if (printType === "schedule") return <AjalScheduleTemplate debt={selected} settings={settings} />;
+            if (printType === "full_statement") return <AjalFullStatementTemplate debts={debts} party={party} settings={settings} />;
+            return <AjalStatementTemplate debt={selected} settings={settings} />;
+          }}
         />
       )}
     </div>

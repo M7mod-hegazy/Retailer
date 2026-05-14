@@ -251,7 +251,7 @@ router.post("/:id/pay", requirePagePermission("installments", "add"), (req, res)
 router.post("/:id/schedule", requirePagePermission("installments", "add"), (req, res) => {
   try {
     const db = getDb();
-    const { installments, frequency = "monthly", start_date } = req.body || {};
+    const { installments, frequency = "monthly", start_date, custom_days } = req.body || {};
     if (!installments || installments < 1) return res.status(400).json({ success: false, message: "عدد الأقساط مطلوب" });
 
     const debt = db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(req.params.id);
@@ -260,7 +260,12 @@ router.post("/:id/schedule", requirePagePermission("installments", "add"), (req,
     const remaining = debt.original_amount - debt.paid_amount;
     const perInstallment = Math.ceil((remaining / installments) * 100) / 100;
     const start = start_date ? new Date(start_date) : new Date();
-    const freqDays = frequency === "weekly" ? 7 : frequency === "biweekly" ? 14 : 30;
+    let freqDays;
+    if (frequency === "weekly") freqDays = 7;
+    else if (frequency === "biweekly") freqDays = 14;
+    else if (frequency === "quarterly") freqDays = 90;
+    else if (frequency === "custom_days") freqDays = Math.max(1, Number(custom_days) || 30);
+    else freqDays = 30; // monthly default
 
     // Delete existing schedule
     db.prepare("DELETE FROM ajal_schedules WHERE debt_id = ?").run(debt.id);
