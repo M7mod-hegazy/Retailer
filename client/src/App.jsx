@@ -79,7 +79,6 @@ const BankOperationsPage = lazy(() => import("./pages/operations/BankOperationsP
 const ExpenseCategoriesPage = lazy(() => import("./pages/definitions/ExpenseCategoriesPage"));
 const CustomerAccountsPage = lazy(() => import("./pages/accounts/CustomerAccountsPage"));
 const SupplierAccountsPage = lazy(() => import("./pages/accounts/SupplierAccountsPage"));
-const InstallmentsPage = lazy(() => import("./pages/operations/InstallmentsPage"));
 const UpdatesPage = lazy(() => import("./pages/updates/UpdatesPage"));
 
 function PermissionRoute({ page, children }) {
@@ -180,7 +179,7 @@ export default function App() {
                     <Route path="operations/cheques" element={<PermissionRoute page="cheques"><ChequesPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<Navigate to="/operations/payment-methods" replace />} />
                     <Route path="operations/treasury-transfer" element={<Navigate to="/expenses" replace />} />
-                    <Route path="operations/installments" element={<PermissionRoute page="installments"><InstallmentsPage /></PermissionRoute>} />
+                    <Route path="operations/installments" element={<Navigate to="/accounts/customers" replace />} />
                     <Route path="operations/bank-operations" element={<PermissionRoute page="bank_operations"><BankOperationsPage /></PermissionRoute>} />
                     <Route path="operations/bulk-price-update" element={<PermissionRoute page="bulk_price_update"><BulkPriceUpdatePage /></PermissionRoute>} />
                     <Route path="operations/employee-adjustments" element={<PermissionRoute page="employee_adjustments"><EmployeeAdjustmentsPage /></PermissionRoute>} />
