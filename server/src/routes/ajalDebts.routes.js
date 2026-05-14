@@ -80,7 +80,7 @@ router.get("/summary", requirePagePermission("installments", "view"), (req, res)
     const base = `FROM ajal_debts WHERE ${baseConds.join(" AND ")}`;
 
     const open = db.prepare(`SELECT COALESCE(SUM(original_amount - paid_amount),0) AS total, COUNT(*) AS count ${base} AND status != 'paid'`).get(...baseParams);
-    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND (due_date < ? AND status != 'paid')`).get(...baseParams, today);
+    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND status != 'paid' AND (due_date < ? OR due_date IS NULL)`).get(...baseParams, today);
     const dueToday = db.prepare(`SELECT COUNT(*) AS count ${base} AND due_date = ? AND status != 'paid'`).get(...baseParams, today);
     const parties = db.prepare(`SELECT COUNT(DISTINCT ${idCol}) AS count ${base} AND status != 'paid'`).get(...baseParams);
 
@@ -134,8 +134,8 @@ router.get("/", requirePagePermission("installments", "view"), (req, res) => {
       FROM ajal_debts d
       LEFT JOIN customers c ON c.id = d.customer_id
       LEFT JOIN suppliers s ON s.id = d.supplier_id
-      LEFT JOIN invoices i ON i.id = d.invoice_id
-      LEFT JOIN purchases p ON p.id = d.invoice_id
+      LEFT JOIN invoices i ON i.id = d.invoice_id AND d.source_type = 'invoice'
+      LEFT JOIN purchases p ON p.id = d.invoice_id AND d.source_type = 'purchase'
       WHERE ${conds.join(" AND ")}
       ORDER BY d.created_at DESC
       LIMIT 200
@@ -186,8 +186,8 @@ router.get("/:id", requirePagePermission("installments", "view"), (req, res) => 
       FROM ajal_debts d
       LEFT JOIN customers c ON c.id = d.customer_id
       LEFT JOIN suppliers s ON s.id = d.supplier_id
-      LEFT JOIN invoices i ON i.id = d.invoice_id
-      LEFT JOIN purchases p ON p.id = d.invoice_id
+      LEFT JOIN invoices i ON i.id = d.invoice_id AND d.source_type = 'invoice'
+      LEFT JOIN purchases p ON p.id = d.invoice_id AND d.source_type = 'purchase'
       WHERE d.id = ?
     `).get(req.params.id);
     if (!debt) return res.status(404).json({ success: false, message: "الدين غير موجود" });

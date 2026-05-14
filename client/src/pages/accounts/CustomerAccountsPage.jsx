@@ -7,7 +7,7 @@ import StatementModal from "../../components/accounts/StatementModal";
 import PartyDebtPanel from "../../components/accounts/PartyDebtPanel";
 import PermissionGate from "../../components/ui/PermissionGate";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
 
 function Modal({ onClose, children, width = "480px" }) {
@@ -211,8 +211,8 @@ export default function CustomerAccountsPage() {
         const due = d.due_date ? new Date(d.due_date) : null;
         const current = map[pid];
         let level = "ok";
-        if (due && due < today) level = "overdue";
-        else if (due && due <= soon) level = "soon";
+        if (!due || due < today) level = "overdue";
+        else if (due <= soon) level = "soon";
         // escalate if already worse
         if (current === "overdue") continue;
         if (current === "soon" && level === "ok") continue;

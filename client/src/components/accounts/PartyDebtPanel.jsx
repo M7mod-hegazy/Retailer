@@ -8,7 +8,7 @@ import AjalStatementTemplate from "../print/templates/AjalStatementTemplate";
 import AjalScheduleTemplate from "../print/templates/AjalScheduleTemplate";
 import AjalFullStatementTemplate from "../print/templates/AjalFullStatementTemplate";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG") : "-");
 const STATUS = {
   open: { label: "مفتوح", cls: "bg-blue-100 text-blue-700" },
