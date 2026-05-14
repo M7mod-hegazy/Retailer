@@ -34,6 +34,11 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
   const [payments, setPayments] = useState([]);
   const [printOpen, setPrintOpen] = useState(false);
   const [printInvoice, setPrintInvoice] = useState(null);
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split("T")[0];
+  });
 
   const totals = getTotals();
   const isEmpty = lines.length === 0;
@@ -49,6 +54,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
       customer_id: customer?.id || null, lines, discount, promotion_discount: promotionDiscount,
       increase,
       payment_type: paymentType,
+      due_date: paymentType === "credit" ? dueDate || null : null,
       treasury_id: paymentDetails.treasury_id ? Number(paymentDetails.treasury_id) : null,
       bank_id: paymentDetails.bank_id ? Number(paymentDetails.bank_id) : null,
       split_cash_amount: Number(paymentDetails.split_cash_amount || 0),
@@ -140,6 +146,27 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
           </button>
         ))}
       </div>
+
+      {/* Due Date field for credit (آجل) */}
+      {paymentType === "credit" && (
+        <div style={{ marginBottom: '16px', background: 'var(--bg-overlay)', padding: '10px', borderRadius: '8px' }}>
+          <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
+            تاريخ الاستحقاق (اختياري)
+          </label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            style={{
+              width: '100%', padding: '7px 10px',
+              border: '1px solid var(--border-normal)', borderRadius: '8px',
+              background: 'var(--bg-input)', color: 'var(--text-primary)',
+              fontSize: '13px', fontFamily: 'Inter, monospace', outline: 'none',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+      )}
 
       {/* Multi / Bank Extra fields (Collapsible) */}
       {(paymentType === 'multi' || paymentType === 'bank_transfer' || paymentType === 'cash') && (
