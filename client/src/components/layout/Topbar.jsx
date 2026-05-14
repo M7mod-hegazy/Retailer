@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, LayoutGrid, Coins } from "lucide-react";
 import { useNotificationStore } from "../../stores/notificationStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -29,7 +29,27 @@ export default function Topbar() {
   const openGlobalSearch = useUiStore((state) => state.openGlobalSearch);
   const settings = useAppSettingsStore((state) => state.settings);
   const location = useLocation();
+  const navigate = useNavigate();
   const [openBell, setOpenBell] = useState(false);
+  const bellRef = useRef(null);
+
+  const SAFE_PREFIXES = [
+    "/invoices", "/purchases", "/stock", "/suppliers", "/customers",
+    "/shifts", "/definitions", "/notifications", "/history", "/reports",
+    "/payments", "/expenses",
+  ];
+
+  function timeAgo(dateStr) {
+    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+    if (diff < 3600) return `منذ ${Math.max(1, Math.floor(diff / 60))} دقيقة`;
+    if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
+    return new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "short" }).format(new Date(dateStr));
+  }
+
+  const unreadItems = useMemo(
+    () => items.filter((n) => !n.is_read).slice(0, 10),
+    [items]
+  );
 
   const today = useMemo(() => {
     return new Intl.DateTimeFormat("ar-EG", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
@@ -42,6 +62,17 @@ export default function Topbar() {
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (!openBell) return;
+    function handleClickOutside(e) {
+      if (bellRef.current && !bellRef.current.contains(e.target)) {
+        setOpenBell(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openBell]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -76,11 +107,72 @@ export default function Topbar() {
           <span>{settings.currency_symbol || "EGP"}</span>
         </div>
 
-        <div className="relative">
+        <div className="relative" ref={bellRef}>
           <button onClick={() => setOpenBell(!openBell)} className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors">
             <Bell strokeWidth={1.5} className={`h-4 w-4 ${unreadCount ? "text-emerald-500" : ""}`} />
             {unreadCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border-2 border-white text-[8px] font-black text-white">{unreadCount}</span>}
           </button>
+
+          {openBell && (
+            <div className="absolute end-0 top-10 z-50 w-80 rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden">
+              <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2.5">
+                <span className="text-[13px] font-black text-zinc-800">الإشعارات</span>
+                {unreadItems.length > 0 && (
+                  <button
+                    onClick={() => { markAllAsRead(); setOpenBell(false); }}
+                    className="text-[11px] font-bold text-zinc-400 hover:text-zinc-600 transition-colors"
+                  >
+                    تحديد الكل كمقروء
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-72 overflow-y-auto">
+                {unreadItems.length === 0 ? (
+                  <p className="py-8 text-center text-[12px] font-bold text-zinc-400">لا توجد إشعارات جديدة</p>
+                ) : (
+                  unreadItems.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className="group flex cursor-pointer items-start gap-2.5 border-b border-zinc-50 px-4 py-3 hover:bg-zinc-50 transition-colors"
+                      onClick={() => {
+                        markAsRead(notif.id);
+                        setOpenBell(false);
+                        const safe = notif.link && SAFE_PREFIXES.some((p) => notif.link.startsWith(p));
+                        if (safe) navigate(notif.link);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-[12px] font-black text-zinc-800">
+                          {notif.emoji ? `${notif.emoji} ` : ""}{notif.title}
+                        </p>
+                        {notif.body && (
+                          <p className="mt-0.5 truncate text-[11px] font-medium text-zinc-500">{notif.body}</p>
+                        )}
+                        <p className="mt-1 text-[10px] font-bold text-zinc-400">{timeAgo(notif.created_at)}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
+                        title="تحديد كمقروء"
+                        className="mt-0.5 shrink-0 text-zinc-300 hover:text-emerald-500 transition-colors text-[14px] leading-none"
+                      >
+                        ✓
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-zinc-100 px-4 py-2.5 text-center">
+                <button
+                  onClick={() => { setOpenBell(false); navigate("/notifications"); }}
+                  className="text-[12px] font-bold text-zinc-500 hover:text-zinc-800 transition-colors"
+                >
+                  عرض الكل
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
