@@ -346,11 +346,14 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
 
     req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`);
     try {
+      const purchaseId = purchase?.id;
+      const supplierName = purchase?.supplier_name || 'غير محدد';
+      const purchaseTotal = purchase?.total ?? 0;
       NotificationModel.create({
         title: "📦 تم استلام مشتريات",
-        body: `تم تسجيل مشتريات جديدة #${purchase?.id}`,
+        body: `مشتريات جديدة #${purchaseId} — المورد: ${supplierName} — المبلغ: ${purchaseTotal}`,
         type: "info",
-        link: `/purchases/${purchase?.id}`,
+        link: `/purchases/${purchaseId}`,
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: purchase });

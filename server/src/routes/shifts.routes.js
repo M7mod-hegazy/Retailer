@@ -27,6 +27,15 @@ router.post("/open", requirePagePermission("pos", "add"), (req, res, next) => {
       .prepare("INSERT INTO shifts (user_id, opening_cash, status) VALUES (?, ?, 'open')")
       .run(req.user.id, Number(req.body?.opening_cash || 0));
     req.audit("create", "shifts", { id: info.lastInsertRowid }, `📋 تم فتح وردية`);
+    try {
+      const username = req.user?.username || req.user?.name || 'غير محدد';
+      NotificationModel.create({
+        title: "📋 تم فتح وردية",
+        body: `وردية جديدة بواسطة ${username}`,
+        type: "info",
+        link: `/shifts`,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: db.prepare("SELECT * FROM shifts WHERE id = ?").get(info.lastInsertRowid) });
   } catch (error) {
     next(error);

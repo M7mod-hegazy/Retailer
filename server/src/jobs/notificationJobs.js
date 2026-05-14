@@ -18,6 +18,7 @@ function scanAndCreateNotifications() {
       title: "تنبيه مخزون منخفض",
       body: `${item.name} وصل إلى ${item.quantity}`,
       type: "warning",
+      link: "/stock",
     });
   });
 }
@@ -71,11 +72,15 @@ function scanOverdueDebts() {
     if (alreadyNotified) continue;
 
     const remaining = Math.max(0, Number(debt.original_amount) - Number(debt.paid_amount || 0));
+    const remainingFormatted = remaining.toLocaleString('ar-EG');
     const partyName = debt.party_name || (debt.party_type === "supplier" ? `مورد #${debt.supplier_id}` : `عميل #${debt.customer_id}`);
+    const dueDateFormatted = debt.due_date
+      ? new Date(debt.due_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'غير محدد';
 
     NotificationModel.create({
       title: "⏰ دين متأخر السداد",
-      body: `دين #${debt.id} (${partyName}) — متبقي ${remaining} ج — استحق في ${debt.due_date}`,
+      body: `دين #${debt.id} (${partyName}) — متبقي ${remainingFormatted} ج — استحق في ${dueDateFormatted}`,
       type: "warning",
       link: `/ajal`,
     });

@@ -293,6 +293,18 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const payload = { ...(req.body || {}), user_id: req.user?.id || null };
   const invoice = createInvoice(payload);
   req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`);
+  // Notify on large invoice (total > 1000)
+  try {
+    if (invoice?.total > 1000 && invoice?.id) {
+      const customerName = invoice?.customer_name || req.body?.customer_name || 'غير محدد';
+      NotificationModel.create({
+        title: "🧾 فاتورة بمبلغ كبير",
+        body: `فاتورة #${invoice.id} للعميل ${customerName} — المبلغ: ${invoice.total}`,
+        type: "info",
+        link: `/invoices/${invoice.id}`,
+      });
+    }
+  } catch (_) {}
   // Notify on large discount (> 20%)
   try {
     const discount = Number(payload.discount_percent || 0);
@@ -319,9 +331,11 @@ router.post("/:id/return", requirePagePermission("pos", "add"), (req, res, next)
     const salesReturn = createReturn(Number(req.params.id), req.body || {});
     req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`);
     try {
+      const invoiceId = req.params.id;
+      const returnTotal = salesReturn?.total ?? 0;
       NotificationModel.create({
         title: "↩️ تم معالجة مرتجع",
-        body: `مرتجع جديد #${salesReturn?.id}`,
+        body: `مرتجع على الفاتورة #${invoiceId} — بمبلغ ${returnTotal}`,
         type: "info",
         link: `/invoices`,
       });

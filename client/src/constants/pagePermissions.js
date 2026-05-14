@@ -79,6 +79,7 @@ export const PAGE_PERMISSIONS = {
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view', 'add'] },
   backup: { label: 'النسخ الاحتياطي', actions: ['view', 'create', 'restore'] },
   updates: { label: 'التحديثات', actions: ['view'] },
+  history: { label: 'سجل النشاط', actions: ['view'] },
 };
 
 // Default permissions for new user role (POS only)

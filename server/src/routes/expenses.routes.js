@@ -4,6 +4,7 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -94,6 +95,18 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
     })();
 
   req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd());
+  try {
+    const expenseAmount = Number(payload.amount || 0);
+    if (expenseAmount > 500) {
+      const description = payload.description || payload.notes || '';
+      NotificationModel.create({
+        title: "💸 مصروف بمبلغ كبير",
+        body: `مصروف بمبلغ ${expenseAmount}${description ? ' — ' + description : ''}`,
+        type: "warning",
+        link: `/expenses`,
+      });
+    }
+  } catch (_) {}
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(result.lastInsertRowid),

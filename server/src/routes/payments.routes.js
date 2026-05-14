@@ -4,6 +4,7 @@ const { recalculateInvoiceStatus } = require("../services/invoiceService");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -181,6 +182,21 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
     })();
 
     req.audit("create", "payment", { id: payment?.id, amount: payment?.amount, party_type: payment?.party_type, party_id: payment?.party_id }, `💰 تم تسجيل دفعة بمبلغ ${payment?.amount} (${payment?.party_type === "supplier" ? "مورد" : "عميل"} #${payment?.party_id})`);
+    try {
+      const db = getDb();
+      const pType = payload.party_type || "customer";
+      const pId = Number(payload.party_id || 0);
+      const partyRow = pType === "supplier"
+        ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(pId)
+        : db.prepare("SELECT name FROM customers WHERE id = ?").get(pId);
+      const partyName = partyRow?.name || '';
+      NotificationModel.create({
+        title: "💰 تم تسجيل دفعة",
+        body: `دفعة بمبلغ ${payment?.amount || 0}${partyName ? ' — ' + partyName : ''}`,
+        type: "info",
+        link: `/payments`,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: payment });
   } catch (error) {
     next(error);

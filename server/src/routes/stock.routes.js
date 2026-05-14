@@ -4,6 +4,7 @@ const { transferStock } = require("../services/stockTransferService");
 const { adjustStock } = require("../services/stockService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -287,6 +288,16 @@ router.post("/adjust", requirePagePermission("stock_transfer", "add"), (req, res
       }
     }
     req.audit("adjust", "stock", { item_id: itemId, warehouse_id: warehouseId, from: currentQty, to: nextQty }, `🔄 تم تعديل مخزون صنف #${itemId} في مستودع #${warehouseId}: ${currentQty} ← ${nextQty}`);
+    try {
+      const itemRow = db.prepare("SELECT name FROM items WHERE id = ?").get(itemId);
+      const itemName = itemRow?.name || `صنف #${itemId}`;
+      NotificationModel.create({
+        title: "📦 تم تسوية مخزون",
+        body: `تسوية مخزون للصنف: ${itemName} — الكمية: ${nextQty}`,
+        type: "info",
+        link: `/stock`,
+      });
+    } catch (_) {}
     res.json({ success: true, data: { item_id: itemId, warehouse_id: warehouseId, quantity: nextQty } });
   } catch (error) {
     next(error);

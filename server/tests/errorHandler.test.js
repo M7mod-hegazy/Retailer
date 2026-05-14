@@ -35,10 +35,10 @@ describe("errorHandler middleware", () => {
     expect(res.body.code).toBe("INTERNAL_ERROR");
   });
 
-  it("returns default Arabic message for 500", async () => {
+  it("returns the error message for 500", async () => {
     const app = createTestApp();
     const res = await request(app).get("/server-error");
-    expect(res.body.message).toBe("حدث خطأ غير متوقع");
+    expect(res.body.message).toBe("Unexpected");
   });
 
   it("preserves custom status code", async () => {

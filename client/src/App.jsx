@@ -80,6 +80,7 @@ const ExpenseCategoriesPage = lazy(() => import("./pages/definitions/ExpenseCate
 const CustomerAccountsPage = lazy(() => import("./pages/accounts/CustomerAccountsPage"));
 const SupplierAccountsPage = lazy(() => import("./pages/accounts/SupplierAccountsPage"));
 const UpdatesPage = lazy(() => import("./pages/updates/UpdatesPage"));
+const HistoryPage = lazy(() => import("./pages/history/HistoryPage"));
 
 function PermissionRoute({ page, children }) {
   const canView = useCanView(page);
@@ -193,6 +194,7 @@ export default function App() {
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />
                     <Route path="updates" element={<PermissionRoute page="updates"><UpdatesPage /></PermissionRoute>} />
+                    <Route path="history" element={<PermissionRoute page="history"><HistoryPage /></PermissionRoute>} />
                     <Route path="definitions/promotions" element={<PermissionRoute page="promotions"><PromotionsPage /></PermissionRoute>} />
                     <Route path="expenses" element={<PermissionRoute page="expenses"><ExpensesListPage /></PermissionRoute>} />
                     <Route path="revenues" element={<PermissionRoute page="revenues"><RevenuesListPage /></PermissionRoute>} />

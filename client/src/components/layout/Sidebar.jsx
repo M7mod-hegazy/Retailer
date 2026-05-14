@@ -7,7 +7,7 @@ import {
   Wallet, TrendingDown, TrendingUp, Receipt, ArrowRightLeft,
   Settings, LogOut, Radar, ChevronDown, Search, PackageSearch,
   FileSpreadsheet, Boxes, ClipboardList, Landmark, Tags, ShieldCheck,
-  Activity, UsersRound, Scale, Menu, ChevronLeft, Truck, Coins, Store,
+  Activity, UsersRound, Scale, Menu, ChevronLeft, Truck, Coins, Store, ClipboardCheck,
   BadgePercent, Banknote, HeartHandshake, Briefcase, Fingerprint, CreditCard,
   ArrowUpCircle
 } from "lucide-react";
@@ -150,6 +150,7 @@ export default function Sidebar({ collapsed, setCollapsed, branding }) {
         { path: "/definitions/employees", label: "الموظفين", icon: UsersRound, pageKey: "employees" },
         { path: "/settings", label: "الإعدادات العامة", icon: Settings, pageKey: "settings" },
         { path: "/updates", label: t('nav.updates'), icon: ArrowUpCircle, pageKey: "updates" },
+        { path: "/history", label: "سجل النشاط", icon: ClipboardCheck, pageKey: "history" },
       ],
     },
   ];

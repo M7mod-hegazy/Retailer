@@ -4,6 +4,7 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -246,6 +247,14 @@ router.post("/:id/pay", requirePagePermission("installments", "add"), (req, res)
     })();
 
     req.audit("update", "ajalDebts", { id: req.params.id }, `💰 تم تسوية دين آجل بمبلغ: ${totalAmount}`);
+    try {
+      NotificationModel.create({
+        title: "💰 تم سداد دين آجل",
+        body: `سداد #${req.params.id} — المبلغ: ${totalAmount}`,
+        type: "info",
+        link: `/ajal`,
+      });
+    } catch (_) {}
     res.json({ success: true, data: db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
