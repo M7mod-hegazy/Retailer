@@ -79,10 +79,10 @@ router.get("/summary", requirePagePermission("installments", "view"), (req, res)
     }
     const base = `FROM ajal_debts WHERE ${baseConds.join(" AND ")}`;
 
-    const open = db.prepare(`SELECT COALESCE(SUM(original_amount - paid_amount),0) AS total, COUNT(*) AS count ${base} AND status != 'paid'`).get(...baseParams);
-    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND status != 'paid' AND (due_date < ? OR due_date IS NULL)`).get(...baseParams, today);
-    const dueToday = db.prepare(`SELECT COUNT(*) AS count ${base} AND due_date = ? AND status != 'paid'`).get(...baseParams, today);
-    const parties = db.prepare(`SELECT COUNT(DISTINCT ${idCol}) AS count ${base} AND status != 'paid'`).get(...baseParams);
+    const open = db.prepare(`SELECT COALESCE(SUM(original_amount - paid_amount),0) AS total, COUNT(*) AS count ${base} AND status NOT IN ('paid','voided')`).get(...baseParams);
+    const overdue = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(original_amount - paid_amount),0) AS amount ${base} AND status NOT IN ('paid','voided') AND (due_date < ? OR due_date IS NULL)`).get(...baseParams, today);
+    const dueToday = db.prepare(`SELECT COUNT(*) AS count ${base} AND due_date = ? AND status NOT IN ('paid','voided')`).get(...baseParams, today);
+    const parties = db.prepare(`SELECT COUNT(DISTINCT ${idCol}) AS count ${base} AND status NOT IN ('paid','voided')`).get(...baseParams);
 
     // missed_schedule_count: schedules past due and not paid, for debts matching the party filter
     const schedBaseConds = ["COALESCE(d.party_type, 'customer') = ?", "sch.due_date < ?", "sch.status != 'paid'"];
@@ -119,11 +119,11 @@ router.get("/", requirePagePermission("installments", "view"), (req, res) => {
     const idCol = partyIdColumn(partyType);
     const { status, customer_id, supplier_id, search = "", overdue } = req.query;
     const partyId = partyType === "supplier" ? supplier_id : customer_id;
-    const conds = [partyWhere("d", partyType)];
+    const conds = [partyWhere("d", partyType), "d.status != 'voided'"];
     const params = [partyType];
 
     if (status && status !== "all") { conds.push("d.status = ?"); params.push(status); }
-    if (overdue === "1") { conds.push("(d.due_date < ? AND d.status != 'paid')"); params.push(today); }
+    if (overdue === "1") { conds.push("(d.due_date < ? AND d.status NOT IN ('paid','voided'))"); params.push(today); }
     if (partyId) { conds.push(`d.${idCol} = ?`); params.push(partyId); }
     if (search) { conds.push("(c.name LIKE ? OR s.name LIKE ? OR i.invoice_no LIKE ? OR p.doc_no LIKE ?)"); params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
 

@@ -192,8 +192,10 @@ export default function CustomerAccountsPage() {
     setSummaryLoading(true);
     try {
       const r = await api.get("/api/ajal-debts/summary?party_type=customer");
-      setSummary(r.data.data || r.data || null);
-    } catch { setSummary(null); }
+      const data = r.data.data || r.data || null;
+      console.log("[CustomerAccounts] summary raw:", r.data, "→ parsed:", data);
+      setSummary(data);
+    } catch(e) { console.error("[CustomerAccounts] summary error:", e); setSummary(null); }
     finally { setSummaryLoading(false); }
   }, []);
 
@@ -201,6 +203,7 @@ export default function CustomerAccountsPage() {
     try {
       const r = await api.get("/api/ajal-debts?party_type=customer&status=open&limit=500");
       const debts = r.data.data || [];
+      console.log("[CustomerAccounts] urgency debts:", debts.map(d => ({ id: d.id, customer_id: d.customer_id, status: d.status, remaining: d.remaining, due_date: d.due_date })));
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const soon = new Date(today); soon.setDate(soon.getDate() + 7);
