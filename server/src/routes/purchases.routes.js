@@ -5,10 +5,12 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { recalculateWACC } = require("../services/waccService");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function ensurePurchaseReturnSettlementSchema(db) {
   try { db.exec("ALTER TABLE purchase_returns ADD COLUMN settlement_type TEXT NOT NULL DEFAULT 'account'"); } catch (_) {}
@@ -341,6 +343,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       return getPurchaseWithLines(db, purchaseId);
     })();
 
+    req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`);
     res.status(201).json({ success: true, data: purchase });
   } catch (error) {
     next(error);
@@ -462,6 +465,7 @@ router.post("/:id/return", requirePagePermission("purchases", "add"), (req, res,
       return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(prId);
     })();
 
+    req.audit("create", "purchase_return", { id: purchaseReturn?.id, purchase_id: Number(req.params.id), total: purchaseReturn?.total }, `↩️ تم معالجة مرتجع مشتريات للفاتورة #${req.params.id}`);
     res.status(201).json({ success: true, data: purchaseReturn });
   } catch (error) {
     next(error);
@@ -546,6 +550,7 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
 
       return getPurchaseWithLines(db, purchase.id);
     })();
+    req.audit("edit", "purchase", { id: Number(req.params.id), total: updated?.total }, `📦 تم تعديل مشتريات #${req.params.id}`);
     res.json({ success: true, data: updated });
   } catch (error) { next(error); }
 });
@@ -630,6 +635,7 @@ router.post("/:id/cancel", requirePagePermission("purchases", "add"), (req, res,
     const result = db.transaction(() =>
       cancelPurchaseFn(db, Number(req.params.id), reason.trim(), req.body.user_id || null)
     )();
+    req.audit("cancel", "purchase", { id: Number(req.params.id), reason }, `📦 تم إلغاء مشتريات #${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
@@ -722,6 +728,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
       return { original: getPurchaseWithLines(db, original.id), new_purchase: getPurchaseWithLines(db, newPurchaseId) };
     })();
 
+    req.audit("amend", "purchase", { original_id: Number(req.params.id), new_id: result?.new_purchase?.id }, `📦 تم تعديل (أمندمنت) مشتريات #${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
@@ -773,6 +780,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
 
       db.prepare("UPDATE purchases SET status = 'voided' WHERE id = ?").run(purchase.id);
     })();
+    req.audit("void", "purchase", { id: Number(req.params.id) }, `📦 تم إلغاء (فويد) مشتريات #${req.params.id}`);
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -840,6 +848,7 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
       return getPurchaseReturnWithLines(db, pr.id);
     })();
 
+    req.audit("cancel", "purchase_return", { id: Number(req.params.id), reason: req.body?.reason }, `↩️ تم إلغاء مرتجع مشتريات #${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
@@ -925,6 +934,7 @@ router.put("/returns/:id", requirePagePermission("purchase_returns", "edit"), (r
   ensurePurchaseReturnSettlementSchema(db);
   try {
     const result = editPurchaseReturn(db, Number(req.params.id), req.body || {});
+    req.audit("edit", "purchase_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مشتريات #${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -1006,6 +1016,7 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
       return { original: getPurchaseReturnWithLines(db, original.id), new_return: getPurchaseReturnWithLines(db, newPrId) };
     })();
 
+    req.audit("amend", "purchase_return", { original_id: Number(req.params.id), new_id: result?.new_return?.id }, `↩️ تم تعديل (أمندمنت) مرتجع مشتريات #${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });

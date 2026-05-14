@@ -2,176 +2,137 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
+router.use(auditMutation);
 
 function getSettings() {
   return getDb().prepare("SELECT * FROM settings WHERE id = 1").get();
+}
+
+// Ensure print-setting columns exist in the settings table.
+// Called once at module load so the dynamic buildUpdate() can reference them.
+function ensurePrintColumns() {
+  const db = getDb();
+  const existing = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
+  let added = 0;
+  const add = (col, def) => {
+    if (!existing.includes(col)) {
+      try {
+        db.exec(`ALTER TABLE settings ADD COLUMN ${col} ${def}`);
+        added++;
+      } catch (e) {
+        console.error(`[settings] Failed to add column ${col}:`, e.message);
+      }
+    }
+  };
+  // Log summary to help debug any persistence issues
+  if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
+  add("show_phone",         "INTEGER DEFAULT 1");
+  add("show_address",       "INTEGER DEFAULT 1");
+  add("show_tax_id",        "INTEGER DEFAULT 1");
+  add("show_qr",            "INTEGER DEFAULT 1");
+  add("show_logo",          "INTEGER DEFAULT 1");
+  add("show_subtotal",      "INTEGER DEFAULT 1");
+  add("show_discount_line", "INTEGER DEFAULT 1");
+  add("show_payment_details", "INTEGER DEFAULT 1");
+  add("show_branch",        "INTEGER DEFAULT 1");
+  add("show_invoice_date",  "INTEGER DEFAULT 1");
+  add("show_barcode_line",  "INTEGER DEFAULT 0");
+  add("show_item_code",     "INTEGER DEFAULT 1");
+  add("header_font_size",   "INTEGER DEFAULT 16");
+  add("body_font_size",     "INTEGER DEFAULT 11");
+  add("footer_font_size",   "INTEGER DEFAULT 10");
+  add("item_font_size",     "INTEGER DEFAULT 11");
+  add("logo_max_height",    "INTEGER DEFAULT 48");
+  add("margin_top",         "INTEGER DEFAULT 4");
+  add("margin_side",        "INTEGER DEFAULT 4");
+  add("qr_size",            "INTEGER DEFAULT 44");
+  add("print_font",         "TEXT DEFAULT 'monospace'");
+  add("logo_alignment",     "TEXT DEFAULT 'center'");
+  add("accent_color",       "TEXT DEFAULT '#0f172a'");
+  add("receipt_header",     "TEXT DEFAULT ''");
+  add("return_prefix",      "TEXT DEFAULT 'RET-'");
+  add("work_order_prefix",  "TEXT DEFAULT 'WO-'");
+  add("receipt_prefix",     "TEXT DEFAULT 'REC-'");
+  add("address_font_size",  "INTEGER DEFAULT 9");
+  add("address_alignment",  "TEXT DEFAULT 'right'");
+  add("tax_id_font_size",   "INTEGER DEFAULT 9");
+  add("tax_id_alignment",   "TEXT DEFAULT 'right'");
+}
+
+try { ensurePrintColumns(); } catch (e) { /* DB not ready yet — will be retried on first request */ }
+
+// Also retry on every request to handle the race with DB init
+function ensurePrintColumnsSafe() {
+  try { ensurePrintColumns(); } catch {}
 }
 
 function normalizeBoolean(value) {
   return value ? 1 : 0;
 }
 
+// Column-type metadata: only the columns that need special coercion.
+// Everything else is treated as a plain string.
+const BOOLEAN_PREFIXES = ["show_", "logo_on_"];
+const COLUMN_META = {
+  decimal_places: "int", tax_rate: "int",
+  header_font_size: "int", body_font_size: "int", footer_font_size: "int",
+  item_font_size: "int", logo_max_height: "int", margin_top: "int",
+  margin_side: "int", qr_size: "int", address_font_size: "int",
+  tax_id_font_size: "int",
+  auto_backup_enabled: "bool",
+  logo_on_invoices: "bool", logo_on_receipts: "bool",
+  logo_on_sidebar: "bool", logo_on_reports: "bool",
+};
+
+function isBoolCol(name) {
+  if (COLUMN_META[name] === "bool") return true;
+  return BOOLEAN_PREFIXES.some(p => name.startsWith(p));
+}
+
+function isIntCol(name) {
+  if (isBoolCol(name)) return false; // bools are also integers in SQLite but need normalizeBoolean
+  return COLUMN_META[name] === "int";
+}
+
+// Coerce a single column value for binding
+function coerceVal(col, raw) {
+  if (raw === undefined || raw === null) return null;
+  if (isBoolCol(col)) return normalizeBoolean(raw !== false && raw !== 0 && raw !== "false" && raw !== "0");
+  if (isIntCol(col)) return Number(raw);
+  return raw;
+}
+
+// Build a dynamic UPDATE statement + params from the current row's columns
+function buildUpdate(current, updates) {
+  const next = { ...current, ...updates };
+  const skip = new Set(["id", "created_at", "updated_at"]);
+  const cols = Object.keys(current).filter(k => !skip.has(k));
+  const setClauses = cols.map(c => `${c} = ?`);
+  const params = cols.map(c => coerceVal(c, next[c]));
+  const sql = `UPDATE settings SET ${setClauses.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = 1`;
+  return { sql, params };
+}
+
 router.get("/", authRequired, requirePagePermission("settings", "view"), (_req, res) => {
+  ensurePrintColumnsSafe();
   res.json({ success: true, data: getSettings() });
 });
 
 router.put("/", authRequired, requirePagePermission("settings", "edit"), requireRole("admin"), (req, res) => {
+  ensurePrintColumnsSafe();
   const current = getSettings();
-  const payload = req.body || {};
-  const next = { ...current, ...payload };
-
-  getDb()
-    .prepare(
-      `UPDATE settings
-       SET company_name = ?,
-           company_name_en = ?,
-           branch_name = ?,
-           branch_code = ?,
-           address = ?,
-           phone = ?,
-           vat_number = ?,
-           commercial_register = ?,
-           currency_code = ?,
-           currency_symbol = ?,
-           decimal_places = ?,
-           tax_rate = ?,
-           tax_type = ?,
-           invoice_prefix = ?,
-           purchase_prefix = ?,
-           fiscal_year_start = ?,
-           date_format = ?,
-           language = ?,
-           receipt_width = ?,
-           receipt_footer = ?,
-            show_cashier_name = ?,
-            show_customer_name = ?,
-            show_tax = ?,
-            show_footer = ?,
-            app_name = ?,
-            app_subtitle = ?,
-            logo_url = ?,
-            logo_on_invoices = ?,
-            logo_on_receipts = ?,
-            logo_on_sidebar = ?,
-            logo_on_reports = ?,
-            auto_backup_enabled = ?,
-            auto_backup_path = ?,
-            default_pos_view = ?,
-            additional_addresses = ?,
-            additional_phones = ?,
-            address_position = ?,
-            show_phone = ?,
-            show_address = ?,
-            show_tax_id = ?,
-            show_qr = ?,
-            show_logo = ?,
-            show_subtotal = ?,
-            show_discount_line = ?,
-            show_payment_details = ?,
-            show_branch = ?,
-            show_invoice_date = ?,
-            show_barcode_line = ?,
-            show_item_code = ?,
-            header_font_size = ?,
-            body_font_size = ?,
-            footer_font_size = ?,
-            item_font_size = ?,
-            logo_max_height = ?,
-            margin_top = ?,
-            margin_side = ?,
-            qr_size = ?,
-            print_font = ?,
-            logo_alignment = ?,
-            accent_color = ?,
-            receipt_header = ?,
-            return_prefix = ?,
-            work_order_prefix = ?,
-            receipt_prefix = ?,
-            address_font_size = ?,
-            address_alignment = ?,
-            tax_id_font_size = ?,
-            tax_id_alignment = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = 1`,
-    )
-    .run(
-      next.company_name || null,
-      next.company_name_en || null,
-      next.branch_name || null,
-      next.branch_code || null,
-      next.address || null,
-      next.phone || null,
-      next.vat_number || null,
-      next.commercial_register || null,
-      next.currency_code || "EGP",
-      next.currency_symbol || "EGP",
-      Number(next.decimal_places ?? 2),
-      Number(next.tax_rate || 0),
-      next.tax_type || "none",
-      next.invoice_prefix || "INV-",
-      next.purchase_prefix || "PUR-",
-      next.fiscal_year_start || "January",
-      next.date_format || "dd/MM/yyyy",
-      next.language || "ar",
-      next.receipt_width || "80mm",
-      next.receipt_footer || null,
-      normalizeBoolean(next.show_cashier_name !== false),
-      normalizeBoolean(next.show_customer_name !== false),
-      normalizeBoolean(next.show_tax !== false),
-      normalizeBoolean(next.show_footer !== false),
-      next.app_name || null,
-      next.app_subtitle || null,
-      next.logo_url || null,
-      normalizeBoolean(next.logo_on_invoices !== false),
-      normalizeBoolean(next.logo_on_receipts !== false),
-      normalizeBoolean(next.logo_on_sidebar !== false),
-      normalizeBoolean(next.logo_on_reports !== false),
-      normalizeBoolean(next.auto_backup_enabled),
-      next.auto_backup_path || null,
-      next.default_pos_view || "detailed",
-      next.additional_addresses || "[]",
-      next.additional_phones || "[]",
-      next.address_position || "top",
-      normalizeBoolean(next.show_phone !== false),
-      normalizeBoolean(next.show_address !== false),
-      normalizeBoolean(next.show_tax_id !== false),
-      normalizeBoolean(next.show_qr !== false),
-      normalizeBoolean(next.show_logo !== false),
-      normalizeBoolean(next.show_subtotal !== false),
-      normalizeBoolean(next.show_discount_line !== false),
-      normalizeBoolean(next.show_payment_details !== false),
-      normalizeBoolean(next.show_branch !== false),
-      normalizeBoolean(next.show_invoice_date !== false),
-      normalizeBoolean(next.show_barcode_line === true),
-      normalizeBoolean(next.show_item_code !== false),
-      Number(next.header_font_size ?? 16),
-      Number(next.body_font_size ?? 11),
-      Number(next.footer_font_size ?? 10),
-      Number(next.item_font_size ?? 11),
-      Number(next.logo_max_height ?? 48),
-      Number(next.margin_top ?? 4),
-      Number(next.margin_side ?? 4),
-      Number(next.qr_size ?? 44),
-      next.print_font || "monospace",
-      next.logo_alignment || "center",
-      next.accent_color || "#0f172a",
-      next.receipt_header || null,
-      next.return_prefix || "RET-",
-      next.work_order_prefix || "WO-",
-      next.receipt_prefix || "REC-",
-      Number(next.address_font_size ?? 9),
-      next.address_alignment || "right",
-      Number(next.tax_id_font_size ?? 9),
-      next.tax_id_alignment || "right",
-    );
-
+  const { sql, params } = buildUpdate(current, req.body || {});
+  getDb().prepare(sql).run(...params);
+  req.audit("edit", "settings", req.body || {}, `⚙️ تم تحديث الإعدادات`);
   res.json({ success: true, data: getSettings() });
 });
 
 // Bulk update settings - accepts array of { setting_key, setting_value }
 router.post("/bulk", authRequired, requirePagePermission("settings", "add"), requireRole("admin"), (req, res) => {
+  ensurePrintColumnsSafe();
   const { settings } = req.body || {};
   if (!Array.isArray(settings) || settings.length === 0) {
     return res.status(400).json({ success: false, message: "Settings array is required" });
@@ -203,153 +164,21 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
     return res.json({ success: true, data: current });
   }
 
-  // Merge with current and update
-  const next = { ...current, ...updates };
-  
-  db.prepare(
-    `UPDATE settings
-     SET company_name = ?,
-         company_name_en = ?,
-         branch_name = ?,
-         branch_code = ?,
-         address = ?,
-         phone = ?,
-         vat_number = ?,
-         commercial_register = ?,
-         currency_code = ?,
-         currency_symbol = ?,
-         decimal_places = ?,
-         tax_rate = ?,
-         tax_type = ?,
-         invoice_prefix = ?,
-         purchase_prefix = ?,
-         fiscal_year_start = ?,
-         date_format = ?,
-         language = ?,
-         receipt_width = ?,
-         receipt_footer = ?,
-          show_cashier_name = ?,
-          show_customer_name = ?,
-          show_tax = ?,
-          show_footer = ?,
-          app_name = ?,
-          app_subtitle = ?,
-          logo_url = ?,
-          logo_on_invoices = ?,
-          logo_on_receipts = ?,
-          logo_on_sidebar = ?,
-          logo_on_reports = ?,
-          auto_backup_enabled = ?,
-          auto_backup_path = ?,
-          default_pos_view = ?,
-          additional_addresses = ?,
-          additional_phones = ?,
-          address_position = ?,
-          show_phone = ?,
-          show_address = ?,
-          show_tax_id = ?,
-          show_qr = ?,
-          show_logo = ?,
-          show_subtotal = ?,
-          show_discount_line = ?,
-          show_payment_details = ?,
-          show_branch = ?,
-          show_invoice_date = ?,
-          show_barcode_line = ?,
-          show_item_code = ?,
-          header_font_size = ?,
-          body_font_size = ?,
-          footer_font_size = ?,
-          item_font_size = ?,
-          logo_max_height = ?,
-          margin_top = ?,
-          margin_side = ?,
-          qr_size = ?,
-          print_font = ?,
-          logo_alignment = ?,
-          accent_color = ?,
-          receipt_header = ?,
-          return_prefix = ?,
-          work_order_prefix = ?,
-          receipt_prefix = ?,
-          address_font_size = ?,
-          address_alignment = ?,
-          tax_id_font_size = ?,
-          tax_id_alignment = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = 1`,
-  ).run(
-    next.company_name || null,
-    next.company_name_en || null,
-    next.branch_name || null,
-    next.branch_code || null,
-    next.address || null,
-    next.phone || null,
-    next.vat_number || null,
-    next.commercial_register || null,
-    next.currency_code || "EGP",
-    next.currency_symbol || "EGP",
-    Number(next.decimal_places ?? 2),
-    Number(next.tax_rate || 0),
-    next.tax_type || "none",
-    next.invoice_prefix || "INV-",
-    next.purchase_prefix || "PUR-",
-    next.fiscal_year_start || "January",
-    next.date_format || "dd/MM/yyyy",
-    next.language || "ar",
-    next.receipt_width || "80mm",
-    next.receipt_footer || null,
-    normalizeBoolean(next.show_cashier_name !== false),
-    normalizeBoolean(next.show_customer_name !== false),
-    normalizeBoolean(next.show_tax !== false),
-    normalizeBoolean(next.show_footer !== false),
-    next.app_name || null,
-    next.app_subtitle || null,
-    next.logo_url || null,
-    normalizeBoolean(next.logo_on_invoices !== false),
-    normalizeBoolean(next.logo_on_receipts !== false),
-    normalizeBoolean(next.logo_on_sidebar !== false),
-    normalizeBoolean(next.logo_on_reports !== false),
-    normalizeBoolean(next.auto_backup_enabled),
-    next.auto_backup_path || null,
-    next.default_pos_view || "detailed",
-    next.additional_addresses || "[]",
-    next.additional_phones || "[]",
-    next.address_position || "top",
-    normalizeBoolean(next.show_phone !== false),
-    normalizeBoolean(next.show_address !== false),
-    normalizeBoolean(next.show_tax_id !== false),
-    normalizeBoolean(next.show_qr !== false),
-    normalizeBoolean(next.show_logo !== false),
-    normalizeBoolean(next.show_subtotal !== false),
-    normalizeBoolean(next.show_discount_line !== false),
-    normalizeBoolean(next.show_payment_details !== false),
-    normalizeBoolean(next.show_branch !== false),
-    normalizeBoolean(next.show_invoice_date !== false),
-    normalizeBoolean(next.show_barcode_line === true),
-    normalizeBoolean(next.show_item_code !== false),
-    Number(next.header_font_size ?? 16),
-    Number(next.body_font_size ?? 11),
-    Number(next.footer_font_size ?? 10),
-    Number(next.item_font_size ?? 11),
-    Number(next.logo_max_height ?? 48),
-    Number(next.margin_top ?? 4),
-    Number(next.margin_side ?? 4),
-    Number(next.qr_size ?? 44),
-    next.print_font || "monospace",
-    next.logo_alignment || "center",
-    next.accent_color || "#0f172a",
-    next.receipt_header || null,
-    next.return_prefix || "RET-",
-    next.work_order_prefix || "WO-",
-    next.receipt_prefix || "REC-",
-    Number(next.address_font_size ?? 9),
-    next.address_alignment || "right",
-    Number(next.tax_id_font_size ?? 9),
-    next.tax_id_alignment || "right",
-  );
+  // Use the same dynamic buildUpdate to generate SQL + params from actual table columns
+  const { sql, params } = buildUpdate(current, updates);
+  db.prepare(sql).run(...params);
 
+  req.audit("bulk_edit", "settings", updates, `⚙️ تم تحديث إعدادات متعددة (${Object.keys(updates).length} إعداد)`);
   res.json({ success: true, data: getSettings() });
+});
+
+// Diagnostic endpoint: check which settings columns exist and what their values are
+// Only accessible to admin, returns DB state for debugging save issues
+router.get("/debug", authRequired, requireRole("admin"), (_req, res) => {
+  const db = getDb();
+  const cols = db.prepare("PRAGMA table_info(settings)").all().map(c => ({ name: c.name, type: c.type, dflt: c.dflt_value }));
+  const row = getSettings();
+  res.json({ success: true, columnCount: cols.length, columns: cols, row });
 });
 
 router.get("/default-user-permissions", authRequired, (req, res, next) => {
@@ -389,6 +218,7 @@ router.put("/default-user-permissions", authRequired, (req, res, next) => {
       .prepare("INSERT INTO settings_kv (key, value) VALUES ('default_user_permissions', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .run(permissionsJson);
 
+    req.audit("edit", "default_user_permissions", {}, `⚙️ تم تحديث الصلاحيات الافتراضية للمستخدمين`);
     res.json({ success: true, data: permissions });
   } catch (error) {
     next(error);

@@ -4,10 +4,12 @@ const { getDb } = require("../config/database");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("users", "view"), (_req, res) => {
   const rows = getDb()
@@ -51,10 +53,9 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
       "INSERT INTO users (full_name, username, password_hash, role, can_view_updates) VALUES (?, ?, ?, ?, ?)"
     ).run(full_name, username, password, role, can_view_updates);
 
-    res.status(201).json({
-      success: true,
-      data: db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(info.lastInsertRowid),
-    });
+    const newUser = db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(info.lastInsertRowid);
+    req.audit("create", "user", { id: newUser.id, username: newUser.username }, `👤 تم إنشاء مستخدم: ${username}`);
+    res.status(201).json({ success: true, data: newUser });
   } catch (error) {
     next(error);
   }
@@ -125,11 +126,9 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
       ).run(full_name, username, role, is_active, can_view_updates, req.params.id);
     }
 
-    res.json({
-      success: true,
-      data: db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?")
-        .get(req.params.id),
-    });
+    const updatedUser = db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(req.params.id);
+    req.audit("edit", "user", { id: Number(req.params.id), username: updatedUser.username }, `👤 تم تعديل مستخدم: ${updatedUser.username}`);
+    res.json({ success: true, data: updatedUser });
   } catch (error) {
     next(error);
   }
@@ -203,6 +202,7 @@ router.put("/:id/permissions", (req, res, next) => {
       .prepare("UPDATE users SET page_permissions = ? WHERE id = ?")
       .run(permissionsJson, req.params.id);
 
+    req.audit("edit_permissions", "user", { target_user_id: Number(req.params.id) }, `👤 تم تعديل صلاحيات المستخدم #${req.params.id}`);
     res.json({ success: true, data: permissions });
   } catch (error) {
     next(error);

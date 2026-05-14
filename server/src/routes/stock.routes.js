@@ -3,10 +3,12 @@ const { getDb } = require("../config/database");
 const { transferStock } = require("../services/stockTransferService");
 const { adjustStock } = require("../services/stockService");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function getSessionWithLines(db, sessionId) {
   const session = db
@@ -217,6 +219,7 @@ router.post("/transfer", requirePagePermission("stock_transfer", "add"), (req, r
   try {
     const { item_id, from_warehouse_id, to_warehouse_id, quantity, notes } = req.body || {};
     const result = transferStock({ item_id, from_warehouse_id, to_warehouse_id, quantity, notes });
+    req.audit("transfer", "stock", { item_id, from_warehouse_id, to_warehouse_id, quantity }, `🔄 تم نقل مخزون: صنف #${item_id} (${quantity} وحدة) من مستودع #${from_warehouse_id} إلى #${to_warehouse_id}`);
     res.json({ success: true, data: result });
   } catch (error) {
     next(error);
@@ -240,6 +243,7 @@ router.post("/transfer/bulk", requirePagePermission("stock_transfer", "add"), (r
         errors.push({ item_id: it.item_id, message: e.message });
       }
     }
+    req.audit("bulk_transfer", "stock", { from_warehouse_id, to_warehouse_id, count: results.length }, `🔄 تم نقل مخزون مجمّع (${results.length} صنف) من مستودع #${from_warehouse_id} إلى #${to_warehouse_id}`);
     res.json({ success: true, transferred: results.length, errors });
   } catch (error) {
     next(error);
@@ -282,6 +286,7 @@ router.post("/adjust", requirePagePermission("stock_transfer", "add"), (req, res
           .run(itemId, warehouseId, nextQty);
       }
     }
+    req.audit("adjust", "stock", { item_id: itemId, warehouse_id: warehouseId, from: currentQty, to: nextQty }, `🔄 تم تعديل مخزون صنف #${itemId} في مستودع #${warehouseId}: ${currentQty} ← ${nextQty}`);
     res.json({ success: true, data: { item_id: itemId, warehouse_id: warehouseId, quantity: nextQty } });
   } catch (error) {
     next(error);

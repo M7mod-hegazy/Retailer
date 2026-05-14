@@ -3,10 +3,12 @@ const { getDb } = require("../config/database");
 const { recalculateInvoiceStatus } = require("../services/invoiceService");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function getOpenInvoices(db, partyType, partyId) {
   if (partyType !== "customer") return [];
@@ -178,6 +180,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       return db.prepare("SELECT * FROM payments WHERE id = ?").get(paymentResult.lastInsertRowid);
     })();
 
+    req.audit("create", "payment", { id: payment?.id, amount: payment?.amount, party_type: payment?.party_type, party_id: payment?.party_id }, `💰 تم تسجيل دفعة بمبلغ ${payment?.amount} (${payment?.party_type === "supplier" ? "مورد" : "عميل"} #${payment?.party_id})`);
     res.status(201).json({ success: true, data: payment });
   } catch (error) {
     next(error);

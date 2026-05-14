@@ -5,7 +5,10 @@ const { issueToken, authRequired, requireRole } = require("../middleware/auth");
 const { UserModel } = require("../models/user.model");
 const { getDb } = require("../config/database");
 
+const { auditMutation } = require("../middleware/audit");
+
 const router = express.Router();
+router.use(auditMutation);
 
 const loginAttempts = new Map(); // GAP-03 Track failed logins
 
@@ -98,6 +101,10 @@ router.post("/login", (req, res, next) => {
   // Reset on success
   loginAttempts.delete(normalizedUsername);
 
+  // Temporarily set req.user so audit records the correct user_id
+  req.user = { id: user.id };
+  req.audit("login", "auth", { username: user.username }, `👤 تسجيل دخول: ${user.username}`);
+
   const token = issueToken(user);
   return res.json({ success: true, data: { token, user: { id: user.id, username: user.username, role: user.role, page_permissions: user.page_permissions, can_view_updates: Boolean(user.can_view_updates) } } });
 });
@@ -119,6 +126,7 @@ router.post("/change-password", authRequired, (req, res, next) => {
 
   const hash = bcrypt.hashSync(newPassword, 10);
   getDb().prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, req.user.id);
+  req.audit("change_password", "auth", { user_id: req.user.id }, `👤 تم تغيير كلمة المرور للمستخدم #${req.user.id}`);
   return res.json({ success: true, data: { changed: true } });
 });
 
