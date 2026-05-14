@@ -6,6 +6,7 @@ const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessi
 const { recalculateWACC } = require("../services/waccService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -344,6 +345,14 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
     })();
 
     req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`);
+    try {
+      NotificationModel.create({
+        title: "📦 تم استلام مشتريات",
+        body: `تم تسجيل مشتريات جديدة #${purchase?.id}`,
+        type: "info",
+        link: `/purchases/${purchase?.id}`,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: purchase });
   } catch (error) {
     next(error);

@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 router.use(authRequired);
@@ -38,11 +39,30 @@ router.post("/close", requirePagePermission("pos", "add"), (req, res, next) => {
       error.status = 404;
       throw error;
     }
+    const closingCash = Number(req.body?.closing_cash || 0);
     db.prepare("UPDATE shifts SET status='closed', closed_at=CURRENT_TIMESTAMP, closing_cash=? WHERE id=?").run(
-      Number(req.body?.closing_cash || 0),
+      closingCash,
       shiftId,
     );
-    res.json({ success: true, data: db.prepare("SELECT * FROM shifts WHERE id = ?").get(shiftId) });
+    const closedShift = db.prepare("SELECT * FROM shifts WHERE id = ?").get(shiftId);
+    // Detect cash discrepancy
+    try {
+      const openingCash = Number(closedShift.opening_cash || 0);
+      const cashSales = db.prepare("SELECT COALESCE(SUM(total), 0) AS val FROM invoices WHERE shift_id = ? AND payment_type IN ('cash', 'multi')").get(shiftId)?.val || 0;
+      const payIns = db.prepare("SELECT COALESCE(SUM(amount), 0) AS val FROM shift_transactions WHERE shift_id = ? AND transaction_type = 'pay_in'").get(shiftId)?.val || 0;
+      const payOuts = db.prepare("SELECT COALESCE(SUM(amount), 0) AS val FROM shift_transactions WHERE shift_id = ? AND transaction_type = 'pay_out'").get(shiftId)?.val || 0;
+      const expectedCash = openingCash + cashSales + payIns - payOuts;
+      const diff = Math.round((closingCash - expectedCash) * 100) / 100;
+      if (diff !== 0) {
+        NotificationModel.create({
+          title: "🔁 فرق في إغلاق الوردية",
+          body: `فرق نقدي: ${diff} ج`,
+          type: "warning",
+          link: `/shifts`,
+        });
+      }
+    } catch (_) {}
+    res.json({ success: true, data: closedShift });
   } catch (error) {
     next(error);
   }

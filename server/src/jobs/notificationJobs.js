@@ -40,4 +40,55 @@ function startAuditLogCleanupJob() {
   return cron.schedule("0 2 * * *", cleanupAuditLogs, { scheduled: true });
 }
 
-module.exports = { scanAndCreateNotifications, startNotificationJobs, cleanupAuditLogs, startAuditLogCleanupJob };
+function scanOverdueDebts() {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Find overdue debts (due_date < today, status open, not voided)
+  const overdueDebts = db.prepare(`
+    SELECT ad.id, ad.invoice_id, ad.supplier_id, ad.customer_id,
+           ad.original_amount, ad.paid_amount, ad.due_date, ad.party_type, ad.source_type,
+           COALESCE(c.name, s.name) AS party_name
+    FROM ajal_debts ad
+    LEFT JOIN customers c ON c.id = ad.customer_id AND ad.party_type = 'customer'
+    LEFT JOIN suppliers s ON s.id = ad.supplier_id AND ad.party_type = 'supplier'
+    WHERE ad.status = 'open'
+      AND ad.due_date IS NOT NULL
+      AND date(ad.due_date) < date(?)
+  `).all(today);
+
+  for (const debt of overdueDebts) {
+    // Deduplicate: skip if a notification for this debt was already created today
+    const alreadyNotified = db.prepare(`
+      SELECT id FROM notifications
+      WHERE title LIKE '%متأخر%'
+        AND body LIKE ?
+        AND date(created_at) = date(?)
+    `).get(`%#${debt.id}%`, today);
+
+    if (alreadyNotified) continue;
+
+    const remaining = Math.max(0, Number(debt.original_amount) - Number(debt.paid_amount || 0));
+    const partyName = debt.party_name || (debt.party_type === "supplier" ? `مورد #${debt.supplier_id}` : `عميل #${debt.customer_id}`);
+
+    NotificationModel.create({
+      title: "⏰ دين متأخر السداد",
+      body: `دين #${debt.id} (${partyName}) — متبقي ${remaining} ج — استحق في ${debt.due_date}`,
+      type: "warning",
+      link: `/ajal`,
+    });
+  }
+}
+
+function startOverdueDebtsJob() {
+  return cron.schedule("0 8 * * *", scanOverdueDebts, { scheduled: true });
+}
+
+module.exports = {
+  scanAndCreateNotifications,
+  startNotificationJobs,
+  cleanupAuditLogs,
+  startAuditLogCleanupJob,
+  scanOverdueDebts,
+  startOverdueDebtsJob,
+};

@@ -11,8 +11,8 @@ function unreadCount() {
 function create(payload = {}) {
   const db = getDb();
   const info = db
-    .prepare("INSERT INTO notifications (title, body, type, is_read) VALUES (?, ?, ?, 0)")
-    .run(payload.title, payload.body, payload.type || "info");
+    .prepare("INSERT INTO notifications (title, body, type, is_read, link) VALUES (?, ?, ?, 0, ?)")
+    .run(payload.title, payload.body, payload.type || "info", payload.link || null);
   return db.prepare("SELECT * FROM notifications WHERE id = ?").get(info.lastInsertRowid);
 }
 

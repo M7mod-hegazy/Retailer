@@ -5,6 +5,7 @@ const { authRequired, requireRole } = require("../middleware/auth");
 const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 
@@ -55,6 +56,14 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
 
     const newUser = db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(info.lastInsertRowid);
     req.audit("create", "user", { id: newUser.id, username: newUser.username }, `👤 تم إنشاء مستخدم: ${username}`);
+    try {
+      NotificationModel.create({
+        title: "👤 مستخدم جديد",
+        body: `تم إنشاء المستخدم: ${username}`,
+        type: "info",
+        link: `/definitions/users`,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: newUser });
   } catch (error) {
     next(error);

@@ -3,7 +3,7 @@ const cron = require("node-cron");
 const { createApp } = require("./app");
 const { initDb, getDb } = require("./config/database");
 const { performBackup } = require("./services/backupService");
-const { startNotificationJobs, startAuditLogCleanupJob } = require("./jobs/notificationJobs");
+const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob } = require("./jobs/notificationJobs");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const logger = require("./config/logger");
 
@@ -97,6 +97,7 @@ function startServer() {
 
       startNotificationJobs();
       startAuditLogCleanupJob();
+      startOverdueDebtsJob();
 
       // Server is ready — resolve the promise
       resolve(server);

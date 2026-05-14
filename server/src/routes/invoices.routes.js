@@ -5,6 +5,7 @@ const { adjustStock } = require("../services/stockService");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -292,6 +293,18 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const payload = { ...(req.body || {}), user_id: req.user?.id || null };
   const invoice = createInvoice(payload);
   req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`);
+  // Notify on large discount (> 20%)
+  try {
+    const discount = Number(payload.discount_percent || 0);
+    if (discount > 20 && invoice?.id) {
+      NotificationModel.create({
+        title: "💸 خصم كبير مطبق",
+        body: `خصم ${discount}% على الفاتورة #${invoice.id}`,
+        type: "warning",
+        link: `/invoices/${invoice.id}`,
+      });
+    }
+  } catch (_) {}
   res.status(201).json({ success: true, data: invoice });
 });
 
@@ -299,6 +312,14 @@ router.post("/:id/return", requirePagePermission("pos", "add"), (req, res, next)
   try {
     const salesReturn = createReturn(Number(req.params.id), req.body || {});
     req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`);
+    try {
+      NotificationModel.create({
+        title: "↩️ تم معالجة مرتجع",
+        body: `مرتجع جديد #${salesReturn?.id}`,
+        type: "info",
+        link: `/invoices`,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: salesReturn });
   } catch (error) {
     next(error);
@@ -315,6 +336,14 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
     const { voidInvoice } = require("../services/invoiceService");
     const voided = voidInvoice(Number(req.params.id), req.body.reason, req.user?.id || 1);
     req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`);
+    try {
+      NotificationModel.create({
+        title: "🧾 تم إلغاء فاتورة",
+        body: `تم إلغاء الفاتورة رقم #${req.params.id}`,
+        type: "warning",
+        link: `/invoices/${req.params.id}`,
+      });
+    } catch (_) {}
     res.json({ success: true, data: voided });
   } catch (error) {
     next(error);
