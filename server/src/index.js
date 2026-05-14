@@ -3,6 +3,7 @@ const cron = require("node-cron");
 const { createApp } = require("./app");
 const { initDb, getDb } = require("./config/database");
 const { performBackup } = require("./services/backupService");
+const { startNotificationJobs, startAuditLogCleanupJob } = require("./jobs/notificationJobs");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const logger = require("./config/logger");
 
@@ -93,6 +94,9 @@ function startServer() {
           logger.error("Auto-backup failed:", e);
         }
       });
+
+      startNotificationJobs();
+      startAuditLogCleanupJob();
 
       // Server is ready — resolve the promise
       resolve(server);
