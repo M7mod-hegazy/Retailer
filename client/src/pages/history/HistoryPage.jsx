@@ -18,6 +18,12 @@ const ACTION_OPTIONS = [
   { value: "adjust", label: "تسوية" },
 ];
 
+const ACTION_LABELS = {
+  create: "إنشاء", edit: "تعديل", void: "إلغاء", cancel: "رفض",
+  login: "تسجيل دخول", delete: "حذف", transfer: "تحويل", adjust: "تسوية",
+  update: "تحديث", amend: "تعديل",
+};
+
 const RESOURCE_OPTIONS = [
   { value: "", label: "الكل" },
   { value: "invoices", label: "الفواتير" },
@@ -29,6 +35,13 @@ const RESOURCE_OPTIONS = [
   { value: "auth", label: "المصادقة" },
   { value: "returns", label: "المرتجعات" },
 ];
+
+const RESOURCE_LABELS = {
+  invoices: "الفواتير", purchases: "المشتريات", stock: "المخزون",
+  payments: "المدفوعات", settings: "الإعدادات", users: "المستخدمين",
+  auth: "المصادقة", returns: "المرتجعات", shifts: "الورديات",
+  "purchase-orders": "أوامر الشراء", expenses: "المصروفات", revenues: "الإيرادات",
+};
 
 export default function HistoryPage() {
   const { t } = useTranslation();
@@ -246,14 +259,20 @@ export default function HistoryPage() {
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-zinc-50/60 transition-colors">
                     <td className="px-4 py-3 text-zinc-800 font-semibold max-w-xs">
-                      <span className="line-clamp-2">{log.description}</span>
+                      {log.description
+                        ? <span className="line-clamp-2">{log.description}</span>
+                        : <span className="text-zinc-400 text-xs">
+                            {ACTION_LABELS[log.action] || log.action || "—"}
+                            {log.resource ? ` · ${RESOURCE_LABELS[log.resource] || log.resource}` : ""}
+                          </span>
+                      }
                     </td>
                     <td className="px-4 py-3 text-zinc-600 font-semibold whitespace-nowrap">
-                      {log.username || log.user_name || "—"}
+                      {log.username || log.full_name || "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-block rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-black text-zinc-600">
-                        {log.resource || log.action || "—"}
+                        {RESOURCE_LABELS[log.resource] || log.resource || RESOURCE_LABELS[log.action] || log.action || "—"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-zinc-500 text-xs font-semibold whitespace-nowrap" dir="ltr">
