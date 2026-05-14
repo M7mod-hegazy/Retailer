@@ -3,6 +3,7 @@ const { authRequired } = require("../middleware/auth");
 const {
   activateLicense,
   exportLicenseDiagnostics,
+  getHardwareFingerprint,
   getLicenseStatusSummary,
   isLicenseFeatureEnabled,
   refreshLicenseActivation,
@@ -45,6 +46,10 @@ router.post("/refresh", authRequired, async (_req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+router.get("/hardware-id", (_req, res) => {
+  res.json({ success: true, data: { hardware_id: getHardwareFingerprint() } });
 });
 
 router.get("/diagnostics", authRequired, (req, res, next) => {

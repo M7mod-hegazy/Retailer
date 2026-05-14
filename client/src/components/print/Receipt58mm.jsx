@@ -10,6 +10,19 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
   const paid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const change = paid - subtotal;
   const remaining = subtotal - paid;
+  const extraAddresses = (() => { try { return JSON.parse(settings.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(settings.additional_phones || '[]'); } catch { return []; } })();
+  const addressAtBottom = settings.address_position === 'bottom';
+
+  const AddressBlock = () => (
+    <>
+      {settings.address && <div>{settings.address}</div>}
+      {extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`}>{a}</div>)}
+      {settings.phone && <div>هاتف: {settings.phone}</div>}
+      {extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`}>هاتف: {p}</div>)}
+      {settings.tax_id && <div>الرقم الضريبي: {settings.tax_id}</div>}
+    </>
+  );
 
   return (
     <div
@@ -35,6 +48,7 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
         ) : null}
         <div style={{ fontWeight: "bold", fontSize: "14px" }}>{settings.company_name || "ElHegazi Retailer"}</div>
         <div style={{ fontSize: "10px" }}>{invoice.invoice_no || invoice.invoice_number || "INV-0001"}</div>
+        {!addressAtBottom && <AddressBlock />}
       </div>
       <div style={{ borderTop: "1px dashed #000", margin: "6px 0" }} />
       {lines.map((line, index) => (
@@ -70,6 +84,12 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
       <div style={{ marginTop: "8px", textAlign: "center", fontSize: "9px" }}>
         {settings.receipt_footer || "شكراً لزيارتكم"}
       </div>
+
+      {addressAtBottom && (
+        <div style={{ marginTop: "6px", borderTop: "1px dashed #000", paddingTop: "6px", fontSize: "10px", textAlign: "center" }}>
+          <AddressBlock />
+        </div>
+      )}
     </div>
   );
 });

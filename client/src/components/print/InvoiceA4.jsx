@@ -18,6 +18,8 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
   const paid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const change = paid - grandTotal;
   const remaining = grandTotal - paid;
+  const extraAddresses = (() => { try { return JSON.parse(settings.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(settings.additional_phones || '[]'); } catch { return []; } })();
 
   return (
     <div
@@ -37,8 +39,10 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
           ) : null}
           <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e40af", margin: 0 }}>{settings.company_name}</h1>
           {settings.company_name_en && <p style={{ margin: "2px 0", color: "#666" }}>{settings.company_name_en}</p>}
-          <p style={{ margin: "2px 0", fontSize: "12px" }}>{settings.address}</p>
-          <p style={{ margin: "2px 0", fontSize: "12px" }}>هاتف: {settings.phone}</p>
+          {settings.address && <p style={{ margin: "2px 0", fontSize: "12px" }}>{settings.address}</p>}
+          {extraAddresses.filter(Boolean).map((a, i) => <p key={`addr-${i}`} style={{ margin: "2px 0", fontSize: "12px" }}>{a}</p>)}
+          {settings.phone && <p style={{ margin: "2px 0", fontSize: "12px" }}>هاتف: {settings.phone}</p>}
+          {extraPhones.filter(Boolean).map((p, i) => <p key={`ph-${i}`} style={{ margin: "2px 0", fontSize: "12px" }}>هاتف: {p}</p>)}
           {settings.tax_id && <p style={{ margin: "2px 0", fontSize: "12px" }}>الرقم الضريبي: {settings.tax_id}</p>}
         </div>
         <div style={{ textAlign: "center" }}>

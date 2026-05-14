@@ -13,11 +13,55 @@ const logger = require("./config/logger");
  * This is required by the Electron main process to avoid opening
  * the browser window before the API is ready.
  */
+function ensureDefaultsExist() {
+  const db = getDb();
+
+  db.prepare("UPDATE settings SET wizard_completed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1").run();
+
+  const warehouse = db.prepare("SELECT id FROM warehouses LIMIT 1").get();
+  if (!warehouse) {
+    const result = db
+      .prepare("INSERT INTO warehouses (name, code, is_default) VALUES (?, ?, 1)")
+      .run("المخزن الرئيسي", "MAIN");
+    db.prepare("UPDATE settings SET default_warehouse_id = ? WHERE id = 1").run(result.lastInsertRowid);
+  }
+
+  const treasury = db.prepare("SELECT id FROM treasuries LIMIT 1").get();
+  if (!treasury) {
+    const result = db
+      .prepare("INSERT INTO treasuries (name, code, balance) VALUES (?, ?, ?)")
+      .run("الخزنة الرئيسية", "CASH", 0);
+    db.prepare("UPDATE settings SET default_treasury_id = ? WHERE id = 1").run(result.lastInsertRowid);
+  }
+
+  const customer = db.prepare("SELECT id FROM customers LIMIT 1").get();
+  if (!customer) {
+    const result = db
+      .prepare("INSERT INTO customers (name, phone, opening_balance, is_active) VALUES (?, ?, 0, 1)")
+      .run("زبون نقدي", null);
+    db.prepare("UPDATE settings SET walk_in_customer_id = ? WHERE id = 1").run(result.lastInsertRowid);
+  }
+
+  const current = db.prepare("SELECT * FROM settings WHERE id = 1").get();
+  if (!current?.currency_code) {
+    db.prepare(
+      `UPDATE settings SET
+       currency_code = 'EGP', currency_symbol = 'ج.م',
+       decimal_places = 2, tax_type = 'none', tax_rate = 0,
+       invoice_prefix = 'INV-', purchase_prefix = 'PUR-',
+       fiscal_year_start = 'January', date_format = 'dd/MM/yyyy',
+       language = 'ar', receipt_width = '80mm',
+       updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
+    ).run();
+  }
+}
+
 function startServer() {
   return new Promise((resolve, reject) => {
     try {
       initDb(process.env.DB_PATH);
       ensureSystemOwnerAccount();
+      ensureDefaultsExist();
     } catch (err) {
       return reject(new Error(`Database init failed: ${err.message}`));
     }

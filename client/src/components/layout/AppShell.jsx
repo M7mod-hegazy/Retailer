@@ -74,6 +74,18 @@ export default function AppShell({ children }) {
     document.title = branding.title;
   }, [branding.title]);
 
+  useEffect(() => {
+    const existing = document.querySelector('link[rel="icon"]');
+    if (branding.logoUrl) {
+      const link = existing || document.createElement('link');
+      link.rel = 'icon';
+      link.href = branding.logoUrl;
+      if (!existing) document.head.appendChild(link);
+    } else {
+      if (existing) existing.href = '/favicon.svg';
+    }
+  }, [branding.logoUrl]);
+
   return (
     <>
       <div className="app-background pointer-events-none">

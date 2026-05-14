@@ -237,7 +237,11 @@ export default function CustomerAccountsPage() {
         setTabData([]);
       }
     }
-  }, [searchParams, customers]);
+    if (urlId && customers.length > 0) {
+      const found = customers.find(c => String(c.id) === String(urlId));
+      if (!found) setSearchParams({});
+    }
+  }, [searchParams, customers, selected]);
 
   // ── Update URL when selection changes ───────────────────
   const selectCustomer = useCallback((c, tab = "invoices") => {

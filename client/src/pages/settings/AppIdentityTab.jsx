@@ -1,21 +1,42 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, RotateCcw, Eye } from 'lucide-react';
+import { Upload, RotateCcw, Eye, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
   const [logoPreview, setLogoPreview] = useState(settings.logo_url || null);
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
-  const handleFile = useCallback((file) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    if (file.size > 2 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = String(reader.result || "");
-      setLogoPreview(url);
-      onChange?.('logo_url', url);
-    };
-    reader.readAsDataURL(file);
-  }, [onChange]);
+  const handleFile = useCallback(async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error(lang === 'ar' ? 'الرجاء اختيار صورة فقط' : 'Please select an image');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(lang === 'ar' ? 'حجم الصورة يجب أن لا يتجاوز 2 ميجابايت' : 'Image size must be under 2MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.url;
+      if (url) {
+        setLogoPreview(url);
+        onChange?.('logo_url', url);
+        toast.success(lang === 'ar' ? 'تم رفع الشعار بنجاح' : 'Logo uploaded successfully');
+      }
+    } catch {
+      toast.error(lang === 'ar' ? 'فشل رفع الشعار' : 'Logo upload failed');
+    } finally {
+      setUploading(false);
+    }
+    if (fileRef.current) fileRef.current.value = '';
+  }, [onChange, lang]);
 
   return (
     <div className="space-y-8">
@@ -55,20 +76,30 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
             {lang === 'ar' ? 'شعار التطبيق' : 'App Logo'}
           </label>
           <div
-            onClick={() => fileRef.current?.click()}
-            className="group relative flex h-[120px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-slate-400 hover:bg-slate-100/50"
+            onClick={() => !uploading && fileRef.current?.click()}
+            className={`group relative flex h-[120px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed transition-all ${
+              uploading
+                ? 'border-emerald-300 bg-emerald-50'
+                : 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100/50'
+            }`}
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-105 transition-transform">
-              <Upload className="h-4 w-4 text-slate-500 group-hover:text-slate-800" />
-            </div>
-            <div className="text-center">
-              <p className="text-[12px] font-bold text-slate-600">
-                {lang === 'ar' ? 'اضغط هنا لرفع الشعار' : 'Click to Upload Logo'}
-              </p>
-              <p className="mt-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                PNG, JPG, SVG • MAX 2MB
-              </p>
-            </div>
+            {uploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            ) : (
+              <>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-105 transition-transform">
+                  <Upload className="h-4 w-4 text-slate-500 group-hover:text-slate-800" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[12px] font-bold text-slate-600">
+                    {lang === 'ar' ? 'اضغط هنا لرفع الشعار' : 'Click to Upload Logo'}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    PNG, JPG, SVG &bull; MAX 2MB
+                  </p>
+                </div>
+              </>
+            )}
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
         </div>
@@ -101,31 +132,6 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         </div>
       </div>
 
-      {/* Visibility Settings */}
-      <div className="space-y-3">
-        <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
-          {lang === 'ar' ? 'أماكن عرض الشعار' : 'Visibility Settings'}
-        </label>
-        <div className="flex flex-wrap items-center gap-4">
-          {[
-            { key: 'logo_on_sidebar',   label_ar: 'شريط التنقل',   label_en: 'Sidebar' },
-            { key: 'logo_on_invoices',  label_ar: 'الطباعة (فواتير/إيصالات)', label_en: 'Printing (Invoices)' },
-            { key: 'logo_on_reports',   label_ar: 'التقارير',      label_en: 'Reports' },
-          ].map(({ key, label_ar, label_en }) => (
-            <label key={key} className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm border border-slate-200 bg-slate-50 px-4 py-2.5 transition-colors hover:bg-slate-100">
-              <input
-                type="checkbox"
-                checked={settings[key] !== false}
-                onChange={(e) => onChange?.(key, e.target.checked)}
-                className="h-4 w-4 rounded-sm border-slate-300 accent-slate-900 text-slate-900 focus:ring-slate-900"
-              />
-              <span className="text-[12px] font-bold text-slate-700">
-                {lang === 'ar' ? label_ar : label_en}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

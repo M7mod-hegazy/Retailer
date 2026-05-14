@@ -21,6 +21,19 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
   const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
   const change = paid - grandTotal;
   const remaining = grandTotal - paid;
+  const extraAddresses = (() => { try { return JSON.parse(settings.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(settings.additional_phones || '[]'); } catch { return []; } })();
+  const addressAtBottom = settings.address_position === 'bottom';
+
+  const AddressBlock = () => (
+    <>
+      {settings.address && <div style={{ fontSize: "10px" }}>{settings.address}</div>}
+      {extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`} style={{ fontSize: "10px" }}>{a}</div>)}
+      {settings.phone && <div style={{ fontSize: "10px" }}>هاتف: {settings.phone}</div>}
+      {extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`} style={{ fontSize: "10px" }}>هاتف: {p}</div>)}
+      {settings.tax_id && <div style={{ fontSize: "10px" }}>الرقم الضريبي: {settings.tax_id}</div>}
+    </>
+  );
 
   return (
     <div
@@ -49,9 +62,7 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
           <div style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "2px" }}>{settings.company_name}</div>
         )}
         {settings.branch_name && <div>{settings.branch_name}</div>}
-        {settings.address && <div style={{ fontSize: "10px" }}>{settings.address}</div>}
-        {settings.phone && <div style={{ fontSize: "10px" }}>هاتف: {settings.phone}</div>}
-        {settings.tax_id && <div style={{ fontSize: "10px" }}>الرقم الضريبي: {settings.tax_id}</div>}
+        {!addressAtBottom && <AddressBlock />}
       </div>
 
       <div style={{ borderTop: "1px dashed #000", margin: "6px 0" }} />
@@ -164,6 +175,12 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
       <div style={{ textAlign: "center", fontSize: "10px", marginTop: "6px" }}>
         {settings.receipt_footer || "شكراً لزيارتكم — ارجو العودة مرة أخرى"}
       </div>
+
+      {addressAtBottom && (
+        <div style={{ textAlign: "center", marginTop: "8px", borderTop: "1px dashed #000", paddingTop: "6px", fontSize: "10px" }}>
+          <AddressBlock />
+        </div>
+      )}
     </div>
   );
 });

@@ -9,7 +9,7 @@ async function fetchHardwareIdWithRetry(maxAttempts = 8) {
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await api.get("/api/settings/hardware-id");
+      const response = await api.get("/api/license/hardware-id");
       const id = String(response.data?.data?.hardware_id || "").trim();
       if (id) return id;
       throw new Error("hardware id empty");
@@ -37,10 +37,11 @@ export default function LicenseActivationPage() {
   useEffect(() => {
     let mounted = true;
     api
-      .get("/api/settings/setup-status")
+      .get("/api/license/status")
       .then((response) => {
         if (!mounted) return;
-        setProtectionMode(String(response?.data?.data?.protection_mode || "hybrid_license"));
+        const mode = String(response?.data?.data?.mode || "hybrid_signed");
+        setProtectionMode(mode === "windows_managed" ? "windows_managed" : "hybrid_license");
       })
       .catch(() => {
         if (!mounted) return;

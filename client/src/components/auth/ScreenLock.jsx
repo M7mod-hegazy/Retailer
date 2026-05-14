@@ -6,7 +6,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { SESSION_TIMEOUT_MS } from "../../constants/config";
 
 const LOCK_STATE_KEY = "retailer.screen_lock_state.v1";
-const EXCLUDED_ROUTES = ["/login", "/setup", "/activate-license"];
+const EXCLUDED_ROUTES = ["/login", "/activate-license"];
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
 
 function isExcludedRoute(pathname) {

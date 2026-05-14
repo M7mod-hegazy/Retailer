@@ -1,18 +1,18 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppShell from "./components/layout/AppShell";
+import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
-import api from "./services/api";
 import ScreenLock from "./components/auth/ScreenLock";
 import GlobalSearchPage from "./pages/search/GlobalSearchPage";
 import FullPageLoader from "./components/ui/FullPageLoader";
 import { useCanView } from "./hooks/usePermission";
 import { useUpdateStore } from "./stores/updateStore";
 const UnauthorizedPage = lazy(() => import("./pages/auth/UnauthorizedPage"));
+const NotFoundPage = lazy(() => import("./pages/error/NotFoundPage"));
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-const SetupWizard = lazy(() => import("./pages/setup/SetupWizard"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const LicenseActivationPage = lazy(() => import("./pages/auth/LicenseActivationPage"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
@@ -95,31 +95,6 @@ function AuthGuard({ children }) {
   return children;
 }
 
-function SetupGuard({ children }) {
-  const [status, setStatus] = useState({ loading: true, complete: false });
-
-  useEffect(() => {
-    let mounted = true;
-    api
-      .get("/api/settings/setup-status")
-      .then((response) => {
-        if (!mounted) return;
-        setStatus({ loading: false, complete: Boolean(response.data.data.is_setup_complete) });
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setStatus({ loading: false, complete: false });
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  if (status.loading) return <FullPageLoader text="جاري التحقق من الإعدادات..." />;
-  if (!status.complete) return <Navigate to="/setup" replace />;
-  return children;
-}
-
 export default function App() {
   const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError } = useUpdateStore();
 
@@ -138,22 +113,22 @@ export default function App() {
 
   return (
     <Suspense fallback={<FullPageLoader />}>
+      <Toaster position="top-left" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} />
       <ScreenLock />
       <GlobalSearchPage />
       <Routes>
-        <Route path="/setup" element={<SetupWizard />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/activate-license" element={<LicenseActivationPage />} />
+        <Route path="/setup" element={<NotFoundPage />} />
         <Route
           path="/*"
           element={
             <AuthGuard>
-              <SetupGuard>
-                <AppShell>
-                  <QueryClientProvider client={queryClient}>
-                  <Routes>
-                    <Route path="unauthorized" element={<UnauthorizedPage />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
+              <AppShell>
+                <QueryClientProvider client={queryClient}>
+                <Routes>
+                  <Route path="unauthorized" element={<UnauthorizedPage />} />
+                  <Route path="dashboard" element={<DashboardPage />} />
                     <Route path="analytics" element={<PermissionRoute page="analytics"><AnalyticsPage /></PermissionRoute>} />
                     <Route path="workspace/finance" element={<FinanceWorkspacePage />} />
                     <Route path="workspace/purchases" element={<PurchasesWorkspacePage />} />
@@ -231,11 +206,10 @@ export default function App() {
                   </Routes>
                   </QueryClientProvider>
                 </AppShell>
-              </SetupGuard>
-            </AuthGuard>
-          }
-        />
-      </Routes>
-    </Suspense>
-  );
-}
+              </AuthGuard>
+            }
+          />
+        </Routes>
+      </Suspense>
+    );
+  }

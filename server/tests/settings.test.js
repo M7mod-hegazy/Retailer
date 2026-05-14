@@ -45,14 +45,4 @@ describe("Settings Routes", () => {
     expect(res.body.success).toBe(false);
   });
 
-  it("persists setup progress draft", async () => {
-    const draft = { settings: { company_name: "ACME", branch_name: "Main", branch_code: "MN" } };
-    const res = await request(app).post("/api/settings/setup-progress").send({ step: 2, draft });
-    expect(res.status).toBe(200);
-    expect(res.body.data.step).toBe(2);
-
-    const persisted = getDb().prepare("SELECT setup_step, setup_payload_json FROM settings WHERE id = 1").get();
-    expect(persisted.setup_step).toBe(2);
-    expect(JSON.parse(persisted.setup_payload_json).settings.company_name).toBe("ACME");
-  });
 });

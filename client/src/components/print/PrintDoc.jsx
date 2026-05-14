@@ -34,6 +34,9 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
   const solid    = `1px solid ${accent}`;
   const w        = (s.receipt_width || g(s, "receipt_width")) === "58mm" ? "58mm" : "80mm";
   const customBlocks = getCustomBlocks(s);
+  const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
+  const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
+  const addressAtBottom = s.address_position === 'bottom';
 
   const subtotal      = lines.reduce((sum, l) => sum + ((Number(l.unit_price) || Number(l.unit_cost) || 0) * Number(l.quantity)), 0);
   const totalDiscount = lines.reduce((sum, l) => sum + (Number(l.discount_amount) || 0), 0);
@@ -57,7 +60,9 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
         <div style={{ fontSize: `${g(s, "header_font_size")}px`, fontWeight: "900" }}>{s.company_name || ""}</div>
         {g(s, "show_branch")  !== false && s.branch_name  && <div>{s.branch_name}</div>}
         {g(s, "show_address") !== false && s.address       && <div style={{ fontSize: "9px", opacity: 0.6 }}>{s.address}</div>}
+        {g(s, "show_address") !== false && extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`} style={{ fontSize: "9px", opacity: 0.6 }}>{a}</div>)}
         {g(s, "show_phone")   !== false && s.phone         && <div style={{ fontSize: "9px" }}>هاتف: {s.phone}</div>}
+        {g(s, "show_phone")   !== false && extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`} style={{ fontSize: "9px" }}>هاتف: {p}</div>)}
         {g(s, "show_tax_id")  !== false && s.tax_id        && <div style={{ fontSize: "9px" }}>الرقم الضريبي: {s.tax_id}</div>}
       </div>
 
@@ -224,9 +229,11 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
             <img src={s.logo_url} alt="" style={{ maxHeight: `${g(s, "logo_max_height")}px`, objectFit: "contain", marginBottom: "4px" }} />}
           <div style={{ fontSize: `${g(s, "header_font_size")}px`, fontWeight: "900", color: accent }}>{s.company_name || ""}</div>
           {g(s, "show_branch")  !== false && s.branch_name && <div style={{ fontSize: "11px", color: "#64748b" }}>{s.branch_name}</div>}
-          {g(s, "show_address") !== false && s.address      && <div style={{ fontSize: "9px", color: "#94a3b8" }}>{s.address}</div>}
-          {g(s, "show_phone")   !== false && s.phone        && <div style={{ fontSize: "9px", color: "#94a3b8" }}>هاتف: {s.phone}</div>}
-          {g(s, "show_tax_id")  !== false && s.tax_id       && <div style={{ fontSize: "9px", color: "#94a3b8" }}>الرقم الضريبي: {s.tax_id}</div>}
+        {g(s, "show_address") !== false && s.address      && <div style={{ fontSize: "9px", color: "#94a3b8" }}>{s.address}</div>}
+        {g(s, "show_address") !== false && extraAddresses.filter(Boolean).map((a, i) => <div key={`addr-${i}`} style={{ fontSize: "9px", color: "#94a3b8" }}>{a}</div>)}
+        {g(s, "show_phone")   !== false && s.phone        && <div style={{ fontSize: "9px", color: "#94a3b8" }}>هاتف: {s.phone}</div>}
+        {g(s, "show_phone")   !== false && extraPhones.filter(Boolean).map((p, i) => <div key={`ph-${i}`} style={{ fontSize: "9px", color: "#94a3b8" }}>هاتف: {p}</div>)}
+        {g(s, "show_tax_id")  !== false && s.tax_id       && <div style={{ fontSize: "9px", color: "#94a3b8" }}>الرقم الضريبي: {s.tax_id}</div>}
         </div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontSize: "18px", fontWeight: "900", color: accent }}>{g(s, "receipt_footer") || "فاتورة"}</div>

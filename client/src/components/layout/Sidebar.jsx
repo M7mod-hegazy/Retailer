@@ -72,7 +72,7 @@ function PopoverMenu({ module, onItemClick, onMouseEnter, onMouseLeave, updateAv
   );
 }
 
-export default function Sidebar({ collapsed, setCollapsed }) {
+export default function Sidebar({ collapsed, setCollapsed, branding }) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -205,13 +205,21 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     >
       <div className={`flex items-center justify-between border-b border-zinc-100 ${collapsed ? "px-3 py-5 justify-center" : "px-5 py-5"}`}>
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-emerald-400">
-            <Radar strokeWidth={2} className="h-5 w-5" />
-          </div>
+          {branding?.logoUrl && branding?.showOnSidebar ? (
+            <img
+              src={branding.logoUrl}
+              alt={branding?.title || "Logo"}
+              className="h-9 w-9 shrink-0 rounded-xl object-contain bg-white"
+            />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-emerald-400">
+              <Radar strokeWidth={2} className="h-5 w-5" />
+            </div>
+          )}
           {!collapsed && (
             <div>
-              <h2 className="text-[16px] font-black tracking-tight text-zinc-900 leading-none">نظام الحجازي</h2>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mt-1">إدارة التجزئة</div>
+              <h2 className="text-[16px] font-black tracking-tight text-zinc-900 leading-none truncate max-w-[130px]">{branding?.title || "نظام الحجازي"}</h2>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mt-1 truncate max-w-[130px]">{branding?.subtitle || "إدارة التجزئة"}</div>
             </div>
           )}
         </div>

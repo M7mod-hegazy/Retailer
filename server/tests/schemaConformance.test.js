@@ -58,7 +58,7 @@ describe("schema conformance", () => {
     });
   });
 
-  test("contains key columns required by setup/auth/help flows", () => {
+  test("contains key columns required by auth/help flows", () => {
     const db = getDb();
 
     expect(getColumns(db, "settings")).toEqual(
@@ -66,8 +66,6 @@ describe("schema conformance", () => {
         "branch_code",
         "company_name_en",
         "wizard_completed",
-        "setup_step",
-        "setup_payload_json",
         "license_key",
         "license_status",
         "default_warehouse_id",

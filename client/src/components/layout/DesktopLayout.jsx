@@ -12,6 +12,7 @@ export default function DesktopLayout({ children, branding }) {
       <Sidebar
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        branding={branding}
       />
 
       {/* ─── MAIN APP CONTENT SHELL ─── */}
