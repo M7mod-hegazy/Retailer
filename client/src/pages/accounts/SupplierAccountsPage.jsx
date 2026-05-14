@@ -406,7 +406,7 @@ export default function SupplierAccountsPage() {
             <div className="flex-1 bg-white rounded-lg p-2 border border-orange-100 text-center">
               <div className="text-[10px] font-black text-slate-500 mb-0.5">إجمالي المديونية</div>
               <div className="text-[13px] font-black font-mono text-rose-600">
-                {summaryLoading ? "..." : fmt(summary?.total_remaining ?? 0)}
+                {summaryLoading ? "..." : fmt(summary?.total_owed ?? summary?.total_remaining ?? 0)}
               </div>
             </div>
             <div className="flex-1 bg-white rounded-lg p-2 border border-red-100 text-center">
