@@ -3,10 +3,12 @@ const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/categories", requirePagePermission("revenues", "view"), (_req, res) => {
   res.json({ success: true, data: getDb().prepare("SELECT * FROM revenue_categories ORDER BY name ASC").all() });
@@ -17,6 +19,7 @@ router.post("/categories", requirePagePermission("revenues", "add"), (req, res) 
   const result = getDb()
     .prepare("INSERT INTO revenue_categories (name, parent_id) VALUES (?, ?)")
     .run(payload.name, payload.parent_id || null);
+  req.audit("create", "revenueCategories", { id: result.lastInsertRowid }, `💰 تم إضافة فئة إيراد: ${payload.name || ''}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM revenue_categories WHERE id = ?").get(result.lastInsertRowid),
@@ -30,11 +33,13 @@ router.put("/categories/:id", requirePagePermission("revenues", "edit"), (req, r
     payload.parent_id || null,
     req.params.id,
   );
+  req.audit("update", "revenueCategories", { id: req.params.id }, `💰 تم تعديل فئة إيراد: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM revenue_categories WHERE id = ?").get(req.params.id) });
 });
 
 router.delete("/categories/:id", requirePagePermission("revenues", "delete"), (req, res) => {
   getDb().prepare("DELETE FROM revenue_categories WHERE id = ?").run(req.params.id);
+  req.audit("delete", "revenueCategories", { id: req.params.id }, `💰 تم حذف فئة إيراد`);
   res.json({ success: true });
 });
 
@@ -88,6 +93,7 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
       return created;
     })();
 
+  req.audit("create", "revenues", { id: result.lastInsertRowid }, `💰 تم إضافة إيراد: ${payload.description || payload.notes || ''}`);
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(result.lastInsertRowid),
@@ -100,6 +106,7 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
     const payload = req.body || {};
     db.prepare(`UPDATE revenues SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now') WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
+    req.audit("update", "revenues", { id: req.params.id }, `💰 تم تعديل إيراد: ${payload.description || ''}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -107,6 +114,7 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
 router.delete("/:id", requirePagePermission("revenues", "delete"), (req, res) => {
   try {
     getDb().prepare("DELETE FROM revenues WHERE id = ?").run(req.params.id);
+    req.audit("delete", "revenues", { id: req.params.id }, `💰 تم حذف إيراد`);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

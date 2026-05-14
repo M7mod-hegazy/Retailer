@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function normalizeImageUrls(payload = {}) {
   if (Array.isArray(payload.image_urls)) {
@@ -249,6 +251,7 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
   const imageUrls = normalizeImageUrls(payload);
   storeItemImages(info.lastInsertRowid, imageUrls);
 
+  req.audit("create", "items", { id: info.lastInsertRowid }, `📦 تم إضافة صنف: ${payload.name || ''}`);
   const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(info.lastInsertRowid);
   return res.status(201).json({ success: true, data: withImages([row])[0] });
 });
@@ -303,6 +306,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
     storeItemImages(id, normalizeImageUrls(payload));
   }
 
+  req.audit("update", "items", { id }, `📦 تم تعديل صنف: ${payload.name || ''}`);
   const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(id);
   return res.json({ success: true, data: withImages([row])[0] });
 });
@@ -350,6 +354,7 @@ router.delete("/:id", requirePagePermission("items", "delete"), (req, res) => {
     const existing = getDb().prepare("SELECT id FROM items WHERE id = ?").get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "الصنف غير موجود" });
     getDb().prepare("UPDATE items SET deleted_at = datetime('now'), is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+    req.audit("delete", "items", { id: req.params.id }, `📦 تم حذف صنف`);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, message: "تعذر حذف الصنف" });

@@ -3,10 +3,12 @@ const { getDb } = require("../config/database");
 const { adjustStock } = require("../services/stockService");
 const { generateDocNumber } = require("../utils/docNumber");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("purchase_orders", "view"), (req, res) => {
   const db = getDb();
@@ -71,6 +73,7 @@ router.post("/", requirePagePermission("purchase_orders", "add"), (req, res) => 
     ).run(result.lastInsertRowid, line.item_id, Number(line.quantity), Number(line.unit_cost || 0));
   }
 
+  req.audit("create", "purchaseOrders", { id: result.lastInsertRowid }, `📦 تم إنشاء أمر شراء`);
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(result.lastInsertRowid),
@@ -80,6 +83,7 @@ router.post("/", requirePagePermission("purchase_orders", "add"), (req, res) => 
 router.patch("/:id/approve", requirePagePermission("purchase_orders", "edit"), (req, res, next) => {
   try {
     getDb().prepare("UPDATE purchase_orders SET status = 'approved' WHERE id = ?").run(req.params.id);
+    req.audit("update", "purchaseOrders", { id: req.params.id }, `📦 تم اعتماد أمر شراء`);
     res.json({ success: true, data: getDb().prepare("SELECT * FROM purchase_orders WHERE id = ?").get(req.params.id) });
   } catch (error) {
     next(error);
@@ -93,6 +97,7 @@ router.patch("/:id/cancel", requirePagePermission("purchase_orders", "edit"), (r
     if (!order) { const e = new Error("Purchase order not found"); e.status = 404; throw e; }
     if (order.status === "received") { const e = new Error("Cannot cancel a received order"); e.status = 400; throw e; }
     db.prepare("UPDATE purchase_orders SET status = 'cancelled' WHERE id = ?").run(req.params.id);
+    req.audit("update", "purchaseOrders", { id: req.params.id }, `📦 تم إلغاء أمر شراء`);
     res.json({ success: true, data: db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(req.params.id) });
   } catch (error) {
     next(error);
@@ -192,6 +197,7 @@ router.patch("/:id/receive", requirePagePermission("purchase_orders", "edit"), (
       return db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(req.params.id);
     })();
 
+    req.audit("update", "purchaseOrders", { id: req.params.id }, `📦 تم استلام أمر شراء`);
     res.json({ success: true, data: received });
   } catch (error) {
     next(error);

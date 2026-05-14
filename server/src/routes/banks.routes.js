@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function ensureBankOperationColumns(db) {
   try { db.prepare("ALTER TABLE banks ADD COLUMN alert_threshold REAL NOT NULL DEFAULT 0").run(); } catch (_) {}
@@ -34,6 +36,7 @@ router.post("/", requirePagePermission("banks", "add"), (req, res) => {
   const info = getDb()
     .prepare("INSERT INTO banks (name, code, balance, alert_threshold) VALUES (?, ?, ?, ?)")
     .run(payload.name, payload.code || null, Number(payload.balance || 0), Number(payload.alert_threshold || 0));
+  req.audit("create", "banks", { id: info.lastInsertRowid }, `💰 تم إضافة بنك: ${payload.name || ''}`);
   res.status(201).json({ success: true, data: getDb().prepare("SELECT * FROM banks WHERE id = ?").get(info.lastInsertRowid) });
 });
 
@@ -41,6 +44,7 @@ router.put("/:id", requirePagePermission("banks", "edit"), (req, res) => {
   const payload = req.body || {};
   getDb().prepare("UPDATE banks SET name = ?, code = ?, alert_threshold = ? WHERE id = ?")
     .run(payload.name, payload.code || null, Number(payload.alert_threshold || 0), req.params.id);
+  req.audit("update", "banks", { id: req.params.id }, `💰 تم تعديل بنك: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM banks WHERE id = ?").get(req.params.id) });
 });
 
@@ -59,11 +63,13 @@ router.delete("/:id", requirePagePermission("banks", "delete"), (req, res) => {
     if (hasRecords) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE banks SET is_active = 0 WHERE id = ?").run(req.params.id);
+      req.audit("delete", "banks", { id: req.params.id }, `💰 تم أرشفة بنك`);
       return res.json({ success: true, archived: true, message: "تم أرشفة البنك لأنه مرتبط بعمليات مالية" });
     }
-    
+
     // Hard delete if no records
     db.prepare("DELETE FROM banks WHERE id = ?").run(req.params.id);
+    req.audit("delete", "banks", { id: req.params.id }, `💰 تم حذف بنك`);
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف البنك لأنه مرتبط ببيانات أخرى" });
@@ -99,6 +105,7 @@ router.post("/transfer", requirePagePermission("banks", "add"), (req, res) => {
         .run(to_id, transferAmount, ref, notes || "تحويل بين حسابات", req.user?.id || 1);
     })();
 
+    req.audit("create", "banks", { from_id, to_id }, `💰 تم تحويل بنكي بمبلغ: ${transferAmount}`);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -111,6 +118,7 @@ router.patch("/transactions/:id/reconcile", requirePagePermission("banks", "edit
     if (!tx) return res.status(404).json({ success: false, message: "الحركة غير موجودة" });
     const next = req.body?.reconciled == null ? (tx.reconciled ? 0 : 1) : (req.body.reconciled ? 1 : 0);
     db.prepare("UPDATE bank_transactions SET reconciled = ? WHERE id = ?").run(next, req.params.id);
+    req.audit("update", "banks", { id: req.params.id }, `💰 تم تسوية حركة بنكية`);
     res.json({ success: true, data: db.prepare("SELECT * FROM bank_transactions WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -152,6 +160,7 @@ router.post("/:id/deposit", requirePagePermission("banks", "add"), (req, res) =>
       db.prepare("INSERT INTO bank_transactions (bank_id, type, amount, reference, notes, created_by) VALUES (?, 'deposit', ?, ?, ?, ?)")
         .run(req.params.id, Number(amount), reference || null, notes || null, req.user?.id || 1);
     })();
+    req.audit("update", "banks", { id: req.params.id }, `💰 تم إيداع في البنك بمبلغ: ${amount}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM banks WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -169,6 +178,7 @@ router.post("/:id/withdraw", requirePagePermission("banks", "add"), (req, res) =
       db.prepare("INSERT INTO bank_transactions (bank_id, type, amount, reference, notes, created_by) VALUES (?, 'withdrawal', ?, ?, ?, ?)")
         .run(req.params.id, Number(amount), reference || null, notes || null, req.user?.id || 1);
     })();
+    req.audit("update", "banks", { id: req.params.id }, `💰 تم سحب من البنك بمبلغ: ${amount}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM banks WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

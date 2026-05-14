@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("customers", "view"), (req, res) => {
   const showArchived = req.query.archived === 'true';
@@ -36,6 +38,7 @@ router.post("/", requirePagePermission("customers", "add"), (req, res) => {
       payload.blacklist_reason || null,
       payload.is_active === false ? 0 : 1,
     );
+  req.audit("create", "customers", { id: info.lastInsertRowid }, `👤 تم إضافة عميل: ${payload.name || ''}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(info.lastInsertRowid),
@@ -64,6 +67,7 @@ router.put("/:id", requirePagePermission("customers", "edit"), (req, res) => {
       payload.is_active === false ? 0 : 1,
       req.params.id,
     );
+  req.audit("update", "customers", { id: req.params.id }, `👤 تم تعديل عميل: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
 });
 
@@ -90,11 +94,13 @@ router.delete("/:id", requirePagePermission("customers", "delete"), (req, res) =
     if (hasTransactions) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE customers SET is_active = 0 WHERE id = ?").run(req.params.id);
+      req.audit("delete", "customers", { id: req.params.id }, `👤 تم أرشفة عميل`);
       return res.json({ success: true, archived: true, message: "تم أرشفة العميل لأنه مرتبط بفواتير أو مدفوعات" });
     }
-    
+
     // Hard delete if no transactions
     db.prepare("DELETE FROM customers WHERE id = ?").run(req.params.id);
+    req.audit("delete", "customers", { id: req.params.id }, `👤 تم حذف عميل`);
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) {

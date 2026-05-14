@@ -3,9 +3,11 @@ const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
 const NotificationModel = require("../models/notification.model");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/current", requirePagePermission("pos", "view"), (_req, res) => {
   const current = getDb().prepare("SELECT * FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1").get() || null;
@@ -24,6 +26,7 @@ router.post("/open", requirePagePermission("pos", "add"), (req, res, next) => {
     const info = db
       .prepare("INSERT INTO shifts (user_id, opening_cash, status) VALUES (?, ?, 'open')")
       .run(req.user.id, Number(req.body?.opening_cash || 0));
+    req.audit("create", "shifts", { id: info.lastInsertRowid }, `📋 تم فتح وردية`);
     res.status(201).json({ success: true, data: db.prepare("SELECT * FROM shifts WHERE id = ?").get(info.lastInsertRowid) });
   } catch (error) {
     next(error);
@@ -62,6 +65,7 @@ router.post("/close", requirePagePermission("pos", "add"), (req, res, next) => {
         });
       }
     } catch (_) {}
+    req.audit("update", "shifts", { id: shiftId }, `📋 تم إغلاق وردية`);
     res.json({ success: true, data: closedShift });
   } catch (error) {
     next(error);

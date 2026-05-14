@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function ensureChequeColumns(db) {
   const columns = db.prepare("PRAGMA table_info(cheques)").all().map((column) => column.name);
@@ -66,6 +68,7 @@ router.post("/", requirePagePermission("cheques", "add"), (req, res, next) => {
         .run(result.lastInsertRowid, payload.replaces_id);
     }
 
+    req.audit("create", "cheques", { id: result.lastInsertRowid }, `💰 تم إضافة شيك: ${payload.cheque_no || ''}`);
     res.status(201).json({
       success: true,
       data: db.prepare("SELECT * FROM cheques WHERE id = ?").get(result.lastInsertRowid),
@@ -108,6 +111,7 @@ router.patch("/:id/status", requirePagePermission("cheques", "edit"), (req, res,
       }
     }
 
+    req.audit("update", "cheques", { id: req.params.id }, `💰 تم تغيير حالة شيك إلى: ${nextStatus}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM cheques WHERE id = ?").get(req.params.id) });
   } catch (error) {
     next(error);

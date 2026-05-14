@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("daily_treasury", "view"), (req, res) => {
   const showArchived = req.query.archived === 'true';
@@ -20,6 +22,7 @@ router.post("/", requirePagePermission("daily_treasury", "add"), (req, res) => {
   const info = getDb()
     .prepare("INSERT INTO treasuries (name, code, balance) VALUES (?, ?, ?)")
     .run(payload.name, payload.code || null, Number(payload.balance || 0));
+  req.audit("create", "treasuries", { id: info.lastInsertRowid }, `💰 تم إضافة خزينة: ${payload.name || ''}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM treasuries WHERE id = ?").get(info.lastInsertRowid),
@@ -31,6 +34,7 @@ router.put("/:id", requirePagePermission("daily_treasury", "edit"), (req, res) =
   getDb()
     .prepare("UPDATE treasuries SET name = ?, code = ?, balance = ? WHERE id = ?")
     .run(payload.name, payload.code || null, Number(payload.balance || 0), req.params.id);
+  req.audit("update", "treasuries", { id: req.params.id }, `💰 تم تعديل خزينة: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM treasuries WHERE id = ?").get(req.params.id) });
 });
 
@@ -51,11 +55,13 @@ router.delete("/:id", requirePagePermission("daily_treasury", "delete"), (req, r
     if (hasRecords) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE treasuries SET is_active = 0 WHERE id = ?").run(req.params.id);
+      req.audit("delete", "treasuries", { id: req.params.id }, `💰 تم أرشفة خزينة`);
       return res.json({ success: true, archived: true, message: "تم أرشفة الخزينة لأنها مرتبطة بعمليات مالية" });
     }
-    
+
     // Hard delete if no records
     db.prepare("DELETE FROM treasuries WHERE id = ?").run(req.params.id);
+    req.audit("delete", "treasuries", { id: req.params.id }, `💰 تم حذف خزينة`);
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف الخزينة لأنها مرتبطة ببيانات أخرى" });

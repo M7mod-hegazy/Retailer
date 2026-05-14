@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("employees", "view"), (req, res) => {
   const showArchived = req.query.archived === 'true';
@@ -20,6 +22,7 @@ router.post("/", requirePagePermission("employees", "add"), (req, res) => {
   const info = getDb()
     .prepare("INSERT INTO employees (name, role, phone, is_active) VALUES (?, ?, ?, ?)")
     .run(payload.name, payload.role || null, payload.phone || null, payload.is_active === false ? 0 : 1);
+  req.audit("create", "employees", { id: info.lastInsertRowid }, `👤 تم إضافة موظف: ${payload.name || ''}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employees WHERE id = ?").get(info.lastInsertRowid),
@@ -40,6 +43,7 @@ router.put("/:id", requirePagePermission("employees", "edit"), (req, res, next) 
       .prepare(`UPDATE employees SET name = ?, phone = ?, ${roleColumn} = ?, salary = ? WHERE id = ?`)
       .run(payload.name, payload.phone || null, payload.job_title || payload.role || null, Number(payload.salary || 0), req.params.id);
 
+    req.audit("update", "employees", { id: req.params.id }, `👤 تم تعديل موظف: ${payload.name || ''}`);
     res.json({
       success: true,
       data: db.prepare("SELECT * FROM employees WHERE id = ?").get(req.params.id),
@@ -64,11 +68,13 @@ router.delete("/:id", requirePagePermission("employees", "delete"), (req, res) =
     if (hasRecords) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE employees SET is_active = 0 WHERE id = ?").run(req.params.id);
+      req.audit("delete", "employees", { id: req.params.id }, `👤 تم أرشفة موظف`);
       return res.json({ success: true, archived: true, message: "تم أرشفة الموظف لأنه مرتبط بعمليات أخرى" });
     }
-    
+
     // Hard delete if no records
     db.prepare("DELETE FROM employees WHERE id = ?").run(req.params.id);
+    req.audit("delete", "employees", { id: req.params.id }, `👤 تم حذف موظف`);
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف الموظف لأنه مرتبط ببيانات أخرى" });
@@ -96,6 +102,7 @@ router.post("/:id/adjustments", requirePagePermission("employees", "add"), (req,
       req.user?.id || null
     );
 
+  req.audit("create", "employees", { id: info.lastInsertRowid }, `👤 تم تسجيل ${payload.adjustment_type === 'incentive' ? 'حافز' : 'خصم'} للموظف`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employee_adjustments WHERE id = ?").get(info.lastInsertRowid),

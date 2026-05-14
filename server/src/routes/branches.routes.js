@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("branches", "view"), (req, res, next) => {
   try {
@@ -28,6 +30,7 @@ router.post("/", requirePagePermission("branches", "add"), (req, res, next) => {
 
     const stmt = db.prepare("INSERT INTO branches (name) VALUES (?)");
     const result = stmt.run(name);
+    req.audit("create", "branches", { id: result.lastInsertRowid }, `⚙️ تم إضافة فرع: ${name}`);
     res.status(201).json({ success: true, data: { id: result.lastInsertRowid, name } });
   } catch (err) {
     if (err.message.includes("UNIQUE constraint")) {
@@ -46,6 +49,7 @@ router.put("/:id", requirePagePermission("branches", "edit"), (req, res, next) =
 
     const stmt = db.prepare("UPDATE branches SET name = ? WHERE id = ?");
     stmt.run(name, id);
+    req.audit("update", "branches", { id }, `⚙️ تم تعديل فرع: ${name}`);
     res.json({ success: true });
   } catch (err) {
     if (err.message.includes("UNIQUE constraint")) {
@@ -71,11 +75,13 @@ router.delete("/:id", requirePagePermission("branches", "delete"), (req, res, ne
     if (hasRecords) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE branches SET is_active = 0 WHERE id = ?").run(id);
+      req.audit("delete", "branches", { id }, `⚙️ تم أرشفة فرع`);
       return res.json({ success: true, archived: true, message: "تم أرشفة الفرع لأنه مرتبط بعمليات أخرى" });
     }
-    
+
     // Hard delete if no records
     db.prepare("DELETE FROM branches WHERE id = ?").run(id);
+    req.audit("delete", "branches", { id }, `⚙️ تم حذف فرع`);
     res.json({ success: true });
   } catch (err) {
     next(err);

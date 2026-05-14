@@ -2,10 +2,12 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { adjustStock } = require("../services/stockService");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 // GET /api/branch-transfers
 router.get("/", requirePagePermission("branch_transfer", "view"), (req, res, next) => {
@@ -147,6 +149,7 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
       `).get(transferId);
     })();
 
+    req.audit("create", "branchTransfers", { id: result.id }, `📦 تم تسجيل حركة فرع: ${result.reference_no || ''}`);
     res.status(201).json({ success: true, data: result });
   } catch (err) {
     next(err);

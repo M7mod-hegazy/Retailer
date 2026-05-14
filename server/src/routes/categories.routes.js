@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("categories", "view"), (req, res) => {
   const showArchived = req.query.archived === "true";
@@ -29,6 +31,7 @@ router.post("/", requirePagePermission("categories", "add"), (req, res) => {
         getDb()
           .prepare("UPDATE item_categories SET name = ?, image_url = ?, is_active = 1 WHERE id = ?")
           .run(payload.name || existingPrefix.name, payload.image_url !== undefined ? payload.image_url : existingPrefix.image_url, existingPrefix.id);
+        req.audit("create", "categories", { id: existingPrefix.id }, `📦 تم استعادة فئة: ${payload.name || existingPrefix.name || ''}`);
         return res.json({
           success: true,
           restored: true,
@@ -43,6 +46,7 @@ router.post("/", requirePagePermission("categories", "add"), (req, res) => {
     .prepare("INSERT INTO item_categories (name, parent_id, sku_prefix, image_url) VALUES (?, ?, ?, ?)")
     .run(payload.name, payload.parent_id || null, nextPrefix, payload.image_url || null);
 
+  req.audit("create", "categories", { id: info.lastInsertRowid }, `📦 تم إضافة فئة: ${payload.name || ''}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM item_categories WHERE id = ?").get(info.lastInsertRowid),
@@ -58,6 +62,7 @@ router.put("/:id", requirePagePermission("categories", "edit"), (req, res) => {
   getDb()
     .prepare("UPDATE item_categories SET name = ?, image_url = ? WHERE id = ?")
     .run(payload.name ?? existing.name, payload.image_url !== undefined ? payload.image_url : existing.image_url, req.params.id);
+  req.audit("update", "categories", { id: req.params.id }, `📦 تم تعديل فئة: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM item_categories WHERE id = ?").get(req.params.id) });
 });
 
@@ -75,6 +80,7 @@ router.delete("/:id", requirePagePermission("categories", "delete"), (req, res) 
   }
 
   db.prepare("DELETE FROM item_categories WHERE id = ?").run(req.params.id);
+  req.audit("delete", "categories", { id: req.params.id }, `📦 تم حذف فئة`);
   res.json({ success: true });
 });
 

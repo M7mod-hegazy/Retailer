@@ -2,10 +2,12 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const QuotationModel = require("../models/quotation.model");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function validateLines(lines) {
   if (!Array.isArray(lines) || lines.length === 0) {
@@ -83,7 +85,9 @@ router.get("/:id", requirePagePermission("quotations", "view"), (req, res, next)
 
 router.post("/", requirePagePermission("quotations", "add"), (req, res, next) => {
   try {
-    res.status(201).json({ success: true, data: QuotationModel.create(buildQuotationPayload(req.body || {})) });
+    const created = QuotationModel.create(buildQuotationPayload(req.body || {}));
+    req.audit("create", "quotations", { id: created.id }, `📋 تم إنشاء عرض سعر`);
+    res.status(201).json({ success: true, data: created });
   } catch (error) {
     next(error);
   }
@@ -102,7 +106,9 @@ router.put("/:id", requirePagePermission("quotations", "edit"), (req, res, next)
       error.status = 409;
       throw error;
     }
-    res.json({ success: true, data: QuotationModel.update(req.params.id, buildQuotationPayload(req.body || {})) });
+    const updated = QuotationModel.update(req.params.id, buildQuotationPayload(req.body || {}));
+    req.audit("update", "quotations", { id: req.params.id }, `📋 تم تعديل عرض سعر`);
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }
@@ -114,6 +120,7 @@ router.patch("/:id/send", requirePagePermission("quotations", "edit"), (req, res
     if (!q) { const e = new Error("Quotation not found"); e.status = 404; throw e; }
     if (q.status === "converted") { const e = new Error("Converted quotations cannot be modified"); e.status = 409; throw e; }
     getDb().prepare("UPDATE quotations SET status = 'sent' WHERE id = ?").run(req.params.id);
+    req.audit("update", "quotations", { id: req.params.id }, `📋 تم إرسال عرض سعر`);
     res.json({ success: true, data: QuotationModel.findById(req.params.id) });
   } catch (error) { next(error); }
 });
@@ -126,6 +133,7 @@ router.delete("/:id", requirePagePermission("quotations", "delete"), (req, res, 
     if (q.status === "converted") { const e = new Error("Cannot delete a converted quotation"); e.status = 409; throw e; }
     db.prepare("DELETE FROM quotation_lines WHERE quotation_id = ?").run(req.params.id);
     db.prepare("DELETE FROM quotations WHERE id = ?").run(req.params.id);
+    req.audit("delete", "quotations", { id: req.params.id }, `📋 تم حذف عرض سعر`);
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -149,6 +157,7 @@ router.post("/:id/duplicate", requirePagePermission("quotations", "add"), (req, 
       })),
       total: original.total,
     });
+    req.audit("create", "quotations", { id: clone.id }, `📋 تم تكرار عرض سعر`);
     res.status(201).json({ success: true, data: clone });
   } catch (error) { next(error); }
 });
@@ -203,6 +212,7 @@ router.post("/:id/convert-to-invoice", requirePagePermission("quotations", "add"
       return invoice.lastInsertRowid;
     })();
 
+    req.audit("update", "quotations", { id: req.params.id, invoice_id: invoiceId }, `📋 تم تحويل عرض سعر إلى فاتورة: ${invoiceNumber}`);
     res.json({
       success: true,
       data: {

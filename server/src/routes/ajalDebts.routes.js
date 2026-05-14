@@ -3,10 +3,12 @@ const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 function ensureAjalSchema(db) {
   try { db.exec("ALTER TABLE ajal_debts ADD COLUMN party_type TEXT NOT NULL DEFAULT 'customer'"); } catch (_) {}
@@ -243,6 +245,7 @@ router.post("/:id/pay", requirePagePermission("installments", "add"), (req, res)
       }
     })();
 
+    req.audit("update", "ajalDebts", { id: req.params.id }, `💰 تم تسوية دين آجل بمبلغ: ${totalAmount}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -286,6 +289,7 @@ router.post("/:id/schedule", requirePagePermission("installments", "add"), (req,
     })();
 
     const schedule = db.prepare("SELECT * FROM ajal_schedules WHERE debt_id = ? ORDER BY installment_no").all(debt.id);
+    req.audit("update", "ajalDebts", { id: req.params.id }, `💰 تم جدولة أقساط دين آجل`);
     res.json({ success: true, data: schedule });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

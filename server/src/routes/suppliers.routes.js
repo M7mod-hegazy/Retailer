@@ -1,10 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { auditMutation } = require("../middleware/audit");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+router.use(auditMutation);
 
 router.get("/", requirePagePermission("suppliers", "view"), (req, res) => {
   const showArchived = req.query.archived === 'true';
@@ -32,6 +34,7 @@ router.post("/", requirePagePermission("suppliers", "add"), (req, res) => {
       payload.bank_details || null,
       payload.is_active === false ? 0 : 1,
     );
+  req.audit("create", "suppliers", { id: info.lastInsertRowid }, `👤 تم إضافة مورد: ${payload.name || ''}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM suppliers WHERE id = ?").get(info.lastInsertRowid),
@@ -56,6 +59,7 @@ router.put("/:id", requirePagePermission("suppliers", "edit"), (req, res) => {
       payload.is_active === false ? 0 : 1,
       req.params.id,
     );
+  req.audit("update", "suppliers", { id: req.params.id }, `👤 تم تعديل مورد: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM suppliers WHERE id = ?").get(req.params.id) });
 });
 
@@ -74,11 +78,13 @@ router.delete("/:id", requirePagePermission("suppliers", "delete"), (req, res) =
     if (hasTransactions) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE suppliers SET is_active = 0 WHERE id = ?").run(req.params.id);
+      req.audit("delete", "suppliers", { id: req.params.id }, `👤 تم أرشفة مورد`);
       return res.json({ success: true, archived: true, message: "تم أرشفة المورد لأنه مرتبط بفواتير مشتريات" });
     }
-    
+
     // Hard delete if no transactions
     db.prepare("DELETE FROM suppliers WHERE id = ?").run(req.params.id);
+    req.audit("delete", "suppliers", { id: req.params.id }, `👤 تم حذف مورد`);
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف المورد لأنه مرتبط ببيانات أخرى" });
