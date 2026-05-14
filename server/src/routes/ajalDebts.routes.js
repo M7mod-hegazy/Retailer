@@ -264,7 +264,13 @@ router.post("/:id/schedule", requirePagePermission("installments", "add"), (req,
     if (frequency === "weekly") freqDays = 7;
     else if (frequency === "biweekly") freqDays = 14;
     else if (frequency === "quarterly") freqDays = 90;
-    else if (frequency === "custom_days") freqDays = Math.max(1, Number(custom_days) || 30);
+    else if (frequency === "custom_days") {
+      const parsed = Number(custom_days);
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        return res.status(400).json({ success: false, message: "عدد الأيام غير صحيح" });
+      }
+      freqDays = Math.max(1, parsed);
+    }
     else freqDays = 30; // monthly default
 
     // Delete existing schedule

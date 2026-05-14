@@ -44,6 +44,8 @@ const DEFAULTS = {
   address_position: "top",
   show_branch: true, show_invoice_date: true, show_barcode_line: false,
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
+  address_font_size: 9, address_alignment: "right",
+  tax_id_font_size: 9, tax_id_alignment: "right",
 };
 
 const DOC_TYPES = [
@@ -57,6 +59,7 @@ const DOC_TYPES = [
   { key: "bank_statement",        label: "كشف بنكي",              icon: "BNK" },
   { key: "ajal_statement",        label: "كشف آجل",               icon: "AJL" },
   { key: "ajal_schedule",         label: "جدول أقساط",            icon: "SCH" },
+  { key: "ajal_full_statement",   label: "كشف حساب كامل",         icon: "AFL" },
   { key: "cheque_register",       label: "سجل شيكات",             icon: "CHK" },
   { key: "payment_receipt",       label: "إيصال دفع",             icon: "PAY" },
   { key: "daily_treasury",        label: "تقرير الخزينة",         icon: "DT"  },
@@ -75,6 +78,7 @@ export const DOC_PAPER_CONFIG = {
   bank_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   ajal_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   ajal_schedule:          { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
+  ajal_full_statement:    { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   cheque_register:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   payment_receipt:        { sizes: ["58mm","80mm","A5"],          defaultSize: "80mm" },
   daily_treasury:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
@@ -99,6 +103,7 @@ const VISUAL_FIELDS = new Set([
   "show_invoice_date", "show_customer_name", "show_cashier_name",
   "show_subtotal", "show_discount_line", "show_tax", "show_payment_details",
   "show_footer", "show_qr", "show_barcode_line", "header_section", "show_item_code",
+  "address_font_size", "address_alignment", "tax_id_font_size", "tax_id_alignment",
 ]);
 
 const get = (s, k) => s[k] ?? DEFAULTS[k];
@@ -241,9 +246,13 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
   const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
   const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
 
+  const addrAlignMap = { right: "flex-start", center: "center", left: "flex-end" };
+
   const AddressBlock = () => {
     const addrs = [s.address, ...extraAddresses];
     const phones = [s.phone, ...extraPhones];
+    const addrFlex = addrAlignMap[get(s, "address_alignment")] || "flex-start";
+    const taxAlign = get(s, "tax_id_alignment") || "right";
     return (
       <>
         {addrs.map((addr, i) => {
@@ -253,12 +262,12 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
           if (!hasAddr && !hasPhone && i > 0) return null;
           if (!hasAddr && !hasPhone) return null;
           return (
-            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
-              {hasAddr && <span style={{ fontSize: "9px", opacity: 0.6 }}>{addr}</span>}
-              {hasPhone && <span style={{ fontSize: "9px" }}>{phone}</span>}
+            <div key={i} style={{ display: "flex", gap: "8px", justifyContent: addrFlex, ...(i > 0 ? { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize: `${get(s,"address_font_size")}px`, opacity: 0.6 }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize: `${get(s,"address_font_size")}px` }}>{phone}</span>}
             </div>
         )})}
-        {get(s,"show_tax_id")  !== false && <div style={{ fontSize: "9px", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+        {get(s,"show_tax_id")  !== false && <div style={{ fontSize: `${get(s,"tax_id_font_size")}px`, marginTop: "4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
       </>
     );
   };
@@ -361,9 +370,13 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
   const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
   const addressAtBottom = get(s, "address_position") === "bottom";
 
+  const addrAlignMap = { right: "flex-start", center: "center", left: "flex-end" };
+
   const AddressBlock = () => {
     const addrs = [s.address, ...extraAddresses];
     const phones = [s.phone, ...extraPhones];
+    const addrFlex = addrAlignMap[get(s, "address_alignment")] || "flex-start";
+    const taxAlign = get(s, "tax_id_alignment") || "right";
     return (
       <>
         {addrs.map((addr, i) => {
@@ -372,12 +385,12 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
           const hasPhone = get(s,"show_phone") !== false && phone;
           if (!hasAddr && !hasPhone) return null;
           return (
-            <div key={i} style={{ display: "flex", gap: "8px", ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
-              {hasAddr && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{addr}</span>}
-              {hasPhone && <span style={{ fontSize: "9px", color: "#94a3b8" }}>{phone}</span>}
+            <div key={i} style={{ display: "flex", gap: "8px", justifyContent: addrFlex, ...(i > 0 ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize: `${get(s,"address_font_size")}px`, color: "#94a3b8" }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize: `${get(s,"address_font_size")}px`, color: "#94a3b8" }}>{phone}</span>}
             </div>
         )})}
-        {get(s,"show_tax_id")  !== false && <div style={{ fontSize: "9px", color: "#94a3b8", marginTop: "4px" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+        {get(s,"show_tax_id")  !== false && <div style={{ fontSize: `${get(s,"tax_id_font_size")}px`, color: "#94a3b8", marginTop: "4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
       </>
     );
   };
@@ -559,9 +572,13 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
   const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
   const extraPhones = (() => { try { return JSON.parse(s.additional_phones || '[]'); } catch { return []; } })();
 
+  const addrAlignMap = { right: "flex-start", center: "center", left: "flex-end" };
+
   const AddressBlock = () => {
     const addrs = [s.address, ...extraAddresses];
     const phones = [s.phone, ...extraPhones];
+    const addrFlex = addrAlignMap[get(s, "address_alignment")] || "flex-start";
+    const taxAlign = get(s, "tax_id_alignment") || "right";
     return (
       <>
         {addrs.map((addr, i) => {
@@ -570,12 +587,12 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
           const hasPhone = get(s,"show_phone") !== false && phone;
           if (!hasAddr && !hasPhone) return null;
           return (
-            <div key={i} style={{ display:"flex", gap:"8px", ...(i > 0 ? { marginTop:"4px", borderTop:"1px solid #e2e8f0", paddingTop:"4px" } : {}) }}>
-              {hasAddr && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{addr}</span>}
-              {hasPhone && <span style={{ fontSize:"9px", color:"#94a3b8" }}>{phone}</span>}
+            <div key={i} style={{ display:"flex", gap:"8px", justifyContent: addrFlex, ...(i > 0 ? { marginTop:"4px", borderTop:"1px solid #e2e8f0", paddingTop:"4px" } : {}) }}>
+              {hasAddr && <span style={{ fontSize:`${get(s,"address_font_size")}px`, color:"#94a3b8" }}>{addr}</span>}
+              {hasPhone && <span style={{ fontSize:`${get(s,"address_font_size")}px`, color:"#94a3b8" }}>{phone}</span>}
             </div>
         )})}
-        {get(s,"show_tax_id")  !== false && <div style={{ fontSize:"9px", color:"#94a3b8", marginTop:"4px" }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
+        {get(s,"show_tax_id")  !== false && <div style={{ fontSize:`${get(s,"tax_id_font_size")}px`, color:"#94a3b8", marginTop:"4px", textAlign: taxAlign }}>الرقم الضريبي: {s.tax_id || "310122393500003"}</div>}
       </>
     );
   };

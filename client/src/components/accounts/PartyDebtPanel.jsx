@@ -10,8 +10,6 @@ import AjalFullStatementTemplate from "../print/templates/AjalFullStatementTempl
 
 const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG") : "-");
-const TODAY = new Date().toISOString().slice(0, 10);
-
 const STATUS = {
   open: { label: "مفتوح", cls: "bg-blue-100 text-blue-700" },
   partial: { label: "جزئي", cls: "bg-amber-100 text-amber-700" },
@@ -31,12 +29,13 @@ function ScheduleTimeline({ schedule }) {
   if (!schedule || schedule.length === 0) return null;
 
   // Determine status for each row
-  const firstUnpaidIdx = schedule.findIndex((row) => row.status !== "paid" && row.due_date >= TODAY);
+  const today = new Date().toISOString().slice(0, 10);
+  const firstUnpaidIdx = schedule.findIndex((row) => row.status !== "paid" && row.due_date >= today);
 
   return (
     <div className="relative space-y-0 pr-4">
       {schedule.map((row, idx) => {
-        const isMissed = row.status !== "paid" && row.due_date < TODAY;
+        const isMissed = row.status !== "paid" && row.due_date < today;
         const isNext = idx === firstUnpaidIdx;
         const isPaid = row.status === "paid";
 
@@ -95,10 +94,13 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
 
   // Fetch WhatsApp template from settings on mount
   useEffect(() => {
+    let alive = true;
     api.get("/api/settings").then((r) => {
+      if (!alive) return;
       const tmpl = r.data?.data?.whatsapp_debt_template || r.data?.whatsapp_debt_template || null;
       if (tmpl) setWhatsappTemplate(tmpl);
     }).catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   const loadDebts = useCallback(async () => {
@@ -149,7 +151,8 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
   // Count missed installments from selected debt's schedule
   const missedCount = useMemo(() => {
     if (!selected?.schedule) return 0;
-    return selected.schedule.filter((row) => row.due_date < TODAY && row.status !== "paid").length;
+    const today = new Date().toISOString().slice(0, 10);
+    return selected.schedule.filter((row) => row.due_date < today && row.status !== "paid").length;
   }, [selected]);
 
   async function handlePay() {
@@ -394,7 +397,7 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
 
                 {activePanel === "schedule" && (
                   <div className="space-y-4">
-                    <input type="number" min="2" max="60" value={schedForm.installments} onChange={(e) => setSchedForm((f) => ({ ...f, installments: e.target.value }))} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-slate-500" placeholder="عدد الأقساط" />
+                    <input type="number" min="2" max="60" value={schedForm.installments} onChange={(e) => setSchedForm((f) => ({ ...f, installments: parseInt(e.target.value, 10) || 1 }))} className="h-10 w-full rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-slate-500" placeholder="عدد الأقساط" />
                     <select value={schedForm.frequency} onChange={(e) => setSchedForm((f) => ({ ...f, frequency: e.target.value }))} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-[12px] font-bold outline-none focus:border-slate-500">
                       <option value="weekly">أسبوعي</option>
                       <option value="biweekly">كل أسبوعين</option>
