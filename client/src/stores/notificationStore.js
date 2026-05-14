@@ -52,4 +52,16 @@ export const useNotificationStore = create((set, get) => ({
       get().fetchNotifications();
     }
   },
+
+  deleteAllRead: async () => {
+    const readItems = get().items.filter((item) => item.is_read);
+    // Optimistically remove from state
+    const remaining = get().items.filter((item) => !item.is_read);
+    set({ items: remaining, unreadCount: remaining.filter((item) => !item.is_read).length });
+    try {
+      await Promise.all(readItems.map((item) => api.delete(`/api/notifications/${item.id}`)));
+    } catch {
+      get().fetchNotifications();
+    }
+  },
 }));
