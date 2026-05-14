@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Building, Search, Plus, FileText, X, Phone, SlidersHorizontal, MessageSquare } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Building, Search, Plus, FileText, X, Phone, SlidersHorizontal, MessageSquare, LayoutList } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import StatementModal from "../../components/accounts/StatementModal";
@@ -19,18 +20,130 @@ function Modal({ onClose, children, width = "480px" }) {
   );
 }
 
+function statusBadge(status) {
+  if (status === "paid") return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-emerald-100 text-emerald-700">مسدد</span>;
+  if (status === "overdue") return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700">متأخر</span>;
+  return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-amber-100 text-amber-700">قائم</span>;
+}
+
+function UrgencyDot({ urgency }) {
+  if (!urgency) return null;
+  const colors = { overdue: "bg-red-500", soon: "bg-yellow-400", ok: "bg-green-500" };
+  return (
+    <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${colors[urgency] || ""}`} title={urgency === "overdue" ? "ديون متأخرة" : urgency === "soon" ? "ديون قريبة الاستحقاق" : "ديون قائمة"} />
+  );
+}
+
+function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
+  const [debts, setDebts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("open");
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    api.get(`/api/ajal-debts?party_type=${partyType}&status=${statusFilter === "all" ? "" : statusFilter}&limit=300`)
+      .then(r => {
+        const raw = r.data.data || [];
+        const order = { overdue: 0, partial: 1, open: 1, paid: 2 };
+        raw.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
+        setDebts(raw);
+      })
+      .catch(() => setDebts([]))
+      .finally(() => setLoading(false));
+  }, [open, partyType, statusFilter]);
+
+  const filtered = debts.filter(d => {
+    if (!search) return true;
+    return d.party_name?.toLowerCase().includes(search.toLowerCase());
+  });
+
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />}
+      <div className={`fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`} dir="rtl">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-orange-50">
+          <h2 className="text-[15px] font-black text-slate-900">كل أقساط الأجل</h2>
+          <button onClick={onClose}><X className="h-5 w-5 text-slate-400 hover:text-slate-600" /></button>
+        </div>
+
+        <div className="p-3 border-b border-slate-100 space-y-2">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="بحث باسم الطرف..."
+              className="w-full h-9 rounded-lg border border-slate-200 pr-8 pl-3 text-[12px] outline-none focus:border-orange-400" />
+          </div>
+          <div className="flex gap-1">
+            {[{ id: "open", label: "قائم" }, { id: "overdue", label: "متأخر" }, { id: "all", label: "الكل" }].map(f => (
+              <button key={f.id} onClick={() => setStatusFilter(f.id)}
+                className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all ${statusFilter === f.id ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-8 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-[12px] text-slate-400">لا توجد بيانات</div>
+          ) : (
+            <table className="w-full text-[12px]">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  {["الطرف", "الأصل", "المتبقي", "الاستحقاق", "الحالة"].map(h => (
+                    <th key={h} className="px-3 py-2 text-right font-black text-slate-500 text-[11px]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(d => (
+                  <tr key={d.id}
+                    className={`border-t border-slate-100 cursor-pointer hover:bg-slate-50 ${d.status === "overdue" ? "bg-rose-50/40" : ""}`}
+                    onClick={() => { onSelectParty(d); onClose(); }}>
+                    <td className="px-3 py-2 font-black text-slate-800 truncate max-w-[120px]">{d.party_name || "—"}</td>
+                    <td className="px-3 py-2 font-mono">{fmt(d.original_amount)}</td>
+                    <td className="px-3 py-2 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
+                    <td className="px-3 py-2 text-slate-500">{fmtDate(d.due_date)}</td>
+                    <td className="px-3 py-2">{statusBadge(d.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function SupplierAccountsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
 
-  const [activeTab, setActiveTab] = useState("purchases");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "purchases");
   const [tabData, setTabData] = useState([]);
   const [tabLoading, setTabLoading] = useState(false);
 
   const [paymentMethods, setPaymentMethods] = useState([]);
+
+  // Summary bar
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Urgency map: partyId → "overdue" | "soon" | "ok"
+  const [urgencyMap, setUrgencyMap] = useState({});
+
+  // Drawer
+  const [showDrawer, setShowDrawer] = useState(false);
 
   // Modal states
   const [showCreate, setShowCreate] = useState(false);
@@ -46,6 +159,7 @@ export default function SupplierAccountsPage() {
   const [noteForm, setNoteForm] = useState({ note: "" });
   const [saving, setSaving] = useState(false);
 
+  // ── Load suppliers + summary + urgency ──────────────────
   const loadSuppliers = useCallback(async () => {
     try {
       const [res, methodsReq] = await Promise.all([
@@ -61,8 +175,71 @@ export default function SupplierAccountsPage() {
     }
   }, []);
 
-  useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const r = await api.get("/api/ajal-debts/summary?party_type=supplier");
+      setSummary(r.data.data || r.data || null);
+    } catch { setSummary(null); }
+    finally { setSummaryLoading(false); }
+  }, []);
 
+  const loadUrgencyMap = useCallback(async () => {
+    try {
+      const r = await api.get("/api/ajal-debts?party_type=supplier&status=open&limit=500");
+      const debts = r.data.data || [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const soon = new Date(today); soon.setDate(soon.getDate() + 7);
+      const map = {};
+      for (const d of debts) {
+        const pid = d.supplier_id || d.party_id;
+        if (!pid) continue;
+        const due = d.due_date ? new Date(d.due_date) : null;
+        const current = map[pid];
+        let level = "ok";
+        if (due && due < today) level = "overdue";
+        else if (due && due <= soon) level = "soon";
+        if (current === "overdue") continue;
+        if (current === "soon" && level === "ok") continue;
+        map[pid] = level;
+      }
+      setUrgencyMap(map);
+    } catch { setUrgencyMap({}); }
+  }, []);
+
+  useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { loadUrgencyMap(); }, [loadUrgencyMap]);
+
+  // ── Sync selection from URL params ──────────────────────
+  useEffect(() => {
+    const urlId = searchParams.get("id");
+    const urlTab = searchParams.get("tab");
+    if (urlTab) setActiveTab(urlTab);
+    if (urlId && suppliers.length > 0) {
+      const found = suppliers.find(s => String(s.id) === String(urlId));
+      if (found && (!selected || selected.id !== found.id)) {
+        setSelected(found);
+        setTabData([]);
+      }
+    }
+  }, [searchParams, suppliers]);
+
+  // ── Update URL when selection changes ───────────────────
+  const selectSupplier = useCallback((s, tab = "purchases") => {
+    setSelected(s);
+    setActiveTab(tab);
+    setTabData([]);
+    setSearchParams({ id: String(s.id), tab });
+  }, [setSearchParams]);
+
+  const changeTab = useCallback((tab) => {
+    setActiveTab(tab);
+    if (selected) setSearchParams({ id: String(selected.id), tab });
+  }, [selected, setSearchParams]);
+
+  // ── Load tab data ────────────────────────────────────────
   const loadTab = useCallback(async () => {
     if (!selected) return;
     setTabLoading(true);
@@ -94,6 +271,8 @@ export default function SupplierAccountsPage() {
     const r = await api.get(`/api/suppliers/${selected.id}`);
     setSelected(r.data.data);
     loadSuppliers();
+    loadSummary();
+    loadUrgencyMap();
   };
 
   // ── Handlers ──────────────────────────────────────────────
@@ -107,7 +286,7 @@ export default function SupplierAccountsPage() {
       setShowCreate(false);
       setCreateForm({ name: "", phone: "", code: "", opening_balance: 0, payment_terms: "", bank_details: "" });
       await loadSuppliers();
-      setSelected(r.data.data);
+      selectSupplier(r.data.data, "purchases");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل الإضافة");
     } finally { setSaving(false); }
@@ -128,7 +307,7 @@ export default function SupplierAccountsPage() {
       setShowPayment(false);
       setPayForm({ amount: "", method_id: "", notes: "" });
       await refreshSelected();
-      setActiveTab("payments");
+      changeTab("payments");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل تسجيل الدفعة");
     } finally { setSaving(false); }
@@ -143,7 +322,7 @@ export default function SupplierAccountsPage() {
       setShowAdjust(false);
       setAdjForm({ amount: "", direction: "subtract", reason: "" });
       await refreshSelected();
-      setActiveTab("notes");
+      changeTab("notes");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل التسوية");
     } finally { setSaving(false); }
@@ -157,10 +336,16 @@ export default function SupplierAccountsPage() {
       toast.success("تم إضافة الملاحظة");
       setShowNote(false);
       setNoteForm({ note: "" });
-      setActiveTab("notes");
+      changeTab("notes");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل الإضافة");
     } finally { setSaving(false); }
+  };
+
+  const handleDrawerSelectParty = (debt) => {
+    const pid = debt.supplier_id || debt.party_id;
+    const found = suppliers.find(s => String(s.id) === String(pid));
+    if (found) selectSupplier(found, "debts");
   };
 
   const filtered = suppliers.filter(c => {
@@ -210,6 +395,34 @@ export default function SupplierAccountsPage() {
           </div>
         </div>
 
+        {/* ── Summary Bar ── */}
+        <div className="mx-2 mt-2 mb-1 rounded-xl bg-orange-50 border border-orange-100 p-2.5 space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1 bg-white rounded-lg p-2 border border-orange-100 text-center">
+              <div className="text-[10px] font-black text-slate-500 mb-0.5">إجمالي المديونية</div>
+              <div className="text-[13px] font-black font-mono text-rose-600">
+                {summaryLoading ? "..." : fmt(summary?.total_remaining ?? 0)}
+              </div>
+            </div>
+            <div className="flex-1 bg-white rounded-lg p-2 border border-red-100 text-center">
+              <div className="text-[10px] font-black text-slate-500 mb-0.5">متأخر</div>
+              <div className="text-[13px] font-black font-mono text-red-600">
+                {summaryLoading ? "..." : fmt(summary?.overdue_amount ?? summary?.total_overdue ?? 0)}
+              </div>
+            </div>
+            <div className="flex-1 bg-white rounded-lg p-2 border border-amber-100 text-center">
+              <div className="text-[10px] font-black text-slate-500 mb-0.5">مستحق اليوم</div>
+              <div className="text-[13px] font-black font-mono text-amber-600">
+                {summaryLoading ? "..." : (summary?.due_today_count ?? summary?.due_today ?? 0)}
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setShowDrawer(true)}
+            className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-orange-600 text-white text-[11px] font-black hover:bg-orange-700 transition-colors">
+            <LayoutList className="h-3.5 w-3.5" /> عرض كل الأقساط
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {loading ? (
             <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
@@ -220,15 +433,19 @@ export default function SupplierAccountsPage() {
             </div>
           ) : filtered.map(s => {
             const b = Number(s.opening_balance || 0);
+            const urgency = urgencyMap[s.id];
             return (
-              <div key={s.id} onClick={() => { setSelected(s); setActiveTab("purchases"); setTabData([]); }}
+              <div key={s.id} onClick={() => selectSupplier(s, "purchases")}
                 className={`p-3 rounded-xl cursor-pointer border transition-all ${selected?.id === s.id ? "bg-orange-50 border-orange-300" : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"}`}>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-[14px] font-black text-white shrink-0">
                     {s.name?.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-black text-slate-900 truncate mb-0.5">{s.name}</div>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className="text-[13px] font-black text-slate-900 truncate">{s.name}</div>
+                      <UrgencyDot urgency={urgency} />
+                    </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-[10px] text-slate-400 font-mono truncate">{s.phone || s.code || "—"}</div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -283,7 +500,7 @@ export default function SupplierAccountsPage() {
 
               </div>
 
-              {/* Balance Card — full width, prominent */}
+              {/* Balance Card */}
               <div className={`rounded-2xl p-4 mb-5 flex items-center justify-between border-2 ${
                 bal > 0 ? "bg-rose-50 border-rose-200" :
                 bal < 0 ? "bg-emerald-50 border-emerald-200" :
@@ -346,7 +563,7 @@ export default function SupplierAccountsPage() {
                 { id: "debts", label: "ديون أجل" },
                 { id: "notes", label: "الملاحظات والتسويات" },
               ].map(t => (
-                <button key={t.id} onClick={() => setActiveTab(t.id)}
+                <button key={t.id} onClick={() => changeTab(t.id)}
                   className={`pb-3 px-3 text-[13px] font-black transition-colors relative ${activeTab === t.id ? "text-orange-600" : "text-slate-500 hover:text-slate-800"}`}>
                   {t.label}
                   {activeTab === t.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t-full" />}
@@ -453,6 +670,14 @@ export default function SupplierAccountsPage() {
           </>
         )}
       </div>
+
+      {/* ══ All-Debts Drawer ═══════════════════════════════════ */}
+      <AllDebtsDrawer
+        open={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        partyType="supplier"
+        onSelectParty={handleDrawerSelectParty}
+      />
 
       {/* ══ Modals ══════════════════════════════════════════════ */}
 

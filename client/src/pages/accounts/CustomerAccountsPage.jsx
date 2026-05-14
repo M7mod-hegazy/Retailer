@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Users, Search, Plus, FileText, Settings, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, ChevronLeft } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Users, Search, Plus, FileText, Settings, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, ChevronLeft, LayoutList } from "lucide-react";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -20,7 +21,116 @@ function Modal({ onClose, children, width = "480px" }) {
   );
 }
 
+// ── Status badge helper ────────────────────────────────────
+function statusBadge(status) {
+  if (status === "paid") return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-emerald-100 text-emerald-700">مسدد</span>;
+  if (status === "overdue") return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700">متأخر</span>;
+  return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-amber-100 text-amber-700">قائم</span>;
+}
+
+// ── Urgency dot component ──────────────────────────────────
+function UrgencyDot({ urgency }) {
+  if (!urgency) return null;
+  const colors = { overdue: "bg-red-500", soon: "bg-yellow-400", ok: "bg-green-500" };
+  return (
+    <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${colors[urgency] || ""}`} title={urgency === "overdue" ? "ديون متأخرة" : urgency === "soon" ? "ديون قريبة الاستحقاق" : "ديون قائمة"} />
+  );
+}
+
+// ── All-Debts Drawer ───────────────────────────────────────
+function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
+  const [debts, setDebts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("open");
+  const accent = partyType === "customer" ? "blue" : "orange";
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    api.get(`/api/ajal-debts?party_type=${partyType}&status=${statusFilter === "all" ? "" : statusFilter}&limit=300`)
+      .then(r => {
+        const raw = r.data.data || [];
+        // sort: overdue → open/partial → paid
+        const order = { overdue: 0, partial: 1, open: 1, paid: 2 };
+        raw.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
+        setDebts(raw);
+      })
+      .catch(() => setDebts([]))
+      .finally(() => setLoading(false));
+  }, [open, partyType, statusFilter]);
+
+  const filtered = debts.filter(d => {
+    if (!search) return true;
+    return d.party_name?.toLowerCase().includes(search.toLowerCase());
+  });
+
+  return (
+    <>
+      {/* Backdrop */}
+      {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />}
+      {/* Drawer */}
+      <div className={`fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`} dir="rtl">
+        <div className={`p-4 border-b border-slate-200 flex items-center justify-between bg-${accent === "blue" ? "blue" : "orange"}-50`}>
+          <h2 className="text-[15px] font-black text-slate-900">كل أقساط الأجل</h2>
+          <button onClick={onClose}><X className="h-5 w-5 text-slate-400 hover:text-slate-600" /></button>
+        </div>
+
+        <div className="p-3 border-b border-slate-100 space-y-2">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="بحث باسم الطرف..."
+              className="w-full h-9 rounded-lg border border-slate-200 pr-8 pl-3 text-[12px] outline-none focus:border-blue-400" />
+          </div>
+          <div className="flex gap-1">
+            {[{ id: "open", label: "قائم" }, { id: "overdue", label: "متأخر" }, { id: "all", label: "الكل" }].map(f => (
+              <button key={f.id} onClick={() => setStatusFilter(f.id)}
+                className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all ${statusFilter === f.id ? `bg-${accent === "blue" ? "blue" : "orange"}-600 text-white` : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-8 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-[12px] text-slate-400">لا توجد بيانات</div>
+          ) : (
+            <table className="w-full text-[12px]">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  {["الطرف", "الأصل", "المتبقي", "الاستحقاق", "الحالة"].map(h => (
+                    <th key={h} className="px-3 py-2 text-right font-black text-slate-500 text-[11px]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(d => (
+                  <tr key={d.id}
+                    className={`border-t border-slate-100 cursor-pointer hover:bg-slate-50 ${d.status === "overdue" ? "bg-rose-50/40" : ""}`}
+                    onClick={() => { onSelectParty(d); onClose(); }}>
+                    <td className="px-3 py-2 font-black text-slate-800 truncate max-w-[120px]">{d.party_name || "—"}</td>
+                    <td className="px-3 py-2 font-mono">{fmt(d.original_amount)}</td>
+                    <td className="px-3 py-2 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
+                    <td className="px-3 py-2 text-slate-500">{fmtDate(d.due_date)}</td>
+                    <td className="px-3 py-2">{statusBadge(d.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function CustomerAccountsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [customers, setCustomers] = useState([]);
   const [walkInId, setWalkInId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,11 +138,21 @@ export default function CustomerAccountsPage() {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
 
-  const [activeTab, setActiveTab] = useState("invoices");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "invoices");
   const [tabData, setTabData] = useState([]);
   const [tabLoading, setTabLoading] = useState(false);
 
   const [paymentMethods, setPaymentMethods] = useState([]);
+
+  // Summary bar
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Urgency map: partyId → "overdue" | "soon" | "ok"
+  const [urgencyMap, setUrgencyMap] = useState({});
+
+  // Drawer
+  const [showDrawer, setShowDrawer] = useState(false);
 
   // Modal states
   const [showCreate, setShowCreate] = useState(false);
@@ -48,6 +168,7 @@ export default function CustomerAccountsPage() {
   const [noteForm, setNoteForm] = useState({ note: "" });
   const [saving, setSaving] = useState(false);
 
+  // ── Load customers + summary + urgency ──────────────────
   const loadCustomers = useCallback(async () => {
     try {
       const [res, methodsReq, settingsReq] = await Promise.all([
@@ -66,8 +187,72 @@ export default function CustomerAccountsPage() {
     }
   }, []);
 
-  useEffect(() => { loadCustomers(); }, [loadCustomers]);
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const r = await api.get("/api/ajal-debts/summary?party_type=customer");
+      setSummary(r.data.data || r.data || null);
+    } catch { setSummary(null); }
+    finally { setSummaryLoading(false); }
+  }, []);
 
+  const loadUrgencyMap = useCallback(async () => {
+    try {
+      const r = await api.get("/api/ajal-debts?party_type=customer&status=open&limit=500");
+      const debts = r.data.data || [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const soon = new Date(today); soon.setDate(soon.getDate() + 7);
+      const map = {};
+      for (const d of debts) {
+        const pid = d.customer_id || d.party_id;
+        if (!pid) continue;
+        const due = d.due_date ? new Date(d.due_date) : null;
+        const current = map[pid];
+        let level = "ok";
+        if (due && due < today) level = "overdue";
+        else if (due && due <= soon) level = "soon";
+        // escalate if already worse
+        if (current === "overdue") continue;
+        if (current === "soon" && level === "ok") continue;
+        map[pid] = level;
+      }
+      setUrgencyMap(map);
+    } catch { setUrgencyMap({}); }
+  }, []);
+
+  useEffect(() => { loadCustomers(); }, [loadCustomers]);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { loadUrgencyMap(); }, [loadUrgencyMap]);
+
+  // ── Sync selection from URL params ──────────────────────
+  useEffect(() => {
+    const urlId = searchParams.get("id");
+    const urlTab = searchParams.get("tab");
+    if (urlTab) setActiveTab(urlTab);
+    if (urlId && customers.length > 0) {
+      const found = customers.find(c => String(c.id) === String(urlId));
+      if (found && (!selected || selected.id !== found.id)) {
+        setSelected(found);
+        setTabData([]);
+      }
+    }
+  }, [searchParams, customers]);
+
+  // ── Update URL when selection changes ───────────────────
+  const selectCustomer = useCallback((c, tab = "invoices") => {
+    setSelected(c);
+    setActiveTab(tab);
+    setTabData([]);
+    setSearchParams({ id: String(c.id), tab });
+  }, [setSearchParams]);
+
+  const changeTab = useCallback((tab) => {
+    setActiveTab(tab);
+    if (selected) setSearchParams({ id: String(selected.id), tab });
+  }, [selected, setSearchParams]);
+
+  // ── Load tab data ────────────────────────────────────────
   const loadTab = useCallback(async () => {
     if (!selected) return;
     setTabLoading(true);
@@ -96,6 +281,8 @@ export default function CustomerAccountsPage() {
     const r = await api.get(`/api/customers/${selected.id}`);
     setSelected(r.data.data);
     loadCustomers();
+    loadSummary();
+    loadUrgencyMap();
   };
 
   // ── Handlers ──────────────────────────────────────────────
@@ -111,7 +298,7 @@ export default function CustomerAccountsPage() {
       setShowCreate(false);
       setCreateForm({ name: "", phone: "", additionalPhones: [""], addresses: [""], notes: "", code: "", opening_balance: 0, credit_limit: 0 });
       await loadCustomers();
-      setSelected(r.data.data);
+      selectCustomer(r.data.data, "invoices");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل الإضافة");
     } finally { setSaving(false); }
@@ -132,7 +319,7 @@ export default function CustomerAccountsPage() {
       setShowPayment(false);
       setPayForm({ amount: "", method_id: "", notes: "" });
       await refreshSelected();
-      setActiveTab("payments");
+      changeTab("payments");
       loadTab();
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل تسجيل الدفعة");
@@ -148,7 +335,7 @@ export default function CustomerAccountsPage() {
       setShowAdjust(false);
       setAdjForm({ amount: "", direction: "subtract", reason: "" });
       await refreshSelected();
-      setActiveTab("notes");
+      changeTab("notes");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل التسوية");
     } finally { setSaving(false); }
@@ -162,10 +349,17 @@ export default function CustomerAccountsPage() {
       toast.success("تم إضافة الملاحظة");
       setShowNote(false);
       setNoteForm({ note: "" });
-      setActiveTab("notes");
+      changeTab("notes");
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل الإضافة");
     } finally { setSaving(false); }
+  };
+
+  // Drawer: navigate to party's debts tab
+  const handleDrawerSelectParty = (debt) => {
+    const pid = debt.customer_id || debt.party_id;
+    const found = customers.find(c => String(c.id) === String(pid));
+    if (found) selectCustomer(found, "debts");
   };
 
   const filtered = customers.filter(c => {
@@ -220,6 +414,34 @@ export default function CustomerAccountsPage() {
           </div>
         </div>
 
+        {/* ── Summary Bar ── */}
+        <div className="mx-2 mt-2 mb-1 rounded-xl bg-blue-50 border border-blue-100 p-2.5 space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1 bg-white rounded-lg p-2 border border-blue-100 text-center">
+              <div className="text-[10px] font-black text-slate-500 mb-0.5">إجمالي المديونية</div>
+              <div className="text-[13px] font-black font-mono text-rose-600">
+                {summaryLoading ? "..." : fmt(summary?.total_remaining ?? 0)}
+              </div>
+            </div>
+            <div className="flex-1 bg-white rounded-lg p-2 border border-red-100 text-center">
+              <div className="text-[10px] font-black text-slate-500 mb-0.5">متأخر</div>
+              <div className="text-[13px] font-black font-mono text-red-600">
+                {summaryLoading ? "..." : fmt(summary?.overdue_amount ?? summary?.total_overdue ?? 0)}
+              </div>
+            </div>
+            <div className="flex-1 bg-white rounded-lg p-2 border border-amber-100 text-center">
+              <div className="text-[10px] font-black text-slate-500 mb-0.5">مستحق اليوم</div>
+              <div className="text-[13px] font-black font-mono text-amber-600">
+                {summaryLoading ? "..." : (summary?.due_today_count ?? summary?.due_today ?? 0)}
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setShowDrawer(true)}
+            className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-blue-600 text-white text-[11px] font-black hover:bg-blue-700 transition-colors">
+            <LayoutList className="h-3.5 w-3.5" /> عرض كل الأقساط
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {loading ? (
             <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
@@ -232,8 +454,9 @@ export default function CustomerAccountsPage() {
             const b = Number(c.opening_balance || 0);
             const lim = Number(c.credit_limit || 0);
             const nearLimit = lim > 0 && b >= lim * 0.9;
+            const urgency = urgencyMap[c.id];
             return (
-              <div key={c.id} onClick={() => { setSelected(c); setActiveTab("invoices"); setTabData([]); }}
+              <div key={c.id} onClick={() => selectCustomer(c, "invoices")}
                 className={`p-3 rounded-xl cursor-pointer border transition-all ${selected?.id === c.id ? "bg-blue-50 border-blue-300" : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"}`}>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-[14px] font-black text-white shrink-0">
@@ -241,7 +464,10 @@ export default function CustomerAccountsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[13px] font-black text-slate-900 truncate">{c.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-[13px] font-black text-slate-900 truncate">{c.name}</div>
+                        <UrgencyDot urgency={urgency} />
+                      </div>
                       {nearLimit && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 ml-1" />}
                     </div>
                     <div className="flex items-center justify-between gap-2">
@@ -321,7 +547,7 @@ export default function CustomerAccountsPage() {
                 </div>
               </div>
 
-              {/* Credit Limit Bar — only relevant when customer has positive balance */}
+              {/* Credit Limit Bar */}
               {creditLimit > 0 && bal > 0 && (
                 <div className="mb-5 bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <div className="flex justify-between text-[11px] font-black mb-1.5">
@@ -376,7 +602,7 @@ export default function CustomerAccountsPage() {
                 { id: "debts", label: "ديون أجل" },
                 { id: "notes", label: "الملاحظات والتسويات" },
               ].map(t => (
-                <button key={t.id} onClick={() => setActiveTab(t.id)}
+                <button key={t.id} onClick={() => changeTab(t.id)}
                   className={`pb-3 px-3 text-[13px] font-black transition-colors relative ${activeTab === t.id ? "text-blue-600" : "text-slate-500 hover:text-slate-800"}`}>
                   {t.label}
                   {activeTab === t.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
@@ -434,30 +660,6 @@ export default function CustomerAccountsPage() {
                     ))}
                   </tbody>
                 </table>
-              ) : activeTab === "debts" ? (
-                <table className="w-full text-[12px] bg-white rounded-xl overflow-hidden shadow-sm">
-                  <thead className="bg-slate-100">
-                    <tr>{["الفاتورة", "الأصل", "المدفوع", "المتبقي", "الاستحقاق", "الحالة"].map(h => (
-                      <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px]">{h}</th>
-                    ))}</tr>
-                  </thead>
-                  <tbody>
-                    {tabData.map(d => (
-                      <tr key={d.id} className={`border-t border-slate-100 hover:bg-slate-50 ${d.status === "overdue" ? "bg-rose-50/40" : ""}`}>
-                        <td className="px-4 py-3 font-mono text-[11px]">{d.invoice_no || "—"}</td>
-                        <td className="px-4 py-3 font-black font-mono">{fmt(d.original_amount)}</td>
-                        <td className="px-4 py-3 font-mono text-emerald-700">{fmt(d.paid_amount)}</td>
-                        <td className="px-4 py-3 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
-                        <td className="px-4 py-3 text-slate-500">{fmtDate(d.due_date)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${d.status === "paid" ? "bg-emerald-100 text-emerald-700" : d.status === "overdue" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
-                            {d.status === "paid" ? "مسدد" : d.status === "overdue" ? "متأخر" : "قائم"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               ) : (
                 <div className="space-y-3 max-w-2xl">
                   {tabData.map(n => {
@@ -484,6 +686,14 @@ export default function CustomerAccountsPage() {
           </>
         )}
       </div>
+
+      {/* ══ All-Debts Drawer ═══════════════════════════════════ */}
+      <AllDebtsDrawer
+        open={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        partyType="customer"
+        onSelectParty={handleDrawerSelectParty}
+      />
 
       {/* ══ Modals ══════════════════════════════════════════════ */}
 
