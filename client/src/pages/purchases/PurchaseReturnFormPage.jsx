@@ -9,6 +9,7 @@ import api from "../../services/api";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import Modal from "../../components/ui/Modal";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PurchaseReturnTodayModal from "../../components/purchases/PurchaseReturnTodayModal";
 import PurchasePickerTodayModal from "../../components/purchases/PurchasePickerTodayModal";
 
@@ -172,6 +173,7 @@ export default function PurchaseReturnFormPage() {
   const [showEditWarnModal, setShowEditWarnModal] = useState(false);
   const [showSwitchPurchaseWarning, setShowSwitchPurchaseWarning] = useState(false);
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
+  const [printPreview, setPrintPreview] = useState(false);
 
   const itemInputRef = useRef(null);
   const stagingWHRef = useRef(null);
@@ -500,9 +502,15 @@ export default function PurchaseReturnFormPage() {
             className="flex h-9 items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all">
             <Calendar className="h-4 w-4" /> مرتجعات اليوم
           </button>
-          <button disabled className="flex h-9 items-center gap-2 rounded-sm border border-slate-200 bg-white px-4 text-[13px] font-black text-slate-400 cursor-not-allowed opacity-50">
-            <Printer className="h-4 w-4" /> طباعة
-          </button>
+          <PermissionGate page="purchase_returns" action="print">
+            <button
+              onClick={() => setPrintPreview(true)}
+              disabled={!total}
+              className="flex h-9 items-center gap-2 rounded-sm border border-slate-200 bg-white px-4 text-[13px] font-black text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Printer className="h-4 w-4" /> طباعة
+            </button>
+          </PermissionGate>
           {isEditMode && isLocked && (
             <PermissionGate page="purchase_returns" action="edit">
               <button onClick={() => setShowEditWarnModal(true)} className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-5 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
@@ -519,7 +527,11 @@ export default function PurchaseReturnFormPage() {
           )}
           {mode && !isLocked && (
             <PermissionGate page="purchase_returns" action={isEditMode ? "edit" : "add"}>
-              <button onClick={handleSave} disabled={isSaving || !total} className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+              <button
+                onClick={isEditMode ? handleSave : () => setPrintPreview(true)}
+                disabled={isSaving || !total}
+                className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
                 {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
               </button>
             </PermissionGate>
@@ -843,6 +855,29 @@ export default function PurchaseReturnFormPage() {
       <PurchasePickerTodayModal open={purchasePickerOpen && !isEditMode} onClose={() => { setPurchasePickerOpen(false); if (!loadedPurchase) setMode(null); }} onSelectPurchase={handleDetailConfirm} suppliers={suppliers} />
       <SupplierCreateModal open={supplierCreateOpen} onClose={() => setSupplierCreateOpen(false)} onCreated={s => { setSuppliers(prev => [s, ...prev]); setSupplier({ id: s.id, name: s.name }); setSupplierCreateOpen(false); }} />
       <PurchaseReturnTodayModal open={todayReturnsOpen} onClose={() => setTodayReturnsOpen(false)} />
+      <PrintPreviewModal
+        open={printPreview}
+        onClose={() => setPrintPreview(false)}
+        docType="purchase_return"
+        invoice={{
+          invoice_no: docNo,
+          created_at: invoiceCreatedAt || new Date().toISOString(),
+          supplier_name: supplier?.name,
+          lines: (mode === "direct" ? cart : purchaseLines.filter(l => l.checked)).map(l => ({
+            item_name: l.item_name,
+            quantity: mode === "direct" ? l.quantity : l.qty_to_return,
+            unit_price: l.unit_cost,
+            discount_amount: 0,
+          })),
+        }}
+        settings={{}}
+        operationLabel="مرتجع مشتريات"
+        onConfirmPrint={() => handleSave()}
+        confirmLabel="حفظ وطباعة"
+        onSaveOnly={() => handleSave()}
+        saveOnlyLabel="حفظ بدون طباعة"
+        isSaving={isSaving}
+      />
     </div>
   );
 }

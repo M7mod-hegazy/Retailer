@@ -156,7 +156,7 @@ router.put("/returns/:id/amend", requirePagePermission("sales_returns", "edit"),
   } catch (e) { next(e); }
 });
 
-router.post("/general-purchase-return", requirePagePermission("purchases", "add"), (req, res, next) => {
+router.post("/general-purchase-return", requirePagePermission("purchase_returns", "add"), (req, res, next) => {
   try {
     const db = getDb();
     const { lines, supplier_id, refund_method, notes, reason } = req.body;
@@ -326,7 +326,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   res.status(201).json({ success: true, data: invoice });
 });
 
-router.post("/:id/return", requirePagePermission("pos", "add"), (req, res, next) => {
+router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
     const salesReturn = createReturn(Number(req.params.id), req.body || {});
     req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`);

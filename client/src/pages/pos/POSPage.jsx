@@ -492,8 +492,8 @@ export default function POSPage() {
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
   const [pendingViewMode, setPendingViewMode] = useState(null);
   const [newInvoiceModalOpen, setNewInvoiceModalOpen] = useState(false);
-  const [saveOnlyConfirmOpen, setSaveOnlyConfirmOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
 
   const [invoiceTick, setInvoiceTick] = useState(() => Date.now());
   const [invoiceSeq, setInvoiceSeq]   = useState(1);
@@ -1781,7 +1781,7 @@ export default function POSPage() {
                   <PermissionGate page="pos" action="add">
                     <button
                       type="button"
-                      onClick={() => setSaveOnlyConfirmOpen(true)}
+                      onClick={() => setSaveConfirmOpen(true)}
                       disabled={!lines.length || isSaving || hasBlockingErrors}
                       className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}
                     >
@@ -2256,6 +2256,7 @@ export default function POSPage() {
         <PrintPreviewModal
           open={printPreview}
           onClose={() => setPrintPreview(false)}
+          docType="pos_receipt"
           invoice={{
             invoice_no: invoiceNumber,
             created_at: new Date().toISOString(),
@@ -2272,7 +2273,7 @@ export default function POSPage() {
           }}
           settings={storeSettings}
           operationLabel="فاتورة مبيعات نقدية"
-          onConfirmPrint={() => saveInvoice(true)}
+          onConfirmPrint={() => saveInvoice(false)}
           confirmLabel="حفظ وطباعة"
           onSaveOnly={() => saveInvoice(false)}
           saveOnlyLabel="حفظ فقط"
@@ -2510,49 +2511,35 @@ export default function POSPage() {
           </div>
         </Modal>
 
-        {/* Save Only Confirmation Modal */}
-        <Modal open={saveOnlyConfirmOpen} onClose={() => setSaveOnlyConfirmOpen(false)} title="تأكيد الحفظ">
+
+
+        {/* Cancel Invoice Modal */}
+        <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة">
           <div className="flex flex-col gap-4 mt-2">
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <Printer className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+              <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[13px] font-black text-blue-800">هل تريد الحفظ والطباعة؟</p>
-                <p className="text-[12px] font-bold text-blue-700 mt-1">سيتم فتح نافذة الطباعة بعد الحفظ</p>
+                <p className="text-[13px] font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
+                <p className="text-[12px] font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => {
-                  setSaveOnlyConfirmOpen(false);
-                  setPrintPreview(true);
-                }}
+                onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
                 disabled={isSaving}
-                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
               >
-                <Printer className="h-4 w-4" />
-                نعم، حفظ وطباعة
+                {isSaving ? "جاري الحفظ..." : "تأكيد الحفظ"}
               </button>
               <button
-                onClick={() => {
-                  setSaveOnlyConfirmOpen(false);
-                  saveInvoice(false);
-                }}
-                disabled={isSaving}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-700 hover:bg-slate-50 transition-colors"
+                onClick={() => setSaveConfirmOpen(false)}
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                حفظ فقط بدون طباعة
-              </button>
-              <button
-                onClick={() => setSaveOnlyConfirmOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-              >
-                إلغاء
+                تراجع
               </button>
             </div>
           </div>
         </Modal>
-
-        {/* Cancel Invoice Modal */}
         <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة">
           <div className="flex flex-col gap-4 mt-2">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
@@ -3202,7 +3189,7 @@ export default function POSPage() {
                 </PermissionGate>
                 <div className="flex gap-2">
                   <PermissionGate page="pos" action="add">
-                    <button type="button" onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}>
+                    <button type="button" onClick={() => setSaveConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}>
                       حفظ فقط
                     </button>
                   </PermissionGate>
@@ -3483,6 +3470,7 @@ export default function POSPage() {
       <PrintPreviewModal
         open={printPreview}
         onClose={() => setPrintPreview(false)}
+        docType="pos_receipt"
         invoice={lastSavedInvoice ? {
           invoice_no: lastSavedInvoice.invoice_no,
           created_at: lastSavedInvoice.date instanceof Date ? lastSavedInvoice.date.toISOString() : new Date().toISOString(),
@@ -3512,7 +3500,7 @@ export default function POSPage() {
         }}
         settings={storeSettings}
         operationLabel="فاتورة مبيعات نقدية"
-        onConfirmPrint={lastSavedInvoice ? undefined : () => saveInvoice(true)}
+        onConfirmPrint={lastSavedInvoice ? undefined : () => saveInvoice(false)}
         confirmLabel="حفظ وطباعة"
         onSaveOnly={lastSavedInvoice ? undefined : () => saveInvoice(false)}
         saveOnlyLabel="حفظ فقط"
@@ -3648,43 +3636,31 @@ export default function POSPage() {
         </div>
       </Modal>
 
-      {/* Save Only Confirmation Modal */}
-      <Modal open={saveOnlyConfirmOpen} onClose={() => setSaveOnlyConfirmOpen(false)} title="تأكيد الحفظ">
+
+
+      {/* Save Confirm Modal */}
+      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة">
         <div className="flex flex-col gap-4 mt-2">
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-            <Printer className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+            <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] font-black text-blue-800">هل تريد الحفظ والطباعة؟</p>
-              <p className="text-[12px] font-bold text-blue-700 mt-1">سيتم فتح نافذة الطباعة بعد الحفظ</p>
+              <p className="text-[13px] font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
+              <p className="text-[12px] font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => {
-                setSaveOnlyConfirmOpen(false);
-                setPrintPreview(true);
-              }}
+              onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
               disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
-              <Printer className="h-4 w-4" />
-              نعم، حفظ وطباعة
+              {isSaving ? "جاري الحفظ..." : "تأكيد الحفظ"}
             </button>
             <button
-              onClick={() => {
-                setSaveOnlyConfirmOpen(false);
-                saveInvoice(false);
-              }}
-              disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-700 hover:bg-slate-50 transition-colors"
+              onClick={() => setSaveConfirmOpen(false)}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              حفظ فقط بدون طباعة
-            </button>
-            <button
-              onClick={() => setSaveOnlyConfirmOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-            >
-              إلغاء
+              تراجع
             </button>
           </div>
         </div>

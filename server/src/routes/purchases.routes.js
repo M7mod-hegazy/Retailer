@@ -362,7 +362,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
   }
 });
 
-router.post("/:id/return", requirePagePermission("purchases", "add"), (req, res, next) => {
+router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (req, res, next) => {
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);
 

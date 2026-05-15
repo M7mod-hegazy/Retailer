@@ -1,234 +1,352 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Bell, CheckSquare, Trash2, Check } from "lucide-react";
+import { Bell, Check, Trash2, CheckSquare, Filter, X, Info, AlertTriangle, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { useNotificationStore } from "../../stores/notificationStore";
 import PermissionGate from "../../components/ui/PermissionGate";
-import Button from "../../components/ui/Button";
 import PageWrapper from "../../components/ui/PageWrapper";
 
 const SAFE_LINK_PREFIXES = [
-  "/invoices",
-  "/purchases",
-  "/stock",
-  "/suppliers",
-  "/customers",
-  "/shifts",
-  "/definitions",
-  "/notifications",
-  "/history",
-  "/reports",
-  "/payments",
-  "/expenses",
+  "/invoices", "/purchases", "/stock", "/suppliers", "/customers",
+  "/shifts", "/definitions", "/notifications", "/history", "/reports",
+  "/payments", "/expenses",
 ];
 
-const TYPE_OPTIONS = [
+const TYPE_OPTS = [
   { value: "all", label: "الكل" },
   { value: "info", label: "معلومات" },
   { value: "warning", label: "تحذير" },
-  { value: "error", label: "خطأ" },
+  { value: "error", label: "حرج" },
 ];
 
-const TYPE_COLORS = {
-  info: "bg-info/10 text-info-DEFAULT border-info/30",
-  warning: "bg-warning/10 text-warning-DEFAULT border-warning/30",
-  error: "bg-error/10 text-error-DEFAULT border-error/30",
-};
+function typeConfig(type) {
+  switch (type) {
+    case "warning": return {
+      bg: "oklch(0.96 0.06 75)",
+      text: "oklch(0.52 0.14 72)",
+      icon: AlertTriangle,
+      label: "تحذير",
+    };
+    case "error": return {
+      bg: "oklch(0.96 0.05 15)",
+      text: "oklch(0.50 0.18 15)",
+      icon: AlertCircle,
+      label: "حرج",
+    };
+    default: return {
+      bg: "oklch(0.94 0.04 278)",
+      text: "oklch(0.47 0.14 278)",
+      icon: Info,
+      label: "معلومات",
+    };
+  }
+}
 
-export default function NotificationsPage() {
-  const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === "ar";
+function SkeletonRow() {
+  return (
+    <div className="flex items-start gap-4 px-6 py-5 border-b border-[oklch(0.91_0.01_278)]">
+      <div className="w-9 h-9 rounded-full shrink-0 skeleton-pulse" style={{ background: "oklch(0.91 0.015 278)" }} />
+      <div className="flex-1 space-y-2 pt-1">
+        <div className="h-3.5 w-48 rounded skeleton-pulse" style={{ background: "oklch(0.91 0.015 278)" }} />
+        <div className="h-3 w-72 rounded skeleton-pulse" style={{ background: "oklch(0.93 0.01 278)", animationDelay: "0.15s" }} />
+      </div>
+      <div className="h-3 w-20 rounded skeleton-pulse shrink-0" style={{ background: "oklch(0.93 0.01 278)", animationDelay: "0.1s" }} />
+    </div>
+  );
+}
+
+function NotifRow({ note, onMarkRead, onDelete, index }) {
   const navigate = useNavigate();
+  const [leaving, setLeaving] = useState(false);
+  const cfg = typeConfig(note.type);
+  const Icon = cfg.icon;
+  const isUnread = !note.is_read;
 
-  const { markAsRead, markAllAsRead, dismissNotification, deleteAllRead } = useNotificationStore();
-
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [typeFilter, setTypeFilter] = useState("all");
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get("/api/notifications");
-      if (res.data?.success) {
-        setNotifications(res.data.data || []);
-      }
-    } catch (err) {
-      toast.error("فشل تحميل التنبيهات");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMarkAsRead = async (e, id) => {
+  const handleDelete = async (e) => {
     e.stopPropagation();
-    await markAsRead(id);
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: 1 } : n)));
+    setLeaving(true);
+    setTimeout(() => onDelete(note.id), 280);
   };
 
-  const handleDelete = async (e, id) => {
+  const handleMarkRead = async (e) => {
     e.stopPropagation();
-    await dismissNotification(id);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    onMarkRead(note.id);
   };
 
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
-  };
-
-  const handleDeleteAllRead = async () => {
-    await deleteAllRead();
-    setNotifications((prev) => prev.filter((n) => !n.is_read));
-  };
-
-  const handleRowClick = async (note) => {
-    // Always mark as read
-    if (!note.is_read) {
-      await markAsRead(note.id);
-      setNotifications((prev) => prev.map((n) => (n.id === note.id ? { ...n, is_read: 1 } : n)));
-    }
-    // Navigate only if link is safe
-    if (note.link && SAFE_LINK_PREFIXES.some((prefix) => note.link.startsWith(prefix))) {
+  const handleClick = async () => {
+    if (isUnread) onMarkRead(note.id);
+    if (note.link && SAFE_LINK_PREFIXES.some(p => note.link.startsWith(p))) {
       navigate(note.link);
     }
   };
 
-  const filtered = typeFilter === "all"
-    ? notifications
-    : notifications.filter((n) => n.type === typeFilter);
-
-  const readCount = notifications.filter((n) => n.is_read).length;
+  const delay = `${Math.min(index, 12) * 35}ms`;
 
   return (
-    <PageWrapper className={`mx-auto max-w-5xl px-4 py-4 ${isRTL ? "text-right" : "text-left"}`}>
-      <div className="page-header">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-info/12 text-info-DEFAULT">
-            <Bell className="w-6 h-6" />
+    <div
+      onClick={handleClick}
+      className={`notif-row group relative flex items-start gap-4 px-6 py-5 cursor-pointer border-b border-[oklch(0.91_0.01_278)] transition-all duration-200 hover:bg-[oklch(0.975_0.01_278)] ${leaving ? "notif-leave" : "notif-enter"} ${isUnread ? "notif-unread" : "opacity-60"}`}
+      style={{ animationDelay: delay }}
+    >
+      {/* Unread indicator line */}
+      {isUnread && (
+        <div className="absolute right-0 top-4 bottom-4 w-0.5 rounded-l" style={{ background: "oklch(0.47 0.14 278)" }} />
+      )}
+
+      {/* Type icon circle */}
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+        style={{ background: cfg.bg }}
+      >
+        <Icon size={16} style={{ color: cfg.text }} strokeWidth={2} />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`text-sm font-semibold truncate ${isUnread ? "text-[oklch(0.18_0.02_278)]" : "text-[oklch(0.45_0.03_278)]"}`}>
+              {note.title}
+            </span>
+            {note.type && note.type !== "info" && (
+              <span
+                className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{ background: cfg.bg, color: cfg.text }}
+              >
+                {cfg.label}
+              </span>
+            )}
           </div>
-          <div>
-            <h1 className="page-title">التنبيهات</h1>
-            <p className="page-subtitle">تابع الأحداث الحرجة ورسائل التشغيل في مكان واحد.</p>
-          </div>
+          <span className="text-[11px] text-[oklch(0.55_0.04_278)] shrink-0 mt-0.5 font-mono" dir="ltr">
+            {new Date(note.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Type filter */}
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="input-field text-sm h-9 px-3 py-1 rounded-lg"
-            dir={isRTL ? "rtl" : "ltr"}
-          >
-            {TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+        {note.message && (
+          <p className="text-sm text-[oklch(0.45_0.05_278)] leading-relaxed mb-2">{note.message}</p>
+        )}
 
-          {/* Delete all read */}
-          <PermissionGate page="notifications" action="delete">
-            {readCount > 0 && (
-              <Button
-                variant="ghost"
-                onClick={handleDeleteAllRead}
-                className="text-error-DEFAULT hover:bg-error/10"
+        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          {isUnread && (
+            <PermissionGate page="notifications" action="edit">
+              <button
+                onClick={handleMarkRead}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-[oklch(0.47_0.14_278)] hover:underline"
               >
-                <Trash2 className="w-4 h-4" />
-                حذف المقروءة ({readCount})
-              </Button>
-            )}
-          </PermissionGate>
-
-          {/* Mark all read */}
-          <PermissionGate page="notifications" action="edit">
-            <Button variant="ghost" onClick={handleMarkAllAsRead}>
-              <CheckSquare className="w-4 h-4" /> تحديد الكل كمقروء
-            </Button>
+                <Check size={11} strokeWidth={2.5} />
+                تعليم مقروء
+              </button>
+            </PermissionGate>
+          )}
+          <PermissionGate page="notifications" action="delete">
+            <button
+              onClick={handleDelete}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-[oklch(0.50_0.18_15)] hover:underline"
+            >
+              <Trash2 size={11} strokeWidth={2.5} />
+              حذف
+            </button>
           </PermissionGate>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="glass-panel overflow-hidden rounded-[24px]">
-        {loading ? (
-          <div className="p-8 text-center text-text-secondary">جاري التحميل...</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-text-secondary">لا توجد تنبيهات حالياً</div>
-        ) : (
-          <div className="divide-y divide-border-subtle">
-            {filtered.map((note) => (
-              <div
-                key={note.id}
-                onClick={() => handleRowClick(note)}
-                className={`flex items-start gap-4 p-5 transition-all cursor-pointer hover:bg-surface-hover ${
-                  note.is_read ? "bg-transparent opacity-70" : "bg-info/10"
-                }`}
-              >
-                <div
-                  className={`mt-1 h-3 w-3 flex-shrink-0 rounded-full ${
-                    note.is_read ? "bg-border-normal" : "bg-info-DEFAULT badge-pulse"
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <h3
-                        className={`font-semibold truncate ${
-                          note.is_read ? "text-text-secondary" : "text-text-primary"
-                        }`}
-                      >
-                        {note.title}
-                      </h3>
-                      {note.type && note.type !== "info" && (
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium flex-shrink-0 ${
-                            TYPE_COLORS[note.type] || TYPE_COLORS.info
-                          }`}
-                        >
-                          {note.type === "warning" ? "تحذير" : note.type === "error" ? "خطأ" : note.type}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-text-muted flex-shrink-0" dir="ltr">
-                      {new Date(note.created_at).toLocaleString("ar-EG")}
-                    </span>
-                  </div>
-                  <p className="mb-2 text-sm text-text-secondary">{note.message}</p>
+export default function NotificationsPage() {
+  const { i18n } = useTranslation();
+  const isRTL = i18n.language === "ar";
+  const { markAsRead, markAllAsRead, dismissNotification, deleteAllRead } = useNotificationStore();
 
-                  <div className="flex items-center gap-3">
-                    {!note.is_read && (
-                      <PermissionGate page="notifications" action="edit">
-                        <button
-                          onClick={(e) => handleMarkAsRead(e, note.id)}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-info-DEFAULT hover:underline"
-                        >
-                          <Check className="w-3 h-3" />
-                          تعليم كمقروء
-                        </button>
-                      </PermissionGate>
-                    )}
-                    <PermissionGate page="notifications" action="delete">
-                      <button
-                        onClick={(e) => handleDelete(e, note.id)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-error-DEFAULT hover:underline"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        حذف
-                      </button>
-                    </PermissionGate>
-                  </div>
-                </div>
-              </div>
-            ))}
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get("/api/notifications");
+        if (res.data?.success) setNotifications(res.data.data || []);
+      } catch {
+        toast.error("فشل تحميل الإشعارات");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleMarkRead = async (id) => {
+    await markAsRead(id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+  };
+
+  const handleDelete = async (id) => {
+    await dismissNotification(id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleMarkAll = async () => {
+    await markAllAsRead();
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+  };
+
+  const handleDeleteAllRead = async () => {
+    await deleteAllRead();
+    setNotifications(prev => prev.filter(n => !n.is_read));
+  };
+
+  const filtered = typeFilter === "all" ? notifications : notifications.filter(n => n.type === typeFilter);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const readCount = notifications.filter(n => n.is_read).length;
+
+  return (
+    <>
+      <style>{`
+        @keyframes notif-row-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes notif-row-out {
+          from { opacity: 1; max-height: 120px; transform: translateX(0); }
+          to   { opacity: 0; max-height: 0; transform: translateX(40px); padding-top: 0; padding-bottom: 0; border: none; }
+        }
+        @keyframes shimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        .notif-enter {
+          animation: notif-row-in 320ms cubic-bezier(0.16,1,0.3,1) both;
+        }
+        .notif-leave {
+          animation: notif-row-out 280ms cubic-bezier(0.4,0,1,1) both;
+          overflow: hidden;
+        }
+        .notif-unread {
+          background: oklch(0.975 0.008 278);
+        }
+        .skeleton-pulse {
+          animation: shimmer 1.4s ease-in-out infinite;
+          background-image: linear-gradient(90deg, oklch(0.91 0.015 278) 0%, oklch(0.95 0.008 278) 50%, oklch(0.91 0.015 278) 100%);
+          background-size: 800px 100%;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .notif-enter, .notif-leave, .skeleton-pulse { animation: none !important; }
+        }
+      `}</style>
+
+      <PageWrapper className={`mx-auto max-w-3xl px-4 py-6 ${isRTL ? "text-right" : "text-left"}`}>
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: "oklch(0.94 0.04 278)" }}
+            >
+              <Bell size={20} style={{ color: "oklch(0.47 0.14 278)" }} strokeWidth={1.8} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[oklch(0.18_0.02_278)] leading-tight">الإشعارات</h1>
+              <p className="text-sm text-[oklch(0.50_0.05_278)] mt-0.5">
+                {unreadCount > 0 ? `${unreadCount} إشعار غير مقروء` : "لا توجد إشعارات جديدة"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Type filter */}
+            <div className="flex items-center rounded-xl overflow-hidden border border-[oklch(0.88_0.02_278)] bg-[oklch(0.975_0.005_278)]">
+              {TYPE_OPTS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setTypeFilter(opt.value)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors duration-150"
+                  style={{
+                    background: typeFilter === opt.value ? "oklch(0.47 0.14 278)" : "transparent",
+                    color: typeFilter === opt.value ? "oklch(0.99 0.003 278)" : "oklch(0.45 0.05 278)",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bulk action bar */}
+        {(unreadCount > 0 || readCount > 0) && (
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <PermissionGate page="notifications" action="edit">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAll}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors duration-150"
+                  style={{ background: "oklch(0.94 0.04 278)", color: "oklch(0.47 0.14 278)" }}
+                >
+                  <CheckSquare size={13} strokeWidth={2} />
+                  تعليم الكل مقروء
+                </button>
+              )}
+            </PermissionGate>
+            <PermissionGate page="notifications" action="delete">
+              {readCount > 0 && (
+                <button
+                  onClick={handleDeleteAllRead}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors duration-150"
+                  style={{ background: "oklch(0.96 0.05 15)", color: "oklch(0.50 0.18 15)" }}
+                >
+                  <Trash2 size={13} strokeWidth={2} />
+                  حذف المقروءة ({readCount})
+                </button>
+              )}
+            </PermissionGate>
           </div>
         )}
-      </div>
-    </PageWrapper>
+
+        {/* Feed */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "oklch(1 0 0)",
+            border: "1px solid oklch(0.91 0.015 278)",
+            boxShadow: "0 1px 3px oklch(0.47 0.14 278 / 0.06), 0 8px 24px oklch(0.47 0.14 278 / 0.04)",
+          }}
+        >
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{ background: "oklch(0.94 0.04 278)" }}
+              >
+                <Bell size={24} style={{ color: "oklch(0.47 0.14 278)" }} strokeWidth={1.5} />
+              </div>
+              <p className="text-sm font-medium text-[oklch(0.45_0.05_278)]">
+                {typeFilter !== "all" ? "لا توجد إشعارات من هذا النوع" : "لا توجد إشعارات"}
+              </p>
+            </div>
+          ) : (
+            filtered.map((note, i) => (
+              <NotifRow
+                key={note.id}
+                note={note}
+                index={i}
+                onMarkRead={handleMarkRead}
+                onDelete={handleDelete}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Footer count */}
+        {!loading && filtered.length > 0 && (
+          <p className="text-center text-xs text-[oklch(0.60_0.04_278)] mt-4">
+            {filtered.length} إشعار
+          </p>
+        )}
+      </PageWrapper>
+    </>
   );
 }

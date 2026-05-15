@@ -73,6 +73,7 @@ export const DOC_PAPER_CONFIG = {
   sales_invoice:          { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "A4"   },
   purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
   sales_return:           { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
+  purchase_return:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   quotation:              { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
   branch_transfer:        { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
   bank_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },

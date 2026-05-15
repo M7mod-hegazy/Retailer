@@ -231,7 +231,6 @@ export default function PurchaseFormPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [newInvoiceModalOpen, setNewInvoiceModalOpen] = useState(false);
-  const [saveOnlyConfirmOpen, setSaveOnlyConfirmOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
 
   const itemInputRef    = useRef(null);
@@ -715,12 +714,6 @@ export default function PurchaseFormPage() {
                 <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length}
                   className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm">
                   {isSaving ? "جاري..." : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
-                </button>
-              </PermissionGate>
-              <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
-                <button onClick={() => setSaveOnlyConfirmOpen(true)} disabled={!lines.length || isSaving}
-                  className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-40">
-                  <Save className="h-3 w-3" /> حفظ فقط
                 </button>
               </PermissionGate>
               <button onClick={() => setNewInvoiceModalOpen(true)}
@@ -1330,47 +1323,7 @@ export default function PurchaseFormPage() {
         </div>
       </Modal>
 
-      {/* Save Only Confirmation Modal */}
-      <Modal open={saveOnlyConfirmOpen} onClose={() => setSaveOnlyConfirmOpen(false)} title="تأكيد الحفظ">
-        <div className="flex flex-col gap-4 mt-2">
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-            <Printer className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[13px] font-black text-blue-800">هل تريد الحفظ والطباعة؟</p>
-              <p className="text-[12px] font-bold text-blue-700 mt-1">سيتم فتح نافذة الطباعة بعد الحفظ</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => {
-                setSaveOnlyConfirmOpen(false);
-                setPrintPreview(true);
-              }}
-              disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-            >
-              <Printer className="h-4 w-4" />
-              نعم، حفظ وطباعة
-            </button>
-            <button
-              onClick={() => {
-                setSaveOnlyConfirmOpen(false);
-                doSave();
-              }}
-              disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              حفظ فقط بدون طباعة
-            </button>
-            <button
-              onClick={() => setSaveOnlyConfirmOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-            >
-              إلغاء
-            </button>
-          </div>
-        </div>
-      </Modal>
+
 
       {/* Today's Purchases Modal */}
       <Modal open={todayPurchOpen} onClose={() => setTodayPurchOpen(false)} title="مشتريات اليوم" maxWidth="max-w-5xl">
@@ -1583,6 +1536,7 @@ export default function PurchaseFormPage() {
       <PrintPreviewModal
         open={printPreview}
         onClose={() => setPrintPreview(false)}
+        docType="purchase_order"
         invoice={{
           invoice_no: refNo,
           created_at: docDate,

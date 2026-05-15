@@ -220,17 +220,16 @@ export default function PrintPreviewModal({
   };
 
   const handlePrint = () => {
-    if (onConfirmPrint) {
-      onConfirmPrint(template);
-      onClose();
-      return;
-    }
-
     const pageSizeStr =
       activeTemplate === "58mm" ? "58mm auto"
         : activeTemplate === "80mm" ? "80mm auto"
         : activeTemplate === "A5" ? "148mm 210mm"
         : "210mm 297mm";
+
+    // After printing, run save callback if provided (creation mode)
+    const afterPrint = onConfirmPrint
+      ? () => { onConfirmPrint(template); onClose(); }
+      : undefined;
 
     // Give React one frame to flush layout effects before capturing
     requestAnimationFrame(() => {
@@ -238,15 +237,15 @@ export default function PrintPreviewModal({
       if (!sourceNode) {
         const singleNode = printContentRef.current;
         const html = singleNode ? singleNode.innerHTML : "";
-        buildIframeAndPrint(html, pageSizeStr);
+        buildIframeAndPrint(html, pageSizeStr, afterPrint);
         return;
       }
       const rawHtml = sourceNode.innerHTML;
-      buildIframeAndPrint(rawHtml, pageSizeStr);
+      buildIframeAndPrint(rawHtml, pageSizeStr, afterPrint);
     });
   };
 
-  function buildIframeAndPrint(contentHtml, pageSizeStr) {
+  function buildIframeAndPrint(contentHtml, pageSizeStr, afterPrint) {
     const cleaned = contentHtml.replace(/@page\s*\{[^}]*\}/g, "");
     const iframe = document.createElement("iframe");
     iframe.setAttribute("title", "print-frame");
@@ -281,6 +280,8 @@ export default function PrintPreviewModal({
     iframe.contentWindow.focus();
     requestAnimationFrame(() => {
       iframe.contentWindow.print();
+      // Run save callback after print dialog closes (creation mode)
+      if (afterPrint) afterPrint();
       setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
     });
   }
@@ -386,13 +387,32 @@ export default function PrintPreviewModal({
 
             {/* Right sidebar: all controls under print button */}
             <div className="w-[240px] flex flex-col gap-3 shrink-0">
-              {/* Print button */}
-              <button
-                onClick={handlePrint}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-[12px] text-[13px] font-black transition-all shadow-[0_4px_12px_rgba(79,70,229,0.25)] active:scale-95"
-              >
-                <Printer size={16} /> طباعة
-              </button>
+              {/* Action buttons: 2-choice in creation mode, single in view-only mode */}
+              {onSaveOnly ? (
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handlePrint}
+                    disabled={isSaving}
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-[12px] text-[13px] font-black transition-all shadow-[0_4px_12px_rgba(5,150,105,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Printer size={16} /> حفظ وطباعة
+                  </button>
+                  <button
+                    onClick={() => { onSaveOnly(); onClose(); }}
+                    disabled={isSaving}
+                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-[12px] text-[13px] font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? "جاري الحفظ..." : "حفظ بدون طباعة"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handlePrint}
+                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-[12px] text-[13px] font-black transition-all shadow-[0_4px_12px_rgba(79,70,229,0.25)] active:scale-95"
+                >
+                  <Printer size={16} /> طباعة
+                </button>
+              )}
 
               {/* Template selector */}
               <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2">
