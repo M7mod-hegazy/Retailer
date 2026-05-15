@@ -3,6 +3,7 @@ import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
   Package, RefreshCw, ChevronRight, UserPlus, Phone, Calendar,
+  Loader2,
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
@@ -471,7 +472,7 @@ export default function SalesReturnFormPage() {
 
   // ══ ACTIVE SCREEN ══
   return (
-    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden">
+    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-emerald-200 bg-white px-6 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
@@ -540,9 +541,9 @@ export default function SalesReturnFormPage() {
               <button
                 onClick={isEditMode ? handleSave : () => setPrintPreview(true)}
                 disabled={isSaving || !total}
-                className="flex h-9 items-center gap-2 rounded-sm bg-emerald-700 px-6 text-[13px] font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex h-9 items-center gap-2 rounded-sm bg-emerald-700 px-6 text-[13px] font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
               >
-                {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
               </button>
             </PermissionGate>
           )}

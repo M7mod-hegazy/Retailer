@@ -3,6 +3,7 @@ import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
   Package, RefreshCw, ChevronRight, UserPlus, Phone, Calendar,
+  Loader2,
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
@@ -461,7 +462,7 @@ export default function PurchaseReturnFormPage() {
 
   // ══ ACTIVE SCREEN ══
   return (
-    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden">
+    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-amber-200 bg-white px-6 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
@@ -530,9 +531,9 @@ export default function PurchaseReturnFormPage() {
               <button
                 onClick={isEditMode ? handleSave : () => setPrintPreview(true)}
                 disabled={isSaving || !total}
-                className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
               >
-                {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
               </button>
             </PermissionGate>
           )}
@@ -717,8 +718,8 @@ export default function PurchaseReturnFormPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {cart.map(l => (
-                        <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50">
+                      {cart.map((l, idx) => (
+                        <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50 animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
                           <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
                           <td className="px-3 py-3 text-center text-[13px] text-slate-600">{formatMoney(l.unit_cost)}</td>
                           <td className="px-3 py-3 text-center">
@@ -784,10 +785,10 @@ export default function PurchaseReturnFormPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {purchaseLines.map(l => {
+                        {purchaseLines.map((l, idx) => {
                           const afterReturn = l.original_qty - l.already_returned - (l.checked ? l.qty_to_return : 0);
                           return (
-                            <tr key={l.purchase_line_id} className={`border-b border-slate-100 transition-colors ${l.checked ? "bg-amber-50/50" : "hover:bg-slate-50"}`}>
+                            <tr key={l.purchase_line_id} className={`border-b border-slate-100 transition-colors animate-slide-up ${l.checked ? "bg-amber-50/50" : "hover:bg-slate-50"}`} style={{ animationDelay: `${idx * 50}ms` }}>
                               <td className="px-3 py-3 text-center">
                                 <input type="checkbox" checked={l.checked} onChange={() => !isLocked && togglePurchaseLine(l.purchase_line_id)} disabled={isLocked}
                                   className="h-4 w-4 rounded border-slate-300 accent-amber-600 cursor-pointer disabled:cursor-not-allowed" />
@@ -822,32 +823,32 @@ export default function PurchaseReturnFormPage() {
       </div>
 
       <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-[14px] text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50">لا، متابعة</button>
-            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700">نعم، إلغاء</button>
+            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
+            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">نعم، إلغاء</button>
           </div>
         </div>
       </Modal>
 
       <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-[14px] text-slate-700">هل تريد تعديل هذا المرتجع؟ سيتم فتح المرتجع للتعديل.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowEditWarnModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء</button>
-            <button onClick={() => { setShowEditWarnModal(false); setIsLocked(false); }} className="rounded-md bg-indigo-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-indigo-700">نعم، تعديل</button>
+            <button onClick={() => setShowEditWarnModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowEditWarnModal(false); setIsLocked(false); }} className="rounded-md bg-indigo-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-indigo-700 transition-all active:scale-[0.98]">نعم، تعديل</button>
           </div>
         </div>
       </Modal>
 
       <Modal open={showSwitchPurchaseWarning} onClose={() => setShowSwitchPurchaseWarning(false)} title="تغيير أمر الشراء">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-[14px] text-slate-700">يوجد مرتجع قيد التحرير. هل تريد حفظه أولاً قبل اختيار أمر شراء آخر؟</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowSwitchPurchaseWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء</button>
-            <button onClick={() => { setShowSwitchPurchaseWarning(false); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700">تجاهل وتغيير</button>
-            <button onClick={async () => { setShowSwitchPurchaseWarning(false); await handleSave(); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md bg-amber-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-amber-800">حفظ ثم تغيير</button>
+            <button onClick={() => setShowSwitchPurchaseWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowSwitchPurchaseWarning(false); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">تجاهل وتغيير</button>
+            <button onClick={async () => { setShowSwitchPurchaseWarning(false); await handleSave(); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md bg-amber-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-amber-800 transition-all active:scale-[0.98]">حفظ ثم تغيير</button>
           </div>
         </div>
       </Modal>

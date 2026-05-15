@@ -37,6 +37,7 @@ import {
   Calendar,
   FilePlus,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import api from "../../services/api";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
@@ -1198,6 +1199,8 @@ export default function POSPage() {
 
   saveInvoiceRef.current = saveInvoice;
 
+  function onDismissSaveSuccess() { setSaveSuccess(null); }
+
   async function confirmSupervisorOverride() {
     if (!pendingSave) return;
     setSupervisorOverrideOpen(false);
@@ -1281,7 +1284,7 @@ export default function POSPage() {
 
   if (viewMode === "list") {
     return (
-      <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden" dir="rtl">
+      <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden animate-fade-in" dir="rtl">
         <BarcodeListener />
         {navLockVisible && <NavLockModal onProceed={navProceed} onCancel={navCancel} />}
         {isOffline && (
@@ -2515,7 +2518,7 @@ export default function POSPage() {
 
         {/* Cancel Invoice Modal */}
         <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة">
-          <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
               <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
@@ -2527,13 +2530,13 @@ export default function POSPage() {
               <button
                 onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
                 disabled={isSaving}
-                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
               >
-                {isSaving ? "جاري الحفظ..." : "تأكيد الحفظ"}
+                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد الحفظ"}
               </button>
               <button
                 onClick={() => setSaveConfirmOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
               >
                 تراجع
               </button>
@@ -2541,7 +2544,7 @@ export default function POSPage() {
           </div>
         </Modal>
         <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة">
-          <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
               <Trash2 className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
@@ -2560,14 +2563,14 @@ export default function POSPage() {
                   setPaymentType("cash");
                   setInvoiceSeq((s) => s + 1);
                 }}
-                className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-[13px] font-black text-white hover:bg-rose-700 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-[13px] font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
               >
                 <Trash2 className="h-4 w-4" />
                 نعم، إلغاء الفاتورة
               </button>
               <button
                 onClick={() => setCancelModalOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
               >
                 تراجع
               </button>
@@ -2866,6 +2869,7 @@ export default function POSPage() {
 
           {/* Cart List */}
           <div className="shrink-0 p-3 bg-slate-50 shadow-inner relative">
+            {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} onDismiss={onDismissSaveSuccess} />}
             {lines.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center opacity-40">
                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 mb-5">
@@ -2887,9 +2891,9 @@ export default function POSPage() {
                   const isDiscountOverflow = Number(line.line_discount || 0) > unitPrice * qty && unitPrice > 0;
                   const hasWarning = isExceedingStock || isBelowCost || isDiscountOverflow;
                   return (
-                    <div key={`${line.item_id}-${idx}`} className={`group relative flex flex-col gap-2.5 p-3 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-px ${
+                    <div key={`${line.item_id}-${idx}`} className={`animate-slide-up group relative flex flex-col gap-2.5 p-3 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-px ${
                       isExceedingStock ? "border-rose-300 ring-1 ring-rose-100" : hasWarning ? "border-amber-200 ring-1 ring-amber-50" : "border-slate-200 hover:border-emerald-300"
-                    }`}>
+                    }`} style={{ animationDelay: `${idx * 50}ms` }}>
                       {/* Left accent bar */}
                       <div className={`absolute right-0 top-3 bottom-3 w-1 rounded-l-full ${
                         isExceedingStock ? "bg-rose-400" : isBelowCost ? "bg-amber-400" : "bg-emerald-400"
@@ -3640,7 +3644,7 @@ export default function POSPage() {
 
       {/* Save Confirm Modal */}
       <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة">
-        <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
             <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
@@ -3652,13 +3656,13 @@ export default function POSPage() {
             <button
               onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
               disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
             >
-              {isSaving ? "جاري الحفظ..." : "تأكيد الحفظ"}
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد الحفظ"}
             </button>
             <button
               onClick={() => setSaveConfirmOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
             >
               تراجع
             </button>
@@ -3668,7 +3672,7 @@ export default function POSPage() {
 
       {/* Cancel Invoice Modal */}
       <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة">
-        <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
             <Trash2 className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
             <div>
@@ -3687,14 +3691,14 @@ export default function POSPage() {
                 setPaymentType("cash");
                 setInvoiceSeq((s) => s + 1);
               }}
-              className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-[13px] font-black text-white hover:bg-rose-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-[13px] font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
             >
               <Trash2 className="h-4 w-4" />
               نعم، إلغاء الفاتورة
             </button>
             <button
               onClick={() => setCancelModalOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
             >
               تراجع
             </button>

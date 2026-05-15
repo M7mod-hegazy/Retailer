@@ -5,6 +5,7 @@ import {
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
   ImageIcon, ZoomIn, Printer, CheckCircle2, Layers, Lock, Pencil,
   FilePlus, Sparkles, Receipt, RefreshCw, ArrowUpDown, Save,
+  Loader2,
 } from "lucide-react";
 import api from "../../services/api";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
@@ -637,7 +638,7 @@ export default function PurchaseFormPage() {
   }
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6" dir="rtl">
+    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6 animate-fade-in" dir="rtl">
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b-2 border-emerald-500 bg-white px-5">
         <div className="flex items-center gap-3">
@@ -712,8 +713,8 @@ export default function PurchaseFormPage() {
               </PermissionGate>
               <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
                 <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length}
-                  className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm">
-                  {isSaving ? "جاري..." : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
+                  className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
+                  {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري...</> : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
                 </button>
               </PermissionGate>
               <button onClick={() => setNewInvoiceModalOpen(true)}
@@ -894,7 +895,7 @@ export default function PurchaseFormPage() {
             emptyMessage="لا يوجد أصناف في الفاتورة بعد"
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0 animate-fade-in"
             columns={[
               { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
               { id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-slate-500 border-l border-slate-100", render: (l) => l.code || "-" },
@@ -1174,7 +1175,7 @@ export default function PurchaseFormPage() {
 
       {/* Save Confirmation Modal */}
       <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل الفاتورة" : "تأكيد حفظ الفاتورة"}>
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 animate-modal-enter">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
               <CheckCircle2 className="h-6 w-6" />
@@ -1191,9 +1192,9 @@ export default function PurchaseFormPage() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50">تراجع</button>
-            <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50">
-              {isSaving ? "جاري الحفظ..." : "نعم، احفظ"}
+            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+            <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "نعم، احفظ"}
             </button>
           </div>
         </div>
@@ -1251,7 +1252,7 @@ export default function PurchaseFormPage() {
 
       {/* New Invoice Warning Modal */}
       <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة">
-        <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
               <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -1268,24 +1269,23 @@ export default function PurchaseFormPage() {
                     doSave();
                   }}
                   disabled={isSaving}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  حفظ الحالية وإنشاء جديدة
+                  {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}
                 </button>
                 <button
                   onClick={() => {
                     setNewInvoiceModalOpen(false);
                     clearForm();
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
                 >
                   <Trash2 className="h-4 w-4" />
                   تجاهل وإنشاء جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                 >
                   إلغاء
                 </button>
@@ -1306,14 +1306,14 @@ export default function PurchaseFormPage() {
                     setNewInvoiceModalOpen(false);
                     clearForm();
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
                 >
                   <FilePlus className="h-4 w-4" />
                   إنشاء فاتورة جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                 >
                   إلغاء
                 </button>
