@@ -1,17 +1,21 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const { initDb, getDb, setDb } = require("../src/config/database");
 const { createApp } = require("../src/app");
 
 describe("items duplicate barcode", () => {
   let app;
+  let token;
+
   beforeEach(() => {
     setDb(null);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "retailer-items-"));
     initDb(path.join(dir, "items.db"));
     app = createApp();
+    token = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
   });
 
   test("rejects duplicate barcode", () => {
@@ -23,6 +27,7 @@ describe("items duplicate barcode", () => {
   test("imports valid rows and rejects invalid rows", async () => {
     const res = await request(app)
       .post("/api/items/import")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         rows: [
           { name: "Imported A", barcode: "B-1", price: "25" },
@@ -38,7 +43,7 @@ describe("items duplicate barcode", () => {
   });
 
   test("import endpoint requires rows", async () => {
-    const res = await request(app).post("/api/items/import").send({ rows: [] });
+    const res = await request(app).post("/api/items/import").set("Authorization", `Bearer ${token}`).send({ rows: [] });
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });

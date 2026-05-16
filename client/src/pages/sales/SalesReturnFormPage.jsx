@@ -742,8 +742,8 @@ export default function SalesReturnFormPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {cart.map(l => (
-                        <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50">
+                      {cart.map((l, idx) => (
+                        <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50 animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
                           <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
                           <td className="px-3 py-3 text-center text-[13px] text-slate-600">{formatMoney(l.unit_price)}</td>
                           <td className="px-3 py-3 text-center">
@@ -809,10 +809,10 @@ export default function SalesReturnFormPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {invoiceLines.map(l => {
+                        {invoiceLines.map((l, idx) => {
                           const afterReturn = l.original_qty - l.already_returned - (l.checked ? l.qty_to_return : 0);
                           return (
-                            <tr key={l.invoice_line_id} className={`border-b border-slate-100 transition-colors ${l.checked ? "bg-emerald-50/50" : "hover:bg-slate-50"}`}>
+                            <tr key={l.invoice_line_id} className={`border-b border-slate-100 transition-colors animate-slide-up ${l.checked ? "bg-emerald-50/50" : "hover:bg-slate-50"}`} style={{ animationDelay: `${idx * 50}ms` }}>
                               <td className="px-3 py-3 text-center">
                                 <input type="checkbox" checked={l.checked} onChange={() => !isLocked && toggleInvoiceLine(l.invoice_line_id)} disabled={isLocked}
                                   className="h-4 w-4 rounded border-slate-300 accent-emerald-600 cursor-pointer disabled:cursor-not-allowed" />
@@ -847,32 +847,32 @@ export default function SalesReturnFormPage() {
       </div>
 
       <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-[14px] text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50">لا، متابعة</button>
-            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700">نعم، إلغاء</button>
+            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
+            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">نعم، إلغاء</button>
           </div>
         </div>
       </Modal>
 
       <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-[14px] text-slate-700">هل تريد تعديل هذا المرتجع؟ سيتم فتح المرتجع للتعديل.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowEditWarnModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء</button>
-            <button onClick={() => { setShowEditWarnModal(false); setIsLocked(false); }} className="rounded-md bg-indigo-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-indigo-700">نعم، تعديل</button>
+            <button onClick={() => setShowEditWarnModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowEditWarnModal(false); setIsLocked(false); }} className="rounded-md bg-indigo-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-indigo-700 transition-all active:scale-[0.98]">نعم، تعديل</button>
           </div>
         </div>
       </Modal>
 
       <Modal open={showSwitchInvoiceWarning} onClose={() => setShowSwitchInvoiceWarning(false)} title="تغيير الفاتورة">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-[14px] text-slate-700">يوجد مرتجع قيد التحرير. هل تريد حفظه أولاً قبل اختيار فاتورة أخرى؟</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowSwitchInvoiceWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء</button>
-            <button onClick={() => { setShowSwitchInvoiceWarning(false); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700">تجاهل وتغيير</button>
-            <button onClick={async () => { setShowSwitchInvoiceWarning(false); await handleSave(); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-emerald-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-emerald-800">حفظ ثم تغيير</button>
+            <button onClick={() => setShowSwitchInvoiceWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowSwitchInvoiceWarning(false); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">تجاهل وتغيير</button>
+            <button onClick={async () => { setShowSwitchInvoiceWarning(false); await handleSave(); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-emerald-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-emerald-800 transition-all active:scale-[0.98]">حفظ ثم تغيير</button>
           </div>
         </div>
       </Modal>

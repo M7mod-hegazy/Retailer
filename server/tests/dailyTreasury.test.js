@@ -1,9 +1,21 @@
-const request = require("supertest");
+const _request = require("supertest");
+const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { createApp } = require("../src/app");
 const { initDb, setDb, getDb } = require("../src/config/database");
+
+let _devToken;
+function request(app) {
+  const agent = _request(app);
+  const methods = ["get", "post", "put", "patch", "delete"];
+  const wrapped = {};
+  methods.forEach(m => {
+    wrapped[m] = (url) => agent[m](url).set("Authorization", `Bearer ${_devToken}`);
+  });
+  return wrapped;
+}
 
 let app;
 let db;
@@ -39,6 +51,7 @@ beforeAll(() => {
   initDb(dbPath);
   app = createApp();
   db = getDb();
+  _devToken = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
 
   // Set dates
   today = dateStr();
@@ -55,11 +68,12 @@ function seedTestData() {
     VALUES (1, 'BR1', 'INV', 1, 1)
   `);
 
-  // Insert treasury
+  // Insert treasury (migration 039 pre-seeds id=1 with balance=0 — update it)
   db.exec(`
     INSERT OR IGNORE INTO treasuries (id, name, balance)
-    VALUES (1, 'الخزينة الرئيسية', 5000)
+    VALUES (1, 'الخزينة الرئيسية', 0)
   `);
+  db.exec(`UPDATE treasuries SET balance = 5000 WHERE id = 1`);
   treasuryId = 1;
 
   // Insert bank
@@ -289,7 +303,7 @@ describe("Transaction Explorer", function () {
     expect(res.status).toBe(200);
     
     // Find installment invoice
-    const installmentTx = res.body.transactions.find(t => t.payment_type === "credit" || t.payment_type === "installments");
+    const installmentTx = (res.body.data || []).find(t => t.payment_type === "credit" || t.payment_type === "installments");
     if (installmentTx) {
       // Cash effect should be 100 (from payment allocation), not full invoice total
       expect(installmentTx.cash_effect).toBe(100);
@@ -303,7 +317,7 @@ describe("Transaction Explorer", function () {
     expect(res.status).toBe(200);
     
     // Find multi-payment invoice
-    const multiTx = res.body.transactions.find(t => t.payment_type === "multi");
+    const multiTx = (res.body.data || []).find(t => t.payment_type === "multi");
     if (multiTx) {
       // Cash effect should be 150 (cash portion only)
       expect(multiTx.cash_effect).toBe(150);
@@ -432,8 +446,8 @@ describe("Daily Session Lifecycle", function () {
       .get("/api/daily-sessions/today");
 
     expect(res.status).toBe(200);
-    expect(res.body.session).toBeDefined();
-    expect(res.body.session.status).toBe("open");
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.status).toBe("open");
   });
 
   it("should not allow closing without actual cash", async function () {
@@ -458,7 +472,7 @@ describe("Daily Session Lifecycle", function () {
       .get("/api/daily-sessions/today");
 
     expect(res.status).toBe(200);
-    expect(res.body.session.status).toBe("closed");
+    expect(res.body.data.status).toBe("closed");
   });
 
   it("should allow reopening today's closed session", async function () {

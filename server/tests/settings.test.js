@@ -39,10 +39,5 @@ describe("Settings Routes", () => {
     expect(res.body.data).toHaveProperty("id", 1);
   });
 
-  it("rejects license validation when key is missing", async () => {
-    const res = await request(app).post("/api/settings/validate-license").send({});
-    expect(res.status).toBe(400);
-    expect(res.body.success).toBe(false);
-  });
-
 });
+

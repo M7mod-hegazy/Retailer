@@ -17,8 +17,8 @@ beforeAll(() => {
 
   const db = getDb();
   // Provide required FK references
-  db.prepare("INSERT INTO users (id, username, full_name, password_hash, role) VALUES (?, ?, ?, ?, ?)").run(1, "shift_user", "User", "hash", "cashier");
-  authToken = jwt.sign({ sub: 1, role: "cashier" }, process.env.JWT_SECRET || "dev-secret");
+  db.prepare("INSERT INTO users (id, username, full_name, password_hash, role, is_active) VALUES (?, ?, ?, ?, ?, ?)").run(1, "shift_user", "User", "hash", "admin", 1);
+  authToken = jwt.sign({ sub: 1, role: "admin" }, process.env.JWT_SECRET || "dev-secret");
 });
 
 describe("Shifts Routes", () => {

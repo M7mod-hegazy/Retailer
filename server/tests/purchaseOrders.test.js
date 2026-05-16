@@ -2,10 +2,12 @@ const request = require("supertest");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const { createApp } = require("../src/app");
 const { initDb, setDb, getDb } = require("../src/config/database");
 
 let app;
+let token;
 let itemId, supplierId;
 
 beforeAll(() => {
@@ -13,6 +15,7 @@ beforeAll(() => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "retailer-purchaseOrders-"));
   initDb(path.join(dir, "pos.db"));
   app = createApp();
+  token = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
 
   const db = getDb();
   db.prepare("INSERT INTO item_categories (name) VALUES (?)").run("فئة");
@@ -28,7 +31,7 @@ describe("Purchase Orders Routes", () => {
   let poId;
 
   it("GET /api/purchase-orders returns empty list", async () => {
-    const res = await request(app).get("/api/purchase-orders");
+    const res = await request(app).get("/api/purchase-orders").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
   });
@@ -36,6 +39,7 @@ describe("Purchase Orders Routes", () => {
   it("POST /api/purchase-orders creates a PO", async () => {
     const res = await request(app)
       .post("/api/purchase-orders")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         supplier_id: supplierId,
         lines: [{ item_id: itemId, quantity: 5, unit_cost: 30 }]
@@ -46,7 +50,7 @@ describe("Purchase Orders Routes", () => {
   });
 
   it("PATCH /api/purchase-orders/:id/approve approves the PO", async () => {
-    const res = await request(app).patch(`/api/purchase-orders/${poId}/approve`);
+    const res = await request(app).patch(`/api/purchase-orders/${poId}/approve`).set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("approved");
   });
@@ -54,6 +58,7 @@ describe("Purchase Orders Routes", () => {
   it("PATCH /api/purchase-orders/:id/receive receives the PO and creates a purchase", async () => {
     const res = await request(app)
       .patch(`/api/purchase-orders/${poId}/receive`)
+      .set("Authorization", `Bearer ${token}`)
       .send({ warehouse_id: 1 });
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("received");

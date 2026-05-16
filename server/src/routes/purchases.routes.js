@@ -344,7 +344,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       return getPurchaseWithLines(db, purchaseId);
     })();
 
-    req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`);
+    req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`, purchase?.id ? `/purchases/${purchase.id}` : null);
     try {
       const purchaseId = purchase?.id;
       const supplierName = purchase?.supplier_name || 'غير محدد';
@@ -477,7 +477,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(prId);
     })();
 
-    req.audit("create", "purchase_return", { id: purchaseReturn?.id, purchase_id: Number(req.params.id), total: purchaseReturn?.total }, `↩️ تم معالجة مرتجع مشتريات للفاتورة #${req.params.id}`);
+    req.audit("create", "purchase_return", { id: purchaseReturn?.id, purchase_id: Number(req.params.id), total: purchaseReturn?.total }, `↩️ تم معالجة مرتجع مشتريات للفاتورة #${req.params.id}`, purchaseReturn?.id ? `/purchases/returns/${purchaseReturn.id}` : null);
     res.status(201).json({ success: true, data: purchaseReturn });
   } catch (error) {
     next(error);
@@ -562,7 +562,7 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
 
       return getPurchaseWithLines(db, purchase.id);
     })();
-    req.audit("edit", "purchase", { id: Number(req.params.id), total: updated?.total }, `📦 تم تعديل مشتريات #${req.params.id}`);
+    req.audit("edit", "purchase", { id: Number(req.params.id), total: updated?.total }, `📦 تم تعديل مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     res.json({ success: true, data: updated });
   } catch (error) { next(error); }
 });
@@ -647,7 +647,7 @@ router.post("/:id/cancel", requirePagePermission("purchases", "add"), (req, res,
     const result = db.transaction(() =>
       cancelPurchaseFn(db, Number(req.params.id), reason.trim(), req.body.user_id || null)
     )();
-    req.audit("cancel", "purchase", { id: Number(req.params.id), reason }, `📦 تم إلغاء مشتريات #${req.params.id}`);
+    req.audit("cancel", "purchase", { id: Number(req.params.id), reason }, `📦 تم إلغاء مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
@@ -740,7 +740,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
       return { original: getPurchaseWithLines(db, original.id), new_purchase: getPurchaseWithLines(db, newPurchaseId) };
     })();
 
-    req.audit("amend", "purchase", { original_id: Number(req.params.id), new_id: result?.new_purchase?.id }, `📦 تم تعديل (أمندمنت) مشتريات #${req.params.id}`);
+    req.audit("amend", "purchase", { original_id: Number(req.params.id), new_id: result?.new_purchase?.id }, `📦 تم تعديل (أمندمنت) مشتريات #${req.params.id}`, result?.new_purchase?.id ? `/purchases/${result.new_purchase.id}` : `/purchases/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
@@ -792,7 +792,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
 
       db.prepare("UPDATE purchases SET status = 'voided' WHERE id = ?").run(purchase.id);
     })();
-    req.audit("void", "purchase", { id: Number(req.params.id) }, `📦 تم إلغاء (فويد) مشتريات #${req.params.id}`);
+    req.audit("void", "purchase", { id: Number(req.params.id) }, `📦 تم إلغاء (فويد) مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -860,7 +860,7 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
       return getPurchaseReturnWithLines(db, pr.id);
     })();
 
-    req.audit("cancel", "purchase_return", { id: Number(req.params.id), reason: req.body?.reason }, `↩️ تم إلغاء مرتجع مشتريات #${req.params.id}`);
+    req.audit("cancel", "purchase_return", { id: Number(req.params.id), reason: req.body?.reason }, `↩️ تم إلغاء مرتجع مشتريات #${req.params.id}`, `/purchases/returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
@@ -946,7 +946,7 @@ router.put("/returns/:id", requirePagePermission("purchase_returns", "edit"), (r
   ensurePurchaseReturnSettlementSchema(db);
   try {
     const result = editPurchaseReturn(db, Number(req.params.id), req.body || {});
-    req.audit("edit", "purchase_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مشتريات #${req.params.id}`);
+    req.audit("edit", "purchase_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مشتريات #${req.params.id}`, `/purchases/returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -1028,7 +1028,7 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
       return { original: getPurchaseReturnWithLines(db, original.id), new_return: getPurchaseReturnWithLines(db, newPrId) };
     })();
 
-    req.audit("amend", "purchase_return", { original_id: Number(req.params.id), new_id: result?.new_return?.id }, `↩️ تم تعديل (أمندمنت) مرتجع مشتريات #${req.params.id}`);
+    req.audit("amend", "purchase_return", { original_id: Number(req.params.id), new_id: result?.new_return?.id }, `↩️ تم تعديل (أمندمنت) مرتجع مشتريات #${req.params.id}`, result?.new_return?.id ? `/purchases/returns/${result.new_return.id}` : `/purchases/returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });

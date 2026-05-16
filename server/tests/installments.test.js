@@ -2,10 +2,12 @@ const request = require("supertest");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const { createApp } = require("../src/app");
 const { initDb, setDb, getDb } = require("../src/config/database");
 
 let app;
+let token;
 let invoiceId;
 
 beforeAll(() => {
@@ -13,12 +15,12 @@ beforeAll(() => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "retailer-installments-"));
   initDb(path.join(dir, "installments.db"));
   app = createApp();
+  token = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
 
   const db = getDb();
   db.prepare("INSERT INTO item_categories (name) VALUES (?)").run("فئة");
   db.prepare("INSERT INTO units (name, symbol) VALUES (?, ?)").run("قطعة", "pcs");
   const custInfo = db.prepare("INSERT INTO customers (name) VALUES (?)").run("عميل تقسيط");
-  // Seed a credit invoice directly (bypasses invoiceService FK needs)
   const invInfo = db.prepare(
     "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, total, payment_type, status) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run("INV-TEST-01", custInfo.lastInsertRowid, 200, 0, 200, "credit", "unpaid");
@@ -31,6 +33,7 @@ describe("Installments Routes", () => {
   it("POST /api/installments creates an installment", async () => {
     const res = await request(app)
       .post("/api/installments")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         invoice_id: invoiceId,
         installment_amount: 100,
@@ -43,7 +46,7 @@ describe("Installments Routes", () => {
   });
 
   it("GET /api/installments/:invoice_id lists installments", async () => {
-    const res = await request(app).get(`/api/installments/${invoiceId}`);
+    const res = await request(app).get(`/api/installments/${invoiceId}`).set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data.length).toBe(1);
@@ -52,6 +55,7 @@ describe("Installments Routes", () => {
   it("PATCH /api/installments/:id/pay marks installment paid", async () => {
     const res = await request(app)
       .patch(`/api/installments/${installmentId}/pay`)
+      .set("Authorization", `Bearer ${token}`)
       .send({ paid_at: "2026-05-16" });
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("paid");

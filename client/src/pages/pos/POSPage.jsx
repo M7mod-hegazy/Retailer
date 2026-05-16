@@ -44,7 +44,8 @@ import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
-import { fuzzyFilterRows } from "../../utils/search";
+import SearchDropdown from "../../components/ui/SearchDropdown";
+import { scoredFilterRows } from "../../utils/search";
 import { LayoutGrid, List, Package } from "lucide-react";
 import WarehouseStockMatrix from "../../components/pos/WarehouseStockMatrix";
 import Modal from "../../components/ui/Modal";
@@ -60,58 +61,11 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 
-// --- Local Lookup Component ---
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
   if (!u) return null;
   if (u.startsWith("http") || u.startsWith("data:")) return u;
   return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
-
-function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
-  if (!items.length) {
-    return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-        {emptyLabel}
-      </div>
-    );
-  }
-  return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
-        {items.map((item, i) => (
-          <button
-            key={item.id}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-indigo-50/80" : "hover:bg-slate-50"}`}
-          >
-            <div className="flex items-center gap-2">
-              {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
-              ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300"/></div>
-              )}
-              <div className="flex flex-col gap-0">
-                <span className="font-mono text-[11px] font-black text-indigo-700 tracking-wide leading-tight">
-                  <Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} />
-                </span>
-                <div className="h-px bg-slate-200 my-0.5" />
-                <span className={`text-[12px] font-black leading-tight ${activeIndex === i ? "text-indigo-900" : "text-slate-800"}`}>
-                  <Highlight text={item.name} query={query} />
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-               {item.price_label && <span className="font-mono text-[12px] font-black text-slate-600">{item.price_label}</span>}
-               {item.sub_label && <span className="text-[10px] font-bold text-slate-400">{item.sub_label}</span>}
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -256,12 +210,12 @@ function HeldDropdown({ heldInvoices, onResume, onDiscard, onClose }) {
             </div>
             <div className="flex gap-1.5 shrink-0">
               <PermissionGate page="pos" action="hold">
-                <button onClick={() => { onResume(h.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-95" title="استئناف">
+                <button onClick={() => { onResume(h.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-[0.98]" title="استئناف">
                   <PlayCircle className="h-5 w-5" />
                 </button>
               </PermissionGate>
               <PermissionGate page="pos" action="void">
-                <button onClick={() => onDiscard(h.id)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all active:scale-95" title="حذف">
+                <button onClick={() => onDiscard(h.id)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all active:scale-[0.98]" title="حذف">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </PermissionGate>
@@ -719,7 +673,7 @@ export default function POSPage() {
         }
         return s.warehouseId || String(warehouses[0]?.id || "");
       })(),
-      unitId: String(units?.[0]?.id || ""),
+      unitId: String(selectedItem.unit_id || units?.[0]?.id || ""),
       quantity: "1",
       lineDiscount: "0",
     }));
@@ -867,9 +821,9 @@ export default function POSPage() {
   const itemResults = useMemo(() => {
     const q = (itemNameQuery || itemCodeQuery).trim();
     const source = q
-      ? fuzzyFilterRows(items, q, ["name", "code", "item_code", "barcode"])
+      ? scoredFilterRows(items, q, ["name", "code", "item_code", "barcode"])
       : items.slice(0, 8);
-    return source.slice(0, 8).map((item) => ({
+    return source.map((item) => ({
       ...item,
       stock_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
       price_label: formatMoney(item.sale_price || item.price || 0),
@@ -879,7 +833,7 @@ export default function POSPage() {
   const detailedItemResults = useMemo(() => {
     const q = (detailedSearchQuery || itemNameQuery || itemCodeQuery).trim();
     let source = q
-      ? fuzzyFilterRows(items, q, ["name", "code", "barcode", "category_name"])
+      ? scoredFilterRows(items, q, ["name", "code", "barcode", "category_name"])
       : items;
     if (detailedCategoryFilter !== "all")
       source = source.filter((item) => String(item.category_name || "غير مصنف") === detailedCategoryFilter);
@@ -992,9 +946,18 @@ export default function POSPage() {
 
   function handleCodeFieldKeyDown(e) {
     if (!itemLookupOpen && itemResults.length && e.key === "ArrowDown") { e.preventDefault(); setItemLookupOpen(true); return; }
-    if (itemLookupOpen && itemResults.length && e.key === "ArrowDown")  { e.preventDefault(); setActiveLookupIndex((v) => Math.min(v + 1, itemResults.length - 1)); return; }
+    if (itemLookupOpen && itemResults.length && e.key === "ArrowDown")  { e.preventDefault(); setActiveLookupIndex((v) => Math.min(v + 1, itemResults.length)); return; }
     if (itemLookupOpen && itemResults.length && e.key === "ArrowUp")    { e.preventDefault(); setActiveLookupIndex((v) => Math.max(v - 1, 0)); return; }
-    if (itemLookupOpen && itemResults.length && e.key === "Enter")      { e.preventDefault(); handleSelectItem(itemResults[activeLookupIndex] || itemResults[0]); return; }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const q = (itemNameQuery || itemCodeQuery).trim();
+      if (itemResults.length > 0 && activeLookupIndex >= 0 && activeLookupIndex < itemResults.length) {
+        handleSelectItem(itemResults[activeLookupIndex]);
+      } else if (q) {
+        handleSelectItem({ id: -1, name: q, code: q, item_code: q, barcode: q, sale_price: 0, price: 0, purchase_price: 0, stock_quantity: 0 });
+      }
+      return;
+    }
     if (e.key === "Escape") setItemLookupOpen(false);
   }
 
@@ -1051,17 +1014,18 @@ export default function POSPage() {
 
   function addCurrentLine() {
     if (!selectedItem) return;
+    const isRawEntry = selectedItem.id === -1;
     const warehouse   = warehouses.find((w) => String(w.id) === String(staging.warehouseId)) || DEFAULT_WAREHOUSE;
     const quantity    = Math.max(1, Number(staging.quantity || 1));
     const unitPrice   = Math.max(0, Number(staging.unitPrice || 0));
     const lineDiscount = Math.max(0, Number(staging.lineDiscount || 0));
-    const stockValue  = Number(stockLevels[selectedItem.id]?.[warehouse.id] ?? selectedItem.stock_quantity ?? selectedItem.stock ?? 0);
+    const stockValue  = isRawEntry ? 999999 : Number(stockLevels[selectedItem.id]?.[warehouse.id] ?? selectedItem.stock_quantity ?? selectedItem.stock ?? 0);
     const purchasePrice = Number(selectedItem.purchase_price || 0);
     const unit = units.find((u) => String(u.id) === String(staging.unitId));
 
-    if (unitPrice <= 0)           { setSaveMessage("لا يمكن إضافة صنف بسعر صفر."); setTimeout(() => setSaveMessage(""), 3000); return; }
-    if (quantity > stockValue)    { setSaveMessage(`المخزون غير كافٍ (المتاح: ${stockValue})`); setTimeout(() => setSaveMessage(""), 3000); return; }
-    if (unitPrice < purchasePrice && unitPrice > 0) {
+    if (!isRawEntry && unitPrice <= 0) { setSaveMessage("لا يمكن إضافة صنف بسعر صفر."); setTimeout(() => setSaveMessage(""), 3000); return; }
+    if (!isRawEntry && quantity > stockValue) { setSaveMessage(`المخزون غير كافٍ (المتاح: ${stockValue})`); setTimeout(() => setSaveMessage(""), 3000); return; }
+    if (!isRawEntry && unitPrice < purchasePrice && unitPrice > 0) {
       if (!pendingBelowCostAdd) {
         setPendingBelowCostAdd(true);
         setSaveMessage(`تحذير: السعر (${formatMoney(unitPrice)}) أقل من سعر الشراء (${formatMoney(purchasePrice)}). اضغط إضافة مرة أخرى للتأكيد.`);
@@ -1101,10 +1065,10 @@ export default function POSPage() {
       setTimeout(() => setSaveMessage(""), 5000);
       return;
     }
-    if (lines.some((l) => Number(l.unit_price || 0) <= 0)) {
+    if (lines.some((l) => l.item_id !== -1 && Number(l.unit_price || 0) <= 0)) {
       setSaveMessage("يوجد صنف بسعر غير صالح."); setTimeout(() => setSaveMessage(""), 5000); return;
     }
-    if (lines.some((l) => Number(l.quantity || 0) > Number(l.stock_quantity || 0))) {
+    if (lines.some((l) => l.item_id !== -1 && Number(l.quantity || 0) > Number(l.stock_quantity || 0))) {
       setSaveMessage("لا يمكن الحفظ: يوجد صنف يتجاوز المخزون."); setTimeout(() => setSaveMessage(""), 5000); return;
     }
     if ((paymentType === "credit" || paymentType === "installments") && !customer?.id) {
@@ -1376,7 +1340,7 @@ export default function POSPage() {
         <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
           
           {/* Right Sidebar (Customer, Summary, Payment) */}
-          <aside className="w-[400px] shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar">
+          <aside className="w-[400px] shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in">
             {/* Customer Card */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -1414,7 +1378,7 @@ export default function POSPage() {
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
                 />
                 {customerLookupOpen && (
-                  <LookupList
+                  <SearchDropdown
                     items={customerResults}
                     onPick={handlePickCustomer}
                     activeIndex={activeCustomerIndex}
@@ -1874,13 +1838,18 @@ export default function POSPage() {
                       onBlur={() => setTimeout(() => setItemLookupOpen(false), 200)}
                       placeholder="ابحث بالاسم، الباركود، أو الكود..."
                       onKeyDown={(e) => {
-                         if (e.key === "Enter" && itemResults.length > 0) {
+                         if (e.key === "Enter") {
                             e.preventDefault();
-                            handleSelectItem(itemResults[activeLookupIndex]);
+                            const q = itemNameQuery.trim();
+                            if (itemResults.length > 0 && activeLookupIndex >= 0) {
+                              handleSelectItem(itemResults[activeLookupIndex]);
+                            } else if (q) {
+                              handleSelectItem({ id: -1, name: q, code: q, item_code: q, barcode: q, sale_price: 0, price: 0, purchase_price: 0, stock_quantity: 0 });
+                            }
                             setTimeout(() => listWhRef.current?.focus(), 50);
                          } else if (e.key === "ArrowDown") {
                             e.preventDefault();
-                            setActiveLookupIndex(prev => (prev < itemResults.length - 1 ? prev + 1 : prev));
+                            setActiveLookupIndex(prev => (prev < itemResults.length ? prev + 1 : prev));
                          } else if (e.key === "ArrowUp") {
                             e.preventDefault();
                             setActiveLookupIndex(prev => (prev > 0 ? prev - 1 : 0));
@@ -1888,11 +1857,13 @@ export default function POSPage() {
                       }}
                     />
                     {itemLookupOpen && (
-                      <LookupList
+                      <SearchDropdown
                         items={itemResults}
                         onPick={(item) => { handleSelectItem(item); }}
                         activeIndex={activeLookupIndex}
                         query={itemNameQuery}
+                        rawText={itemNameQuery}
+                        onPickRawText={(txt) => handleSelectItem({ id: -1, name: txt, code: txt, item_code: txt, barcode: txt, sale_price: 0, price: 0, purchase_price: 0, stock_quantity: 0 })}
                       />
                     )}
                   </div>
@@ -2297,7 +2268,7 @@ export default function POSPage() {
 
         {/* Quick customer creation modal for list view */}
         <Modal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} title="إنشاء عميل جديد">
-          <div className="space-y-4">
+          <div className="space-y-4 animate-modal-enter">
             <div>
               <label className="mb-1 block text-[11px] font-bold text-slate-600">اسم العميل *</label>
               <input value={customerDraft.name} onChange={(e) => setCustomerDraft((s) => ({ ...s, name: e.target.value }))}
@@ -2369,7 +2340,7 @@ export default function POSPage() {
 
         {/* Supervisor override modal for list view */}
         <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم">
-          <div className="space-y-4 text-center">
+          <div className="space-y-4 text-center animate-modal-enter">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto">
               <ShieldCheck className="h-7 w-7 text-amber-600" />
             </div>
@@ -2387,10 +2358,10 @@ export default function POSPage() {
         </Modal>
                       {/* Set Default View Modal */}
         <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
-          <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
             <p className="text-[13px] font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
             <div className="flex gap-2">
-              <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-colors">لا، لاحقاً</button>
+              <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
               <button
                 onClick={() => {
                   api.put("/api/settings", { ...storeSettings, default_pos_view: pendingViewMode })
@@ -2405,7 +2376,7 @@ export default function POSPage() {
                     });
                   setShowSetDefaultModal(false);
                 }}
-                className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 transition-colors"
+                className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
               >
                 نعم، احفظه كافتراضي
               </button>
@@ -2415,7 +2386,7 @@ export default function POSPage() {
 
         {/* New Invoice Warning Modal */}
         <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة">
-          <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
             {lines.length > 0 ? (
               <>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -2432,10 +2403,9 @@ export default function POSPage() {
                       saveInvoice(false);
                     }}
                     disabled={isSaving}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
                   >
-                    <Sparkles className="h-4 w-4" />
-                    حفظ الحالية وإنشاء جديدة
+                    {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}
                   </button>
                   <button
                     onClick={() => {
@@ -2449,7 +2419,7 @@ export default function POSPage() {
                       setInvoiceSeq((s) => s + 1);
                       toast.success("تم تعليق الفاتورة");
                     }}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
                   >
                     <PauseCircle className="h-4 w-4" />
                     تعليق الحالية وإنشاء جديدة
@@ -2464,14 +2434,14 @@ export default function POSPage() {
                       setPaymentType("cash");
                       setInvoiceSeq((s) => s + 1);
                     }}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
                   >
                     <Trash2 className="h-4 w-4" />
                     تجاهل وإنشاء جديدة
                   </button>
                   <button
                     onClick={() => setNewInvoiceModalOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                   >
                     إلغاء
                   </button>
@@ -2497,14 +2467,14 @@ export default function POSPage() {
                       setPaymentType("cash");
                       setInvoiceSeq((s) => s + 1);
                     }}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
                   >
                     <FilePlus className="h-4 w-4" />
                     إنشاء فاتورة جديدة
                   </button>
                   <button
                     onClick={() => setNewInvoiceModalOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                   >
                     إلغاء
                   </button>
@@ -2577,6 +2547,13 @@ export default function POSPage() {
             </div>
           </div>
         </Modal>
+
+        {saveMessage && (
+          <div className="absolute left-1/2 top-20 z-[150] -translate-x-1/2 rounded-sm border border-rose-200 bg-rose-50 px-5 py-2.5 font-bold text-[13px] text-rose-700 shadow-xl animate-fade-in">
+            {saveMessage}
+          </div>
+        )}
+        {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} onDismiss={onDismissSaveSuccess} />}
       </div>
     );
   }
@@ -2786,7 +2763,7 @@ export default function POSPage() {
 
 
         {/* ── Right Column: Fixed Invoice Panel (~35%) ── */}
-        <div className="flex flex-col flex-1 max-w-[560px] min-w-[480px] bg-white shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-20 overflow-y-auto custom-scrollbar">
+        <div className="flex flex-col flex-1 max-w-[560px] min-w-[480px] bg-white shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-20 overflow-y-auto custom-scrollbar animate-fade-in">
           
           {/* Top Panel: Customer & Actions */}
           <div className="flex flex-col shrink-0 border-b border-slate-100 bg-slate-50 p-3 gap-2.5">
@@ -2832,7 +2809,7 @@ export default function POSPage() {
                   }`}
                 />
                 {customerLookupOpen && (
-                  <LookupList items={customerResults} activeIndex={activeCustomerIndex} emptyLabel="ابحث عن عميل..." onPick={(c) => { setCustomer(c); setCustomerQuery(c.name); setCustomerLookupOpen(false); }} />
+                  <SearchDropdown items={customerResults} activeIndex={activeCustomerIndex} emptyLabel="ابحث عن عميل..." onPick={(c) => { setCustomer(c); setCustomerQuery(c.name); setCustomerLookupOpen(false); }} />
                 )}
               </div>
               <button onClick={() => setCustomerCreateOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-800 hover:text-slate-800 transition-colors shadow-sm">
@@ -3001,7 +2978,7 @@ export default function POSPage() {
           </div>
 
           {/* Bottom Totals & Payments */}
-          <div className="shrink-0 flex flex-col border-t border-slate-200 bg-white shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] z-30">
+          <div className="shrink-0 flex flex-col border-t border-slate-200 bg-white shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] z-30 animate-fade-in">
             {/* Totals Summary */}
             <div className="flex flex-col px-4 py-3 bg-slate-900 gap-1.5 border-b border-slate-800">
               <div className="flex items-center justify-between text-[12px]">
@@ -3255,7 +3232,7 @@ export default function POSPage() {
 
       {/* ── Detailed item search ── */}
       <Modal open={detailedSearchOpen} onClose={() => setDetailedSearchOpen(false)} title="بحث تفصيلي عن الأصناف">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 animate-modal-enter">
           <input type="text" value={detailedSearchQuery} onChange={(e) => setDetailedSearchQuery(e.target.value)}
             placeholder="ابحث بالاسم أو الكود أو الباركود أو الفئة..."
             className="w-full rounded-sm border border-slate-200 px-3 py-2.5 outline-none focus:border-slate-800" />
@@ -3306,7 +3283,7 @@ export default function POSPage() {
 
       {/* ── Profit analysis ── */}
       <Modal open={profitModalOpen} onClose={() => setProfitModalOpen(false)} title="تحليل ربح الإيصال الحالي">
-        <div className="space-y-2">
+        <div className="space-y-2 animate-modal-enter">
           {lines.map((line) => {
             const item        = items.find((e) => e.id === line.item_id);
             const purchase    = Number(item?.purchase_price || 0);
@@ -3338,7 +3315,7 @@ export default function POSPage() {
 
       {/* ── Quick customer creation ── */}
       <Modal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} title="إنشاء عميل جديد">
-        <div className="space-y-4">
+        <div className="space-y-4 animate-modal-enter">
           <div>
             <label className="mb-1 block text-[11px] font-bold text-slate-600">اسم العميل *</label>
             <input value={customerDraft.name} onChange={(e) => setCustomerDraft((s) => ({ ...s, name: e.target.value }))}
@@ -3410,7 +3387,7 @@ export default function POSPage() {
 
       {/* ── Supervisor override ── */}
       <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم">
-        <div className="space-y-4 text-center">
+        <div className="space-y-4 text-center animate-modal-enter">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto">
             <ShieldCheck className="h-7 w-7 text-amber-600" />
           </div>
@@ -3429,7 +3406,7 @@ export default function POSPage() {
 
       {/* ── Multi-payment modal ── */}
       <Modal open={multiModalOpen} onClose={() => setMultiModalOpen(false)} title="توزيع مبالغ الدفع المتعدد">
-        <div className="space-y-4">
+        <div className="space-y-4 animate-modal-enter">
           <div className="rounded-sm bg-slate-950 p-5 text-center">
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">المبلغ المطلوب توزيعه</p>
             <p className="font-mono text-[28px] font-black text-white">{formatMoney(totals.total)}</p>
@@ -3464,7 +3441,7 @@ export default function POSPage() {
               </span>
             </div>
             <button onClick={() => setMultiModalOpen(false)}
-              className="rounded-sm bg-slate-900 px-8 py-2.5 text-[13px] font-black text-white hover:bg-slate-800 shadow-sm active:scale-95">
+              className="rounded-sm bg-slate-900 px-8 py-2.5 text-[13px] font-black text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition-all">
               تأكيد وإغلاق
             </button>
           </div>
@@ -3513,10 +3490,10 @@ export default function POSPage() {
 
       {/* Set Default View Modal */}
       <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
-        <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <p className="text-[13px] font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
           <div className="flex gap-2">
-            <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-colors">لا، لاحقاً</button>
+            <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
             <button
               onClick={() => {
                 api.put("/api/settings", { ...storeSettings, default_pos_view: pendingViewMode })
@@ -3531,7 +3508,7 @@ export default function POSPage() {
                   });
                 setShowSetDefaultModal(false);
               }}
-              className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 transition-colors"
+              className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
             >
               نعم، احفظه كافتراضي
             </button>
@@ -3541,7 +3518,7 @@ export default function POSPage() {
 
       {/* New Invoice Warning Modal */}
       <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة">
-        <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
               <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -3558,10 +3535,9 @@ export default function POSPage() {
                     saveInvoice(false);
                   }}
                   disabled={isSaving}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  حفظ الحالية وإنشاء جديدة
+                  {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}
                 </button>
                 <button
                   onClick={() => {
@@ -3575,7 +3551,7 @@ export default function POSPage() {
                     setInvoiceSeq((s) => s + 1);
                     toast.success("تم تعليق الفاتورة");
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
                 >
                   <PauseCircle className="h-4 w-4" />
                   تعليق الحالية وإنشاء جديدة
@@ -3590,14 +3566,14 @@ export default function POSPage() {
                     setPaymentType("cash");
                     setInvoiceSeq((s) => s + 1);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
                 >
                   <Trash2 className="h-4 w-4" />
                   تجاهل وإنشاء جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                 >
                   إلغاء
                 </button>
@@ -3623,14 +3599,14 @@ export default function POSPage() {
                     setPaymentType("cash");
                     setInvoiceSeq((s) => s + 1);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
                 >
                   <FilePlus className="h-4 w-4" />
                   إنشاء فاتورة جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                 >
                   إلغاء
                 </button>

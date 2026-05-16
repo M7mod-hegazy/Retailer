@@ -91,6 +91,7 @@ export default function BranchTransferFormPage() {
     unitCost: "",
     sellingPrice: "",
     warehouseId: "",
+    destWarehouseId: "",
     unitId: ""
   });
   
@@ -188,7 +189,7 @@ export default function BranchTransferFormPage() {
     
     let bestUnitId = item.unit_id ? String(item.unit_id) : (units.length > 0 ? String(units[0].id) : "");
     
-    setStaging({ quantity: "1", unitCost: item.cost_price || "0", sellingPrice: item.sale_price || "0", warehouseId: bestWhId, unitId: bestUnitId });
+    setStaging({ quantity: "1", unitCost: item.cost_price || "0", sellingPrice: item.sale_price || "0", warehouseId: bestWhId, destWarehouseId: "", unitId: bestUnitId });
     setTimeout(() => { whSelectRef.current?.focus(); }, 50);
   }
 
@@ -213,6 +214,7 @@ export default function BranchTransferFormPage() {
     
     const selectedUnitObj = units.find(u => String(u.id) === String(uId));
     
+    const destWhId = staging.destWarehouseId || (warehouses.length > 0 ? warehouses[0].id : "");
     setLines(prev => [...prev, {
       id: Math.random().toString(36).substr(2, 9),
       item_id: selectedItem.id,
@@ -224,12 +226,13 @@ export default function BranchTransferFormPage() {
       unit_cost: cost,
       selling_price: sell,
       warehouse_id: String(whId),
+      dest_warehouse_id: String(destWhId),
       primary_image_url: selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image || null
     }]);
     
     setSelectedItem(null);
     setItemQuery("");
-    setStaging({ quantity: "1", unitCost: "", sellingPrice: "", warehouseId: "", unitId: "" });
+    setStaging({ quantity: "1", unitCost: "", sellingPrice: "", warehouseId: "", destWarehouseId: "", unitId: "" });
     setLookupOpen(false);
     setTimeout(() => itemInputRef.current?.focus(), 50);
   }
@@ -350,11 +353,23 @@ export default function BranchTransferFormPage() {
       )
     },
     {
-      id: "warehouse_id", header: "المخزن", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      id: "warehouse_id", header: "المصدر", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
       render: (l, i) => (
         <select
           value={l.warehouse_id}
           onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
+          className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 focus:ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate"
+        >
+          {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+        </select>
+      )
+    },
+    {
+      id: "dest_warehouse_id", header: "الوجهة", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      render: (l, i) => (
+        <select
+          value={l.dest_warehouse_id}
+          onChange={(e) => updateLineField(i, "dest_warehouse_id", e.target.value)}
           className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 focus:ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate"
         >
           {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -604,9 +619,9 @@ export default function BranchTransferFormPage() {
                   )}
                 </div>
 
-                {/* Table View Storage Dropdown */}
-                <div className="flex flex-col gap-1.5 w-[200px] shrink-0">
-                  <label className="text-[11px] font-bold text-slate-500 text-center">الرصيد/المخزن (اختر)</label>
+                {/* Source Warehouse Dropdown */}
+                <div className="flex flex-col gap-1.5 w-[160px] shrink-0">
+                  <label className="text-[11px] font-bold text-slate-500 text-center">المصدر / الرصيد</label>
                   <select
                     ref={whSelectRef}
                     size={Math.max(4, warehouses.length <= 5 ? warehouses.length : 5)}
@@ -624,6 +639,22 @@ export default function BranchTransferFormPage() {
                            </option>
                         );
                      })}
+                  </select>
+                </div>
+
+                {/* Destination Warehouse Dropdown */}
+                <div className="flex flex-col gap-1.5 w-[160px] shrink-0">
+                  <label className="text-[11px] font-bold text-slate-500 text-center">الوجهة / المخزن</label>
+                  <select
+                    size={Math.max(4, warehouses.length <= 5 ? warehouses.length : 5)}
+                    value={staging.destWarehouseId}
+                    onChange={e => setStaging(s => ({ ...s, destWarehouseId: e.target.value }))}
+                    onKeyDown={(e) => handleFieldKeyDown(e, qtyInputRef, whSelectRef)}
+                    className="w-full h-[96px] border border-slate-200 rounded-[10px] bg-slate-50/50 px-2 py-1 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all shadow-inner custom-scrollbar truncate text-center"
+                  >
+                     {warehouses.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                     ))}
                   </select>
                 </div>
                 

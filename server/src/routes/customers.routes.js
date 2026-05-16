@@ -38,7 +38,7 @@ router.post("/", requirePagePermission("customers", "add"), (req, res) => {
       payload.blacklist_reason || null,
       payload.is_active === false ? 0 : 1,
     );
-  req.audit("create", "customers", { id: info.lastInsertRowid }, `👤 تم إضافة عميل: ${payload.name || ''}`);
+  req.audit("create", "customers", { id: info.lastInsertRowid }, `👤 تم إضافة عميل: ${payload.name || ''}`, `/definitions/customers/${info.lastInsertRowid}`);
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(info.lastInsertRowid),
@@ -67,7 +67,7 @@ router.put("/:id", requirePagePermission("customers", "edit"), (req, res) => {
       payload.is_active === false ? 0 : 1,
       req.params.id,
     );
-  req.audit("update", "customers", { id: req.params.id }, `👤 تم تعديل عميل: ${payload.name || ''}`);
+  req.audit("update", "customers", { id: req.params.id }, `👤 تم تعديل عميل: ${payload.name || ''}`, `/definitions/customers/${req.params.id}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
 });
 
@@ -94,13 +94,13 @@ router.delete("/:id", requirePagePermission("customers", "delete"), (req, res) =
     if (hasTransactions) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE customers SET is_active = 0 WHERE id = ?").run(req.params.id);
-      req.audit("delete", "customers", { id: req.params.id }, `👤 تم أرشفة عميل`);
+      req.audit("delete", "customers", { id: req.params.id }, `👤 تم أرشفة عميل`, `/definitions/customers/${req.params.id}`);
       return res.json({ success: true, archived: true, message: "تم أرشفة العميل لأنه مرتبط بفواتير أو مدفوعات" });
     }
 
     // Hard delete if no transactions
     db.prepare("DELETE FROM customers WHERE id = ?").run(req.params.id);
-    req.audit("delete", "customers", { id: req.params.id }, `👤 تم حذف عميل`);
+    req.audit("delete", "customers", { id: req.params.id }, `👤 تم حذف عميل`, `/definitions/customers`);
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) {

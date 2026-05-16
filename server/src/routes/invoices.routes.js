@@ -126,7 +126,7 @@ router.get("/returns/:id", requirePagePermission("sales_returns", "view"), (req,
 router.post("/general-return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
     const result = createGeneralReturn({ ...req.body, user_id: req.user?.id || req.body.user_id || null });
-    req.audit("create", "sales_return", { id: result?.id }, `↩️ تم إنشاء مرتجع مبيعات عام #${result?.id}`);
+    req.audit("create", "sales_return", { id: result?.id }, `↩️ تم إنشاء مرتجع مبيعات عام #${result?.id}`, result?.id ? `/pos/sales-returns/${result.id}` : null);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -135,7 +135,7 @@ router.post("/returns/:id/cancel", requirePagePermission("sales_returns", "delet
   try {
     const { reason, user_id } = req.body || {};
     const result = cancelSalesReturn(Number(req.params.id), reason, req.user?.id || user_id || null);
-    req.audit("cancel", "sales_return", { id: Number(req.params.id), reason }, `↩️ تم إلغاء مرتجع مبيعات #${req.params.id}`);
+    req.audit("cancel", "sales_return", { id: Number(req.params.id), reason }, `↩️ تم إلغاء مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -143,7 +143,7 @@ router.post("/returns/:id/cancel", requirePagePermission("sales_returns", "delet
 router.put("/returns/:id", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
   try {
     const result = editSalesReturn(Number(req.params.id), req.body || {}, req.user?.id || req.body?.user_id || null);
-    req.audit("edit", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مبيعات #${req.params.id}`);
+    req.audit("edit", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -151,7 +151,7 @@ router.put("/returns/:id", requirePagePermission("sales_returns", "edit"), (req,
 router.put("/returns/:id/amend", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
   try {
     const result = amendSalesReturn(Number(req.params.id), req.body || {}, req.user?.id || req.body?.user_id || null);
-    req.audit("amend", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل (أمندمنت) مرتجع مبيعات #${req.params.id}`);
+    req.audit("amend", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل (أمندمنت) مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -284,7 +284,7 @@ router.get("/:id", requirePagePermission("pos", "view"), (req, res, next) => {
 router.put("/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
   try {
     const result = editInvoice(Number(req.params.id), req.body);
-    req.audit("edit", "invoice", { id: Number(req.params.id) }, `🧾 تم تعديل فاتورة #${req.params.id}`);
+    req.audit("edit", "invoice", { id: Number(req.params.id) }, `🧾 تم تعديل فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
 });
@@ -292,7 +292,7 @@ router.put("/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
 router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const payload = { ...(req.body || {}), user_id: req.user?.id || null };
   const invoice = createInvoice(payload);
-  req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`);
+  req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
   // Notify on large invoice (total > 1000)
   try {
     if (invoice?.total > 1000 && invoice?.id) {
@@ -329,7 +329,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
 router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
     const salesReturn = createReturn(Number(req.params.id), req.body || {});
-    req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`);
+    req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`, salesReturn?.id ? `/pos/sales-returns/${salesReturn.id}` : `/invoices/${req.params.id}`);
     try {
       const invoiceId = req.params.id;
       const returnTotal = salesReturn?.total ?? 0;
@@ -355,7 +355,7 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
     }
     const { voidInvoice } = require("../services/invoiceService");
     const voided = voidInvoice(Number(req.params.id), req.body.reason, req.user?.id || 1);
-    req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`);
+    req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     try {
       NotificationModel.create({
         title: "🧾 تم إلغاء فاتورة",
@@ -373,7 +373,7 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
 router.delete("/:id", requirePagePermission("pos", "delete"), (req, res, next) => {
   try {
     const result = cancelInvoice(Number(req.params.id), req.body?.reason, req.user?.id);
-    req.audit("cancel", "invoice", { id: Number(req.params.id), reason: req.body?.reason }, `🧾 تم حذف/إلغاء فاتورة #${req.params.id}`);
+    req.audit("cancel", "invoice", { id: Number(req.params.id), reason: req.body?.reason }, `🧾 تم حذف/إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -383,7 +383,7 @@ router.delete("/:id", requirePagePermission("pos", "delete"), (req, res, next) =
 router.put("/:id/amend", requirePagePermission("pos", "edit"), (req, res, next) => {
   try {
     const result = amendInvoice(Number(req.params.id), req.body, req.user?.id);
-    req.audit("amend", "invoice", { original_id: Number(req.params.id), new_id: result?.id }, `🧾 تم تعديل (أمندمنت) فاتورة #${req.params.id}`);
+    req.audit("amend", "invoice", { original_id: Number(req.params.id), new_id: result?.id }, `🧾 تم تعديل (أمندمنت) فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);

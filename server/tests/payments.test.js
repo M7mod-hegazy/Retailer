@@ -1,18 +1,21 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const { initDb, setDb, getDb } = require("../src/config/database");
 const { createApp } = require("../src/app");
 
 describe("payments", () => {
   let app;
+  let token;
 
   beforeEach(() => {
     setDb(null);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "retailer-payments-"));
     initDb(path.join(dir, "payments.db"));
     app = createApp();
+    token = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
     const db = getDb();
     db.prepare("INSERT INTO customers (name, opening_balance, is_active) VALUES ('Cust', 0, 1)").run();
     db.prepare("INSERT INTO treasuries (name, code, balance) VALUES ('Main Treasury', 'T1', 0)").run();
@@ -20,7 +23,7 @@ describe("payments", () => {
   });
 
   test("accepts a large integer payment without fractional drift", async () => {
-    const response = await request(app).post("/api/payments").send({
+    const response = await request(app).post("/api/payments").set("Authorization", `Bearer ${token}`).send({
       party_type: "customer",
       party_id: 1,
       amount: 1000000001,
@@ -37,7 +40,7 @@ describe("payments", () => {
       "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, total, payment_type, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).run("INV-000001", 1, 1000, 0, 1000, "credit", "unpaid");
 
-    const response = await request(app).post("/api/payments").send({
+    const response = await request(app).post("/api/payments").set("Authorization", `Bearer ${token}`).send({
       party_type: "customer",
       party_id: 1,
       amount: 500,
@@ -55,7 +58,7 @@ describe("payments", () => {
       "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, total, payment_type, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).run("INV-000001", 1, 1000, 0, 1000, "credit", "unpaid");
 
-    const response = await request(app).post("/api/payments").send({
+    const response = await request(app).post("/api/payments").set("Authorization", `Bearer ${token}`).send({
       party_type: "customer",
       party_id: 1,
       amount: 400,

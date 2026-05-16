@@ -123,6 +123,71 @@ export function fuzzyFilterRows(rows, query, keys) {
 }
 
 /**
+ * Score a single item by relevance to query.
+ * Higher score = better match. Thresholds:
+ *   1000 = exact match (code, barcode, SKU)
+ *   950  = exact token match (word boundary)
+ *   900  = code starts with query (e.g. "2." → "2.2")
+ *   850  = code contains query at token boundary
+ *   800  = code contains query anywhere
+ *   750  = name starts with query
+ *   700  = name contains query
+ *   600  = fuzzy/keyboard variant exact match
+ *   550  = fuzzy variant starts-with
+ *   400  = fuzzy variant contains
+ */
+export function scoreItem(item, query, keys) {
+  const q = String(query || '').toLowerCase().trim();
+  if (!q) return 0;
+
+  let maxScore = 0;
+
+  for (const key of keys) {
+    const val = String(item[key] || '').toLowerCase();
+    if (!val) continue;
+
+    if (val === q) { maxScore = Math.max(maxScore, 1000); continue; }
+
+    if (val.startsWith(q)) { maxScore = Math.max(maxScore, 900); continue; }
+
+    const tokens = val.split(/[\s\-_./:،,]+/);
+    if (tokens.some(t => t === q)) { maxScore = Math.max(maxScore, 950); continue; }
+
+    if (val.includes(q)) { maxScore = Math.max(maxScore, key === 'name' ? 700 : 800); continue; }
+  }
+
+  const variants = searchVariants(q);
+  for (const variant of variants) {
+    if (variant === q || variant.length < 2) continue;
+    for (const key of keys) {
+      const val = String(item[key] || '').toLowerCase();
+      if (!val) continue;
+      if (val === variant) { maxScore = Math.max(maxScore, 600); }
+      else if (val.startsWith(variant)) { maxScore = Math.max(maxScore, 550); }
+      else if (val.includes(variant)) { maxScore = Math.max(maxScore, 400); }
+    }
+  }
+
+  return maxScore;
+}
+
+/**
+ * Filter and sort rows by relevance score descending.
+ * Exact code/barcode matches appear first, then progressively looser matches.
+ */
+export function scoredFilterRows(rows, query, keys) {
+  if (!query || !query.trim()) return rows;
+
+  const scored = rows
+    .map(row => ({ row, score: scoreItem(row, query, keys) }))
+    .filter(entry => entry.score > 0);
+
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.map(entry => entry.row);
+}
+
+/**
  * Return search value adapted for server-side API calls.
  * If input looks like a keyboard mismatch, returns the most likely intended value.
  * Otherwise returns the original.

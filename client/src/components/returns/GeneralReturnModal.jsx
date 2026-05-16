@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { X, Search, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import SearchDropdown from "../ui/SearchDropdown";
+import { scoredFilterRows } from "../../utils/search";
 
 const REASONS = [
   { value: "defective", label: "عيب في المنتج" },
@@ -26,6 +28,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
   const [saving, setSaving] = useState(false);
   const [itemQuery, setItemQuery] = useState("");
   const [itemResults, setItemResults] = useState([]);
+  const [allItems, setAllItems] = useState([]);
 
   useEffect(() => {
     if (!open) {
@@ -37,7 +40,13 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
       setReason("other");
       setItemQuery("");
       setItemResults([]);
+      setAllItems([]);
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    api.get("/api/items").then(r => setAllItems(r.data.data || [])).catch(() => {});
   }, [open]);
 
   useEffect(() => {
@@ -48,20 +57,23 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
   }, [customerQuery]);
 
   useEffect(() => {
-    if (itemQuery.length < 1) { setItemResults([]); return; }
-    api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=10`)
-      .then(r => setItemResults(r.data.data || r.data || []))
-      .catch(() => {});
-  }, [itemQuery]);
+    const q = itemQuery.trim();
+    if (!q || !allItems.length) { setItemResults([]); return; }
+    setItemResults(scoredFilterRows(allItems, q, ["name", "code", "item_code", "barcode"]));
+  }, [itemQuery, allItems]);
 
   function addItem(item) {
+    if (item.id === -1) {
+      setLines(ls => [...ls, { item_id: null, name: item.name, unit_price: 0, quantity: 1 }]);
+    } else {
+      setLines(ls => {
+        const existing = ls.find(l => l.item_id === item.id);
+        if (existing) return ls.map(l => l.item_id === item.id ? { ...l, quantity: l.quantity + 1 } : l);
+        return [...ls, { item_id: item.id, name: item.name, unit_price: Number(item.price || 0), quantity: 1 }];
+      });
+    }
     setItemQuery("");
     setItemResults([]);
-    setLines(ls => {
-      const existing = ls.find(l => l.item_id === item.id);
-      if (existing) return ls.map(l => l.item_id === item.id ? { ...l, quantity: l.quantity + 1 } : l);
-      return [...ls, { item_id: item.id, name: item.name, unit_price: Number(item.price || 0), quantity: 1 }];
-    });
   }
 
   const total = lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
@@ -71,7 +83,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
     setSaving(true);
     try {
       await api.post("/api/invoices/general-return", {
-        lines: lines.map(l => ({ item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price })),
+        lines: lines.filter(l => l.item_id).map(l => ({ item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price })),
         customer_id: customer?.id || null,
         refund_method: refundMethod,
         reason,
@@ -190,26 +202,32 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           <div>
             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">إضافة أصناف</label>
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 value={itemQuery}
-                onChange={e => setItemQuery(e.target.value)}
+                onChange={e => { setItemQuery(e.target.value); }}
+                onFocus={e => e.target.select()}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const q = itemQuery.trim();
+                    if (itemResults.length > 0) addItem(itemResults[0]);
+                    else if (q) addItem({ id: -1, name: q, code: q });
+                  }
+                }}
                 placeholder="ابحث عن صنف بالاسم أو الباركود..."
                 className="w-full rounded-xl border border-slate-300 pr-9 pl-4 py-2.5 text-[13px] font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
               />
-              {itemResults.length > 0 && (
-                <div className="absolute top-full right-0 left-0 z-20 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-auto">
-                  {itemResults.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => addItem(item)}
-                      className="flex w-full items-center justify-between px-4 py-2.5 text-[13px] font-bold hover:bg-rose-50 text-right transition-colors"
-                    >
-                      <span>{item.name}</span>
-                      <span className="font-mono text-[11px] text-slate-400">{fmt(item.price)} ج.م</span>
-                    </button>
-                  ))}
-                </div>
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              {itemQuery && (
+                <SearchDropdown
+                  items={itemResults}
+                  onPick={addItem}
+                  activeIndex={-1}
+                  query={itemQuery}
+                  emptyLabel="لا توجد نتائج"
+                  rawText={itemQuery}
+                  onPickRawText={(txt) => addItem({ id: -1, name: txt, code: txt })}
+                />
               )}
             </div>
           </div>

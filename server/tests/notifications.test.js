@@ -38,9 +38,9 @@ describe("Notifications Routes", () => {
 
   it("returns notifications", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, ?)")
+    db.prepare("INSERT INTO notifications (user_id, title, body, is_read) VALUES (?, ?, ?, ?)")
       .run(userId, "Test Notif", "Test message", 0);
-    db.prepare("INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, ?)")
+    db.prepare("INSERT INTO notifications (user_id, title, body, is_read) VALUES (?, ?, ?, ?)")
       .run(userId, "Read Notif", "Read message", 1);
 
     const res = await request(app).get("/api/notifications").set("Authorization", `Bearer ${token}`);
@@ -49,7 +49,7 @@ describe("Notifications Routes", () => {
 
   it("marks notification as read", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, ?)")
+    db.prepare("INSERT INTO notifications (user_id, title, body, is_read) VALUES (?, ?, ?, ?)")
       .run(userId, "Notif", "Msg", 0);
     const res = await request(app).post("/api/notifications/1/read").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
@@ -59,8 +59,8 @@ describe("Notifications Routes", () => {
 
   it("marks all notifications as read", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, ?)").run(userId, "N1", "M1", 0);
-    db.prepare("INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, ?)").run(userId, "N2", "M2", 0);
+    db.prepare("INSERT INTO notifications (user_id, title, body, is_read) VALUES (?, ?, ?, ?)").run(userId, "N1", "M1", 0);
+    db.prepare("INSERT INTO notifications (user_id, title, body, is_read) VALUES (?, ?, ?, ?)").run(userId, "N2", "M2", 0);
     const res = await request(app).post("/api/notifications/read-all").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     const unread = db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE is_read=0").get().c;
@@ -69,7 +69,7 @@ describe("Notifications Routes", () => {
 
   it("dismisses (deletes) a notification", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, ?)")
+    db.prepare("INSERT INTO notifications (user_id, title, body, is_read) VALUES (?, ?, ?, ?)")
       .run(userId, "N1", "M1", 0);
     const res = await request(app).delete("/api/notifications/1").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);

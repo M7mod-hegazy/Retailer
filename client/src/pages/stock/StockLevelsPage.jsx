@@ -253,7 +253,7 @@ export default function StockLevelsPage() {
   }, [fromWH]);
 
   // Load destination warehouse stock
-  useEffect(() => {
+  const loadDestStock = useCallback(() => {
     if (!toWH) { setDestStock({}); return; }
     api.get("/api/stock/levels", { params: { warehouse_id: toWH } })
       .then((r) => {
@@ -265,6 +265,8 @@ export default function StockLevelsPage() {
       })
       .catch(() => setDestStock({}));
   }, [toWH]);
+
+  useEffect(() => { loadDestStock(); }, [loadDestStock]);
 
   useEffect(() => { loadTxItems(); setSelected(new Set()); setQtys({}); setTxPage(1); }, [loadTxItems]);
   useEffect(() => { setTxPage(1); }, [txSearch]);
@@ -347,7 +349,7 @@ export default function StockLevelsPage() {
         toast.success(`تم تحويل ${r.data.transferred} صنف بنجاح`);
       }
       setSelected(new Set()); setQtys({}); setTxNotes("");
-      loadTxItems(); loadLevels();
+      loadTxItems(); loadDestStock(); loadLevels();
     } catch (err) { toast.error(err.response?.data?.message || "فشل التحويل"); }
     finally { setTxSub(false); }
   }
@@ -818,7 +820,7 @@ export default function StockLevelsPage() {
                         <th colSpan="1" className="w-[40px] bg-slate-50" />
                         <th colSpan="1" className="w-[100px] border-l border-slate-200 bg-slate-50" />
                         <th colSpan="1" className="w-[220px] border-l border-slate-200 bg-slate-50" />
-                        <th colSpan="1" className="border-l border-slate-200 bg-blue-100 px-2 py-2">
+                        <th colSpan="2" className="border-l border-slate-200 bg-blue-100 px-2 py-2">
                           <div className="text-[10px] font-black text-blue-700 uppercase tracking-wider text-center">
                             📦 {fromWarehouse?.name || "المصدر"}
                           </div>
@@ -846,7 +848,8 @@ export default function StockLevelsPage() {
                         </th>
                         <th className="w-[100px] py-2 text-center text-[10px] font-black border-l border-slate-100">الكود</th>
                         <th className="w-[220px] py-2 text-right px-3 text-[10px] font-black border-l border-slate-100">الصنف</th>
-                        <th className="py-2 text-center text-[10px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[100px]">الرصيد</th>
+                        <th className="py-2 text-center text-[10px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[90px]">قبل</th>
+                        <th className="py-2 text-center text-[10px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[80px]">بعد</th>
                         <th className="py-2 text-center text-[10px] font-black text-amber-700 border-l border-slate-100 bg-amber-50/30 w-[130px]">الكمية</th>
                         <th className="py-2 text-center text-[10px] font-black text-emerald-600 border-l border-slate-100 bg-emerald-50/30 w-[80px]">قبل</th>
                         <th className="py-2 text-center text-[10px] font-black text-emerald-600 bg-emerald-50/30 w-[80px]">بعد</th>
@@ -855,7 +858,7 @@ export default function StockLevelsPage() {
                     <tbody>
                         {pageTxItems.length === 0 ? (
                           <tr>
-                            <td colSpan="7" className="py-16 text-center">
+                            <td colSpan="8" className="py-16 text-center">
                               <div className="flex flex-col items-center opacity-40">
                                 <Package className="h-12 w-12 text-slate-400 mb-2" />
                                 <span className="text-[13px] font-black text-slate-500">لا توجد أصناف في المصدر</span>
@@ -904,10 +907,22 @@ export default function StockLevelsPage() {
                                     </div>
                                   </div>
                                 </td>
-                                <td className="py-2 px-2 text-center border-l border-slate-100 bg-blue-50/10 w-[100px]">
+                                <td className="py-2 px-2 text-center border-l border-slate-100 bg-blue-50/10 w-[90px]">
                                   <span className={`font-mono font-black text-[13px] ${item.quantity === 0 ? "text-rose-500" : item.quantity <= (item.min_stock_qty ?? 0) ? "text-amber-600" : "text-blue-700"}`}>
                                     {item.quantity}
                                   </span>
+                                </td>
+                                <td className="py-2 px-2 text-center border-l border-slate-100 bg-blue-50/10 w-[80px]">
+                                  {isSel && txQty > 0 ? (
+                                    <div className="flex flex-col items-center">
+                                      <span className={`font-mono font-black text-[13px] ${item.quantity - txQty < 0 ? "text-rose-600" : "text-blue-800"}`}>
+                                        {item.quantity - txQty}
+                                      </span>
+                                      <span className="text-[8px] font-bold text-blue-500">−{txQty}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-300 font-mono text-[12px]">—</span>
+                                  )}
                                 </td>
                                 <td className="py-2 px-1 text-center border-l border-slate-100 bg-amber-50/20 w-[130px]">
                                   {isSel && !unavailable ? (

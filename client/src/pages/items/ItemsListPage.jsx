@@ -211,7 +211,7 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
                <select value={moveCat} onChange={(e) => setMoveCat(e.target.value)}
                  className="w-full rounded-sm border border-slate-200 px-2 py-2 text-[12px] font-bold">
                  <option value="">اختر فئة...</option>
-                 {categories.map((c) => <option key={c.id} value={c.id}>[{c.sku_prefix}] {c.name}</option>)}
+                 {categories.map((c) => <option key={c.id} value={c.id}>{c.sku_prefix ? `${c.sku_prefix} — ` : ""}{c.name}</option>)}
                </select>
                <button onClick={() => { if (moveCat) { onMove(Number(moveCat)); setShowMove(false); setMoveCat(""); } }}
                  disabled={!moveCat}
@@ -1049,7 +1049,7 @@ export default function ItemsListPage() {
                   <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                   <select value={selectedCatId ?? ""} onChange={(e) => setSelectedCatId(Number(e.target.value))}
                     className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">
-                    {categories.map((cat) => <option key={cat.id} value={cat.id}>[{cat.sku_prefix}] {cat.name}</option>)}
+                    {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.sku_prefix ? `${cat.sku_prefix} — ` : ""}{cat.name}</option>)}
                   </select>
                   <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:rotate-180 transition-transform" />
                </div>

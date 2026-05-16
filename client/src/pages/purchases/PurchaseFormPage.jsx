@@ -16,7 +16,8 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import toast from "react-hot-toast";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
-import { fuzzyFilterRows } from "../../utils/search";
+import SearchDropdown from "../../components/ui/SearchDropdown";
+import { scoredFilterRows } from "../../utils/search";
 import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -26,46 +27,6 @@ function resolveImageUrl(u) {
   if (!u) return null;
   if (u.startsWith("http") || u.startsWith("data:")) return u;
   return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
-
-function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
-  if (!items.length) {
-    return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-        {emptyLabel}
-      </div>
-    );
-  }
-  return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
-        {items.map((item, i) => (
-          <button
-            key={item.id}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-emerald-50/80" : "hover:bg-zinc-50"}`}
-          >
-            <div className="flex items-center gap-2">
-              {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
-              ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300"/></div>
-              )}
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-indigo-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[10px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-              {item.price_label && <span className="font-mono text-[12px] font-black text-slate-600">{item.price_label}</span>}
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function formatMoney(value) {
@@ -270,8 +231,9 @@ export default function PurchaseFormPage() {
   const [todayPurchVoidTarget, setTodayPurchVoidTarget] = useState(null);
 
   const todayPurchFilteredItems = useMemo(() => {
-    if (!todayPurchItemSearch.trim() || !todayPurchAllItems.length) return [];
-    return fuzzyFilterRows(todayPurchAllItems, todayPurchItemSearch, ["name", "code", "barcode"]).slice(0, 8);
+    const q = todayPurchItemSearch.trim();
+    if (!q || !todayPurchAllItems.length) return [];
+    return scoredFilterRows(todayPurchAllItems, q, ["name", "code", "barcode"]);
   }, [todayPurchItemSearch, todayPurchAllItems]);
 
   const todayPurchFilteredSuppliers = useMemo(() => {
@@ -424,9 +386,14 @@ export default function PurchaseFormPage() {
     if (!selectedItem) setStaging(s => ({ ...s, warehouseId: defaultWarehouseId }));
   }, [defaultWarehouseId]);
 
-  const filteredItems = useMemo(() =>
-    fuzzyFilterRows(items, itemQuery, ["name", "code", "item_code", "barcode"]).slice(0, 8),
-    [itemQuery, items]);
+  const filteredItems = useMemo(() => {
+    const q = itemQuery.trim();
+    if (!q) return [];
+    return scoredFilterRows(items, q, ["name", "code", "item_code", "barcode"]).map(i => ({
+      ...i,
+      price_label: formatMoney(i.purchase_price || 0),
+    }));
+  }, [itemQuery, items]);
 
   const filteredSuppliers = useMemo(() => {
     const q = supplierQuery.trim().toLowerCase();
@@ -751,7 +718,7 @@ export default function PurchaseFormPage() {
                     className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800 disabled:bg-slate-50 disabled:cursor-not-allowed"
                   />
                   {supplierLookupOpen && !isLocked && (
-                    <LookupList items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
+                    <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
                   )}
                 </div>
                 {!isLocked && (
@@ -801,12 +768,12 @@ export default function PurchaseFormPage() {
                       onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
                       placeholder="ابحث بالاسم، الباركود، أو الكود..."
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && filteredItems.length > 0) { e.preventDefault(); handlePickItem(filteredItems[activeIndex]); }
+                        if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) handlePickItem(filteredItems[activeIndex]); else handlePickItem({ id: -1, name: itemQuery, code: itemQuery, barcode: itemQuery, purchase_price: 0, sale_price: 0 }); }
                         else if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
                         else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
                       }}
                     />
-                    {lookupOpen && <LookupList items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} />}
+                    {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} />}
                   </div>
                 </div>
 
@@ -1354,7 +1321,7 @@ export default function PurchaseFormPage() {
                 className="w-full rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
               />
               {todayPurchItemLookupOpen && (
-                <LookupList items={todayPurchFilteredItems} onPick={(item) => { setTodayPurchItemSearch(item.code || item.barcode || item.name); setTodayPurchItemLookupOpen(false); }}
+                <SearchDropdown items={todayPurchFilteredItems} onPick={(item) => { setTodayPurchItemSearch(item.code || item.barcode || item.name); setTodayPurchItemLookupOpen(false); }}
                   activeIndex={todayPurchActiveItemIndex} query={todayPurchItemSearch} />
               )}
             </div>
@@ -1430,7 +1397,7 @@ export default function PurchaseFormPage() {
                 </button>
               )}
               {todayPurchSupplierLookupOpen && (
-                <LookupList
+                <SearchDropdown
                   items={todayPurchFilteredSuppliers}
                   onPick={(s) => { setTodayPurchSupplierQuery(s.name); setTodayPurchSupplierId(s.id); setTodayPurchSupplierLookupOpen(false); }}
                   activeIndex={todayPurchActiveSupplierIndex}

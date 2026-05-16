@@ -93,7 +93,7 @@ export default function ItemFormModal({ editItem, onSaved }) {
         <Input label="الباركود" value={form.barcode} onChange={e => set("barcode", e.target.value)} />
         <Select label="الفئة" value={form.category_id} onChange={e => set("category_id", e.target.value)}>
           <option value="">-- اختر --</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {categories.map(c => <option key={c.id} value={c.id}>{c.sku_prefix ? `${c.sku_prefix} — ` : ""}{c.name}</option>)}
         </Select>
         <Select label="الوحدة" value={form.unit_id} onChange={e => set("unit_id", e.target.value)}>
           <option value="">-- اختر --</option>

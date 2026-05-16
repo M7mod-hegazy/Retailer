@@ -17,6 +17,8 @@ import {
   X,
   Filter,
   Activity,
+  Pencil,
+  RotateCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -108,6 +110,10 @@ export default function BulkPriceUpdatePage() {
   // ── Selection ──
   const [selected, setSelected] = useState(new Set());
 
+  // ── Inline price overrides: { [itemId]: string } ──
+  const [inlineOverrides, setInlineOverrides] = useState({});
+  const [editingCell, setEditingCell] = useState(null); // itemId being edited
+
   // ── Adjustment controls ──
   const [priceField, setPriceField] = useState("retail_price");
   const [adjType, setAdjType] = useState("percentage");
@@ -132,7 +138,7 @@ export default function BulkPriceUpdatePage() {
 
   // ── Column resizing ──
   const [colWidths, setColWidths] = useState({
-    code: 100, name: 260, category: 140, purchase: 100, retail: 110, wholesale: 110, suggested: 120, diff: 90,
+    code: 100, name: 260, category: 140, purchase: 100, retail: 110, wholesale: 110, suggested: 140, diff: 90,
   });
   const resizingCol = useRef(null);
   const startX = useRef(0);
@@ -194,6 +200,15 @@ export default function BulkPriceUpdatePage() {
 
   const fieldKey = PRICE_FIELDS.find((f) => f.value === priceField)?.key ?? "sale_price";
 
+  // Category item counts
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    items.forEach((it) => {
+      if (it.category_id) counts[it.category_id] = (counts[it.category_id] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = items.filter((it) => {
@@ -230,14 +245,65 @@ export default function BulkPriceUpdatePage() {
     else setSelected((prev) => { const s = new Set(prev); allPageIds.forEach((id) => s.add(id)); return s; });
   }
   function selectAllFiltered() { setSelected(new Set(allFilteredIds)); }
-  function clearSelection() { setSelected(new Set()); }
-  function toggleRow(id) { setSelected((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }); }
+  function clearSelection() { setSelected(new Set()); setInlineOverrides({}); }
+  function toggleRow(id) {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) {
+        s.delete(id);
+        setInlineOverrides((o) => { const n = { ...o }; delete n[id]; return n; });
+      } else {
+        s.add(id);
+      }
+      return s;
+    });
+  }
   function goPage(p) { setPage(Math.max(1, Math.min(totalPages, p))); }
   useEffect(() => { setPage(1); }, [search, categoryFilter, pageSize]);
 
+  // Inline override helpers
+  function startEditing(e, itemId, currentSuggested) {
+    e.stopPropagation();
+    setEditingCell(itemId);
+    if (!inlineOverrides[itemId] && currentSuggested !== null) {
+      setInlineOverrides((o) => ({ ...o, [itemId]: String(currentSuggested) }));
+    }
+  }
+  function commitEdit(itemId, value) {
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed) && parsed >= 0) {
+      setInlineOverrides((o) => ({ ...o, [itemId]: String(Math.round(parsed * 100) / 100) }));
+    } else {
+      setInlineOverrides((o) => { const n = { ...o }; delete n[itemId]; return n; });
+    }
+    setEditingCell(null);
+  }
+  function clearOverride(e, itemId) {
+    e.stopPropagation();
+    setInlineOverrides((o) => { const n = { ...o }; delete n[itemId]; return n; });
+    setEditingCell(null);
+  }
+
+  // Compute effective new price for an item
+  function effectiveNewPrice(item) {
+    if (inlineOverrides[item.id] !== undefined) {
+      const v = parseFloat(inlineOverrides[item.id]);
+      return isNaN(v) ? null : Math.max(0, Math.round(v * 100) / 100);
+    }
+    const currentPrice = parseFloat(item[fieldKey]) || 0;
+    return applyAdjustment(currentPrice, direction, adjType, adjValue);
+  }
+
   function handleApply() {
+    const hasOverrides = Object.keys(inlineOverrides).some((id) => selected.has(Number(id)));
     const v = parseFloat(adjValue);
-    if (!v || isNaN(v) || v === 0) { toast.error("أدخل قيمة تعديل صحيحة"); return; }
+    const hasBulkFormula = v && !isNaN(v) && v !== 0;
+    const nonOverrideSelected = [...selected].filter((id) => inlineOverrides[id] === undefined);
+
+    if (!hasOverrides && !hasBulkFormula) {
+      toast.error("أدخل قيمة تعديل أو عدّل السعر يدوياً لأحد الأصناف");
+      return;
+    }
     if (selected.size === 0) { toast.error("اختر صنفاً واحداً على الأقل"); return; }
     setPendingSubmit(true);
   }
@@ -245,18 +311,55 @@ export default function BulkPriceUpdatePage() {
   async function confirmApply() {
     setPendingSubmit(false);
     setLoading(true);
+
+    const overrideIds = [...selected].filter((id) => inlineOverrides[id] !== undefined);
+    const bulkIds = [...selected].filter((id) => inlineOverrides[id] === undefined);
+    const v = parseFloat(adjValue);
+    const hasBulkFormula = v && !isNaN(v) && v !== 0;
+
     try {
-      const r = await api.post("/api/items/bulk-price-update", {
-        item_ids: [...selected],
-        adjustment_type: adjType,
-        adjustment_value: Math.abs(parseFloat(adjValue)),
-        direction,
-        price_field: priceField,
-        reason,
-      });
-      toast.success(`تم تحديث ${r.data.changes} صنف بنجاح`);
-      setLastOpId(r.data.operation_id);
+      let totalChanges = 0;
+      let lastOpIdResult = null;
+
+      // Bulk formula items
+      if (bulkIds.length > 0 && hasBulkFormula) {
+        const r = await api.post("/api/items/bulk-price-update", {
+          item_ids: bulkIds,
+          adjustment_type: adjType,
+          adjustment_value: Math.abs(v),
+          direction,
+          price_field: priceField,
+          reason,
+        });
+        totalChanges += r.data.changes || 0;
+        lastOpIdResult = r.data.operation_id;
+      }
+
+      // Inline override items — submit each as exact fixed amount from current price
+      for (const id of overrideIds) {
+        const item = items.find((it) => it.id === id);
+        if (!item) continue;
+        const currentPrice = parseFloat(item[fieldKey]) || 0;
+        const targetPrice = parseFloat(inlineOverrides[id]);
+        if (isNaN(targetPrice)) continue;
+        const diff = targetPrice - currentPrice;
+        if (diff === 0) continue;
+        const r = await api.post("/api/items/bulk-price-update", {
+          item_ids: [id],
+          adjustment_type: "fixed",
+          adjustment_value: Math.abs(diff),
+          direction: diff >= 0 ? "up" : "down",
+          price_field: priceField,
+          reason: reason || "تعديل يدوي مباشر",
+        });
+        totalChanges += r.data.changes || 0;
+        if (!lastOpIdResult) lastOpIdResult = r.data.operation_id;
+      }
+
+      toast.success(`تم تحديث ${totalChanges} صنف بنجاح`);
+      if (lastOpIdResult) setLastOpId(lastOpIdResult);
       setSelected(new Set());
+      setInlineOverrides({});
       setAdjValue("");
       setReason("");
       fetchItems();
@@ -285,12 +388,18 @@ export default function BulkPriceUpdatePage() {
   }
 
   const adjSuffix = adjType === "percentage" ? "%" : " ج";
-  const confirmMsg = `سيتم ${direction === "up" ? "رفع" : "تخفيض"} ${fieldLabelOf(priceField)} بمقدار ${adjValue}${adjSuffix} على ${selected.size} صنف. هل تريد المتابعة؟`;
+  const hasInlineOverrides = [...selected].some((id) => inlineOverrides[id] !== undefined);
+  const v = parseFloat(adjValue);
+  const hasBulkFormula = v && !isNaN(v) && v !== 0;
+
+  const confirmMsg = hasInlineOverrides
+    ? `سيتم تطبيق تعديل الأسعار على ${selected.size} صنف (بعضها بأسعار مخصصة). هل تريد المتابعة؟`
+    : `سيتم ${direction === "up" ? "رفع" : "تخفيض"} ${fieldLabelOf(priceField)} بمقدار ${adjValue}${adjSuffix} على ${selected.size} صنف. هل تريد المتابعة؟`;
 
   const sortConfig = { key: sortCol, direction: sortDir };
 
   return (
-    <div className="standard-page-container font-sans flex flex-col gap-6 pb-32" dir="rtl">
+    <div className="standard-page-container font-sans flex flex-col gap-6 pb-10" dir="rtl">
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -333,12 +442,16 @@ export default function BulkPriceUpdatePage() {
                 </button>
               )}
             </div>
-            <div className="relative w-64 group">
+            <div className="relative w-72 group">
               <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
                 className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
-                <option value="">كل الأقسام</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value="">كل الأقسام ({items.length})</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.sku_prefix ? `${c.sku_prefix} — ` : ""}{c.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -401,6 +514,18 @@ export default function BulkPriceUpdatePage() {
               placeholder="مثال: تحديثات أبريل"
               className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-[13px] font-bold outline-none focus:border-slate-800 shadow-sm" />
           </div>
+
+          <div className="space-y-1.5 shrink-0">
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 block">
+              {selected.size > 0 ? `${selected.size} صنف محدد` : "تنفيذ"}
+            </label>
+            <button onClick={handleApply}
+              disabled={loading || selected.size === 0 || (!hasBulkFormula && !hasInlineOverrides)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-sm font-black text-[13px] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap">
+              <CheckCircle2 className="h-4 w-4" />
+              {loading ? "جاري التحديث..." : "تنفيذ التسعير"}
+            </button>
+          </div>
         </div>
 
         {/* Rollback banner */}
@@ -455,7 +580,14 @@ export default function BulkPriceUpdatePage() {
                     <ResizableTh label="سعر المستهلك" sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} colKey="retail" colWidths={colWidths} onResizeStart={onResizeStart} className="text-emerald-600" />
                     <ResizableTh label="سعر الجملة" sortKey="wholesale_price" sortConfig={sortConfig} onSort={handleSort} colKey="wholesale" colWidths={colWidths} onResizeStart={onResizeStart} className="text-blue-600" />
                     <ResizableTh colKey="suggested" colWidths={colWidths} onResizeStart={onResizeStart} className="text-amber-600">
-                      السعر المقترح {adjValue ? `(${fieldLabelOf(priceField)})` : ""}
+                      <div className="flex flex-col gap-0.5">
+                        <span>السعر الجديد</span>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-fit ${
+                          priceField === "retail_price" ? "bg-emerald-100 text-emerald-700" :
+                          priceField === "wholesale_price" ? "bg-blue-100 text-blue-700" :
+                          "bg-slate-100 text-slate-600"
+                        }`}>{fieldLabelOf(priceField)}</span>
+                      </div>
                     </ResizableTh>
                     <ResizableTh colKey="diff" colWidths={colWidths} onResizeStart={onResizeStart} className="text-slate-400 text-left">
                       الفرق
@@ -469,22 +601,28 @@ export default function BulkPriceUpdatePage() {
                     <tr><td colSpan={9} className="py-24 text-center text-[13px] font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
                   ) : pageItems.map((item) => {
                     const isSelected = selected.has(item.id);
+                    const hasOverride = inlineOverrides[item.id] !== undefined;
+                    const isEditing = editingCell === item.id;
                     const currentPrice = parseFloat(item[fieldKey]) || 0;
-                    const newPrice = applyAdjustment(currentPrice, direction, adjType, adjValue);
+                    const newPrice = effectiveNewPrice(item);
                     const diff = newPrice !== null ? newPrice - currentPrice : null;
+                    const isUp = diff !== null && diff > 0;
+                    const isDown = diff !== null && diff < 0;
 
                     return (
                       <tr key={item.id}
-                        onClick={() => toggleRow(item.id)}
-                        className={`group cursor-pointer transition-colors ${
+                        onClick={() => !isEditing && toggleRow(item.id)}
+                        className={`group cursor-pointer transition-colors border-r-4 ${
                           isSelected
-                            ? direction === "up"
-                              ? "bg-emerald-50 border-r-4 border-emerald-400"
-                              : "bg-rose-50 border-r-4 border-rose-400"
-                            : "hover:bg-slate-50/50"
+                            ? isDown
+                              ? "bg-rose-50 border-r-rose-400"
+                              : "bg-emerald-50 border-r-emerald-400"
+                            : "border-r-transparent hover:bg-slate-50/50"
                         }`}
                       >
-                        <td className="px-1 py-1 text-center border-l border-slate-100">
+                        {/* Checkbox — stop propagation so row click doesn't double-toggle */}
+                        <td className="px-1 py-1 text-center border-l border-slate-100"
+                          onClick={(e) => e.stopPropagation()}>
                           <input type="checkbox" checked={isSelected} onChange={() => toggleRow(item.id)}
                             className="h-3.5 w-3.5 cursor-pointer rounded-sm accent-slate-800" />
                         </td>
@@ -507,20 +645,74 @@ export default function BulkPriceUpdatePage() {
                         <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-[13px] text-blue-700">
                           {Number(item.wholesale_price || 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-black text-[13px]">
-                          {newPrice !== null ? (
-                            <span className={`px-2 py-0.5 rounded ${
-                              isSelected
-                                ? direction === "up" ? "text-emerald-700 bg-emerald-100" : "text-rose-700 bg-rose-100"
-                                : "text-slate-400 bg-slate-100"
-                            }`}>
-                              {newPrice.toFixed(2)}
-                            </span>
-                          ) : <span className="text-slate-200">—</span>}
+
+                        {/* Suggested / inline-edit cell */}
+                        <td className="px-2 py-1 border-l border-slate-100 text-right"
+                          onClick={(e) => isSelected && e.stopPropagation()}>
+                          {isSelected ? (
+                            isEditing ? (
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  autoFocus
+                                  defaultValue={inlineOverrides[item.id] ?? (newPrice !== null ? newPrice : currentPrice)}
+                                  onBlur={(e) => commitEdit(item.id, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") commitEdit(item.id, e.target.value);
+                                    if (e.key === "Escape") { setEditingCell(null); }
+                                  }}
+                                  className="w-20 rounded border border-amber-400 bg-white px-2 py-0.5 text-[13px] font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 text-center"
+                                />
+                                {hasOverride && (
+                                  <button onClick={(e) => clearOverride(e, item.id)} title="إعادة ضبط"
+                                    className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                                    <RotateCcw className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5 group/cell">
+                                {newPrice !== null ? (
+                                  <span className={`font-mono font-black text-[13px] px-2 py-0.5 rounded transition-colors ${
+                                    hasOverride
+                                      ? "text-violet-700 bg-violet-100 ring-1 ring-violet-300"
+                                      : isDown
+                                        ? "text-rose-700 bg-rose-100"
+                                        : "text-emerald-700 bg-emerald-100"
+                                  }`}>
+                                    {newPrice.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300 text-[13px] font-mono">—</span>
+                                )}
+                                <button
+                                  onClick={(e) => startEditing(e, item.id, newPrice)}
+                                  title="تعديل يدوي"
+                                  className="flex h-6 w-6 items-center justify-center rounded text-slate-300 hover:text-amber-500 hover:bg-amber-50 opacity-0 group-hover/cell:opacity-100 group-hover:opacity-100 transition-all">
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                {hasOverride && (
+                                  <button onClick={(e) => clearOverride(e, item.id)} title="إعادة ضبط"
+                                    className="flex h-6 w-6 items-center justify-center rounded text-violet-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                                    <RotateCcw className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          ) : (
+                            newPrice !== null ? (
+                              <span className="px-2 py-0.5 rounded font-mono text-[13px] font-black text-slate-300 bg-slate-50">
+                                {newPrice.toFixed(2)}
+                              </span>
+                            ) : <span className="text-slate-200 text-[13px]">—</span>
+                          )}
                         </td>
+
                         <td className="px-4 py-2 text-left font-mono font-bold text-[12px]">
                           {diff !== null ? (
-                            <span className={`px-2 py-0.5 rounded ${
+                            <span className={`px-2 py-0.5 rounded transition-colors ${
                               diff > 0 ? "text-emerald-500 bg-emerald-50" : diff < 0 ? "text-rose-500 bg-rose-50" : "text-slate-400 bg-slate-50"
                             }`}>
                               {diff > 0 ? "+" : ""}{diff.toFixed(2)}
@@ -649,7 +841,6 @@ export default function BulkPriceUpdatePage() {
                         </td>
                       </tr>
 
-                      {/* Expanded detail rows */}
                       {expandedOp === op.operation_id && (
                         <tr>
                           <td colSpan={7} className="p-0 border-b border-indigo-100">
@@ -706,37 +897,6 @@ export default function BulkPriceUpdatePage() {
           </div>
         )}
       </div>
-
-      {/* Sticky action bar */}
-      {selected.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.3)] animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between px-6 py-4 mr-[280px]">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded bg-slate-800">
-                  <Tag className="h-5 w-5 text-sky-400" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[14px] font-black text-white">{selected.size} أصناف قابلة للتعديل</span>
-                  <span className="text-[11px] font-bold text-slate-400">
-                    {adjValue && parseFloat(adjValue) !== 0
-                      ? `سيتم ${direction === "up" ? "رفع" : "تخفيض"} ${adjValue}${adjSuffix} على ${fieldLabelOf(priceField)}`
-                      : "يرجى تحديد تفاصيل نسبة أو مبلغ التعديل أعلاه"}
-                  </span>
-                </div>
-              </div>
-              <button onClick={clearSelection} className="text-[12px] font-bold text-slate-400 hover:text-white transition-colors underline underline-offset-4">تفريغ التحديد</button>
-            </div>
-            <button onClick={handleApply} disabled={loading || !adjValue || parseFloat(adjValue) === 0}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 rounded-sm font-black text-[14px] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-95">
-              <CheckCircle2 className="h-5 w-5" />
-              {loading ? "جاري التحديث..." : "تنفيذ عملية التسعير المجمعة"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {selected.size > 0 && <div className="h-28" />}
 
       <ConfirmDialog
         open={pendingSubmit}

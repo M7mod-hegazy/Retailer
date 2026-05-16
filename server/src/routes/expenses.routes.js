@@ -94,7 +94,7 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
       return created;
     })();
 
-  req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd());
+    req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd(), `/expenses`);
   try {
     const expenseAmount = Number(payload.amount || 0);
     if (expenseAmount > 500) {
@@ -119,7 +119,7 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
     const payload = req.body || {};
     db.prepare(`UPDATE expenses SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now') WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
-    req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('ar-EG')}` : ''}`);
+    req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('ar-EG')}` : ''}`, `/expenses`);
     res.json({ success: true, data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -127,7 +127,7 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
 router.delete("/:id", requirePagePermission("expenses", "delete"), (req, res) => {
   try {
     getDb().prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
-    req.audit("delete", "expenses", { id: req.params.id }, `💰 تم حذف مصروف`);
+    req.audit("delete", "expenses", { id: req.params.id }, `💰 تم حذف مصروف`, `/expenses`);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

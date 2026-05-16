@@ -25,7 +25,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
-import { fuzzyFilterRows } from "../../utils/search";
+import SearchDropdown from "../../components/ui/SearchDropdown";
+import { scoredFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
@@ -35,47 +36,7 @@ function resolveImageUrl(u) {
   return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
 }
 
-// --- Local Lookup Component ---
-function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
-  if (!items.length) {
-    return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-        {emptyLabel}
-      </div>
-    );
-  }
-  return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
-        {items.map((item, i) => (
-          <button
-            key={item.id}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-indigo-50/80" : "hover:bg-slate-50"}`}
-          >
-            <div className="flex items-center gap-2">
-              {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
-              ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300"/></div>
-              )}
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-indigo-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[10px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-               <span className="font-mono text-[12px] font-black text-slate-600">{formatMoney(item.sale_price)}</span>
-               <span className="text-[10px] font-bold text-slate-400">متوفر: {item.stock_total || 0}</span>
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -139,9 +100,9 @@ export default function QuotationFormPage() {
   }, [customerQuery, customers]);
 
   useEffect(() => {
-    const q = searchItem.trim().toLowerCase();
+    const q = searchItem.trim();
     if (!q) { setFilteredItems([]); return; }
-    setFilteredItems(fuzzyFilterRows(items, searchItem, ["name", "code", "item_code", "barcode"]).slice(0, 8));
+    setFilteredItems(scoredFilterRows(items, searchItem, ["name", "code", "item_code", "barcode"]));
   }, [searchItem, items]);
 
   function addToCart(item) {
@@ -235,9 +196,11 @@ export default function QuotationFormPage() {
                     onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
                     placeholder="ابحث عن صنف بالاسم، الباركود، أو الكود..."
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && filteredItems.length > 0) {
+                      if (e.key === "Enter") {
                         e.preventDefault();
-                        addToCart(filteredItems[activeIndex]);
+                        const q = searchItem.trim();
+                        if (filteredItems.length > 0) addToCart(filteredItems[activeIndex]);
+                        else if (q) addToCart({ id: -1, name: q, code: q, barcode: q, sale_price: 0, price: 0, stock_total: 0, stock_quantity: 0 });
                       } else if (e.key === "ArrowDown") {
                         e.preventDefault();
                         setActiveIndex(prev => (prev < filteredItems.length - 1 ? prev + 1 : prev));
@@ -247,13 +210,15 @@ export default function QuotationFormPage() {
                       }
                     }}
                   />
-                  {lookupOpen && filteredItems.length > 0 && (
-                    <LookupList 
+                  {lookupOpen && (
+                    <SearchDropdown 
                       items={filteredItems}
                       onPick={addToCart}
                       activeIndex={activeIndex}
                       query={searchItem}
                       emptyLabel="الصنف غير موجود"
+                      rawText={searchItem}
+                      onPickRawText={(txt) => addToCart({ id: -1, name: txt, code: txt, barcode: txt, sale_price: 0, price: 0, stock_total: 0, stock_quantity: 0 })}
                     />
                   )}
                </div>

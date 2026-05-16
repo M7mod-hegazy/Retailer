@@ -24,56 +24,15 @@ import DataGrid from "../../components/ui/DataGrid";
 import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
+import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
-import { fuzzyFilterRows } from "../../utils/search";
+import { scoredFilterRows } from "../../utils/search";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
   if (!u) return null;
   if (u.startsWith("http") || u.startsWith("data:")) return u;
   return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
-
-// --- Local Lookup Component ---
-function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
-  if (!items.length) {
-    return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-        {emptyLabel}
-      </div>
-    );
-  }
-  return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
-        {items.map((item, i) => (
-          <button
-            key={item.id}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-indigo-50/80" : "hover:bg-slate-50"}`}
-          >
-            <div className="flex items-center gap-2">
-              {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
-              ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300"/></div>
-              )}
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-indigo-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[10px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-               {item.price_label && <span className="font-mono text-[12px] font-black text-slate-600">{item.price_label}</span>}
-               {item.sub_label && <span className="text-[10px] font-bold text-slate-400">{item.sub_label}</span>}
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export default function PurchaseOrderFormPage() {
@@ -149,8 +108,9 @@ export default function PurchaseOrderFormPage() {
 
   // --- Filtering ---
   const filteredItems = useMemo(() => {
-    const res = fuzzyFilterRows(items, itemQuery, ["name", "code", "item_code", "barcode"]).slice(0, 8);
-    return res.map(i => ({
+    const q = itemQuery.trim();
+    if (!q) return [];
+    return scoredFilterRows(items, q, ["name", "code", "item_code", "barcode"]).map(i => ({
       ...i,
       sub_label: `مخزون: ${stockLevels[i.id] || 0}`,
       price_label: `${i.purchase_price || 0}`
@@ -297,7 +257,7 @@ export default function PurchaseOrderFormPage() {
                       className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
                     />
                     {supplierLookupOpen && (
-                      <LookupList 
+                      <SearchDropdown 
                         items={filteredSuppliers} 
                         onPick={handlePickSupplier} 
                         activeIndex={activeSupplierIndex}
@@ -336,9 +296,11 @@ export default function PurchaseOrderFormPage() {
                       onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
                       placeholder="ابحث بالاسم، الباركود، أو الكود..."
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && filteredItems.length > 0) {
+                        if (e.key === "Enter") {
                           e.preventDefault();
-                          handlePickItem(filteredItems[activeIndex]);
+                          const q = itemQuery.trim();
+                          if (filteredItems.length > 0) handlePickItem(filteredItems[activeIndex]);
+                          else if (q) handlePickItem({ id: -1, name: q, code: q, barcode: q, purchase_price: 0, sale_price: 0 });
                         } else if (e.key === "ArrowDown") {
                           e.preventDefault();
                           setActiveIndex(prev => (prev < filteredItems.length - 1 ? prev + 1 : prev));
@@ -349,12 +311,14 @@ export default function PurchaseOrderFormPage() {
                       }}
                     />
                     {lookupOpen && (
-                      <LookupList 
+                      <SearchDropdown 
                         items={filteredItems} 
                         onPick={handlePickItem} 
                         activeIndex={activeIndex}
                         query={itemQuery}
                         emptyLabel="الصنف غير موجود"
+                        rawText={itemQuery}
+                        onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })}
                       />
                     )}
                   </div>

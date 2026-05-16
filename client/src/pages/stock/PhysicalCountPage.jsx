@@ -451,7 +451,7 @@ export default function PhysicalCountPage() {
                           }`}
                         >
                           <option value="">اختر الفئة...</option>
-                          {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                          {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.sku_prefix ? `${c.sku_prefix} — ` : ""}{c.name}</option>)}
                         </select>
                         <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       </div>
