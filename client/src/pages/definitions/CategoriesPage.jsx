@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import api from "../../services/api";
 import ImageUpload from "../../components/ui/ImageUpload";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ function formatMoney(v) {
 // ─── main page ───────────────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
+  usePageTour('categories');
   const [categories, setCategories] = useState([]);
   const [itemsByCategory, setItemsByCategory] = useState({});
   const [selectedId, setSelectedId] = useState(null);
@@ -170,6 +172,7 @@ export default function CategoriesPage() {
         </div>
         <PermissionGate page="categories" action="add">
         <button
+          data-help="add-button"
           onClick={openAddCategory}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
         >
@@ -228,7 +231,7 @@ export default function CategoriesPage() {
       </div>
 
       {/* Categories Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div data-help="main-table" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories.map((cat) => {
           const stats = categoryStats[cat.id] || { totalItems: 0, activeItems: 0, totalStock: 0, totalValue: 0, avgMargin: 0 };
           const isSelected = cat.id === selectedId;

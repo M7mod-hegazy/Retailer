@@ -21,6 +21,7 @@ import { scoredFilterRows } from "../../utils/search";
 import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -140,6 +141,7 @@ const COLOR_MAP = {
 };
 
 export default function PurchaseFormPage() {
+  usePageTour('purchases');
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -757,7 +759,7 @@ export default function PurchaseFormPage() {
             <section className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
               <div className="grid grid-cols-[3fr_110px_80px_100px_100px_100px_80px] gap-2 items-end">
                 {/* Item search */}
-                <div className="relative flex flex-col gap-1">
+                <div data-help="search-bar" className="relative flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الصنف</label>
                   <div className="relative">
                     <SearchInput
@@ -857,6 +859,7 @@ export default function PurchaseFormPage() {
 
           {/* Lines DataGrid */}
           <DataGrid
+            data-help="main-table"
             data={lines}
             rowKey={(row, i) => `${row.item_id}-${i}`}
             emptyMessage="لا يوجد أصناف في الفاتورة بعد"

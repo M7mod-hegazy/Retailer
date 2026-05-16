@@ -410,46 +410,56 @@ export default function PurchaseReturnFormPage() {
   // ══ IDLE SCREEN ══
   if (mode === null && !isEditMode) {
     return (
-      <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden">
-        <div className="flex items-center px-6 pt-5 pb-2">
+      <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden relative">
+        {/* Background Decorative Pattern */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
+
+        <div className="flex items-center px-6 pt-5 pb-2 relative z-10">
           <button onClick={() => navigate("/purchases/returns")}
-            className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors">
-            <ArrowLeft className="h-4 w-4" />
+            className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95">
+            <ArrowLeft className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <RotateCcw className="h-8 w-8" />
+
+        <div className="flex flex-1 flex-col items-center justify-center gap-12 px-4 relative z-10 pb-16">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-amber-100 text-amber-700 shadow-xl shadow-amber-600/10">
+              <RotateCcw className="h-10 w-10" />
             </div>
-            <h1 className="text-xl font-black text-slate-800">مرتجع مشتريات</h1>
-            <p className="text-[13px] text-slate-500">اختر نوع المرتجع</p>
+            <h1 className="text-[32px] font-black text-slate-900 tracking-tight">إنشاء مرتجع مشتريات</h1>
+            <p className="text-[15px] font-bold text-slate-500 max-w-[40ch] leading-relaxed">
+              قم بتحديد الطريقة المناسبة لإرجاع البضائع إلى المورد للحفاظ على دقة المخزون وحسابات الموردين.
+            </p>
           </div>
-          <div className="flex gap-6">
+
+          <div className="flex flex-col md:flex-row gap-6 w-full max-w-3xl">
             <button onClick={() => selectMode("direct")}
-              className="group flex w-56 flex-col items-center gap-3 rounded-lg border-2 border-slate-200 bg-white px-6 py-8 text-center shadow-sm transition-all hover:border-amber-400 hover:bg-amber-50 hover:shadow-md">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors group-hover:bg-amber-100 group-hover:text-amber-700">
-                <RotateCcw className="h-6 w-6" />
+              className="group relative flex-1 flex flex-col justify-between rounded-[2.5rem] bg-white border border-slate-200/60 p-8 overflow-hidden transition-all duration-300 hover:-translate-y-2 shadow-sm hover:shadow-2xl hover:border-amber-300 text-right">
+              <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="bg-slate-50 w-16 h-16 rounded-[1.5rem] flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all duration-500 mb-8 border border-slate-100">
+                <RotateCcw className="h-8 w-8 text-slate-400 group-hover:text-amber-700 transition-colors" />
               </div>
-              <div>
-                <div className="text-[15px] font-black text-slate-800">مرتجع مباشر</div>
-                <div className="mt-1 text-[12px] text-slate-500 leading-relaxed">أضف أصناف مباشرة بدون أمر شراء</div>
+              <div className="relative z-10 flex flex-col">
+                <span className="text-[22px] font-black text-slate-900 mb-2">مرتجع مباشر (حر)</span>
+                <span className="text-[14px] font-bold text-slate-500 leading-relaxed">إضافة الأصناف يدوياً وتحديد الكميات والأسعار بدون الارتباط بأمر شراء مسبق.</span>
               </div>
             </button>
+
             <button onClick={() => selectMode("purchase")}
-              className="group flex w-56 flex-col items-center gap-3 rounded-lg border-2 border-slate-200 bg-white px-6 py-8 text-center shadow-sm transition-all hover:border-amber-400 hover:bg-amber-50 hover:shadow-md">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors group-hover:bg-amber-100 group-hover:text-amber-700">
-                <Search className="h-6 w-6" />
+              className="group relative flex-1 flex flex-col justify-between rounded-[2.5rem] bg-amber-600 border-b-4 border-amber-800 p-8 overflow-hidden transition-all duration-300 hover:-translate-y-2 shadow-xl shadow-amber-600/20 hover:bg-amber-500 hover:shadow-amber-600/40 text-right">
+              <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent pointer-events-none" />
+              <div className="bg-white/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center group-hover:scale-110 transition-all duration-500 mb-8 backdrop-blur-sm">
+                <Search className="h-8 w-8 text-white" />
               </div>
-              <div>
-                <div className="text-[15px] font-black text-slate-800">من أمر شراء سابق</div>
-                <div className="mt-1 text-[12px] text-slate-500 leading-relaxed">ابحث عن أمر شراء وحدد المرتجعات</div>
+              <div className="relative z-10 flex flex-col">
+                <span className="text-[22px] font-black text-white mb-2">من أمر شراء سابق</span>
+                <span className="text-[14px] font-bold text-amber-100 leading-relaxed">البحث برقم أمر الشراء وتحديد الكميات المرتجعة منه بدقة لضمان التسعير الصحيح.</span>
               </div>
             </button>
           </div>
           {message.text && (
-            <div className={`flex items-center gap-2 rounded-md px-4 py-2 text-[13px] font-bold ${message.type === "success" ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
-              {message.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            <div className={`flex items-center gap-2 rounded-xl px-6 py-3 text-[14px] font-black ${message.type === "success" ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+              {message.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
               {message.text}
             </div>
           )}

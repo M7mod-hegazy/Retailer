@@ -23,6 +23,7 @@ import {
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const PRICE_FIELDS = [
   { value: "retail_price",    label: "سعر القطاعي",  key: "sale_price" },
@@ -92,6 +93,7 @@ function ResizableTh({ label, sortKey, sortConfig, onSort, colKey, colWidths, on
 }
 
 export default function BulkPriceUpdatePage() {
+  usePageTour('bulk_price_update');
   // ── Data ──
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -431,7 +433,7 @@ export default function BulkPriceUpdatePage() {
         {/* Filters */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
           <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-            <div className="relative flex-1 group">
+            <div data-help="search-bar" className="relative flex-1 group">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
               <input value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث سريع بأسم أو كود الصنف..."
@@ -563,7 +565,7 @@ export default function BulkPriceUpdatePage() {
               </div>
             )}
 
-            <div className="max-h-[60vh] overflow-auto scrollbar-thin bg-white">
+            <div data-help="main-table" className="max-h-[60vh] overflow-auto scrollbar-thin bg-white">
               <div className="pb-4">
               <table className="w-max border-collapse table-fixed text-right min-w-full">
                 <thead className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-sm">

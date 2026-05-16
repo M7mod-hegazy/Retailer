@@ -7,6 +7,7 @@ import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { usePageTour } from "../../hooks/usePageTour";
 
 // ─── Tooltips ────────────────────────────────────────────────────────────────
 const TOOLTIPS = {
@@ -369,6 +370,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  usePageTour('dashboard');
   const user = useAuthStore((state) => state.user);
   const updateAvailable = useUpdateStore((state) => state.available);
   const navigate = useNavigate();
@@ -425,7 +427,7 @@ export default function DashboardPage() {
         </header>
 
         {/* Primary shortcuts */}
-        <motion.div variants={STAGGER} initial="hidden" animate="visible" className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 relative z-10">
+        <motion.div data-help="stats-cards" variants={STAGGER} initial="hidden" animate="visible" className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 relative z-10">
           {primaryItems.map((item) => {
             const isPOS = item.highlight;
             const shortcut = SHORTCUTS[item.pageKey];
@@ -497,6 +499,7 @@ export default function DashboardPage() {
               initial="hidden"
               animate="visible"
               exit="hidden"
+              data-help="sales-chart"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
             >
               {activeModule.items.map((item) => (

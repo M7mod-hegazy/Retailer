@@ -6,6 +6,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const REASON_MAP = {
   defective: "عيب في المنتج",
@@ -149,6 +150,7 @@ function ReturnRow({ row, navigate }) {
 }
 
 export default function PurchaseReturnsListPage() {
+  usePageTour('purchase_returns');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const purchaseIdFilter = searchParams.get("purchase_id") || "";
@@ -206,6 +208,7 @@ export default function PurchaseReturnsListPage() {
 
           <PermissionGate page="purchase_returns" action="add">
             <MagneticButton
+              data-help="add-button"
               onClick={() => navigate("/purchases/returns/new")}
               className="flex items-center gap-2 bg-zinc-950 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-zinc-950/20 hover:bg-zinc-900 transition-colors"
             >
@@ -225,7 +228,7 @@ export default function PurchaseReturnsListPage() {
 
         {/* Action Bar */}
         <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col md:flex-row items-center gap-4 bg-white/60 backdrop-blur-xl p-3 rounded-[2rem] border border-white shadow-sm">
-          <div className="relative flex-1 w-full">
+          <div data-help="search-bar" className="relative flex-1 w-full">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
             <input
               type="text"
@@ -249,7 +252,8 @@ export default function PurchaseReturnsListPage() {
         </motion.div>
 
         {/* The List */}
-        <motion.div 
+        <motion.div
+          data-help="main-table"
           initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
           className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[400px]"
         >

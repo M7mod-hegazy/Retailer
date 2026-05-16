@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useUpdateStore } from "../../stores/updateStore";
 import { toast } from "react-hot-toast";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const FADE_UP = {
   hidden: { opacity: 0, y: 40 },
@@ -76,6 +77,7 @@ const Shimmer = () => (
 );
 
 export default function UpdatesPage() {
+  usePageTour('updates');
   const { t } = useTranslation();
   const { available, downloaded, info, progress, error, checking, setChecking } = useUpdateStore();
 

@@ -353,7 +353,7 @@ function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resi
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function ItemsListPage() {
-  usePageTour("items_list");
+  usePageTour("items");
 
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkQuery = searchParams.get("q") || "";
@@ -1025,10 +1025,10 @@ export default function ItemsListPage() {
       </div>
 
       {/* Toolbar & Filters */}
-      <div className="flex flex-col rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div data-help="main-table" className="flex flex-col rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden">
          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
             <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-               <div className="relative flex-1 group">
+               <div data-help="search-bar" className="relative flex-1 group">
                   <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                   <input value={search} onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && loadItems(selectedCatId, search, showDeleted)}
@@ -1068,7 +1068,7 @@ export default function ItemsListPage() {
                   }`}>
                   <Eye className="h-3.5 w-3.5" /> {showDeleted ? "إخفاء المحذوفة" : "عرض المحذوفة"}
                </button>
-               <button onClick={() => loadItems(selectedCatId, search, showDeleted)}
+               <button data-help="add-button" onClick={() => loadItems(selectedCatId, search, showDeleted)}
                   className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[13px] font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
                   <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث القائمة
                </button>

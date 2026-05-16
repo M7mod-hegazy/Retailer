@@ -12,7 +12,9 @@ import SectionHero from "../../components/ui/SectionHero";
 import { Select } from "../../components/ui/Select";
 import DataGrid from "../../components/ui/DataGrid";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 export default function PromotionsPage() {
+  usePageTour('promotions');
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
@@ -129,6 +131,7 @@ export default function PromotionsPage() {
           action={
             <PermissionGate page="promotions" action="add">
               <Button
+                data-help="add-button"
                 onClick={() => {
                   resetForm();
                   setOpenModal(true);
@@ -148,7 +151,7 @@ export default function PromotionsPage() {
               جاري تحميل العروض...
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <div data-help="main-table" className="rounded-xl border border-slate-200 overflow-hidden">
               <DataGrid
                 data={promotions}
                 rowKey="id"

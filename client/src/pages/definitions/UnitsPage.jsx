@@ -1,7 +1,9 @@
 import React from "react";
 import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 export default function UnitsPage() {
+  usePageTour('units');
   return (
     <SimpleCrudPage
       pageKey="units"

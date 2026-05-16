@@ -1,7 +1,9 @@
 import React from "react";
 import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 export default function EmployeesPage() {
+  usePageTour('employees');
   return (
     <SimpleCrudPage
       pageKey="employees"

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import BankStatementTemplate from "../../components/print/templates/BankStatementTemplate";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 
@@ -176,6 +177,7 @@ function StatementPanel({ bank, onClose }) {
 }
 
 export default function BankOperationsPage() {
+  usePageTour('bank_operations');
   const [banks, setBanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // { bank, mode: 'deposit'|'withdraw' }
@@ -251,7 +253,7 @@ export default function BankOperationsPage() {
           </button>
           </PermissionGate>
           <PermissionGate page="bank_operations" action="add">
-          <button onClick={() => setNewBankOpen(!newBankOpen)} className="flex h-9 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-[12px] font-black text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+          <button data-help="add-button" onClick={() => setNewBankOpen(!newBankOpen)} className="flex h-9 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-[12px] font-black text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200">
             <Plus className="h-4 w-4" /> إضافة حساب
           </button>
           </PermissionGate>
@@ -291,7 +293,7 @@ export default function BankOperationsPage() {
             <span className="font-black">لا توجد حسابات بنكية</span>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4">
+          <div data-help="main-table" className="grid grid-cols-3 gap-4">
             {banks.map(bank => (
               <div key={bank.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">

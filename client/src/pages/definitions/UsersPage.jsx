@@ -28,6 +28,7 @@ import {
   ACTION_DESCRIPTIONS,
 } from "../../constants/pagePermissions";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const EMPTY_FORM = { full_name: "", username: "", password: "", role: "user", is_active: true, can_view_updates: false };
 const CREATE_TEMPLATE_ROLE = { user: "user", admin: "admin", none: "user" };
@@ -48,6 +49,7 @@ function applyTemplate(template) {
 }
 
 export default function UsersPage() {
+  usePageTour('users');
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "dev";
 
@@ -420,7 +422,7 @@ export default function UsersPage() {
 
       <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-8 pb-32">
         <div className="flex items-center justify-between gap-6 mb-8">
-          <div className="relative group w-96">
+          <div data-help="search-bar" className="relative group w-96">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <input
               value={query}
@@ -446,7 +448,8 @@ export default function UsersPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-6 bg-white/95 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
+            data-help="main-table"
+          className="lg:col-span-6 bg-white/95 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
           >
             <DataTable
               columns={columns}

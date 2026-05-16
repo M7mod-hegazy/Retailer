@@ -11,6 +11,7 @@ import {
 import api from "../../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { usePageTour } from "../../hooks/usePageTour";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 
@@ -25,6 +26,7 @@ const DENOMS = [200, 100, 50, 20, 10, 5, 1, 0.5, 0.25];
 const PAYMENT_METHOD_AR = {
   cash: "نقداً", card: "بطاقة", bank: "بنك", bank_transfer: "تحويل بنكي",
   credit: "آجل", installments: "تقسيط", wallet: "محفظة", multi: "متعدد",
+  digital_wallet: "محفظة إلكترونية",
 };
 const arMethod = (key) => PAYMENT_METHOD_AR[key] || key;
 
@@ -69,6 +71,7 @@ const TABS = [
 ];
 
 export default function DailyTreasuryPage() {
+  usePageTour('daily_treasury');
   const [date, setDate] = useState(todayStr());
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -699,7 +702,7 @@ async function handleQuickSave() {
                   },
                   {
                     label: "صافي اليوم",
-                    value: (summary?.pos_cash_sales || 0) - (summary?.expenses_cash || 0),
+                    value: (summary?.cash_in || 0) - (summary?.cash_out || 0),
                     icon: Wallet,
                     color: "blue",
                   },
@@ -939,7 +942,7 @@ async function handleQuickSave() {
                 <motion.div variants={fadeInUp} className="flex flex-col gap-3">
                   
                   {/* Search Bar */}
-                  <div className="relative group w-full">
+                  <div data-help="search-bar" className="relative group w-full">
                     <Search className="absolute right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-zinc-900 transition-colors" />
                     <input
                       value={globalAmountSearch}
@@ -955,7 +958,7 @@ async function handleQuickSave() {
                   </div>
 
                   {/* Transaction Explorer */}
-                  <div className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm flex flex-col overflow-hidden flex-1">
+                  <div data-help="main-table" className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm flex flex-col overflow-hidden flex-1">
                     {/* Tab bar */}
                     <div className="flex items-center gap-1.5 border-b border-slate-100/80 px-3 py-2 overflow-x-auto scrollbar-hide">
                       {TABS.map((t) => (
@@ -1058,14 +1061,17 @@ async function handleQuickSave() {
                                       {t.payment_splits && (
                                         <div className="flex flex-wrap gap-1 mt-0.5">
                                           {t.payment_splits.split("|||").map((split, i) => {
-                                            const idx = split.lastIndexOf(":");
-                                            const method = split.slice(0, idx);
-                                            const amt = split.slice(idx + 1);
-                                            const isCash = method === "cash";
+                                            const colonIdx = split.lastIndexOf(":");
+                                            const methodKey = split.slice(0, colonIdx);
+                                            const amt = split.slice(colonIdx + 1);
+                                            const isCash = methodKey === "cash";
+                                            const isCredit = methodKey === "credit";
+                                            const label = isCash ? "نقداً" : isCredit ? "آجل" : (PAYMENT_METHOD_AR[methodKey] || methodKey);
                                             return (
-                                              <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
-                                                {arMethod(method)}: {fmt(Number(amt))}
-                                                {!isCash && <span className="text-[7px] opacity-60 mr-0.5">لا يؤثر على الخزنة</span>}
+                                              <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isCredit ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                                                {label}: {fmt(Number(amt))}
+                                                {isCash && <span className="text-[7px] opacity-70 mr-0.5">← خزنة</span>}
+                                                {isCredit && <span className="text-[7px] opacity-70 mr-0.5">← آجل</span>}
                                               </span>
                                             );
                                           })}

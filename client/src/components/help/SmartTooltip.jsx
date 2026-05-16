@@ -1,12 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useHelpStore } from '../../stores/helpStore';
-import { helpContent } from '../../help/helpContent';
-import { useTranslation } from 'react-i18next';
+import helpContent from '../../help/helpContent';
 
 export function SmartTooltip({ pageKey, tooltipKey, className = '' }) {
-  const { i18n } = useTranslation();
-  const lang = i18n.language === 'ar' ? 'ar' : 'en';
-  const isRTL = lang === 'ar';
+  const isRTL = document.documentElement.dir === 'rtl';
 
   const { tooltipsDisabledGlobally, activeTooltipKey, openTooltip, closeTooltip } = useHelpStore();
   const iconRef = useRef(null);
@@ -14,7 +11,7 @@ export function SmartTooltip({ pageKey, tooltipKey, className = '' }) {
 
   const globalKey = `${pageKey}__${tooltipKey}`;
   const isOpen = activeTooltipKey === globalKey;
-  const text = helpContent[pageKey]?.tooltips?.[tooltipKey]?.[lang];
+  const text = helpContent[pageKey]?.tooltips?.[tooltipKey]?.ar;
 
   useEffect(() => {
     if (!isOpen || !iconRef.current) return;
@@ -45,14 +42,14 @@ export function SmartTooltip({ pageKey, tooltipKey, className = '' }) {
         onClick={() => isOpen ? closeTooltip() : openTooltip(globalKey)}
         onMouseLeave={() => closeTooltip()}
         className="mx-1 flex h-4 w-4 items-center justify-center rounded-full bg-info/15 text-[10px] font-bold leading-none text-info-DEFAULT transition hover:bg-info/25"
-        title={lang === 'ar' ? 'مساعدة' : 'Help'}
+        title="مساعدة"
       >
         ?
       </button>
 
       {isOpen && (
         <div
-          dir={isRTL ? 'rtl' : 'ltr'}
+          dir="rtl"
           className="glass-elevated rounded-[16px] px-3 py-2 text-xs leading-relaxed text-text-primary shadow-elevated"
           style={tooltipStyle}
           onClick={closeTooltip}

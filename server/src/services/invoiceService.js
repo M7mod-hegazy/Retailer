@@ -262,7 +262,15 @@ function createInvoice(payload) {
           const amount = Number(p.amount || 0);
           if (amount <= 0) continue;
 
-          const method = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id);
+          let method = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
+
+          // Built-in types (cash/credit) may arrive with no method_id
+          if (!method && p.method === 'cash') {
+            method = { type: 'cash', target_id: payload.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || null };
+          } else if (!method && p.method === 'credit') {
+            method = { type: 'credit', target_id: null };
+          }
+
           if (!method) continue;
 
           if (method.type === 'cash' && method.target_id) {
@@ -270,14 +278,14 @@ function createInvoice(payload) {
           } else if (method.type === 'bank' && method.target_id) {
             db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amount, method.target_id);
           }
-          
+
           const payment = db.prepare(`
             INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id)
             VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)
           `).run(
             payload.customer_id || 0,
             amount,
-            method.type || method.category || method.name,
+            method.type === 'cash' ? 'cash' : method.type === 'credit' ? 'credit' : (method.name || method.type || method.category),
             `Invoice ${invoiceNo}`,
             method.type === "cash" ? method.target_id || payload.treasury_id || null : null,
             method.type === "bank" ? method.target_id || payload.bank_id || null : null,
@@ -571,7 +579,12 @@ function editInvoice(invoiceId, payload) {
         for (const p of payload.payments) {
           const amt = Number(p.amount || 0);
           if (amt <= 0) continue;
-          const method = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id);
+          let method = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
+          if (!method && p.method === 'cash') {
+            method = { type: 'cash', target_id: invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || null };
+          } else if (!method && p.method === 'credit') {
+            method = { type: 'credit', target_id: null };
+          }
           if (!method) continue;
           if (method.type === 'cash' && method.target_id) {
             db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
@@ -584,7 +597,7 @@ function editInvoice(invoiceId, payload) {
           `).run(
             invoice.customer_id || 0,
             amt,
-            method.type || method.category || method.name,
+            method.type === 'cash' ? 'cash' : method.type === 'credit' ? 'credit' : (method.name || method.type || method.category),
             `Invoice ${invoice.invoice_no}`,
             method.type === 'cash' ? method.target_id || null : null,
             method.type === 'bank' ? method.target_id || null : null,

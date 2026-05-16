@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ChequeRegisterTemplate from "../../components/print/templates/ChequeRegisterTemplate";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -44,6 +45,7 @@ function StatusBadge({ status }) {
 }
 
 export default function ChequesPage() {
+  usePageTour('cheques');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -171,7 +173,7 @@ export default function ChequesPage() {
           </button>
           </PermissionGate>
           <PermissionGate page="cheques" action="add">
-          <button onClick={() => setAddOpen(true)} className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95">
+          <button data-help="add-button" onClick={() => setAddOpen(true)} className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95">
             <Plus className="h-4 w-4" /> إضافة شيك يدوي
           </button>
           </PermissionGate>
@@ -206,9 +208,9 @@ export default function ChequesPage() {
          </div>
       </div>
 
-      <div className="flex flex-col rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div data-help="main-table" className="flex flex-col rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4">
-           <div className="relative">
+           <div data-help="search-bar" className="relative">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input 
                 type="text" 

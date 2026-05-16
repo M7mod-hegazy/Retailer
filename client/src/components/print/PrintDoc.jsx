@@ -20,7 +20,14 @@ const DEFAULTS = {
   tax_id_alignment: "right",
 };
 
-const g = (s, k) => (s[k] !== undefined && s[k] !== null) ? s[k] : DEFAULTS[k];
+const g = (s, k) => {
+  const raw = (s[k] !== undefined && s[k] !== null) ? s[k] : DEFAULTS[k];
+  if (k.startsWith("show_") || k.startsWith("logo_on_")) {
+    if (raw === 0 || raw === "0" || raw === "false") return false;
+    if (raw === 1 || raw === "1" || raw === "true") return true;
+  }
+  return raw;
+};
 
 const noop = () => {};
 

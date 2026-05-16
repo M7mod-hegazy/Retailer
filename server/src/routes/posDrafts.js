@@ -1,10 +1,11 @@
 const express = require("express");
+const { getDb } = require("../config/database");
 const router = express.Router();
 
 // GET /api/pos-drafts?type=active  or  ?type=held
 router.get("/", (req, res) => {
   const { type } = req.query;
-  const db = req.app.locals.db;
+  const db = getDb();
   try {
     const rows = type
       ? db.prepare("SELECT * FROM pos_drafts WHERE type = ? ORDER BY held_at ASC").all(type)
@@ -22,7 +23,7 @@ router.get("/", (req, res) => {
 
 // POST /api/pos-drafts
 router.post("/", (req, res) => {
-  const db = req.app.locals.db;
+  const db = getDb();
   const { type = "held", lines, customer, discount, increase, payment_type } = req.body;
   try {
     if (type === "active") {
@@ -47,7 +48,7 @@ router.post("/", (req, res) => {
 
 // DELETE /api/pos-drafts/type/active — must be before /:id
 router.delete("/type/active", (req, res) => {
-  const db = req.app.locals.db;
+  const db = getDb();
   try {
     db.prepare("DELETE FROM pos_drafts WHERE type = 'active'").run();
     res.json({ data: { ok: true } });
@@ -58,7 +59,7 @@ router.delete("/type/active", (req, res) => {
 
 // DELETE /api/pos-drafts/:id
 router.delete("/:id", (req, res) => {
-  const db = req.app.locals.db;
+  const db = getDb();
   try {
     db.prepare("DELETE FROM pos_drafts WHERE id = ?").run(Number(req.params.id));
     res.json({ data: { ok: true } });

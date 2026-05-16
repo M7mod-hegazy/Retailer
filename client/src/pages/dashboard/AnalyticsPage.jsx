@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import CurrencyDisplay from "../../components/ui/CurrencyDisplay";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const zeroSummary = {
   todaySales: 0,
@@ -30,6 +31,7 @@ function ChartTooltip({ active, payload, label, isCurrency = true }) {
 }
 
 export default function AnalyticsPage() {
+  usePageTour('analytics');
   const [summary, setSummary] = useState(zeroSummary);
   const [allSalesRows, setAllSalesRows] = useState([]);
   const [chartLoading, setChartLoading] = useState(false);
@@ -203,7 +205,7 @@ export default function AnalyticsPage() {
       <div className="w-full max-w-[1400px] mx-auto space-y-5 relative z-10">
         
         {/* Abstract Metrics Ribbon */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div data-help="stats-cards" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <BentoMetric title="مبيعات اليوم" value={<CurrencyDisplay value={summary.todaySales} />} icon={TrendingUp} theme="dark" />
           <BentoMetric title="مبيعات الأسبوع" value={<CurrencyDisplay value={summary.weekSales} />} icon={Activity} />
           <BentoMetric title="صافي الخزنة اليوم" value={<CurrencyDisplay value={netToday} />} icon={Wallet} trend={netToday >= 0 ? "up" : "down"} />
@@ -216,7 +218,7 @@ export default function AnalyticsPage() {
         <div className="grid gap-5 xl:grid-cols-[1fr_minmax(350px,400px)]">
           
           {/* Main Chart Area */}
-          <div className="flex flex-col min-w-0 rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
+          <div data-help="sales-chart" className="flex flex-col min-w-0 rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
             <div className="mb-8 flex flex-wrap items-start justify-between gap-6">
               <div>
                 <h2 className="text-[20px] font-black text-slate-900 tracking-tight">حركة المبيعات الإجمالية</h2>

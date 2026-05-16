@@ -18,6 +18,7 @@ import {
 import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
+import { usePageTour } from "../../hooks/usePageTour";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import Input from "../../components/ui/Input";
@@ -78,6 +79,7 @@ function ProgressBar({ counted, total }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PhysicalCountPage() {
+  usePageTour('physical_count');
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("dashboard"); // 'dashboard' | 'session'
   const [activeSession, setActiveSession] = useState(null);
@@ -358,6 +360,7 @@ export default function PhysicalCountPage() {
             </div>
             <PermissionGate page="physical_count" action="add">
             <button
+              data-help="add-button"
               onClick={() => setShowForm((p) => !p)}
               className="flex items-center gap-2 rounded bg-slate-900 px-4 py-2 text-[13px] font-black text-white hover:bg-slate-800 transition-colors shadow-sm"
             >
@@ -685,7 +688,7 @@ export default function PhysicalCountPage() {
         {/* Toolbar */}
         <div className="flex items-center px-6 py-3 border-b border-slate-200 bg-white justify-between shrink-0">
           <div className="flex items-center gap-3 flex-1">
-            <div className="relative w-64 group">
+            <div data-help="search-bar" className="relative w-64 group">
               <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-800 transition-colors" />
               <input
                 className="w-full rounded border border-slate-200 py-1.5 pl-3 pr-9 text-[13px] font-bold outline-none focus:border-slate-800 transition-all shadow-sm"
@@ -742,7 +745,7 @@ export default function PhysicalCountPage() {
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 min-h-0">
+        <div data-help="main-table" className="flex flex-col flex-1 min-h-0">
           <DataGrid
             data={filteredLines}
             rowKey={(r) => `${r.item_id}_${r.warehouse_id ?? "null"}`}

@@ -384,7 +384,7 @@ function NavLockModal({ onProceed, onCancel }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function POSPage() {
-  usePageTour("pos_sales");
+  usePageTour("pos");
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
@@ -563,8 +563,9 @@ export default function POSPage() {
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
 
-  // Restore active cart and held invoices from DB on mount
-  useEffect(() => { loadDraftsFromDB(); }, []);
+  // Restore active cart and held invoices from DB on mount.
+  // Skip cart restore when entering amend mode — the amend prefill owns the cart.
+  useEffect(() => { if (!location.state?.amend_invoice_id) loadDraftsFromDB(); }, []);
 
   // Debounced sync of active cart to DB (1.5s after last change)
   const syncTimerRef = useRef(null);
@@ -645,13 +646,13 @@ export default function POSPage() {
     if (prefill.discount) setDiscount(prefill.discount);
     if (prefill.increase) setIncrease(prefill.increase);
     (prefill.lines || []).forEach(l => addLine({
-      item_id: l.item_id,
+      id: l.item_id,
       name: l.item_name,
       code: l.code || "",
       quantity: l.quantity,
       unit_price: l.unit_price,
-      discount: l.discount || 0,
-      warehouse_id: l.warehouse_id || 1,
+      line_discount: l.discount || 0,
+      warehouse_id: l.warehouse_id || null,
     }));
     setAmendContext(amendState);
     setShowAmendSummary(true);
@@ -812,6 +813,14 @@ export default function POSPage() {
   const hasBlockingErrors = useMemo(
     () => Object.values(lineWarnings).some((ws) => ws.some((w) => w.type === "error")),
     [lineWarnings],
+  );
+
+  // In amend mode, stock errors are false positives (server reverses original stock first).
+  const stockOnlyErrors = useMemo(
+    () => !!amendInvoiceId && hasBlockingErrors && Object.values(lineWarnings).every(ws =>
+      ws.filter(w => w.type === "error").every(w => w.code === "no_stock" || w.code === "stock_exceeded")
+    ),
+    [amendInvoiceId, hasBlockingErrors, lineWarnings],
   );
 
   const blockingErrorCount = useMemo(
@@ -1082,7 +1091,7 @@ export default function POSPage() {
 
   async function saveInvoice(printAfter, opts = {}) {
     if (!lines.length || isSaving) return;
-    if (hasBlockingErrors) {
+    if (hasBlockingErrors && !stockOnlyErrors) {
       setSaveMessage("لا يمكن الحفظ قبل معالجة أخطاء السطور.");
       setTimeout(() => setSaveMessage(""), 5000);
       return;
@@ -1090,7 +1099,11 @@ export default function POSPage() {
     if (lines.some((l) => l.item_id !== -1 && Number(l.unit_price || 0) <= 0)) {
       setSaveMessage("يوجد صنف بسعر غير صالح."); setTimeout(() => setSaveMessage(""), 5000); return;
     }
-    if (lines.some((l) => l.item_id !== -1 && Number(l.quantity || 0) > Number(l.stock_quantity || 0))) {
+    if (!amendInvoiceId && stockLoaded && lines.some((l) => {
+      if (l.item_id === -1) return false;
+      const available = stockLevels[l.item_id]?.[l.warehouse_id];
+      return available !== undefined && Number(l.quantity || 0) > available;
+    })) {
       setSaveMessage("لا يمكن الحفظ: يوجد صنف يتجاوز المخزون."); setTimeout(() => setSaveMessage(""), 5000); return;
     }
     if ((paymentType === "credit" || paymentType === "installments") && !customer?.id) {
@@ -1157,6 +1170,17 @@ export default function POSPage() {
         response = await api.post("/api/invoices", payload);
       }
       const savedInvoiceNo = response.data?.data?.invoice_no || response.data?.data?.new_invoice?.invoice_no || invoiceNumber;
+      const buildPaymentsSnap = () => {
+        if (paymentType === "multi") {
+          return [
+            ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
+            ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
+            ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
+          ];
+        }
+        const nameMap = { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" };
+        return [{ method: paymentType, method_name: nameMap[paymentType] || paymentType, amount: totals.total }];
+      };
       const receiptSnap = {
         invoice_no: savedInvoiceNo, date: new Date(), lines: [...lines],
         customer: customer ? { ...customer } : null, totals: { ...totals },
@@ -1166,6 +1190,7 @@ export default function POSPage() {
         cashier: user?.name || "الكاشير",
         storeName: storeSettings.company_name || "المتجر",
         storeAddress: storeSettings.address || "",
+        payments: buildPaymentsSnap(),
       };
       setLastSavedInvoice(receiptSnap);
       setSaveSuccess({ invoiceNumber: savedInvoiceNo, total: formatMoney(totals.total) });
@@ -1360,9 +1385,9 @@ export default function POSPage() {
             <PermissionGate page="pos" action="print">
               <button
                 onClick={() => setPrintPreview(true)}
-                disabled={!lines.length || isSaving || hasBlockingErrors}
+                disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
                 className={`flex h-9 items-center gap-2 rounded-sm px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
-                  ${hasBlockingErrors && lines.length ? "bg-rose-600" : "bg-slate-800 hover:bg-slate-700"}`}
+                  ${hasBlockingErrors && !stockOnlyErrors && lines.length ? "bg-rose-600" : "bg-slate-800 hover:bg-slate-700"}`}
               >
                 <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
                 {hasBlockingErrors && <span className="ml-1.5 rounded-full bg-rose-400 text-white text-[9px] font-black px-1.5 py-0.5">{blockingErrorCount}</span>}
@@ -1771,6 +1796,7 @@ export default function POSPage() {
               <div className="flex flex-col gap-2.5">
                 <PermissionGate page="pos" action="print">
                   <button
+                    data-help="confirm-button"
                     onClick={() => setPrintPreview(true)}
                     disabled={!lines.length || isSaving || hasBlockingErrors}
                     className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}
@@ -1810,6 +1836,7 @@ export default function POSPage() {
                 {heldInvoices.length > 0 && (
                   <div className="relative mt-2">
                     <button
+                      data-help="hold-button"
                       type="button"
                       onClick={() => setHeldDropdownOpen((v) => !v)}
                       className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-[13px] font-black transition-all ${(() => {
@@ -1869,7 +1896,7 @@ export default function POSPage() {
                   </button>
                 </div>
                 {/* Item search */}
-                <div className="relative flex flex-col gap-1">
+                <div data-help="search-bar" className="relative flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الصنف</label>
                   <div className="relative">
                     <SearchInput
@@ -2100,6 +2127,7 @@ export default function POSPage() {
 
             {/* Lines DataGrid */}
             <DataGrid
+              data-help="cart"
               data={lines}
               rowKey={(row, i) => `${row.item_id}-${i}`}
               emptyMessage="لا يوجد أصناف في الفاتورة بعد"
@@ -2285,7 +2313,11 @@ export default function POSPage() {
               unit_name: l.unit_name || "",
               code: l.code || "",
             })),
-            payments: [{ method: paymentType, amount: totals.total }],
+            payments: paymentType === "multi" ? [
+              ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
+              ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
+              ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
+            ] : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[paymentType] || paymentType, amount: totals.total }],
           }}
           settings={storeSettings}
           operationLabel="فاتورة مبيعات نقدية"
@@ -3243,6 +3275,7 @@ export default function POSPage() {
                 {heldInvoices.length > 0 && (
                   <div className="relative mt-2">
                     <button
+                      data-help="hold-button"
                       type="button"
                       onClick={() => setHeldDropdownOpen((v) => !v)}
                       className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-[13px] font-black transition-all ${(() => {
@@ -3525,7 +3558,7 @@ export default function POSPage() {
             unit_name: l.unit_name || "",
             code: l.code || "",
           })),
-          payments: [{ method: lastSavedInvoice.paymentType, amount: lastSavedInvoice.totals?.total }],
+          payments: lastSavedInvoice.payments || [{ method: lastSavedInvoice.paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[lastSavedInvoice.paymentType] || lastSavedInvoice.paymentType, amount: lastSavedInvoice.totals?.total }],
         } : {
           invoice_no: invoiceNumber,
           created_at: new Date().toISOString(),
@@ -3538,7 +3571,11 @@ export default function POSPage() {
             unit_name: l.unit_name || "",
             code: l.code || "",
           })),
-          payments: [{ method: paymentType, amount: totals.total }],
+          payments: paymentType === "multi" ? [
+            ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
+            ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
+            ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
+          ] : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[paymentType] || paymentType, amount: totals.total }],
         }}
         settings={storeSettings}
         operationLabel="فاتورة مبيعات نقدية"

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Building, Search, Plus, FileText, X, Phone, SlidersHorizontal, MessageSquare, LayoutList } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { usePageTour } from "../../hooks/usePageTour";
 import StatementModal from "../../components/accounts/StatementModal";
 import PartyDebtPanel from "../../components/accounts/PartyDebtPanel";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -125,6 +126,7 @@ function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
 }
 
 export default function SupplierAccountsPage() {
+  usePageTour('supplier_accounts');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [suppliers, setSuppliers] = useState([]);
@@ -381,13 +383,13 @@ export default function SupplierAccountsPage() {
               <h1 className="text-[15px] font-black text-slate-900">حسابات الموردين</h1>
             </div>
             <PermissionGate page="supplier_accounts" action="add">
-            <button onClick={() => setShowCreate(true)}
+            <button data-help="add-button" onClick={() => setShowCreate(true)}
               className="flex h-8 items-center gap-1.5 rounded-lg bg-orange-600 px-3 text-[11px] font-black text-white hover:bg-orange-700 transition-colors shadow-md shadow-orange-200">
               <Plus className="h-3.5 w-3.5" /> مورد جديد
             </button>
             </PermissionGate>
           </div>
-          <div className="relative">
+          <div data-help="search-bar" className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الهاتف، الكود..."
@@ -431,7 +433,7 @@ export default function SupplierAccountsPage() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div data-help="main-table" className="flex-1 overflow-y-auto p-2 space-y-1">
           {loading ? (
             <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
           ) : filtered.length === 0 ? (

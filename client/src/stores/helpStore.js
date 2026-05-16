@@ -9,6 +9,7 @@ export const useHelpStore = create((set, get) => ({
   activeTourPageKey: null,
   activeTourStepIndex: 0,
   isTourVisible: false,
+  isPickerVisible: false,
   activeTooltipKey: null,
 
   loadHelpState: async () => {
@@ -29,12 +30,26 @@ export const useHelpStore = create((set, get) => ({
   triggerPageTour: (pageKey) => {
     const { touredPages, toursDisabledGlobally } = get();
     if (toursDisabledGlobally) return;
-    if (touredPages[pageKey]) return; 
+    if (touredPages[pageKey]) return;
+    // Show picker first so user can select which topic to start with
     set({
       activeTourPageKey: pageKey,
       activeTourStepIndex: 0,
-      isTourVisible: true,
+      isTourVisible: false,
+      isPickerVisible: true,
     });
+  },
+
+  startTourAtStep: (stepIndex) => {
+    set({
+      activeTourStepIndex: stepIndex,
+      isTourVisible: true,
+      isPickerVisible: false,
+    });
+  },
+
+  closePicker: () => {
+    set({ isPickerVisible: false, activeTourPageKey: null });
   },
 
   nextTourStep: (totalSteps) => {
@@ -69,10 +84,44 @@ export const useHelpStore = create((set, get) => ({
     } catch { }
   },
 
+  resetPageTour: async (pageKey) => {
+    const { touredPages } = get();
+    const updated = { ...touredPages };
+    delete updated[pageKey];
+    set({ touredPages: updated });
+    try {
+      await api.delete(`/api/help/state/tour/${pageKey}`);
+    } catch { }
+  },
+
+  retriggerPageTour: async (pageKey) => {
+    await get().resetPageTour(pageKey);
+    set({
+      activeTourPageKey: pageKey,
+      activeTourStepIndex: 0,
+      isTourVisible: false,
+      isPickerVisible: true,
+    });
+  },
+
+  resetAllTours: async () => {
+    set({ touredPages: {}, isTourVisible: false });
+    try {
+      await api.patch('/api/help/state/reset');
+    } catch { }
+  },
+
   disableAllTours: async () => {
     set({ isTourVisible: false, toursDisabledGlobally: true });
     try {
       await api.patch('/api/help/state/disable-tours');
+    } catch { }
+  },
+
+  enableAllTours: async () => {
+    set({ toursDisabledGlobally: false });
+    try {
+      await api.patch('/api/help/state/reset');
     } catch { }
   },
 

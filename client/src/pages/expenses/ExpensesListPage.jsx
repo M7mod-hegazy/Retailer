@@ -10,6 +10,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -345,6 +346,7 @@ const SplineHeader = () => (
 // Main Page
 // ----------------------------------------------------------------------
 export default function ExpensesListPage() {
+  usePageTour('expenses');
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -510,7 +512,7 @@ export default function ExpensesListPage() {
               
               {/* Add Button */}
               <PermissionGate page="expenses" action="add">
-              <button onClick={openCreate} title="تسجيل مصروف جديد (Ctrl+K)" className="h-10 px-6 shrink-0 flex items-center justify-center gap-2 rounded-xl text-[12px] font-black text-white bg-zinc-900 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/20 active:scale-95 w-full sm:w-auto">
+              <button data-help="add-button" onClick={openCreate} title="تسجيل مصروف جديد (Ctrl+K)" className="h-10 px-6 shrink-0 flex items-center justify-center gap-2 rounded-xl text-[12px] font-black text-white bg-zinc-900 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/20 active:scale-95 w-full sm:w-auto">
                 <Command className="h-3.5 w-3.5 text-zinc-400" /> تسجيل مصروف
               </button>
               </PermissionGate>
@@ -518,12 +520,12 @@ export default function ExpensesListPage() {
               <div className="w-px h-6 bg-slate-200 hidden sm:block mx-1" />
 
               {/* Search */}
-              <div className="relative flex-1 w-full sm:min-w-[150px]">
+              <div data-help="search-bar" className="relative flex-1 w-full sm:min-w-[150px]">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                <input 
-                  value={query} onChange={e => setQuery(e.target.value)} 
-                  placeholder="ابحث في البيان والملاحظات..." 
-                  className="w-full h-10 rounded-xl bg-slate-50/80 border border-transparent pr-9 pl-4 text-[12px] font-bold text-zinc-800 outline-none hover:bg-slate-100 focus:bg-white focus:border-rose-300 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400" 
+                <input
+                  value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="ابحث في البيان والملاحظات..."
+                  className="w-full h-10 rounded-xl bg-slate-50/80 border border-transparent pr-9 pl-4 text-[12px] font-bold text-zinc-800 outline-none hover:bg-slate-100 focus:bg-white focus:border-rose-300 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                 />
               </div>
 
@@ -546,7 +548,7 @@ export default function ExpensesListPage() {
       </div>
 
       {/* The Receipt Feed */}
-      <main className="relative z-10 flex-1 w-full max-w-3xl mx-auto px-6 pb-32 flex flex-col gap-8">
+      <main data-help="main-table" className="relative z-10 flex-1 w-full max-w-3xl mx-auto px-6 pb-32 flex flex-col gap-8">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
             <RefreshCw className="h-8 w-8 animate-spin opacity-50" />

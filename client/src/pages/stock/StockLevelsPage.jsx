@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { usePageTour } from "../../hooks/usePageTour";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
@@ -88,6 +89,7 @@ function StatusBadge({ qty, min }) {
 }
 
 export default function StockLevelsPage() {
+  usePageTour('stock_transfer');
   const location = useLocation();
   const [tab, setTab] = useState(() =>
     location.pathname.endsWith("/transfer") ? "transfer" : "levels"
@@ -531,7 +533,7 @@ export default function StockLevelsPage() {
             {/* Top Actions & Filters */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/70 px-6 py-4">
                <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-                  <div className="relative flex-1 group">
+                  <div data-help="search-bar" className="relative flex-1 group">
                      <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                      <input value={levelsSearch} onChange={(e) => setLS(e.target.value)}
                        placeholder="بحث سريع بالاسم أو الباركود..."
@@ -549,7 +551,7 @@ export default function StockLevelsPage() {
             </div>
 
             {/* Table */}
-            <div className="flex flex-col flex-1 h-[60vh] min-h-[400px]">
+            <div data-help="main-table" className="flex flex-col flex-1 h-[60vh] min-h-[400px]">
               <DataGrid
                 data={pageLevels}
                 rowKey={(r) => `${r.item_id}-${r.warehouse_id ?? "none"}`}

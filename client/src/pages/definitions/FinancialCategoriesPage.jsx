@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { usePageTour } from "../../hooks/usePageTour";
 import DataTable from "../../components/ui/DataTable";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -93,6 +94,7 @@ const TABS = [
 ];
 
 export default function FinancialCategoriesPage() {
+  usePageTour('financial_categories');
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTabId, setActiveTabId] = useState("expenses");
   
@@ -336,7 +338,8 @@ export default function FinancialCategoriesPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="relative group w-full md:w-96"
+            data-help="search-bar"
+          className="relative group w-full md:w-96"
           >
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-zinc-900 transition-colors" />
             <input
@@ -373,9 +376,10 @@ export default function FinancialCategoriesPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="lg:col-span-8 bg-white/95 backdrop-blur-3xl rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
+            data-help="main-table"
+          className="lg:col-span-8 bg-white/95 backdrop-blur-3xl rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
           >
-            <DataTable 
+            <DataTable
               columns={columns} 
               data={rows} 
               globalFilter={query}
@@ -465,6 +469,7 @@ export default function FinancialCategoriesPage() {
               >
                 <PermissionGate page="financial_categories" action={editingRow ? "edit" : "add"}>
                   <motion.button
+                    data-help="add-button"
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"

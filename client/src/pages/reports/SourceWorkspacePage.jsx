@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, BarChart3, CalendarDays, ChevronDown, FileImage, FileSpreadsheet, FileText,
+  ArrowLeft, ArrowRight, BarChart3, CalendarDays, ChevronDown, FileImage, FileSpreadsheet, FileText,
   LayoutTemplate, LayoutList, Loader2, Printer, RefreshCw, Search, SlidersHorizontal, X,
   ChevronLeft, ChevronRight, Settings2, Eye, EyeOff, ArrowUp, ArrowDown
 } from "lucide-react";
@@ -251,19 +251,21 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
   const opts = (dynamicOptions && dynamicOptions.length > 0) ? dynamicOptions : (filter.options || []);
   if (filter.type === "lookup") {
     const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن" }[filter.entity] || filter.entity;
+    const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
     return (
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-zinc-500">{a(filter.label_key) || entityLabel}</label>
+        <label className="text-[11px] font-semibold text-slate-500">{filterLabel || entityLabel}</label>
         <LookupEntityFilter entity={filter.entity} value={value || ""} onChange={(v) => onChange(filter.key, v)} placeholder={`بحث عن ${entityLabel}...`} />
       </div>
     );
   }
   if (filter.type === "select") {
+    const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
     return (
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-zinc-500">{a(filter.label_key)}</label>
+        <label className="text-[11px] font-semibold text-slate-500">{filterLabel}</label>
         <select value={value || ""} onChange={(e) => onChange(filter.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium">
+          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
           <option value="">الكل</option>
           {opts.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label || a(opt.label_key)}</option>
@@ -273,11 +275,12 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
     );
   }
   if (filter.type === "text") {
+    const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
     return (
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-zinc-500">{a(filter.label_key)}</label>
+        <label className="text-[11px] font-semibold text-slate-500">{filterLabel}</label>
         <input type="text" value={value || ""} onChange={(e) => onChange(filter.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium" />
+          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm" />
       </div>
     );
   }
@@ -345,7 +348,7 @@ export default function SourceWorkspacePage() {
   const defaultTo = useMemo(() => fmtDate(today), [today]);
 
   const [activeTab, setActiveTab] = useState("table");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [filters, setFilters] = useState({ from: defaultFrom, to: defaultTo, q: "" });
   const [scope, setScope] = useState({ type: "all", values: [] });
   const [costMethod, setCostMethod] = useState("wacc");
@@ -697,150 +700,164 @@ export default function SourceWorkspacePage() {
   const categoryColor = sourceDef.color;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-6 py-8 bg-[#fafafa] min-h-screen text-zinc-900" dir="rtl">
-      {/* Header */}
-      <div className="bg-white rounded-[24px] border border-zinc-200 p-8 shadow-sm mb-6 relative overflow-visible">
-        <div className="absolute -left-32 -top-32 w-96 h-96 rounded-full blur-[80px] opacity-10 pointer-events-none" style={{ backgroundColor: categoryColor }} />
-          <div className="flex items-start gap-4 mb-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-zinc-50 border border-zinc-100" style={{ color: categoryColor }}>
-            <SourceIcon size={26} strokeWidth={2} />
-          </div>
-          <div className="pt-1 flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Link to="/reports/center" className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-emerald-600 transition-colors">
-                <ArrowLeft size={12} /> {sourceDef.label}
-              </Link>
-              <span className="w-1 h-1 rounded-full bg-zinc-300" />
-              <span className="text-[11px] font-bold text-zinc-500">{a(classificationId)}</span>
-              <span className="w-1 h-1 rounded-full bg-zinc-300" />
-              <span className="text-[11px] font-bold text-zinc-400">{a(dataMode)}</span>
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-8 text-slate-900" dir="rtl">
+      {/* COMMAND COCKPIT (DASHBOARD HARDENED) */}
+      <div className="flex flex-col mb-8 bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden relative">
+        
+        {/* Row 1: Header & Primary Toggles */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 p-5 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <Link 
+              to="/reports/center" 
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-sm text-slate-500 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95 shrink-0"
+              title="العودة لمركز التقارير"
+            >
+              <ArrowRight size={18} />
+            </Link>
+            <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-white border border-slate-200/50 shadow-sm" style={{ color: categoryColor }}>
+              <SourceIcon size={22} strokeWidth={2} />
             </div>
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-black tracking-tight text-zinc-900">{sourceDef.label}</h1>
-              <select
-                value={classificationId}
-                onChange={(e) => {
-                  const cls = classifications.find((c) => c.id === e.target.value);
-                  const mode = cls?.availableModes?.[0] || "detailed";
-                  window.location.href = `/reports/source/${sourceKey}/${e.target.value}/${mode}`;
-                }}
-                className="h-11 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-              >
-                {classifications.map((cls) => (
-                  <option key={cls.id} value={cls.id}>{a(cls.label_key)}</option>
-                ))}
-              </select>
-              <DataModeToggle
-                availableModes={clsDef?.availableModes || ["detailed"]}
-                value={dataMode}
-                onChange={(mode) => {
-                  window.location.href = `/reports/source/${sourceKey}/${classificationId}/${mode}`;
-                }}
-              />
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase mb-0.5">{sourceDef.label}</span>
+              <h1 className="text-[20px] font-bold text-slate-900 tracking-tight leading-none">{a(classificationId)}</h1>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Command Bar */}
-      <div className="sticky top-4 z-40 bg-white/80 backdrop-blur-xl border border-zinc-200 rounded-[20px] p-2.5 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-3 transition-all">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setFiltersOpen(!filtersOpen)}
-            className={`px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-zinc-900 text-white shadow-md" : "bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-200"}`}>
-            <SlidersHorizontal size={16} />
-            <span>الفلاتر</span>
-            <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180" : ""}`} />
-          </button>
-          <div className="w-px h-6 bg-zinc-200 mx-1" />
-          <button onClick={() => refetch()} className="px-4 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-[13px] font-bold flex items-center gap-2 transition-all active:scale-95">
-            <RefreshCw size={14} className={isFetching ? "animate-spin text-emerald-500" : ""} /> تحديث
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-1 rounded-xl border border-slate-200/60 shadow-sm">
+            <select
+              value={classificationId}
+              onChange={(e) => {
+                const cls = classifications.find((c) => c.id === e.target.value);
+                const mode = cls?.availableModes?.[0] || "detailed";
+                window.location.href = `/reports/source/${sourceKey}/${e.target.value}/${mode}`;
+              }}
+              className="h-9 px-4 rounded-lg border-none bg-transparent text-[13px] font-semibold text-slate-800 focus:outline-none focus:ring-0 transition-all cursor-pointer"
+            >
+              {classifications.map((cls) => (
+                <option key={cls.id} value={cls.id}>{a(cls.label_key)}</option>
+              ))}
+            </select>
+            <div className="w-px h-5 bg-slate-200 hidden sm:block" />
+            <DataModeToggle
+              availableModes={clsDef?.availableModes || ["detailed"]}
+              value={dataMode}
+              onChange={(mode) => {
+                window.location.href = `/reports/source/${sourceKey}/${classificationId}/${mode}`;
+              }}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-zinc-400 ml-2">تصدير</span>
-          {exportFormats.map((fmt) => <ExportPill key={fmt} format={fmt} onExport={handleExport} />)}
-        </div>
-      </div>
 
-      {/* Filters Panel */}
-      <AnimatePresence>
-        {filtersOpen && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
-            <div className="bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="space-y-2 lg:col-span-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">بحث عام</label>
-                  <div className="relative group">
-                    <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
-                    <input type="text" value={filters.q || ""} onChange={(e) => setFilters((c) => ({ ...c, q: e.target.value }))}
-                      placeholder="ابحث..." className="w-full h-11 pr-11 pl-4 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
-                  </div>
-                </div>
-                {clsDef?.supportsDates && (
-                  <div className="space-y-2 lg:col-span-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 flex justify-between items-center">
-                      الفترة الزمنية
-                      <div className="flex gap-1">
-                        {DATE_PRESETS.map((p) => (
-                          <button key={p.label} onClick={() => {
-                            const end = new Date(); const start = new Date();
-                            if (p.days > 0) start.setDate(end.getDate() - p.days);
-                            setFilters((c) => ({ ...c, from: formatDate(start), to: formatDate(end) }));
-                          }} className="text-[10px] text-zinc-400 hover:text-zinc-900 transition-colors bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded-md">{p.label}</button>
-                        ))}
-                      </div>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input type="date" value={filters.from} onChange={(e) => setFilters((c) => ({ ...c, from: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
-                      <span className="text-zinc-400">-</span>
-                      <input type="date" value={filters.to} onChange={(e) => setFilters((c) => ({ ...c, to: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
+        {/* Row 2: Action Bar (Filters, Refresh, Exports) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-3 bg-white">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setFiltersOpen(!filtersOpen)}
+              className={`h-9 px-4 rounded-lg text-[13px] font-semibold flex items-center gap-2 transition-all ${filtersOpen ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"}`}>
+              <SlidersHorizontal size={14} />
+              <span>فلاتر متقدمة</span>
+              <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180" : ""}`} />
+            </button>
+            <button onClick={() => refetch()} className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <RefreshCw size={14} className={isFetching ? "animate-spin text-slate-900" : "text-slate-400"} /> تحديث
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {exportFormats.map((fmt) => <ExportPill key={fmt} format={fmt} onExport={handleExport} />)}
+          </div>
+        </div>
+
+        {/* Row 3: Filters Tray (Collapsible) */}
+        <AnimatePresence>
+          {filtersOpen && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden border-t border-slate-100 bg-slate-50/50">
+              <div className="p-6">
+                
+                {/* Search & Dates Row */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+                  {/* Global Search */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500">بحث عام</label>
+                    <div className="relative group">
+                      <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                      <input type="text" value={filters.q || ""} onChange={(e) => setFilters((c) => ({ ...c, q: e.target.value }))}
+                        placeholder="ابحث بالاسم، الكود، الوصف..." className="w-full h-10 pr-9 pl-3 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm font-medium" />
                     </div>
                   </div>
-                )}
-                {(clsDef?.filters || []).map((f) => (
-                  <FilterInput key={f.key} filter={f} value={filters[f.key]}
-                    onChange={(k, v) => setFilters((prev) => ({ ...prev, [k]: v }))}
-                    dynamicOptions={f.dynamic ? paymentTypeOptions : undefined}
-                  />
-                ))}
-                {(clsDef?.multiSelectFilters || []).map((msf) => (
-                  <div key={msf.key} className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">{a(msf.label_key)}</label>
-                    <MultiSelectCheckboxes options={msf.options} value={filters[msf.key] || []} onChange={(v) => setFilters((prev) => ({ ...prev, [msf.key]: v }))} label={a(msf.label_key)} formatLabel={a} />
-                  </div>
-                ))}
-                {clsDef?.supportsScope && (
-                  <div className="space-y-2 lg:col-span-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">النطاق التحليلي</label>
-                    <ScopeSelector scopeOptions={SCOPE_OPTIONS[sourceKey] || SCOPE_OPTIONS.sales} scope={scope} onScopeChange={setScope} />
-                  </div>
-                )}
-                {clsDef?.hasProfit && (
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">طريقة حساب التكلفة</label>
-                    <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
-                      {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
-                    </select>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-3 mt-6 pt-6 border-t border-zinc-100">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-                    <motion.span animate={{ scale: isFetching ? [1, 1.2, 1] : 1 }} transition={{ duration: 0.4, repeat: isFetching ? Infinity : 0 }} className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    {isFetching ? "تحديث..." : "تلقائي"}
-                  </span>
-                  {invalidRange && <span className="text-[10px] font-bold text-red-600">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
+
+                  {/* Dates */}
+                  {clsDef?.supportsDates && (
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500 flex justify-between items-center">
+                        <span>الفترة الزمنية</span>
+                        <div className="flex gap-1">
+                          {DATE_PRESETS.map((p) => (
+                            <button key={p.label} onClick={() => {
+                              const end = new Date(); const start = new Date();
+                              if (p.days > 0) start.setDate(end.getDate() - p.days);
+                              setFilters((c) => ({ ...c, from: formatDate(start), to: formatDate(end) }));
+                            }} className="text-[10px] text-slate-500 hover:text-slate-900 transition-colors bg-white hover:bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{p.label}</button>
+                          ))}
+                        </div>
+                      </label>
+                      <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-sm h-10 overflow-hidden focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-100 transition-all">
+                        <input type="date" value={filters.from} onChange={(e) => setFilters((c) => ({ ...c, from: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-[13px] font-medium text-slate-900 focus:outline-none font-mono" />
+                        <div className="w-px h-6 bg-slate-200" />
+                        <input type="date" value={filters.to} onChange={(e) => setFilters((c) => ({ ...c, to: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-[13px] font-medium text-slate-900 focus:outline-none font-mono" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-[12px] font-bold text-zinc-500 hover:bg-zinc-100 transition-colors">إعادة تعيين</button>
-                  <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 rounded-xl text-[12px] font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors">إغلاق</button>
+
+                {/* Specific Filters Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {(clsDef?.filters || []).map((f) => (
+                    <FilterInput key={f.key} filter={f} value={filters[f.key]}
+                      onChange={(k, v) => setFilters((prev) => ({ ...prev, [k]: v }))}
+                      dynamicOptions={f.dynamic ? paymentTypeOptions : undefined}
+                    />
+                  ))}
+                  {(clsDef?.multiSelectFilters || []).map((msf) => (
+                    <div key={msf.key} className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500">{a(msf.label_key) === 'payment_type' ? 'طريقة الدفع' : a(msf.label_key)}</label>
+                      <MultiSelectCheckboxes options={msf.options} value={filters[msf.key] || []} onChange={(v) => setFilters((prev) => ({ ...prev, [msf.key]: v }))} label={a(msf.label_key) === 'payment_type' ? 'طريقة الدفع' : a(msf.label_key)} formatLabel={a} />
+                    </div>
+                  ))}
+                  {clsDef?.supportsScope && (
+                    <div className="space-y-1.5 col-span-1 md:col-span-2 xl:col-span-1">
+                      <label className="text-[11px] font-semibold text-slate-500">النطاق التحليلي</label>
+                      <ScopeSelector scopeOptions={SCOPE_OPTIONS[sourceKey] || SCOPE_OPTIONS.sales} scope={scope} onScopeChange={setScope} />
+                    </div>
+                  )}
+                  {clsDef?.hasProfit && (
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500">طريقة حساب التكلفة</label>
+                      <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
+                        {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Toolbar */}
+                <div className="flex items-center justify-between gap-4 mt-6 pt-5 border-t border-slate-200/60">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100/50 px-3 py-1 text-[11px] font-medium text-slate-600 border border-slate-200/60">
+                      <motion.span animate={{ scale: isFetching ? [1, 1.2, 1] : 1, opacity: isFetching ? [1, 0.5, 1] : 1 }} transition={{ duration: 0.8, repeat: isFetching ? Infinity : 0, ease: "easeInOut" }} className="w-2 h-2 rounded-full bg-slate-500" />
+                      {isFetching ? "جاري التحديث..." : "تحديث تلقائي"}
+                    </span>
+                    {invalidRange && <span className="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 px-3 py-1 rounded-full">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-[13px] font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors">إعادة تعيين</button>
+                    <button onClick={() => setFiltersOpen(false)} className="h-9 px-5 rounded-lg text-[13px] font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {exportProgress && (
         <div className="mb-6 rounded-[20px] border border-emerald-200 bg-emerald-50 p-4 shadow-sm">

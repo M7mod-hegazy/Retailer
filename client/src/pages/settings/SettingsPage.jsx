@@ -111,7 +111,7 @@ function isDirty(original, current) {
 }
 
 export default function SettingsPage() {
-  usePageTour("settings_system");
+  usePageTour("settings");
   const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("identity");
   const [settings, setSettings] = useState({});

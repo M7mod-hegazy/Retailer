@@ -1,8 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 export default function SuppliersListPage() {
+  usePageTour('suppliers');
   const navigate = useNavigate();
 
   return (

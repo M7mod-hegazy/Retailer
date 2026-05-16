@@ -3,16 +3,16 @@ import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, FileSpreadsheet,
-  Printer, Wand2, SkipBack, SkipForward, Image,
+  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2,
 } from "lucide-react";
 import api from "../../services/api";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 
 const ALL_TEMPLATES = [
-  { id: "58mm", label: "58mm حراري",       sub: "طابعات البون الصغيرة"   },
-  { id: "80mm", label: "80mm حراري",       sub: "طابعات الكاشير القياسية" },
-  { id: "A5",   label: "A5 ورقة متوسطة",  sub: "نصف الورقة الرسمية"     },
-  { id: "A4",   label: "A4 ورقة كبيرة",   sub: "للمكاتب والفواتير الرسمية" },
+  { id: "58mm", label: "58mm", sub: "رول صغير",   icon: Receipt       },
+  { id: "80mm", label: "80mm", sub: "رول قياسي",  icon: Receipt       },
+  { id: "A5",   label: "A5",   sub: "نصف صفحة",   icon: FileText      },
+  { id: "A4",   label: "A4",   sub: "ورقة كاملة", icon: FileBarChart2 },
 ];
 
 export default function PrintPreviewModal({
@@ -417,20 +417,26 @@ export default function PrintPreviewModal({
               {/* Template selector */}
               <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2">
                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">قالب الطباعة</h4>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   {validTemplates.map((t) => {
                     const isDefault = cfg ? (resolveDocPaperSize(docType, docSettings) === t.id) : false;
+                    const active = template === t.id;
+                    const Icon = t.icon;
                     return (
                       <button
                         key={t.id}
                         onClick={() => switchTemplate(t.id)}
-                        className={`relative px-2.5 py-1.5 rounded-[8px] text-[10px] font-bold border transition-all ${
-                          template === t.id
-                            ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm"
-                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                        className={`relative flex flex-col items-center gap-1 rounded-sm border py-3 transition-all ${
+                          active
+                            ? "border-slate-900 bg-slate-900 shadow-lg scale-[1.02]"
+                            : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
                         }`}
                       >
-                        {t.label}
+                        <Icon className={`h-4 w-4 ${active ? "text-white" : "text-slate-400"}`} />
+                        <div className="text-center">
+                          <div className={`text-[12px] font-black tracking-widest leading-none ${active ? "text-white" : "text-slate-800"}`}>{t.label}</div>
+                          <div className={`text-[9px] font-bold mt-0.5 ${active ? "text-slate-300" : "text-slate-400"}`}>{t.sub}</div>
+                        </div>
                         {isDefault && (
                           <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
                         )}

@@ -1,13 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut } from "lucide-react";
+import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useNotificationStore } from "../../stores/notificationStore";
 import { useUiStore } from "../../stores/uiStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { useHelpStore } from "../../stores/helpStore";
 import { ROUTES } from "../../constants/routes";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
+import helpContent from "../../help/helpContent";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Build a flat path → pageKey map from navigation constants
+const PATH_TO_PAGE_KEY = {};
+PRIMARY_MENU.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; });
+NAV_MODULES.forEach((mod) => mod.items.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; }));
 
 function useBreadcrumbs(pathname) {
   return useMemo(() => {
@@ -69,9 +76,28 @@ export default function Topbar() {
   const settings = useAppSettingsStore((state) => state.settings);
   const location = useLocation();
   const navigate = useNavigate();
+  const { retriggerPageTour, resetAllTours, disableAllTours, toursDisabledGlobally, enableAllTours } = useHelpStore();
   const [openBell, setOpenBell] = useState(false);
+  const [openHelp, setOpenHelp] = useState(false);
   const [hoveredCrumb, setHoveredCrumb] = useState(null);
   const bellRef = useRef(null);
+  const helpRef = useRef(null);
+
+  // Determine current page key from pathname
+  const currentPageKey = useMemo(() => {
+    const exact = PATH_TO_PAGE_KEY[location.pathname];
+    if (exact) return exact;
+    // Try prefix match (longest wins)
+    let best = null;
+    for (const [path, key] of Object.entries(PATH_TO_PAGE_KEY)) {
+      if (location.pathname.startsWith(path + '/') || location.pathname === path) {
+        if (!best || path.length > best.path.length) best = { path, key };
+      }
+    }
+    return best?.key ?? null;
+  }, [location.pathname]);
+
+  const hasHelpContent = currentPageKey && Boolean(helpContent[currentPageKey]);
 
   const SAFE_PREFIXES = [
     "/invoices", "/purchases", "/stock", "/suppliers", "/customers",
@@ -105,6 +131,15 @@ export default function Topbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openBell]);
+
+  useEffect(() => {
+    if (!openHelp) return;
+    function handleClickOutside(e) {
+      if (helpRef.current && !helpRef.current.contains(e.target)) setOpenHelp(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openHelp]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -207,6 +242,64 @@ export default function Topbar() {
             <span className="hidden md:block text-xs font-bold text-zinc-400 group-hover:text-zinc-600 transition-colors">بحث</span>
             <kbd className="hidden md:inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-mono font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded">Ctrl+K</kbd>
           </button>
+
+          {/* Help Button */}
+          <div className="relative" ref={helpRef}>
+            <button
+              onClick={() => setOpenHelp(!openHelp)}
+              title="المساعدة"
+              className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
+                openHelp ? "bg-zinc-950 text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+              }`}
+            >
+              <HelpCircle strokeWidth={2} className="h-4.5 w-4.5" />
+            </button>
+
+            <AnimatePresence>
+              {openHelp && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  className="absolute end-0 top-12 z-50 w-[220px] rounded-[1.25rem] border border-zinc-200/80 bg-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden"
+                  dir="rtl"
+                >
+                  <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/30">
+                    <span className="text-sm font-black text-zinc-900 tracking-tight">المساعدة</span>
+                  </div>
+                  <div className="p-2 flex flex-col gap-1">
+                    <button
+                      disabled={!hasHelpContent}
+                      onClick={() => {
+                        if (currentPageKey) retriggerPageTour(currentPageKey);
+                        setOpenHelp(false);
+                      }}
+                      className="w-full text-right px-3 py-2.5 text-xs font-bold rounded-xl transition-all hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-700"
+                    >
+                      ابدأ جولة هذه الصفحة
+                    </button>
+                    <button
+                      onClick={() => { resetAllTours(); setOpenHelp(false); }}
+                      className="w-full text-right px-3 py-2.5 text-xs font-bold rounded-xl transition-all hover:bg-zinc-50 text-zinc-700"
+                    >
+                      إعادة تعيين كل الجولات
+                    </button>
+                    <div className="h-px bg-zinc-100 mx-2 my-1" />
+                    <button
+                      onClick={() => {
+                        if (toursDisabledGlobally) enableAllTours(); else disableAllTours();
+                        setOpenHelp(false);
+                      }}
+                      className="w-full text-right px-3 py-2.5 text-xs font-bold rounded-xl transition-all hover:bg-red-50 text-red-500"
+                    >
+                      {toursDisabledGlobally ? 'تفعيل الجولات' : 'تعطيل الجولات'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="relative" ref={bellRef}>
             <button 

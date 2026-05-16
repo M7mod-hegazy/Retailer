@@ -283,6 +283,7 @@ export default function SimpleCrudPage({
           >
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-zinc-900 transition-colors" />
             <input
+              data-help="search-bar"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="البحث الفوري في السجلات..."
@@ -324,7 +325,8 @@ export default function SimpleCrudPage({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 grid-flow-dense items-start">
           
           {/* Table Container (70%) */}
-          <motion.div 
+          <motion.div
+            data-help="main-table"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -419,6 +421,7 @@ export default function SimpleCrudPage({
                 className="pt-4"
               >
                 <motion.button
+                  data-help="add-button"
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"

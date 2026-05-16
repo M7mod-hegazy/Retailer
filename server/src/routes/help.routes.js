@@ -8,7 +8,8 @@ const TOUR_DISABLE_KEY = '__disable_tours__';
 const TOOLTIP_DISABLE_KEY = '__disable_tooltips__';
 
 router.use(authRequired);
-router.get('/state', authRequired, requirePagePermission("settings", "view"), (req, res, next) => {
+
+router.get('/state', (req, res, next) => {
   try {
     const db = getDb();
     const userId = req.user.id;
@@ -36,7 +37,7 @@ router.get('/state', authRequired, requirePagePermission("settings", "view"), (r
   }
 });
 
-router.patch('/state/tour/:page_key', authRequired, requirePagePermission("settings", "edit"), (req, res, next) => {
+router.patch('/state/tour/:page_key', (req, res, next) => {
   try {
     const db = getDb();
     db.prepare('INSERT INTO user_help_state (user_id, page_key, completed) VALUES (?, ?, 1) ON CONFLICT(user_id, page_key) DO UPDATE SET completed=1').run(req.user.id, req.params.page_key);
@@ -46,7 +47,16 @@ router.patch('/state/tour/:page_key', authRequired, requirePagePermission("setti
   }
 });
 
-router.patch('/state/disable-tours', authRequired, requirePagePermission("settings", "edit"), (req, res, next) => {
+router.delete('/state/tour/:page_key', (req, res, next) => {
+  try {
+    getDb().prepare('DELETE FROM user_help_state WHERE user_id = ? AND page_key = ?').run(req.user.id, req.params.page_key);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/state/disable-tours', (req, res, next) => {
   try {
     getDb()
       .prepare('INSERT INTO user_help_state (user_id, page_key, completed) VALUES (?, ?, 1) ON CONFLICT(user_id, page_key) DO UPDATE SET completed=1')
@@ -57,7 +67,7 @@ router.patch('/state/disable-tours', authRequired, requirePagePermission("settin
   }
 });
 
-router.patch('/state/disable-tooltips', authRequired, requirePagePermission("settings", "edit"), (req, res, next) => {
+router.patch('/state/disable-tooltips', (req, res, next) => {
   try {
     getDb()
       .prepare('INSERT INTO user_help_state (user_id, page_key, completed) VALUES (?, ?, 1) ON CONFLICT(user_id, page_key) DO UPDATE SET completed=1')
@@ -68,7 +78,7 @@ router.patch('/state/disable-tooltips', authRequired, requirePagePermission("set
   }
 });
 
-router.patch('/state/reset', authRequired, requirePagePermission("settings", "edit"), (req, res, next) => {
+router.patch('/state/reset', requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const targetUserId = req.user.role === 'admin' && req.body?.user_id ? Number(req.body.user_id) : req.user.id;
     getDb().prepare('DELETE FROM user_help_state WHERE user_id = ?').run(targetUserId);

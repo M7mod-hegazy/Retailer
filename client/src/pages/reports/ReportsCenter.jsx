@@ -9,6 +9,7 @@ import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
 import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS, FILTER_DIMENSIONS } from "./reportsCenterConfig";
 import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, GhostPreviewRows, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const SOURCE_CAT_MAP = {
   sales: "sales",
@@ -123,6 +124,7 @@ function clsOptionLabel(opt) {
 }
 
 export default function ReportsCenter() {
+  usePageTour('reports');
   const navigate = useNavigate();
   const { t } = useTranslation();
   const store = useReportsStore();
@@ -131,10 +133,11 @@ export default function ReportsCenter() {
   const defaultFrom = useMemo(() => fmtDate(new Date(today.getFullYear(), today.getMonth(), 1)), [today]);
   const defaultTo = useMemo(() => fmtDate(today), [today]);
 
-  const { data: registry } = useQuery({
+  const { data: registry, isLoading: registryLoading } = useQuery({
     queryKey: ["report-registry"],
     queryFn: () => reportsApi.fetchRegistry(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const classificationsBySource = registry?.classifications || {};
@@ -286,7 +289,7 @@ export default function ReportsCenter() {
             <p className="text-sm font-medium text-zinc-500 mt-1">الاستعلامات والتحليلات البيانية الذكية</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative flex-1 group">
+            <div data-help="search-bar" className="relative flex-1 group">
               <input
                 type="text"
                 value={search}
@@ -308,7 +311,7 @@ export default function ReportsCenter() {
         </div>
 
         {/* Grid */}
-        <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-thin scrollbar-thumb-zinc-300">
+        <div data-help="main-table" className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-thin scrollbar-thumb-zinc-300">
           <div className="max-w-4xl mx-auto w-full">
             {filtered.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-center">
@@ -415,6 +418,7 @@ export default function ReportsCenter() {
                 </h3>
                 <select
                   value={selectedClassification}
+                  disabled={registryLoading}
                   onChange={(e) => {
                     const clsId = e.target.value;
                     setSourceState((prev) => ({
@@ -422,11 +426,15 @@ export default function ReportsCenter() {
                       [selectedSource.id]: { classification: clsId, dataMode: prev[selectedSource.id]?.dataMode || getDefaultMode(selectedSource.id, clsId) },
                     }));
                   }}
-                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all disabled:opacity-60"
                 >
-                  {selectedClassifications.map((cls) => (
-                    <option key={cls.id} value={cls.id}>{clsLabel(cls)}</option>
-                  ))}
+                  {registryLoading ? (
+                    <option value="">جاري التحميل...</option>
+                  ) : (
+                    selectedClassifications.map((cls) => (
+                      <option key={cls.id} value={cls.id}>{clsLabel(cls)}</option>
+                    ))
+                  )}
                 </select>
               </div>
 
