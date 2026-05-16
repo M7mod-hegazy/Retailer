@@ -1,14 +1,37 @@
 import React from "react";
+import { motion } from "framer-motion";
 
-export default function LoadingSpinner({ size = "md", text = "" }) {
-  const sizes = { sm: "h-4 w-4", md: "h-8 w-8", lg: "h-12 w-12" };
+export default function LoadingSpinner({ text = "" }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-10">
-      <svg className={`animate-spin text-primary ${sizes[size]}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      {text && <p className="text-sm text-text-secondary">{text}</p>}
+    <div className="flex flex-col items-center justify-center gap-6 py-8">
+      {/* Ultra-minimal dual spinning rings */}
+      <div className="relative flex items-center justify-center w-12 h-12">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 rounded-full border-[1.5px] border-transparent border-t-zinc-950 border-r-zinc-950 opacity-80"
+        />
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-1 rounded-full border-[1.5px] border-transparent border-b-zinc-400 border-l-zinc-400 opacity-60"
+        />
+        <motion.div
+          animate={{ scale: [0.8, 1, 0.8], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-2 h-2 bg-zinc-950 rounded-full"
+        />
+      </div>
+      
+      {text && (
+        <motion.p 
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="text-[10px] font-bold tracking-[0.3em] uppercase text-zinc-500"
+        >
+          {text}
+        </motion.p>
+      )}
     </div>
   );
 }

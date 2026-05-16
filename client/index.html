@@ -7,7 +7,37 @@
     <title>client</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        body, html { margin: 0; padding: 0; background: #09090b; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, sans-serif; }
+        .splash-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; position: relative; }
+        .splash-container::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100vw; height: 100vh; background: radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, transparent 60%); pointer-events: none; animation: breathe 8s infinite ease-in-out; }
+        .splash-content { display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        .splash-logo { width: 48px; height: 48px; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(10px); }
+        .splash-logo svg { width: 100%; height: 100%; color: #ffffff; stroke-width: 1.5; }
+        .splash-text { font-size: 14px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: #ffffff; margin-bottom: 32px; animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; opacity: 0; transform: translateY(10px); }
+        .splash-progress-track { width: 160px; height: 1px; background: rgba(255,255,255,0.1); position: relative; overflow: hidden; animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; transform: translateY(10px); }
+        .splash-progress-bar { position: absolute; top: 0; left: 0; bottom: 0; width: 40%; background: #ffffff; animation: slide 2s cubic-bezier(0.65, 0, 0.35, 1) infinite; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes breathe { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+      </style>
+      <div class="splash-container">
+        <div class="splash-content">
+          <div class="splash-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="21" x2="9" y2="9"/>
+            </svg>
+          </div>
+          <div class="splash-text">ElHegazi Retailer</div>
+          <div class="splash-progress-track">
+            <div class="splash-progress-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

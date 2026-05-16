@@ -12,6 +12,7 @@ import { DramaticDeleteConfirm } from "../../components/ui/DramaticDeleteConfirm
 import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { motion, AnimatePresence } from "framer-motion";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -42,20 +43,29 @@ function StatusBadge({ status, expiresAt }) {
   const expiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7 && status !== "converted" && !isExpired;
 
   if (isExpired) {
-    return <span className="rounded-full border px-2 py-0.5 text-[10px] font-black bg-rose-50 text-rose-700 border-rose-100">منتهي الصلاحية</span>;
+    return <span className="rounded-md border px-2 py-0.5 text-[10px] font-black bg-rose-500/10 text-rose-600 border-rose-500/20">منتهي الصلاحية</span>;
   }
   const s = STATUS_MAP[status] || STATUS_MAP.draft;
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${s.cls}`}>{s.label}</span>
+      <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${s.cls}`}>{s.label}</span>
       {expiringSoon && (
-        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700 flex items-center gap-0.5">
+        <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600 flex items-center gap-0.5 shadow-sm">
           <AlertTriangle className="h-2.5 w-2.5" /> {daysLeft}ي
         </span>
       )}
     </div>
   );
 }
+
+const STAGGER_CONTAINER = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+const ROW_ANIMATION = {
+  hidden: { opacity: 0, y: 15, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 20 } }
+};
 
 export default function QuotationsPage() {
   const navigate = useNavigate();
@@ -226,135 +236,136 @@ export default function QuotationsPage() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-100 px-5 py-2 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3 overflow-x-auto">
           {STATUS_TABS.map(tab => (
             <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] font-black transition-all ${
-                statusFilter === tab.value ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"
+              className={`whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-black transition-all ${
+                statusFilter === tab.value ? "bg-zinc-950 text-white shadow-md shadow-zinc-900/20 scale-105" : "bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200/50"
               }`}>
               {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-right">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-black uppercase text-slate-500">
-                <th className="px-5 py-3.5">رقم العرض</th>
-                <th className="px-5 py-3.5">العميل</th>
-                <th className="px-5 py-3.5">الأصناف</th>
-                <th className="px-5 py-3.5">التاريخ</th>
-                <th className="px-5 py-3.5">الصلاحية</th>
-                <th className="px-5 py-3.5">الحالة</th>
-                <th className="px-5 py-3.5 text-left">الإجمالي</th>
-                <th className="px-5 py-3.5 text-center">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {loading ? (
-                <tr><td colSpan="8" className="py-20 text-center font-bold text-slate-400 animate-pulse">جاري التحميل...</td></tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3 text-slate-400">
-                      <FileText className="h-10 w-10 opacity-30" />
-                      <p className="text-[13px] font-black">لا توجد عروض أسعار</p>
-                      <Link to="/operations/quotations/new" className="rounded-lg bg-slate-800 px-4 py-2 text-[12px] font-black text-white hover:bg-slate-700 transition-colors">
-                        إنشاء أول عرض
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                rows.map(row => {
-                  const effStatus = effectiveStatus(row);
-                  return (
-                    <tr key={row.id} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-3.5 font-mono text-[13px] font-black text-slate-900">QTN-{String(row.id).padStart(5, "0")}</td>
-                      <td className="px-5 py-3.5">
+        {/* Elegance Feed */}
+        <div className="bg-[#fcfcfc] p-2 min-h-[400px]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
+              <div className="w-8 h-8 border-4 border-zinc-200 border-t-zinc-950 rounded-full animate-spin mb-4" />
+              <span className="text-sm font-black animate-pulse">تحميل العروض...</span>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
+              <FileText className="h-12 w-12 opacity-20 mb-3" />
+              <p className="text-[13px] font-black mb-4">لا توجد عروض أسعار مسجلة</p>
+              <Link to="/operations/quotations/new" className="rounded-xl bg-zinc-950 px-6 py-2.5 text-xs font-black text-white hover:scale-105 transition-all shadow-lg shadow-zinc-900/20">
+                إنشاء أول عرض سعر
+              </Link>
+            </div>
+          ) : (
+            <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-2">
+              {rows.map(row => {
+                const effStatus = effectiveStatus(row);
+                return (
+                  <motion.div key={row.id} variants={ROW_ANIMATION} className="group flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-zinc-200/60 rounded-[1.25rem] p-4 shadow-sm hover:border-zinc-300 hover:shadow-md transition-all">
+                    
+                    {/* Proposal Meta */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100">
+                        <FileText className="h-5 w-5" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-400 shrink-0"><User className="h-3.5 w-3.5" /></div>
-                          <span className="text-[13px] font-bold text-slate-700">{row.customer_name || `عميل #${row.customer_id}`}</span>
+                          <span className="font-mono text-sm font-black text-zinc-950">QTN-{String(row.id).padStart(5, "0")}</span>
+                          <StatusBadge status={effStatus} expiresAt={row.expires_at} />
                         </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-500">{row.line_count || 0} صنف</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5 text-slate-500">
-                          <Calendar className="h-3.5 w-3.5 opacity-40" />
-                          <span className="text-[12px] font-medium">{formatDate(row.created_at)}</span>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <User className="h-3 w-3 text-zinc-400" />
+                          <span className="text-xs font-bold text-zinc-500">{row.customer_name || `عميل #${row.customer_id}`}</span>
                         </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {row.expires_at ? (
-                          <span className="text-[12px] font-bold text-slate-500">{formatDate(row.expires_at)}</span>
-                        ) : <span className="text-slate-300 text-[11px]">—</span>}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <StatusBadge status={effStatus} expiresAt={row.expires_at} />
-                      </td>
-                      <td className="px-5 py-3.5 text-left font-black text-slate-900">{formatMoney(row.total)}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-center gap-1">
-                          {canConvert(row) && (
-                            <PermissionGate page="quotations" action="edit">
-                            <button onClick={() => setConvertTarget(row)}
-                              className="flex h-8 items-center gap-1 px-2 rounded-lg bg-emerald-600 text-white text-[11px] font-black hover:bg-emerald-500 transition-colors">
-                              <ShoppingCart className="h-3.5 w-3.5" /> تحويل
-                            </button>
-                            </PermissionGate>
-                          )}
-                          <button onClick={() => handleShowDetail(row.id)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                            <Eye className="h-4 w-4" />
+                      </div>
+                    </div>
+
+                    {/* Timeline & Value */}
+                    <div className="flex flex-wrap items-center gap-8 md:flex-1 md:justify-center">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-zinc-400">تاريخ الإصدار</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-xs font-bold text-zinc-700">
+                          <Calendar className="h-3 w-3 opacity-50" />
+                          {formatDate(row.created_at)}
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-zinc-400">صلاحية العرض</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-xs font-bold text-zinc-700">
+                          <Clock className="h-3 w-3 opacity-50" />
+                          {row.expires_at ? formatDate(row.expires_at) : "—"}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-start md:items-end w-32 border-r border-zinc-100 pr-6">
+                        <span className="text-[10px] font-black uppercase text-zinc-400">إجمالي العرض</span>
+                        <span className="text-lg font-black text-zinc-950 font-mono tracking-tight">{formatMoney(row.total)} <span className="text-[10px] text-zinc-400 font-sans tracking-normal">ج.م</span></span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 md:justify-end shrink-0">
+                      
+                      {canConvert(row) && (
+                        <PermissionGate page="quotations" action="edit">
+                          <button onClick={() => setConvertTarget(row)} className="flex h-10 items-center gap-2 px-4 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                            <ShoppingCart className="h-4 w-4" /> <span>تحويل إلى بيع</span>
                           </button>
-                          <Link to={`/operations/quotations/new?id=${row.id}`}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                            <FileText className="h-4 w-4" />
-                          </Link>
-                          {/* More menu */}
-                          <div className="relative" ref={openMenu === row.id ? menuRef : null}>
-                            <button onClick={() => setOpenMenu(openMenu === row.id ? null : row.id)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                            {openMenu === row.id && (
-                              <div className="absolute left-0 top-full mt-1 z-20 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
-                                {canSend(row) && (
-                                  <PermissionGate page="quotations" action="edit">
-                                  <button onClick={() => { handleSend(row.id); setOpenMenu(null); }}
-                                    className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-bold text-blue-600 hover:bg-blue-50 transition-colors">
-                                    <Send className="h-3.5 w-3.5" /> تحديد كمُرسل
+                        </PermissionGate>
+                      )}
+
+                      <button onClick={() => handleShowDetail(row.id)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200/60 text-zinc-500 hover:bg-zinc-950 hover:text-white transition-all">
+                        <Eye className="h-4.5 w-4.5" />
+                      </button>
+
+                      <Link to={`/operations/quotations/new?id=${row.id}`} className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200/60 text-zinc-500 hover:bg-zinc-950 hover:text-white transition-all">
+                        <FileText className="h-4 w-4" />
+                      </Link>
+
+                      {/* More Menu */}
+                      <div className="relative" ref={openMenu === row.id ? menuRef : null}>
+                        <button onClick={() => setOpenMenu(openMenu === row.id ? null : row.id)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200/60 text-zinc-500 hover:bg-zinc-950 hover:text-white transition-all">
+                          <MoreVertical className="h-4.5 w-4.5" />
+                        </button>
+                        <AnimatePresence>
+                          {openMenu === row.id && (
+                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute left-0 top-full mt-2 z-20 w-48 rounded-xl border border-zinc-200/60 bg-white p-1.5 shadow-xl">
+                              {canSend(row) && (
+                                <PermissionGate page="quotations" action="edit">
+                                  <button onClick={() => { handleSend(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-3 py-2.5 text-xs font-black text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                    <Send className="h-4 w-4" /> تحديد كمُرسل
                                   </button>
-                                  </PermissionGate>
-                                )}
-                                <PermissionGate page="quotations" action="add">
-                                <button onClick={() => { handleDuplicate(row.id); setOpenMenu(null); }}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                                  <Copy className="h-3.5 w-3.5" /> نسخ العرض
-                                </button>
                                 </PermissionGate>
-                                {canDelete(row) && (
-                                  <PermissionGate page="quotations" action="delete">
-                                  <button onClick={() => { setDeleteTarget(row); setOpenMenu(null); }}
-                                    className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
-                                    <Trash2 className="h-3.5 w-3.5" /> حذف العرض
+                              )}
+                              <PermissionGate page="quotations" action="add">
+                                <button onClick={() => { handleDuplicate(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-3 py-2.5 text-xs font-black text-zinc-700 hover:bg-zinc-50 rounded-lg transition-colors">
+                                  <Copy className="h-4 w-4" /> نسخ العرض
+                                </button>
+                              </PermissionGate>
+                              {canDelete(row) && (
+                                <PermissionGate page="quotations" action="delete">
+                                  <div className="h-px bg-zinc-100 my-1 w-full" />
+                                  <button onClick={() => { setDeleteTarget(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-3 py-2.5 text-xs font-black text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                    <Trash2 className="h-4 w-4" /> حذف العرض
                                   </button>
-                                  </PermissionGate>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                                </PermissionGate>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
         </div>
       </div>
 

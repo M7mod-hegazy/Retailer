@@ -1,7 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 const allowedChannels = {
-  license: ["license:activate", "license:status"],
   backup: ["backup:create", "backup:restore"],
   print: ["print:receipt", "print:preview"],
   dialogs: ["dialog:open-file", "dialog:save-file"],

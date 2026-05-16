@@ -14,7 +14,6 @@ const NotFoundPage = lazy(() => import("./pages/error/NotFoundPage"));
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
-const LicenseActivationPage = lazy(() => import("./pages/auth/LicenseActivationPage"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
 const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
 const FinanceWorkspacePage = lazy(() => import("./pages/workspaces/FinanceWorkspacePage"));
@@ -118,7 +117,6 @@ export default function App() {
       <GlobalSearchPage />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/activate-license" element={<LicenseActivationPage />} />
         <Route path="/setup" element={<NotFoundPage />} />
         <Route
           path="/*"

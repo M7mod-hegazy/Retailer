@@ -36,7 +36,6 @@ const backupRoutes = require("./routes/backup.routes");
 const searchRoutes = require("./routes/search.routes");
 const loyaltyRoutes = require("./routes/loyalty.routes");
 const quotationsRoutes = require("./routes/quotations.routes");
-const licenseRoutes = require("./routes/license.routes");
 const paymentMethodsRoutes = require("./routes/paymentMethods.routes");
 const printSettingsRoutes = require("./routes/printSettings.routes");
 const uploadRoutes = require("./routes/upload.routes");
@@ -74,7 +73,6 @@ function createApp() {
   app.get("/health", (_req, res) => res.json({ ok: true }));
   app.use("/api/auth", authRoutes);
   app.use("/api/settings", settingsRoutes);
-  app.use("/api/license", licenseRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/items", itemsRoutes);
   app.use("/api/categories", categoriesRoutes);

@@ -1,10 +1,23 @@
 import React from "react";
+import { motion } from "framer-motion";
 import LoadingSpinner from "./LoadingSpinner";
 
-export default function FullPageLoader({ text = "جاري التحميل..." }) {
+export default function FullPageLoader({ text = "جاري تهيئة النظام..." }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-base/70 backdrop-blur-md">
-      <LoadingSpinner size="lg" text={text} />
-    </div>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/90 backdrop-blur-xl"
+    >
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-col items-center justify-center"
+      >
+        <LoadingSpinner text={text} />
+      </motion.div>
+    </motion.div>
   );
 }

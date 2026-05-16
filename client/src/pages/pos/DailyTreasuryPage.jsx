@@ -231,19 +231,20 @@ export default function DailyTreasuryPage() {
 
 async function handleQuickSave() {
     if (!quickAmount) return;
+    if (!quickCategoryId) { toast.error("يرجى اختيار الفئة أولاً"); return; }
     try {
       if (quickModal === "expense") {
         await api.post("/api/expenses", {
           amount: Number(quickAmount),
           description: quickNote,
-          category_id: quickCategoryId ? Number(quickCategoryId) : null,
+          category_id: Number(quickCategoryId),
           payment_method: "cash",
         });
       } else {
         await api.post("/api/revenues", {
           amount: Number(quickAmount),
           description: quickNote,
-          category_id: quickCategoryId ? Number(quickCategoryId) : null,
+          category_id: Number(quickCategoryId),
           payment_method: "cash",
         });
       }
@@ -261,11 +262,12 @@ async function handleQuickSave() {
 
   async function handleWithdrawalSave() {
     if (!withdrawalAmount) return;
+    if (!withdrawalCategoryId) { toast.error("يرجى اختيار التصنيف أولاً"); return; }
     try {
       await api.post("/api/withdrawals", {
         amount: Number(withdrawalAmount),
         note: withdrawalNote,
-        category_id: withdrawalCategoryId ? Number(withdrawalCategoryId) : null,
+        category_id: Number(withdrawalCategoryId),
         payment_method: withdrawalPaymentMethod,
       });
       toast.success("تم تسجيل المسحوبات بنجاح");
@@ -649,7 +651,7 @@ async function handleQuickSave() {
                     className="flex items-center justify-center gap-3 rounded-3xl bg-slate-900 py-4 text-[14px] font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
-                    سجل المسحوبات
+                    تسجيل مسحوبات سريع
                   </motion.button>
                   <motion.button
                     whileHover={{ y: -2 }}
@@ -1394,9 +1396,10 @@ async function handleQuickSave() {
                   <select
                     value={quickCategoryId}
                     onChange={(e) => setQuickCategoryId(e.target.value)}
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-[13px] font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
+                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-[13px] font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!quickCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
+                    required
                   >
-                    <option value="">غير مصنف</option>
+                    <option value="">— اختر الفئة (مطلوب) —</option>
                     {(quickModal === "expense" ? expenseCategories : revenueCategories).map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -1407,7 +1410,7 @@ async function handleQuickSave() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleQuickSave}
-                    disabled={!quickAmount}
+                    disabled={!quickAmount || !quickCategoryId}
                     className={"w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 " + (quickModal === "expense" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20")}
                   >
                     <CheckCircle2 className="h-5 w-5" /> حفظ واعتماد
@@ -1473,9 +1476,10 @@ async function handleQuickSave() {
                   <select
                     value={withdrawalCategoryId}
                     onChange={(e) => setWithdrawalCategoryId(e.target.value)}
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-[13px] font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
+                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-[13px] font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!withdrawalCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
+                    required
                   >
-                    <option value="">غير مصنف</option>
+                    <option value="">— اختر التصنيف (مطلوب) —</option>
                     {withdrawalCategories.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -1498,7 +1502,7 @@ async function handleQuickSave() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleWithdrawalSave}
-                    disabled={!withdrawalAmount}
+                    disabled={!withdrawalAmount || !withdrawalCategoryId}
                     className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 bg-slate-900 hover:bg-slate-800 shadow-slate-900/20"
                   >
                     <CheckCircle2 className="h-5 w-5" /> حفظ واعتماد

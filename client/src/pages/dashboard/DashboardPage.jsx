@@ -1,318 +1,524 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  ShoppingCart, PackageSearch, Receipt, ArrowRightLeft,
-  Wallet, TrendingDown, TrendingUp, Landmark, Boxes,
-  Users, Building, FileSpreadsheet, Command, X, Play, Tag, Activity,
-  Plus, CreditCard, ChevronLeft, ShieldCheck, Settings, BookOpenCheck,
-  ClipboardList
-} from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import { useUpdateStore } from "../../stores/updateStore";
+import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import api from "../../services/api";
+import toast from "react-hot-toast";
 
+// ─── Tooltips ────────────────────────────────────────────────────────────────
+const TOOLTIPS = {
+  purchases: "إدارة الفواتير والموردين",
+  purchase_orders: "طلبات الشراء والاعتمادات",
+  purchase_returns: "إرجاع البضائع التالفة",
+  sales_returns: "استلام المرتجعات وإشعارات الخصم",
+  branch_transfer: "نقل المخزون بين الفروع",
+  quotations: "إصدار ومتابعة عروض الأسعار",
+  customer_accounts: "الأرصدة والديون المستحقة",
+  supplier_accounts: "المستحقات وحركة الحساب",
+  installments: "متابعة الأقساط والديون",
+  revenues: "الإيرادات الإضافية الأخرى",
+  expenses: "المصروفات والتشغيل",
+  withdrawals: "مسحوبات الملاك والشركاء",
+  payment_methods: "البطاقات البنكية والنقد",
+  bank_operations: "إيداع ومراجعة البنوك",
+  cheques: "الشيكات الصادرة والواردة",
+  items: "تعريف المنتجات والباركود",
+  categories: "أقسام المنتجات والمجموعات",
+  bulk_price_update: "تعديل أسعار المنتجات",
+  stock_transfer: "تحويل البضاعة بين المخازن",
+  physical_count: "الجرد الفعلي وتسوية الأرصدة",
+  promotions: "عروض ترويجية وخصومات",
+  branches: "إدارة الفروع",
+  customers: "دليل العملاء",
+  suppliers: "دليل الموردين",
+  warehouses: "تعريف أماكن التخزين",
+  banks: "الحسابات البنكية للمنشأة",
+  units: "وحدات القياس والأوزان",
+  financial_categories: "شجرة الحسابات المالية",
+  reports: "مؤشرات وتقارير المبيعات",
+  users: "حسابات المستخدمين والصلاحيات",
+  employees: "بيانات الموظفين والرواتب",
+  settings: "الضرائب والطابعات وإعدادات المنشأة",
+  updates: "أحدث نسخ وتحديثات النظام",
+  history: "سجل حركات النظام للمراقبة",
+};
+
+const SHORTCUTS = { pos: "F2", analytics: "F3", daily_treasury: "F4" };
+
+// ─── Quick actions map ────────────────────────────────────────────────────────
+// path   → navigate to create form
+// modal  → open inline quick-entry modal
+const QUICK_ACTIONS = {
+  purchases:        { path: "/purchases/new",                      label: "فاتورة جديدة" },
+  purchase_orders:  { path: "/purchases/orders/new",               label: "أمر شراء جديد" },
+  purchase_returns: { path: "/purchases/returns/new",              label: "مرتجع جديد" },
+  sales_returns:    { path: "/sales/returns/new",                  label: "مرتجع مبيعات" },
+  branch_transfer:  { path: "/operations/branch-transfer/new",     label: "نقل جديد" },
+  quotations:       { path: "/operations/quotations/new",          label: "عرض سعر" },
+  stock_transfer:   { path: "/stock/transfer",                     label: "تحويل" },
+  revenues:         { modal: "revenue",                            label: "إيراد سريع" },
+  expenses:         { modal: "expense",                            label: "مصروف سريع" },
+  withdrawals:      { modal: "withdrawal",                         label: "مسحوبات" },
+};
+
+// ─── Modal config ─────────────────────────────────────────────────────────────
+const MODAL_CONFIG = {
+  expense: {
+    title: "تسجيل مصروف سريع",
+    endpoint: "/expenses",
+    icon: TrendingDown,
+    color: "rose",
+    amountLabel: "مبلغ المصروف",
+    descLabel: "البند / الوصف",
+  },
+  revenue: {
+    title: "تسجيل إيراد سريع",
+    endpoint: "/revenues",
+    icon: TrendingUp,
+    color: "emerald",
+    amountLabel: "مبلغ الإيراد",
+    descLabel: "المصدر / الوصف",
+  },
+  withdrawal: {
+    title: "تسجيل مسحوبات",
+    endpoint: "/withdrawals",
+    icon: Banknote,
+    color: "amber",
+    amountLabel: "مبلغ المسحوبات",
+    descLabel: "الغرض / الوصف",
+  },
+};
+
+const COLOR_MAP = {
+  rose:    { ring: "ring-rose-200",    btn: "bg-rose-600 hover:bg-rose-500",    icon: "bg-rose-100 text-rose-600",    badge: "bg-rose-50 text-rose-600 border-rose-200" },
+  emerald: { ring: "ring-emerald-200", btn: "bg-emerald-600 hover:bg-emerald-500", icon: "bg-emerald-100 text-emerald-600", badge: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  amber:   { ring: "ring-amber-200",   btn: "bg-amber-600 hover:bg-amber-500",  icon: "bg-amber-100 text-amber-600",  badge: "bg-amber-50 text-amber-600 border-amber-200" },
+};
+
+// ─── Permission hook ──────────────────────────────────────────────────────────
+function usePermissionFilter() {
+  const { user, permissions } = useAuthStore();
+  return (pageKey) => {
+    if (!pageKey) return true;
+    if (!user) return false;
+    if (user.role === "dev" || user.role === "admin") return true;
+    if (pageKey === "updates") return !!user.can_view_updates;
+    return Array.isArray(permissions?.[pageKey]) && permissions[pageKey].includes("view");
+  };
+}
+
+// ─── Animation variants ───────────────────────────────────────────────────────
+const STAGGER = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const FADE_UP = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 120, damping: 20 } },
+  exit: { opacity: 0, y: -20, scale: 0.95, transition: { duration: 0.15 } },
+};
+
+// ─── Quick-entry modal ────────────────────────────────────────────────────────
+function QuickEntryModal({ type, onClose }) {
+  const cfg = MODAL_CONFIG[type];
+  const colors = COLOR_MAP[cfg.color];
+  const Icon = cfg.icon;
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const amountRef = useRef(null);
+
+  useEffect(() => {
+    amountRef.current?.focus();
+    function onKey(e) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    api.get(`/api${cfg.endpoint}/categories`)
+      .then((r) => setCategories(r.data.data || []))
+      .catch(() => {});
+  }, [cfg.endpoint]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const parsed = parseFloat(amount);
+    if (!parsed || parsed <= 0) { toast.error("أدخل مبلغاً صحيحاً"); return; }
+    if (!categoryId) { toast.error("يرجى اختيار الفئة أولاً"); return; }
+    setSubmitting(true);
+    try {
+      await api.post(`/api${cfg.endpoint}`, {
+        amount: parsed,
+        description: description.trim() || undefined,
+        category_id: Number(categoryId),
+      });
+      toast.success("تم الحفظ بنجاح ✓");
+      onClose();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "فشل الحفظ، حاول مرة أخرى");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" dir="rtl">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className={`relative bg-white rounded-3xl shadow-2xl w-full max-w-sm ring-1 ${colors.ring} overflow-hidden`}
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${colors.icon}`}>
+            <Icon className="w-5 h-5" strokeWidth={2} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[17px] font-black text-zinc-900 leading-tight">{cfg.title}</h2>
+            <p className="text-[11px] font-bold text-zinc-400 mt-0.5">إدخال سريع — للتفاصيل اذهب للصفحة</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="h-px bg-zinc-100 mx-6" />
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {/* Amount */}
+          <div>
+            <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">{cfg.amountLabel}</label>
+            <div className="relative">
+              <input
+                ref={amountRef}
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full text-3xl font-black text-zinc-900 placeholder:text-zinc-200 bg-zinc-50 border border-zinc-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all text-right"
+                required
+              />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-400">ج.م</span>
+            </div>
+          </div>
+
+          {/* Category — required */}
+          <div>
+            <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">الفئة <span className="text-rose-500">*</span></label>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className={`w-full text-[13px] font-bold text-zinc-900 bg-zinc-50 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all appearance-none ${!categoryId ? "border-rose-300" : "border-zinc-200"}`}
+              required
+            >
+              <option value="">— اختر الفئة (مطلوب) —</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">{cfg.descLabel}</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="اكتب وصفاً مختصراً..."
+              className="w-full text-[14px] font-semibold text-zinc-900 placeholder:text-zinc-300 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={submitting || !amount || !categoryId}
+            className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-black text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${colors.btn}`}
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {submitting ? "جاري الحفظ..." : "حفظ الآن"}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Magnetic nav card ────────────────────────────────────────────────────────
+function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
+  const navigate = useNavigate();
+  const ref = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const xSpring = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+  const ySpring = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
+
+  const handleMouseMove = (e) => {
+    const rect = ref.current.getBoundingClientRect();
+    x.set((e.clientX - rect.left - rect.width / 2) * 0.1);
+    y.set((e.clientY - rect.top - rect.height / 2) * 0.1);
+  };
+  const handleMouseLeave = () => { x.set(0); y.set(0); };
+
+  const qa = QUICK_ACTIONS[item.pageKey];
+
+  function handleQuickClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!qa) return;
+    if (qa.modal) {
+      onQuickAction(qa.modal);
+    } else if (qa.path) {
+      navigate(qa.path);
+    }
+  }
+
+  return (
+    <motion.div variants={FADE_UP} className="h-full">
+      <Link
+        ref={ref}
+        to={item.path}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={`group block relative h-full rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
+          active
+            ? "bg-zinc-950 text-white shadow-xl shadow-zinc-900/20"
+            : "bg-white border border-zinc-200/50 hover:border-transparent hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:z-10"
+        }`}
+      >
+        {/* Animated gradient */}
+        <motion.div
+          style={{ x: xSpring, y: ySpring }}
+          className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        >
+          <div className="absolute inset-[-50%] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_50%)]" />
+        </motion.div>
+
+        <div className="relative z-10 flex flex-col h-full justify-between gap-8">
+          <div className="flex justify-between items-start">
+            <div className={`flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${
+              active ? "bg-white/10 text-emerald-400" : "bg-zinc-50 text-zinc-400 group-hover:bg-zinc-950 group-hover:text-emerald-400 group-hover:scale-110"
+            }`}>
+              <item.icon className="w-6 h-6" strokeWidth={1.5} />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Quick action button — visible on hover */}
+              {qa && (
+                <button
+                  onClick={handleQuickClick}
+                  title={qa.label}
+                  className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-black border ${
+                    active
+                      ? "bg-white/10 border-white/20 text-white hover:bg-emerald-500 hover:border-emerald-400"
+                      : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-500 hover:border-emerald-400 hover:text-white"
+                  }`}
+                >
+                  <Zap className="w-3 h-3" />
+                  {qa.label}
+                </button>
+              )}
+
+              {/* Arrow icon */}
+              <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${
+                active ? "border-white/20 text-white" : "border-zinc-200 text-zinc-300 group-hover:border-zinc-950 group-hover:bg-zinc-950 group-hover:text-white"
+              }`}>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className={`text-lg font-black tracking-tight mb-2 transition-colors duration-500 ${active ? "text-white" : "text-zinc-900"}`}>
+              {item.label}
+            </h3>
+            <p className={`text-xs font-bold leading-relaxed line-clamp-2 transition-colors duration-500 ${
+              active ? "text-zinc-400" : "text-zinc-400 group-hover:text-zinc-500"
+            }`}>
+              {TOOLTIPS[item.pageKey]}
+            </p>
+          </div>
+        </div>
+
+        {item.pageKey === "updates" && updateAvailable && (
+          <span className="absolute top-6 left-6 h-3 w-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-pulse" />
+        )}
+      </Link>
+    </motion.div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
+  const updateAvailable = useUpdateStore((state) => state.available);
   const navigate = useNavigate();
-  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const location = useLocation();
+  const canView = usePermissionFilter();
+  const [quickModal, setQuickModal] = useState(null); // 'expense' | 'revenue' | 'withdrawal'
+
+  const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey));
+  const visibleModules = NAV_MODULES.map((module) => ({
+    ...module,
+    items: module.items.filter((item) => canView(item.pageKey)),
+  })).filter((module) => module.items.length > 0);
+
+  const [activeTabId, setActiveTabId] = useState(visibleModules[0]?.id || null);
 
   useEffect(() => {
     function handleKeyDown(e) {
       if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
       if (e.key === "F2") { e.preventDefault(); navigate("/pos"); }
       if (e.key === "F3") { e.preventDefault(); navigate("/analytics"); }
-      if (e.key === "Escape" && purchaseModalOpen) { setPurchaseModalOpen(false); }
+      if (e.key === "F4") { e.preventDefault(); navigate("/daily-treasury"); }
+      if (e.key === "Escape") setQuickModal(null);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, purchaseModalOpen]);
+  }, [navigate]);
+
+  function isActive(path) {
+    return location.pathname === path || (location.pathname.startsWith(path) && path !== "/");
+  }
+
+  const activeModule = visibleModules.find((m) => m.id === activeTabId) || visibleModules[0];
+  const closeModal = useCallback(() => setQuickModal(null), []);
 
   return (
-    <div className="flex flex-col min-h-full font-sans bg-[#F4F7FB] p-4 md:p-8 relative overflow-hidden" dir="rtl">
-      
-      {/* Background Ambient Glows */}
-      <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+    <div className="flex flex-col min-h-full font-sans bg-[#f4f4f5] overflow-x-hidden selection:bg-emerald-500/30" dir="rtl">
 
-      {/* Modern Greeting */}
-      <div className="flex items-center justify-between mb-8 relative z-10 mx-auto w-full max-w-[1400px]">
-        <div className="flex items-center gap-4">
-          <div className="bg-slate-900 text-white p-3 rounded-[20px] shadow-[0_8px_20px_rgba(15,23,42,0.15)]">
-            <Command className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-              أهلاً بيك يا {user?.name?.split(' ')[0] || 'مدير'}
-            </h1>
-            <p className="text-[14px] font-bold text-slate-500 mt-1">المحطة المركزية لإدارة كافة العمليات بضغطة زر.</p>
-          </div>
-        </div>
-        
-        {/* Quick Insights Action */}
-        <Link to="/analytics" className="hidden md:flex items-center gap-4 bg-white border border-slate-200 rounded-[20px] py-2 px-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all group">
-          <div className="flex flex-col text-left items-end">
-            <span className="text-[11px] font-black tracking-widest text-slate-400 uppercase">نظرة عامة</span>
-            <span className="text-[14px] font-bold text-slate-700">فتح التحليلات (F3)</span>
-          </div>
-          <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center group-hover:bg-blue-50 text-slate-400 group-hover:text-blue-500 transition-colors">
-            <Activity className="w-5 h-5" />
-          </div>
-        </Link>
-      </div>
+      {/* Dark hero */}
+      <div className="bg-zinc-950 px-6 md:px-12 pt-12 pb-24 rounded-b-[3rem] relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.15)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none" />
 
-      {/* =======================
-          THE STRICT BENTO GRID
-          ======================= */}
-      <div className="mx-auto w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-5 relative z-10 flex-1 auto-rows-max">
-        
-        {/* ROW 1: POS HERO & FINANCE 2x2 */}
-        
-        {/* POS BLOCK (Right Side - 8 cols) */}
-        <div className="md:col-span-4 lg:col-span-8 relative group overflow-hidden rounded-[32px] bg-slate-900 shadow-xl flex flex-col justify-between border border-slate-800 min-h-[260px]">
-          <div className="absolute left-[-5%] top-[-20%] opacity-10 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none">
-            <ShoppingCart className="w-96 h-96 text-emerald-400 rotate-[-15deg] transform group-hover:scale-110 transition-transform duration-700" />
-          </div>
-          
-          <div className="p-8 relative z-10 flex flex-col flex-1 justify-center">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 rounded-[20px] bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                 <ShoppingCart className="w-7 h-7 text-emerald-400" />
-              </div>
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-4 py-1.5 rounded-full text-[12px] font-black font-mono tracking-widest uppercase">F2 Hotkey</span>
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/10 text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl">
+              <Command className="w-7 h-7" />
             </div>
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">شاشة الكاشير</h2>
-            <p className="text-[16px] font-bold text-slate-300 opacity-80 max-w-xl leading-relaxed">بوابة المبيعات الرئيسية. انطلق لاستقبال العملاء وإصدار الفواتير بسرعة فائقة وبدون تأخير.</p>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-1">
+                مرحباً بك، <span className="text-emerald-400">{user?.name?.split(" ")[0] || "مدير"}</span>
+              </h1>
+              <p className="text-sm font-bold text-zinc-400">نظام إدارة الموارد ونقاط البيع المتكامل</p>
+            </div>
           </div>
+        </header>
 
-          <div className="px-6 pb-6 relative z-10">
-            <Link to="/pos" className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 rounded-[20px] py-4 text-[18px] font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] flex items-center justify-center gap-3">
-               <Play className="w-6 h-6 fill-slate-900" /> افتح الكاشير الآن
-            </Link>
-          </div>
-        </div>
-
-        {/* FINANCE BLOCK (Left Side - 4 cols, 2x2 Grid constraint) */}
-        <div className="md:col-span-4 lg:col-span-4 bg-white rounded-[32px] p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between min-h-[260px]">
-           <div className="flex items-center justify-between mb-4 px-1">
-             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-[14px] bg-amber-50 text-amber-600 flex items-center justify-center">
-                 <Wallet className="w-5 h-5" />
-               </div>
-               <div>
-                 <h2 className="text-[16px] font-black text-slate-800">الماليات والخزينة</h2>
-               </div>
-             </div>
-           </div>
-
-           <div className="grid grid-cols-2 gap-3 flex-1">
-              <Link to="/revenues" className="bg-slate-50/50 border border-slate-100 rounded-[20px] p-4 flex flex-col items-center justify-center gap-2 hover:border-teal-300 hover:shadow-[0_8px_20px_rgba(20,184,166,0.15)] hover:bg-white transition-all group">
-                 <div className="w-10 h-10 rounded-full bg-white group-hover:bg-teal-50 text-teal-500 flex items-center justify-center shadow-sm border border-slate-100 group-hover:border-teal-100 transition-colors">
-                   <TrendingUp className="w-5 h-5" />
-                 </div>
-                 <span className="text-[13px] font-black text-slate-700 group-hover:text-teal-700">سجل إيراد</span>
-              </Link>
-
-              <Link to="/expenses" className="bg-slate-50/50 border border-slate-100 rounded-[20px] p-4 flex flex-col items-center justify-center gap-2 hover:border-rose-300 hover:shadow-[0_8px_20px_rgba(244,63,94,0.15)] hover:bg-white transition-all group">
-                 <div className="w-10 h-10 rounded-full bg-white group-hover:bg-rose-50 text-rose-500 flex items-center justify-center shadow-sm border border-slate-100 group-hover:border-rose-100 transition-colors">
-                   <TrendingDown className="w-5 h-5" />
-                 </div>
-                 <span className="text-[13px] font-black text-slate-700 group-hover:text-rose-700">سجل مصروف</span>
-              </Link>
-
-              <Link to="/payments" className="bg-slate-50/50 border border-slate-100 rounded-[20px] p-4 flex flex-col items-center justify-center gap-2 hover:border-indigo-300 hover:shadow-[0_8px_20px_rgba(99,102,241,0.15)] hover:bg-white transition-all group">
-                 <div className="w-10 h-10 rounded-full bg-white group-hover:bg-indigo-50 text-indigo-500 flex items-center justify-center shadow-sm border border-slate-100 group-hover:border-indigo-100 transition-colors">
-                   <CreditCard className="w-5 h-5" />
-                 </div>
-                 <span className="text-[13px] font-black text-slate-700 group-hover:text-indigo-700">القبض والدفع</span>
-              </Link>
-
-              <Link to="/operations/treasury-transfer" className="bg-slate-50/50 border border-slate-100 rounded-[20px] p-4 flex flex-col items-center justify-center gap-2 hover:border-amber-300 hover:shadow-[0_8px_20px_rgba(245,158,11,0.15)] hover:bg-white transition-all group">
-                 <div className="w-10 h-10 rounded-full bg-white group-hover:bg-amber-50 text-amber-500 flex items-center justify-center shadow-sm border border-slate-100 group-hover:border-amber-100 transition-colors">
-                   <Landmark className="w-5 h-5" />
-                 </div>
-                 <span className="text-[13px] font-black text-slate-700 group-hover:text-amber-700">التحويلات</span>
-              </Link>
-           </div>
-        </div>
-
-        {/* ROW 2: PURCHASES, RETURNS, INVENTORY */}
-        
-        {/* PURCHASES BLOCK (4 Cols) */}
-        <div 
-          className="md:col-span-2 lg:col-span-4 bg-white rounded-[32px] border border-slate-200/80 p-6 flex flex-col justify-center gap-4 cursor-pointer hover:border-violet-300 hover:shadow-[0_15px_30px_rgba(139,92,246,0.15)] transition-all group min-h-[220px]"
-          onClick={() => setPurchaseModalOpen(true)}
-        >
-           <div className="flex items-center justify-between">
-              <div className="w-14 h-14 rounded-[20px] bg-violet-50 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors border border-violet-100">
-                 <PackageSearch className="w-7 h-7" />
-              </div>
-              <span className="bg-violet-50 text-violet-600 px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-widest border border-violet-100">بوابة المـوردين</span>
-           </div>
-           <div>
-             <h3 className="text-[22px] font-black text-slate-800">إدارة المشتريات</h3>
-             <p className="text-[13px] font-bold text-slate-400 mt-1">سجل فواتير وأوامر الشراء وإدارة حسابات الموردين من هنا.</p>
-           </div>
-        </div>
-
-        {/* INVENTORY BLOCK (4 Cols) */}
-        <div className="md:col-span-2 lg:col-span-4 bg-white rounded-[32px] border border-slate-200/80 p-6 flex flex-col justify-between min-h-[220px]">
-           <div className="flex items-center gap-3 mb-4">
-             <div className="w-12 h-12 rounded-[16px] bg-blue-50 text-blue-600 flex items-center justify-center">
-               <Boxes className="w-6 h-6" />
-             </div>
-             <div>
-               <h3 className="text-[18px] font-black text-slate-800 tracking-tight">مراقبة المخزون</h3>
-             </div>
-           </div>
-
-           <div className="grid grid-cols-2 gap-2 flex-1">
-              <Link to="/stock/levels" className="bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-100 hover:border-blue-200 text-slate-700 rounded-[14px] flex items-center justify-center text-[13px] font-black transition-all p-3 shadow-sm text-center">
-                 أرصدة المخازن
-              </Link>
-              <Link to="/stock/movements" className="bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-100 hover:border-blue-200 text-slate-700 rounded-[14px] flex items-center justify-center text-[13px] font-black transition-all p-3 shadow-sm text-center">
-                 المـقـلـم
-              </Link>
-              <Link to="/stock/physical-count" className="bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-100 hover:border-blue-200 text-slate-700 rounded-[14px] flex items-center justify-center text-[13px] font-black transition-all p-3 shadow-sm text-center">
-                 جرد فعلي وتسوية
-              </Link>
-              <Link to="/stock/transfer" className="bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-100 hover:border-blue-200 text-slate-700 rounded-[14px] flex items-center justify-center text-[13px] font-black transition-all p-3 shadow-sm text-center">
-                 تحويل بضاعة
-              </Link>
-           </div>
-        </div>
-
-        {/* RETURNS SECTION (4 Cols, Stacked Vertically) */}
-        <div className="md:col-span-4 lg:col-span-4 grid grid-rows-2 gap-5 min-h-[220px]">
-           <Link to="/sales/returns" className="bg-white rounded-[24px] border border-slate-200/80 p-5 flex items-center gap-4 hover:border-orange-300 hover:shadow-[0_8px_20px_rgba(249,115,22,0.15)] transition-all group">
-              <div className="w-12 h-12 rounded-[16px] bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors border border-orange-100 shrink-0">
-                 <ArrowRightLeft className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-[16px] font-black text-slate-800">مرتجعات مبيعات</h3>
-                <p className="text-[12px] font-bold text-slate-400">استرجاع بضاعة واسترداد نقدي لعميل</p>
-              </div>
-           </Link>
-
-           <Link to="/purchases/returns" className="bg-white rounded-[24px] border border-slate-200/80 p-5 flex items-center gap-4 hover:border-rose-300 hover:shadow-[0_8px_20px_rgba(244,63,94,0.15)] transition-all group">
-              <div className="w-12 h-12 rounded-[16px] bg-rose-50 text-rose-500 flex items-center justify-center group-hover:bg-rose-500 group-hover:text-white transition-colors border border-rose-100 shrink-0">
-                 <Receipt className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-[16px] font-black text-slate-800">مرتجعات مشتريات</h3>
-                <p className="text-[12px] font-bold text-slate-400">إرجاع بضاعة تالفة وتسوية للمورد</p>
-              </div>
-           </Link>
-        </div>
-
-        {/* ROW 3: FOUNDATIONAL ENTITIES (12 cols, 4 uniform blocks) */}
-        <div className="md:col-span-4 lg:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-5">
-           <Link to="/definitions/items" className="bg-white border border-slate-200/80 rounded-[24px] p-5 flex items-center gap-4 hover:border-cyan-300 hover:shadow-[0_8px_20px_rgba(6,182,212,0.1)] transition-all group">
-              <div className="w-12 h-12 rounded-[16px] bg-cyan-50 text-cyan-500 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-white transition-colors border border-cyan-100">
-                <Tag className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[16px] font-black text-slate-800 group-hover:text-cyan-700">دليل الأصناف</span>
-                <span className="text-[12px] font-bold text-slate-400">كروت وتوليفة البضاعة</span>
-              </div>
-           </Link>
-
-           <Link to="/definitions/customers" className="bg-white border border-slate-200/80 rounded-[24px] p-5 flex items-center gap-4 hover:border-emerald-300 hover:shadow-[0_8px_20px_rgba(16,185,129,0.1)] transition-all group">
-              <div className="w-12 h-12 rounded-[16px] bg-emerald-50 text-emerald-500 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors border border-emerald-100">
-                <Users className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[16px] font-black text-slate-800 group-hover:text-emerald-700">قاعدة العملاء</span>
-                <span className="text-[12px] font-bold text-slate-400">حسابات، بيانات، وأرصدة</span>
-              </div>
-           </Link>
-
-           <Link to="/definitions/suppliers" className="bg-white border border-slate-200/80 rounded-[24px] p-5 flex items-center gap-4 hover:border-fuchsia-300 hover:shadow-[0_8px_20px_rgba(217,70,239,0.1)] transition-all group">
-              <div className="w-12 h-12 rounded-[16px] bg-fuchsia-50 text-fuchsia-500 flex items-center justify-center group-hover:bg-fuchsia-500 group-hover:text-white transition-colors border border-fuchsia-100">
-                <Building className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[16px] font-black text-slate-800 group-hover:text-fuchsia-700">دليل الموردين</span>
-                <span className="text-[12px] font-bold text-slate-400">محفظة الشركات الموردة</span>
-              </div>
-           </Link>
-           
-           <Link to="/settings" className="bg-slate-800 border border-slate-700 rounded-[24px] p-5 flex items-center gap-4 hover:bg-slate-900 shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-[16px] bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
-                <Settings className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[16px] font-black text-white px-1">إعدادات النظام</span>
-                <span className="text-[12px] font-bold text-slate-400 px-1">تهيئة الفروع والمستخدمين</span>
-              </div>
-           </Link>
-        </div>
-
+        {/* Primary shortcuts */}
+        <motion.div variants={STAGGER} initial="hidden" animate="visible" className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 relative z-10">
+          {primaryItems.map((item) => {
+            const isPOS = item.highlight;
+            const shortcut = SHORTCUTS[item.pageKey];
+            return (
+              <motion.div key={item.path} variants={FADE_UP}>
+                <Link
+                  to={item.path}
+                  className={`group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
+                    isPOS
+                      ? "bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-2"
+                      : "bg-white/5 border border-white/10 hover:bg-white/10 hover:-translate-y-2 backdrop-blur-xl"
+                  }`}
+                >
+                  <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${
+                    isPOS ? "bg-black/20 text-white" : "bg-white/10 text-white"
+                  }`}>
+                    <item.icon className="h-7 w-7" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 z-10">
+                    <div className="text-xl font-black text-white mb-1">{item.label}</div>
+                    {shortcut && (
+                      <div className={`text-xs font-bold flex items-center gap-2 ${isPOS ? "text-emerald-100" : "text-zinc-400"}`}>
+                        <kbd className={`font-mono text-[10px] px-2 py-0.5 rounded-md ${isPOS ? "bg-black/20 text-white" : "bg-white/10 text-white"}`}>{shortcut}</kbd>
+                        <span>اختصار لوحة المفاتيح</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       </div>
 
-      {/* =======================
-          THE PURCHASES MODAL OVERLAY
-          ======================= */}
-      {purchaseModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" dir="rtl">
-           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setPurchaseModalOpen(false)} />
-           
-           <div className="bg-white rounded-[32px] p-8 max-w-[800px] w-full shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] border border-slate-200 relative z-10 animate-in zoom-in-95 duration-300 flex flex-col">
-              <button onClick={() => setPurchaseModalOpen(false)} className="absolute top-6 left-6 w-10 h-10 bg-slate-50 hover:bg-rose-50 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+      {/* Command center */}
+      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 -mt-10 relative z-20 pb-20">
 
-              <div className="flex items-center gap-5 mb-8">
-                 <div className="w-16 h-16 rounded-[24px] bg-violet-100 text-violet-600 flex items-center justify-center shadow-inner">
-                   <PackageSearch className="w-8 h-8" />
-                 </div>
-                 <div>
-                   <h2 className="text-3xl font-black text-slate-800">بوابة المشتريات</h2>
-                   <p className="text-[14px] font-bold text-slate-500 mt-1">اختر العملية اللي محتاج تعملها مع الموردين</p>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Link to="/purchases" onClick={() => setPurchaseModalOpen(false)} className="bg-white border border-slate-200 rounded-[24px] p-6 flex flex-col items-start gap-4 hover:border-violet-400 hover:shadow-[0_10px_30px_rgba(139,92,246,0.15)] group transition-all">
-                    <div className="w-14 h-14 rounded-[20px] bg-violet-50 group-hover:bg-violet-500 text-violet-600 group-hover:text-white border border-violet-100 flex items-center justify-center transition-colors">
-                      <Plus className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-[18px] font-black text-slate-800 group-hover:text-violet-700 mb-1 transition-colors">فاتورة مشتريات جديدة</h3>
-                      <p className="text-[13px] font-bold text-slate-500">سجل بضاعة جاتلك من المورد ودخلها المخزن على طول</p>
-                    </div>
-                 </Link>
-
-                 <Link to="/purchases/returns" onClick={() => setPurchaseModalOpen(false)} className="bg-white border border-slate-200 rounded-[24px] p-6 flex flex-col items-start gap-4 hover:border-rose-400 hover:shadow-[0_10px_30px_rgba(244,63,94,0.15)] group transition-all">
-                    <div className="w-14 h-14 rounded-[20px] bg-rose-50 group-hover:bg-rose-500 text-rose-600 group-hover:text-white border border-rose-100 flex items-center justify-center transition-colors">
-                      <ArrowRightLeft className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-[18px] font-black text-slate-800 group-hover:text-rose-700 mb-1 transition-colors">مرتجع مشتريات</h3>
-                      <p className="text-[13px] font-bold text-slate-500">هترجع بضاعة للمورد؟ سجلها هنا عشان تتخصم من الرصيد</p>
-                    </div>
-                 </Link>
-
-                 <Link to="/purchases/orders" onClick={() => setPurchaseModalOpen(false)} className="bg-slate-50/50 border border-slate-200 rounded-[24px] p-5 flex flex-col items-start gap-3 hover:bg-white hover:border-blue-300 hover:shadow-sm group transition-all">
-                    <div className="w-12 h-12 rounded-[16px] bg-white group-hover:bg-blue-50 text-blue-500 border border-slate-200 flex items-center justify-center shadow-sm transition-colors">
-                      <FileSpreadsheet className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-[16px] font-black text-slate-800 group-hover:text-blue-700 mb-1 transition-colors">أوامر الشراء (طلبيات)</h3>
-                      <p className="text-[12px] font-bold text-slate-500 truncate">تجهيز طلبيات هتبعتها للمورد</p>
-                    </div>
-                 </Link>
-
-                 <Link to="/definitions/suppliers" onClick={() => setPurchaseModalOpen(false)} className="bg-slate-50/50 border border-slate-200 rounded-[24px] p-5 flex flex-col items-start gap-3 hover:bg-white hover:border-amber-300 hover:shadow-sm group transition-all">
-                    <div className="w-12 h-12 rounded-[16px] bg-white group-hover:bg-amber-50 text-amber-500 border border-slate-200 flex items-center justify-center shadow-sm transition-colors">
-                      <Building className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-[16px] font-black text-slate-800 group-hover:text-amber-700 mb-1 transition-colors">قاعدة الموردين</h3>
-                      <p className="text-[12px] font-bold text-slate-500 truncate">راجِع أرصدتهم والمديونيات</p>
-                    </div>
-                 </Link>
-              </div>
-           </div>
+        {/* Quick-action legend */}
+        <div className="flex items-center gap-2 mb-5">
+          <Zap className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="text-[11px] font-bold text-zinc-400">مرّر على الكارت لتظهر أزرار الإجراء السريع</span>
         </div>
-      )}
+
+        {/* Module tabs */}
+        <div className="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-zinc-200/60 shadow-lg shadow-zinc-200/20 overflow-x-auto hide-scrollbar mb-8">
+          {visibleModules.map((module) => (
+            <button
+              key={module.id}
+              onClick={() => setActiveTabId(module.id)}
+              className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group"
+            >
+              {activeTabId === module.id && (
+                <motion.div layoutId="active-tab" className="absolute inset-0 bg-zinc-950 rounded-3xl" transition={{ type: "spring", stiffness: 300, damping: 25 }} />
+              )}
+              <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-emerald-400" : "text-zinc-400 group-hover:text-zinc-900"}`} strokeWidth={2} />
+              <span className={`text-sm font-black tracking-wide relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-900"}`}>
+                {module.title}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Cards grid */}
+        <AnimatePresence mode="wait">
+          {activeModule && (
+            <motion.div
+              key={activeModule.id}
+              variants={STAGGER}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+            >
+              {activeModule.items.map((item) => (
+                <MagneticCard
+                  key={item.path}
+                  item={item}
+                  active={isActive(item.path)}
+                  updateAvailable={updateAvailable}
+                  onQuickAction={setQuickModal}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Quick-entry modal */}
+      <AnimatePresence>
+        {quickModal && (
+          <QuickEntryModal type={quickModal} onClose={closeModal} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

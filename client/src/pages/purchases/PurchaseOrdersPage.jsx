@@ -15,13 +15,14 @@ import SearchInput from "../../components/ui/SearchInput";
 import { adaptForServer } from "../../utils/search";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_MAP = {
-  pending:            { label: "قيد الانتظار",   cls: "bg-amber-50 text-amber-700 border-amber-100" },
-  approved:           { label: "معتمد",           cls: "bg-blue-50 text-blue-700 border-blue-100" },
-  partially_received: { label: "مستلم جزئياً",   cls: "bg-indigo-50 text-indigo-700 border-indigo-100" },
-  received:           { label: "تم الاستلام",    cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  cancelled:          { label: "ملغى",            cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  pending:            { label: "قيد الانتظار",   cls: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  approved:           { label: "معتمد",           cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  partially_received: { label: "مستلم جزئياً",   cls: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
+  received:           { label: "تم الاستلام",    cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+  cancelled:          { label: "ملغى",            cls: "bg-zinc-100 text-zinc-500 border-zinc-200" },
 };
 const STATUS_TABS = [
   { value: "", label: "الكل" },
@@ -34,8 +35,17 @@ const STATUS_TABS = [
 
 function StatusBadge({ status }) {
   const s = STATUS_MAP[status] || STATUS_MAP.pending;
-  return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${s.cls}`}>{s.label}</span>;
+  return <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${s.cls}`}>{s.label}</span>;
 }
+
+const STAGGER_CONTAINER = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+const ROW_ANIMATION = {
+  hidden: { opacity: 0, y: 10, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 20 } }
+};
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -212,120 +222,132 @@ export default function PurchaseOrdersPage() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-100 px-5 py-2 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3 overflow-x-auto">
           {STATUS_TABS.map(tab => (
             <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] font-black transition-all ${
+              className={`whitespace-nowrap rounded-xl px-4 py-1.5 text-xs font-black transition-all ${
                 statusFilter === tab.value
-                  ? "bg-slate-800 text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-100"
+                  ? "bg-zinc-950 text-white shadow-md shadow-zinc-900/20 scale-105"
+                  : "bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200/50"
               }`}>
               {tab.label}
             </button>
           ))}
         </div>
 
-        <DataGrid
-          data={rows}
-          rowKey="id"
-          emptyMessage={debouncedSearch ? "لا توجد أوامر مطابقة للبحث" : "لا توجد أوامر شراء"}
-          emptyIcon={<Package className="h-10 w-10 opacity-30 mb-2" />}
-          className="border-0"
-          columns={[
-            {
-              id: "id", header: "رقم الطلب", width: 120, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[13px] font-black text-slate-800 border-l border-slate-100",
-              render: (r) => `PO-${String(r.id).padStart(5, "0")}`
-            },
-            {
-              id: "supplier", header: "المورد", width: 200, sortable: true, cellClass: "font-bold text-slate-700 px-2 border-l border-slate-100", headerClass: "text-right px-2",
-              render: (r) => (
-                <div className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-500 shrink-0"><User className="h-3 w-3" /></div>
-                  <span className="truncate">{r.supplier_name || `مورد #${r.supplier_id}`}</span>
-                </div>
-              )
-            },
-            {
-              id: "date", header: "التاريخ", width: 120, sortable: true, headerClass: "text-center", cellClass: "text-center text-slate-500 text-[12px] font-medium border-l border-slate-100",
-              render: (r) => new Date(r.created_at).toLocaleDateString("ar-EG")
-            },
-            {
-              id: "delivery", header: "التسليم", width: 120, sortable: false, headerClass: "text-center", cellClass: "border-l border-slate-100 px-3",
-              render: (row) => {
-                if (row.status === "partially_received" || row.status === "received") {
-                  return (
-                    <div className="space-y-1 w-full mt-1">
-                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden text-center">
-                        <div
-                          className={`h-full rounded-full transition-all ${row.status === "received" ? "bg-emerald-500" : "bg-indigo-400"}`}
-                          style={{ width: row.status === "received" ? "100%" : "60%" }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400 block text-center">
-                        {row.status === "received" ? "مكتمل" : "جزئي"}
-                      </span>
-                    </div>
-                  );
-                }
-                return <span className="text-[11px] text-slate-300 font-bold block text-center">—</span>;
-              }
-            },
-            {
-              id: "status", header: "الحالة", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center border-l border-slate-100",
-              render: (r) => <div className="flex justify-center"><StatusBadge status={r.status} /></div>
-            },
-            {
-              id: "actions", header: "إجراءات", width: 150, sortable: false, headerClass: "text-center", cellClass: "text-center p-0 border-l-0",
-              render: (row) => {
+        {/* Industrial List Feed */}
+        <div className="bg-zinc-50/30 p-2 min-h-[400px]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
+              <div className="w-8 h-8 border-4 border-zinc-200 border-t-zinc-950 rounded-full animate-spin mb-4" />
+              <span className="text-sm font-black animate-pulse">جاري فحص أوامر التوريد...</span>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
+              <Package className="h-12 w-12 opacity-20 mb-3" />
+              <p className="text-[13px] font-black">لا توجد أوامر مطابقة</p>
+            </div>
+          ) : (
+            <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-2">
+              {rows.map((row) => {
                 const canApprove = row.status === "pending";
                 const canReceive = row.status === "approved" || row.status === "partially_received";
                 const canCancel = row.status !== "received" && row.status !== "cancelled";
+
                 return (
-                  <div className="flex items-center justify-center gap-1 h-[40px]">
-                    <button onClick={() => openDetailModal(row.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    {canApprove && (
-                      <PermissionGate page="purchase_orders" action="edit">
-                        <button onClick={() => setConfirmApprove(row.id)}
-                          className="flex h-7 items-center gap-1 px-2 rounded-lg text-blue-600 hover:bg-blue-50 text-[11px] font-black transition-colors">
-                          <BadgeCheck className="h-4 w-4" /> اعتماد
-                        </button>
-                      </PermissionGate>
-                    )}
-                    {canReceive && (
-                      <PermissionGate page="purchase_orders" action="edit">
-                        <button onClick={() => openReceiveModal(row.id)}
-                          className="flex h-7 items-center gap-1 px-2 rounded-lg bg-slate-800 text-white text-[11px] font-black hover:bg-slate-700 transition-colors">
-                          <PackageCheck className="h-3.5 w-3.5" /> استلام
-                        </button>
-                      </PermissionGate>
-                    )}
-                    <div className="relative" ref={openMenu === row.id ? menuRef : null}>
-                      <button onClick={() => setOpenMenu(openMenu === row.id ? null : row.id)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                      {openMenu === row.id && (
-                        <div className="absolute left-0 top-full mt-1 z-20 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
-                          {canCancel && (
-                            <PermissionGate page="purchase_orders" action="edit">
-                              <button onClick={() => { setConfirmCancel(row.id); setOpenMenu(null); }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
-                                <XCircle className="h-3.5 w-3.5" /> إلغاء الأمر
-                              </button>
-                            </PermissionGate>
-                          )}
+                  <motion.div key={row.id} variants={ROW_ANIMATION} className="group flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-zinc-200/60 rounded-[1.25rem] p-4 shadow-sm hover:border-zinc-300 hover:shadow-md transition-all">
+                    
+                    {/* ID & Supplier */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white shadow-inner">
+                        <Package className="h-5 w-5" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-black text-zinc-950">PO-{String(row.id).padStart(5, "0")}</span>
+                          <StatusBadge status={row.status} />
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <User className="h-3 w-3 text-zinc-400" />
+                          <span className="text-xs font-bold text-zinc-500">{row.supplier_name || `مورد #${row.supplier_id}`}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Meta & Progress */}
+                    <div className="flex items-center gap-8 md:flex-1 md:justify-center">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-zinc-400">تاريخ الأمر</span>
+                        <span className="text-xs font-bold text-zinc-700">{new Date(row.created_at).toLocaleDateString("ar-EG")}</span>
+                      </div>
+
+                      {(row.status === "partially_received" || row.status === "received") ? (
+                        <div className="w-32 flex flex-col gap-1.5">
+                          <div className="flex justify-between items-center text-[10px] font-black">
+                            <span className="text-zinc-500">حالة التوريد</span>
+                            <span className={row.status === "received" ? "text-emerald-500" : "text-indigo-500"}>{row.status === "received" ? "مكتمل" : "جزئي"}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-1000 ${row.status === "received" ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: row.status === "received" ? "100%" : "60%" }} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-32 flex flex-col gap-1.5 opacity-30">
+                          <div className="flex justify-between items-center text-[10px] font-black">
+                            <span className="text-zinc-500">حالة التوريد</span>
+                            <span className="text-zinc-500">في الانتظار</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-zinc-200" />
                         </div>
                       )}
                     </div>
-                  </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 md:justify-end">
+                      <button onClick={() => openDetailModal(row.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-50 text-zinc-400 hover:bg-zinc-950 hover:text-white transition-all">
+                        <Eye className="h-4 w-4" />
+                      </button>
+
+                      {canApprove && (
+                        <PermissionGate page="purchase_orders" action="edit">
+                          <button onClick={() => setConfirmApprove(row.id)} className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-blue-50 text-blue-600 text-xs font-black hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                            <BadgeCheck className="h-4 w-4" /> اعتماد
+                          </button>
+                        </PermissionGate>
+                      )}
+
+                      {canReceive && (
+                        <PermissionGate page="purchase_orders" action="edit">
+                          <button onClick={() => openReceiveModal(row.id)} className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-black hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                            <PackageCheck className="h-4 w-4" /> استلام
+                          </button>
+                        </PermissionGate>
+                      )}
+
+                      {canCancel && (
+                        <PermissionGate page="purchase_orders" action="edit">
+                          <div className="relative" ref={openMenu === row.id ? menuRef : null}>
+                            <button onClick={() => setOpenMenu(openMenu === row.id ? null : row.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-50 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-all">
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                            {openMenu === row.id && (
+                              <div className="absolute left-0 top-full mt-2 z-20 w-40 rounded-xl border border-rose-100 bg-white p-1 shadow-xl">
+                                <button onClick={() => { setConfirmCancel(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                  <XCircle className="h-3.5 w-3.5" /> إلغاء الأمر
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </PermissionGate>
+                      )}
+                    </div>
+
+                  </motion.div>
                 );
-              }
-            }
-          ]}
-        />
+              })}
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Detail Modal */}

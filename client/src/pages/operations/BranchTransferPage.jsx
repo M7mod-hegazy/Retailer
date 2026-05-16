@@ -13,6 +13,16 @@ import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
 import { useNavigate } from "react-router-dom";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
+import { motion, AnimatePresence } from "framer-motion";
+
+const STAGGER_CONTAINER = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+const ROW_ANIMATION = {
+  hidden: { opacity: 0, x: 20 },
+  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 200, damping: 20 } }
+};
 
 function formatDate(d) {
   return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium" }).format(new Date(d));
@@ -155,77 +165,96 @@ export default function BranchTransferPage() {
             </button>
           )}
           <div className="mr-auto">
-            <span className="text-[11px] font-bold text-slate-400">{rows.length} نتيجة</span>
+            <span className="text-[11px] font-bold text-zinc-400">{rows.length} حركة مسجلة</span>
           </div>
         </div>
 
-        <DataGrid
-          data={rows}
-          rowKey="id"
-          loading={loading}
-          emptyMessage={hasFilters ? "لا توجد حركات مطابقة" : "لا توجد حركات بضاعة مسجّلة"}
-          emptyIcon={<RotateCcw className="h-10 w-10 opacity-30 mb-2" />}
-          className="border-0"
-          columns={[
-            {
-              id: "ref", header: "رقم الوصل", width: 130, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[13px] font-black text-slate-800 border-l border-slate-100",
-              render: (r) => r.reference_no,
-            },
-            {
-              id: "type", header: "النوع", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center border-l border-slate-100",
-              render: (r) => r.type === "receive" ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-100">
-                  <ArrowDownToLine className="h-3 w-3" /> استلام
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 border border-blue-100">
-                  <ArrowUpFromLine className="h-3 w-3" /> تسليم
-                </span>
-              ),
-            },
-            {
-              id: "warehouse", header: "المخزن", width: 160, sortable: true, headerClass: "text-right px-3", cellClass: "font-bold text-slate-700 px-3 border-l border-slate-100",
-              render: (r) => (
-                <div className="flex items-center gap-2">
-                  <Warehouse className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate">{r.warehouse_name}</span>
-                </div>
-              ),
-            },
-            {
-              id: "lines", header: "الأصناف", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center border-l border-slate-100",
-              render: (r) => (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                  {r.line_count} صنف
-                </span>
-              ),
-            },
-            {
-              id: "qty", header: "الكمية الإجمالية", width: 120, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-[14px] text-slate-700 border-l border-slate-100",
-              sortValue: (r) => r.total_qty,
-              render: (r) => formatQty(r.total_qty),
-            },
-            {
-              id: "date", header: "التاريخ", width: 120, sortable: true, headerClass: "text-center", cellClass: "text-center text-[12px] font-medium text-slate-500 border-l border-slate-100",
-              render: (r) => formatDate(r.created_at),
-            },
-            {
-              id: "notes", header: "ملاحظات", sortable: false, headerClass: "text-right px-3", cellClass: "px-3 text-[12px] text-slate-400 border-l border-slate-100",
-              render: (r) => r.notes || <span className="text-slate-200">—</span>,
-            },
-            {
-              id: "actions", header: "", width: 60, sortable: false, cellClass: "text-center p-0 border-l-0",
-              render: (row) => (
-                <div className="flex h-[40px] items-center justify-center">
-                  <button onClick={() => handleShowDetail(row.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                </div>
-              ),
-            },
-          ]}
-        />
+        {/* Logistics Flow Feed */}
+        <div className="bg-[#fcfcfc] p-2 min-h-[400px]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
+              <div className="w-8 h-8 border-4 border-zinc-200 border-t-zinc-950 rounded-full animate-spin mb-4" />
+              <span className="text-sm font-black animate-pulse">جاري تحميل حركات النقل...</span>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
+              <RotateCcw className="h-12 w-12 opacity-20 mb-3" />
+              <p className="text-[13px] font-black">لا توجد حركات نقل مسجلة</p>
+            </div>
+          ) : (
+            <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-2">
+              {rows.map(row => {
+                const isReceive = row.type === "receive";
+                
+                return (
+                  <motion.div key={row.id} variants={ROW_ANIMATION} className="group flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-zinc-200/60 rounded-[1.25rem] p-4 shadow-sm hover:border-zinc-300 hover:shadow-md transition-all">
+                    
+                    {/* Flow Meta */}
+                    <div className="flex items-center gap-4">
+                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${
+                        isReceive 
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                          : "bg-blue-50 text-blue-600 border-blue-100"
+                      }`}>
+                        {isReceive ? <ArrowDownToLine className="h-5 w-5" strokeWidth={2} /> : <ArrowUpFromLine className="h-5 w-5" strokeWidth={2} />}
+                      </div>
+                      
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-black text-zinc-950">{row.reference_no}</span>
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
+                            isReceive 
+                              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                              : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                          }`}>
+                            {isReceive ? "استلام" : "تسليم"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Warehouse className="h-3 w-3 text-zinc-400" />
+                          <span className="text-xs font-bold text-zinc-600">{row.warehouse_name}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline & Quantities */}
+                    <div className="flex flex-wrap items-center gap-8 md:flex-1 md:justify-center">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-zinc-400">التاريخ</span>
+                        <span className="text-xs font-bold text-zinc-700 mt-0.5">{formatDate(row.created_at)}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-6 border-r border-l border-zinc-100 px-6">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] font-black uppercase text-zinc-400">الأصناف</span>
+                          <span className="text-sm font-black text-zinc-700">{row.line_count}</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] font-black uppercase text-zinc-400">إجمالي الكمية</span>
+                          <span className="text-lg font-black font-mono text-zinc-950">{formatQty(row.total_qty)}</span>
+                        </div>
+                      </div>
+
+                      {row.notes && (
+                        <div className="flex flex-col max-w-[200px] hidden lg:flex">
+                          <span className="text-[10px] font-black uppercase text-zinc-400">ملاحظات</span>
+                          <span className="text-[11px] font-bold text-zinc-500 truncate mt-0.5">{row.notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 md:justify-end shrink-0">
+                      <button onClick={() => handleShowDetail(row.id)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200/60 text-zinc-500 hover:bg-zinc-950 hover:text-white transition-all shadow-sm">
+                        <Eye className="h-4.5 w-4.5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Detail Modal */}

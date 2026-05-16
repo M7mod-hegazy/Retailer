@@ -4,7 +4,6 @@ const { ipcMain, app, dialog, BrowserWindow, nativeImage } = require("electron")
 const { execFileSync, execSync } = require("child_process");
 const { closeDb, getDbPath, initDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
-const { activateLicense, isLicenseValid } = require("./licenseManager");
 
 function safeDbPath() {
   return process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
@@ -84,16 +83,6 @@ function setupIpc(window) {
     else window.maximize();
   });
   ipcMain.on("window:close", () => window.close());
-
-  ipcMain.handle("license:status", () => isLicenseValid());
-  ipcMain.handle("license:activate", async (_event, payload = {}) => {
-    const serverUrl = String(payload.server_url || "").trim();
-    const licenseKey = String(payload.license_key || "").trim();
-    if (!serverUrl || !licenseKey) {
-      return { success: false, error: "missing_params" };
-    }
-    return activateLicense(licenseKey, serverUrl);
-  });
 
   ipcMain.handle("backup:create", async () => {
     const filePath = performBackup();
