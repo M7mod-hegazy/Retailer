@@ -45,6 +45,7 @@ const dailySessionsRoutes = require("./routes/dailySessions.routes");
 const ajalDebtsRoutes = require("./routes/ajalDebts.routes");
 const auditRoutes = require("./routes/audit.routes");
 const installmentsRoutes = require("./routes/installments.routes");
+const posDraftsRoutes = require("./routes/posDrafts");
 const { errorHandler } = require("./middleware/errorHandler");
 
 function createApp() {
@@ -113,6 +114,7 @@ function createApp() {
   app.use("/api/installments", installmentsRoutes);
   app.use("/api/audit-logs", auditRoutes);
   app.use("/api/documents", documentsRoutes);
+  app.use("/api/pos-drafts", posDraftsRoutes);
 
   app.use(errorHandler);
   return app;
