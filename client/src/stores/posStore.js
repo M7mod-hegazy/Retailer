@@ -24,6 +24,7 @@ export const usePosStore = create(
       search: "",
       activeCategory: "all",
       heldInvoices: [],
+      _activeDraftDbId: null,
       evaluateCart: async () => {
         const { lines } = get();
         if (!lines.length) {
@@ -104,6 +105,71 @@ export const usePosStore = create(
       setPaymentType: (paymentType) => set({ paymentType }),
       setSearch: (search) => set({ search }),
       setActiveCategory: (activeCategory) => set({ activeCategory }),
+      loadDraftsFromDB: async () => {
+        try {
+          const res = await api.get("/api/pos-drafts");
+          const all = res.data?.data || [];
+          const active = all.find((d) => d.type === "active");
+          const held = all.filter((d) => d.type === "held");
+          const heldSlots = held.map((d) => ({
+            id: d.id,
+            dbId: d.id,
+            heldAt: d.held_at,
+            heldTotal: d.lines.reduce((s, l) => s + l.quantity * l.unit_price - Number(l.line_discount || 0), 0) - Number(d.discount || 0) + Number(d.increase || 0),
+            linesCount: d.lines.length,
+            lines: d.lines,
+            customer: d.customer,
+            discount: d.discount,
+            increase: d.increase,
+            promotionDiscount: 0,
+            appliedPromotions: [],
+            paymentType: d.payment_type,
+          }));
+          if (active) {
+            set({
+              lines: active.lines,
+              customer: active.customer,
+              discount: active.discount,
+              increase: active.increase,
+              paymentType: active.payment_type,
+              heldInvoices: heldSlots,
+              _activeDraftDbId: active.id,
+            });
+          } else {
+            set({ heldInvoices: heldSlots });
+          }
+        } catch (_) {
+          // silently fail — in-memory/localStorage state remains
+        }
+      },
+      syncActiveCartToDB: async () => {
+        const state = get();
+        if (!state.lines.length) {
+          if (state._activeDraftDbId) {
+            await api.delete(`/api/pos-drafts/${state._activeDraftDbId}`).catch(() => {});
+            set({ _activeDraftDbId: null });
+          }
+          return;
+        }
+        try {
+          const res = await api.post("/api/pos-drafts", {
+            type: "active",
+            lines: state.lines,
+            customer: state.customer,
+            discount: state.discount,
+            increase: state.increase,
+            payment_type: state.paymentType,
+          });
+          set({ _activeDraftDbId: res.data?.data?.id || null });
+        } catch (_) {}
+      },
+      clearActiveDraftFromDB: async () => {
+        const { _activeDraftDbId } = get();
+        if (_activeDraftDbId) {
+          await api.delete(`/api/pos-drafts/${_activeDraftDbId}`).catch(() => {});
+          set({ _activeDraftDbId: null });
+        }
+      },
       holdCurrentInvoice: () => {
         const state = get();
         if (!state.lines.length) return;
@@ -136,12 +202,39 @@ export const usePosStore = create(
           appliedPromotions: [],
           paymentType: "cash",
         });
+        // Save held invoice to DB and clear active draft
+        api.post("/api/pos-drafts", {
+          type: "held",
+          lines: slot.lines,
+          customer: slot.customer,
+          discount: slot.discount,
+          increase: slot.increase,
+          payment_type: slot.paymentType,
+        }).then((res) => {
+          const dbId = res.data?.data?.id;
+          if (dbId) {
+            set((s) => ({
+              heldInvoices: s.heldInvoices.map((h) => h.id === slot.id ? { ...h, dbId } : h),
+            }));
+          }
+        }).catch(() => {});
+        get().clearActiveDraftFromDB();
       },
-      discardHeldInvoice: (id) => set((state) => ({ heldInvoices: state.heldInvoices.filter((h) => h.id !== id) })),
+      discardHeldInvoice: (id) => {
+        const state = get();
+        const held = state.heldInvoices.find((h) => h.id === id);
+        if (held?.dbId) {
+          api.delete(`/api/pos-drafts/${held.dbId}`).catch(() => {});
+        }
+        set((s) => ({ heldInvoices: s.heldInvoices.filter((h) => h.id !== id) }));
+      },
       resumeHeldInvoice: (id) => {
         const state = get();
         const held = state.heldInvoices.find((entry) => entry.id === id);
         if (!held) return;
+        if (held.dbId) {
+          api.delete(`/api/pos-drafts/${held.dbId}`).catch(() => {});
+        }
         set({
           heldInvoices: state.heldInvoices.filter((entry) => entry.id !== id),
           lines: held.lines,
