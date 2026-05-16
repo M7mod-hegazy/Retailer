@@ -407,10 +407,13 @@ export default function POSPage() {
   const setPaymentType    = usePosStore((s) => s.setPaymentType);
   const getTotals         = usePosStore((s) => s.getTotals);
   const clear             = usePosStore((s) => s.clear);
-  const heldInvoices       = usePosStore((s) => s.heldInvoices);
-  const holdCurrentInvoice  = usePosStore((s) => s.holdCurrentInvoice);
-  const resumeHeldInvoice   = usePosStore((s) => s.resumeHeldInvoice);
-  const discardHeldInvoice  = usePosStore((s) => s.discardHeldInvoice);
+  const heldInvoices            = usePosStore((s) => s.heldInvoices);
+  const holdCurrentInvoice      = usePosStore((s) => s.holdCurrentInvoice);
+  const resumeHeldInvoice       = usePosStore((s) => s.resumeHeldInvoice);
+  const discardHeldInvoice      = usePosStore((s) => s.discardHeldInvoice);
+  const loadDraftsFromDB        = usePosStore((s) => s.loadDraftsFromDB);
+  const syncActiveCartToDB      = usePosStore((s) => s.syncActiveCartToDB);
+  const clearActiveDraftFromDB  = usePosStore((s) => s.clearActiveDraftFromDB);
 
   // Hold / تعليق
   const [heldDropdownOpen, setHeldDropdownOpen] = useState(false);
@@ -428,6 +431,10 @@ export default function POSPage() {
     toast.success("تم تعليق الفاتورة");
     setHeldDropdownOpen(false);
   };
+
+  // Stale held invoice popup (shown once per session)
+  const [staleHeldAlert, setStaleHeldAlert] = useState(false);
+  const staleAlertShownRef = useRef(false);
 
   // UI state
   const [openShiftModal, setOpenShiftModal]   = useState(false);
@@ -546,9 +553,6 @@ export default function POSPage() {
 
   const entryFieldRefs = [codeInputRef, qtyInputRef, priceInputRef, discInputRef];
 
-  // Page navigation guard (works with BrowserRouter / HashRouter)
-  const { showModal: navLockVisible, proceed: navProceed, cancel: navCancel } = useNavGuard(lines.length > 0);
-
   // ── Effects ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -559,13 +563,31 @@ export default function POSPage() {
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
 
+  // Restore active cart and held invoices from DB on mount
+  useEffect(() => { loadDraftsFromDB(); }, []);
+
+  // Debounced sync of active cart to DB (1.5s after last change)
+  const syncTimerRef = useRef(null);
   useEffect(() => {
-    if (lines.length > 0) {
-      const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
-      window.addEventListener("beforeunload", handler);
-      return () => window.removeEventListener("beforeunload", handler);
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => { syncActiveCartToDB(); }, 1500);
+    return () => clearTimeout(syncTimerRef.current);
+  }, [lines, customer, discount, increase, paymentType]);
+
+  // One-time popup if any held invoice exceeds yellow threshold
+  useEffect(() => {
+    if (staleAlertShownRef.current || !heldInvoices.length) return;
+    const yellowHours = Number(storeSettings?.held_yellow_hours || 2);
+    const now = Date.now();
+    const hasStale = heldInvoices.some((h) => {
+      const ageHours = (now - new Date(h.heldAt).getTime()) / 3_600_000;
+      return ageHours >= yellowHours;
+    });
+    if (hasStale) {
+      staleAlertShownRef.current = true;
+      setStaleHeldAlert(true);
     }
-  }, [lines.length]);
+  }, [heldInvoices, storeSettings]);
 
   useEffect(() => {
     const t = window.setInterval(() => setInvoiceTick(Date.now()), 60000);
@@ -1149,6 +1171,7 @@ export default function POSPage() {
       setSaveSuccess({ invoiceNumber: savedInvoiceNo, total: formatMoney(totals.total) });
       setAmendContext(null);
       resetActivation();
+      clearActiveDraftFromDB();
       clear(); resetPaymentFields(); resetStaging(); resetCustomer(); setPaymentType("cash"); setInvoiceSeq((s) => s + 1);
       if (printAfter) setPrintPreview(true);
     } catch (error) {
@@ -1250,7 +1273,18 @@ export default function POSPage() {
     return (
       <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden animate-fade-in" dir="rtl">
         <BarcodeListener />
-        {navLockVisible && <NavLockModal onProceed={navProceed} onCancel={navCancel} />}
+        {staleHeldAlert && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
+              <div className="text-3xl mb-2">⚠️</div>
+              <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
+              <p className="text-[13px] text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
+              <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-[13px] font-bold">
+                حسناً
+              </button>
+            </div>
+          </div>
+        )}
         {isOffline && (
           <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-[12px] font-black tracking-wide text-white shrink-0 z-50">
             <AlertTriangle className="h-3.5 w-3.5" />
@@ -1778,7 +1812,15 @@ export default function POSPage() {
                     <button
                       type="button"
                       onClick={() => setHeldDropdownOpen((v) => !v)}
-                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-800 hover:bg-amber-100 hover:border-amber-300 transition-all"
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-[13px] font-black transition-all ${(() => {
+                        const yellowHours = Number(storeSettings?.held_yellow_hours || 2);
+                        const redHours = Number(storeSettings?.held_red_hours || 8);
+                        const now = Date.now();
+                        const maxAge = Math.max(...heldInvoices.map((h) => (now - new Date(h.heldAt).getTime()) / 3_600_000));
+                        if (maxAge >= redHours) return "border-red-300 bg-red-50 text-red-800 hover:bg-red-100 animate-pulse";
+                        if (maxAge >= yellowHours) return "border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100";
+                        return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300";
+                      })()}`}
                     >
                       <div className="flex items-center gap-2">
                         <PauseCircle className="h-5 w-5" />
@@ -2563,7 +2605,18 @@ export default function POSPage() {
   return (
     <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden" dir="rtl">
       <BarcodeListener />
-      {navLockVisible && <NavLockModal onProceed={navProceed} onCancel={navCancel} />}
+      {staleHeldAlert && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
+            <div className="text-3xl mb-2">⚠️</div>
+            <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
+            <p className="text-[13px] text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
+            <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-[13px] font-bold">
+              حسناً
+            </button>
+          </div>
+        </div>
+      )}
       {isOffline && (
         <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-[12px] font-black tracking-wide text-white shrink-0 z-50">
           <AlertTriangle className="h-3.5 w-3.5" />
@@ -3192,7 +3245,15 @@ export default function POSPage() {
                     <button
                       type="button"
                       onClick={() => setHeldDropdownOpen((v) => !v)}
-                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-800 hover:bg-amber-100 hover:border-amber-300 transition-all"
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-[13px] font-black transition-all ${(() => {
+                        const yellowHours = Number(storeSettings?.held_yellow_hours || 2);
+                        const redHours = Number(storeSettings?.held_red_hours || 8);
+                        const now = Date.now();
+                        const maxAge = Math.max(...heldInvoices.map((h) => (now - new Date(h.heldAt).getTime()) / 3_600_000));
+                        if (maxAge >= redHours) return "border-red-300 bg-red-50 text-red-800 hover:bg-red-100 animate-pulse";
+                        if (maxAge >= yellowHours) return "border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100";
+                        return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300";
+                      })()}`}
                     >
                       <div className="flex items-center gap-2">
                         <PauseCircle className="h-5 w-5" />
