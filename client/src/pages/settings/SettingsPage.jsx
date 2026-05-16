@@ -501,6 +501,27 @@ export default function SettingsPage() {
                   </div>
                 </FieldGroup>
 
+                <FieldGroup title="تنبيهات الفواتير المعلقة" hint="تحديد المدة التي تتغير بعدها ألوان التنبيه للفواتير المعلقة">
+                  <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
+                    <DenseInput
+                      label="تنبيه أصفر بعد (ساعات)"
+                      type="number"
+                      min={1}
+                      max={72}
+                      value={settings.held_yellow_hours ?? 2}
+                      onChange={(e) => handleChange("held_yellow_hours", Number(e.target.value))}
+                    />
+                    <DenseInput
+                      label="تنبيه أحمر بعد (ساعات)"
+                      type="number"
+                      min={1}
+                      max={168}
+                      value={settings.held_red_hours ?? 8}
+                      onChange={(e) => handleChange("held_red_hours", Number(e.target.value))}
+                    />
+                  </div>
+                </FieldGroup>
+
                 <FieldGroup title="سجل النشاط" hint="التحكم في مدة الاحتفاظ بسجلات النشاط">
                   <div className="grid gap-x-6 gap-y-5 md:grid-cols-3 lg:grid-cols-4">
                     <DenseSelect
