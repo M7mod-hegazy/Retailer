@@ -534,14 +534,14 @@ export default function SupplierAccountsPage() {
 
               <div className="grid grid-cols-4 gap-2">
                 <PermissionGate page="supplier_accounts" action="edit">
-                <button onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                <button data-help="pay-button" onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
                   className="flex flex-col items-center gap-1.5 rounded-xl bg-orange-600 py-3 text-white hover:bg-orange-700 shadow-md shadow-orange-200 transition-all">
                   <Plus className="h-5 w-5" />
                   <span className="text-[11px] font-black">سداد دفعة</span>
                 </button>
                 </PermissionGate>
                 <PermissionGate page="supplier_accounts" action="print">
-                <button onClick={() => setShowStatement(true)}
+                <button data-help="statement-button" onClick={() => setShowStatement(true)}
                   className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
                   <FileText className="h-5 w-5 text-slate-500" />
                   <span className="text-[11px] font-black">كشف حساب</span>

@@ -849,7 +849,7 @@ export default function PhysicalCountPage() {
       </div>
 
       {/* Sticky Action Bar */}
-      <div className="fixed bottom-0 right-0 left-0 z-50 border-t border-slate-200 bg-white shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] px-6 py-3" dir="rtl">
+      <div data-help="differences-section" className="fixed bottom-0 right-0 left-0 z-50 border-t border-slate-200 bg-white shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] px-6 py-3" dir="rtl">
         <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-4 text-[13px] font-black text-slate-700">
             <div className="flex items-center gap-2">
@@ -880,6 +880,7 @@ export default function PhysicalCountPage() {
               </PermissionGate>
               <PermissionGate page="physical_count" action="edit">
               <button
+                data-help="apply-button"
                 onClick={() => setConfirmDialog(true)}
                 className="rounded bg-emerald-600 text-white px-8 py-2 text-[13px] font-black hover:bg-emerald-700 transition-colors shadow-sm uppercase tracking-widest flex items-center gap-2"
               >

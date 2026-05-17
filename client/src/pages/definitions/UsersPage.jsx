@@ -675,7 +675,7 @@ export default function UsersPage() {
 
             {/* Permissions tab */}
             {activeTab === "permissions" && showPermissionsTab && (
-              <div className="p-6 flex flex-col gap-4 bg-amber-100/20">
+              <div data-help="permissions-section" className="p-6 flex flex-col gap-4 bg-amber-100/20">
                 {/* Template selector */}
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-amber-200">
                   <label className="text-[10px] font-black uppercase tracking-widest text-amber-900/70 whitespace-nowrap">

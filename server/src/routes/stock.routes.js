@@ -287,7 +287,7 @@ router.post("/adjust", requirePagePermission("stock_transfer", "add"), (req, res
           .run(itemId, warehouseId, nextQty);
       }
     }
-    req.audit("adjust", "stock", { item_id: itemId, warehouse_id: warehouseId, from: currentQty, to: nextQty }, `🔄 تم تعديل مخزون صنف #${itemId} في مستودع #${warehouseId}: ${currentQty} ← ${nextQty}`);
+    const stockAuditId = req.audit("adjust", "stock", { item_id: itemId, warehouse_id: warehouseId, from: currentQty, to: nextQty }, `🔄 تم تعديل مخزون صنف #${itemId} في مستودع #${warehouseId}: ${currentQty} ← ${nextQty}`);
     try {
       const itemRow = db.prepare("SELECT name FROM items WHERE id = ?").get(itemId);
       const itemName = itemRow?.name || `صنف #${itemId}`;
@@ -295,7 +295,7 @@ router.post("/adjust", requirePagePermission("stock_transfer", "add"), (req, res
         title: "📦 تم تسوية مخزون",
         body: `تسوية مخزون للصنف: ${itemName} — الكمية: ${nextQty}`,
         type: "info",
-        link: `/stock`,
+        link: stockAuditId ? `/history?log_id=${stockAuditId}` : `/stock`,
       });
     } catch (_) {}
     res.json({ success: true, data: { item_id: itemId, warehouse_id: warehouseId, quantity: nextQty } });

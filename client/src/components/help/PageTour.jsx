@@ -205,6 +205,20 @@ export function PageTour() {
   const isLast      = activeTourStepIndex === steps.length - 1;
   const highlightType = currentStep?.highlight_type ?? 'spotlight';
 
+  const applyRect = useCallback((el, step) => {
+    const rect = el.getBoundingClientRect();
+    setIsCentered(false);
+    setSpotlightStyle({
+      top:    rect.top    - SPOTLIGHT_PAD,
+      left:   rect.left   - SPOTLIGHT_PAD,
+      width:  rect.width  + SPOTLIGHT_PAD * 2,
+      height: rect.height + SPOTLIGHT_PAD * 2,
+    });
+    const dir = resolvePlacement(rect, step.placement ?? 'bottom', isRTL);
+    setResolvedDir(dir);
+    setPopupStyle(buildPopupStyle(rect, dir));
+  }, [isRTL]);
+
   const recalculate = useCallback(() => {
     if (!isTourVisible || !currentStep) return;
 
@@ -219,22 +233,16 @@ export function PageTour() {
       return;
     }
 
-    setIsCentered(false);
+    // Scroll first, then measure after scroll settles
     const rect = el.getBoundingClientRect();
-
-    setSpotlightStyle({
-      top:    rect.top    - SPOTLIGHT_PAD,
-      left:   rect.left   - SPOTLIGHT_PAD,
-      width:  rect.width  + SPOTLIGHT_PAD * 2,
-      height: rect.height + SPOTLIGHT_PAD * 2,
-    });
-
-    const dir = resolvePlacement(rect, currentStep.placement ?? 'bottom', isRTL);
-    setResolvedDir(dir);
-    setPopupStyle(buildPopupStyle(rect, dir));
-
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-  }, [isTourVisible, currentStep, isRTL]);
+    const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+    if (!inView) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      setTimeout(() => applyRect(el, currentStep), 350);
+    } else {
+      applyRect(el, currentStep);
+    }
+  }, [isTourVisible, currentStep, isRTL, applyRect]);
 
   useEffect(() => {
     recalculate();

@@ -701,7 +701,7 @@ export default function PurchaseFormPage() {
           {/* Header Info Grid */}
           <section className={`grid grid-cols-3 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0 ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
             {/* Supplier */}
-            <div className="relative flex flex-col gap-1">
+            <div data-help="supplier-select" className="relative flex flex-col gap-1">
               <label className="text-[11px] font-bold text-slate-600">
                 المورد <span className="text-slate-400 font-medium">(اختياري للنقدي)</span>
               </label>
@@ -756,7 +756,7 @@ export default function PurchaseFormPage() {
 
           {/* Quick Entry Bar — hidden in locked mode */}
           {!isLocked && (
-            <section className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
+            <section data-help="items-section" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
               <div className="grid grid-cols-[3fr_110px_80px_100px_100px_100px_80px] gap-2 items-end">
                 {/* Item search */}
                 <div data-help="search-bar" className="relative flex flex-col gap-1">
@@ -999,7 +999,7 @@ export default function PurchaseFormPage() {
           </div>
 
           {/* Payment Method */}
-          <div className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
+          <div data-help="payment-section" className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
             <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
 
             <button onClick={() => handleSelectPayment("cash")}

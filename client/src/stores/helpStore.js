@@ -31,13 +31,26 @@ export const useHelpStore = create((set, get) => ({
     const { touredPages, toursDisabledGlobally } = get();
     if (toursDisabledGlobally) return;
     if (touredPages[pageKey]) return;
-    // Show picker first so user can select which topic to start with
     set({
       activeTourPageKey: pageKey,
       activeTourStepIndex: 0,
-      isTourVisible: false,
-      isPickerVisible: true,
+      isTourVisible: true,
+      isPickerVisible: false,
     });
+  },
+
+  togglePageTour: (pageKey) => {
+    const { isTourVisible, activeTourPageKey } = get();
+    if (isTourVisible && activeTourPageKey === pageKey) {
+      set({ isTourVisible: false, activeTourPageKey: null, activeTourStepIndex: 0 });
+    } else {
+      set({
+        activeTourPageKey: pageKey,
+        activeTourStepIndex: 0,
+        isTourVisible: true,
+        isPickerVisible: false,
+      });
+    }
   },
 
   startTourAtStep: (stepIndex) => {
@@ -99,8 +112,8 @@ export const useHelpStore = create((set, get) => ({
     set({
       activeTourPageKey: pageKey,
       activeTourStepIndex: 0,
-      isTourVisible: false,
-      isPickerVisible: true,
+      isTourVisible: true,
+      isPickerVisible: false,
     });
   },
 

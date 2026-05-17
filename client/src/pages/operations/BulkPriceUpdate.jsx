@@ -446,7 +446,7 @@ export default function BulkPriceUpdatePage() {
             </div>
             <div className="relative w-72 group">
               <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+              <select data-help="category-filter" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
                 className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
                 <option value="">كل الأقسام ({items.length})</option>
                 {categories.map((c) => (
@@ -480,7 +480,7 @@ export default function BulkPriceUpdatePage() {
             </div>
           </div>
 
-          <div className="space-y-1.5 flex-1 max-w-[200px]">
+          <div data-help="update-method" className="space-y-1.5 flex-1 max-w-[200px]">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">النوع</label>
             <div className="flex overflow-hidden rounded-sm border border-slate-200 shadow-sm font-bold text-[13px]">
               <button type="button" onClick={() => setAdjType("percentage")}
@@ -521,7 +521,7 @@ export default function BulkPriceUpdatePage() {
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 block">
               {selected.size > 0 ? `${selected.size} صنف محدد` : "تنفيذ"}
             </label>
-            <button onClick={handleApply}
+            <button data-help="apply-button" onClick={handleApply}
               disabled={loading || selected.size === 0 || (!hasBulkFormula && !hasInlineOverrides)}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-sm font-black text-[13px] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap">
               <CheckCircle2 className="h-4 w-4" />

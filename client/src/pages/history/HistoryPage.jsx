@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useSpring, useMotionValue } from "framer-motion";
 import {
   History,
@@ -130,19 +131,70 @@ function MagneticButton({ children, onClick, className, disabled }) {
   );
 }
 
+// Maps audit log resource names (singular) to their API fetch URLs
+const RESOURCE_FETCH_MAP = {
+  invoice:          (id) => `/api/invoices/${id}`,
+  invoices:         (id) => `/api/invoices/${id}`,
+  purchase:         (id) => `/api/purchases/${id}`,
+  purchases:        (id) => `/api/purchases/${id}`,
+  quotation:        (id) => `/api/quotations/${id}`,
+  quotations:       (id) => `/api/quotations/${id}`,
+  sales_return:     (id) => `/api/invoices/returns/${id}`,
+  purchase_returns: (id) => `/api/purchases/returns/${id}`,
+  purchase_return:  (id) => `/api/purchases/returns/${id}`,
+};
+
+const INVOICE_FIELD_LABELS = {
+  invoice_no: "رقم الفاتورة", total: "الإجمالي", subtotal: "المجموع قبل الخصم",
+  discount: "الخصم", payment_type: "طريقة الدفع", status: "الحالة",
+  customer_name: "العميل", created_at: "التاريخ", seller_name: "البائع",
+  items_count: "عدد الأصناف", debt_remaining: "المتبقي",
+};
+const PURCHASE_FIELD_LABELS = {
+  doc_no: "رقم المستند", total: "الإجمالي", supplier_name: "المورد",
+  payment_method: "طريقة الدفع", status: "الحالة", created_at: "التاريخ",
+};
+const STATUS_LABELS = { active: "نشط", cancelled: "ملغاة", voided: "ملغاة", draft: "مسودة", paid: "مدفوعة", partial: "جزئي" };
+const PAYMENT_LABELS = { cash: "نقداً", credit: "آجل", multi: "متعدد", bank_transfer: "تحويل بنكي" };
+
+function SummaryCard({ data, resource }) {
+  const isInvoice = ["invoice", "invoices", "sales_return", "sales_returns"].includes(resource);
+  const isPurchase = ["purchase", "purchases", "purchase_returns", "purchase_return"].includes(resource);
+  const labels = isInvoice ? INVOICE_FIELD_LABELS : isPurchase ? PURCHASE_FIELD_LABELS : {};
+  const SKIP = ["id", "lines", "payments", "allocations", "items", "amended_by", "amendment_of", "user_id", "customer_id", "supplier_id", "seller_id", "shift_id", "warehouse_id", "cancelled_by", "amendment_of_no", "amended_by_no", "created_by_user_id"];
+
+  const entries = Object.entries(data)
+    .filter(([k, v]) => !SKIP.includes(k) && v !== null && v !== undefined && v !== "")
+    .filter(([k]) => Object.keys(labels).includes(k) || !isInvoice && !isPurchase);
+
+  if (!entries.length) return null;
+
+  const fmt = (key, val) => {
+    if (["total", "subtotal", "discount", "debt_remaining"].includes(key)) return `${Number(val).toLocaleString("ar-EG")} ج`;
+    if (key === "status") return STATUS_LABELS[val] || val;
+    if (key === "payment_type" || key === "payment_method") return PAYMENT_LABELS[val] || val;
+    if (key === "created_at") return new Date(val).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
+    return String(val);
+  };
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {entries.map(([key, val]) => (
+        <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{labels[key] || key}</p>
+          <p className="text-[12px] font-black text-zinc-900 truncate" dir="ltr">{fmt(key, val)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DetailPanel({ log, payload }) {
-  const id = payload?.id || payload?.return_id || payload?.new_id;
+  const id = payload?.id || payload?.return_id || payload?.new_id || payload?.invoice_id;
   const resource = log.resource;
 
-  const isProductResource = ["invoices", "purchases", "quotations", "sales_return", "purchase_returns"].includes(resource);
-  const fetchEnabled = Boolean(id) && isProductResource;
-
-  let fetchUrl = null;
-  if (resource === "invoices" && id) fetchUrl = `/api/invoices/${id}`;
-  else if (resource === "purchases" && id) fetchUrl = `/api/purchases/${id}`;
-  else if (resource === "quotations" && id) fetchUrl = `/api/quotations/${id}`;
-  else if (resource === "sales_return" && id) fetchUrl = `/api/invoices/returns/${id}`;
-  else if (resource === "purchase_returns" && id) fetchUrl = `/api/purchases/returns/${id}`;
+  const fetchUrlFn = RESOURCE_FETCH_MAP[resource];
+  const fetchUrl = fetchUrlFn && id ? fetchUrlFn(id) : null;
 
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ["audit-detail", resource, id],
@@ -153,31 +205,40 @@ function DetailPanel({ log, payload }) {
   const lines = detailData?.lines || detailData?.items || [];
   const payments = detailData?.payments || detailData?.allocations || [];
 
+  const SKIP_PAYLOAD_KEYS = ["password_hash", "token", "id", "return_id", "new_id", "invoice_id", "original_id"];
+  const usefulPayloadEntries = Object.entries(payload).filter(([k, v]) => !SKIP_PAYLOAD_KEYS.includes(k) && v !== null && v !== undefined && v !== "");
+
   return (
     <div className="bg-zinc-50/80 rounded-2xl border border-zinc-100 p-4 space-y-4">
       <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/50">
         <FileText className="w-4 h-4 text-zinc-500" />
-        <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">
-          بيانات إضافية
-        </span>
+        <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">تفاصيل العملية</span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2">
-        {Object.entries(payload).filter(([k]) => !["password_hash", "token"].includes(k)).map(([key, val]) => (
-          <div key={key} className="flex items-baseline gap-1.5">
-            <span className="text-[11px] font-bold text-zinc-400 shrink-0">{key}:</span>
-            <span className="text-[11px] font-black text-zinc-800 truncate" dir="ltr">
-              {typeof val === "object" ? JSON.stringify(val) : String(val ?? "—")}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {fetchEnabled && detailLoading && (
+      {detailLoading && (
         <div className="flex items-center gap-2 text-zinc-400 py-2">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-[11px] font-bold">جاري تحميل التفاصيل...</span>
         </div>
+      )}
+
+      {detailData && !detailLoading && <SummaryCard data={detailData} resource={resource} />}
+
+      {!detailData && !detailLoading && usefulPayloadEntries.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {usefulPayloadEntries.map(([key, val]) => (
+            <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{key}</p>
+              <p className="text-[12px] font-black text-zinc-900 truncate" dir="ltr">
+                {typeof val === "object" ? JSON.stringify(val) : String(val)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!detailData && !detailLoading && usefulPayloadEntries.length === 0 && (
+        <p className="text-[11px] text-zinc-400 text-center py-2">لا توجد بيانات إضافية</p>
       )}
 
       {lines.length > 0 && (
@@ -271,8 +332,22 @@ function DetailPanel({ log, payload }) {
   );
 }
 
-function LogRow({ log, index }) {
+function LogRow({ log, index, highlighted, autoExpand }) {
   const [expanded, setExpanded] = useState(false);
+  const rowRef = useRef(null);
+
+  useEffect(() => {
+    if (autoExpand) setExpanded(true);
+  }, [autoExpand]);
+
+  useEffect(() => {
+    if (!highlighted) return;
+    // Delay scroll to wait for framer-motion entry animation to settle
+    const t = setTimeout(() => {
+      rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [highlighted]);
 
   const resourceLabel = RESOURCE_LABELS[log.resource] || log.resource;
   const actionLabel = ACTION_LABELS[log.action] || log.action;
@@ -296,9 +371,10 @@ function LogRow({ log, index }) {
 
   return (
     <motion.div
+      ref={rowRef}
       variants={FADE_UP}
       custom={index}
-      className="group relative border-b border-zinc-100/60 bg-white hover:bg-zinc-50/80 transition-all duration-500"
+      className={`group relative border-b border-zinc-100/60 transition-all duration-500 ${highlighted ? "bg-amber-50/70 ring-2 ring-inset ring-amber-300/50" : "bg-white hover:bg-zinc-50/80"}`}
     >
       <div className="flex items-center gap-4 px-6 py-5">
         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-zinc-950 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-500 ease-out z-10" />
@@ -322,18 +398,31 @@ function LogRow({ log, index }) {
                 {actionLabel}
               </span>
             )}
-            {hasDetails && payloadEntries.length > 0 && (
-              <span className="text-[10px] font-bold text-zinc-400">·</span>
+            {log.full_name && log.full_name !== log.username && (
+              <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
+                👤 {log.full_name}
+              </span>
             )}
-            {hasDetails && payloadEntries.slice(0, 2).map(([key, val]) => (
-              <span key={key} className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
-                {key}: {typeof val === "object" ? JSON.stringify(val) : String(val ?? "—")}
-              </span>
-            ))}
-            {hasDetails && payloadEntries.length > 2 && (
-              <span className="text-[10px] font-bold text-zinc-400">
-                +{payloadEntries.length - 2}
-              </span>
+            {hasDetails && payloadEntries.length > 0 && (
+              <span className="text-[10px] font-bold text-zinc-300">·</span>
+            )}
+            {hasDetails && payloadEntries.slice(0, 3).map(([key, val]) => {
+              const isMonetary = ["total", "amount", "subtotal", "price", "cost"].some(k => key.toLowerCase().includes(k));
+              const displayVal = isMonetary ? Number(val).toLocaleString("ar-EG") : (typeof val === "object" ? JSON.stringify(val) : String(val ?? "—"));
+              return (
+                <span key={key} className="text-[10px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <span className="text-zinc-400">{key}:</span>
+                  <span dir="ltr">{displayVal}</span>
+                </span>
+              );
+            })}
+            {hasDetails && payloadEntries.length > 3 && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                className="text-[10px] font-bold text-zinc-400 hover:text-zinc-700 transition-colors"
+              >
+                +{payloadEntries.length - 3} المزيد
+              </button>
             )}
           </div>
         </div>
@@ -347,13 +436,16 @@ function LogRow({ log, index }) {
               {initial}
             </div>
           </div>
-          <time dir="ltr" className="text-[10px] font-mono font-bold text-zinc-400">
+          <time dir="ltr" className="text-[10px] font-mono font-bold text-zinc-400" title={log.created_at}>
             {log.created_at
               ? new Intl.DateTimeFormat("ar-EG", {
-                  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                  year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
                 }).format(new Date(log.created_at))
               : "—"}
           </time>
+          {log.ip_address && (
+            <span dir="ltr" className="text-[9px] font-mono text-zinc-300">{log.ip_address}</span>
+          )}
         </div>
 
         <div className="relative z-10 flex items-center gap-1">
@@ -395,6 +487,13 @@ export default function HistoryPage() {
     user?.role === "admin" ||
     (Array.isArray(permissions?.history) && permissions.history.includes("view"));
 
+  const [searchParams] = useSearchParams();
+  const rawLogId = searchParams.get("log_id") ? Number(searchParams.get("log_id")) : null;
+  const notifId = searchParams.get("notif_id") ? Number(searchParams.get("notif_id")) : null;
+
+  // highlightLogId starts as whatever is in the URL, then gets resolved from notif_id lookup
+  const [highlightLogId, setHighlightLogId] = React.useState(rawLogId);
+
   const [searchInput, setSearchInput] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -408,6 +507,23 @@ export default function HistoryPage() {
 
   useEffect(() => { setPage(1); }, [search, from, to, userId, userAction, resource]);
 
+  // Find which page the target audit log is on (works for both log_id and notif_id)
+  const findPageEnabled = (Boolean(rawLogId) || Boolean(notifId)) && canView;
+  const { data: findPageData } = useQuery({
+    queryKey: ["audit-find-page", rawLogId, notifId],
+    queryFn: () => api.get("/api/audit-logs/find-page", {
+      params: { log_id: rawLogId || undefined, notif_id: notifId || undefined, per_page: 20 }
+    }).then(r => r.data),
+    enabled: findPageEnabled,
+  });
+
+  useEffect(() => {
+    if (findPageData?.success) {
+      if (findPageData.resolved_log_id) setHighlightLogId(findPageData.resolved_log_id);
+      if (findPageData.page) setPage(findPageData.page);
+    }
+  }, [findPageData]);
+
   const { data: usersData } = useQuery({
     queryKey: ["users-list"],
     queryFn: () => api.get("/api/users").then((r) => r.data),
@@ -415,20 +531,22 @@ export default function HistoryPage() {
   });
   const users = usersData?.data || usersData || [];
 
+  const PER_PAGE = 20;
+
   const { data, isLoading } = useQuery({
     queryKey: ["audit-logs", search, from, to, userId, userAction, resource, page],
     queryFn: () =>
-      api.get("/api/audit-logs", { 
-        params: { 
-          search: search || undefined, 
+      api.get("/api/audit-logs", {
+        params: {
+          search: search || undefined,
           from: from || undefined,
           to: to || undefined,
           user_id: userId || undefined,
           action: userAction || undefined,
           resource: resource || undefined,
-          page, 
-          per_page: 20 
-        } 
+          page,
+          per_page: PER_PAGE,
+        }
       }).then((r) => r.data),
     enabled: canView,
     keepPreviousData: true,
@@ -490,6 +608,7 @@ export default function HistoryPage() {
               />
             </div>
             <MagneticButton
+              data-help="filter-btn"
               onClick={() => setFiltersOpen(!filtersOpen)}
               className={`flex items-center justify-center h-[54px] w-[54px] rounded-[1.25rem] transition-all duration-300 shadow-sm border ${
                 filtersOpen ? "bg-zinc-950 text-white border-zinc-950" : "bg-white border-white text-zinc-600 hover:bg-zinc-50"
@@ -624,13 +743,19 @@ export default function HistoryPage() {
             <div data-help="main-table" className="flex flex-col relative">
               <div className="absolute right-[22px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-zinc-100 to-transparent z-0 hidden md:block" />
               {logs.map((log, index) => (
-                <LogRow key={log.id} log={log} index={index} />
+                <LogRow
+                  key={log.id}
+                  log={log}
+                  index={index}
+                  highlighted={log.id === highlightLogId}
+                  autoExpand={log.id === highlightLogId}
+                />
               ))}
             </div>
           )}
 
           {!isLoading && totalPages > 1 && (
-            <div className="flex items-center justify-between px-10 py-6 border-t border-zinc-100/60 bg-zinc-50/50 backdrop-blur-sm">
+            <div data-help="pagination" className="flex items-center justify-between px-10 py-6 border-t border-zinc-100/60 bg-zinc-50/50 backdrop-blur-sm">
               <MagneticButton
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}

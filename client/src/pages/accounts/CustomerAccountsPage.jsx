@@ -570,14 +570,14 @@ export default function CustomerAccountsPage() {
               {/* Action Buttons */}
               <div className="grid grid-cols-4 gap-2">
                 <PermissionGate page="customer_accounts" action="edit">
-                <button onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                <button data-help="collect-button" onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
                   className="flex flex-col items-center gap-1.5 rounded-xl bg-blue-600 py-3 text-white hover:bg-blue-700 shadow-md shadow-blue-200 transition-all">
                   <Plus className="h-5 w-5" />
                   <span className="text-[11px] font-black">تحصيل دفعة</span>
                 </button>
                 </PermissionGate>
                 <PermissionGate page="customer_accounts" action="print">
-                <button onClick={() => setShowStatement(true)}
+                <button data-help="statement-button" onClick={() => setShowStatement(true)}
                   className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
                   <FileText className="h-5 w-5 text-slate-500" />
                   <span className="text-[11px] font-black">كشف حساب</span>

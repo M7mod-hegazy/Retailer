@@ -287,7 +287,8 @@ export default function SettingsPage() {
             </button>
           )}
           <PermissionGate page="settings" action="edit_general">
-            <button 
+            <button
+              data-help="save-button"
               onClick={handleSubmit}
               disabled={saving || !dirty}
               className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
@@ -307,7 +308,7 @@ export default function SettingsPage() {
       <div className="flex flex-col rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden flex-1">
          
          {/* Tabs Strip */}
-         <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 pt-2 px-4 scrollbar-hide">
+         <div data-help="settings-tabs" className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 pt-2 px-4 scrollbar-hide">
             {tabs.map((tab) => (
               <Tab
                 key={tab.id}
@@ -329,6 +330,7 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "general" && (
+              <div data-help="company-section">
               <FieldGroup title="البيانات العامة" hint="المعلومات الأساسية التي تظهر في الفواتير والتقارير">
                 <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   <DenseInput label="اسم الشركة (عربي)" value={settings.company_name || ""} onChange={(e) => handleChange("company_name", e.target.value)} required />
@@ -432,10 +434,13 @@ export default function SettingsPage() {
                   <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
                 </div>
               </FieldGroup>
+              </div>
             )}
 
             {activeTab === "printing" && (
-              <PrintingSettingsPanel settings={settings} onChange={handleChange} />
+              <div data-help="print-section">
+                <PrintingSettingsPanel settings={settings} onChange={handleChange} />
+              </div>
             )}
 
             {activeTab === "system" && (

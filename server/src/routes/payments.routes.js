@@ -181,7 +181,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       return db.prepare("SELECT * FROM payments WHERE id = ?").get(paymentResult.lastInsertRowid);
     })();
 
-    req.audit("create", "payment", { id: payment?.id, amount: payment?.amount, party_type: payment?.party_type, party_id: payment?.party_id }, `💰 تم تسجيل دفعة بمبلغ ${payment?.amount} (${payment?.party_type === "supplier" ? "مورد" : "عميل"} #${payment?.party_id})`);
+    const paymentAuditId = req.audit("create", "payment", { id: payment?.id, amount: payment?.amount, party_type: payment?.party_type, party_id: payment?.party_id }, `💰 تم تسجيل دفعة بمبلغ ${payment?.amount} (${payment?.party_type === "supplier" ? "مورد" : "عميل"} #${payment?.party_id})`);
     try {
       const db = getDb();
       const pType = payload.party_type || "customer";
@@ -194,7 +194,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
         title: "💰 تم تسجيل دفعة",
         body: `دفعة بمبلغ ${payment?.amount || 0}${partyName ? ' — ' + partyName : ''}`,
         type: "info",
-        link: `/payments`,
+        link: paymentAuditId ? `/history?log_id=${paymentAuditId}` : `/payments`,
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: payment });

@@ -169,6 +169,7 @@ export default function UpdatesPage() {
           
           {/* Main Status Panel (Col-span-8) */}
           <motion.div
+            data-help="version-section"
             variants={FADE_UP}
             className="md:col-span-8 bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)] relative overflow-hidden group"
           >
@@ -248,6 +249,7 @@ export default function UpdatesPage() {
               <div className="flex items-center gap-4">
                 {error ? (
                   <MagneticButton
+                    data-help="check-button"
                     onClick={handleCheckNow}
                     className="px-8 py-4 bg-zinc-950 text-white rounded-2xl font-bold hover:shadow-xl transition-shadow text-sm"
                   >
@@ -270,6 +272,7 @@ export default function UpdatesPage() {
                   </MagneticButton>
                 ) : (
                   <MagneticButton
+                    data-help="check-button"
                     onClick={handleCheckNow}
                     disabled={checking}
                     className="px-8 py-4 bg-white border border-zinc-200 text-zinc-900 rounded-2xl font-bold hover:bg-zinc-50 transition-colors disabled:opacity-50 text-sm shadow-sm"
@@ -344,6 +347,7 @@ export default function UpdatesPage() {
 
           {/* Release Notes (Col-span-12) */}
           <motion.div
+            data-help="release-notes"
             variants={FADE_UP}
             className="md:col-span-12 bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-10 lg:p-14 border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)]"
           >

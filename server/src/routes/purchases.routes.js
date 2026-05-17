@@ -33,8 +33,8 @@ function getPurchaseWithLines(db, purchaseId) {
   `).get(purchaseId);
   if (!purchase) return null;
   const lines = db.prepare(`
-    SELECT pl.*, i.name AS item_name,
-           COALESCE((SELECT SUM(prl.quantity) FROM purchase_return_lines prl WHERE prl.purchase_line_id = pl.id), 0) AS returned_quantity
+    SELECT pl.*, i.name AS item_name, i.code AS item_code, i.barcode
+           ,COALESCE((SELECT SUM(prl.quantity) FROM purchase_return_lines prl WHERE prl.purchase_line_id = pl.id), 0) AS returned_quantity
     FROM purchase_lines pl
     LEFT JOIN items i ON i.id = pl.item_id
     WHERE pl.purchase_id = ?
@@ -47,10 +47,19 @@ function getPurchaseWithLines(db, purchaseId) {
     ? Math.max(0, Number(ajalDebt.original_amount) - Number(ajalDebt.paid_amount || 0))
     : 0;
 
+  const payments = db.prepare(`
+    SELECT pp.amount, pm.name AS method_name, pm.type AS method_type
+    FROM purchase_payments pp
+    LEFT JOIN payment_methods pm ON pm.id = pp.method_id
+    WHERE pp.purchase_id = ?
+    ORDER BY pp.id ASC
+  `).all(purchaseId);
+
   return {
     ...purchase,
     lines: lines.map(l => ({ ...l, returnable_quantity: Math.max(0, l.quantity - (l.returned_quantity || 0)) })),
     debt_remaining,
+    payments,
   };
 }
 
@@ -344,7 +353,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       return getPurchaseWithLines(db, purchaseId);
     })();
 
-    req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`, purchase?.id ? `/purchases/${purchase.id}` : null);
+    const purchaseAuditId = req.audit("create", "purchase", { id: purchase?.id, doc_no: purchase?.doc_no, total: purchase?.total }, `📦 تم استلام مشتريات #${purchase?.doc_no || purchase?.id} بمبلغ ${purchase?.total}`, purchase?.id ? `/purchases/${purchase.id}` : null);
     try {
       const purchaseId = purchase?.id;
       const supplierName = purchase?.supplier_name || 'غير محدد';
@@ -353,7 +362,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         title: "📦 تم استلام مشتريات",
         body: `مشتريات جديدة #${purchaseId} — المورد: ${supplierName} — المبلغ: ${purchaseTotal}`,
         type: "info",
-        link: `/purchases/${purchaseId}`,
+        link: purchaseAuditId ? `/history?log_id=${purchaseAuditId}` : `/purchases/${purchaseId}`,
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: purchase });

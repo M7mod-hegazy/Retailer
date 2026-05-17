@@ -412,7 +412,7 @@ export default function DashboardPage() {
       <div className="bg-zinc-950 px-6 md:px-12 pt-12 pb-24 rounded-b-[3rem] relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.15)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none" />
 
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
+        <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/10 text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl">
               <Command className="w-7 h-7" />

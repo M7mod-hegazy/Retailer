@@ -533,6 +533,7 @@ export default function POSPage() {
   const [saveSuccess, setSaveSuccess]   = useState(null);
   const [lastSavedInvoice, setLastSavedInvoice] = useState(null);
   const [pendingPrint, setPendingPrint] = useState(false);
+  const [successNavigateTo, setSuccessNavigateTo] = useState(null);
 
   // Offline
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -636,12 +637,26 @@ export default function POSPage() {
   const [amendContext, setAmendContext] = useState(null); // { amend_invoice_id, amend_reason, prefill }
   const [showAmendSummary, setShowAmendSummary] = useState(true);
 
+  // Map of (item_id, warehouse_id) -> original quantity from the invoice being amended
+  const amendOriginalQty = useMemo(() => {
+    if (!amendContext?.prefill?.lines) return {};
+    const map = {};
+    for (const l of amendContext.prefill.lines) {
+      const key = `${l.item_id}_${l.warehouse_id ?? "null"}`;
+      map[key] = Number(l.quantity || 0);
+    }
+    return map;
+  }, [amendContext]);
+
   // Pre-fill cart when navigated from invoice amend flow
   useEffect(() => {
     const amendState = location.state;
     if (!amendState?.amend_invoice_id || !amendState?.prefill) return;
     const { prefill } = amendState;
     clear();
+    // Set amendContext FIRST so stock warnings are suppressed before lines are added
+    setAmendContext(amendState);
+    setShowAmendSummary(true);
     if (prefill.payment_type) setPaymentType(prefill.payment_type);
     if (prefill.discount) setDiscount(prefill.discount);
     if (prefill.increase) setIncrease(prefill.increase);
@@ -654,8 +669,6 @@ export default function POSPage() {
       line_discount: l.discount || 0,
       warehouse_id: l.warehouse_id || null,
     }));
-    setAmendContext(amendState);
-    setShowAmendSummary(true);
     window.history.replaceState({}, document.title);
   }, [location.state]);
 
@@ -675,12 +688,15 @@ export default function POSPage() {
   const amendInvoiceId = amendContext?.amend_invoice_id || null;
   const amendReason = amendContext?.amend_reason || null;
 
+  // Read amend seed directly from location.state (available on first render, before the effect sets amendContext)
+  const _amendSeed = location.state?.amend_invoice_id && location.state?.prefill?.invoice_no
+    ? { docNo: location.state.prefill.invoice_no, createdAt: location.state.prefill.created_at }
+    : null;
+
   // Idle/Active invoice state — doc number reserved on first interaction
   const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } = useInvoiceActivation(
     "pos_sale",
-    amendContext?.prefill?.invoice_no
-      ? { docNo: amendContext.prefill.invoice_no, createdAt: amendContext.prefill.created_at }
-      : null
+    _amendSeed
   );
 
   useEffect(() => {
@@ -797,10 +813,11 @@ export default function POSPage() {
       const lineTotal = unitPrice * quantity;
 
       if (unitPrice <= 0) warnings.push({ type: "error", code: "zero_price", msg: "سعر صفر" });
-      // In amend mode the original invoice is still active (not yet cancelled),
-      // so stock will appear consumed. Suppress stock errors until submit restores it.
-      if (!amendContext && stockLoaded && quantity > stockQty && stockQty > 0) warnings.push({ type: "error", code: "stock_exceeded", msg: `تجاوز المخزون (متاح: ${stockQty})` });
-      if (!amendContext && stockLoaded && quantity > stockQty && stockQty === 0) warnings.push({ type: "error", code: "no_stock", msg: "لا يوجد مخزون" });
+      if (stockLoaded) {
+        const effectiveMax = getLineMaxStock(l.item_id, l.warehouse_id);
+        if (effectiveMax === 0 && quantity > 0) warnings.push({ type: "error", code: "no_stock", msg: "لا يوجد مخزون" });
+        else if (effectiveMax !== Infinity && quantity > effectiveMax) warnings.push({ type: "error", code: "stock_exceeded", msg: `تجاوز المخزون (متاح: ${effectiveMax})` });
+      }
       if (costPrice > 0 && unitPrice < costPrice && unitPrice > 0) warnings.push({ type: "warning", code: "below_cost", msg: `أقل من التكلفة (${Number(costPrice).toFixed(2)})` });
       if (lineDiscount > lineTotal && lineTotal > 0) warnings.push({ type: "warning", code: "discount_overflow", msg: "الخصم يتجاوز الإجمالي" });
       if (lineDiscount < 0) warnings.push({ type: "warning", code: "negative_discount", msg: "خصم سالب" });
@@ -808,20 +825,15 @@ export default function POSPage() {
       result[l.item_id] = warnings;
     }
     return result;
-  }, [lines, items, stockLevels, stockLoaded, amendContext]);
+  }, [lines, items, stockLevels, stockLoaded, amendContext, amendOriginalQty]);
 
   const hasBlockingErrors = useMemo(
     () => Object.values(lineWarnings).some((ws) => ws.some((w) => w.type === "error")),
     [lineWarnings],
   );
 
-  // In amend mode, stock errors are false positives (server reverses original stock first).
-  const stockOnlyErrors = useMemo(
-    () => !!amendInvoiceId && hasBlockingErrors && Object.values(lineWarnings).every(ws =>
-      ws.filter(w => w.type === "error").every(w => w.code === "no_stock" || w.code === "stock_exceeded")
-    ),
-    [amendInvoiceId, hasBlockingErrors, lineWarnings],
-  );
+  // Stock errors in amend mode are now real (we factor in original qty), so stockOnlyErrors is always false.
+  const stockOnlyErrors = false;
 
   const blockingErrorCount = useMemo(
     () => Object.values(lineWarnings).flat().filter((w) => w.type === "error").length,
@@ -1050,12 +1062,15 @@ export default function POSPage() {
     const quantity    = Math.max(1, Number(staging.quantity || 1));
     const unitPrice   = Math.max(0, Number(staging.unitPrice || 0));
     const lineDiscount = Math.max(0, Number(staging.lineDiscount || 0));
-    const stockValue  = isRawEntry ? 999999 : Number(stockLevels[selectedItem.id]?.[warehouse.id] ?? selectedItem.stock_quantity ?? selectedItem.stock ?? 0);
+    const _itemStock  = stockLevels[selectedItem.id] || stockLevels[String(selectedItem.id)];
+    const stockValue  = isRawEntry ? 999999 : Number(_itemStock?.[warehouse.id] ?? _itemStock?.[String(warehouse.id)] ?? _itemStock?.[Number(warehouse.id)] ?? selectedItem.stock_quantity ?? selectedItem.stock ?? 0);
     const purchasePrice = Number(selectedItem.purchase_price || 0);
     const unit = units.find((u) => String(u.id) === String(staging.unitId));
 
     if (!isRawEntry && unitPrice <= 0) { setSaveMessage("لا يمكن إضافة صنف بسعر صفر."); setTimeout(() => setSaveMessage(""), 3000); return; }
-    if (!isRawEntry && quantity > stockValue) { setSaveMessage(`المخزون غير كافٍ (المتاح: ${stockValue})`); setTimeout(() => setSaveMessage(""), 3000); return; }
+    const alreadyInCart = !isRawEntry ? (lines.find(l => l.item_id === selectedItem.id && l.warehouse_id === warehouse.id)?.quantity || 0) : 0;
+    const availableToAdd = Math.max(0, stockValue - alreadyInCart);
+    if (!isRawEntry && quantity > availableToAdd) { setSaveMessage(`المخزون غير كافٍ (المتاح للإضافة: ${availableToAdd})`); setTimeout(() => setSaveMessage(""), 3000); return; }
     if (!isRawEntry && unitPrice < purchasePrice && unitPrice > 0) {
       if (!pendingBelowCostAdd) {
         setPendingBelowCostAdd(true);
@@ -1164,7 +1179,26 @@ export default function POSPage() {
       let response;
       if (amendInvoiceId) {
         response = await api.put(`/api/invoices/${amendInvoiceId}`, payload);
-        navigate(`/invoices/${amendInvoiceId}`);
+        const savedData = response.data?.data;
+        const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
+        const receiptSnap = {
+          invoice_no: savedNo, date: new Date(), lines: [...lines],
+          customer: customer ? { ...customer } : null, totals: { ...totals },
+          discount, increase, promotionDiscount: 0, appliedPromotions: [],
+          seller: employees.find((emp) => String(emp.id) === String(sellerId)) || null,
+          paymentType, amountReceived: Number(amountReceived || 0),
+          cashier: user?.name || "الكاشير",
+          storeName: storeSettings.company_name || "المتجر",
+          storeAddress: storeSettings.address || "",
+          payments: [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank_transfer: "بنك", multi: "متعدد" }[paymentType] || paymentType, amount: totals.total }],
+        };
+        setLastSavedInvoice(receiptSnap);
+        setSaveSuccess({ invoiceNumber: savedNo, total: formatMoney(totals.total) });
+        setSuccessNavigateTo("/pos");
+        setAmendContext(null);
+        resetActivation();
+        clearActiveDraftFromDB();
+        clear(); resetPaymentFields(); resetStaging(); resetCustomer(); setPaymentType("cash"); setInvoiceSeq((s) => s + 1);
         return;
       } else {
         response = await api.post("/api/invoices", payload);
@@ -1211,7 +1245,14 @@ export default function POSPage() {
 
   saveInvoiceRef.current = saveInvoice;
 
-  function onDismissSaveSuccess() { setSaveSuccess(null); }
+  function onDismissSaveSuccess() {
+    setSaveSuccess(null);
+    if (successNavigateTo) {
+      const target = successNavigateTo;
+      setSuccessNavigateTo(null);
+      navigate(target, { replace: true, state: null });
+    }
+  }
 
   async function confirmSupervisorOverride() {
     if (!pendingSave) return;
@@ -1252,7 +1293,9 @@ export default function POSPage() {
     const salePrice = Number(item.sale_price || item.price || 0);
 
     if (salePrice <= 0) { setSaveMessage("لا يمكن إضافة صنف بسعر صفر."); setTimeout(() => setSaveMessage(""), 3000); return; }
-    if (1 > stockValue) { setSaveMessage(`المخزون غير كافٍ (المتاح: ${stockValue})`); setTimeout(() => setSaveMessage(""), 3000); return; }
+    const alreadyInCart = lines.find(l => l.item_id === item.id && l.warehouse_id === warehouse.id)?.quantity || 0;
+    const availableToAdd = Math.max(0, stockValue - alreadyInCart);
+    if (!amendContext && stockLoaded && availableToAdd < 1) { setSaveMessage(`المخزون غير كافٍ (المتاح: ${availableToAdd})`); setTimeout(() => setSaveMessage(""), 3000); return; }
 
     addLine({
       id: item.id,
@@ -1270,6 +1313,28 @@ export default function POSPage() {
       line_discount: 0,
     });
     if (typeof playBeep === 'function') playBeep();
+  }
+
+  // Returns the hard stock ceiling for a cart line (warehouse-specific, falls back to item total)
+  function getLineMaxStock(itemId, warehouseId) {
+    if (!stockLoaded) return Infinity;
+    const itemStock = stockLevels[itemId] || stockLevels[Number(itemId)] || stockLevels[String(itemId)];
+    let currentStock;
+    if (!itemStock) {
+      currentStock = 0;
+    } else if (warehouseId != null) {
+      const val = itemStock[warehouseId] ?? itemStock[Number(warehouseId)] ?? itemStock[String(warehouseId)];
+      currentStock = val !== undefined ? Number(val) : Object.entries(itemStock).filter(([k]) => k !== "null").reduce((a, [, b]) => a + Number(b), 0);
+    } else {
+      currentStock = Object.entries(itemStock).filter(([k]) => k !== "null").reduce((a, [, b]) => a + Number(b), 0);
+    }
+    if (amendContext) {
+      // In amend mode the original invoice's stock is still consumed; add back the original qty so the user can go up to currentStock + originalQty
+      const key = `${itemId}_${warehouseId ?? "null"}`;
+      const origQty = amendOriginalQty[key] || 0;
+      return currentStock + origQty;
+    }
+    return currentStock;
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -1638,7 +1703,7 @@ export default function POSPage() {
                     {amendContext.amend_reason && (
                       <div className="flex justify-between"><span className="text-amber-600">السبب</span><span className="text-right max-w-[60%]">{amendContext.amend_reason}</span></div>
                     )}
-                    <div className="flex justify-between"><span className="text-amber-600">المحرر</span><span>{user?.name || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-amber-600">بواسطة</span><span>{amendContext.prefill?.created_by_username || "—"}</span></div>
                   </div>
                 )}
               </div>
@@ -2036,7 +2101,7 @@ export default function POSPage() {
                       <div className="px-2 py-3 text-[10px] text-slate-400 font-bold text-center">اختر صنفاً أولاً</div>
                     ) : (
                       (() => {
-                        // In amend mode, show all warehouses; otherwise only those with stock
+                        // In amend mode, show all warehouses (effective stock = current + original qty for this item/warehouse)
                         const stocked = amendContext
                           ? warehouses
                           : warehouses.filter((w) => (stockLevels[selectedItem.id]?.[w.id] || 0) > 0);
@@ -2048,7 +2113,9 @@ export default function POSPage() {
                           );
                         }
                         return stocked.map((w) => {
-                          const qty = stockLevels[selectedItem.id][w.id] || 0;
+                          const rawQty = stockLevels[selectedItem.id]?.[w.id] || 0;
+                          const origQty = amendContext ? (amendOriginalQty[`${selectedItem.id}_${w.id}`] || 0) : 0;
+                          const qty = rawQty + origQty;
                           const isSelected = String(staging.warehouseId) === String(w.id);
                           const isLow = qty > 0 && qty < 5;
                           const isInsuff = Number(staging.quantity) > qty;
@@ -2110,12 +2177,18 @@ export default function POSPage() {
                 >
                   <Plus className="h-4 w-4" /> إضافة
                 </button>
-                {selectedItem && staging.warehouseId && Number(staging.quantity) > (stockLevels[selectedItem?.id]?.[staging.warehouseId] || 0) && (
-                  <div className="col-span-full flex items-center gap-1.5 rounded-sm bg-rose-50 border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    الكمية ({staging.quantity}) تتجاوز مخزون هذا الفرع ({stockLevels[selectedItem.id]?.[staging.warehouseId] || 0})
-                  </div>
-                )}
+                {selectedItem && staging.warehouseId && (() => {
+                  const itemStock = stockLevels[selectedItem?.id] || stockLevels[String(selectedItem?.id)];
+                  const totalStock = Number(itemStock?.[staging.warehouseId] ?? itemStock?.[String(staging.warehouseId)] ?? itemStock?.[Number(staging.warehouseId)] ?? 0);
+                  const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId))?.quantity || 0;
+                  const remaining = Math.max(0, totalStock - inCart);
+                  return Number(staging.quantity) > remaining ? (
+                    <div className="col-span-full flex items-center gap-1.5 rounded-sm bg-rose-50 border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      الكمية ({staging.quantity}) تتجاوز المتاح للإضافة ({remaining}) — الرصيد الكلي {totalStock}{inCart > 0 ? ` (${inCart} في السلة)` : ""}
+                    </div>
+                  ) : null;
+                })()}
                 {selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0) && (
                   <div className="col-span-full flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-bold text-amber-700">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -2200,11 +2273,39 @@ export default function POSPage() {
                 {
                   id: "quantity", header: "الكمية", width: 80, sortable: true,
                   headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-                  render: (l, i) => (
-                    <input type="number" min="0.001" step="any" value={l.quantity}
-                      onChange={(e) => updateLine(l.item_id, { quantity: Number(e.target.value) || 1 })}
-                      className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:bg-indigo-50/50 transition-colors" />
-                  )
+                  render: (l, i) => {
+                    const maxStock = getLineMaxStock(l.item_id, l.warehouse_id);
+                    const hasLimit = stockLoaded && maxStock !== Infinity;
+                    const atLimit  = hasLimit && Number(l.quantity) >= maxStock;
+                    const remaining = hasLimit ? maxStock - Number(l.quantity) : null;
+                    return (
+                    <div className={`w-full h-[40px] flex flex-col items-center justify-center transition-colors ${atLimit ? 'bg-rose-50' : ''}`}
+                      title={hasLimit ? `المتاح: ${maxStock}` : undefined}>
+                      <input
+                        type="number" min="1" step="1"
+                        value={l.quantity}
+                        max={hasLimit ? maxStock : undefined}
+                        onKeyDown={(e) => {
+                          if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) { e.preventDefault(); return; }
+                          if (hasLimit && e.key >= '0' && e.key <= '9') {
+                            const next = Number(String(l.quantity) + e.key);
+                            if (next > maxStock) e.preventDefault();
+                          }
+                        }}
+                        onChange={(e) => {
+                          const v = Math.max(1, Math.floor(Number(e.target.value) || 1));
+                          updateLine(l.item_id, { quantity: hasLimit ? Math.min(v, maxStock) : v });
+                        }}
+                        className={`w-full text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
+                      />
+                      {hasLimit && (
+                        <span className={`text-[9px] font-black leading-none ${atLimit ? 'text-rose-500' : 'text-slate-400'}`}>
+                          {atLimit ? 'نفد المخزون' : `متاح ${remaining}`}
+                        </span>
+                      )}
+                    </div>
+                    );
+                  }
                 },
                 {
                   id: "unitPrice", header: "السعر", width: 100, sortable: true,
@@ -2869,7 +2970,7 @@ export default function POSPage() {
             </div>
 
             {/* Customer Select */}
-            <div className="flex items-center gap-2">
+            <div data-help="customer-select" className="flex items-center gap-2">
               <div className="relative flex-1">
                 <div className={`pointer-events-none absolute inset-y-0 right-2.5 flex items-center ${hasCustomerBalance ? "text-amber-500" : "text-slate-400"}`}>
                   <User className="h-4 w-4" />
@@ -2980,13 +3081,32 @@ export default function POSPage() {
                         {/* Left group: stepper + discount */}
                         <div className="flex items-center gap-2 min-w-0">
                           {/* Stepper */}
-                          <div className="flex items-center shrink-0 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-                            <button onClick={() => updateLine(line.item_id, { quantity: Math.max(1, Number(line.quantity) - 1) })} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors active:bg-slate-200"><Minus className="w-3.5 h-3.5" /></button>
-                            <div className="w-px h-5 bg-slate-100" />
-                            <input type="number" min="1" value={line.quantity} onChange={(e) => updateLine(line.item_id, { quantity: Number(e.target.value || 1) })} className="w-11 h-8 text-center text-[12px] font-black bg-transparent outline-none ring-0 border-0 text-slate-800" />
-                            <div className="w-px h-5 bg-slate-100" />
-                            <button onClick={() => updateLine(line.item_id, { quantity: Number(line.quantity) + 1 })} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors active:bg-slate-200"><Plus className="w-3.5 h-3.5" /></button>
-                          </div>
+                          {(() => {
+                            const maxStock = getLineMaxStock(line.item_id, line.warehouse_id);
+                            return (
+                            <>
+                            <div className="flex items-center shrink-0 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+                              <button onClick={() => updateLine(line.item_id, { quantity: Math.max(1, Number(line.quantity) - 1) })} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors active:bg-slate-200"><Minus className="w-3.5 h-3.5" /></button>
+                              <div className="w-px h-5 bg-slate-100" />
+                              <input type="number" min="1" max={maxStock === Infinity ? undefined : maxStock} value={line.quantity}
+                                onChange={(e) => { const v = Number(e.target.value || 1); updateLine(line.item_id, { quantity: maxStock === Infinity ? v : Math.min(v, maxStock) }); }}
+                                className="w-11 h-8 text-center text-[12px] font-black bg-transparent outline-none ring-0 border-0 text-slate-800" />
+                              <div className="w-px h-5 bg-slate-100" />
+                              <button
+                                onClick={() => { const next = Number(line.quantity) + 1; if (next <= maxStock) updateLine(line.item_id, { quantity: next }); }}
+                                disabled={stockLoaded && Number(line.quantity) >= maxStock}
+                                title={stockLoaded && Number(line.quantity) >= maxStock ? `الحد الأقصى للمخزون: ${maxStock}` : undefined}
+                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors active:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                              ><Plus className="w-3.5 h-3.5" /></button>
+                            </div>
+                            {stockLoaded && maxStock !== Infinity && (
+                              <span className={`text-[10px] font-bold whitespace-nowrap ${Number(line.quantity) >= maxStock ? 'text-rose-500' : 'text-slate-400'}`}>
+                                {Number(line.quantity) >= maxStock ? 'نفد المخزون' : `متاح: ${maxStock - Number(line.quantity)}`}
+                              </span>
+                            )}
+                            </>
+                            );
+                          })()}
 
                           {/* Discount */}
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -3063,14 +3183,14 @@ export default function POSPage() {
           </div>
 
           {/* Bottom Totals & Payments */}
-          <div className="shrink-0 flex flex-col border-t border-slate-200 bg-white shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] z-30 animate-fade-in">
+          <div data-help="payment-section" className="shrink-0 flex flex-col border-t border-slate-200 bg-white shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] z-30 animate-fade-in">
             {/* Totals Summary */}
             <div className="flex flex-col px-4 py-3 bg-slate-900 gap-1.5 border-b border-slate-800">
               <div className="flex items-center justify-between text-[12px]">
                 <span className="font-bold text-slate-400">الفرعي</span>
                 <span className="font-mono font-black text-slate-200">{formatMoney(totals.subtotal)}</span>
               </div>
-              <div className="flex items-center justify-between text-[12px] gap-2">
+              <div data-help="discount-field" className="flex items-center justify-between text-[12px] gap-2">
                 <span className="font-bold text-slate-400 shrink-0">خصم إضافي</span>
                 <div className="flex items-center gap-1">
                   <input

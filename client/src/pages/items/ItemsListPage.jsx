@@ -996,6 +996,7 @@ export default function ItemsListPage() {
             </PermissionGate>
             <PermissionGate page="items" action="add">
             <button
+               data-help="import-button"
                onClick={() => setImportOpen(true)}
                className="flex h-[42px] items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all shadow-sm"
                title="استيراد من Excel"
@@ -1045,7 +1046,7 @@ export default function ItemsListPage() {
                     </kbd>
                   </div>
                </div>
-               <div className="relative w-72 group">
+               <div data-help="category-filter" className="relative w-72 group">
                   <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                   <select value={selectedCatId ?? ""} onChange={(e) => setSelectedCatId(Number(e.target.value))}
                     className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">

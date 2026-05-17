@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { X, RefreshCw, ArrowUpDown, Pencil, Package, CheckCircle2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { X, RefreshCw, ArrowUpDown, Package, CheckCircle2 } from "lucide-react";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import DataGrid from "../ui/DataGrid";
@@ -69,8 +68,14 @@ const PAYMENT_METHOD_LABELS = {
   future_due: "استحقاق لاحق", multi: "متعدد",
 };
 
+const STATUS_STYLES_PICKER = {
+  paid:      { label: "مدفوع",  cls: "bg-emerald-100 text-emerald-700" },
+  partial:   { label: "جزئي",   cls: "bg-amber-100 text-amber-700" },
+  cancelled: { label: "ملغي",   cls: "bg-slate-100 text-slate-500" },
+  unpaid:    { label: "آجل",    cls: "bg-rose-100 text-rose-700" },
+};
+
 function InvoiceDetailView({ invoice, onClose, onConfirm }) {
-  const navigate = useNavigate();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -83,21 +88,26 @@ function InvoiceDetailView({ invoice, onClose, onConfirm }) {
       .finally(() => setLoading(false));
   }, [invoice?.invoice_id, invoice?.id]);
   if (!invoice) return null;
+  const d = detail || invoice;
+  const statusInfo = STATUS_STYLES_PICKER[d.status] || STATUS_STYLES_PICKER.unpaid;
   return (
     <div className="flex flex-col gap-4">
       {loading ? (
         <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
-          <div className="flex items-center justify-between rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3">
-            <div className="flex items-center gap-4 text-[13px] flex-wrap">
-              <span className="font-black text-emerald-800">فاتورة #{(detail || invoice).invoice_no || (detail || invoice).doc_no}</span>
-              <span className="text-slate-600">العميل: <strong>{(detail || invoice).customer_name || "—"}</strong></span>
-              <span className="text-slate-500">{(detail || invoice).created_at ? formatArabicDateTime(new Date((detail || invoice).created_at)) : "—"}</span>
-              <span className="font-bold text-emerald-700">الإجمالي: {formatMoney((detail || invoice).total)} ج.م</span>
-            </div>
+          {/* Header */}
+          <div className="rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px]">
+            <span className="font-black text-emerald-800">فاتورة #{d.invoice_no || d.doc_no}</span>
+            <span className={`px-2 py-0.5 rounded text-[11px] font-black ${statusInfo.cls}`}>{statusInfo.label}</span>
+            <span className="text-slate-600">العميل: <strong>{d.customer_name || "—"}</strong></span>
+            <span className="text-slate-500">{d.created_at ? formatArabicDateTime(new Date(d.created_at)) : "—"}</span>
+            {d.created_by_username && <span className="text-slate-500">بواسطة: <strong>{d.created_by_username}</strong></span>}
+            <span className="font-bold text-slate-700">طريقة الدفع: {PAYMENT_METHOD_LABELS[d.payment_type] || d.payment_type || "—"}</span>
           </div>
-          <div className="max-h-[320px] overflow-auto rounded-sm border border-slate-200">
+
+          {/* Lines */}
+          <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">
             <table className="w-full text-[12px] border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
@@ -105,12 +115,13 @@ function InvoiceDetailView({ invoice, onClose, onConfirm }) {
                   <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">السعر</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">خصم</th>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">مُرتجع</th>
                 </tr>
               </thead>
               <tbody>
-                {((detail || invoice).lines || []).map((l, i) => {
+                {(d.lines || []).map((l, i) => {
                   const returned = Number(l.returned_quantity || 0);
                   return (
                     <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
@@ -118,9 +129,10 @@ function InvoiceDetailView({ invoice, onClose, onConfirm }) {
                       <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_price)}</td>
+                      <td className="px-3 py-2.5 text-center text-amber-600">{l.discount > 0 ? formatMoney(l.discount) : "—"}</td>
                       <td className="px-3 py-2.5 text-center font-mono font-black text-emerald-700">{formatMoney(l.line_total || (l.quantity * (l.unit_price || 0)))}</td>
                       <td className="px-3 py-2.5 text-center">
-                        {returned > 0 ? <span className="text-emerald-600 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
+                        {returned > 0 ? <span className="text-rose-500 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
                       </td>
                     </tr>
                   );
@@ -128,18 +140,62 @@ function InvoiceDetailView({ invoice, onClose, onConfirm }) {
               </tbody>
             </table>
           </div>
+
+          {/* Totals + Payments */}
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+              <div className="flex justify-between">
+                <span className="text-slate-500">المجموع الفرعي</span>
+                <span className="font-black font-mono text-slate-700">{formatMoney(d.subtotal)}</span>
+              </div>
+              {Number(d.discount) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">خصم</span>
+                  <span className="font-black font-mono text-rose-600">- {formatMoney(d.discount)}</span>
+                </div>
+              )}
+              {Number(d.increase) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">إضافة</span>
+                  <span className="font-black font-mono text-emerald-600">+ {formatMoney(d.increase)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1">
+                <span className="font-black text-slate-800">الإجمالي</span>
+                <span className="font-black font-mono text-slate-900">{formatMoney(d.total)} ج.م</span>
+              </div>
+            </div>
+
+            {d.payments?.length > 0 && (
+              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">المدفوعات</p>
+                {d.payments.map((p, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-slate-600">{p.method_name || PAYMENT_METHOD_LABELS[p.method] || p.method}</span>
+                    <span className="font-black font-mono text-slate-800">{formatMoney(p.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {d.notes && (
+            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-[12px] text-slate-600">
+              <span className="font-black text-slate-500 text-[10px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
+            </div>
+          )}
+          {d.status === "cancelled" && d.cancel_reason && (
+            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-2.5 text-[12px] text-rose-700">
+              <span className="font-black text-[10px] uppercase tracking-widest">سبب الإلغاء: </span>{d.cancel_reason}
+            </div>
+          )}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <div className="flex gap-2">
-          <button onClick={() => navigate(`/sales/${invoice.invoice_id || invoice.id}`)} className="flex items-center gap-2 rounded-sm border border-emerald-200 bg-white px-5 py-2 text-[13px] font-black text-emerald-700 hover:bg-emerald-50 transition-colors">
-            <Pencil className="h-4 w-4" /> عرض
-          </button>
-          <button onClick={() => onConfirm(detail || invoice)} className="flex items-center gap-2 rounded-sm bg-emerald-700 px-6 py-2 text-[13px] font-black text-white hover:bg-emerald-800 transition-colors">
-            <CheckCircle2 className="h-4 w-4" /> اختيار هذه الفاتورة
-          </button>
-        </div>
+        <button onClick={() => onConfirm(d)} className="flex items-center gap-2 rounded-sm bg-emerald-700 px-6 py-2 text-[13px] font-black text-white hover:bg-emerald-800 transition-colors">
+          <CheckCircle2 className="h-4 w-4" /> اختيار هذه الفاتورة
+        </button>
       </div>
     </div>
   );

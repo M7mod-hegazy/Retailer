@@ -302,7 +302,7 @@ export default function PurchaseOrdersPage() {
                         )}
                         {canReceive && (
                           <PermissionGate page="purchase_orders" action="edit">
-                            <button onClick={() => openReceiveModal(row.id)} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-black hover:bg-emerald-600 hover:text-white transition-all">
+                            <button data-help="convert-button" onClick={() => openReceiveModal(row.id)} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-black hover:bg-emerald-600 hover:text-white transition-all">
                               استلام
                             </button>
                           </PermissionGate>

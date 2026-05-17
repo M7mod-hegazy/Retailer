@@ -300,6 +300,7 @@ export default function ReportsCenter() {
               <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-emerald-500" />
             </div>
             <button
+              data-help="favorite-button"
               onClick={() => setOnlyFavs(!onlyFavs)}
               className={`flex h-12 items-center gap-2 rounded-2xl border px-5 text-[13px] font-bold transition-all shadow-sm ${
                 onlyFavs ? "border-amber-400 bg-amber-50 text-amber-600" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
@@ -312,7 +313,7 @@ export default function ReportsCenter() {
 
         {/* Grid */}
         <div data-help="main-table" className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-thin scrollbar-thumb-zinc-300">
-          <div className="max-w-4xl mx-auto w-full">
+          <div data-help="report-categories" className="max-w-4xl mx-auto w-full">
             {filtered.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 mb-4"><Search size={24} /></div>

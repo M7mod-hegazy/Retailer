@@ -638,6 +638,15 @@ async function handleQuickSave() {
                     <div className="bg-white/20 p-1.5 rounded-xl"><TrendingUp className="h-4 w-4" /></div>
                     تسجيل إيراد سريع
                   </motion.button>
+                      <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setWithdrawalOpen(true)}
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-slate-900 py-4 text-[14px] font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
+                  >
+                    <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
+                    تسجيل مسحوبات سريع
+                  </motion.button>
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
@@ -647,15 +656,7 @@ async function handleQuickSave() {
                     <div className="bg-white/20 p-1.5 rounded-xl"><Coins className="h-4 w-4" /></div>
                     عد العملة (جرد الخزينة)
                   </motion.button>
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setWithdrawalOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-slate-900 py-4 text-[14px] font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
-                  >
-                    <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
-                    تسجيل مسحوبات سريع
-                  </motion.button>
+              
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
@@ -684,7 +685,7 @@ async function handleQuickSave() {
               )}
 
               {/* KPI Cards */}
-              <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <motion.div data-help="shift-section" variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   {
                     label: "إجمالي المبيعات",

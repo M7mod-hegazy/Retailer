@@ -168,7 +168,7 @@ export default function ChequesPage() {
           </button>
           </PermissionGate>
           <PermissionGate page="cheques" action="edit">
-          <button onClick={() => { setBatchMode(!batchMode); setBatchSelected([]); }} className={`flex items-center gap-2 rounded-sm px-4 py-2.5 text-[12px] font-black transition-all ${batchMode ? "bg-violet-600 text-white" : "bg-white border border-slate-200 text-slate-700"}`}>
+          <button data-help="toggle-button" onClick={() => { setBatchMode(!batchMode); setBatchSelected([]); }} className={`flex items-center gap-2 rounded-sm px-4 py-2.5 text-[12px] font-black transition-all ${batchMode ? "bg-violet-600 text-white" : "bg-white border border-slate-200 text-slate-700"}`}>
             {batchMode ? "إلغاء التحديد" : "تحديث متعدد"}
           </button>
           </PermissionGate>
@@ -231,7 +231,7 @@ export default function ChequesPage() {
                   <button onClick={() => handleBatchUpdate("bounced")} className="rounded-sm bg-rose-600 px-3 py-1.5 text-[11px] font-black text-white">مرتد</button>
                 </div>
               )}
-              <button className="flex items-center gap-2 text-[12px] font-black text-slate-500 uppercase hover:text-slate-800">
+              <button data-help="due-filter" className="flex items-center gap-2 text-[12px] font-black text-slate-500 uppercase hover:text-slate-800">
                  <Filter className="h-3.5 w-3.5" /> تصفية النتائج
               </button>
            </div>

@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
                   </button>
                 </div>
                 {/* Time Range Configurator */}
-                <div className="flex p-1 bg-slate-100 rounded-[14px] items-center text-slate-500 font-bold overflow-hidden shadow-inner border border-slate-200">
+                <div data-help="period-filter" className="flex p-1 bg-slate-100 rounded-[14px] items-center text-slate-500 font-bold overflow-hidden shadow-inner border border-slate-200">
                   <select 
                      value={chartDateMode}
                      onChange={e => setChartDateMode(e.target.value)}
@@ -392,7 +392,7 @@ export default function AnalyticsPage() {
         <div className="grid gap-5 xl:grid-cols-[2fr_1fr]">
           
           {/* Top Selling Items */}
-          <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
+          <div data-help="top-items" className="rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-[18px] font-black text-slate-900 tracking-tight">

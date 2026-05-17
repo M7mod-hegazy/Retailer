@@ -295,7 +295,7 @@ export default function QuotationsPage() {
                       <div className="flex items-center justify-end gap-3 lg:w-[20%] shrink-0">
                         {canConvert(row) && (
                           <PermissionGate page="quotations" action="edit">
-                            <button onClick={(e) => { e.stopPropagation(); setConvertTarget(row); }} className="flex h-12 px-6 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-[14px] font-black hover:bg-emerald-600 hover:text-white transition-all">
+                            <button data-help="convert-button" onClick={(e) => { e.stopPropagation(); setConvertTarget(row); }} className="flex h-12 px-6 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-[14px] font-black hover:bg-emerald-600 hover:text-white transition-all">
                               <Sparkles className="h-4.5 w-4.5" /> تحويل لبيع
                             </button>
                           </PermissionGate>

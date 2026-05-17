@@ -16,10 +16,23 @@ const PATH_TO_PAGE_KEY = {};
 PRIMARY_MENU.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; });
 NAV_MODULES.forEach((mod) => mod.items.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; }));
 
-function useBreadcrumbs(pathname) {
+const EXTRA_BREADCRUMB_PARENTS = [
+  { match: /^\/invoices\//, parent: { label: "نقطة البيع (POS)", path: "/pos" } },
+];
+
+function useBreadcrumbs(pathname, dynamicBreadcrumb) {
   return useMemo(() => {
     const root = { label: "الرئيسية", path: "/dashboard" };
     if (pathname === "/dashboard" || pathname === "/") return [root];
+
+    // Handle known dynamic sub-routes (e.g. /pos/invoices/:id)
+    for (const entry of EXTRA_BREADCRUMB_PARENTS) {
+      if (entry.match.test(pathname)) {
+        const crumbs = [root, entry.parent];
+        if (dynamicBreadcrumb) crumbs.push({ label: dynamicBreadcrumb.label, path: dynamicBreadcrumb.path });
+        return crumbs;
+      }
+    }
 
     const allItems = [];
     PRIMARY_MENU.forEach((item) => allItems.push({ ...item, moduleTitle: null }));
@@ -47,7 +60,7 @@ function useBreadcrumbs(pathname) {
     const crumbs = [root];
     crumbs.push({ label: best.label, path: best.path });
     return crumbs;
-  }, [pathname]);
+  }, [pathname, dynamicBreadcrumb]);
 }
 
 const routeLabelMatchers = [
@@ -73,15 +86,14 @@ export default function Topbar() {
   const markAsRead = useNotificationStore((state) => state.markAsRead);
   const markAllAsRead = useNotificationStore((state) => state.markAllAsRead);
   const openGlobalSearch = useUiStore((state) => state.openGlobalSearch);
+  const dynamicBreadcrumb = useUiStore((state) => state.dynamicBreadcrumb);
   const settings = useAppSettingsStore((state) => state.settings);
   const location = useLocation();
   const navigate = useNavigate();
-  const { retriggerPageTour, resetAllTours, disableAllTours, toursDisabledGlobally, enableAllTours } = useHelpStore();
+  const { togglePageTour, isTourVisible, activeTourPageKey } = useHelpStore();
   const [openBell, setOpenBell] = useState(false);
-  const [openHelp, setOpenHelp] = useState(false);
   const [hoveredCrumb, setHoveredCrumb] = useState(null);
   const bellRef = useRef(null);
-  const helpRef = useRef(null);
 
   // Determine current page key from pathname
   const currentPageKey = useMemo(() => {
@@ -99,12 +111,6 @@ export default function Topbar() {
 
   const hasHelpContent = currentPageKey && Boolean(helpContent[currentPageKey]);
 
-  const SAFE_PREFIXES = [
-    "/invoices", "/purchases", "/stock", "/suppliers", "/customers",
-    "/shifts", "/definitions", "/notifications", "/history", "/reports",
-    "/payments", "/expenses",
-  ];
-
   function timeAgo(dateStr) {
     const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
     if (diff < 3600) return `منذ ${Math.max(1, Math.floor(diff / 60))} دقيقة`;
@@ -115,7 +121,7 @@ export default function Topbar() {
   const unreadItems = useMemo(() => items.filter((n) => !n.is_read).slice(0, 10), [items]);
   const today = useMemo(() => new Intl.DateTimeFormat("ar-EG", { weekday: "long", day: "numeric", month: "long" }).format(new Date()), []);
   const currentLabel = routeLabelMatchers.find((entry) => location.pathname.startsWith(entry.match))?.label || "العمل اليومي";
-  const breadcrumbs = useBreadcrumbs(location.pathname);
+  const breadcrumbs = useBreadcrumbs(location.pathname, dynamicBreadcrumb);
 
   useEffect(() => {
     fetchNotifications();
@@ -132,14 +138,6 @@ export default function Topbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openBell]);
 
-  useEffect(() => {
-    if (!openHelp) return;
-    function handleClickOutside(e) {
-      if (helpRef.current && !helpRef.current.contains(e.target)) setOpenHelp(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openHelp]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -243,63 +241,20 @@ export default function Topbar() {
             <kbd className="hidden md:inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-mono font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded">Ctrl+K</kbd>
           </button>
 
-          {/* Help Button */}
-          <div className="relative" ref={helpRef}>
+          {/* Help Button — toggles tour for this page on/off */}
+          {hasHelpContent && (
             <button
-              onClick={() => setOpenHelp(!openHelp)}
-              title="المساعدة"
+              onClick={() => currentPageKey && togglePageTour(currentPageKey)}
+              title={isTourVisible && activeTourPageKey === currentPageKey ? 'إيقاف المساعدة' : 'ابدأ جولة هذه الصفحة'}
               className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
-                openHelp ? "bg-zinc-950 text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+                isTourVisible && activeTourPageKey === currentPageKey
+                  ? "bg-zinc-950 text-white shadow-lg"
+                  : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
               }`}
             >
               <HelpCircle strokeWidth={2} className="h-4.5 w-4.5" />
             </button>
-
-            <AnimatePresence>
-              {openHelp && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                  className="absolute end-0 top-12 z-50 w-[220px] rounded-[1.25rem] border border-zinc-200/80 bg-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden"
-                  dir="rtl"
-                >
-                  <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/30">
-                    <span className="text-sm font-black text-zinc-900 tracking-tight">المساعدة</span>
-                  </div>
-                  <div className="p-2 flex flex-col gap-1">
-                    <button
-                      disabled={!hasHelpContent}
-                      onClick={() => {
-                        if (currentPageKey) retriggerPageTour(currentPageKey);
-                        setOpenHelp(false);
-                      }}
-                      className="w-full text-right px-3 py-2.5 text-xs font-bold rounded-xl transition-all hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-700"
-                    >
-                      ابدأ جولة هذه الصفحة
-                    </button>
-                    <button
-                      onClick={() => { resetAllTours(); setOpenHelp(false); }}
-                      className="w-full text-right px-3 py-2.5 text-xs font-bold rounded-xl transition-all hover:bg-zinc-50 text-zinc-700"
-                    >
-                      إعادة تعيين كل الجولات
-                    </button>
-                    <div className="h-px bg-zinc-100 mx-2 my-1" />
-                    <button
-                      onClick={() => {
-                        if (toursDisabledGlobally) enableAllTours(); else disableAllTours();
-                        setOpenHelp(false);
-                      }}
-                      className="w-full text-right px-3 py-2.5 text-xs font-bold rounded-xl transition-all hover:bg-red-50 text-red-500"
-                    >
-                      {toursDisabledGlobally ? 'تفعيل الجولات' : 'تعطيل الجولات'}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          )}
 
           <div className="relative" ref={bellRef}>
             <button 
@@ -350,8 +305,13 @@ export default function Topbar() {
                           onClick={() => {
                             markAsRead(notif.id);
                             setOpenBell(false);
-                            const safe = notif.link && SAFE_PREFIXES.some((p) => notif.link.startsWith(p));
-                            if (safe) navigate(notif.link);
+                            // If the link already points to history with a log_id, use it directly
+                            if (notif.link?.startsWith("/history")) {
+                              navigate(notif.link);
+                            } else {
+                              // Otherwise navigate to history and let it find the closest audit log by time
+                              navigate(`/history?notif_id=${notif.id}`);
+                            }
                           }}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400 scale-y-0 group-hover:scale-y-100 origin-center transition-transform" />

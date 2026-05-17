@@ -5,6 +5,7 @@ import {
   Package, ShoppingCart, Printer, History,
 } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useUiStore } from "../../stores/uiStore";
 import api from "../../services/api";
 import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
@@ -84,6 +85,8 @@ function fmt(n) {
 export default function InvoiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const setDynamicBreadcrumb = useUiStore((s) => s.setDynamicBreadcrumb);
+  const clearDynamicBreadcrumb = useUiStore((s) => s.clearDynamicBreadcrumb);
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +108,7 @@ export default function InvoiceDetailPage() {
       const r = await api.get(`/api/invoices/${id}`);
       const inv = r.data.data;
       setInvoice(inv);
+      setDynamicBreadcrumb({ label: inv.invoice_no, path: `/invoices/${id}` });
       await loadTimeline(inv);
     } catch {
       toast.error("فشل تحميل الفاتورة");
@@ -112,6 +116,8 @@ export default function InvoiceDetailPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => () => clearDynamicBreadcrumb(), []);
 
   async function loadTimeline(inv) {
     const chain = [inv];
@@ -170,6 +176,7 @@ export default function InvoiceDetailPage() {
           orig_balance_effect: invoice.debt_remaining || 0,
           invoice_no: invoice.invoice_no,
           created_at: invoice.created_at,
+          created_by_username: invoice.created_by_username || null,
         },
       },
     });
@@ -260,7 +267,7 @@ export default function InvoiceDetailPage() {
         {/* Left */}
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
           {/* Info bar */}
-          <section className="grid grid-cols-4 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
+          <section className="grid grid-cols-5 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">العميل</span>
               <span className="text-[13px] font-black text-slate-800">{invoice.customer_name || "زبون نقدي"}</span>
@@ -272,14 +279,20 @@ export default function InvoiceDetailPage() {
               </span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">طريقة الدفع</span>
-              <span className="text-[13px] font-black text-slate-800">{PAYMENT_LABELS[invoice.payment_type] || invoice.payment_type || "—"}</span>
-            </div>
-            <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">الوقت</span>
               <span className="text-[13px] font-black text-slate-800 font-mono">
                 {invoice.created_at ? new Date(invoice.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "—"}
               </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">طريقة الدفع</span>
+              <span className="text-[13px] font-black text-slate-800">{PAYMENT_LABELS[invoice.payment_type] || invoice.payment_type || "—"}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <User className="h-3 w-3" /> بواسطة
+              </span>
+              <span className="text-[13px] font-black text-slate-800">{invoice.created_by_username || "—"}</span>
             </div>
           </section>
 

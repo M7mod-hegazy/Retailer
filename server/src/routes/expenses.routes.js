@@ -94,7 +94,7 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
       return created;
     })();
 
-    req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd(), `/expenses`);
+    const expenseAuditId = req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd(), `/expenses`);
   try {
     const expenseAmount = Number(payload.amount || 0);
     if (expenseAmount > 500) {
@@ -103,7 +103,7 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
         title: "💸 مصروف بمبلغ كبير",
         body: `مصروف بمبلغ ${expenseAmount}${description ? ' — ' + description : ''}`,
         type: "warning",
-        link: `/expenses`,
+        link: expenseAuditId ? `/history?log_id=${expenseAuditId}` : `/expenses`,
       });
     }
   } catch (_) {}

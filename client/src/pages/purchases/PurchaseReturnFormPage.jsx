@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
-  Package, RefreshCw, ChevronRight, UserPlus, Phone, Calendar,
-  Loader2,
+  Package, UserPlus, Phone, Calendar, Loader2, ChevronDown,
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
@@ -21,12 +20,7 @@ function formatDate(d) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("ar-EG");
 }
-function last30Days() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 30);
-  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
-}
+
 
 const REASONS = [
   { value: "defective", label: "عيب في المنتج" },
@@ -127,6 +121,60 @@ function SupplierCreateModal({ open, onClose, onCreated }) {
   );
 }
 
+function paymentMethodLabel(m) {
+  const map = { cash: "نقداً", credit: "آجل", multi: "متعدد", bank: "بنك", future_due: "آجل مؤجل" };
+  return map[m] || m || "—";
+}
+
+function OriginalPurchasePreview({ purchase }) {
+  const total = Number(purchase.total || 0);
+  return (
+    <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-white overflow-hidden text-[12px] shadow-[0_2px_10px_rgba(251,191,36,0.1)] relative">
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply" />
+      {/* Header */}
+      <div className="px-3 py-2.5 bg-amber-100/50 border-b border-amber-200/60 flex items-center justify-between gap-2 relative z-10">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded flex items-center justify-center bg-white border border-amber-200 shadow-sm shrink-0">
+            <Clock className="h-3 w-3 text-amber-500" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-amber-700/80 leading-tight">أمر الشراء الأصلي</span>
+            <span className="text-[11px] font-black text-amber-900 font-mono tracking-tight leading-tight">#{purchase.doc_no}</span>
+          </div>
+        </div>
+        {purchase.payment_method && (
+          <span className="text-[10px] text-amber-700 font-bold bg-white px-1.5 py-0.5 rounded-md border border-amber-200 shrink-0">{paymentMethodLabel(purchase.payment_method)}</span>
+        )}
+      </div>
+      {/* Financials */}
+      <div className="px-4 py-3 flex flex-col gap-2 relative z-10">
+        <div className="flex justify-between items-center border-t border-amber-200/50 pt-2 text-slate-900 font-black text-[13px]">
+          <span>الإجمالي</span>
+          <span>{formatMoney(total)} <span className="text-slate-500 font-sans text-[10px]">ج.م</span></span>
+        </div>
+      </div>
+      {/* Payments */}
+      {purchase.payments && purchase.payments.length > 0 && (
+        <div className="border-t border-amber-200/50 px-4 py-3 flex flex-col gap-2 bg-amber-50/50 relative z-10">
+          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">وسائل الدفع</span>
+          {purchase.payments.map((p, i) => (
+            <div key={i} className="flex justify-between items-center text-[11px] text-slate-700">
+              <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-300"/>{p.method_name || p.method_type || "—"}</span>
+              <span className="font-bold text-slate-900">{formatMoney(p.amount)} <span className="text-slate-500 font-sans text-[9px]">ج.م</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+      {/* Footer stamp */}
+      <div className="border-t border-amber-200/80 px-3 py-2 bg-amber-100 flex items-center justify-center relative z-10">
+        <span className="text-[9px] font-black tracking-widest text-amber-700 uppercase flex items-center gap-1.5">
+          <Lock className="w-3 h-3" /> للمعاينة فقط · غير قابل للتعديل
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function PurchaseReturnFormPage() {
   const navigate = useNavigate();
@@ -175,6 +223,8 @@ export default function PurchaseReturnFormPage() {
   const [showSwitchPurchaseWarning, setShowSwitchPurchaseWarning] = useState(false);
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [reasonOpen, setReasonOpen] = useState(false);
 
   const itemInputRef = useRef(null);
   const stagingWHRef = useRef(null);
@@ -227,6 +277,7 @@ export default function PurchaseReturnFormPage() {
             return {
               purchase_line_id: l.id,
               item_id: l.item_id,
+              item_code: l.item_code || l.barcode || "",
               item_name: l.item_name_ar || l.item_name || l.name,
               unit_cost: Number(l.unit_cost || l.unit_price || 0),
               original_qty: Number(l.quantity),
@@ -335,6 +386,7 @@ export default function PurchaseReturnFormPage() {
     setPurchaseLines((pur.lines || []).map(l => ({
       purchase_line_id: l.id,
       item_id: l.item_id,
+      item_code: l.item_code || l.barcode || "",
       item_name: l.item_name_ar || l.item_name || l.name,
       unit_cost: Number(l.unit_cost || l.unit_price || 0),
       original_qty: Number(l.quantity),
@@ -552,83 +604,138 @@ export default function PurchaseReturnFormPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel */}
-        <aside className="flex w-[360px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
-          <div className="flex flex-col gap-4 p-4">
-            <button onClick={handlePurchasesClick} className="flex w-full items-center justify-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-[12px] font-bold text-amber-700 hover:bg-amber-100 transition-colors">
+        <aside className="flex w-[340px] lg:w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
+          <div className="flex flex-col gap-5 p-5">
+            <button onClick={handlePurchasesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-[13px] font-bold text-white hover:bg-amber-800 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> أوامر الشراء
             </button>
 
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-500">المورد</label>
+            {/* Supplier */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">المورد</label>
                 {!isLocked && !supplierLockedFromPurchase && (
-                  <button onClick={() => setSupplierCreateOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-800">
+                  <button onClick={() => setSupplierCreateOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-800 transition-colors">
                     <UserPlus className="h-3 w-3" /> مورد جديد
                   </button>
                 )}
               </div>
-              <select value={supplier?.id || ""} onChange={e => { const s = suppliers.find(x => String(x.id) === e.target.value); setSupplier(s ? { id: s.id, name: s.name } : null); }}
-                disabled={isLocked || supplierLockedFromPurchase}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60">
-                <option value="">— بدون مورد —</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-              {supplierLockedFromPurchase && !isLocked && <p className="mt-1 text-[10px] text-slate-400">المورد محدد من أمر الشراء الأصلي</p>}
+              <div className="relative">
+                <select value={supplier?.id || ""} onChange={e => { const s = suppliers.find(x => String(x.id) === e.target.value); setSupplier(s ? { id: s.id, name: s.name } : null); }}
+                  disabled={isLocked || supplierLockedFromPurchase}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none">
+                  <option value="">— بدون مورد —</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              </div>
+              {supplierLockedFromPurchase && !isLocked && <p className="text-[10px] text-slate-400 font-medium">المورد محدد من أمر الشراء الأصلي</p>}
             </div>
 
+            {/* Supplier balance */}
             {supplier && supplierBalance !== null && (
-              <div>
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-[12px]">
-                  <div className="flex justify-between text-slate-600 mb-1.5">
-                    <span className="font-bold">رصيد الحساب</span>
-                    <span className={`font-black ${supplierBalance >= 0 ? "text-rose-600" : "text-amber-600"}`}>{formatMoney(supplierBalance)} ج.م</span>
-                  </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-1 h-full bg-slate-200" />
+                <div className="flex justify-between items-center text-[12px]">
+                  <span className="font-bold text-slate-500">رصيد الحساب</span>
+                  <span className={`font-black font-mono ${supplierBalance >= 0 ? "text-rose-600" : "text-amber-600"}`}>{formatMoney(supplierBalance)} ج.م</span>
                 </div>
-                <div className="flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1.5 mt-2">
-                  <span className="text-[10px] font-bold text-amber-600">الرصيد بعد المرتجع</span>
-                  <span className={`text-[12px] font-black font-mono ${(supplierBalance - total) >= 0 ? "text-rose-600" : "text-amber-700"}`}>{formatMoney(supplierBalance - total)} ج.م</span>
+                <div className="flex justify-between items-center text-[12px] pt-3 border-t border-slate-100">
+                  <span className="font-bold text-amber-600">الرصيد بعد المرتجع</span>
+                  <span className={`font-black font-mono ${(supplierBalance - total) >= 0 ? "text-rose-600" : "text-amber-700"}`}>{formatMoney(supplierBalance - total)} ج.م</span>
                 </div>
-                <Link to={`/definitions/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-amber-700 pt-0.5 mt-1.5">
-                  <ExternalLink className="h-3 w-3" /> عرض سجل المورد
+                <Link to={`/definitions/suppliers/${supplier.id}`} className="flex items-center justify-center gap-1 mt-2 py-1.5 rounded-lg bg-slate-50 text-[10px] font-bold text-slate-500 hover:text-amber-700 hover:bg-amber-50 transition-colors">
+                  <ExternalLink className="h-3 w-3" /> عرض سجل المورد الكامل
                 </Link>
               </div>
             )}
 
-            <div>
-              <label className="mb-1.5 block text-[11px] font-bold text-slate-500">طريقة التسوية</label>
-              <div className="flex gap-2">
-                {[{ value: "account", label: "حساب المورد" }, { value: "cash", label: "نقداً" }].map(opt => (
-                  <button key={opt.value} onClick={() => !isLocked && setSettlementType(opt.value)} disabled={isLocked}
-                    className={`flex-1 rounded-md border py-2 text-[12px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${settlementType === opt.value ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
-                    {opt.label}
-                  </button>
-                ))}
+            <div className="w-full h-px bg-slate-100" />
+
+            {/* Return total — before settlement method */}
+            {total > 0 && (
+              <div className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 px-4 py-3 shadow-sm">
+                <span className="text-[12px] font-bold text-amber-700">إجمالي المرتجع</span>
+                <span className="text-[16px] font-black text-amber-800">{formatMoney(total)} ج.م</span>
+              </div>
+            )}
+
+            {/* Settlement method */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">طريقة التسوية</label>
+              <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60 shadow-inner">
+                {[{ value: "account", label: "حساب المورد" }, { value: "cash", label: "نقداً" }].map(opt => {
+                  const active = settlementType === opt.value;
+                  return (
+                    <button key={opt.value} onClick={() => !isLocked && setSettlementType(opt.value)} disabled={isLocked}
+                      className={`flex-1 rounded-lg py-2 text-[12px] font-bold transition-all disabled:cursor-not-allowed ${active ? "bg-white text-amber-700 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-[11px] font-bold text-slate-500">السبب</label>
-              <select value={reason} onChange={e => setReason(e.target.value)} disabled={isLocked}
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60">
-                {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-              {reason === "other" && !isLocked && (
-                <input value={reasonOther} onChange={e => setReasonOther(e.target.value)} placeholder="اذكر السبب..."
-                  className="mt-2 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200" />
+            {/* Reason — collapsible */}
+            <div className="flex flex-col">
+              <button onClick={() => setReasonOpen(o => !o)}
+                className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors uppercase tracking-widest">
+                <span>سبب الاسترداد {reason !== "other" ? <span className="text-amber-600 normal-case tracking-normal text-[10px] ml-1">({REASONS.find(r => r.value === reason)?.label})</span> : reasonOther ? <span className="text-amber-600 normal-case tracking-normal text-[10px] ml-1">({reasonOther})</span> : ""}</span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${reasonOpen ? "rotate-180" : ""}`} />
+              </button>
+              {reasonOpen && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="relative">
+                    <select value={reason} onChange={e => setReason(e.target.value)} disabled={isLocked}
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none">
+                      {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                    <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                  {reason === "other" && !isLocked && (
+                    <input value={reasonOther} onChange={e => setReasonOther(e.target.value)} placeholder="اذكر السبب بتفصيل..."
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-medium text-slate-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 shadow-sm transition-all" />
+                  )}
+                </div>
               )}
             </div>
 
+            {/* Purchase selected count */}
             {mode === "purchase" && (
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
-                {purchaseLines.filter(l => l.checked).length > 0 ? `تم اختيار ${purchaseLines.filter(l => l.checked).length} أصناف` : "لم يتم اختيار أصناف بعد"}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] font-bold text-slate-500 flex items-center gap-2 mt-2">
+                <Package className="w-4 h-4 opacity-50" />
+                {purchaseLines.filter(l => l.checked).length > 0 ? (
+                  <span className="text-amber-700">تم اختيار <span className="font-black">{purchaseLines.filter(l => l.checked).length}</span> أصناف للاسترداد</span>
+                ) : (
+                  "لم يتم تحديد أي أصناف للإرجاع"
+                )}
+              </div>
+            )}
+
+            {/* Original purchase preview — collapsible */}
+            {mode === "purchase" && loadedPurchase && (
+              <div className="mt-2 flex flex-col">
+                <button onClick={() => setPreviewOpen(o => !o)}
+                  className="flex w-full items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm">
+                  <span className="flex items-center gap-1.5"><Clock className="w-4 h-4"/> أمر الشراء الأصلي · #{loadedPurchase.doc_no}</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${previewOpen ? "rotate-180" : ""}`} />
+                </button>
+                {previewOpen && (
+                  <div className="mt-3 animate-slide-up origin-top">
+                    <OriginalPurchasePreview purchase={loadedPurchase} />
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           <div className="mt-auto border-t border-amber-200 bg-amber-700 px-5 py-4">
             <div className="flex items-center justify-between">
-              <span className="text-[13px] font-bold text-amber-200">إجمالي المرتجع</span>
-              <span className="text-[18px] font-black text-white">{formatMoney(total)} ج.م</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-bold text-amber-300">سيتم استرداد</span>
+                <span className="text-[10px] text-amber-400">المبلغ المُعاد للمورد</span>
+              </div>
+              <span className="text-[20px] font-black text-white">{formatMoney(total)} ج.م</span>
             </div>
           </div>
         </aside>
@@ -759,74 +866,88 @@ export default function PurchaseReturnFormPage() {
 
           {mode === "purchase" && (
             <div className="flex flex-1 flex-col gap-4 overflow-hidden">
-              {!loadedPurchase ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-400">
-                  <Search className="h-12 w-12 opacity-20" />
-                  <p className="text-[14px] font-black">لم يتم اختيار أمر شراء بعد</p>
-                  <button onClick={() => setPurchasePickerOpen(true)} className="flex items-center gap-2 rounded-lg bg-amber-700 px-5 py-2.5 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
-                    <Search className="h-4 w-4" /> اختيار أمر شراء
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-1 flex-col gap-4 overflow-hidden">
-                  <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shrink-0">
-                    <div className="flex items-center gap-4 text-[13px]">
-                      <span className="font-black text-amber-800">أمر شراء #{loadedPurchase.doc_no}</span>
-                      {loadedPurchase.supplier_name && <span className="text-slate-600">المورد: <strong>{loadedPurchase.supplier_name}</strong></span>}
-                      <span className="text-slate-500">{formatDate(loadedPurchase.created_at)}</span>
-                      <span className="font-bold text-amber-700">الإجمالي: {formatMoney(loadedPurchase.total)} ج.م</span>
-                    </div>
-                    {!isLocked && (
-                      <button onClick={() => setPurchasePickerOpen(true)} className="flex items-center gap-1.5 text-[12px] font-bold text-rose-600 hover:text-rose-800">
-                        <X className="h-3.5 w-3.5" /> تغيير الأمر
-                      </button>
-                    )}
+              <div className="flex flex-1 flex-col gap-4 overflow-hidden min-w-0">
+                {!loadedPurchase ? (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-400">
+                    <Search className="h-12 w-12 opacity-20" />
+                    <p className="text-[14px] font-black">لم يتم اختيار أمر شراء بعد</p>
+                    <button onClick={() => setPurchasePickerOpen(true)} className="flex items-center gap-2 rounded-lg bg-amber-700 px-5 py-2.5 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
+                      <Search className="h-4 w-4" /> اختيار أمر شراء
+                    </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-                    <table className="w-full text-right">
-                      <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-3 text-[11px] font-bold text-slate-500 w-8"></th>
-                          <th className="px-4 py-3 text-[11px] font-bold text-slate-500">الصنف</th>
-                          <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية الأصلية</th>
-                          <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">المُرتجع سابقاً</th>
-                          <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية للإرجاع</th>
-                          <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية بعد الإرجاع</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {purchaseLines.map((l, idx) => {
-                          const afterReturn = l.original_qty - l.already_returned - (l.checked ? l.qty_to_return : 0);
-                          return (
-                            <tr key={l.purchase_line_id} className={`border-b border-slate-100 transition-colors animate-slide-up ${l.checked ? "bg-amber-50/50" : "hover:bg-slate-50"}`} style={{ animationDelay: `${idx * 50}ms` }}>
-                              <td className="px-3 py-3 text-center">
-                                <input type="checkbox" checked={l.checked} onChange={() => !isLocked && togglePurchaseLine(l.purchase_line_id)} disabled={isLocked}
-                                  className="h-4 w-4 rounded border-slate-300 accent-amber-600 cursor-pointer disabled:cursor-not-allowed" />
-                              </td>
-                              <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
-                              <td className="px-3 py-3 text-center text-[13px] text-slate-600">{l.original_qty}</td>
-                              <td className="px-3 py-3 text-center text-[13px] text-slate-500">{l.already_returned || "—"}</td>
-                              <td className="px-3 py-3 text-center">
-                                <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return}
-                                  onChange={e => setPurchaseLineQty(l.purchase_line_id, e.target.value)}
-                                  disabled={!l.checked || isLocked}
-                                  className="w-16 rounded-sm border border-slate-200 px-2 py-1 text-center text-[13px] font-black text-slate-800 outline-none focus:border-amber-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
-                              </td>
-                              <td className={`px-3 py-3 text-center text-[13px] font-bold ${afterReturn < 0 ? "text-rose-600" : "text-slate-700"}`}>{afterReturn}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    {purchaseLines.length === 0 && (
-                      <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400">
-                        <AlertCircle className="h-8 w-8 opacity-30" />
-                        <div className="text-[13px]">لا توجد أصناف قابلة للإرجاع في هذا الأمر</div>
+                ) : (
+                  <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+                    <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shrink-0">
+                      <div className="flex items-center gap-4 text-[13px]">
+                        <span className="font-black text-amber-800">أمر شراء #{loadedPurchase.doc_no}</span>
+                        {loadedPurchase.supplier_name && <span className="text-slate-600">المورد: <strong>{loadedPurchase.supplier_name}</strong></span>}
+                        <span className="text-slate-500">{formatDate(loadedPurchase.created_at)}</span>
+                        <span className="font-bold text-amber-700">الإجمالي: {formatMoney(loadedPurchase.total)} ج.م</span>
                       </div>
-                    )}
+                      {!isLocked && (
+                        <button onClick={() => setPurchasePickerOpen(true)} className="flex items-center gap-1.5 text-[12px] font-bold text-rose-600 hover:text-rose-800">
+                          <X className="h-3.5 w-3.5" /> تغيير الأمر
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                      <table className="w-full text-right">
+                        <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-3 w-8"></th>
+                            <th className="px-2 py-3 text-[11px] font-bold text-slate-400 text-center w-20">الكود</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500">الصنف</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">سعر الشراء</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية الأصلية</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">إجمالي الأمر</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">المُرتجع سابقاً</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">كمية الإرجاع</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-amber-600 text-center">إجمالي الإرجاع</th>
+                            <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية المتبقية</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {purchaseLines.map((l, idx) => {
+                            const afterReturn = l.original_qty - l.already_returned - (l.checked ? l.qty_to_return : 0);
+                            const originalTotal = l.original_qty * l.unit_cost;
+                            const returnTotal = l.checked ? l.qty_to_return * l.unit_cost : 0;
+                            return (
+                              <tr key={l.purchase_line_id} className={`border-b border-slate-100 transition-colors animate-slide-up ${l.checked ? "bg-amber-50/50" : "hover:bg-slate-50"}`} style={{ animationDelay: `${idx * 50}ms` }}>
+                                <td className="px-3 py-3 text-center">
+                                  <input type="checkbox" checked={l.checked} onChange={() => !isLocked && togglePurchaseLine(l.purchase_line_id)} disabled={isLocked}
+                                    className="h-4 w-4 rounded border-slate-300 accent-amber-600 cursor-pointer disabled:cursor-not-allowed" />
+                                </td>
+                                <td className="px-2 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
+                                <td className="px-3 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
+                                <td className="px-3 py-3 text-center text-[12px] text-slate-600">{formatMoney(l.unit_cost)}</td>
+                                <td className="px-3 py-3 text-center text-[13px] text-slate-600">{l.original_qty}</td>
+                                <td className="px-3 py-3 text-center text-[12px] font-bold text-slate-700">{formatMoney(originalTotal)}</td>
+                                <td className="px-3 py-3 text-center text-[13px] text-slate-500">{l.already_returned || "—"}</td>
+                                <td className="px-3 py-3 text-center">
+                                  <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return}
+                                    onChange={e => setPurchaseLineQty(l.purchase_line_id, e.target.value)}
+                                    disabled={!l.checked || isLocked}
+                                    className="w-16 rounded-sm border border-slate-200 px-2 py-1 text-center text-[13px] font-black text-slate-800 outline-none focus:border-amber-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
+                                </td>
+                                <td className="px-3 py-3 text-center text-[12px] font-black text-amber-700">
+                                  {l.checked && returnTotal > 0 ? formatMoney(returnTotal) : "—"}
+                                </td>
+                                <td className={`px-3 py-3 text-center text-[13px] font-bold ${afterReturn < 0 ? "text-rose-600" : "text-slate-500"}`}>{afterReturn}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      {purchaseLines.length === 0 && (
+                        <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400">
+                          <AlertCircle className="h-8 w-8 opacity-30" />
+                          <div className="text-[13px]">لا توجد أصناف قابلة للإرجاع في هذا الأمر</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </main>

@@ -40,8 +40,11 @@ function recalculateInvoiceStatus(db, invoiceId) {
 function getInvoiceWithLines(invoiceId) {
   const db = getDb();
   const invoice = db.prepare(`
-    SELECT i.*, c.name AS customer_name, c.phone AS customer_phone
-    FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id
+    SELECT i.*, c.name AS customer_name, c.phone AS customer_phone,
+           u.username AS created_by_username
+    FROM invoices i
+    LEFT JOIN customers c ON c.id = i.customer_id
+    LEFT JOIN users u ON u.id = i.user_id
     WHERE i.id = ?
   `).get(invoiceId);
   if (!invoice) return null;
@@ -59,10 +62,12 @@ function getInvoiceWithLines(invoiceId) {
 
   const allocations = db
     .prepare(`
-      SELECT pa.*, p.method AS method, pm.name AS method_name
+      SELECT pa.*, p.method AS method,
+             (SELECT pm.name FROM payment_methods pm
+              WHERE pm.type = p.method OR pm.category = p.method OR pm.name = p.method
+              LIMIT 1) AS method_name
       FROM payment_allocations pa
       LEFT JOIN payments p ON p.id = pa.payment_id
-      LEFT JOIN payment_methods pm ON pm.type = p.method OR pm.category = p.method OR pm.name = p.method
       WHERE pa.invoice_id = ?
       ORDER BY pa.id ASC
     `)
@@ -78,6 +83,7 @@ function getInvoiceWithLines(invoiceId) {
 
   return {
     ...recalculateInvoiceStatus(db, invoiceId),
+    created_by_username: invoice.created_by_username || null,
     lines: lines.map((line) => ({
       ...line,
       returnable_quantity: Math.max(0, line.quantity - (line.returned_quantity || 0)),

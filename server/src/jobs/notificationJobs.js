@@ -15,8 +15,8 @@ function scanAndCreateNotifications() {
 
   lowStockItems.slice(0, 5).forEach((item) => {
     NotificationModel.create({
-      title: "تنبيه مخزون منخفض",
-      body: `${item.name} وصل إلى ${item.quantity}`,
+      title: "⚠️ مخزون منخفض",
+      body: `📦 ${item.name} — الكمية: ${item.quantity} (الحد الأدنى: ${item.min_stock_qty})`,
       type: "warning",
       link: "/stock",
     });

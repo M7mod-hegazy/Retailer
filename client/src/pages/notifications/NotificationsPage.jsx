@@ -8,12 +8,6 @@ import { useNotificationStore } from "../../stores/notificationStore";
 import PermissionGate from "../../components/ui/PermissionGate";
 import PageWrapper from "../../components/ui/PageWrapper";
 
-const SAFE_LINK_PREFIXES = [
-  "/invoices", "/purchases", "/stock", "/suppliers", "/customers",
-  "/shifts", "/definitions", "/notifications", "/history", "/reports",
-  "/payments", "/expenses",
-];
-
 const TYPE_OPTS = [
   { value: "all", label: "الكل" },
   { value: "info", label: "معلومات" },
@@ -77,8 +71,10 @@ function NotifRow({ note, onMarkRead, onDelete, index }) {
 
   const handleClick = async () => {
     if (isUnread) onMarkRead(note.id);
-    if (note.link && SAFE_LINK_PREFIXES.some(p => note.link.startsWith(p))) {
+    if (note.link?.startsWith("/history")) {
       navigate(note.link);
+    } else {
+      navigate(`/history?notif_id=${note.id}`);
     }
   };
 

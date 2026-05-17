@@ -290,9 +290,13 @@ router.put("/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
 });
 
 router.post("/", requirePagePermission("pos", "add"), (req, res) => {
-  const payload = { ...(req.body || {}), user_id: req.user?.id || null };
+  const rawUserId = req.user?.id;
+  const resolvedUserId = rawUserId && Number.isInteger(Number(rawUserId))
+    ? Number(rawUserId)
+    : (() => { try { return getDb().prepare("SELECT id FROM users WHERE is_active = 1 ORDER BY id ASC LIMIT 1").get()?.id || null; } catch (_) { return null; } })();
+  const payload = { ...(req.body || {}), user_id: resolvedUserId };
   const invoice = createInvoice(payload);
-  req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
+  const invoiceAuditId = req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
   // Notify on large invoice (total > 1000)
   try {
     if (invoice?.total > 1000 && invoice?.id) {
@@ -301,7 +305,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
         title: "🧾 فاتورة بمبلغ كبير",
         body: `فاتورة #${invoice.id} للعميل ${customerName} — المبلغ: ${invoice.total}`,
         type: "info",
-        link: `/invoices/${invoice.id}`,
+        link: invoiceAuditId ? `/history?log_id=${invoiceAuditId}` : `/invoices/${invoice.id}`,
       });
     }
   } catch (_) {}
@@ -318,7 +322,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
           title: "💸 خصم كبير مطبق",
           body: `خصم ${discount}% على الفاتورة #${invoice.id}`,
           type: "warning",
-          link: `/invoices/${invoice.id}`,
+          link: invoiceAuditId ? `/history?log_id=${invoiceAuditId}` : `/invoices/${invoice.id}`,
         });
       }
     }
@@ -329,7 +333,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
 router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
     const salesReturn = createReturn(Number(req.params.id), req.body || {});
-    req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`, salesReturn?.id ? `/pos/sales-returns/${salesReturn.id}` : `/invoices/${req.params.id}`);
+    const returnAuditId = req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`, salesReturn?.id ? `/pos/sales-returns/${salesReturn.id}` : `/invoices/${req.params.id}`);
     try {
       const invoiceId = req.params.id;
       const returnTotal = salesReturn?.total ?? 0;
@@ -337,7 +341,7 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, 
         title: "↩️ تم معالجة مرتجع",
         body: `مرتجع على الفاتورة #${invoiceId} — بمبلغ ${returnTotal}`,
         type: "info",
-        link: `/invoices`,
+        link: returnAuditId ? `/history?log_id=${returnAuditId}` : `/invoices`,
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: salesReturn });
@@ -355,13 +359,13 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
     }
     const { voidInvoice } = require("../services/invoiceService");
     const voided = voidInvoice(Number(req.params.id), req.body.reason, req.user?.id || 1);
-    req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    const voidAuditId = req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     try {
       NotificationModel.create({
         title: "🧾 تم إلغاء فاتورة",
         body: `تم إلغاء الفاتورة رقم #${req.params.id}`,
         type: "warning",
-        link: `/invoices/${req.params.id}`,
+        link: voidAuditId ? `/history?log_id=${voidAuditId}` : `/invoices/${req.params.id}`,
       });
     } catch (_) {}
     res.json({ success: true, data: voided });
