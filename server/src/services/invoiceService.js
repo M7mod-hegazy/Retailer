@@ -242,7 +242,9 @@ function createInvoice(payload) {
       });
     }
 
-    if ((paymentType === "credit" || remainingAmount > 0) && payload.customer_id) {
+    // ── Payment type handling ──────────────────────────────────────────
+    // 1) Debt creation (credit + partial-payment non-installment)
+    if ((paymentType === "credit" || (remainingAmount > 0 && paymentType !== "installments")) && payload.customer_id) {
       const debtAmount = remainingAmount > 0 ? remainingAmount : total;
       db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(
         debtAmount,
@@ -258,7 +260,10 @@ function createInvoice(payload) {
         payload.due_date || null,
         payload.notes || null,
       );
-    } else if (paymentType === "bank_transfer") {
+    }
+
+    // 2) Actual cash-in / bank handlers (separate from debt so installments can do both)
+    if (paymentType === "bank_transfer") {
       if (payload.bank_id && amountReceived > 0) {
         db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amountReceived, payload.bank_id);
       }
@@ -302,6 +307,27 @@ function createInvoice(payload) {
           db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)")
             .run(payment.lastInsertRowid, inv.lastInsertRowid, amount);
         }
+
+        // ── Multi: credit portion → create ajal_debt ─────────────────────
+        let creditSum = 0;
+        for (const p of payload.payments) {
+          const amt = Number(p.amount || 0);
+          if (amt <= 0) continue;
+          let m = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
+          if (!m && p.method === "credit") m = { type: "credit" };
+          if (m && m.type === "credit") creditSum += amt;
+        }
+        if (creditSum > 0 && payload.customer_id) {
+          const actualReceived = Math.max(0, amountReceived - creditSum);
+          db.prepare("UPDATE invoices SET amount_received = ?, status = ? WHERE id = ?")
+            .run(actualReceived, actualReceived > 0 ? "partial" : "unpaid", inv.lastInsertRowid);
+          db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?")
+            .run(creditSum, payload.customer_id);
+          db.prepare(`
+            INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+            VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
+          `).run(inv.lastInsertRowid, payload.customer_id, creditSum, payload.due_date || null, payload.notes || null);
+        }
       } else {
         // Fallback for legacy split_cash/split_bank if needed, but we prefer new format
         let splitCash = Number(payload.split_cash_amount || 0);
@@ -315,7 +341,45 @@ function createInvoice(payload) {
           db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(splitBank, bankId);
         }
       }
-    } else {
+    } else if (paymentType === "installments") {
+      // Installments: upfront cash goes to treasury, remaining creates ajal_debt
+      const treasuryId =
+        payload.treasury_id ||
+        db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+      if (treasuryId && amountReceived > 0) {
+        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amountReceived, treasuryId);
+
+        const payment = db.prepare(`
+          INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, allocated_amount, unallocated_amount, invoice_id)
+          VALUES ('customer', ?, ?, 'cash', ?, ?, ?, 0, ?)
+        `).run(
+          payload.customer_id || 0,
+          amountReceived,
+          `دفعة مقدمة - ${invoiceNo}`,
+          treasuryId,
+          amountReceived,
+          inv.lastInsertRowid,
+        );
+
+        db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)")
+          .run(payment.lastInsertRowid, inv.lastInsertRowid, amountReceived);
+      }
+
+      if (remainingAmount > 0 && payload.customer_id) {
+        db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(remainingAmount, payload.customer_id);
+        db.prepare(`
+          INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+          VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
+        `).run(
+          inv.lastInsertRowid,
+          payload.customer_id,
+          remainingAmount,
+          payload.due_date || null,
+          payload.notes || null,
+        );
+      }
+    } else if (amountReceived > 0) {
+      // Plain cash / default fallback
       const treasuryId =
         payload.treasury_id ||
         db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
@@ -394,6 +458,37 @@ function voidInvoice(invoiceId, reason, userId) {
           db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(alloc.amount, alloc.bank_id);
         }
       }
+      if (invoice.customer_id) {
+        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
+        if (debt) {
+          const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+          if (remaining > 0)
+            db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
+          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+        }
+      }
+    } else if (invoice.payment_type === "installments") {
+      // Reverse upfront cash payment from treasury
+      const allocs = db.prepare(`
+        SELECT pa.amount, p.method, p.treasury_id
+        FROM payment_allocations pa
+        LEFT JOIN payments p ON p.id = pa.payment_id
+        WHERE pa.invoice_id = ?
+      `).all(invoiceId);
+      for (const a of allocs) {
+        if (a.method === "cash" && a.treasury_id)
+          db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
+      }
+      // Reverse ajal_debt
+      if (invoice.customer_id) {
+        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
+        if (debt) {
+          const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+          if (remaining > 0)
+            db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
+          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+        }
+      }
     } else {
       // cash payment — reverse from treasury
       const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
@@ -454,6 +549,19 @@ function cancelInvoice(invoiceId, reason, userId) {
           db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
         db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
       }
+      // Reverse upfront cash payment from treasury for installments
+      if (invoice.payment_type === "installments") {
+        const allocs = db.prepare(`
+          SELECT pa.amount, p.method, p.treasury_id
+          FROM payment_allocations pa
+          LEFT JOIN payments p ON p.id = pa.payment_id
+          WHERE pa.invoice_id = ?
+        `).all(invoiceId);
+        for (const a of allocs) {
+          if (a.method === "cash" && a.treasury_id)
+            db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
+        }
+      }
     } else if (invoice.payment_type === "cash") {
       const tId = invoice.treasury_id ||
         db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
@@ -474,6 +582,15 @@ function cancelInvoice(invoiceId, reason, userId) {
           db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
         else if (a.method === "bank" && a.bank_id)
           db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(a.amount, a.bank_id);
+      }
+      if (invoice.customer_id) {
+        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
+        if (debt) {
+          const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+          if (remaining > 0)
+            db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
+          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+        }
       }
     }
 
@@ -505,17 +622,16 @@ function editInvoice(invoiceId, payload) {
     if (invoice.status === 'cancelled') { const e = new Error("Cannot edit cancelled invoice"); e.status = 400; throw e; }
 
     const oldLines = db.prepare("SELECT * FROM invoice_lines WHERE invoice_id = ?").all(invoiceId);
-    const oldTotal = Number(invoice.total);
+    const oldPaymentType = invoice.payment_type;
+    const oldCustomerId = invoice.customer_id;
 
-    // Reverse old stock
+    // ── 1. Reverse OLD stock ─────────────────────────────────────────────
     for (const line of oldLines) {
       adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id || 1, quantityDelta: Number(line.quantity), movement_type: "void_sale", reference_type: "invoice", reference_id: invoiceId });
     }
-
-    // Delete old lines
     db.prepare("DELETE FROM invoice_lines WHERE invoice_id = ?").run(invoiceId);
 
-    // Insert new lines with snapshot fields
+    // ── 2. Insert new lines ──────────────────────────────────────────────
     const newLines = payload.lines || [];
     let subtotal = 0;
     for (const line of newLines) {
@@ -548,72 +664,117 @@ function editInvoice(invoiceId, payload) {
     const discount = Number(payload.discount ?? invoice.discount ?? 0);
     const increase = Number(payload.increase ?? invoice.increase ?? 0);
     const newTotal = Math.max(0, subtotal - discount + increase);
-    const delta = newTotal - oldTotal;
+    const newPaymentType = payload.payment_type || oldPaymentType;
+    const newCustomerId = payload.customer_id ?? oldCustomerId;
+    const amountPaid = Number(payload.amount_paid ?? invoice.amount_received ?? newTotal);
+    const amountReceived = Number.isFinite(amountPaid) ? amountPaid : newTotal;
+    const remainingAmount = Math.max(0, newTotal - amountReceived);
 
-    // Update invoice header
-    db.prepare("UPDATE invoices SET subtotal = ?, discount = ?, increase = ?, total = ? WHERE id = ?").run(subtotal, discount, increase, newTotal, invoiceId);
-
-    // Adjust financials by delta
-    if (delta !== 0) {
-      if (invoice.payment_type === 'cash') {
-        const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-        if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(delta, tId);
-      } else if (invoice.payment_type === 'bank_transfer' && invoice.bank_id) {
-        db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(delta, invoice.bank_id);
-      } else if (invoice.payment_type === 'credit' && invoice.customer_id) {
-        db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, invoice.customer_id);
-        db.prepare("UPDATE ajal_debts SET original_amount = original_amount + ? WHERE invoice_id = ? AND status = 'open'").run(delta, invoiceId);
-      } else if (invoice.payment_type === 'multi' && payload.payments && Array.isArray(payload.payments)) {
-        // Re-entered payment splits provided — reverse old splits then apply new ones
-        const oldPayments = db.prepare(`
-          SELECT p.id, p.method, p.amount, p.treasury_id, p.bank_id
-          FROM payments p
-          JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = ?
-        `).all(invoiceId);
-        for (const op of oldPayments) {
-          if (op.method === 'cash' && op.treasury_id) {
-            db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(Number(op.amount), op.treasury_id);
-          } else if (op.method !== 'cash' && op.bank_id) {
-            db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(Number(op.amount), op.bank_id);
-          }
-        }
-        const oldPaymentIds = oldPayments.map(p => p.id);
-        db.prepare("DELETE FROM payment_allocations WHERE invoice_id = ?").run(invoiceId);
-        if (oldPaymentIds.length) {
-          db.prepare(`DELETE FROM payments WHERE id IN (${oldPaymentIds.map(() => '?').join(',')})`).run(...oldPaymentIds);
-        }
-        for (const p of payload.payments) {
-          const amt = Number(p.amount || 0);
-          if (amt <= 0) continue;
-          let method = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
-          if (!method && p.method === 'cash') {
-            method = { type: 'cash', target_id: invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || null };
-          } else if (!method && p.method === 'credit') {
-            method = { type: 'credit', target_id: null };
-          }
-          if (!method) continue;
-          if (method.type === 'cash' && method.target_id) {
-            db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
-          } else if (method.type === 'bank' && method.target_id) {
-            db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
-          }
-          const newPayment = db.prepare(`
-            INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id)
-            VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)
-          `).run(
-            invoice.customer_id || 0,
-            amt,
-            method.type === 'cash' ? 'cash' : method.type === 'credit' ? 'credit' : (method.name || method.type || method.category),
-            `Invoice ${invoice.invoice_no}`,
-            method.type === 'cash' ? method.target_id || null : null,
-            method.type === 'bank' ? method.target_id || null : null,
-            amt,
-            invoiceId,
-          );
-          db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)")
-            .run(newPayment.lastInsertRowid, invoiceId, amt);
+    // ── 3. Fully reverse OLD financial effects ───────────────────────────
+    if (oldPaymentType === 'cash') {
+      const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+      const amt = invoice.amount_received ?? invoice.total;
+      if (tId && amt > 0) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amt, tId);
+    } else if (oldPaymentType === 'credit' && oldCustomerId) {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(invoice.total, oldCustomerId);
+      try { db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE invoice_id = ? AND source_type = 'invoice'").run(invoiceId); } catch (_) {}
+    } else if (oldPaymentType === 'bank_transfer') {
+      const amt = invoice.amount_received ?? invoice.total;
+      if (invoice.bank_id && amt > 0) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amt, invoice.bank_id);
+    } else if (oldPaymentType === 'installments') {
+      const allocs = db.prepare(`
+        SELECT pa.amount, p.treasury_id FROM payment_allocations pa
+        LEFT JOIN payments p ON p.id = pa.payment_id WHERE pa.invoice_id = ?
+      `).all(invoiceId);
+      for (const a of allocs) { if (a.treasury_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id); }
+      if (oldCustomerId) {
+        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
+        if (debt) {
+          const rem = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+          if (rem > 0) db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(rem, oldCustomerId);
+          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
         }
       }
+    } else if (oldPaymentType === 'multi') {
+      const allocs = db.prepare(`
+        SELECT pa.amount, p.method, p.treasury_id, p.bank_id FROM payment_allocations pa
+        LEFT JOIN payments p ON p.id = pa.payment_id WHERE pa.invoice_id = ?
+      `).all(invoiceId);
+      for (const a of allocs) {
+        if (a.method === 'cash' && a.treasury_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
+        else if (a.method === 'bank' && a.bank_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(a.amount, a.bank_id);
+      }
+    }
+    // Clean up old payment_allocations + payments for any old type
+    db.prepare("DELETE FROM payment_allocations WHERE invoice_id = ?").run(invoiceId);
+    db.prepare(`
+      DELETE FROM payments WHERE id IN (
+        SELECT id FROM payments WHERE invoice_id = ? AND id NOT IN (
+          SELECT COALESCE(payment_id,0) FROM payment_allocations WHERE invoice_id = ?
+        )
+      )
+    `).run(invoiceId, invoiceId);
+
+    // ── 4. Update invoice header ─────────────────────────────────────────
+    const newStatus = remainingAmount > 0 ? (amountReceived > 0 ? 'partial' : 'unpaid') : 'paid';
+    db.prepare(`
+      UPDATE invoices SET customer_id = ?, subtotal = ?, discount = ?, increase = ?, total = ?,
+        payment_type = ?, amount_received = ?, status = ?, seller_id = ?
+      WHERE id = ?
+    `).run(
+      newCustomerId, subtotal, discount, increase, newTotal,
+      newPaymentType, amountReceived, newStatus,
+      payload.seller_id ? Number(payload.seller_id) : invoice.seller_id,
+      invoiceId,
+    );
+
+    // ── 5. Apply NEW financial effects ───────────────────────────────────
+    if (newPaymentType === 'bank_transfer') {
+      const bankId = payload.bank_id || invoice.bank_id;
+      if (bankId && amountReceived > 0) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amountReceived, bankId);
+    } else if (newPaymentType === 'multi') {
+      if (payload.payments && Array.isArray(payload.payments)) {
+        for (const p of payload.payments) {
+          const amt = Number(p.amount || 0); if (amt <= 0) continue;
+          let method = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
+          if (!method && p.method === 'cash') method = { type: 'cash', target_id: payload.treasury_id || invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || null };
+          else if (!method && p.method === 'credit') method = { type: 'credit', target_id: null };
+          if (!method) continue;
+          if (method.type === 'cash' && method.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
+          else if (method.type === 'bank' && method.target_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
+          const payment = db.prepare(`
+            INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id)
+            VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)
+          `).run(newCustomerId || 0, amt, method.type === 'cash' ? 'cash' : method.type === 'credit' ? 'credit' : (method.name || method.type || method.category), `Invoice ${invoice.invoice_no}`, method.type === 'cash' ? method.target_id : null, method.type === 'bank' ? method.target_id : null, amt, invoiceId);
+          db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)").run(payment.lastInsertRowid, invoiceId, amt);
+        }
+      }
+    } else if (newPaymentType === 'installments') {
+      const tId = payload.treasury_id || invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+      if (tId && amountReceived > 0) {
+        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amountReceived, tId);
+        const pmt = db.prepare(`
+          INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, allocated_amount, unallocated_amount, invoice_id)
+          VALUES ('customer', ?, ?, 'cash', ?, ?, ?, 0, ?)
+        `).run(newCustomerId || 0, amountReceived, `دفعة مقدمة - ${invoice.invoice_no}`, tId, amountReceived, invoiceId);
+        db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)").run(pmt.lastInsertRowid, invoiceId, amountReceived);
+      }
+      if (remainingAmount > 0 && newCustomerId) {
+        db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(remainingAmount, newCustomerId);
+        db.prepare(`INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+          VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
+        `).run(invoiceId, newCustomerId, remainingAmount, payload.due_date || null, payload.notes || null);
+      }
+    } else if (newPaymentType === 'credit' && newCustomerId) {
+      const debtAmount = remainingAmount > 0 ? remainingAmount : newTotal;
+      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(debtAmount, newCustomerId);
+      db.prepare(`INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+        VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
+      `).run(invoiceId, newCustomerId, debtAmount, payload.due_date || null, payload.notes || null);
+    } else if (amountReceived > 0) {
+      // cash / default fallback
+      const tId = payload.treasury_id || invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amountReceived, tId);
     }
 
     return db.prepare("SELECT * FROM invoices WHERE id = ?").get(invoiceId);

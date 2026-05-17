@@ -104,9 +104,13 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
     const unionParts = {
       pos: {
         sql: `
-          SELECT i.id, i.invoice_no AS doc_no, i.total AS amount, i.payment_type,
+           SELECT i.id, i.invoice_no AS doc_no, i.total AS amount, i.payment_type,
                  i.created_at, c.name AS party, i.status, i.cancel_reason AS description,
-                 'pos_invoice' AS doc_type,
+                 CASE
+                   WHEN i.payment_type = 'installments' THEN 'installment_invoice'
+                   WHEN i.payment_type = 'credit' THEN 'credit_invoice'
+                   ELSE 'pos_invoice'
+                 END AS doc_type,
                  CASE
                    WHEN i.status = 'cancelled' THEN 'cancelled'
                    WHEN i.payment_type = 'cash' THEN 'in'
@@ -137,11 +141,22 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  (SELECT invoice_no FROM invoices WHERE id = i.amended_by) AS amended_by_no,
                  e.name       AS seller_name,
                  u.username   AS cancelled_by_name,
-                 CASE WHEN i.payment_type = 'multi' THEN (
-                   SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
-                   FROM payments p
-                   JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
-                 ) ELSE NULL END AS payment_splits
+                  CASE
+                    WHEN i.payment_type = 'multi' THEN (
+                      SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
+                      FROM payments p
+                      JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+                    )
+                    WHEN i.payment_type = 'installments' THEN (
+                      SELECT 'cash:' || CAST(ROUND(COALESCE(SUM(pa.amount), 0), 2) AS TEXT) ||
+                             CASE WHEN i.total > COALESCE(SUM(pa.amount), 0)
+                               THEN '|||credit:' || CAST(ROUND(i.total - COALESCE(SUM(pa.amount), 0), 2) AS TEXT)
+                               ELSE ''
+                             END
+                      FROM payment_allocations pa WHERE pa.invoice_id = i.id
+                    )
+                    ELSE NULL
+                  END AS payment_splits
           FROM invoices i
           LEFT JOIN customers c ON c.id = i.customer_id
           LEFT JOIN employees e ON e.id = i.seller_id
@@ -368,11 +383,22 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
              0 AS is_cancelled,
              NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
              NULL AS seller_name, u.username AS cancelled_by_name,
-             CASE WHEN i.payment_type = 'multi' THEN (
-               SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
-               FROM payments p
-               JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
-             ) ELSE NULL END AS payment_splits
+              CASE
+                WHEN i.payment_type = 'multi' THEN (
+                  SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
+                  FROM payments p
+                  JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+                )
+                WHEN i.payment_type = 'installments' THEN (
+                  SELECT 'cash:' || CAST(ROUND(COALESCE(SUM(pa.amount), 0), 2) AS TEXT) ||
+                         CASE WHEN i.total > COALESCE(SUM(pa.amount), 0)
+                           THEN '|||credit:' || CAST(ROUND(i.total - COALESCE(SUM(pa.amount), 0), 2) AS TEXT)
+                           ELSE ''
+                         END
+                  FROM payment_allocations pa WHERE pa.invoice_id = i.id
+                )
+                ELSE NULL
+              END AS payment_splits
       FROM invoices i
       LEFT JOIN customers c ON c.id = i.customer_id
       LEFT JOIN users     u ON u.id = i.cancelled_by

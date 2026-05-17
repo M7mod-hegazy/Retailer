@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Users, Search, Plus, FileText, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, LayoutList } from "lucide-react";
+import { Users, Search, Plus, FileText, X, Phone, AlertTriangle, SlidersHorizontal, MessageSquare, LayoutList, Eye, ExternalLink, Printer, RefreshCw } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -10,6 +10,20 @@ import PermissionGate from "../../components/ui/PermissionGate";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+
+const PAYMENT_METHOD_AR = {
+  cash: "نقداً", card: "بطاقة", bank: "بنك", bank_transfer: "تحويل بنكي",
+  credit: "آجل", installments: "تقسيط", wallet: "محفظة", multi: "متعدد",
+};
+const arMethod = (key) => PAYMENT_METHOD_AR[key] || key;
+
+const PTYPE_COLOR = {
+  cash: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  credit: "text-amber-700 bg-amber-50 border-amber-200",
+  installments: "text-violet-700 bg-violet-50 border-violet-200",
+  multi: "text-blue-700 bg-blue-50 border-blue-200",
+  bank_transfer: "text-sky-700 bg-sky-50 border-sky-200",
+};
 
 function Modal({ onClose, children, width = "480px" }) {
   return (
@@ -157,6 +171,11 @@ export default function CustomerAccountsPage() {
   // Drawer
   const [showDrawer, setShowDrawer] = useState(false);
 
+  // Invoice detail modal
+  const [detailInvoice, setDetailInvoice] = useState(null);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   // Modal states
   const [showCreate, setShowCreate] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
@@ -203,7 +222,7 @@ export default function CustomerAccountsPage() {
 
   const loadUrgencyMap = useCallback(async () => {
     try {
-      const r = await api.get("/api/ajal-debts?party_type=customer&status=open&limit=500");
+      const r = await api.get("/api/ajal-debts?party_type=customer&status=all&limit=500");
       const debts = r.data.data || [];
       console.log("[CustomerAccounts] urgency debts:", debts.map(d => ({ id: d.id, customer_id: d.customer_id, status: d.status, remaining: d.remaining, due_date: d.due_date })));
       const today = new Date();
@@ -213,6 +232,7 @@ export default function CustomerAccountsPage() {
       for (const d of debts) {
         const pid = d.customer_id || d.party_id;
         if (!pid) continue;
+        if (d.status === "paid" || d.status === "voided") continue;
         const due = d.due_date ? new Date(d.due_date) : null;
         const current = map[pid];
         let level = "ok";
@@ -283,6 +303,16 @@ export default function CustomerAccountsPage() {
   }, [selected, activeTab]);
 
   useEffect(() => { loadTab(); }, [loadTab]);
+
+  // Load full invoice details for the detail modal
+  useEffect(() => {
+    if (!detailInvoice) { setDetailData(null); return; }
+    setDetailLoading(true);
+    api.get(`/api/invoices/${detailInvoice.id}`)
+      .then(r => setDetailData(r.data.data))
+      .catch(() => setDetailData(null))
+      .finally(() => setDetailLoading(false));
+  }, [detailInvoice]);
 
   const refreshSelected = async () => {
     if (!selected) return;
@@ -630,21 +660,89 @@ export default function CustomerAccountsPage() {
               ) : activeTab === "invoices" ? (
                 <table className="w-full text-[12px] bg-white rounded-xl overflow-hidden shadow-sm">
                   <thead className="bg-slate-100">
-                    <tr>{["رقم الفاتورة", "التاريخ", "الإجمالي", "الحالة"].map(h => (
-                      <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px]">{h}</th>
+                    <tr>{["رقم الفاتورة", "طريقة الدفع", "التاريخ", "الإجمالي", "الحالة", ""].map(h => (
+                      <th key={h} className="px-3 py-3 text-right font-black text-slate-500 text-[11px]">{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>
-                    {tabData.map(inv => (
+                    {tabData.map(inv => {
+                      const paid = Number(inv.amount_received || 0);
+                      const remaining = Math.max(0, inv.total - paid);
+                      const paidPct = inv.total > 0 ? Math.min(100, (paid / inv.total) * 100) : 0;
+                      const isFullyPaid = inv.status === "paid" || paid >= inv.total;
+                      const isCancelled = inv.status === "cancelled";
+                      return (
                       <tr key={inv.id} className="border-t border-slate-100 hover:bg-slate-50">
-                        <td className="px-4 py-3 font-black font-mono text-blue-700">{inv.invoice_no || inv.doc_no || `#${inv.id}`}</td>
-                        <td className="px-4 py-3 text-slate-500">{fmtDate(inv.created_at)}</td>
-                        <td className="px-4 py-3 font-black font-mono">{fmt(inv.total)} ج.م</td>
-                        <td className="px-4 py-3">
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700">{inv.status || "مكتمل"}</span>
+                        <td className="px-3 py-3 font-black font-mono text-blue-700 whitespace-nowrap">{inv.invoice_no || inv.doc_no || `#${inv.id}`}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${PTYPE_COLOR[inv.payment_type] || "text-slate-600 bg-slate-100 border-slate-200"}`}>
+                              {arMethod(inv.payment_type)}
+                            </span>
+                            {inv.payment_type === "installments" && !inv.amended_by && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-violet-100 text-violet-700 border border-violet-200">مقدم + قسط</span>
+                            )}
+                            {inv.payment_type === "credit" && !inv.amended_by && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200">كامل آجل</span>
+                            )}
+                          </div>
+                          {inv.payment_splits && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {inv.payment_splits.split("|||").map((split, i) => {
+                                const colonIdx = split.lastIndexOf(":");
+                                const methodKey = split.slice(0, colonIdx);
+                                const amt = split.slice(colonIdx + 1);
+                                const isCash = methodKey === "cash";
+                                const isCredit = methodKey === "credit";
+                                const label = isCash ? "نقداً" : isCredit ? "آجل" : arMethod(methodKey);
+                                return (
+                                  <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isCredit ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                                    {label}: {fmt(Number(amt))}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {/* Paid vs Remaining */}
+                          {!isCancelled && (
+                            <div className="mt-1.5 flex items-center gap-2 text-[10px]">
+                              {isFullyPaid ? (
+                                <span className="text-emerald-600 font-black">مدفوع بالكامل ✓</span>
+                              ) : remaining > 0 && paid > 0 ? (
+                                <>
+                                  <span className="text-emerald-600 font-black">مدفوع: {fmt(paid)}</span>
+                                  <span className="text-slate-300">|</span>
+                                  <span className="text-amber-600 font-black">متبقي: {fmt(remaining)}</span>
+                                </>
+                              ) : paid === 0 ? (
+                                <span className="text-amber-600 font-black">غير مدفوع</span>
+                              ) : null}
+                            </div>
+                          )}
+                          {!isCancelled && inv.total > 0 && (
+                            <div className="mt-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${paidPct >= 100 ? "bg-emerald-500" : paidPct > 0 ? "bg-amber-400" : "bg-slate-200"}`}
+                                style={{ width: `${paidPct || 2}%` }} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{fmtDate(inv.created_at)}</td>
+                        <td className="px-3 py-3 font-black font-mono whitespace-nowrap">{fmt(inv.total)} ج.م</td>
+                        <td className="px-3 py-3">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${inv.status === "paid" ? "bg-emerald-100 text-emerald-700" : inv.status === "cancelled" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+                            {inv.status === "paid" ? "مسدد" : inv.status === "cancelled" ? "ملغي" : inv.status === "partial" ? "مدفوع جزئياً" : inv.status || "مكتمل"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <button onClick={() => setDetailInvoice(inv)}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
+                            title="عرض التفاصيل">
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               ) : activeTab === "payments" ? (
@@ -692,6 +790,138 @@ export default function CustomerAccountsPage() {
           </>
         )}
       </div>
+
+      {/* ══ Invoice Detail Modal ════════════════════════════ */}
+      {detailInvoice && (
+        <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); }} width="640px">
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-[17px] font-black text-slate-900">تفاصيل الفاتورة</h2>
+                <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailInvoice.invoice_no || `#${detailInvoice.id}`}</p>
+              </div>
+              <button onClick={() => { setDetailInvoice(null); setDetailData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-zinc-900 transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {detailLoading ? (
+              <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
+                <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
+              </div>
+            ) : detailData ? (
+              <>
+                {/* Summary */}
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
+                  <div className="grid grid-cols-2 gap-3 text-[12px]">
+                    <div><span className="font-black text-slate-400">العميل:</span> <span className="font-bold text-slate-800">{detailData.customer_name || "—"}</span></div>
+                    <div><span className="font-black text-slate-400">طريقة الدفع:</span> <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-black ${PTYPE_COLOR[detailData.payment_type] || "text-slate-600 bg-slate-100 border-slate-200"}`}>{arMethod(detailData.payment_type)}</span></div>
+                    <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(detailData.created_at)}</span></div>
+                    <div><span className="font-black text-slate-400">الحالة:</span> <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${detailData.status === "paid" ? "bg-emerald-100 text-emerald-700" : detailData.status === "cancelled" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>{detailData.status === "paid" ? "مسدد" : detailData.status === "cancelled" ? "ملغي" : detailData.status || "مكتمل"}</span></div>
+                  </div>
+                </div>
+
+                {/* Paid vs Remaining Progress */}
+                {(() => {
+                  const mTotal = Number(detailData.total || 0);
+                  const mPaid = Number(detailData.amount_received || 0);
+                  const mRemaining = Math.max(0, mTotal - mPaid);
+                  const mPct = mTotal > 0 ? Math.min(100, (mPaid / mTotal) * 100) : 0;
+                  return mTotal > 0 ? (
+                    <div className="rounded-xl bg-white border border-slate-200 p-4 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] font-black text-emerald-600">مدفوع: {fmt(mPaid)}</span>
+                          <span className="text-slate-300">|</span>
+                          <span className="text-[11px] font-black text-amber-600">متبقي: {fmt(mRemaining)}</span>
+                        </div>
+                        <span className="text-[11px] font-black text-slate-400">{mPct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${mPct >= 100 ? "bg-emerald-500" : mPct > 0 ? "bg-amber-400" : "bg-slate-200"}`}
+                          style={{ width: `${mPct || 2}%` }} />
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* Lines */}
+                <div className="rounded-xl border border-slate-200 overflow-hidden mb-4">
+                  <div className="bg-slate-100 grid grid-cols-12 gap-2 px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                    <div className="col-span-5">الصنف</div>
+                    <div className="col-span-2 text-center">الكمية</div>
+                    <div className="col-span-2 text-center">السعر</div>
+                    <div className="col-span-1 text-center">خصم</div>
+                    <div className="col-span-2 text-left">الإجمالي</div>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {detailData.lines?.map((line, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50">
+                        <div className="col-span-5 text-[11px] font-bold text-slate-800 truncate">{line.item_name || line.name}</div>
+                        <div className="col-span-2 text-center font-mono text-[11px] text-slate-600">{line.quantity}</div>
+                        <div className="col-span-2 text-center font-mono text-[11px] text-slate-600">{fmt(line.unit_price)}</div>
+                        <div className="col-span-1 text-center font-mono text-[10px] text-amber-600">{line.discount || "—"}</div>
+                        <div className="col-span-2 text-left font-mono text-[11px] font-black text-emerald-700">{fmt(line.line_total)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-slate-900 text-white px-3 py-3">
+                    <div className="flex justify-between text-[10px] mb-1"><span className="text-slate-400">الفرعي</span><span className="font-mono">{fmt(detailData.subtotal)}</span></div>
+                    {Number(detailData.discount) > 0 && <div className="flex justify-between text-[10px] mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(detailData.discount)}</span></div>}
+                    {Number(detailData.increase) > 0 && <div className="flex justify-between text-[10px] mb-1"><span className="text-slate-400">الإضافة</span><span className="font-mono text-emerald-300">+ {fmt(detailData.increase)}</span></div>}
+                    <div className="flex justify-between text-[13px] font-black border-t border-slate-700 pt-2 mt-2"><span>الإجمالي</span><span className="font-mono">{fmt(detailData.total)} ج.م</span></div>
+                  </div>
+                </div>
+
+                {/* Payment Distribution */}
+                {detailData.payments?.length > 0 && (
+                  <div className="rounded-xl border border-slate-200 p-4 mb-4">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">توزيع طرق الدفع</h3>
+                    <div className="flex flex-col gap-1.5">
+                      {detailData.payments.map((p, i) => {
+                        const isCash = p.method === "cash";
+                        const isCredit = p.method === "credit";
+                        return (
+                          <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 ${isCash ? "bg-emerald-50 border border-emerald-200" : isCredit ? "bg-amber-50 border border-amber-200" : "bg-slate-50 border border-slate-200"}`}>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-[11px] font-black ${isCash ? "text-emerald-700" : isCredit ? "text-amber-700" : "text-slate-700"}`}>{p.method_name || arMethod(p.method)}</span>
+                              {!isCash && <span className="text-[8px] font-bold text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded">لا يؤثر على الخزنة</span>}
+                            </div>
+                            <span className={`font-mono text-[12px] font-black ${isCash ? "text-emerald-700" : "text-slate-600"}`}>{fmt(p.amount)} ج.م</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Debt info */}
+                {detailData.debt_remaining > 0 && (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[12px] font-bold text-amber-800 flex items-center justify-between">
+                    <span>المتبقي من الآجل:</span>
+                    <span className="font-black font-mono">{fmt(detailData.debt_remaining)} ج.م</span>
+                  </div>
+                )}
+
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => window.open(`/invoices/${detailInvoice.id}`, "_blank")}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-[12px] font-black text-white hover:bg-blue-700 transition-colors">
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح الفاتورة الكاملة
+                  </button>
+                  <button onClick={() => setDetailInvoice(null)}
+                    className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors">
+                    إغلاق
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
+                <FileText className="h-8 w-8 opacity-40" />
+                <span className="font-black text-[13px]">لا توجد تفاصيل</span>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* ══ All-Debts Drawer ═══════════════════════════════════ */}
       <AllDebtsDrawer

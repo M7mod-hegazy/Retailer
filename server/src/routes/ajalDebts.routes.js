@@ -58,8 +58,8 @@ function recalcDebt(db, debtId) {
   const remaining = d.original_amount - d.paid_amount;
   let status = "open";
   if (remaining <= 0) status = "paid";
-  else if (d.paid_amount > 0) status = "partial";
   else if (d.due_date && new Date(d.due_date) < new Date()) status = "overdue";
+  else if (d.paid_amount > 0) status = "partial";
   db.prepare("UPDATE ajal_debts SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, debtId);
 }
 
@@ -155,7 +155,7 @@ router.get("/customer/:customerId", requirePagePermission("installments", "view"
     const rows = db.prepare(`
       SELECT d.*, i.invoice_no, (d.original_amount - d.paid_amount) AS remaining
       FROM ajal_debts d LEFT JOIN invoices i ON i.id = d.invoice_id
-      WHERE d.customer_id = ? ORDER BY d.created_at DESC
+      WHERE d.customer_id = ? AND d.status != 'voided' ORDER BY d.created_at DESC
     `).all(req.params.customerId);
     res.json({ success: true, data: rows });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
@@ -171,7 +171,7 @@ router.get("/supplier/:supplierId", requirePagePermission("installments", "view"
       FROM ajal_debts d
       LEFT JOIN suppliers s ON s.id = d.supplier_id
       LEFT JOIN purchases p ON p.id = d.invoice_id
-      WHERE COALESCE(d.party_type, 'customer') = 'supplier' AND d.supplier_id = ?
+      WHERE COALESCE(d.party_type, 'customer') = 'supplier' AND d.supplier_id = ? AND d.status != 'voided'
       ORDER BY d.created_at DESC
     `).all(req.params.supplierId);
     res.json({ success: true, data: rows });

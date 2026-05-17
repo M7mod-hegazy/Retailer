@@ -38,7 +38,7 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const rows = db.prepare(`
       SELECT i.id, i.invoice_no, i.subtotal, i.discount, i.total,
-             i.payment_type, i.status, i.created_at,
+             i.payment_type, i.status, i.created_at, i.amount_received,
              i.amended_by, i.amendment_of,
              (SELECT invoice_no FROM invoices WHERE id = i.amendment_of) AS amendment_of_no,
              (SELECT invoice_no FROM invoices WHERE id = i.amended_by)   AS amended_by_no,
@@ -47,7 +47,23 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
              u.username AS cancelled_by_name,
              u2.username AS created_by_username,
              i.user_id AS created_by_user_id,
-             (SELECT COUNT(*) FROM invoice_lines WHERE invoice_id = i.id) AS items_count
+             (SELECT COUNT(*) FROM invoice_lines WHERE invoice_id = i.id) AS items_count,
+             CASE
+               WHEN i.payment_type = 'multi' THEN (
+                 SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
+                 FROM payments p
+                 JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+               )
+               WHEN i.payment_type = 'installments' THEN (
+                 SELECT 'cash:' || CAST(ROUND(COALESCE(SUM(pa.amount), 0), 2) AS TEXT) ||
+                        CASE WHEN i.total > COALESCE(SUM(pa.amount), 0)
+                          THEN '|||credit:' || CAST(ROUND(i.total - COALESCE(SUM(pa.amount), 0), 2) AS TEXT)
+                          ELSE ''
+                        END
+                 FROM payment_allocations pa WHERE pa.invoice_id = i.id
+               )
+               ELSE NULL
+             END AS payment_splits
       FROM invoices i
       LEFT JOIN customers  c ON c.id = i.customer_id
       LEFT JOIN employees  e ON e.id = i.seller_id

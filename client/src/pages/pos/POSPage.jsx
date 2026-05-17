@@ -920,9 +920,14 @@ export default function POSPage() {
 
   const selectedCustomer   = customer || WALK_IN_CUSTOMER;
   // When amending, the old invoice's debt will be reversed on cancel — subtract it so we show the "pre-invoice" balance.
-  const amendBalanceAdjust = amendContext ? (amendContext.prefill?.orig_balance_effect || 0) : 0;
-  const displayBalance     = Number(selectedCustomer.opening_balance || 0) - amendBalanceAdjust;
+  // Only apply when the current customer matches the original (new customer = no old invoice effect)
+  const isSameAmendCustomer = amendContext && selectedCustomer?.id === amendContext.prefill?.customer_id;
+  const amendBalanceAdjust  = isSameAmendCustomer ? (amendContext.prefill?.orig_balance_effect || 0) : 0;
+  const displayBalance      = Number(selectedCustomer?.opening_balance || 0) - amendBalanceAdjust;
   const hasCustomerBalance = displayBalance > 0;
+  const creditEffect       = paymentType === "credit" ? totals.total :
+                             paymentType === "installments" ? Math.max(0, totals.total - Number(amountPaid || 0)) :
+                             paymentType === "multi" ? Number(multiCredit || 0) : 0;
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1163,7 +1168,7 @@ export default function POSPage() {
         })),
         discount,
         promotion_discount: promotionDiscount,
-        payment_type: paymentType === "installments" ? "credit" : paymentType,
+        payment_type: paymentType,
         amount_paid:  (paymentType === "credit" || paymentType === "installments") ? Math.max(0, paidAmountNumber) : totals.total,
         due_date:     paymentType === "installments" ? (installmentDueDate || null) : null,
         bank_id:      selectedBankId  ? Number(selectedBankId)  : null,
@@ -1178,7 +1183,8 @@ export default function POSPage() {
       };
       let response;
       if (amendInvoiceId) {
-        response = await api.put(`/api/invoices/${amendInvoiceId}`, payload);
+        const amendPayload = amendReason ? { ...payload, reason: amendReason } : payload;
+        response = await api.put(`/api/invoices/${amendInvoiceId}`, amendPayload);
         const savedData = response.data?.data;
         const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
         const receiptSnap = {
@@ -1829,20 +1835,29 @@ export default function POSPage() {
                       <span className="text-[11px] font-bold text-slate-500">{amendContext ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
                       <span className={`text-[13px] font-black font-mono ${displayBalance > 0 ? "text-rose-600" : "text-slate-800"}`}>{displayBalance.toFixed(3)}</span>
                     </div>
-                    {paymentType === "credit" && lines.length > 0 && (
-                      <div className="mt-1.5 flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                        <span className="text-[11px] font-bold text-amber-600">الرصيد بعد الفاتورة</span>
-                        <span className={`text-[13px] font-black font-mono ${displayBalance + totals.total > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                          {(displayBalance + totals.total).toFixed(3)}
-                        </span>
+                    {creditEffect > 0 && lines.length > 0 && (
+                      <div className="mt-1.5 space-y-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-amber-600">
+                            {paymentType === "installments" ? "الإضافة للأقساط" : paymentType === "multi" ? "الإضافة للآجل" : "الإضافة للرصيد"}
+                          </span>
+                          <span className="text-[13px] font-black font-mono text-amber-700">
+                            +{creditEffect.toFixed(3)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-amber-200/60 pt-1">
+                          <span className="text-[11px] font-bold text-amber-600">
+                            {paymentType === "installments" ? "الرصيد بعد الأقساط" : paymentType === "multi" ? "الرصيد بعد الآجل" : "الرصيد بعد الفاتورة"}
+                          </span>
+                          <span className={`text-[13px] font-black font-mono ${displayBalance + creditEffect > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                            {(displayBalance + creditEffect).toFixed(3)}
+                          </span>
+                        </div>
                       </div>
                     )}
-                    {customer?.ajal_total > 0 && (
-                      <div className="mt-1 flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-3 py-1.5">
-                        <span className="text-[10px] font-bold text-rose-500">ديون آجلة مفتوحة</span>
-                        <span className="text-[12px] font-black font-mono text-rose-700">{Number(customer.ajal_total).toFixed(3)}</span>
-                      </div>
-                    )}
+
+                  
+
                     {selectedTreasuryId && (paymentType === "cash" || paymentType === "multi") && lines.length > 0 && (
                       <div className="mt-1 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5">
                         <span className="text-[10px] font-bold text-emerald-600">الخزينة بعد الفاتورة</span>
@@ -3007,10 +3022,15 @@ export default function POSPage() {
                 <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm">
                   {amendContext ? "قبل التعديل: " : "الرصيد: "}{formatMoney(displayBalance)}
                 </div>
-                {paymentType === "credit" && lines.length > 0 && (
-                  <div className="text-[11px] font-black text-rose-700 bg-rose-100/50 border border-rose-200 px-2 py-1 rounded-sm">
-                    بعد الفاتورة: {formatMoney(displayBalance + totals.total)}
-                  </div>
+                {creditEffect > 0 && lines.length > 0 && (
+                  <>
+                    <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm">
+                      {paymentType === "installments" ? "الإضافة للأقساط: " : paymentType === "multi" ? "الإضافة للآجل: " : "الإضافة للرصيد: "}+{formatMoney(creditEffect)}
+                    </div>
+                    <div className="text-[11px] font-black text-rose-700 bg-rose-100/50 border border-rose-200 px-2 py-1 rounded-sm">
+                      {paymentType === "installments" ? "بعد الأقساط: " : paymentType === "multi" ? "بعد الآجل: " : "بعد الفاتورة: "}{formatMoney(displayBalance + creditEffect)}
+                    </div>
+                  </>
                 )}
               </div>
             )}

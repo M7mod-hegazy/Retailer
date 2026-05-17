@@ -32,6 +32,8 @@ const arMethod = (key) => PAYMENT_METHOD_AR[key] || key;
 
 const DOC_TYPE_LABEL = {
   pos_invoice: "فاتورة POS",
+  credit_invoice: "آجل",
+  installment_invoice: "تقسيط",
   expense: "مصروف",
   revenue: "إيراد",
   purchase: "مشتريات آجلة",
@@ -45,6 +47,8 @@ const DOC_TYPE_LABEL = {
 
 const DOC_TYPE_COLOR = {
   pos_invoice: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  credit_invoice: "text-amber-700 bg-amber-50 border-amber-200",
+  installment_invoice: "text-violet-700 bg-violet-50 border-violet-200",
   expense: "text-rose-700 bg-rose-50 border-rose-200",
   revenue: "text-blue-700 bg-blue-50 border-blue-200",
   purchase: "text-orange-700 bg-orange-50 border-orange-200",
@@ -163,7 +167,7 @@ export default function DailyTreasuryPage() {
     try {
       const searchParam = globalAmountSearch || txSearch;
       const dateParam = isToday ? "" : `&date=${date}`;
-      const typeParam = activeTab === "all" ? "" : activeTab;
+      const typeParam = activeTab === "all" ? "all" : activeTab;
       const r = await api.get(
         `/api/daily-sessions/today/transactions?type=${typeParam}&search=${encodeURIComponent(searchParam)}${dateParam}&show_cancelled=${showCancelled ? 1 : 0}`
       );
@@ -209,7 +213,7 @@ export default function DailyTreasuryPage() {
 
   // Load invoice details when viewing a POS invoice
   useEffect(() => {
-    if (slideOver?.doc_type === "pos_invoice" && slideOver?.id) {
+    if (["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver?.doc_type) && slideOver?.id) {
       setSlideOverLoading(true);
       setSlideOverDetails(null);
       api.get("/api/invoices/" + slideOver.id)
@@ -323,8 +327,9 @@ async function handleQuickSave() {
     { label: "نقد مدفوع لمرتجعات المبيعات", value: summary?.sales_returns_cash, tab: "sales_returns" },
     { label: "مسحوبات من الخزنة", value: summary?.withdrawals, tab: "withdrawals" },
   ];
+  const netCreditSales = (summary?.pos_credit_sales || 0) - (summary?.pos_installment_cash || 0);
   const nonCashRows = [
-    { label: "مبيعات آجلة قللت دين العملاء", value: summary?.pos_credit_sales, tab: "pos" },
+    { label: "مبيعات آجلة زادت دين العملاء (صافي)", value: netCreditSales, tab: "pos" },
     { label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns" },
     { label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases" },
     { label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns" },
@@ -1049,34 +1054,71 @@ async function handleQuickSave() {
                                           تعديل {t.amendment_of_no ? `↑ ${t.amendment_of_no}` : "↑"}
                                         </span>
                                       )}
+                                      {t.payment_type === "installments" && !t.is_cancelled && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-violet-100 text-violet-700 border border-violet-200 animate-pulse">مقدم + قسط</span>
+                                      )}
+                                      {t.payment_type === "credit" && !t.is_cancelled && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200">كامل آجل</span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-3 py-3">
                                     <div className="flex flex-col gap-0.5">
-                                      <span className={`font-black font-mono text-[12px] ${Number(t.cash_effect ?? t.amount) < 0 ? "text-rose-700" : "text-emerald-700"}`}>
-                                        {Number(t.cash_effect ?? t.amount) > 0 ? "+" : ""}{fmt(t.cash_effect ?? t.amount)}
-                                      </span>
-                                      {t.payment_type === "multi" && t.amount !== t.cash_effect && (
-                                        <span className="text-[9px] font-bold text-slate-400">إجمالي الفاتورة: {fmt(t.amount)}</span>
-                                      )}
-                                      {t.payment_splits && (
-                                        <div className="flex flex-wrap gap-1 mt-0.5">
-                                          {t.payment_splits.split("|||").map((split, i) => {
+                                      {t.payment_type === "installments" && (
+                                        <div className="flex flex-col gap-1 rounded-lg bg-violet-50 border border-violet-200 p-2">
+                                          {t.payment_splits && t.payment_splits.split("|||").map((split, i) => {
                                             const colonIdx = split.lastIndexOf(":");
                                             const methodKey = split.slice(0, colonIdx);
                                             const amt = split.slice(colonIdx + 1);
                                             const isCash = methodKey === "cash";
                                             const isCredit = methodKey === "credit";
-                                            const label = isCash ? "نقداً" : isCredit ? "آجل" : (PAYMENT_METHOD_AR[methodKey] || methodKey);
                                             return (
-                                              <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isCredit ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                                                {label}: {fmt(Number(amt))}
-                                                {isCash && <span className="text-[7px] opacity-70 mr-0.5">← خزنة</span>}
-                                                {isCredit && <span className="text-[7px] opacity-70 mr-0.5">← آجل</span>}
-                                              </span>
+                                              <div key={i} className="flex items-center justify-between gap-2">
+                                                <span className={`text-[9px] font-black ${isCash ? "text-emerald-700" : "text-amber-700"}`}>
+                                                  {isCash ? "💰 نقداً (دفعة مقدم)" : "📋 آجل (قسط)"}
+                                                </span>
+                                                <span className={`text-[11px] font-black font-mono ${isCash ? "text-emerald-700" : "text-amber-700"}`}>
+                                                  {fmt(Number(amt))}
+                                                  {isCash && <span className="text-[8px] mr-1">← الخزنة</span>}
+                                                  {isCredit && <span className="text-[8px] mr-1">← ذمة العميل</span>}
+                                                </span>
+                                              </div>
                                             );
                                           })}
+                                          <div className="flex items-center justify-between border-t border-violet-200 pt-1 mt-0.5">
+                                            <span className="text-[9px] font-black text-violet-700">إجمالي الفاتورة</span>
+                                            <span className="text-[11px] font-black font-mono text-violet-700">{fmt(t.amount)}</span>
+                                          </div>
                                         </div>
+                                      )}
+                                      {t.payment_type !== "installments" && (
+                                        <>
+                                          <span className={`font-black font-mono text-[12px] ${Number(t.cash_effect ?? t.amount) < 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                                            {Number(t.cash_effect ?? t.amount) > 0 ? "+" : ""}{fmt(t.cash_effect ?? t.amount)}
+                                          </span>
+                                          {t.payment_type === "multi" && t.amount !== t.cash_effect && (
+                                            <span className="text-[9px] font-bold text-slate-400">إجمالي الفاتورة: {fmt(t.amount)}</span>
+                                          )}
+                                          {t.payment_splits && (
+                                            <div className="flex flex-wrap gap-1 mt-0.5">
+                                              {t.payment_splits.split("|||").map((split, i) => {
+                                                const colonIdx = split.lastIndexOf(":");
+                                                const methodKey = split.slice(0, colonIdx);
+                                                const amt = split.slice(colonIdx + 1);
+                                                const isCash = methodKey === "cash";
+                                                const isCredit = methodKey === "credit";
+                                                const label = isCash ? "نقداً" : isCredit ? "آجل" : (PAYMENT_METHOD_AR[methodKey] || methodKey);
+                                                return (
+                                                  <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isCredit ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                                                    {label}: {fmt(Number(amt))}
+                                                    {isCash && <span className="text-[7px] opacity-70 mr-0.5">← خزنة</span>}
+                                                    {isCredit && <span className="text-[7px] opacity-70 mr-0.5">← آجل</span>}
+                                                  </span>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </>
                                       )}
                                     </div>
                                   </td>
@@ -1195,7 +1237,7 @@ async function handleQuickSave() {
                 </div>
 
                 {/* Invoice Lines for POS Invoice */}
-                {slideOver.doc_type === "pos_invoice" && (
+                {["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver.doc_type) && (
                   <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-slate-400" />
@@ -1248,24 +1290,55 @@ async function handleQuickSave() {
                             <span>الإجمالي</span>
                             <span className="font-mono">{fmt(slideOverDetails.total)} ج.م</span>
                           </div>
-                          {slideOverDetails.payment_type === "multi" && slideOverDetails.payments?.length > 0 && (
+                          {["multi", "installments", "credit"].includes(slideOverDetails.payment_type) && (
                             <div className="mt-3 pt-3 border-t border-slate-700">
                               <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-2">توزيع طرق الدفع</div>
                               <div className="flex flex-col gap-1.5">
-                                {slideOverDetails.payments.map((p, i) => {
-                                  const isCash = p.method === "cash";
-                                  return (
-                                    <div key={i} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${isCash ? "bg-emerald-900/40 border border-emerald-700/40" : "bg-slate-700/40 border border-slate-600/40"}`}>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-black text-white">{p.method_name || arMethod(p.method)}</span>
-                                        {!isCash && (
-                                          <span className="text-[8px] font-bold text-slate-400 bg-slate-600/50 px-1.5 py-0.5 rounded">لا يؤثر على حساب الخزنة</span>
-                                        )}
+                                {slideOverDetails.payment_type === "multi" && slideOverDetails.payments?.length > 0 && (
+                                  slideOverDetails.payments.map((p, i) => {
+                                    const isCash = p.method === "cash";
+                                    return (
+                                      <div key={i} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${isCash ? "bg-emerald-900/40 border border-emerald-700/40" : "bg-slate-700/40 border border-slate-600/40"}`}>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] font-black text-white">{p.method_name || arMethod(p.method)}</span>
+                                          {!isCash && (
+                                            <span className="text-[8px] font-bold text-slate-400 bg-slate-600/50 px-1.5 py-0.5 rounded">لا يؤثر على حساب الخزنة</span>
+                                          )}
+                                        </div>
+                                        <span className={`font-mono text-[11px] font-black ${isCash ? "text-emerald-300" : "text-slate-300"}`}>{fmt(p.amount)} ج.م</span>
                                       </div>
-                                      <span className={`font-mono text-[11px] font-black ${isCash ? "text-emerald-300" : "text-slate-300"}`}>{fmt(p.amount)} ج.م</span>
+                                    );
+                                  })
+                                )}
+                                {slideOverDetails.payment_type === "installments" && (
+                                  <>
+                                    <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-emerald-900/40 border border-emerald-700/40">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-black text-white">💰 نقداً (دفعة مقدم)</span>
+                                        <span className="text-[8px] font-bold text-emerald-300 bg-emerald-800/50 px-1.5 py-0.5 rounded">يضاف للخزنة</span>
+                                      </div>
+                                      <span className="font-mono text-[11px] font-black text-emerald-300">{fmt(Number(slideOverDetails.amount_received || 0))} ج.م</span>
                                     </div>
-                                  );
-                                })}
+                                    {Number(slideOverDetails.total) > Number(slideOverDetails.amount_received || 0) && (
+                                      <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-violet-900/40 border border-violet-700/40">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] font-black text-white">📋 آجل (قسط)</span>
+                                          <span className="text-[8px] font-bold text-violet-300 bg-violet-800/50 px-1.5 py-0.5 rounded">يضاف لذمة العميل</span>
+                                        </div>
+                                        <span className="font-mono text-[11px] font-black text-violet-300">{fmt(Number(slideOverDetails.total) - Number(slideOverDetails.amount_received || 0))} ج.م</span>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                                {slideOverDetails.payment_type === "credit" && (
+                                  <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-amber-900/40 border border-amber-700/40">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-black text-white">📋 آجل (كامل المبلغ)</span>
+                                      <span className="text-[8px] font-bold text-amber-300 bg-amber-800/50 px-1.5 py-0.5 rounded">يضاف لذمة العميل</span>
+                                    </div>
+                                    <span className="font-mono text-[11px] font-black text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -1278,7 +1351,7 @@ async function handleQuickSave() {
                 )}
               </div>
               <div className="border-t border-slate-100 p-3 bg-white flex gap-2">
-                {slideOver.doc_type === "pos_invoice" && (
+                {["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver.doc_type) && (
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}

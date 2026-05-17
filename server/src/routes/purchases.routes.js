@@ -82,9 +82,32 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   const orderBy = safeSort === "supplier_name" ? `s.name ${safeDir}` : `p.${safeSort} ${safeDir}`;
   const purchases = db.prepare(`
     SELECT p.*, s.name AS supplier_name, u.username AS created_by_username,
-           (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count
-    FROM purchases p
-    LEFT JOIN suppliers s ON s.id = p.supplier_id
+           (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count,
+           CASE
+             WHEN p.payment_method = 'multi' THEN (
+               SELECT GROUP_CONCAT(pm.type || ':' || CAST(ROUND(pp.amount, 2) AS TEXT), '|||')
+               FROM purchase_payments pp
+               LEFT JOIN payment_methods pm ON pm.id = pp.method_id
+               WHERE pp.purchase_id = p.id
+             )
+             ELSE NULL
+            END AS payment_splits,
+            CASE
+              WHEN p.payment_method IN ('cash', 'bank_transfer') THEN p.total
+              WHEN p.payment_method = 'multi' THEN COALESCE((
+                SELECT SUM(pp.amount) FROM purchase_payments pp
+                LEFT JOIN payment_methods pm ON pm.id = pp.method_id
+                WHERE pp.purchase_id = p.id AND (pm.type IS NULL OR pm.type != 'credit')
+              ), 0)
+              WHEN p.payment_method IN ('credit', 'future_due') THEN COALESCE((
+                SELECT paid_amount FROM ajal_debts
+                WHERE invoice_id = p.id AND source_type = 'purchase' AND status != 'voided'
+                ORDER BY id DESC LIMIT 1
+              ), 0)
+              ELSE 0
+            END AS amount_paid
+     FROM purchases p
+     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by
     WHERE ${conditions.join(" AND ")}
     ORDER BY ${orderBy}
@@ -300,6 +323,22 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           try {
             db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount) VALUES (?, ?, ?)").run(purchaseId, Number(pmt.method_id), amount);
           } catch (_) {}
+        }
+
+        // ── Multi: credit portion → create ajal_debt ─────────────────────
+        let creditSum = 0;
+        for (const pmt of multiPayments) {
+          const amt = Number(pmt.amount || 0);
+          if (amt <= 0) continue;
+          const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
+          if (pm && pm.type === "credit") creditSum += amt;
+        }
+        if (creditSum > 0 && payload.supplier_id) {
+          db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(creditSum, payload.supplier_id);
+          db.prepare(`
+            INSERT INTO ajal_debts (invoice_id, supplier_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+            VALUES (?, ?, 'supplier', 'purchase', ?, 0, ?, 'open', ?)
+          `).run(purchaseId, payload.supplier_id, creditSum, payload.due_date || null, payload.notes || null);
         }
 
       } else if (paymentMethod === "credit" && payload.supplier_id) {
@@ -634,6 +673,15 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
       if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
       else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
     }
+    if (purchase.supplier_id) {
+      const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
+      if (debt) {
+        const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+        if (remaining > 0)
+          db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+        db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+      }
+    }
   }
 
   db.prepare("UPDATE purchases SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
@@ -795,6 +843,15 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
             db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
           } else if (pm.type === "bank" && pm.target_id) {
             db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
+          }
+        }
+        if (purchase.supplier_id) {
+          const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
+          if (debt) {
+            const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+            if (remaining > 0)
+              db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+            db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
           }
         }
       }

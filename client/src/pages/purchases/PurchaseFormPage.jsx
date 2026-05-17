@@ -151,6 +151,7 @@ export default function PurchaseFormPage() {
   const [locked, setLocked] = useState(isEditMode && !isAmendMode);
   const [loadingExisting, setLoadingExisting] = useState(isEditMode);
   const [editDebtRemaining, setEditDebtRemaining] = useState(0); // debt this purchase added to supplier balance (reversal on edit)
+  const [editOriginalSupplierId, setEditOriginalSupplierId] = useState(null); // tracks the original supplier in edit mode
 
   // editActivation is populated after the existing purchase loads (edit mode only)
   const [editActivation, setEditActivation] = useState(null);
@@ -361,6 +362,7 @@ export default function PurchaseFormPage() {
       setEditActivation({ docNo: p.doc_no || p.ref_no || "", createdAt: p.created_at || new Date().toISOString() });
       setPaymentMode(p.payment_method || "cash");
       setEditDebtRemaining(p.debt_remaining || 0);
+      setEditOriginalSupplierId(p.supplier_id || null);
       if (p.supplier_id) {
         api.get(`/api/suppliers/${p.supplier_id}`).then(sr => {
           const s = sr.data.data;
@@ -947,7 +949,8 @@ export default function PurchaseFormPage() {
                   <p className="text-[13px] font-black text-slate-800 truncate">{supplier.name}</p>
                   {supplier.phone && <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5"><Phone className="h-3 w-3" /> {supplier.phone}</p>}
                   {(() => {
-                    const dispBal = Number(supplier.opening_balance || 0) - editDebtRemaining;
+                    const isSameEditSupplier = isEditMode && supplier?.id === editOriginalSupplierId;
+                    const dispBal = Number(supplier.opening_balance || 0) - (isSameEditSupplier ? editDebtRemaining : 0);
                     return (
                       <>
                         <div className="mt-2 flex items-center justify-between rounded-sm bg-slate-50 border border-slate-200 px-3 py-1.5">

@@ -139,7 +139,7 @@ export default function PartyDebtPanel({ party, partyType = "customer", accent =
         acc.open += 1;
         acc.total += remaining;
       }
-      if (debt.status === "overdue") {
+      if (debt.status === "overdue" || (debt.due_date && debt.due_date < new Date().toISOString().slice(0, 10) && debt.status !== "paid")) {
         acc.overdue += 1;
         acc.overdueAmount += remaining;
       }
