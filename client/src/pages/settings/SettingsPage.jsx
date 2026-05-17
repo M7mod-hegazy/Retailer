@@ -419,6 +419,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </FieldGroup>
+            </div>
             )}
 
             {activeTab === "financial" && (
@@ -434,7 +435,6 @@ export default function SettingsPage() {
                   <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
                 </div>
               </FieldGroup>
-              </div>
             )}
 
             {activeTab === "printing" && (

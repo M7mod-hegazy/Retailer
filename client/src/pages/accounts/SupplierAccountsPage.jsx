@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Building, Search, Plus, FileText, X, Phone, SlidersHorizontal, MessageSquare, LayoutList, Eye, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  Building, Search, Plus, X, Phone, SlidersHorizontal,
+  MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
+  ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
+} from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
-import StatementModal from "../../components/accounts/StatementModal";
-import PartyDebtPanel from "../../components/accounts/PartyDebtPanel";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -15,12 +17,13 @@ const PMETHOD_LABEL = {
   cash: "نقداً", credit: "آجل", bank_transfer: "تحويل بنكي",
   multi: "متعدد", future_due: "استحقاق لاحق",
 };
-const PMETHOD_COLOR = {
+const arMethod = (key) => PMETHOD_LABEL[key] || key;
+
+const PTYPE_COLOR = {
   cash: "text-emerald-700 bg-emerald-50 border-emerald-200",
   credit: "text-amber-700 bg-amber-50 border-amber-200",
-  bank_transfer: "text-sky-700 bg-sky-50 border-sky-200",
   multi: "text-blue-700 bg-blue-50 border-blue-200",
-  future_due: "text-rose-700 bg-rose-50 border-rose-200",
+  bank_transfer: "text-sky-700 bg-sky-50 border-sky-200",
 };
 
 function Modal({ onClose, children, width = "480px" }) {
@@ -33,106 +36,204 @@ function Modal({ onClose, children, width = "480px" }) {
   );
 }
 
-function statusBadge(status) {
-  if (status === "paid") return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-emerald-100 text-emerald-700">مسدد</span>;
-  if (status === "overdue") return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700">متأخر</span>;
-  return <span className="rounded-full px-2 py-0.5 text-[10px] font-black bg-amber-100 text-amber-700">قائم</span>;
-}
+const EVENT_TYPES = {
+  purchase:   { icon: ShoppingBag, label: "فاتورة شراء",   color: "text-orange-600",  bg: "bg-orange-50",  border: "border-orange-100" },
+  payment:    { icon: CreditCard,  label: "سداد دفعة",     color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+  return:     { icon: RotateCcw,   label: "مرتجع شراء",    color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-100" },
+  adjustment: { icon: Scale,       label: "تسوية يدوية",   color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100" },
+};
 
-function UrgencyDot({ urgency }) {
-  if (!urgency) return null;
-  const colors = { overdue: "bg-red-500", soon: "bg-yellow-400", ok: "bg-green-500" };
+function InstallmentsBadge({ debtId }) {
+  const [open, setOpen] = useState(false);
+  const [schedules, setSchedules] = useState(null);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const load = useCallback(async () => {
+    if (schedules !== null) { setOpen(o => !o); return; }
+    try {
+      const r = await api.get(`/api/ajal-debts/${debtId}`);
+      setSchedules(r.data.data?.schedule || []);
+      setOpen(true);
+    } catch { setSchedules([]); setOpen(true); }
+  }, [debtId, schedules]);
+
+  const pending = schedules ? schedules.filter(s => s.status !== "paid").length : null;
+
   return (
-    <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${colors[urgency] || ""}`} title={urgency === "overdue" ? "ديون متأخرة" : urgency === "soon" ? "ديون قريبة الاستحقاق" : "ديون قائمة"} />
+    <div className="mt-1.5">
+      <button onClick={load}
+        className="flex items-center gap-1 text-[10px] font-black text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-2 py-0.5 hover:bg-violet-100">
+        <Calendar className="h-3 w-3" />
+        {pending !== null ? `${pending} قسط متبقي` : "الأقساط"}
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+      {open && schedules?.length > 0 && (
+        <div className="mt-1.5 space-y-1 pr-2 border-r-2 border-violet-200">
+          {schedules.map(s => {
+            const isOverdue = s.status !== "paid" && s.due_date < today;
+            const isPaid = s.status === "paid";
+            return (
+              <div key={s.id} className={`flex items-center justify-between rounded-lg px-2 py-1 text-[10px] font-bold ${isPaid ? "bg-emerald-50 text-emerald-700" : isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-50 text-slate-600"}`}>
+                <span>القسط {s.installment_no} — {fmtDate(s.due_date)}</span>
+                <span className="font-black font-mono">{fmt(s.amount)}</span>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isPaid ? "bg-emerald-200 text-emerald-800" : isOverdue ? "bg-rose-200 text-rose-800" : "bg-slate-200 text-slate-700"}`}>
+                  {isPaid ? "مسدد" : isOverdue ? "متأخر" : "معلق"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
-function AllDebtsDrawer({ open, onClose, partyType, onSelectParty }) {
-  const [debts, setDebts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("open");
+function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!open) return;
+  const load = useCallback(async () => {
+    if (!party?.id) return;
     setLoading(true);
-    api.get(`/api/ajal-debts?party_type=${partyType}&status=${statusFilter === "all" ? "" : statusFilter}&limit=300`)
-      .then(r => {
-        const raw = r.data.data || [];
-        const order = { overdue: 0, partial: 1, open: 1, paid: 2 };
-        raw.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
-        setDebts(raw);
-      })
-      .catch(() => setDebts([]))
-      .finally(() => setLoading(false));
-  }, [open, partyType, statusFilter]);
+    try {
+      const [docsR, paysR, retsR, adjR] = await Promise.allSettled([
+        api.get(`/api/purchases?supplier_id=${party.id}&limit=200`),
+        api.get(`/api/payments?party_type=supplier&party_id=${party.id}&limit=200`),
+        api.get(`/api/purchases/returns?supplier_id=${party.id}&limit=200`),
+        api.get(`/api/suppliers/${party.id}/notes?type=adjustment`),
+      ]);
 
-  const filtered = debts.filter(d => {
-    if (!search) return true;
-    return d.party_name?.toLowerCase().includes(search.toLowerCase());
-  });
+      const items = [];
 
-  if (!open) return null;
+      (docsR.value?.data?.data || []).forEach(d => {
+        items.push({
+          id: `pur-${d.id}`,
+          type: "purchase",
+          date: new Date(d.created_at),
+          ref: d.doc_no || `#${d.id}`,
+          description: `فاتورة شراء${d.supplier_name ? ` — ${d.supplier_name}` : ""}`,
+          debit: Number(d.total || 0),
+          credit: 0,
+          raw: d,
+        });
+      });
+
+      (paysR.value?.data?.data || []).forEach(p => {
+        items.push({
+          id: `pay-${p.id}`,
+          type: "payment",
+          date: new Date(p.created_at),
+          ref: p.doc_no || `PAY-${p.id}`,
+          description: `سداد دفعة — ${p.method_name || p.method || ""}`,
+          debit: 0,
+          credit: Number(p.amount || 0),
+          raw: p,
+        });
+      });
+
+      (retsR.value?.data?.data || []).forEach(r => {
+        items.push({
+          id: `ret-${r.id}`,
+          type: "return",
+          date: new Date(r.created_at),
+          ref: r.doc_no || `RET-${r.id}`,
+          description: `مرتجع شراء${r.purchase_id ? ` #${r.purchase_id}` : ""}`,
+          debit: 0,
+          credit: Number(r.total || 0),
+          raw: r,
+        });
+      });
+
+      (adjR.value?.data?.data || []).forEach(n => {
+        const amount = Number(n.amount || 0);
+        items.push({
+          id: `adj-${n.id}`,
+          type: "adjustment",
+          date: new Date(n.created_at),
+          ref: `ADJ-${n.id}`,
+          description: n.note || "تسوية يدوية",
+          debit: amount > 0 ? amount : 0,
+          credit: amount < 0 ? Math.abs(amount) : 0,
+          raw: n,
+        });
+      });
+
+      items.sort((a, b) => b.date - a.date);
+
+      const currentBal = Number(party.opening_balance || 0);
+      let running = currentBal;
+      for (const item of items) {
+        item.runningBalance = running;
+        running = running - item.credit + item.debit;
+      }
+
+      setEvents(items);
+    } catch { setEvents([]); }
+    finally { setLoading(false); }
+  }, [party]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <div className="flex h-32 items-center justify-center text-[12px] font-black text-slate-400 animate-pulse">جاري التحميل...</div>;
+  if (events.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-32 text-slate-300 gap-2">
+      <FileText className="h-8 w-8 opacity-40" />
+      <span className="font-black text-[13px]">لا توجد حركات مسجلة</span>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose} dir="rtl">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-orange-50">
-          <h2 className="text-[15px] font-black text-slate-900">كل الأقساط</h2>
-          <button onClick={onClose}><X className="h-5 w-5 text-slate-400 hover:text-slate-600" /></button>
-        </div>
-
-        {/* Filters */}
-        <div className="p-3 border-b border-slate-100 space-y-2">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="بحث باسم الطرف..."
-              className="w-full h-9 rounded-lg border border-slate-200 pr-8 pl-3 text-[12px] outline-none focus:border-orange-400" />
+    <div className="space-y-1.5">
+      {events.map(ev => {
+        const cfg = EVENT_TYPES[ev.type];
+        const Icon = cfg.icon;
+        return (
+          <div key={ev.id} className={`rounded-xl border ${cfg.border} bg-white shadow-sm overflow-hidden`}>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className={`h-8 w-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
+                <Icon className={`h-4 w-4 ${cfg.color}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
+                  <span className="text-[11px] font-black text-slate-600 font-mono">{ev.ref}</span>
+                  {ev.type === "purchase" && ev.raw?.payment_type && (
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${PTYPE_COLOR[ev.raw.payment_type] || "text-slate-600 bg-slate-100 border-slate-200"}`}>
+                      {arMethod(ev.raw.payment_type)}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5 truncate">{ev.description}</div>
+                {ev.type === "purchase" && (ev.raw?.payment_type === "credit") && ev.raw?.id && (
+                  <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                {ev.debit > 0 && <div className="text-[13px] font-black font-mono text-rose-600">+{fmt(ev.debit)}</div>}
+                {ev.credit > 0 && <div className="text-[13px] font-black font-mono text-emerald-600">-{fmt(ev.credit)}</div>}
+                <div className={`text-[10px] font-bold font-mono mt-0.5 ${ev.runningBalance > 0 ? "text-rose-400" : ev.runningBalance < 0 ? "text-emerald-500" : "text-slate-400"}`}>
+                  رصيد: {fmt(Math.abs(ev.runningBalance))}
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-[10px] text-slate-400">{fmtDate(ev.date)}</span>
+                {ev.type === "purchase" && (
+                  <button onClick={() => onOpenPurchase(ev.raw)}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-orange-600 hover:border-orange-200 hover:bg-orange-50">
+                    <Eye className="h-3 w-3" />
+                  </button>
+                )}
+                {ev.type === "return" && (
+                  <button onClick={() => onOpenReturn(ev.raw)}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50">
+                    <Eye className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex gap-1">
-            {[{ id: "open", label: "قائم" }, { id: "overdue", label: "متأخر" }, { id: "all", label: "الكل" }].map(f => (
-              <button key={f.id} onClick={() => setStatusFilter(f.id)}
-                className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all ${statusFilter === f.id ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="p-8 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-[12px] text-slate-400">لا توجد بيانات</div>
-          ) : (
-            <table className="w-full text-[12px]">
-              <thead className="bg-slate-50 sticky top-0">
-                <tr>
-                  {["الطرف", "الأصل", "المتبقي", "الاستحقاق", "الحالة"].map(h => (
-                    <th key={h} className="px-3 py-2 text-right font-black text-slate-500 text-[11px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(d => (
-                  <tr key={d.id}
-                    className={`border-t border-slate-100 cursor-pointer hover:bg-slate-50 ${d.status === "overdue" ? "bg-rose-50/40" : ""}`}
-                    onClick={() => { onSelectParty(d); onClose(); }}>
-                    <td className="px-3 py-2 font-black text-slate-800 truncate max-w-[120px]">{d.party_name || "—"}</td>
-                    <td className="px-3 py-2 font-mono">{fmt(d.original_amount)}</td>
-                    <td className="px-3 py-2 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
-                    <td className="px-3 py-2 text-slate-500">{fmtDate(d.due_date)}</td>
-                    <td className="px-3 py-2">{statusBadge(d.status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -147,42 +248,28 @@ export default function SupplierAccountsPage() {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
 
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "purchases");
-  const [tabData, setTabData] = useState([]);
-  const [tabLoading, setTabLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "movements");
+  const [notesData, setNotesData] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(false);
 
   const [paymentMethods, setPaymentMethods] = useState([]);
-
-  // Summary bar
-  const [summary, setSummary] = useState(null);
+  const [netBalance, setNetBalance] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
-  // Urgency map: partyId → "overdue" | "soon" | "ok"
-  const [urgencyMap, setUrgencyMap] = useState({});
-
-  // Drawer
-  const [showDrawer, setShowDrawer] = useState(false);
-
-  // Purchase detail modal
   const [detailPurchase, setDetailPurchase] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailReturn, setDetailReturn] = useState(null);
 
-  // Modal states
   const [showCreate, setShowCreate] = useState(false);
-  const [showStatement, setShowStatement] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
-  const [showNote, setShowNote] = useState(false);
 
-  // Forms
   const [createForm, setCreateForm] = useState({ name: "", phone: "", code: "", opening_balance: 0, payment_terms: "", bank_details: "" });
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "" });
   const [adjForm, setAdjForm] = useState({ amount: "", direction: "subtract", reason: "" });
-  const [noteForm, setNoteForm] = useState({ note: "" });
   const [saving, setSaving] = useState(false);
 
-  // ── Load suppliers + summary + urgency ──────────────────
   const loadSuppliers = useCallback(async () => {
     try {
       const [res, methodsReq] = await Promise.all([
@@ -191,74 +278,48 @@ export default function SupplierAccountsPage() {
       ]);
       setSuppliers(res.data.data || []);
       setPaymentMethods((methodsReq.data.data || []).filter(m => m.id !== 2));
-    } catch {
-      toast.error("فشل تحميل الموردين");
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error("فشل تحميل الموردين"); }
+    finally { setLoading(false); }
   }, []);
 
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
     try {
-      const r = await api.get("/api/ajal-debts/summary?party_type=supplier");
-      const data = r.data.data || r.data || null;
-      console.log("[SupplierAccounts] summary raw:", r.data, "→ parsed:", data);
-      setSummary(data);
-    } catch(e) { console.error("[SupplierAccounts] summary error:", e); setSummary(null); }
+      const r = await api.get("/api/suppliers/balance-summary");
+      setNetBalance(r.data.data?.net_balance ?? null);
+    } catch { setNetBalance(null); }
     finally { setSummaryLoading(false); }
   }, []);
 
-  const loadUrgencyMap = useCallback(async () => {
+  const loadNotes = useCallback(async () => {
+    if (!selected) return;
+    setNotesLoading(true);
     try {
-      const r = await api.get("/api/ajal-debts?party_type=supplier&status=all&limit=500");
-      const debts = r.data.data || [];
-      console.log("[SupplierAccounts] urgency debts:", debts.map(d => ({ id: d.id, supplier_id: d.supplier_id, party_type: d.party_type, status: d.status, remaining: d.remaining, due_date: d.due_date })));
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const soon = new Date(today); soon.setDate(soon.getDate() + 7);
-      const map = {};
-      for (const d of debts) {
-        const pid = d.supplier_id || d.party_id;
-        if (!pid) continue;
-        if (d.status === "paid" || d.status === "voided") continue;
-        const due = d.due_date ? new Date(d.due_date) : null;
-        const current = map[pid];
-        let level = "ok";
-        if (!due || due < today) level = "overdue";
-        else if (due <= soon) level = "soon";
-        if (current === "overdue") continue;
-        if (current === "soon" && level === "ok") continue;
-        map[pid] = level;
-      }
-      setUrgencyMap(map);
-    } catch { setUrgencyMap({}); }
-  }, []);
+      const r = await api.get(`/api/suppliers/${selected.id}/notes?type=note`);
+      setNotesData(r.data.data || []);
+    } catch { setNotesData([]); }
+    finally { setNotesLoading(false); }
+  }, [selected]);
 
   useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
-  useEffect(() => { loadUrgencyMap(); }, [loadUrgencyMap]);
+  useEffect(() => { if (activeTab === "notes") loadNotes(); }, [activeTab, loadNotes]);
 
-  // ── Sync selection from URL params ──────────────────────
   useEffect(() => {
     const urlId = searchParams.get("id");
     const urlTab = searchParams.get("tab");
     if (urlTab) setActiveTab(urlTab);
     if (urlId && suppliers.length > 0) {
       const found = suppliers.find(s => String(s.id) === String(urlId));
-      if (found && (!selected || selected.id !== found.id)) {
-        setSelected(found);
-        setTabData([]);
-      }
-      if (!found) setSearchParams({});
+      if (found && (!selected || selected.id !== found.id)) setSelected(found);
+      else if (!found) setSearchParams({});
     }
   }, [searchParams, suppliers, selected]);
 
-  // ── Update URL when selection changes ───────────────────
-  const selectSupplier = useCallback((s, tab = "purchases") => {
+  const selectSupplier = useCallback((s, tab = "movements") => {
     setSelected(s);
     setActiveTab(tab);
-    setTabData([]);
+    setNotesData([]);
     setSearchParams({ id: String(s.id), tab });
   }, [setSearchParams]);
 
@@ -267,34 +328,14 @@ export default function SupplierAccountsPage() {
     if (selected) setSearchParams({ id: String(selected.id), tab });
   }, [selected, setSearchParams]);
 
-  // ── Load tab data ────────────────────────────────────────
-  const loadTab = useCallback(async () => {
+  const refreshSelected = async () => {
     if (!selected) return;
-    setTabLoading(true);
-    try {
-      if (activeTab === "purchases") {
-        const r = await api.get(`/api/purchases?supplier_id=${selected.id}&limit=100`);
-        setTabData(r.data.data || []);
-      } else if (activeTab === "payments") {
-        const r = await api.get(`/api/payments?party_type=supplier&party_id=${selected.id}`);
-        setTabData(r.data.data || []);
-      } else if (activeTab === "cheques") {
-        const r = await api.get(`/api/cheques?party_id=${selected.id}&party_type=supplier`);
-        setTabData(r.data.data || []);
-      } else if (activeTab === "debts") {
-        const r = await api.get(`/api/ajal-debts/supplier/${selected.id}`);
-        setTabData(r.data.data || []);
-      } else if (activeTab === "notes") {
-        const r = await api.get(`/api/suppliers/${selected.id}/notes`);
-        setTabData(r.data.data || []);
-      }
-    } catch { setTabData([]); }
-    finally { setTabLoading(false); }
-  }, [selected, activeTab]);
+    const r = await api.get(`/api/suppliers/${selected.id}`);
+    setSelected(r.data.data);
+    loadSuppliers();
+    loadSummary();
+  };
 
-  useEffect(() => { loadTab(); }, [loadTab]);
-
-  // Load full purchase details for the detail modal
   useEffect(() => {
     if (!detailPurchase) { setDetailData(null); return; }
     setDetailLoading(true);
@@ -303,17 +344,6 @@ export default function SupplierAccountsPage() {
       .catch(() => setDetailData(null))
       .finally(() => setDetailLoading(false));
   }, [detailPurchase]);
-
-  const refreshSelected = async () => {
-    if (!selected) return;
-    const r = await api.get(`/api/suppliers/${selected.id}`);
-    setSelected(r.data.data);
-    loadSuppliers();
-    loadSummary();
-    loadUrgencyMap();
-  };
-
-  // ── Handlers ──────────────────────────────────────────────
 
   const handleCreate = async () => {
     if (!createForm.name.trim()) return toast.error("الاسم مطلوب");
@@ -324,31 +354,39 @@ export default function SupplierAccountsPage() {
       setShowCreate(false);
       setCreateForm({ name: "", phone: "", code: "", opening_balance: 0, payment_terms: "", bank_details: "" });
       await loadSuppliers();
-      selectSupplier(r.data.data, "purchases");
-    } catch (e) {
-      toast.error(e.response?.data?.message || "فشل الإضافة");
-    } finally { setSaving(false); }
+      selectSupplier(r.data.data, "movements");
+    } catch (e) { toast.error(e.response?.data?.message || "فشل الإضافة"); }
+    finally { setSaving(false); }
   };
 
   const handlePayment = async () => {
     if (!payForm.amount || !payForm.method_id) return toast.error("أدخل المبلغ ووسيلة الدفع");
     setSaving(true);
     try {
-      await api.post("/api/payments", {
-        party_type: "supplier",
-        party_id: selected.id,
-        amount: Number(payForm.amount),
-        method_id: Number(payForm.method_id),
-        notes: payForm.notes,
-      });
-      toast.success("تم تسجيل الدفعة");
+      const totalAmount = Number(payForm.amount);
+      const debtsRes = await api.get(`/api/ajal-debts?party_type=supplier&supplier_id=${selected.id}&status=open&limit=100`).catch(() => ({ data: { data: [] } }));
+      const openDebts = (debtsRes.data.data || []).filter(d => d.remaining > 0);
+      if (openDebts.length > 0) {
+        openDebts.sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0));
+        let remaining = totalAmount;
+        for (const debt of openDebts) {
+          if (remaining <= 0) break;
+          const payAmt = Math.min(remaining, debt.remaining);
+          await api.post(`/api/ajal-debts/${debt.id}/pay`, { amount: payAmt, payment_method_id: Number(payForm.method_id), notes: payForm.notes });
+          remaining -= payAmt;
+        }
+        if (remaining > 0) {
+          await api.post("/api/payments", { party_type: "supplier", party_id: selected.id, amount: remaining, method_id: Number(payForm.method_id), notes: payForm.notes });
+        }
+      } else {
+        await api.post("/api/payments", { party_type: "supplier", party_id: selected.id, amount: totalAmount, method_id: Number(payForm.method_id), notes: payForm.notes });
+      }
+      toast.success("تم تسجيل السداد");
       setShowPayment(false);
       setPayForm({ amount: "", method_id: "", notes: "" });
       await refreshSelected();
-      changeTab("payments");
-    } catch (e) {
-      toast.error(e.response?.data?.message || "فشل تسجيل الدفعة");
-    } finally { setSaving(false); }
+    } catch (e) { toast.error(e.response?.data?.message || "فشل تسجيل السداد"); }
+    finally { setSaving(false); }
   };
 
   const handleAdjust = async () => {
@@ -356,42 +394,29 @@ export default function SupplierAccountsPage() {
     setSaving(true);
     try {
       await api.post(`/api/suppliers/${selected.id}/adjust`, adjForm);
-      toast.success("تم تسوية الرصيد وتسجيل الحركة");
       setShowAdjust(false);
       setAdjForm({ amount: "", direction: "subtract", reason: "" });
       await refreshSelected();
-      changeTab("notes");
-    } catch (e) {
-      toast.error(e.response?.data?.message || "فشل التسوية");
-    } finally { setSaving(false); }
+      toast.success("تم تسوية الرصيد وتسجيل الحركة");
+    } catch (e) { toast.error(e.response?.data?.message || "فشل التسوية"); }
+    finally { setSaving(false); }
   };
 
-  const handleAddNote = async () => {
-    if (!noteForm.note.trim()) return toast.error("أدخل نص الملاحظة");
-    setSaving(true);
+  const handleAddNote = async (noteText) => {
+    if (!noteText?.trim()) return;
     try {
-      await api.post(`/api/suppliers/${selected.id}/notes`, noteForm);
+      await api.post(`/api/suppliers/${selected.id}/notes`, { note: noteText });
       toast.success("تم إضافة الملاحظة");
-      setShowNote(false);
-      setNoteForm({ note: "" });
-      changeTab("notes");
-    } catch (e) {
-      toast.error(e.response?.data?.message || "فشل الإضافة");
-    } finally { setSaving(false); }
+      loadNotes();
+    } catch (e) { toast.error(e.response?.data?.message || "فشل الإضافة"); }
   };
 
-  const handleDrawerSelectParty = (debt) => {
-    const pid = debt.supplier_id || debt.party_id;
-    const found = suppliers.find(s => String(s.id) === String(pid));
-    if (found) selectSupplier(found, "debts");
-  };
-
-  const filtered = suppliers.filter(c => {
+  const filtered = suppliers.filter(s => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || c.name?.toLowerCase().includes(q) || c.phone?.includes(q) || c.code?.toLowerCase().includes(q);
+    const matchesSearch = !q || s.name?.toLowerCase().includes(q) || s.phone?.includes(q) || s.code?.toLowerCase().includes(q);
     if (!matchesSearch) return false;
-    if (filter === "creditors") return Number(c.opening_balance) > 0;
-    if (filter === "debtors") return Number(c.opening_balance) < 0;
+    if (filter === "creditors") return Number(s.opening_balance) > 0;
+    if (filter === "debtors") return Number(s.opening_balance) < 0;
     return true;
   });
 
@@ -411,13 +436,13 @@ export default function SupplierAccountsPage() {
               <h1 className="text-[15px] font-black text-slate-900">حسابات الموردين</h1>
             </div>
             <PermissionGate page="supplier_accounts" action="add">
-            <button data-help="add-button" onClick={() => setShowCreate(true)}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-orange-600 px-3 text-[11px] font-black text-white hover:bg-orange-700 transition-colors shadow-md shadow-orange-200">
-              <Plus className="h-3.5 w-3.5" /> مورد جديد
-            </button>
+              <button onClick={() => setShowCreate(true)}
+                className="flex h-8 items-center gap-1.5 rounded-lg bg-orange-600 px-3 text-[11px] font-black text-white hover:bg-orange-700 transition-colors shadow-md shadow-orange-200">
+                <Plus className="h-3.5 w-3.5" /> مورد جديد
+              </button>
             </PermissionGate>
           </div>
-          <div data-help="search-bar" className="relative">
+          <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الهاتف، الكود..."
@@ -433,35 +458,18 @@ export default function SupplierAccountsPage() {
           </div>
         </div>
 
-        {/* ── Summary Bar ── */}
-        <div className="mx-2 mt-2 mb-1 rounded-xl bg-orange-50 border border-orange-100 p-2.5 space-y-2">
-          <div className="flex gap-2">
-            <div className="flex-1 bg-white rounded-lg p-2 border border-orange-100 text-center">
-              <div className="text-[10px] font-black text-slate-500 mb-0.5">إجمالي المديونية</div>
-              <div className="text-[13px] font-black font-mono text-rose-600">
-                {summaryLoading ? "..." : fmt(summary?.total_owed ?? summary?.total_remaining ?? 0)}
-              </div>
-            </div>
-            <div className="flex-1 bg-white rounded-lg p-2 border border-red-100 text-center">
-              <div className="text-[10px] font-black text-slate-500 mb-0.5">متأخر</div>
-              <div className="text-[13px] font-black font-mono text-red-600">
-                {summaryLoading ? "..." : fmt(summary?.overdue_amount ?? summary?.total_overdue ?? 0)}
-              </div>
-            </div>
-            <div className="flex-1 bg-white rounded-lg p-2 border border-amber-100 text-center">
-              <div className="text-[10px] font-black text-slate-500 mb-0.5">مستحق اليوم</div>
-              <div className="text-[13px] font-black font-mono text-amber-600">
-                {summaryLoading ? "..." : (summary?.due_today_count ?? summary?.due_today ?? 0)}
-              </div>
-            </div>
+        {/* ── Net Balance Summary ── */}
+        <div className="mx-2 mt-2 mb-1 rounded-xl bg-orange-50 border border-orange-100 p-3">
+          <div className="text-[10px] font-black text-slate-500 mb-0.5">إجمالي المديونية</div>
+          <div className={`text-[20px] font-black font-mono ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+            {summaryLoading ? "..." : fmt(netBalance ?? 0)}
+            <span className="text-[11px] font-bold text-slate-400 mr-1">ج.م</span>
           </div>
-          <button onClick={() => setShowDrawer(true)}
-            className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-orange-600 text-white text-[11px] font-black hover:bg-orange-700 transition-colors">
-            <LayoutList className="h-3.5 w-3.5" /> عرض كل الأقساط
-          </button>
+          {netBalance > 0 && <div className="text-[9px] font-black text-rose-500 mt-0.5">مستحقات للموردين</div>}
+          {netBalance < 0 && <div className="text-[9px] font-black text-emerald-600 mt-0.5">رصيد لصالحنا</div>}
         </div>
 
-        <div data-help="main-table" className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {loading ? (
             <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
           ) : filtered.length === 0 ? (
@@ -471,19 +479,15 @@ export default function SupplierAccountsPage() {
             </div>
           ) : filtered.map(s => {
             const b = Number(s.opening_balance || 0);
-            const urgency = urgencyMap[s.id];
             return (
-              <div key={s.id} onClick={() => selectSupplier(s, "purchases")}
+              <div key={s.id} onClick={() => selectSupplier(s, "movements")}
                 className={`p-3 rounded-xl cursor-pointer border transition-all ${selected?.id === s.id ? "bg-orange-50 border-orange-300" : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"}`}>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-[14px] font-black text-white shrink-0">
                     {s.name?.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <div className="text-[13px] font-black text-slate-900 truncate">{s.name}</div>
-                      <UrgencyDot urgency={urgency} />
-                    </div>
+                    <div className="text-[13px] font-black text-slate-900 truncate mb-0.5">{s.name}</div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-[10px] text-slate-400 font-mono truncate">{s.phone || s.code || "—"}</div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -511,7 +515,6 @@ export default function SupplierAccountsPage() {
           </div>
         ) : (
           <>
-            {/* Supplier Header */}
             <div className="bg-white border-b border-slate-200 p-6 shrink-0">
               <div className="flex items-start mb-5">
                 <div className="flex items-center gap-4">
@@ -521,86 +524,48 @@ export default function SupplierAccountsPage() {
                   <div>
                     <h2 className="text-[20px] font-black text-slate-900">{selected.name}</h2>
                     <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                      {selected.phone && (
-                        <span className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold">
-                          <Phone className="h-3.5 w-3.5" /> {selected.phone}
-                        </span>
-                      )}
-                      {selected.code && (
-                        <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">{selected.code}</span>
-                      )}
-                      {selected.payment_terms && (
-                        <span className="text-[11px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg font-bold">{selected.payment_terms}</span>
-                      )}
+                      {selected.phone && <span className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold"><Phone className="h-3.5 w-3.5" /> {selected.phone}</span>}
+                      {selected.code && <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">{selected.code}</span>}
+                      {selected.payment_terms && <span className="text-[11px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg font-bold">{selected.payment_terms}</span>}
                     </div>
                   </div>
                 </div>
-
               </div>
 
-              {/* Balance Card */}
-              <div className={`rounded-2xl p-4 mb-5 flex items-center justify-between border-2 ${
-                bal > 0 ? "bg-rose-50 border-rose-200" :
-                bal < 0 ? "bg-emerald-50 border-emerald-200" :
-                "bg-slate-50 border-slate-200"
-              }`}>
+              <div className={`rounded-2xl p-4 mb-5 flex items-center justify-between border-2 ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
                 <div>
                   <div className={`text-[11px] font-black uppercase tracking-widest mb-1 ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                     {bal > 0 ? "له مستحق" : bal < 0 ? "عليه مستحق" : "الحساب مسوّى"}
                   </div>
                   <div className={`text-[36px] font-black font-mono leading-none ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                    {fmt(Math.abs(bal))}
-                    <span className="text-[14px] font-bold mr-1">ج.م</span>
+                    {fmt(Math.abs(bal))}<span className="text-[14px] font-bold mr-1">ج.م</span>
                   </div>
                 </div>
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-[28px] shrink-0 ${
-                  bal > 0 ? "bg-rose-100" : bal < 0 ? "bg-emerald-100" : "bg-slate-100"
-                }`}>
+                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-[28px] shrink-0 ${bal > 0 ? "bg-rose-100" : bal < 0 ? "bg-emerald-100" : "bg-slate-100"}`}>
                   {bal > 0 ? "🔴" : bal < 0 ? "🟢" : "✅"}
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <PermissionGate page="supplier_accounts" action="edit">
-                <button data-help="pay-button" onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                  className="flex flex-col items-center gap-1.5 rounded-xl bg-orange-600 py-3 text-white hover:bg-orange-700 shadow-md shadow-orange-200 transition-all">
-                  <Plus className="h-5 w-5" />
-                  <span className="text-[11px] font-black">سداد دفعة</span>
-                </button>
-                </PermissionGate>
-                <PermissionGate page="supplier_accounts" action="print">
-                <button data-help="statement-button" onClick={() => setShowStatement(true)}
-                  className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
-                  <FileText className="h-5 w-5 text-slate-500" />
-                  <span className="text-[11px] font-black">كشف حساب</span>
-                </button>
+                  <button onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                    className="flex flex-col items-center gap-1.5 rounded-xl bg-orange-600 py-3 text-white hover:bg-orange-700 shadow-md shadow-orange-200 transition-all">
+                    <Plus className="h-5 w-5" />
+                    <span className="text-[11px] font-black">سداد دفعة</span>
+                  </button>
                 </PermissionGate>
                 <PermissionGate page="supplier_accounts" action="edit">
-                <button onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                  className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
-                  <SlidersHorizontal className="h-5 w-5 text-slate-500" />
-                  <span className="text-[11px] font-black">تسوية رصيد</span>
-                </button>
-                </PermissionGate>
-                <PermissionGate page="supplier_accounts" action="edit">
-                <button onClick={() => { setNoteForm({ note: "" }); setShowNote(true); }}
-                  className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
-                  <MessageSquare className="h-5 w-5 text-slate-500" />
-                  <span className="text-[11px] font-black">إضافة ملاحظة</span>
-                </button>
+                  <button onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
+                    className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
+                    <SlidersHorizontal className="h-5 w-5 text-slate-500" />
+                    <span className="text-[11px] font-black">تسوية رصيد</span>
+                  </button>
                 </PermissionGate>
               </div>
             </div>
 
-            {/* Tabs */}
             <div className="flex gap-1 px-6 pt-3 bg-white border-b border-slate-200 shrink-0">
-              {[
-                { id: "purchases", label: "المشتريات" },
-                { id: "payments", label: "المدفوعات" },
-                { id: "cheques", label: "الشيكات" },
-                { id: "debts", label: "ديون أجل" },
-                { id: "notes", label: "الملاحظات والتسويات" },
-              ].map(t => (
+              {[{ id: "movements", label: "الحركات" }, { id: "notes", label: "الملاحظات" }].map(t => (
                 <button key={t.id} onClick={() => changeTab(t.id)}
                   className={`pb-3 px-3 text-[13px] font-black transition-colors relative ${activeTab === t.id ? "text-orange-600" : "text-slate-500 hover:text-slate-800"}`}>
                   {t.label}
@@ -609,180 +574,31 @@ export default function SupplierAccountsPage() {
               ))}
             </div>
 
-            {/* Tab Content */}
             <div className="flex-1 overflow-auto p-6 bg-slate-50">
-              {activeTab === "debts" ? (
-                <PartyDebtPanel party={selected} partyType="supplier" accent="orange" onChanged={refreshSelected} />
-              ) : tabLoading ? (
-                <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
-              ) : tabData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-slate-300 gap-2">
-                  <FileText className="h-8 w-8 opacity-40" />
-                  <span className="font-black text-[13px]">لا توجد بيانات</span>
-                </div>
-              ) : activeTab === "purchases" ? (
-                <table className="w-full text-[12px] bg-white rounded-xl overflow-hidden shadow-sm">
-                  <thead className="bg-slate-100">
-                    <tr>{["رقم الفاتورة", "طريقة الدفع", "التاريخ", "الإجمالي", "الحالة", ""].map(h => (
-                      <th key={h} className="px-3 py-3 text-right font-black text-slate-500 text-[11px]">{h}</th>
-                    ))}</tr>
-                  </thead>
-                  <tbody>
-                    {tabData.map(inv => {
-                      const paid = Number(inv.amount_paid || 0);
-                      const remaining = Math.max(0, inv.total - paid);
-                      const paidPct = inv.total > 0 ? Math.min(100, (paid / inv.total) * 100) : 0;
-                      const isFullyPaid = inv.payment_method === "cash" || inv.payment_method === "bank_transfer" || paid >= inv.total;
-                      const isCancelled = inv.status === "voided" || inv.status === "cancelled";
-                      return (
-                      <tr key={inv.id} className="border-t border-slate-100 hover:bg-slate-50">
-                        <td className="px-3 py-3 font-black font-mono text-orange-700 whitespace-nowrap">{inv.doc_no || `#${inv.id}`}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${PMETHOD_COLOR[inv.payment_method] || "text-slate-600 bg-slate-100 border-slate-200"}`}>
-                              {PMETHOD_LABEL[inv.payment_method] || inv.payment_method}
-                            </span>
-                          </div>
-                          {inv.payment_splits && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {inv.payment_splits.split("|||").map((split, i) => {
-                                const colonIdx = split.lastIndexOf(":");
-                                const methodKey = split.slice(0, colonIdx);
-                                const amt = split.slice(colonIdx + 1);
-                                const isCash = methodKey === "cash";
-                                const isCredit = methodKey === "credit";
-                                const label = isCash ? "نقداً" : isCredit ? "آجل" : methodKey;
-                                return (
-                                  <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isCredit ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                                    {label}: {fmt(Number(amt))}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                          {/* Paid vs Remaining */}
-                          {!isCancelled && (
-                            <div className="mt-1.5 flex items-center gap-2 text-[10px]">
-                              {isFullyPaid ? (
-                                <span className="text-emerald-600 font-black">مدفوع بالكامل ✓</span>
-                              ) : remaining > 0 && paid > 0 ? (
-                                <>
-                                  <span className="text-emerald-600 font-black">مدفوع: {fmt(paid)}</span>
-                                  <span className="text-slate-300">|</span>
-                                  <span className="text-amber-600 font-black">متبقي: {fmt(remaining)}</span>
-                                </>
-                              ) : paid === 0 ? (
-                                <span className="text-amber-600 font-black">غير مدفوع</span>
-                              ) : null}
-                            </div>
-                          )}
-                          {!isCancelled && inv.total > 0 && (
-                            <div className="mt-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all ${paidPct >= 100 ? "bg-emerald-500" : paidPct > 0 ? "bg-amber-400" : "bg-slate-200"}`}
-                                style={{ width: `${paidPct || 2}%` }} />
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{fmtDate(inv.created_at)}</td>
-                        <td className="px-3 py-3 font-black font-mono whitespace-nowrap">{fmt(inv.total)} ج.م</td>
-                        <td className="px-3 py-3">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${inv.status === "voided" || inv.status === "cancelled" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                            {inv.status === "voided" || inv.status === "cancelled" ? "ملغي" : "مكتمل"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3">
-                          <button onClick={() => setDetailPurchase(inv)}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
-                            title="عرض التفاصيل">
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : activeTab === "payments" ? (
-                <table className="w-full text-[12px] bg-white rounded-xl overflow-hidden shadow-sm">
-                  <thead className="bg-slate-100">
-                    <tr>{["المرجع", "المبلغ", "الوسيلة", "ملاحظات", "التاريخ"].map(h => (
-                      <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px]">{h}</th>
-                    ))}</tr>
-                  </thead>
-                  <tbody>
-                    {tabData.map(p => (
-                      <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
-                        <td className="px-4 py-3 font-mono text-[11px] text-slate-500">{p.doc_no || `PAY-${p.id}`}</td>
-                        <td className="px-4 py-3 font-black font-mono text-rose-700">{fmt(p.amount)} ج.م</td>
-                        <td className="px-4 py-3 text-slate-600">{p.method_name || p.method}</td>
-                        <td className="px-4 py-3 text-slate-500 text-[11px]">{p.notes || "—"}</td>
-                        <td className="px-4 py-3 text-slate-500">{fmtDate(p.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : activeTab === "cheques" ? (
-                <table className="w-full text-[12px] bg-white rounded-xl overflow-hidden shadow-sm">
-                  <thead className="bg-slate-100">
-                    <tr>{["رقم الشيك", "المبلغ", "البنك", "الاستحقاق", "الحالة"].map(h => (
-                      <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px]">{h}</th>
-                    ))}</tr>
-                  </thead>
-                  <tbody>
-                    {tabData.map(c => (
-                      <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
-                        <td className="px-4 py-3 font-mono text-[11px]">{c.cheque_no || "—"}</td>
-                        <td className="px-4 py-3 font-black font-mono">{fmt(c.amount)} ج.م</td>
-                        <td className="px-4 py-3 text-slate-500">{c.bank_name || "—"}</td>
-                        <td className="px-4 py-3 text-slate-500">{fmtDate(c.due_date)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${c.status === "cleared" ? "bg-emerald-100 text-emerald-700" : c.status === "bounced" ? "bg-rose-100 text-rose-700" : "bg-violet-100 text-violet-700"}`}>
-                            {c.status === "cleared" ? "محصّل" : c.status === "bounced" ? "مرتجع" : "قيد الانتظار"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {activeTab === "movements" ? (
+                <MovementsTab
+                  party={selected}
+                  onOpenPurchase={setDetailPurchase}
+                  onOpenReturn={setDetailReturn}
+                />
               ) : (
-                <div className="space-y-3 max-w-2xl">
-                  {tabData.map(n => {
-                    const isAdj = n.note?.startsWith("تسوية رصيد");
-                    return (
-                    <div key={n.id} className={`rounded-xl border p-4 shadow-sm ${isAdj ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"}`}>
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                          {isAdj
-                            ? <span className="text-[10px] font-black bg-amber-200 text-amber-800 px-2 py-0.5 rounded-lg">⚖️ تسوية رصيد</span>
-                            : <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">📝 ملاحظة</span>
-                          }
-                          <span className="text-[10px] text-slate-400 font-bold">{n.user_name || "النظام"}</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400">{fmtDate(n.created_at)}</span>
-                      </div>
-                      <p className={`text-[13px] font-bold leading-relaxed ${isAdj ? "text-amber-900" : "text-slate-800"}`}>{n.note}</p>
-                    </div>
-                    );
-                  })}
-                </div>
+                <NotesTab notes={notesData} loading={notesLoading} onAdd={handleAddNote} />
               )}
             </div>
           </>
         )}
       </div>
 
-      {/* ══ Purchase Detail Modal ════════════════════════════ */}
+      {/* ══ Purchase Detail Modal ══════════════════════════════ */}
       {detailPurchase && (
         <Modal onClose={() => { setDetailPurchase(null); setDetailData(null); }} width="640px">
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-[17px] font-black text-slate-900">تفاصيل فاتورة المشتريات</h2>
+                <h2 className="text-[17px] font-black text-slate-900">تفاصيل فاتورة الشراء</h2>
                 <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailPurchase.doc_no || `#${detailPurchase.id}`}</p>
               </div>
-              <button onClick={() => { setDetailPurchase(null); setDetailData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-zinc-900 transition-colors">
-                <X className="h-4 w-4" />
-              </button>
+              <button onClick={() => { setDetailPurchase(null); setDetailData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
             </div>
             {detailLoading ? (
               <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
@@ -793,91 +609,17 @@ export default function SupplierAccountsPage() {
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
                   <div className="grid grid-cols-2 gap-3 text-[12px]">
                     <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{detailData.supplier_name || "—"}</span></div>
-                    <div><span className="font-black text-slate-400">طريقة الدفع:</span> <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-black ${PMETHOD_COLOR[detailData.payment_method] || "text-slate-600 bg-slate-100 border-slate-200"}`}>{PMETHOD_LABEL[detailData.payment_method] || detailData.payment_method}</span></div>
                     <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(detailData.created_at)}</span></div>
-                    <div><span className="font-black text-slate-400">الحالة:</span> <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${detailData.status === "voided" || detailData.status === "cancelled" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>{detailData.status === "voided" || detailData.status === "cancelled" ? "ملغي" : "مكتمل"}</span></div>
+                    <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="font-black font-mono text-slate-900">{fmt(detailData.total)} ج.م</span></div>
+                    <div><span className="font-black text-slate-400">الحالة:</span> <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${detailData.status === "received" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{detailData.status || "—"}</span></div>
                   </div>
                 </div>
-
-                {/* Paid vs Remaining Progress */}
-                {(() => {
-                  const mTotal = Number(detailData.total || 0);
-                  const mPaid = Math.max(0, mTotal - Number(detailData.debt_remaining || 0));
-                  const mRemaining = Math.max(0, mTotal - mPaid);
-                  const mPct = mTotal > 0 ? Math.min(100, (mPaid / mTotal) * 100) : 0;
-                  return mTotal > 0 ? (
-                    <div className="rounded-xl bg-white border border-slate-200 p-4 mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-black text-emerald-600">مدفوع: {fmt(mPaid)}</span>
-                          <span className="text-slate-300">|</span>
-                          <span className="text-[11px] font-black text-amber-600">متبقي: {fmt(mRemaining)}</span>
-                        </div>
-                        <span className="text-[11px] font-black text-slate-400">{mPct.toFixed(0)}%</span>
-                      </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${mPct >= 100 ? "bg-emerald-500" : mPct > 0 ? "bg-amber-400" : "bg-slate-200"}`}
-                          style={{ width: `${mPct || 2}%` }} />
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
-
-                <div className="rounded-xl border border-slate-200 overflow-hidden mb-4">
-                  <div className="bg-slate-100 grid grid-cols-12 gap-2 px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-wider">
-                    <div className="col-span-5">الصنف</div>
-                    <div className="col-span-2 text-center">الكمية</div>
-                    <div className="col-span-2 text-center">التكلفة</div>
-                    <div className="col-span-3 text-left">الإجمالي</div>
-                  </div>
-                  <div className="divide-y divide-slate-100">
-                    {detailData.lines?.map((line, i) => (
-                      <div key={i} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50">
-                        <div className="col-span-5 text-[11px] font-bold text-slate-800 truncate">{line.item_name || line.name}</div>
-                        <div className="col-span-2 text-center font-mono text-[11px] text-slate-600">{line.quantity}</div>
-                        <div className="col-span-2 text-center font-mono text-[11px] text-slate-600">{fmt(line.unit_cost)}</div>
-                        <div className="col-span-3 text-left font-mono text-[11px] font-black text-emerald-700">{fmt(line.line_total)}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-slate-900 text-white px-3 py-3">
-                    <div className="flex justify-between text-[13px] font-black"><span>الإجمالي</span><span className="font-mono">{fmt(detailData.total)} ج.م</span></div>
-                  </div>
-                </div>
-
-                {detailData.payments?.length > 0 && (
-                  <div className="rounded-xl border border-slate-200 p-4 mb-4">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">توزيع طرق الدفع</h3>
-                    <div className="flex flex-col gap-1.5">
-                      {detailData.payments.map((p, i) => {
-                        const isCash = p.method_type === "cash";
-                        return (
-                          <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 ${isCash ? "bg-emerald-50 border border-emerald-200" : "bg-slate-50 border border-slate-200"}`}>
-                            <span className={`text-[11px] font-black ${isCash ? "text-emerald-700" : "text-slate-700"}`}>{p.method_name || p.method_type}</span>
-                            <span className={`font-mono text-[12px] font-black ${isCash ? "text-emerald-700" : "text-slate-600"}`}>{fmt(p.amount)} ج.م</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {detailData.debt_remaining > 0 && (
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[12px] font-bold text-amber-800 flex items-center justify-between">
-                    <span>المتبقي من الآجل:</span>
-                    <span className="font-black font-mono">{fmt(detailData.debt_remaining)} ج.م</span>
-                  </div>
-                )}
-
                 <div className="flex gap-2 mt-4">
                   <button onClick={() => window.open(`/purchases/${detailPurchase.id}`, "_blank")}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-[12px] font-black text-white hover:bg-orange-700 transition-colors">
-                    <ExternalLink className="h-3.5 w-3.5" /> فتح الفاتورة الكاملة
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-[12px] font-black text-white hover:bg-orange-700">
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح فاتورة الشراء
                   </button>
-                  <button onClick={() => setDetailPurchase(null)}
-                    className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-colors">
-                    إغلاق
-                  </button>
+                  <button onClick={() => setDetailPurchase(null)} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                 </div>
               </>
             ) : (
@@ -890,15 +632,29 @@ export default function SupplierAccountsPage() {
         </Modal>
       )}
 
-      {/* ══ All-Debts Drawer ═══════════════════════════════════ */}
-      <AllDebtsDrawer
-        open={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        partyType="supplier"
-        onSelectParty={handleDrawerSelectParty}
-      />
-
-      {/* ══ Modals ══════════════════════════════════════════════ */}
+      {/* ══ Return Detail Modal ══════════════════════════════ */}
+      {detailReturn && (
+        <Modal onClose={() => setDetailReturn(null)} width="480px">
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-[17px] font-black text-slate-900">تفاصيل المرتجع</h2>
+                <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
+              </div>
+              <button onClick={() => setDetailReturn(null)} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-3 text-[12px]">
+              {[["المبلغ", `${fmt(detailReturn.total)} ج.م`], ["طريقة التسوية", detailReturn.settlement_type || "—"], ["السبب", detailReturn.reason || "—"], ["التاريخ", fmtDate(detailReturn.created_at)]].map(([label, value]) => (
+                <div key={label} className="flex justify-between border-b border-slate-100 pb-2">
+                  <span className="font-black text-slate-500">{label}</span>
+                  <span className="font-bold text-slate-800">{value}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setDetailReturn(null)} className="mt-4 w-full rounded-xl border border-slate-200 py-2 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+          </div>
+        </Modal>
+      )}
 
       {/* Create Supplier */}
       {showCreate && (
@@ -912,50 +668,32 @@ export default function SupplierAccountsPage() {
               <div>
                 <label className="text-[12px] font-black text-slate-600 mb-1.5 block">الاسم <span className="text-rose-500">*</span></label>
                 <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold"
-                  placeholder="اسم المورد" autoFocus />
+                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold" placeholder="اسم المورد" />
+              </div>
+              <div>
+                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رقم الهاتف</label>
+                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold" placeholder="01xxxxxxxxx" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رقم الهاتف</label>
-                  <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold"
-                    placeholder="01xxxxxxxxx" />
+                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رصيد افتتاحي</label>
+                  <input type="number" value={createForm.opening_balance} onChange={e => setCreateForm(f => ({ ...f, opening_balance: e.target.value }))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-mono font-bold" />
                 </div>
                 <div>
-                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">كود المورد</label>
-                  <input value={createForm.code} onChange={e => setCreateForm(f => ({ ...f, code: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold font-mono"
-                    placeholder="SUPP-001" />
+                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">شروط الدفع</label>
+                  <input value={createForm.payment_terms} onChange={e => setCreateForm(f => ({ ...f, payment_terms: e.target.value }))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold" placeholder="مثال: 30 يوم" />
                 </div>
-              </div>
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رصيد افتتاحي (مستحق للمورد)</label>
-                <input type="number" value={createForm.opening_balance} onChange={e => setCreateForm(f => ({ ...f, opening_balance: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-mono font-bold" />
-              </div>
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">شروط الدفع</label>
-                <input value={createForm.payment_terms} onChange={e => setCreateForm(f => ({ ...f, payment_terms: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500"
-                  placeholder="مثال: 30 يوم" />
-              </div>
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">بيانات البنك</label>
-                <input value={createForm.bank_details} onChange={e => setCreateForm(f => ({ ...f, bank_details: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500"
-                  placeholder="رقم الحساب / IBAN" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handleCreate} disabled={saving}
-                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-[13px] font-black hover:bg-orange-700 disabled:opacity-50 transition-colors shadow-md shadow-orange-200">
+                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-[13px] font-black hover:bg-orange-700 disabled:opacity-50 shadow-md shadow-orange-200">
                 {saving ? "جاري الحفظ..." : "حفظ المورد"}
               </button>
-              <button onClick={() => setShowCreate(false)}
-                className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200 transition-colors">
-                إلغاء
-              </button>
+              <button onClick={() => setShowCreate(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
             </div>
           </div>
         </Modal>
@@ -966,34 +704,20 @@ export default function SupplierAccountsPage() {
         <Modal onClose={() => setShowPayment(false)}>
           <div className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[17px] font-black text-slate-900">{bal < 0 ? "استرداد مبلغ من المورد" : "سداد دفعة للمورد"}</h2>
+              <h2 className="text-[17px] font-black text-slate-900">سداد دفعة للمورد</h2>
               <button onClick={() => setShowPayment(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
-            <p className="text-[12px] text-slate-500 font-bold mb-3">
-              المورد: <span className="text-slate-800">{selected.name}</span>
-            </p>
+            <p className="text-[12px] text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
             {bal > 0 && (
               <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 text-[12px] font-bold text-rose-800">
                 له مستحق <span className="font-mono font-black">{fmt(bal)} ج.م</span>
-                {Number(payForm.amount) > bal && <div className="mt-1 text-amber-700 font-black">⚠️ المبلغ المدخل أكبر من المستحق — الفرق سيصبح عليه مستحق.</div>}
-              </div>
-            )}
-            {bal < 0 && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-[12px] font-bold text-emerald-800">
-                عليه مستحق <span className="font-mono font-black">{fmt(Math.abs(bal))} ج.م</span>
-              </div>
-            )}
-            {bal === 0 && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-[12px] font-bold text-slate-600">
-                الحساب مسوّى حالياً — أي مبلغ يُسدَّد سيجعل المورد مديناً لنا.
               </div>
             )}
             <div className="space-y-4">
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">{bal < 0 ? "المبلغ المسترد" : "المبلغ المسدّد"} <span className="text-rose-500">*</span></label>
+                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500"
-                  placeholder="0.00" autoFocus />
+                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500" placeholder="0.00" autoFocus />
               </div>
               <div>
                 <label className="text-[12px] font-black text-slate-600 mb-1.5 block">وسيلة الدفع <span className="text-rose-500">*</span></label>
@@ -1006,19 +730,15 @@ export default function SupplierAccountsPage() {
               <div>
                 <label className="text-[12px] font-black text-slate-600 mb-1.5 block">ملاحظات (اختياري)</label>
                 <input value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500"
-                  placeholder="مثال: دفعة شهر يناير" />
+                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500" placeholder="مثال: سداد فاتورة" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handlePayment} disabled={saving || !payForm.amount || !payForm.method_id}
-                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-[13px] font-black hover:bg-orange-700 disabled:opacity-50 transition-colors shadow-md shadow-orange-200">
+                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-[13px] font-black hover:bg-orange-700 disabled:opacity-50 shadow-md shadow-orange-200">
                 {saving ? "جاري التسجيل..." : "تأكيد السداد"}
               </button>
-              <button onClick={() => setShowPayment(false)}
-                className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200 transition-colors">
-                إلغاء
-              </button>
+              <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
             </div>
           </div>
         </Modal>
@@ -1032,65 +752,34 @@ export default function SupplierAccountsPage() {
               <h2 className="text-[17px] font-black text-slate-900">تسوية رصيد يدوية</h2>
               <button onClick={() => setShowAdjust(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
-            <p className="text-[12px] text-slate-500 font-bold mb-1">
-              المورد: <span className="text-slate-800">{selected.name}</span>
-            </p>
             <p className="text-[12px] text-slate-500 font-bold mb-5">
-              الرصيد الحالي:
-              <span className={`font-mono font-black ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}>
-                {fmt(Math.abs(bal))} ج.م
-              </span>
-              {bal > 0 && <span className="text-rose-500 text-[10px]"> — له مستحق</span>}
-              {bal < 0 && <span className="text-emerald-600 text-[10px]"> — عليه مستحق</span>}
-              {bal === 0 && <span className="text-slate-400 text-[10px]"> — مسوّى</span>}
+              المورد: <span className="text-slate-800">{selected.name}</span>
+              {" — "}الرصيد الحالي:
+              <span className={`font-mono font-black ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
             </p>
-
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
-              <p className="text-[11px] font-black text-amber-800">
-                ⚠️ التسوية اليدوية تعدّل رصيد المورد مباشرة بدون تأثير على الخزنة. سيتم تسجيل الحركة في سجل الملاحظات.
-              </p>
+              <p className="text-[11px] font-black text-amber-800">⚠️ التسوية اليدوية تعدّل رصيد المورد مباشرة بدون تأثير على الخزنة. تُسجَّل في الحركات.</p>
             </div>
-
             <div className="space-y-4">
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-2 block">نوع التسوية</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setAdjForm(f => ({ ...f, direction: "subtract" }))}
-                    className={`p-3 rounded-xl border-2 text-[12px] font-black transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
-                    <div className="text-[18px] mb-1">↓</div>
-                    تخفيض ما نستحقه للمورد
-                    <div className="text-[10px] font-bold mt-0.5 opacity-70">(خصم / تصحيح لصالحنا)</div>
-                  </button>
-                  <button onClick={() => setAdjForm(f => ({ ...f, direction: "add" }))}
-                    className={`p-3 rounded-xl border-2 text-[12px] font-black transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
-                    <div className="text-[18px] mb-1">↑</div>
-                    رفع ما نستحقه للمورد
-                    <div className="text-[10px] font-bold mt-0.5 opacity-70">(إضافة مديونية / تصحيح)</div>
-                  </button>
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setAdjForm(f => ({ ...f, direction: "subtract" }))}
+                  className={`p-3 rounded-xl border-2 text-[12px] font-black transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
+                  <div className="text-[18px] mb-1">↓</div>تخفيض المستحق للمورد
+                  <div className="text-[10px] font-bold mt-0.5 opacity-70">(خصم / تصحيح)</div>
+                </button>
+                <button onClick={() => setAdjForm(f => ({ ...f, direction: "add" }))}
+                  className={`p-3 rounded-xl border-2 text-[12px] font-black transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-500"}`}>
+                  <div className="text-[18px] mb-1">↑</div>رفع المستحق للمورد
+                  <div className="text-[10px] font-bold mt-0.5 opacity-70">(إضافة مستحق / تصحيح)</div>
+                </button>
               </div>
               <div>
                 <label className="text-[12px] font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
-                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500"
-                  placeholder="0.00" autoFocus />
+                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500" placeholder="0.00" autoFocus />
               </div>
-              {adjForm.amount > 0 && (() => {
-                const newBal = adjForm.direction === "subtract" ? bal - Number(adjForm.amount) : bal + Number(adjForm.amount);
-                return (
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                  <p className="text-[11px] font-black text-slate-500 mb-1">الرصيد بعد التسوية:</p>
-                  <p className={`text-[18px] font-black font-mono ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"}`}>
-                    {fmt(Math.abs(newBal))} ج.م
-                  </p>
-                  <p className={`text-[10px] font-black mt-0.5 ${newBal > 0 ? "text-rose-400" : newBal < 0 ? "text-emerald-500" : "text-slate-400"}`}>
-                    {newBal > 0 ? "له مستحق" : newBal < 0 ? "عليه مستحق" : "مسوّى ✓"}
-                  </p>
-                </div>
-                );
-              })()}
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">سبب التسوية (مطلوب للتسجيل)</label>
+                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">سبب التسوية</label>
                 <input value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
                   className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500"
                   placeholder="مثال: خصم متفق عليه / تصحيح خطأ" />
@@ -1098,54 +787,62 @@ export default function SupplierAccountsPage() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handleAdjust} disabled={saving || !adjForm.amount}
-                className="flex-1 h-11 rounded-xl bg-slate-800 text-white text-[13px] font-black hover:bg-slate-900 disabled:opacity-50 transition-colors">
+                className="flex-1 h-11 rounded-xl bg-slate-800 text-white text-[13px] font-black hover:bg-slate-900 disabled:opacity-50">
                 {saving ? "جاري التسوية..." : "تأكيد التسوية وتسجيلها"}
               </button>
-              <button onClick={() => setShowAdjust(false)}
-                className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200 transition-colors">
-                إلغاء
-              </button>
+              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
             </div>
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
 
-      {/* Note Modal */}
-      {showNote && selected && (
-        <Modal onClose={() => setShowNote(false)}>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[17px] font-black text-slate-900">إضافة ملاحظة</h2>
-              <button onClick={() => setShowNote(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
-            <p className="text-[12px] text-slate-500 font-bold mb-5">
-              المورد: <span className="text-slate-800">{selected.name}</span>
-            </p>
-            <div>
-              <label className="text-[12px] font-black text-slate-600 mb-1.5 block">نص الملاحظة <span className="text-rose-500">*</span></label>
-              <textarea value={noteForm.note} onChange={e => setNoteForm(f => ({ ...f, note: e.target.value }))}
-                rows={4} autoFocus
-                className="w-full rounded-xl border border-slate-200 p-4 text-[13px] font-bold outline-none focus:border-amber-400 resize-none"
-                placeholder="اكتب ملاحظتك هنا..." />
-            </div>
-            <div className="flex gap-3 mt-4">
-              <button onClick={handleAddNote} disabled={saving || !noteForm.note.trim()}
-                className="flex-1 h-11 rounded-xl bg-amber-600 text-white text-[13px] font-black hover:bg-amber-700 disabled:opacity-50 transition-colors">
-                {saving ? "جاري الحفظ..." : "حفظ الملاحظة"}
-              </button>
-              <button onClick={() => setShowNote(false)}
-                className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200 transition-colors">
-                إلغاء
-              </button>
+function NotesTab({ notes, loading, onAdd }) {
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    await onAdd(text);
+    setText("");
+    setSaving(false);
+  };
+
+  if (loading) return <div className="flex h-32 items-center justify-center text-[12px] font-black text-slate-400 animate-pulse">جاري التحميل...</div>;
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="text-[11px] font-black text-slate-500 mb-2">إضافة ملاحظة</div>
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
+          className="w-full rounded-xl border border-slate-200 p-3 text-[13px] font-bold outline-none focus:border-amber-400 resize-none"
+          placeholder="اكتب ملاحظتك هنا..." />
+        <button onClick={submit} disabled={saving || !text.trim()}
+          className="mt-2 h-9 px-5 rounded-xl bg-amber-600 text-white text-[12px] font-black hover:bg-amber-700 disabled:opacity-40">
+          {saving ? "جاري الحفظ..." : "حفظ الملاحظة"}
+        </button>
+      </div>
+
+      {notes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-24 text-slate-300 gap-2">
+          <MessageSquare className="h-8 w-8 opacity-40" />
+          <span className="font-black text-[13px]">لا توجد ملاحظات</span>
+        </div>
+      ) : notes.map(n => (
+        <div key={n.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">📝 ملاحظة</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400 font-bold">{n.user_name || "النظام"}</span>
+              <span className="text-[10px] text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG") : "—"}</span>
             </div>
           </div>
-        </Modal>
-      )}
-
-      {/* Statement Modal */}
-      {showStatement && selected && (
-        <StatementModal party={selected} partyType="supplier" onClose={() => setShowStatement(false)} />
-      )}
+          <p className="text-[13px] font-bold leading-relaxed text-slate-800">{n.note}</p>
+        </div>
+      ))}
     </div>
   );
 }

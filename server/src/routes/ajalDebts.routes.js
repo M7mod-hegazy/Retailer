@@ -185,6 +185,8 @@ router.get("/:id", requirePagePermission("installments", "view"), (req, res) => 
     const debt = db.prepare(`
       SELECT d.*, ${partySelect()},
              COALESCE(i.invoice_no, p.doc_no) AS invoice_no,
+             i.total AS invoice_total, i.payment_splits, i.created_at AS invoice_date,
+             p.total AS purchase_total, p.created_at AS purchase_date,
              (d.original_amount - d.paid_amount) AS remaining
       FROM ajal_debts d
       LEFT JOIN customers c ON c.id = d.customer_id
@@ -300,6 +302,94 @@ router.post("/:id/schedule", requirePagePermission("installments", "add"), (req,
     const schedule = db.prepare("SELECT * FROM ajal_schedules WHERE debt_id = ? ORDER BY installment_no").all(debt.id);
     req.audit("update", "ajalDebts", { id: req.params.id }, `💰 تم جدولة أقساط دين آجل`);
     res.json({ success: true, data: schedule });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /api/ajal-schedules/by-party/:partyType/:partyId
+router.get("/by-party/:partyType/:partyId", requirePagePermission("installments", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const partyType = normalizePartyType(req.params.partyType);
+    const idCol = partyIdColumn(partyType);
+    const rows = db.prepare(`
+      SELECT sch.*, d.id AS debt_id, d.original_amount, d.paid_amount, d.status AS debt_status,
+             COALESCE(i.invoice_no, p.doc_no) AS invoice_no,
+             i.total AS invoice_total, i.payment_splits, i.created_at AS invoice_date,
+             p.total AS purchase_total, p.created_at AS purchase_date
+      FROM ajal_schedules sch
+      JOIN ajal_debts d ON d.id = sch.debt_id
+      LEFT JOIN invoices i ON i.id = d.invoice_id AND d.source_type = 'invoice'
+      LEFT JOIN purchases p ON p.id = d.invoice_id AND d.source_type = 'purchase'
+      WHERE d.${idCol} = ? AND d.status NOT IN ('paid','voided')
+      ORDER BY sch.due_date DESC, sch.installment_no ASC
+    `).all(req.params.partyId);
+    res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PATCH /api/ajal-schedules/:id
+router.patch("/schedules/:id", requirePagePermission("installments", "edit"), (req, res) => {
+  try {
+    const db = getDb();
+    const { due_date, amount, status } = req.body || {};
+    const s = db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id);
+    if (!s) return res.status(404).json({ success: false, message: "القسط غير موجود" });
+
+    const updates = [];
+    const params = [];
+    if (due_date) { updates.push("due_date = ?"); params.push(due_date); }
+    if (amount !== undefined) { updates.push("amount = ?"); params.push(Number(amount)); }
+    if (status) { updates.push("status = ?"); params.push(status); }
+    if (updates.length === 0) return res.status(400).json({ success: false, message: "لا توجد تغييرات" });
+
+    params.push(req.params.id);
+    db.prepare(`UPDATE ajal_schedules SET ${updates.join(", ")}, updated_at = datetime('now') WHERE id = ?`).run(...params);
+    res.json({ success: true, data: db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id) });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/ajal-schedules/:id/pay
+router.post("/schedules/:id/pay", requirePagePermission("installments", "add"), (req, res) => {
+  try {
+    const db = getDb();
+    const { payment_method_id, notes, payment_date } = req.body || {};
+    const schedule = db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id);
+    if (!schedule) return res.status(404).json({ success: false, message: "القسط غير موجود" });
+    if (schedule.status === "paid") return res.status(400).json({ success: false, message: "القسط مدفوع بالفعل" });
+
+    const debt = db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(schedule.debt_id);
+    if (!debt) return res.status(404).json({ success: false, message: "الدين المرتبط غير موجود" });
+
+    const remaining = Math.max(0, debt.original_amount - debt.paid_amount);
+    const payAmount = Math.min(schedule.amount, remaining);
+    if (payAmount <= 0) return res.status(400).json({ success: false, message: "لا يوجد مبلغ متبقي للدفع" });
+
+    const createdDate = normalizeDate(payment_date);
+    assertCanWriteForDate(db, createdDate);
+
+    db.transaction(() => {
+      const pmId = payment_method_id || 1;
+      db.prepare("INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(schedule.debt_id, payAmount, pmId, createdDate, notes || null, req.user?.id || 1);
+      db.prepare("UPDATE ajal_schedules SET status = 'paid', paid_at = datetime('now') WHERE id = ?").run(schedule.id);
+      db.prepare("UPDATE ajal_debts SET paid_amount = paid_amount + ? WHERE id = ?").run(payAmount, schedule.debt_id);
+      recalcDebt(db, schedule.debt_id);
+
+      const pm = db.prepare("SELECT type, category, name, excludes_from_treasury FROM payment_methods WHERE id = ?").get(pmId);
+      const methodKind = pm ? (pm.type || pm.category || pm.name || "cash") : "cash";
+      if ((!pm || !pm.excludes_from_treasury) && methodKind === "cash") {
+        const sign = normalizePartyType(debt.party_type) === "supplier" ? -1 : 1;
+        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = 1").run(sign * payAmount);
+      }
+      if (normalizePartyType(debt.party_type) === "supplier") {
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(payAmount, debt.supplier_id);
+      } else {
+        db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(payAmount, debt.customer_id);
+      }
+    })();
+
+    req.audit("update", "ajalSchedules", { id: req.params.id }, `💰 تم سداد قسط بقيمة: ${payAmount}`);
+    res.json({ success: true, data: db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

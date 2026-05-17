@@ -8,6 +8,15 @@ const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
 
+router.get("/balance-summary", requirePagePermission("customers", "view"), (req, res) => {
+  try {
+    const row = getDb().prepare(
+      "SELECT COALESCE(SUM(opening_balance), 0) AS net_balance FROM customers WHERE is_active = 1 OR is_active IS NULL"
+    ).get();
+    res.json({ success: true, data: { net_balance: row.net_balance } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 router.get("/", requirePagePermission("customers", "view"), (req, res) => {
   const showArchived = req.query.archived === 'true';
   const query = showArchived
@@ -138,8 +147,8 @@ router.post("/:id/adjust", requirePagePermission("customers", "add"), (req, res)
   try {
     getDb().transaction(() => {
       getDb().prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
-      getDb().prepare("INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)")
-        .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, req.user?.id || null);
+      getDb().prepare("INSERT INTO customer_notes (customer_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
+        .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null);
     })();
     res.json({ success: true, data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
   } catch (e) {
@@ -148,7 +157,10 @@ router.post("/:id/adjust", requirePagePermission("customers", "add"), (req, res)
 });
 
 router.get("/:id/notes", requirePagePermission("customers", "view"), (req, res) => {
-  const notes = getDb().prepare("SELECT n.*, u.name as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by WHERE customer_id = ? ORDER BY n.created_at DESC").all(req.params.id);
+  const { type } = req.query;
+  const cond = type ? "WHERE customer_id = ? AND COALESCE(n.type,'note') = ?" : "WHERE customer_id = ?";
+  const params = type ? [req.params.id, type] : [req.params.id];
+  const notes = getDb().prepare(`SELECT n.*, u.name as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by ${cond} ORDER BY n.created_at DESC`).all(...params);
   res.json({ success: true, data: notes });
 });
 
