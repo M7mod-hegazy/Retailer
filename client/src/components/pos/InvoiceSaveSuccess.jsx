@@ -24,11 +24,11 @@ function buildParticles(count = 22) {
  * @param {string}   props.total          - Formatted currency string
  * @param {Function} [props.onDismiss]    - Called after auto-dismiss or click
  */
-export function InvoiceSaveSuccess({ invoiceNumber, total, onDismiss }) {
+export function InvoiceSaveSuccess({ invoiceNumber, total, payments, onDismiss }) {
   const [particles] = useState(() => buildParticles());
 
   useEffect(() => {
-    const t = setTimeout(() => onDismiss?.(), 1800);
+    const t = setTimeout(() => onDismiss?.(), 2500);
     return () => clearTimeout(t);
   }, [onDismiss]);
 
@@ -92,15 +92,35 @@ export function InvoiceSaveSuccess({ invoiceNumber, total, onDismiss }) {
         ))}
       </div>
 
-      <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '18px', marginTop: '16px' }}>
+      <p className="text-emerald-600 font-black text-[18px] mt-4">
         تم الحفظ بنجاح!
       </p>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
+      <p className="text-slate-500 font-bold text-[13px] mt-1 font-mono bg-slate-100 px-2 py-0.5 rounded-md">
         {invoiceNumber}
       </p>
-      <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '22px', marginTop: '4px', fontFamily: 'Inter, sans-serif' }}>
+      <p className="text-emerald-700 font-black text-[24px] mt-1.5 font-mono drop-shadow-sm">
         {total}
       </p>
+      
+      {payments && payments.length > 0 && (
+        <div className="flex gap-2 flex-wrap justify-center mt-3 animate-fade-in" style={{ animationDelay: '300ms', animationFillMode: 'backwards' }}>
+          {payments.map((p, i) => {
+            const isCash = p.method === 'cash' || p.method_name?.includes('نقد');
+            const colorClass = isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                             : "bg-indigo-50 text-indigo-700 border-indigo-200";
+            return (
+              <div key={i} className={`px-3 py-1.5 rounded-lg border text-[12px] font-black flex items-center gap-1.5 shadow-sm ${colorClass}`}>
+                <span>{p.method_name}</span>
+                {p.amount && (
+                  <span className="font-mono opacity-80 pl-1 border-l border-current">
+                    {Number(p.amount).toLocaleString('ar-EG', {minimumFractionDigits: 2})} ج.م
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

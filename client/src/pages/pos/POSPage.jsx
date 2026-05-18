@@ -1205,7 +1205,7 @@ export default function POSPage() {
           payments: [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank_transfer: "بنك", multi: "متعدد" }[paymentType] || paymentType, amount: totals.total }],
         };
         setLastSavedInvoice(receiptSnap);
-        setSaveSuccess({ invoiceNumber: savedNo, total: formatMoney(totals.total) });
+        setSaveSuccess({ invoiceNumber: savedNo, total: formatMoney(totals.total), payments: receiptSnap.payments });
         setSuccessNavigateTo("/pos");
         setAmendContext(null);
         resetActivation();
@@ -1239,7 +1239,7 @@ export default function POSPage() {
         payments: buildPaymentsSnap(),
       };
       setLastSavedInvoice(receiptSnap);
-      setSaveSuccess({ invoiceNumber: savedInvoiceNo, total: formatMoney(totals.total) });
+      setSaveSuccess({ invoiceNumber: savedInvoiceNo, total: formatMoney(totals.total), payments: receiptSnap.payments });
       setAmendContext(null);
       resetActivation();
       clearActiveDraftFromDB();
@@ -1350,7 +1350,7 @@ export default function POSPage() {
 
   if (viewMode === "list") {
     return (
-      <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden animate-fade-in" dir="rtl">
+      <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden animate-fade-in" dir="rtl">
         <BarcodeListener />
         {staleHeldAlert && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
@@ -1372,23 +1372,23 @@ export default function POSPage() {
         )}
 
         {/* Header like purchases/new */}
-        <header className="flex h-14 shrink-0 items-center border-b border-slate-300 bg-white px-4 z-40 gap-4">
+        <header className="flex h-14 shrink-0 items-center border-b border-slate-100 bg-white px-4 z-40 gap-4 shadow-[0_1px_8px_-4px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex flex-col">
               <h1 className="text-[14px] font-black text-slate-800">فاتورة مبيعات جديدة</h1>
               <span className="text-[10px] font-bold text-slate-400">نقطة البيع - القائمة</span>
             </div>
-            <div className="flex shrink-0 bg-slate-100 rounded-md p-1 border border-slate-200">
+            <div className="flex shrink-0 bg-slate-100 rounded-xl p-1 border border-slate-100">
               <button 
                 onClick={() => { setViewMode("detailed"); setPendingViewMode("detailed"); setShowSetDefaultModal(true); }}
-                className={`p-1.5 rounded-sm transition-all ${viewMode === "detailed" ? "bg-white shadow-sm text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === "detailed" ? "bg-white shadow text-indigo-600" : "text-slate-400 hover:text-slate-700"}`}
                 title="عرض الشبكة"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => { setViewMode("list"); setPendingViewMode("list"); setShowSetDefaultModal(true); }}
-                className={`p-1.5 rounded-sm transition-all ${viewMode === "list" ? "bg-white shadow-sm text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white shadow text-indigo-600" : "text-slate-400 hover:text-slate-700"}`}
                 title="عرض القائمة"
               >
                 <List className="w-4 h-4" />
@@ -1457,8 +1457,8 @@ export default function POSPage() {
               <button
                 onClick={() => setPrintPreview(true)}
                 disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-                className={`flex h-9 items-center gap-2 rounded-sm px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
-                  ${hasBlockingErrors && !stockOnlyErrors && lines.length ? "bg-rose-600" : "bg-slate-800 hover:bg-slate-700"}`}
+                className={`flex h-9 items-center gap-2 rounded-xl px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
+                  ${hasBlockingErrors && !stockOnlyErrors && lines.length ? "bg-rose-600" : "bg-indigo-600 hover:bg-indigo-700"}`}
               >
                 <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
                 {hasBlockingErrors && <span className="ml-1.5 rounded-full bg-rose-400 text-white text-[9px] font-black px-1.5 py-0.5">{blockingErrorCount}</span>}
@@ -1472,7 +1472,7 @@ export default function POSPage() {
           {/* Right Sidebar (Customer, Summary, Payment) */}
           <aside className="w-[400px] shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in">
             {/* Customer Card */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-1.5">
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
@@ -1505,7 +1505,7 @@ export default function POSPage() {
                   onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
                   onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
                   onKeyDown={handleCustomerKeyDown}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
                 />
                 {customerLookupOpen && (
                   <SearchDropdown
@@ -1546,7 +1546,7 @@ export default function POSPage() {
             </div>
 
             {/* Invoice Summary */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-1.5 mb-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
                   <Receipt className="h-3.5 w-3.5 text-slate-500" />
@@ -1645,9 +1645,9 @@ export default function POSPage() {
 
                 <div className="h-px bg-slate-100 my-1" />
 
-                <div className="rounded-xl bg-slate-900 p-4 text-center text-white shadow-lg">
+                <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
                   <div className="text-[10px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
-                  <div className="text-[28px] font-black tracking-tighter font-mono leading-none mt-1.5">
+                  <div className="text-[32px] font-black tracking-tighter font-mono leading-none mt-1.5">
                     {totals.total.toLocaleString("ar-EG", { minimumFractionDigits: 2 })}
                   </div>
                   <div className="text-[10px] opacity-40 mt-1">ج.م</div>
@@ -1719,7 +1719,7 @@ export default function POSPage() {
             )}
 
             {/* Payment Method */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
               <div className="grid grid-cols-3 gap-2">
                 {PAYMENT_TYPES.map(({ type, label, Icon }) => {
@@ -1828,7 +1828,7 @@ export default function POSPage() {
 
             {/* Customer detail when selected */}
             {customer && customer.id && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-[14px] font-black">{(customer.name || "?")[0]}</div>
                   <div className="flex-1 min-w-0">
@@ -1880,14 +1880,14 @@ export default function POSPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="mt-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mt-auto rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-2.5">
                 <PermissionGate page="pos" action="print">
                   <button
                     data-help="confirm-button"
                     onClick={() => setPrintPreview(true)}
                     disabled={!lines.length || isSaving || hasBlockingErrors}
-                    className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-4 text-[14px] font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}
                   >
                     <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
                   </button>
@@ -1956,7 +1956,7 @@ export default function POSPage() {
           {/* Main Content (Entry & Grid) */}
           <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
             {/* Quick Entry Bar */}
-            <section className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
+            <section className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm shrink-0">
               <div className="grid grid-cols-[44px_3fr_80px_120px_80px_160px_100px_auto] gap-2 items-end">
                 <div className="flex items-end pb-0.5">
                   <button
@@ -2229,7 +2229,7 @@ export default function POSPage() {
               emptyMessage="لا يوجد أصناف في الفاتورة بعد"
               emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
               className="border-0"
-              containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0"
+              containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent rounded-2xl border border-slate-100 min-h-0"
               columns={[
                 {
                   id: "index", header: "#", width: 40, sortable: false,
@@ -2679,7 +2679,7 @@ export default function POSPage() {
             {saveMessage}
           </div>
         )}
-        {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} onDismiss={onDismissSaveSuccess} />}
+        {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} onDismiss={onDismissSaveSuccess} />}
 
         <InvoiceProfitModal
           open={profitModalOpen}
@@ -2709,7 +2709,7 @@ export default function POSPage() {
 
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden" dir="rtl">
+    <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden" dir="rtl">
       <BarcodeListener />
       {staleHeldAlert && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
@@ -2778,15 +2778,15 @@ export default function POSPage() {
         className="flex min-h-0 flex-1 transition-all flex-row relative"
       >
         {/* ── Left Column: Grid & Search (~65%) ── */}
-        <div className="flex flex-col flex-[1.8] bg-slate-50 border-l border-slate-200 overflow-hidden min-w-0">
+        <div className="flex flex-col flex-[1.8] bg-[#f8fafb] border-l border-slate-100 overflow-hidden min-w-0">
           {/* Header */}
-          <div className="flex flex-col gap-3 shrink-0 bg-white border-b border-slate-200 p-4 shadow-sm z-10">
-            <div className="flex items-center gap-2 border border-slate-200 bg-white px-3 py-2 shrink-0 flex-wrap rounded-md">
+          <div className="flex flex-col gap-3 shrink-0 bg-white border-b border-slate-100 p-4 shadow-[0_1px_10px_-5px_rgba(0,0,0,0.07)] z-10">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <input
                 readOnly
                 disabled
                 value={invoiceIsActive ? (docNo || invoiceNumber) : "—"}
-                className="w-[150px] rounded-sm border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-mono font-black text-slate-500 cursor-default text-center select-none disabled:opacity-70"
+                className="w-[165px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[12px] font-mono font-black text-slate-600 cursor-default text-center select-none disabled:opacity-70"
               />
               {invoiceIsActive && invoiceCreatedAt && (
                 <input readOnly disabled
@@ -2818,17 +2818,17 @@ export default function POSPage() {
                   className="w-full text-[13px] py-2"
                 />
               </div>
-              <div className="flex shrink-0 bg-slate-100 rounded-md p-1 border border-slate-200">
+              <div className="flex shrink-0 bg-slate-100 rounded-xl p-1 border border-slate-100">
                 <button 
                   onClick={() => { setViewMode("detailed"); setPendingViewMode("detailed"); setShowSetDefaultModal(true); }}
-                  className={`p-1.5 rounded-sm transition-all ${viewMode === "detailed" ? "bg-white shadow-sm text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`p-1.5 rounded-lg transition-all ${viewMode === "detailed" ? "bg-white shadow text-indigo-600" : "text-slate-400 hover:text-slate-700"}`}
                   title="عرض الشبكة"
                 >
                   <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => { setViewMode("list"); setPendingViewMode("list"); setShowSetDefaultModal(true); }}
-                  className={`p-1.5 rounded-sm transition-all ${viewMode === "list" ? "bg-white shadow-sm text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white shadow text-indigo-600" : "text-slate-400 hover:text-slate-700"}`}
                   title="عرض القائمة"
                 >
                   <List className="w-4 h-4" />
@@ -2852,7 +2852,7 @@ export default function POSPage() {
                 <button
                   key={cat}
                   onClick={() => setDetailedCategoryFilter(cat)}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-[12px] font-black transition-all border ${detailedCategoryFilter === cat ? "bg-slate-900 border-slate-900 text-white shadow-md" : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"}`}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-[12px] font-black transition-all border ${detailedCategoryFilter === cat ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
                 >
                   {cat === "all" ? "كل الفئات" : cat}
                 </button>
@@ -2876,9 +2876,9 @@ export default function POSPage() {
                   <button
                     key={item.id}
                     onClick={() => handleGridItemClick(item)}
-                    className="group relative flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm hover:border-emerald-400 hover:shadow-lg hover:-translate-y-1 transition-all text-right overflow-hidden"
+                    className="group relative flex flex-col items-center gap-2.5 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm hover:border-indigo-200 hover:shadow-[0_8px_24px_-6px_rgba(99,102,241,0.14)] hover:-translate-y-1 transition-all text-right overflow-hidden"
                   >
-                    <div className="w-full aspect-square rounded-lg bg-slate-50 overflow-hidden flex items-center justify-center border border-slate-100">
+                    <div className="w-full aspect-square rounded-xl bg-slate-50 overflow-hidden flex items-center justify-center border border-slate-100">
                       {getItemImage(item) ? (
                         <img src={getItemImage(item)} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                       ) : (
@@ -2889,9 +2889,9 @@ export default function POSPage() {
                       <span className="text-[12px] font-black text-slate-800 truncate block leading-tight">{item.name}</span>
                       <span className="text-[10px] font-bold text-slate-400 font-mono truncate">{item.barcode || item.code || "—"}</span>
                     </div>
-                    <div className="flex items-center justify-between w-full mt-auto pt-1 border-t border-slate-50">
-                      <span className="text-[14px] font-black text-emerald-600 font-mono">{formatMoney(item.sale_price || item.price || 0)}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${Number(item.stock_quantity || item.stock || 0) <= 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500"}`}>
+                    <div className="flex items-center justify-between w-full mt-auto pt-1.5 border-t border-slate-100">
+                      <span className="text-[14px] font-black text-indigo-600 font-mono">{formatMoney(item.sale_price || item.price || 0)}</span>
+                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${Number(item.stock_quantity || item.stock || 0) <= 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500"}`}>
                         {Number(item.stock_quantity || item.stock || 0)}
                       </span>
                     </div>
@@ -2929,15 +2929,15 @@ export default function POSPage() {
 
 
         {/* ── Right Column: Fixed Invoice Panel (~35%) ── */}
-        <div className="flex flex-col flex-1 max-w-[560px] min-w-[480px] bg-white shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)] z-20 overflow-y-auto custom-scrollbar animate-fade-in">
+        <div className="flex flex-col flex-1 max-w-[560px] min-w-[480px] bg-white shadow-[-2px_0_20px_-5px_rgba(0,0,0,0.07)] z-20 overflow-y-auto custom-scrollbar animate-fade-in">
           
           {/* Top Panel: Customer & Actions */}
-          <div className="flex flex-col shrink-0 border-b border-slate-100 bg-slate-50 p-3 gap-2.5">
+          <div className="flex flex-col shrink-0 border-b border-slate-100 bg-[#f8fafb] px-3 pt-4 pb-3 gap-2.5">
             {/* Meta Row */}
             <div className="flex items-center justify-between text-[11px] font-black text-slate-500 uppercase tracking-widest px-1">
               <div className="flex items-center gap-1.5">
-                <Receipt className="w-3.5 h-3.5" />
-                <span className="font-mono bg-white px-1.5 py-0.5 rounded-sm border border-slate-200">{invoiceNumber}</span>
+                <Receipt className="w-3.5 h-3.5 text-slate-400" />
+                <span className="font-mono text-[11px] font-black bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-600">{invoiceIsActive ? (docNo || invoiceNumber) : "—"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <PermissionGate page="pos" action="profit">
@@ -2970,10 +2970,10 @@ export default function POSPage() {
                   onFocus={() => setCustomerLookupOpen(true)}
                   onBlur={() => setTimeout(() => { setCustomerLookupOpen(false); if (!customer) setCustomerQuery(""); }, 200)}
                   onKeyDown={handleCustomerKeyDown}
-                  className={`w-full border rounded-sm py-2 pl-2 pr-9 text-[13px] font-black outline-none transition-all shadow-inner ${
+                  className={`w-full border rounded-xl py-2.5 pl-2 pr-9 text-[13px] font-black outline-none transition-all ${
                     hasCustomerBalance
-                      ? "border-amber-400 bg-amber-50 text-amber-900 focus:ring-1 focus:ring-amber-400"
-                      : "border-slate-300 bg-white text-slate-800 focus:border-slate-800"
+                      ? "border-amber-300 bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-200"
+                      : "border-slate-200 bg-slate-50 text-slate-800 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                   }`}
                 />
                 {customerLookupOpen && (
@@ -3023,11 +3023,11 @@ export default function POSPage() {
           </div>
 
           {/* Cart List */}
-          <div className="shrink-0 p-3 bg-slate-50 shadow-inner relative">
-            {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} onDismiss={onDismissSaveSuccess} />}
+          <div className="shrink-0 p-3 bg-[#f8fafb] relative">
+            {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} onDismiss={onDismissSaveSuccess} />}
             {lines.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center opacity-40">
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 mb-5">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-sm mb-5">
                   <ShoppingCart className="h-10 w-10 text-slate-300" />
                 </div>
                 <span className="text-[15px] font-black tracking-widest text-slate-500">الفاتورة فارغة</span>
@@ -3046,8 +3046,8 @@ export default function POSPage() {
                   const isDiscountOverflow = Number(line.line_discount || 0) > unitPrice * qty && unitPrice > 0;
                   const hasWarning = isExceedingStock || isBelowCost || isDiscountOverflow;
                   return (
-                    <div key={`${line.item_id}-${idx}`} className={`animate-slide-up group relative flex flex-col gap-2.5 p-3 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-px ${
-                      isExceedingStock ? "border-rose-300 ring-1 ring-rose-100" : hasWarning ? "border-amber-200 ring-1 ring-amber-50" : "border-slate-200 hover:border-emerald-300"
+                    <div key={`${line.item_id}-${idx}`} className={`animate-slide-up group relative flex flex-col gap-2.5 p-3 rounded-2xl border bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-px ${
+                      isExceedingStock ? "border-rose-300 ring-1 ring-rose-100" : hasWarning ? "border-amber-200 ring-1 ring-amber-50" : "border-slate-100 hover:border-indigo-200"
                     }`} style={{ animationDelay: `${idx * 50}ms` }}>
                       {/* Left accent bar */}
                       <div className={`absolute right-0 top-3 bottom-3 w-1 rounded-l-full ${
@@ -3141,8 +3141,8 @@ export default function POSPage() {
 
                         {/* Price */}
                         <div className="flex flex-col items-end gap-0.5 shrink-0">
-                          <div className="rounded-lg bg-emerald-50 px-2.5 py-1 border border-emerald-100 whitespace-nowrap">
-                            <span className="font-mono text-[14px] font-black text-emerald-700">{formatMoney(lineTotal)}</span>
+                          <div className="rounded-xl bg-indigo-50 px-2.5 py-1 border border-indigo-100 whitespace-nowrap">
+                            <span className="font-mono text-[14px] font-black text-indigo-700">{formatMoney(lineTotal)}</span>
                           </div>
                           <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{formatMoney(line.sale_price || line.unit_price)} للقطعة</span>
                         </div>
@@ -3246,7 +3246,7 @@ export default function POSPage() {
               </div>
               <div className="border-t border-slate-700 mt-1 pt-1.5 flex items-center justify-between">
                 <span className="text-[12px] font-black text-slate-300 uppercase tracking-widest">الإجمالي المطلوب</span>
-                <span className="font-mono text-[28px] font-black text-emerald-400 leading-none drop-shadow-md">{formatMoney(totals.total)}</span>
+                <span className="font-mono text-[34px] font-black text-emerald-400 leading-none drop-shadow-md">{formatMoney(totals.total)}</span>
               </div>
             </div>
             {/* Payment Methods */}
@@ -3361,13 +3361,13 @@ export default function POSPage() {
               {/* Main Actions */}
               <div className="flex flex-col gap-2 mt-1">
                 <PermissionGate page="pos" action="print">
-                  <button type="button" onClick={() => setPrintPreview(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[14px] font-black text-white transition-all shadow-md ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-300" : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98]"}`}>
+                  <button type="button" onClick={() => setPrintPreview(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-4 text-[15px] font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}>
                     <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
                   </button>
                 </PermissionGate>
                 <div className="flex gap-2">
                   <PermissionGate page="pos" action="add">
-                    <button type="button" onClick={() => setSaveConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}>
+                    <button type="button" onClick={() => setSaveConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"}`}>
                       حفظ فقط
                     </button>
                   </PermissionGate>
