@@ -5,7 +5,7 @@ import {
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
   ImageIcon, ZoomIn, Printer, CheckCircle2, Layers, Lock, Pencil,
   FilePlus, Sparkles, Receipt, RefreshCw, ArrowUpDown, Save,
-  Loader2,
+  Loader2, Filter,
 } from "lucide-react";
 import api from "../../services/api";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
@@ -24,6 +24,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
+import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -193,6 +194,7 @@ export default function PurchaseFormPage() {
   const [printSettings, setPrintSettings] = useState({});
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [editWarnOpen, setEditWarnOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -767,21 +769,31 @@ export default function PurchaseFormPage() {
                 {/* Item search */}
                 <div data-help="search-bar" className="relative flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الصنف</label>
-                  <div className="relative">
-                    <SearchInput
-                      ref={itemInputRef}
-                      value={itemQuery}
-                      onChange={(val) => { setItemQuery(val); setLookupOpen(true); setSelectedItem(null); }}
-                      onFocus={(e) => { setLookupOpen(true); e.target.select(); }}
-                      onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
-                      placeholder="ابحث بالاسم، الباركود، أو الكود..."
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) handlePickItem(filteredItems[activeIndex]); else handlePickItem({ id: -1, name: itemQuery, code: itemQuery, barcode: itemQuery, purchase_price: 0, sale_price: 0 }); }
-                        else if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
-                        else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
-                      }}
-                    />
-                    {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} />}
+                  <div className="flex items-center gap-1">
+                    <div className="relative flex-1">
+                      <SearchInput
+                        ref={itemInputRef}
+                        value={itemQuery}
+                        onChange={(val) => { setItemQuery(val); setLookupOpen(true); setSelectedItem(null); }}
+                        onFocus={(e) => { setLookupOpen(true); e.target.select(); }}
+                        onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
+                        placeholder="ابحث بالاسم، الباركود، أو الكود..."
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) handlePickItem(filteredItems[activeIndex]); else handlePickItem({ id: -1, name: itemQuery, code: itemQuery, barcode: itemQuery, purchase_price: 0, sale_price: 0 }); }
+                          else if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
+                          else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
+                        }}
+                      />
+                      {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} />}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedSearchOpen(true)}
+                      className="flex h-[37px] w-[37px] shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                      title="بحث متقدم في المخزون"
+                    >
+                      <Filter className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -1199,6 +1211,11 @@ export default function PurchaseFormPage() {
         supplierId={supplier?.id}
         onClose={() => setSupplierInfoOpen(false)}
         onUpdated={(updated) => { setSuppliers(prev => prev.map(s => s.id === updated.id ? updated : s)); setSupplier(prev => prev?.id === updated.id ? { ...prev, ...updated } : prev); }}
+      />
+
+      <AdvancedSearchModal
+        open={advancedSearchOpen}
+        onClose={() => setAdvancedSearchOpen(false)}
       />
 
       {/* Image Preview Modal */}

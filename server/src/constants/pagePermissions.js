@@ -10,7 +10,6 @@ const PAGE_PERMISSIONS = {
   quotations: { label: 'عروض الأسعار', actions: ['view','add','edit','delete','print'] },
   customer_accounts: { label: 'حسابات العملاء', actions: ['view','add','edit','delete','print'] },
   supplier_accounts: { label: 'حسابات الموردين', actions: ['view','add','edit','delete','print'] },
-  installments: { label: 'الأقساط والآجل', actions: ['view','add','edit','delete','print'] },
   revenues: { label: 'تسجيل الإيرادات', actions: ['view','add','edit','delete','print'] },
   expenses: { label: 'تسجيل المصروفات', actions: ['view','add','edit','delete','print'] },
   withdrawals: { label: 'تسجيل المسحوبات', actions: ['view','add','edit','delete','print'] },

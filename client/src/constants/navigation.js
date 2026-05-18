@@ -23,7 +23,7 @@ export const NAV_MODULES = [
       { path: "/purchases/orders", label: "أوامر الشراء", icon: ClipboardList, pageKey: "purchase_orders" },
       { path: "/purchases/returns", label: "مرتجع المشتريات", icon: ArrowRightLeft, pageKey: "purchase_returns" },
       { path: "/sales/returns", label: "مرتجع المبيعات", icon: ReceiptText, pageKey: "sales_returns" },
-      { path: "/operations/branch-transfer", label: "نقل المخزون", icon: Truck, pageKey: "branch_transfer" },
+      { path: "/operations/branch-transfer", label: "نقل بين الفروع", icon: Truck, pageKey: "branch_transfer" },
       { path: "/operations/quotations", label: "عروض الأسعار", icon: Receipt, pageKey: "quotations" },
     ],
   },
@@ -32,7 +32,6 @@ export const NAV_MODULES = [
     items: [
       { path: "/accounts/customers", label: "حسابات العملاء", icon: HeartHandshake, pageKey: "customer_accounts" },
       { path: "/accounts/suppliers", label: "حسابات الموردين", icon: Building, pageKey: "supplier_accounts" },
-      { path: "/operations/installments", label: "الأقساط والآجل", icon: Coins, pageKey: "installments" },
       { path: "/revenues", label: "تسجيل الإيرادات", icon: TrendingUp, pageKey: "revenues" },
       { path: "/expenses", label: "تسجيل المصروفات", icon: TrendingDown, pageKey: "expenses" },
       { path: "/withdrawals", label: "تسجيل المسحوبات", icon: Banknote, pageKey: "withdrawals" },

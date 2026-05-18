@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
-  Package, UserPlus, Calendar, Loader2, ChevronDown,
+  Package, UserPlus, Calendar, Loader2, ChevronDown, Filter,
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
@@ -14,6 +14,7 @@ import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import PurchaseReturnTodayModal from "../../components/purchases/PurchaseReturnTodayModal";
 import PurchasePickerTodayModal from "../../components/purchases/PurchasePickerTodayModal";
+import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -123,6 +124,7 @@ export default function PurchaseReturnFormPage() {
   const [stagingUnitId, setStagingUnitId] = useState("");
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
 
   const [warehouses, setWarehouses] = useState([]);
   const [units, setUnits] = useState([]);
@@ -666,44 +668,54 @@ export default function PurchaseReturnFormPage() {
               {!isLocked && (
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shrink-0">
                   <div className="mb-3 text-[12px] font-bold text-slate-500">إضافة صنف</div>
-                  <div className="relative mb-3">
-                    <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${lookupOpen ? "border-amber-400 bg-white" : "border-slate-200 bg-slate-50"}`}>
-                      <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                      <input ref={itemInputRef} value={itemQuery}
-                        onChange={e => { setItemQuery(e.target.value); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
-                        placeholder="ابحث عن صنف بالاسم أو الباركود..."
-                        className="flex-1 bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
-                        onKeyDown={e => {
-                          if (!lookupOpen || !itemResults.length) return;
-                          if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
-                          else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
-                          else if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); selectItemForStaging(itemResults[activeIndex]); }
-                          else if (e.key === "Escape") { setLookupOpen(false); setActiveIndex(-1); }
-                        }} />
-                      {stagingItem && (
-                        <button onClick={() => { setStagingItem(null); setStagingCost(""); setItemQuery(""); setItemResults([]); setLookupOpen(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
-                          className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+                  <div className="relative mb-3 flex items-start gap-1">
+                    <div className="relative flex-1">
+                      <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${lookupOpen ? "border-amber-400 bg-white" : "border-slate-200 bg-slate-50"}`}>
+                        <Search className="h-4 w-4 shrink-0 text-slate-400" />
+                        <input ref={itemInputRef} value={itemQuery}
+                          onChange={e => { setItemQuery(e.target.value); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
+                          placeholder="ابحث عن صنف بالاسم أو الباركود..."
+                          className="flex-1 bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
+                          onKeyDown={e => {
+                            if (!lookupOpen || !itemResults.length) return;
+                            if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
+                            else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
+                            else if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); selectItemForStaging(itemResults[activeIndex]); }
+                            else if (e.key === "Escape") { setLookupOpen(false); setActiveIndex(-1); }
+                          }} />
+                        {stagingItem && (
+                          <button onClick={() => { setStagingItem(null); setStagingCost(""); setItemQuery(""); setItemResults([]); setLookupOpen(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
+                            className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+                        )}
+                      </div>
+                      {lookupOpen && itemResults.length > 0 && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-slate-100 bg-white shadow-xl max-h-60 overflow-y-auto">
+                          {itemResults.map((item, idx) => (
+                            <button key={item.id} onMouseDown={e => e.preventDefault()} onClick={() => selectItemForStaging(item)}
+                              className={`flex w-full items-center justify-between px-3 py-2.5 text-right transition-colors border-b border-slate-100 last:border-0 ${idx === activeIndex ? "bg-amber-50" : "hover:bg-amber-50"}`}>
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 border border-slate-200">
+                                  <Package className="h-4 w-4 text-slate-300" />
+                                </div>
+                                <div>
+                                  <div className="text-[13px] font-black text-slate-800">{item.name_ar || item.name}</div>
+                                  <div className="text-[10px] font-bold text-slate-400">{item.item_code || item.barcode || `#${item.id}`}</div>
+                                </div>
+                              </div>
+                              <div className="text-[12px] font-black text-amber-700">{formatMoney(item.purchase_price || item.unit_cost)} ج.م</div>
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    {lookupOpen && itemResults.length > 0 && (
-                      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-slate-100 bg-white shadow-xl max-h-60 overflow-y-auto">
-                        {itemResults.map((item, idx) => (
-                          <button key={item.id} onMouseDown={e => e.preventDefault()} onClick={() => selectItemForStaging(item)}
-                            className={`flex w-full items-center justify-between px-3 py-2.5 text-right transition-colors border-b border-slate-100 last:border-0 ${idx === activeIndex ? "bg-amber-50" : "hover:bg-amber-50"}`}>
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 border border-slate-200">
-                                <Package className="h-4 w-4 text-slate-300" />
-                              </div>
-                              <div>
-                                <div className="text-[13px] font-black text-slate-800">{item.name_ar || item.name}</div>
-                                <div className="text-[10px] font-bold text-slate-400">{item.item_code || item.barcode || `#${item.id}`}</div>
-                              </div>
-                            </div>
-                            <div className="text-[12px] font-black text-amber-700">{formatMoney(item.purchase_price || item.unit_cost)} ج.م</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedSearchOpen(true)}
+                      className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                      title="بحث متقدم في المخزون"
+                    >
+                      <Filter className="h-4 w-4" />
+                    </button>
                   </div>
                   <div className={`rounded-lg border px-4 py-3 transition-opacity ${stagingItem ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50 opacity-40 pointer-events-none"}`}>
                     {stagingItem && <div className="mb-2 text-[12px] font-black text-amber-800 truncate">{stagingItem.name_ar || stagingItem.name}</div>}
@@ -903,7 +915,7 @@ export default function PurchaseReturnFormPage() {
       </Modal>
 
       <PurchasePickerTodayModal open={purchasePickerOpen && !isEditMode} onClose={() => { setPurchasePickerOpen(false); if (!loadedPurchase) setMode(null); }} onSelectPurchase={handleDetailConfirm} suppliers={suppliers} />
-      <SupplierCreateModal open={supplierCreateOpen} onClose={() => setSupplierCreateOpen(false)} onCreated={s => { setSuppliers(prev => [s, ...prev]); setSupplier({ id: s.id, name: s.name }); setSupplierCreateOpen(false); }} />
+      <AddSupplierModal open={supplierCreateOpen} onClose={() => setSupplierCreateOpen(false)} onCreated={s => { setSuppliers(prev => [s, ...prev]); setSupplier({ id: s.id, name: s.name }); setSupplierCreateOpen(false); }} />
       <PurchaseReturnTodayModal open={todayReturnsOpen} onClose={() => setTodayReturnsOpen(false)} />
       <PrintPreviewModal
         open={printPreview}

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import {
-  PackageCheck, PackageMinus, Eye, X, Warehouse,
-  Package, ArrowDownToLine, ArrowUpFromLine, RotateCcw,
-  Clock, Search, ArrowLeftRight
+  Eye, Warehouse,
+  ArrowDownToLine, ArrowUpFromLine, RotateCcw,
+  Search, ArrowLeftRight
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -11,7 +11,6 @@ import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
 import { useNavigate } from "react-router-dom";
-import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
 import { usePageTour } from "../../hooks/usePageTour";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -73,8 +72,6 @@ export default function BranchTransferPage() {
     } catch { toast.error("فشل تحميل التفاصيل"); }
   }
 
-  function clearFilters() { setSearchTerm(""); setDateFrom(""); setDateTo(""); setTypeFilter("all"); }
-  const hasFilters = searchTerm || dateFrom || dateTo || typeFilter !== "all";
 
   const stats = useMemo(() => ({
     receiveCount: rows.filter(r => r.type === "receive").length,
@@ -242,7 +239,7 @@ export default function BranchTransferPage() {
             <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden ${
               activeTransfer.type === "receive" ? "bg-emerald-950 text-white shadow-emerald-900/20" : "bg-blue-950 text-white shadow-blue-900/20"
             }`}>
-              <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+              <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none" />
               
               <div className="flex flex-col relative z-10">
                 <span className="text-[11px] font-black uppercase tracking-widest opacity-60 mb-2">نوع الحركة</span>
