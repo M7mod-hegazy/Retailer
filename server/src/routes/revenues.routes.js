@@ -69,8 +69,8 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
       const created = db
         .prepare(
           `INSERT INTO revenues
-           (doc_no, amount, category_id, notes, description, payment_method, treasury_id, bank_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (doc_no, amount, category_id, notes, description, payment_method, treasury_id, bank_id, created_at, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           docNo,
@@ -82,6 +82,7 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
           payload.treasury_id || null,
           payload.bank_id || null,
           `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+          req.user?.id || null,
         );
       const amount = Number(payload.amount || 0);
       if ((payload.payment_method || "cash") === "cash") {

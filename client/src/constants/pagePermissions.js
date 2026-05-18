@@ -7,6 +7,7 @@ export const ACTION_LABELS = {
   void: "إلغاء",
   hold: "تعليق",
   discount: "خصم",
+  profit: "ربح",
   manage_permissions: "إدارة الصلاحيات",
   edit_general: "تعديل الإعدادات العامة",
   edit_security: "تعديل إعدادات الأمان",
@@ -26,6 +27,7 @@ export const ACTION_DESCRIPTIONS = {
   void: "إلغاء الفواتير والمعاملات المالية",
   hold: "تعليق الفاتورة مؤقتاً لاستكمالها لاحقاً",
   discount: "منح خصومات على فواتير البيع",
+  profit: "عرض تحليل ربح الفاتورة الحالية",
   manage_permissions: "تعديل صلاحيات المستخدمين الآخرين",
   edit_general: "تعديل الإعدادات العامة للنظام",
   edit_security: "تعديل إعدادات الأمان والحماية",
@@ -37,7 +39,7 @@ export const ACTION_DESCRIPTIONS = {
 };
 
 export const PAGE_PERMISSIONS = {
-  pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print'] },
+  pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print', 'profit'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view', 'add', 'edit', 'delete', 'print'] },

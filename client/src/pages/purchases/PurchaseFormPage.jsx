@@ -22,6 +22,8 @@ import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import AddSupplierModal from "../../components/modals/AddSupplierModal";
+import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -31,7 +33,7 @@ function resolveImageUrl(u) {
 }
 
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString("ar-EG", {
+  return Number(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 3, maximumFractionDigits: 3,
   });
 }
@@ -173,7 +175,7 @@ export default function PurchaseFormPage() {
 
   const [itemQuery, setItemQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
-  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", warehouseId: "", unitId: "" });
+  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -190,7 +192,7 @@ export default function PurchaseFormPage() {
   const [printPreview, setPrintPreview] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
-  const [supplierDraft, setSupplierDraft] = useState({ name: "", phone: "", address: "" });
+  const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [editWarnOpen, setEditWarnOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -198,14 +200,16 @@ export default function PurchaseFormPage() {
   const [newInvoiceModalOpen, setNewInvoiceModalOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
 
-  const itemInputRef    = useRef(null);
-  const qtyInputRef     = useRef(null);
-  const costInputRef    = useRef(null);
-  const sellInputRef    = useRef(null);
-  const supplierInputRef= useRef(null);
-  const whSelectRef     = useRef(null);
-  const unitSelectRef   = useRef(null);
-  const addBtnRef       = useRef(null);
+  const itemInputRef      = useRef(null);
+  const qtyInputRef       = useRef(null);
+  const costInputRef      = useRef(null);
+  const sellInputRef      = useRef(null);
+  const wholesaleInputRef = useRef(null);
+  const warehouseTableRef = useRef(null);
+  const supplierInputRef  = useRef(null);
+  const whSelectRef       = useRef(null);
+  const unitSelectRef     = useRef(null);
+  const addBtnRef         = useRef(null);
 
   // Today's Purchases modal states
   const [todayPurchOpen, setTodayPurchOpen] = useState(false);
@@ -378,6 +382,8 @@ export default function PurchaseFormPage() {
         unit_cost: l.unit_cost,
         selling_price: l.selling_price || 0,
         original_sale_price: l.selling_price || 0,
+        wholesale_price: l.wholesale_price || 0,
+        original_wholesale_price: l.wholesale_price || 0,
         warehouse_id: String(l.warehouse_id || ""),
         unit_id: l.unit_id || null,
         total: l.line_total || (l.quantity * l.unit_cost),
@@ -412,10 +418,11 @@ export default function PurchaseFormPage() {
       ...prev,
       unitCost: String(item.purchase_price || 0),
       sellingPrice: String(item.sale_price || 0),
+      wholesalePrice: String(item.wholesale_price || 0),
       unitId: String(item.unit_id || prev.unitId),
     }));
     setLookupOpen(false);
-    setTimeout(() => whSelectRef.current?.focus(), 50);
+    setTimeout(() => qtyInputRef.current?.focus(), 50);
   }
 
   function handlePickSupplier(s) {
@@ -427,10 +434,13 @@ export default function PurchaseFormPage() {
 
   function addLine() {
     if (!selectedItem) return;
+    if (!selectedItem.name?.trim()) { toast.error("اختر صنفاً من القائمة أولاً"); return; }
+    if (Number(staging.unitCost || 0) === 0) { toast.error("يجب إدخال تكلفة الصنف"); return; }
     activateInvoice();
     const qty = Number(staging.quantity || 1);
     const cost = Number(staging.unitCost || 0);
     const sellingPrice = Number(staging.sellingPrice || 0);
+    const wholesalePrice = Number(staging.wholesalePrice || 0);
     const wid = staging.warehouseId || defaultWarehouseId;
     setLines(prev => [...prev, {
       item_id: selectedItem.id,
@@ -440,13 +450,15 @@ export default function PurchaseFormPage() {
       unit_cost: cost,
       selling_price: sellingPrice,
       original_sale_price: Number(selectedItem.sale_price || 0),
+      wholesale_price: wholesalePrice,
+      original_wholesale_price: Number(selectedItem.wholesale_price || 0),
       warehouse_id: wid,
       unit_id: staging.unitId || null,
       total: qty * cost,
     }]);
     setSelectedItem(null);
     setItemQuery("");
-    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", warehouseId: s.warehouseId, unitId: "" }));
+    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: s.warehouseId, unitId: "" }));
     setTimeout(() => { itemInputRef.current?.focus(); itemInputRef.current?.select(); }, 50);
   }
 
@@ -467,7 +479,10 @@ export default function PurchaseFormPage() {
   }, [lines]);
 
   const priceChangedLines = useMemo(
-    () => lines.filter(l => Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0),
+    () => lines.filter(l =>
+      (Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0) ||
+      (Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0)
+    ),
     [lines]);
 
   const multiTotal = useMemo(() =>
@@ -502,6 +517,7 @@ export default function PurchaseFormPage() {
         quantity: l.quantity,
         unit_cost: l.unit_cost,
         selling_price: l.selling_price,
+        wholesale_price: l.wholesale_price,
         warehouse_id: l.warehouse_id || defaultWarehouseId,
       })),
     };
@@ -583,18 +599,6 @@ export default function PurchaseFormPage() {
     setDueDate("");
     setMultiAmounts({});
     resetActivation();
-  }
-
-  async function createSupplier() {
-    if (!supplierDraft.name) return;
-    try {
-      const r = await api.post("/api/suppliers", supplierDraft);
-      const newSup = r.data.data;
-      setSuppliers(prev => [newSup, ...prev]);
-      handlePickSupplier(newSup);
-      setSupplierModalOpen(false);
-      setSupplierDraft({ name: "", phone: "", address: "" });
-    } catch { toast.error("فشل إنشاء المورد"); }
   }
 
   const user = useAuthStore((s) => s.user);
@@ -759,7 +763,7 @@ export default function PurchaseFormPage() {
           {/* Quick Entry Bar — hidden in locked mode */}
           {!isLocked && (
             <section data-help="items-section" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
-              <div className="grid grid-cols-[3fr_110px_80px_100px_100px_100px_80px] gap-2 items-end">
+              <div className="grid grid-cols-[3fr_80px_100px_100px_100px_100px_160px_80px] gap-2 items-end">
                 {/* Item search */}
                 <div data-help="search-bar" className="relative flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الصنف</label>
@@ -781,27 +785,13 @@ export default function PurchaseFormPage() {
                   </div>
                 </div>
 
-                {/* Warehouse */}
-                <div className="flex flex-col gap-1 relative z-10">
-                  <label className="text-[11px] font-bold text-slate-600 truncate">المخزن</label>
-                  <select ref={whSelectRef} size={4} value={staging.warehouseId}
-                    onChange={(e) => setStaging(s => ({ ...s, warehouseId: e.target.value }))}
-                    onKeyDown={(e) => handleFieldKeyDown(e, qtyInputRef, itemInputRef)}
-                    className="w-full border border-slate-300 rounded-sm bg-slate-50 py-1 px-1 text-[11px] font-bold text-slate-800 outline-none focus:border-indigo-500 h-[37px] hover:h-[120px] focus:h-[120px] focus:z-20 transition-all shadow-sm focus:shadow-xl overflow-y-auto custom-scrollbar">
-                    {warehouses.map(w => {
-                      const qty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
-                      return <option key={w.id} value={w.id}>{w.name} {selectedItem && `(${qty})`}</option>;
-                    })}
-                  </select>
-                </div>
-
                 {/* Qty */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الكمية</label>
                   <input ref={qtyInputRef} type="number" min="0.001" step="any" value={staging.quantity}
                     onChange={(e) => setStaging(s => ({ ...s, quantity: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, unitSelectRef, whSelectRef)}
+                    onKeyDown={(e) => handleFieldKeyDown(e, unitSelectRef, itemInputRef)}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                 </div>
 
@@ -830,10 +820,10 @@ export default function PurchaseFormPage() {
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                 </div>
 
-                {/* Selling price */}
+                {/* Selling price (مستهلك) */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                    سعر البيع
+                    مستهلك
                     {selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0 && (
                       <span className="text-amber-600 text-[9px]">• متغير</span>
                     )}
@@ -841,11 +831,60 @@ export default function PurchaseFormPage() {
                   <input ref={sellInputRef} type="number" step="any" value={staging.sellingPrice}
                     onChange={(e) => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, addBtnRef, costInputRef, true)}
+                    onKeyDown={(e) => handleFieldKeyDown(e, wholesaleInputRef, costInputRef)}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
                       selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0
                         ? "border-amber-400 bg-amber-50" : "border-slate-300 bg-slate-50"
                     }`} />
+                </div>
+
+                {/* Wholesale price (جملة) */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                    جملة
+                    {selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0 && (
+                      <span className="text-amber-600 text-[9px]">• متغير</span>
+                    )}
+                  </label>
+                  <input ref={wholesaleInputRef} type="number" step="any" value={staging.wholesalePrice}
+                    onChange={(e) => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); warehouseTableRef.current?.focus(); } else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); sellInputRef.current?.focus(); sellInputRef.current?.select(); } }}
+                    className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
+                      selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0
+                        ? "border-amber-400 bg-amber-50" : "border-slate-300 bg-slate-50"
+                    }`} />
+                </div>
+
+                {/* Warehouse table */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-slate-600">المخزن</label>
+                  <div ref={warehouseTableRef} tabIndex={0}
+                    className="border border-slate-300 rounded-sm bg-slate-50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
+                    style={{height:"75px"}}
+                    onKeyDown={(e) => {
+                      const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
+                      if (e.key === "ArrowDown") { e.preventDefault(); const next = warehouses[Math.min(idx + 1, warehouses.length - 1)]; if (next) setStaging(s => ({ ...s, warehouseId: String(next.id) })); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); const prev = warehouses[Math.max(idx - 1, 0)]; if (prev) setStaging(s => ({ ...s, warehouseId: String(prev.id) })); }
+                      else if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
+                      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); addBtnRef.current?.focus(); }
+                    }}>
+                    <table className="w-full text-[10px] border-collapse">
+                      <tbody>
+                        {warehouses.map(w => {
+                          const qty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
+                          const isSelected = String(staging.warehouseId) === String(w.id);
+                          return (
+                            <tr key={w.id} onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
+                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${isSelected ? "bg-indigo-50" : "hover:bg-slate-100"}`}>
+                              <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{w.name}</td>
+                              <td className={`px-2 py-1 font-mono text-center tabular-nums ${qty > 0 ? "text-emerald-600 font-black" : "text-slate-400"}`}>{qty}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Add button */}
@@ -893,6 +932,14 @@ export default function PurchaseFormPage() {
               },
               { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => <input type="number" min="0.001" step="any" value={l.quantity} disabled={isLocked} onChange={(e) => updateLineField(i, "quantity", Number(e.target.value))} className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed" /> },
+              { id: "unit_id", header: "الوحدة", width: 85, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                render: (l, i) => (
+                  <select value={l.unit_id || ""} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_id", e.target.value || null)}
+                    className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate disabled:cursor-not-allowed">
+                    <option value="">أساسية</option>
+                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                ) },
               { id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => <input type="number" step="any" value={l.unit_cost} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))} className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 text-slate-700 transition-colors disabled:cursor-not-allowed" /> },
               {
@@ -914,10 +961,41 @@ export default function PurchaseFormPage() {
                   );
                 }
               },
+              {
+                id: "profit_pct", header: "نسبة الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                render: (l, i) => {
+                  const cost = Number(l.unit_cost) || 0;
+                  const price = Number(l.selling_price) || 0;
+                  const pct = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+                  return (
+                    <input type="number" step="0.1" value={Number(pct.toFixed(2))} disabled={isLocked}
+                      onChange={(e) => {
+                        const newPct = Number(e.target.value);
+                        const newPrice = cost * (1 + newPct / 100);
+                        updateLineField(i, "selling_price", Math.round(newPrice * 1000) / 1000);
+                      }}
+                      className="w-full h-[40px] text-center text-[12px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50/50 text-blue-700 transition-colors disabled:cursor-not-allowed" />
+                  );
+                }
+              },
+              {
+                id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                render: (l, i) => {
+                  const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0;
+                  return (
+                    <div className="relative w-full h-full">
+                      <input type="number" step="any" value={l.wholesale_price ?? 0} disabled={isLocked}
+                        onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
+                        className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                      {changed && <span title={`السعر الحالي: ${l.original_wholesale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+                    </div>
+                  );
+                }
+              },
               { id: "warehouse_id", header: "المخزن", width: 120, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
                 render: (l, i) => <select value={l.warehouse_id} disabled={isLocked} onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)} className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate disabled:cursor-not-allowed">{warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select> },
-              { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-[14px] text-slate-900 bg-slate-50/50 border-l border-slate-100",
-                render: (l) => Number(l.total).toLocaleString("ar-EG", { minimumFractionDigits: 2 }) },
+              { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 font-black font-mono text-[14px] text-slate-900 bg-slate-50/50 border-l border-slate-100",
+                render: (l) => Number(l.total).toLocaleString("en-US", { minimumFractionDigits: 2 }) },
               { id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",
                 render: (_, i) => !isLocked && <button onClick={() => removeLine(i)} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors focus:outline-none"><X className="h-4 w-4" /></button> },
             ]}
@@ -941,7 +1019,10 @@ export default function PurchaseFormPage() {
             <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المورد</h3>
-                <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-700"><ExternalLink className="h-3 w-3" /> السجل</Link>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSupplierInfoOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-orange-500 hover:text-orange-700 transition-colors"><ExternalLink className="h-3 w-3" /> بيانات المورد</button>
+                  <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-700"><ExternalLink className="h-3 w-3" /> السجل</Link>
+                </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-[14px] font-black">{supplier.name[0]}</div>
@@ -1107,30 +1188,18 @@ export default function PurchaseFormPage() {
         </aside>
       </main>
 
-      {/* New Supplier Modal */}
-      <Modal open={supplierModalOpen} onClose={() => setSupplierModalOpen(false)} title="إضافة مورد جديد">
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-[11px] font-bold text-slate-600">اسم المورد / الشركة *</label>
-            <input value={supplierDraft.name} onChange={(e) => setSupplierDraft(s => ({ ...s, name: e.target.value }))} placeholder="مثلاً: شركة التوريدات..."
-              className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-bold text-slate-600">رقم الهاتف</label>
-            <input value={supplierDraft.phone} onChange={(e) => setSupplierDraft(s => ({ ...s, phone: e.target.value }))} placeholder="01..."
-              className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-bold text-slate-600">العنوان</label>
-            <input value={supplierDraft.address} onChange={(e) => setSupplierDraft(s => ({ ...s, address: e.target.value }))} placeholder="المدينة، المنطقة..."
-              className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-          </div>
-          <div className="flex justify-end gap-2 border-t pt-4">
-            <button onClick={() => setSupplierModalOpen(false)} className="rounded-sm border border-slate-300 px-4 py-2 text-[13px] font-bold text-slate-700 hover:bg-slate-50">إلغاء</button>
-            <button onClick={createSupplier} className="rounded-sm bg-emerald-600 px-6 py-2 text-[13px] font-black text-white hover:bg-emerald-700">إنشاء وتحديد</button>
-          </div>
-        </div>
-      </Modal>
+      <AddSupplierModal
+        open={supplierModalOpen}
+        onClose={() => setSupplierModalOpen(false)}
+        onCreated={(supplier) => { setSuppliers(prev => [supplier, ...prev]); handlePickSupplier(supplier); }}
+      />
+
+      <SupplierInfoModal
+        open={supplierInfoOpen}
+        supplierId={supplier?.id}
+        onClose={() => setSupplierInfoOpen(false)}
+        onUpdated={(updated) => { setSuppliers(prev => prev.map(s => s.id === updated.id ? updated : s)); setSupplier(prev => prev?.id === updated.id ? { ...prev, ...updated } : prev); }}
+      />
 
       {/* Image Preview Modal */}
       <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف">

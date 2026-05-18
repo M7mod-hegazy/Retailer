@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
-  Package, UserPlus, Phone, Calendar, Loader2, ChevronDown,
+  Package, UserPlus, Calendar, Loader2, ChevronDown,
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
@@ -10,6 +10,8 @@ import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import AddCustomerModal from "../../components/modals/AddCustomerModal";
+import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import SalesReturnTodayModal from "../../components/sales/SalesReturnTodayModal";
 import InvoicePickerTodayModal from "../../components/sales/InvoicePickerTodayModal";
 
@@ -30,96 +32,6 @@ const REASONS = [
   { value: "other", label: "أخرى" },
 ];
 
-
-// ── Customer Create Modal ─────────────────────────────────────────────────────
-function CustomerCreateModal({ open, onClose, onCreated }) {
-  const [name, setName] = useState("");
-  const [phones, setPhones] = useState([""]);
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  function reset() { setName(""); setPhones([""]); setNote(""); setError(""); }
-
-  async function handleSave() {
-    if (!name.trim()) { setError("اسم العميل مطلوب"); return; }
-    setSaving(true);
-    try {
-      const validPhones = phones.filter(p => p.trim());
-      const r = await api.post("/api/customers", {
-        name: name.trim(),
-        phone: validPhones[0] || "",
-        additional_phones: validPhones.length > 1 ? JSON.stringify(validPhones.slice(1)) : undefined,
-        notes: note.trim() || undefined,
-      });
-      reset();
-      onCreated(r.data.data);
-    } catch (e) {
-      setError(e.response?.data?.message || "فشل إنشاء العميل");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 backdrop-blur-sm" dir="rtl">
-      <div className="w-[480px] rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-          <h2 className="text-[15px] font-black text-slate-900">إضافة عميل جديد</h2>
-          <button onClick={() => { reset(); onClose(); }} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-200">
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
-        <div className="flex flex-col gap-4 p-6">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-bold text-slate-500">اسم العميل *</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="مثلاً: أحمد محمد..."
-              className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" />
-          </div>
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-[11px] font-bold text-slate-500">أرقام الهاتف</label>
-              <button onClick={() => setPhones(p => [...p, ""])}
-                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800">
-                <Phone className="h-3 w-3" /> إضافة هاتف
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {phones.map((ph, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input value={ph} onChange={e => setPhones(p => p.map((x, j) => j === i ? e.target.value : x))}
-                    placeholder={i === 0 ? "الهاتف الرئيسي..." : `هاتف ${i + 1}...`}
-                    className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" />
-                  {i > 0 && (
-                    <button onClick={() => setPhones(p => p.filter((_, j) => j !== i))}
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-rose-400 hover:bg-rose-50">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-bold text-slate-500">ملاحظة (اختياري)</label>
-            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="أي ملاحظات..."
-              rows={2} className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 resize-none" />
-          </div>
-          {error && <p className="text-[12px] font-bold text-rose-600">{error}</p>}
-        </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
-          <button onClick={() => { reset(); onClose(); }}
-            className="rounded-lg border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">إلغاء</button>
-          <button onClick={handleSave} disabled={saving}
-            className="rounded-lg bg-emerald-700 px-6 py-2 text-[13px] font-black text-white hover:bg-emerald-800 disabled:opacity-50 transition-colors">
-            {saving ? "جاري الحفظ..." : "إنشاء وتحديد"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Original Invoice Preview ──────────────────────────────────────────────────
 function statusLabel(s) {
@@ -221,6 +133,7 @@ export default function SalesReturnFormPage() {
   const [customers, setCustomers] = useState([]);
   const [customerLockedFromInvoice, setCustomerLockedFromInvoice] = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
+  const [customerInfoOpen, setCustomerInfoOpen] = useState(false);
   const [customerBalance, setCustomerBalance] = useState(null);
   const [ajalDebt, setAjalDebt] = useState(0);
 
@@ -555,7 +468,7 @@ export default function SalesReturnFormPage() {
           )}
         </div>
         <InvoicePickerTodayModal open={invoicePickerOpen} onClose={() => { setInvoicePickerOpen(false); setMode(null); }} onSelectInvoice={handleDetailConfirm} customers={customers} />
-        <CustomerCreateModal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} onCreated={c => { setCustomers(prev => [c, ...prev]); setCustomer({ id: c.id, name: c.name }); setCustomerCreateOpen(false); }} />
+        <AddCustomerModal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} onCreated={c => { setCustomers(prev => [c, ...prev]); setCustomer({ id: c.id, name: c.name }); }} />
       </div>
     );
   }
@@ -668,6 +581,11 @@ export default function SalesReturnFormPage() {
                 <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
               {customerLockedFromInvoice && !isLocked && <p className="text-[10px] text-slate-400 font-medium">العميل محدد من الفاتورة الأصلية</p>}
+              {customer?.id && (
+                <button onClick={() => setCustomerInfoOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 transition-colors">
+                  <ExternalLink className="h-3 w-3" /> بيانات العميل
+                </button>
+              )}
             </div>
 
             {/* Customer balance */}
@@ -1060,6 +978,8 @@ export default function SalesReturnFormPage() {
         saveOnlyLabel="حفظ بدون طباعة"
         isSaving={isSaving}
       />
+      <AddCustomerModal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} onCreated={c => { setCustomers(prev => [c, ...prev]); setCustomer({ id: c.id, name: c.name }); }} />
+      <CustomerInfoModal open={customerInfoOpen} customerId={customer?.id} onClose={() => setCustomerInfoOpen(false)} onUpdated={(u) => { setCustomers(prev => prev.map(c => c.id === u.id ? u : c)); setCustomer({ id: u.id, name: u.name }); }} />
     </div>
   );
 }

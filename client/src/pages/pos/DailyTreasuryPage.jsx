@@ -1221,6 +1221,7 @@ async function handleQuickSave() {
                       { label: "الطرف ذو الصلة", value: slideOver.party || "—" },
                       { label: "الوصف / البيان", value: slideOver.description || slideOver.notes || "—" },
                       { label: "التصنيف", value: DOC_TYPE_LABEL[slideOver.doc_type] || slideOver.doc_type },
+                      { label: "المستخدم", value: slideOver.seller_name || slideOver.cancelled_by_name || "—" },
                       {
                         label: "تاريخ ووقت التسجيل",
                         value: slideOver.created_at

@@ -8,6 +8,20 @@ const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
 
+function ensureNotesSchema(db) {
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS supplier_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+      note TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      created_by INTEGER REFERENCES users(id)
+    )`);
+  } catch (_) {}
+  try { db.exec("ALTER TABLE supplier_notes ADD COLUMN type TEXT DEFAULT 'note'"); } catch (_) {}
+  try { db.exec("ALTER TABLE supplier_notes ADD COLUMN amount REAL"); } catch (_) {}
+}
+
 router.get("/balance-summary", requirePagePermission("suppliers", "view"), (req, res) => {
   try {
     const row = getDb().prepare(
@@ -31,12 +45,14 @@ router.post("/", requirePagePermission("suppliers", "add"), (req, res) => {
   const info = getDb()
     .prepare(
       `INSERT INTO suppliers
-       (name, phone, code, opening_balance, payment_terms, bank_details, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (name, phone, additional_phones, addresses, code, opening_balance, payment_terms, bank_details, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       payload.name,
       payload.phone || null,
+      payload.additional_phones || null,
+      payload.addresses || null,
       payload.code || null,
       Number(payload.opening_balance || 0),
       payload.payment_terms || null,
@@ -55,12 +71,14 @@ router.put("/:id", requirePagePermission("suppliers", "edit"), (req, res) => {
   getDb()
     .prepare(
       `UPDATE suppliers
-       SET name = ?, phone = ?, code = ?, opening_balance = ?, payment_terms = ?, bank_details = ?, is_active = ?
+       SET name = ?, phone = ?, additional_phones = ?, addresses = ?, code = ?, opening_balance = ?, payment_terms = ?, bank_details = ?, is_active = ?
        WHERE id = ?`,
     )
     .run(
       payload.name,
       payload.phone || null,
+      payload.additional_phones || null,
+      payload.addresses || null,
       payload.code || null,
       Number(payload.opening_balance || 0),
       payload.payment_terms || null,
@@ -111,23 +129,29 @@ router.post("/:id/adjust", requirePagePermission("suppliers", "add"), (req, res)
   const { amount, reason, direction } = req.body || {};
   const delta = direction === 'subtract' ? -Math.abs(Number(amount)) : Math.abs(Number(amount));
   try {
-    getDb().transaction(() => {
-      getDb().prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
-      getDb().prepare("INSERT INTO supplier_notes (supplier_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
+    const db = getDb();
+    ensureNotesSchema(db);
+    db.transaction(() => {
+      db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
+      db.prepare("INSERT INTO supplier_notes (supplier_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
         .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null);
     })();
-    res.json({ success: true, data: getDb().prepare("SELECT * FROM suppliers WHERE id = ?").get(req.params.id) });
+    res.json({ success: true, data: db.prepare("SELECT * FROM suppliers WHERE id = ?").get(req.params.id) });
   } catch (e) {
     res.status(500).json({ success: false, message: "خطأ أثناء التسوية" });
   }
 });
 
 router.get("/:id/notes", requirePagePermission("suppliers", "view"), (req, res) => {
-  const { type } = req.query;
-  const cond = type ? "WHERE supplier_id = ? AND COALESCE(n.type,'note') = ?" : "WHERE supplier_id = ?";
-  const params = type ? [req.params.id, type] : [req.params.id];
-  const notes = getDb().prepare(`SELECT n.*, u.name as user_name FROM supplier_notes n LEFT JOIN users u ON u.id = n.created_by ${cond} ORDER BY n.created_at DESC`).all(...params);
-  res.json({ success: true, data: notes });
+  try {
+    const db = getDb();
+    ensureNotesSchema(db);
+    const { type } = req.query;
+    const cond = type ? "WHERE n.supplier_id = ? AND COALESCE(n.type,'note') = ?" : "WHERE n.supplier_id = ?";
+    const params = type ? [req.params.id, type] : [req.params.id];
+    const notes = db.prepare(`SELECT n.*, u.username as user_name FROM supplier_notes n LEFT JOIN users u ON u.id = n.created_by ${cond} ORDER BY n.created_at DESC`).all(...params);
+    res.json({ success: true, data: notes });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 router.post("/:id/notes", requirePagePermission("suppliers", "add"), (req, res) => {
@@ -135,7 +159,7 @@ router.post("/:id/notes", requirePagePermission("suppliers", "add"), (req, res) 
   if (!note) return res.status(400).json({ success: false, message: "الملاحظة مطلوبة" });
   const result = getDb().prepare("INSERT INTO supplier_notes (supplier_id, note, created_by) VALUES (?, ?, ?)")
     .run(req.params.id, note, req.user?.id || null);
-  const newNote = getDb().prepare("SELECT n.*, u.name as user_name FROM supplier_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
+  const newNote = getDb().prepare("SELECT n.*, u.username as user_name FROM supplier_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
   res.status(201).json({ success: true, data: newNote });
 });
 

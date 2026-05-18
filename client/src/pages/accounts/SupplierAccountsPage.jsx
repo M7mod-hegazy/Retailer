@@ -9,22 +9,12 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
 import PermissionGate from "../../components/ui/PermissionGate";
+import AddSupplierModal from "../../components/modals/AddSupplierModal";
+import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
 
-const PMETHOD_LABEL = {
-  cash: "نقداً", credit: "آجل", bank_transfer: "تحويل بنكي",
-  multi: "متعدد", future_due: "استحقاق لاحق",
-};
-const arMethod = (key) => PMETHOD_LABEL[key] || key;
-
-const PTYPE_COLOR = {
-  cash: "text-emerald-700 bg-emerald-50 border-emerald-200",
-  credit: "text-amber-700 bg-amber-50 border-amber-200",
-  multi: "text-blue-700 bg-blue-50 border-blue-200",
-  bank_transfer: "text-sky-700 bg-sky-50 border-sky-200",
-};
 
 function Modal({ onClose, children, width = "480px" }) {
   return (
@@ -42,6 +32,19 @@ const EVENT_TYPES = {
   return:     { icon: RotateCcw,   label: "مرتجع شراء",    color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-100" },
   adjustment: { icon: Scale,       label: "تسوية يدوية",   color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100" },
 };
+
+function parsePaymentSplits(splits) {
+  if (!splits) return [];
+  return splits.split("|||").map(s => {
+    const idx = s.indexOf(":");
+    if (idx === -1) return null;
+    const method = s.slice(0, idx).trim();
+    const amount = Number(s.slice(idx + 1));
+    return { method, amount };
+  }).filter(Boolean).filter(s => s.method !== "credit" && s.amount > 0.005);
+}
+
+const PMETHOD_LABEL = { cash: "نقداً", credit: "آجل", bank_transfer: "تحويل بنكي", multi: "متعدد", future_due: "استحقاق لاحق" };
 
 function InstallmentsBadge({ debtId }) {
   const [open, setOpen] = useState(false);
@@ -92,6 +95,8 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const arMethod = (key) => PMETHOD_LABEL[key] || key;
+
   const load = useCallback(async () => {
     if (!party?.id) return;
     setLoading(true);
@@ -106,27 +111,36 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
       const items = [];
 
       (docsR.value?.data?.data || []).forEach(d => {
+        const total = Number(d.total || 0);
+        const received = Number(d.amount_received || 0);
+        const ajalAmount = Math.max(0, total - received);
+        let chips = parsePaymentSplits(d.payment_splits);
+        if (chips.length === 0 && d.payment_type !== "credit" && received > 0) {
+          chips = [{ method: d.payment_type, amount: received }];
+        }
         items.push({
           id: `pur-${d.id}`,
           type: "purchase",
           date: new Date(d.created_at),
           ref: d.doc_no || `#${d.id}`,
-          description: `فاتورة شراء${d.supplier_name ? ` — ${d.supplier_name}` : ""}`,
-          debit: Number(d.total || 0),
-          credit: 0,
+          chips,
+          impactAmount: ajalAmount,
+          impactDir: ajalAmount > 0.005 ? "add" : null,
           raw: d,
         });
       });
 
-      (paysR.value?.data?.data || []).forEach(p => {
+      // Only standalone payments (not at purchase creation)
+      (paysR.value?.data?.data || []).filter(p => !p.invoice_id).forEach(p => {
         items.push({
           id: `pay-${p.id}`,
           type: "payment",
           date: new Date(p.created_at),
           ref: p.doc_no || `PAY-${p.id}`,
-          description: `سداد دفعة — ${p.method_name || p.method || ""}`,
-          debit: 0,
-          credit: Number(p.amount || 0),
+          methodLabel: arMethod(p.method || ""),
+          description: p.notes || null,
+          impactAmount: Number(p.amount || 0),
+          impactDir: "subtract",
           raw: p,
         });
       });
@@ -137,9 +151,9 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
           type: "return",
           date: new Date(r.created_at),
           ref: r.doc_no || `RET-${r.id}`,
-          description: `مرتجع شراء${r.purchase_id ? ` #${r.purchase_id}` : ""}`,
-          debit: 0,
-          credit: Number(r.total || 0),
+          description: r.purchase_id ? `مرتجع فاتورة #${r.purchase_id}` : "مرتجع شراء",
+          impactAmount: Number(r.total || 0),
+          impactDir: "subtract",
           raw: r,
         });
       });
@@ -152,8 +166,8 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
           date: new Date(n.created_at),
           ref: `ADJ-${n.id}`,
           description: n.note || "تسوية يدوية",
-          debit: amount > 0 ? amount : 0,
-          credit: amount < 0 ? Math.abs(amount) : 0,
+          impactAmount: Math.abs(amount),
+          impactDir: amount > 0 ? "add" : "subtract",
           raw: n,
         });
       });
@@ -163,8 +177,17 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
       const currentBal = Number(party.opening_balance || 0);
       let running = currentBal;
       for (const item of items) {
-        item.runningBalance = running;
-        running = running - item.credit + item.debit;
+        if (item.impactDir === "add") running -= (item.impactAmount || 0);
+        else if (item.impactDir === "subtract") running += (item.impactAmount || 0);
+      }
+      if (Math.abs(running) > 0.005) {
+        items.push({
+          id: "opening",
+          type: "opening",
+          date: null,
+          impactAmount: Math.abs(running),
+          impactDir: running > 0 ? "add" : "subtract",
+        });
       }
 
       setEvents(items);
@@ -183,54 +206,97 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
   );
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {events.map(ev => {
+        if (ev.type === "opening") {
+          return (
+            <div key="opening" className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-slate-200 flex items-center justify-center">
+                  <FileText className="h-3.5 w-3.5 text-slate-500" />
+                </div>
+                <span className="text-[11px] font-black text-slate-500">رصيد افتتاحي</span>
+              </div>
+              <span className={`text-[13px] font-black font-mono ${ev.impactDir === "add" ? "text-rose-500" : "text-emerald-600"}`}>
+                {ev.impactDir === "add" ? "+" : "−"} {fmt(ev.impactAmount)} <span className="text-[10px] opacity-60">ج.م</span>
+              </span>
+            </div>
+          );
+        }
+
         const cfg = EVENT_TYPES[ev.type];
         const Icon = cfg.icon;
+        const hasImpact = ev.impactDir && ev.impactAmount > 0.005;
+
         return (
-          <div key={ev.id} className={`rounded-xl border ${cfg.border} bg-white shadow-sm overflow-hidden`}>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className={`h-8 w-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
+          <div key={ev.id} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3">
+              <div className={`h-9 w-9 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`h-4 w-4 ${cfg.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
-                  <span className="text-[11px] font-black text-slate-600 font-mono">{ev.ref}</span>
-                  {ev.type === "purchase" && ev.raw?.payment_type && (
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${PTYPE_COLOR[ev.raw.payment_type] || "text-slate-600 bg-slate-100 border-slate-200"}`}>
-                      {arMethod(ev.raw.payment_type)}
-                    </span>
-                  )}
+                  <span className="text-[11px] font-black text-slate-700 font-mono">{ev.ref}</span>
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5 truncate">{ev.description}</div>
-                {ev.type === "purchase" && (ev.raw?.payment_type === "credit") && ev.raw?.id && (
-                  <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
-                )}
+                {ev.methodLabel && <div className="text-[10px] text-slate-500 font-bold mt-0.5">{ev.methodLabel}</div>}
+                {ev.description && <div className="text-[10px] text-slate-400 mt-0.5 truncate">{ev.description}</div>}
               </div>
-              <div className="text-right shrink-0">
-                {ev.debit > 0 && <div className="text-[13px] font-black font-mono text-rose-600">+{fmt(ev.debit)}</div>}
-                {ev.credit > 0 && <div className="text-[13px] font-black font-mono text-emerald-600">-{fmt(ev.credit)}</div>}
-                <div className={`text-[10px] font-bold font-mono mt-0.5 ${ev.runningBalance > 0 ? "text-rose-400" : ev.runningBalance < 0 ? "text-emerald-500" : "text-slate-400"}`}>
-                  رصيد: {fmt(Math.abs(ev.runningBalance))}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-[10px] text-slate-400">{fmtDate(ev.date)}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-slate-400 font-bold">{fmtDate(ev.date)}</span>
                 {ev.type === "purchase" && (
                   <button onClick={() => onOpenPurchase(ev.raw)}
-                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-orange-600 hover:border-orange-200 hover:bg-orange-50">
-                    <Eye className="h-3 w-3" />
+                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors">
+                    <Eye className="h-3.5 w-3.5" />
                   </button>
                 )}
                 {ev.type === "return" && (
                   <button onClick={() => onOpenReturn(ev.raw)}
-                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50">
-                    <Eye className="h-3 w-3" />
+                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                    <Eye className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
             </div>
+
+            {ev.type === "purchase" && ev.chips?.length > 0 && (
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                {ev.chips.map((chip, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                    {arMethod(chip.method)}
+                    <span className="font-mono text-slate-500">{fmt(chip.amount)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Purchase total + cash paid — for آجل purchases */}
+            {ev.type === "purchase" && ev.raw?.payment_type === "credit" && (
+              <div className="px-4 pb-2 flex items-center gap-4 text-[10px] font-bold text-slate-500">
+                <span>إجمالي الفاتورة: <span className="font-mono font-black text-slate-700">{fmt(ev.raw.total)} ج.م</span></span>
+                {Number(ev.raw.amount_received) > 0 && (
+                  <span>دفع نقداً: <span className="font-mono font-black text-emerald-600">{fmt(ev.raw.amount_received)} ج.م</span></span>
+                )}
+              </div>
+            )}
+
+            {ev.type === "purchase" && ev.raw?.payment_type === "credit" && ev.raw?.id && (
+              <div className="px-4 pb-3">
+                <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
+              </div>
+            )}
+
+            {hasImpact && (
+              <div className={`mx-3 mb-3 rounded-xl px-4 py-2.5 flex items-center justify-between ${ev.impactDir === "add" ? "bg-rose-50 border border-rose-100" : "bg-emerald-50 border border-emerald-100"}`}>
+                <span className={`text-[10px] font-black tracking-wide ${ev.impactDir === "add" ? "text-rose-400" : "text-emerald-500"}`}>
+                  {ev.impactDir === "add" ? "أُضيف للرصيد" : "خُصم من الرصيد"}
+                </span>
+                <span className={`text-[18px] font-black font-mono leading-none ${ev.impactDir === "add" ? "text-rose-600" : "text-emerald-600"}`}>
+                  {ev.impactDir === "add" ? "+" : "−"}{fmt(ev.impactAmount)}
+                  <span className="text-[11px] font-bold mr-1 opacity-60">ج.م</span>
+                </span>
+              </div>
+            )}
           </div>
         );
       })}
@@ -262,10 +328,10 @@ export default function SupplierAccountsPage() {
   const [detailReturn, setDetailReturn] = useState(null);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
 
-  const [createForm, setCreateForm] = useState({ name: "", phone: "", code: "", opening_balance: 0, payment_terms: "", bank_details: "" });
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "" });
   const [adjForm, setAdjForm] = useState({ amount: "", direction: "subtract", reason: "" });
   const [saving, setSaving] = useState(false);
@@ -345,42 +411,23 @@ export default function SupplierAccountsPage() {
       .finally(() => setDetailLoading(false));
   }, [detailPurchase]);
 
-  const handleCreate = async () => {
-    if (!createForm.name.trim()) return toast.error("الاسم مطلوب");
-    setSaving(true);
-    try {
-      const r = await api.post("/api/suppliers", createForm);
-      toast.success("تم إضافة المورد");
-      setShowCreate(false);
-      setCreateForm({ name: "", phone: "", code: "", opening_balance: 0, payment_terms: "", bank_details: "" });
-      await loadSuppliers();
-      selectSupplier(r.data.data, "movements");
-    } catch (e) { toast.error(e.response?.data?.message || "فشل الإضافة"); }
-    finally { setSaving(false); }
+  const handleSupplierCreated = (supplier) => {
+    toast.success("تم إضافة المورد");
+    loadSuppliers();
+    selectSupplier(supplier, "movements");
   };
 
   const handlePayment = async () => {
     if (!payForm.amount || !payForm.method_id) return toast.error("أدخل المبلغ ووسيلة الدفع");
     setSaving(true);
     try {
-      const totalAmount = Number(payForm.amount);
-      const debtsRes = await api.get(`/api/ajal-debts?party_type=supplier&supplier_id=${selected.id}&status=open&limit=100`).catch(() => ({ data: { data: [] } }));
-      const openDebts = (debtsRes.data.data || []).filter(d => d.remaining > 0);
-      if (openDebts.length > 0) {
-        openDebts.sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0));
-        let remaining = totalAmount;
-        for (const debt of openDebts) {
-          if (remaining <= 0) break;
-          const payAmt = Math.min(remaining, debt.remaining);
-          await api.post(`/api/ajal-debts/${debt.id}/pay`, { amount: payAmt, payment_method_id: Number(payForm.method_id), notes: payForm.notes });
-          remaining -= payAmt;
-        }
-        if (remaining > 0) {
-          await api.post("/api/payments", { party_type: "supplier", party_id: selected.id, amount: remaining, method_id: Number(payForm.method_id), notes: payForm.notes });
-        }
-      } else {
-        await api.post("/api/payments", { party_type: "supplier", party_id: selected.id, amount: totalAmount, method_id: Number(payForm.method_id), notes: payForm.notes });
-      }
+      await api.post("/api/payments", {
+        party_type: "supplier",
+        party_id: selected.id,
+        amount: Number(payForm.amount),
+        method_id: Number(payForm.method_id),
+        notes: payForm.notes || null,
+      });
       toast.success("تم تسجيل السداد");
       setShowPayment(false);
       setPayForm({ amount: "", method_id: "", notes: "" });
@@ -516,7 +563,7 @@ export default function SupplierAccountsPage() {
         ) : (
           <>
             <div className="bg-white border-b border-slate-200 p-6 shrink-0">
-              <div className="flex items-start mb-5">
+              <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-[26px] font-black text-white shadow-lg shadow-orange-200">
                     {selected.name?.charAt(0)}
@@ -525,11 +572,25 @@ export default function SupplierAccountsPage() {
                     <h2 className="text-[20px] font-black text-slate-900">{selected.name}</h2>
                     <div className="flex flex-wrap items-center gap-3 mt-1.5">
                       {selected.phone && <span className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold"><Phone className="h-3.5 w-3.5" /> {selected.phone}</span>}
+                      {(() => { try { return JSON.parse(selected.additional_phones || "[]"); } catch { return []; } })().map((p, i) => (
+                        <span key={i} className="flex items-center gap-1.5 text-[12px] text-slate-400 font-mono"><Phone className="h-3 w-3" /> {p}</span>
+                      ))}
                       {selected.code && <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">{selected.code}</span>}
-                      {selected.payment_terms && <span className="text-[11px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg font-bold">{selected.payment_terms}</span>}
                     </div>
+                    {(() => { try { return JSON.parse(selected.addresses || "[]"); } catch { return []; } })().map((a, i) => (
+                      <p key={i} className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1"><Eye className="h-3 w-3 shrink-0" /> {a}</p>
+                    ))}
+                    {selected.notes && (
+                      <p className="text-[11px] text-slate-500 font-medium mt-2 leading-relaxed">{selected.notes}</p>
+                    )}
                   </div>
                 </div>
+                <button
+                  onClick={() => setShowEdit(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg px-3 py-1.5 transition-colors shrink-0"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> تعديل
+                </button>
               </div>
 
               <div className={`rounded-2xl p-4 mb-5 flex items-center justify-between border-2 ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
@@ -656,48 +717,21 @@ export default function SupplierAccountsPage() {
         </Modal>
       )}
 
-      {/* Create Supplier */}
-      {showCreate && (
-        <Modal onClose={() => setShowCreate(false)}>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[17px] font-black text-slate-900">إضافة مورد جديد</h2>
-              <button onClick={() => setShowCreate(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">الاسم <span className="text-rose-500">*</span></label>
-                <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold" placeholder="اسم المورد" />
-              </div>
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رقم الهاتف</label>
-                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold" placeholder="01xxxxxxxxx" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رصيد افتتاحي</label>
-                  <input type="number" value={createForm.opening_balance} onChange={e => setCreateForm(f => ({ ...f, opening_balance: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-mono font-bold" />
-                </div>
-                <div>
-                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">شروط الدفع</label>
-                  <input value={createForm.payment_terms} onChange={e => setCreateForm(f => ({ ...f, payment_terms: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500 font-bold" placeholder="مثال: 30 يوم" />
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleCreate} disabled={saving}
-                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-[13px] font-black hover:bg-orange-700 disabled:opacity-50 shadow-md shadow-orange-200">
-                {saving ? "جاري الحفظ..." : "حفظ المورد"}
-              </button>
-              <button onClick={() => setShowCreate(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <AddSupplierModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={handleSupplierCreated}
+      />
+
+      <SupplierInfoModal
+        open={showEdit}
+        supplierId={selected?.id}
+        onClose={() => setShowEdit(false)}
+        onUpdated={(updated) => {
+          setSuppliers(prev => prev.map(s => s.id === updated.id ? updated : s));
+          setSelected(updated);
+        }}
+      />
 
       {/* Payment Modal */}
       {showPayment && selected && (

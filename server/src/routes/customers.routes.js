@@ -8,6 +8,20 @@ const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
 
+function ensureNotesSchema(db) {
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS customer_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      note TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      created_by INTEGER REFERENCES users(id)
+    )`);
+  } catch (_) {}
+  try { db.exec("ALTER TABLE customer_notes ADD COLUMN type TEXT DEFAULT 'note'"); } catch (_) {}
+  try { db.exec("ALTER TABLE customer_notes ADD COLUMN amount REAL"); } catch (_) {}
+}
+
 router.get("/balance-summary", requirePagePermission("customers", "view"), (req, res) => {
   try {
     const row = getDb().prepare(
@@ -145,23 +159,29 @@ router.post("/:id/adjust", requirePagePermission("customers", "add"), (req, res)
   const { amount, reason, direction } = req.body || {};
   const delta = direction === 'subtract' ? -Math.abs(Number(amount)) : Math.abs(Number(amount));
   try {
-    getDb().transaction(() => {
-      getDb().prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
-      getDb().prepare("INSERT INTO customer_notes (customer_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
+    const db = getDb();
+    ensureNotesSchema(db);
+    db.transaction(() => {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
+      db.prepare("INSERT INTO customer_notes (customer_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
         .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null);
     })();
-    res.json({ success: true, data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
+    res.json({ success: true, data: db.prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
   } catch (e) {
     res.status(500).json({ success: false, message: "خطأ أثناء التسوية" });
   }
 });
 
 router.get("/:id/notes", requirePagePermission("customers", "view"), (req, res) => {
-  const { type } = req.query;
-  const cond = type ? "WHERE customer_id = ? AND COALESCE(n.type,'note') = ?" : "WHERE customer_id = ?";
-  const params = type ? [req.params.id, type] : [req.params.id];
-  const notes = getDb().prepare(`SELECT n.*, u.name as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by ${cond} ORDER BY n.created_at DESC`).all(...params);
-  res.json({ success: true, data: notes });
+  try {
+    const db = getDb();
+    ensureNotesSchema(db);
+    const { type } = req.query;
+    const cond = type ? "WHERE n.customer_id = ? AND COALESCE(n.type,'note') = ?" : "WHERE n.customer_id = ?";
+    const params = type ? [req.params.id, type] : [req.params.id];
+    const notes = db.prepare(`SELECT n.*, u.username as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by ${cond} ORDER BY n.created_at DESC`).all(...params);
+    res.json({ success: true, data: notes });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 router.post("/:id/notes", requirePagePermission("customers", "add"), (req, res) => {
@@ -169,7 +189,7 @@ router.post("/:id/notes", requirePagePermission("customers", "add"), (req, res) 
   if (!note) return res.status(400).json({ success: false, message: "الملاحظة مطلوبة" });
   const result = getDb().prepare("INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)")
     .run(req.params.id, note, req.user?.id || null);
-  const newNote = getDb().prepare("SELECT n.*, u.name as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
+  const newNote = getDb().prepare("SELECT n.*, u.username as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
   res.status(201).json({ success: true, data: newNote });
 });
 

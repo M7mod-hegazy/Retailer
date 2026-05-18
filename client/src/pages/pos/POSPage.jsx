@@ -38,6 +38,7 @@ import {
   FilePlus,
   Sparkles,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 import api from "../../services/api";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
@@ -51,6 +52,8 @@ import WarehouseStockMatrix from "../../components/pos/WarehouseStockMatrix";
 import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import POSTodayModal from "../../components/pos/POSTodayModal";
+import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
+import InvoiceProfitModal from "../../components/pos/InvoiceProfitModal";
 import DataGrid from "../../components/ui/DataGrid";
 import { usePageTour } from "../../hooks/usePageTour";
 import { usePosStore } from "../../stores/posStore";
@@ -58,6 +61,8 @@ import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
 import { useNavigate, useLocation } from "react-router-dom";
 import PermissionGate from "../../components/ui/PermissionGate";
+import AddCustomerModal from "../../components/modals/AddCustomerModal";
+import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 
@@ -503,8 +508,9 @@ export default function POSPage() {
 
   // Modals
   const [profitModalOpen, setProfitModalOpen]           = useState(false);
+  const [advancedSearchOpen, setAdvancedSearchOpen]     = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen]     = useState(false);
-  const [customerDraft, setCustomerDraft] = useState({ name: "", phone: "", additionalPhones: [""], addresses: [""], notes: "" });
+  const [customerInfoOpen, setCustomerInfoOpen]         = useState(false);
   const [supervisorOverrideOpen, setSupervisorOverrideOpen] = useState(false);
   const [pendingSave, setPendingSave] = useState(null);
 
@@ -1184,9 +1190,9 @@ export default function POSPage() {
       let response;
       if (amendInvoiceId) {
         const amendPayload = amendReason ? { ...payload, reason: amendReason } : payload;
-        response = await api.put(`/api/invoices/${amendInvoiceId}`, amendPayload);
+        response = await api.put(`/api/invoices/${amendInvoiceId}/amend`, amendPayload);
         const savedData = response.data?.data;
-        const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
+        const savedNo = savedData?.new_invoice?.invoice_no || savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
         const receiptSnap = {
           invoice_no: savedNo, date: new Date(), lines: [...lines],
           customer: customer ? { ...customer } : null, totals: { ...totals },
@@ -1270,29 +1276,6 @@ export default function POSPage() {
 
   // Invoice void and search are handled by POSTodayModal component
 
-  async function createQuickCustomer() {
-    if (!customerDraft.name.trim()) {
-      setSaveMessage("أدخل اسم العميل."); return;
-    }
-    try {
-      const additionalPhones = customerDraft.additionalPhones.filter(p => p.trim()).join("|");
-      const addresses = customerDraft.addresses.filter(a => a.trim()).join("|");
-      const response = await api.post("/api/customers", {
-        name:    customerDraft.name.trim(),
-        phone:   customerDraft.phone.trim() || null,
-        additional_phones: additionalPhones || null,
-        addresses: addresses || null,
-        notes:   customerDraft.notes.trim() || null,
-      });
-      const newCustomer = response.data?.data;
-      if (newCustomer) { setCustomers((prev) => [newCustomer, ...prev]); setCustomer(newCustomer); setCustomerQuery(newCustomer.name); }
-      setCustomerCreateOpen(false);
-      setCustomerDraft({ name: "", phone: "", additionalPhones: [""], addresses: [""], notes: "" });
-      setSaveMessage("");
-    } catch (error) { setSaveMessage(error.response?.data?.message || "تعذر إنشاء العميل."); }
-  }
-
-  
   function handleGridItemClick(item) {
     const warehouse = warehouses.find((w) => (stockLevels[item.id]?.[w.id] || 0) > 0) || (warehouses.length ? warehouses[0] : { id: "default", name: "المخزن الرئيسي" });
     const stockValue = Number(stockLevels[item.id]?.[warehouse.id] ?? item.stock_quantity ?? item.stock ?? 0);
@@ -1445,14 +1428,31 @@ export default function POSPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setReceiptsOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all"
+              className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-all"
               title="فواتير اليوم"
             >
               <ListTodo className="h-4 w-4" />
             </button>
+            <button
+              onClick={() => setAdvancedSearchOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-all"
+              title="بحث متقدم في المخزون"
+            >
+              <Filter className="h-4 w-4" />
+            </button>
+            <PermissionGate page="pos" action="profit">
+              <button
+                onClick={() => setProfitModalOpen(true)}
+                disabled={!lines.length}
+                className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-40"
+                title="تحليل ربح الفاتورة"
+              >
+                <TrendingUp className="h-4 w-4" />
+              </button>
+            </PermissionGate>
             <PermissionGate page="pos" action="print">
               <button
                 onClick={() => setPrintPreview(true)}
@@ -1522,6 +1522,9 @@ export default function POSPage() {
                   <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                   <span className="text-[12px] font-black text-emerald-800 truncate">{customer.name}</span>
                   {customer.phone && <span className="text-[11px] text-emerald-600 mr-auto shrink-0 font-mono">{customer.phone}</span>}
+                  <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full text-emerald-500 hover:bg-emerald-200 hover:text-emerald-700 transition-colors mr-auto">
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
                 </div>
               )}
               {!customer?.id && customers.length > 0 && (
@@ -1829,7 +1832,12 @@ export default function POSPage() {
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-[14px] font-black">{(customer.name || "?")[0]}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black text-slate-800 truncate">{customer.name}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] font-black text-slate-800 truncate">{customer.name}</p>
+                      <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     {customer.phone && <p className="text-[11px] text-slate-500 mt-0.5 font-mono">{customer.phone}</p>}
                     <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                       <span className="text-[11px] font-bold text-slate-500">{amendContext ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
@@ -2456,78 +2464,6 @@ export default function POSPage() {
 
         <POSTodayModal open={receiptsOpen} onClose={() => setReceiptsOpen(false)} />
 
-        {/* Quick customer creation modal for list view */}
-        <Modal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} title="إنشاء عميل جديد">
-          <div className="space-y-4 animate-modal-enter">
-            <div>
-              <label className="mb-1 block text-[11px] font-bold text-slate-600">اسم العميل *</label>
-              <input value={customerDraft.name} onChange={(e) => setCustomerDraft((s) => ({ ...s, name: e.target.value }))}
-                placeholder="الاسم بالكامل..."
-                className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-            </div>
-            <div>
-              <label className="mb-1 block text-[11px] font-bold text-slate-600">رقم الهاتف الأساسي</label>
-              <input value={customerDraft.phone} onChange={(e) => setCustomerDraft((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="01..."
-                className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-            </div>
-            {/* Additional Phones */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold text-slate-600">أرقام هواتف إضافية</label>
-                <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, additionalPhones: [...s.additionalPhones, ""] }))}
-                  className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                  <Plus className="h-3 w-3" /> إضافة رقم
-                </button>
-              </div>
-              {customerDraft.additionalPhones.map((p, i) => (
-                <div key={i} className="flex items-center gap-2 mb-1.5">
-                  <input value={p} onChange={(e) => setCustomerDraft(s => ({ ...s, additionalPhones: s.additionalPhones.map((ph, idx) => idx === i ? e.target.value : ph) }))}
-                    placeholder="رقم هاتف إضافي..."
-                    className="flex-1 rounded-sm border border-slate-300 px-3 py-1.5 text-[12px] outline-none focus:border-slate-800" />
-                  {customerDraft.additionalPhones.length > 1 && (
-                    <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, additionalPhones: s.additionalPhones.filter((_, idx) => idx !== i) }))}
-                      className="text-rose-500 hover:text-rose-700"><X className="h-4 w-4" /></button>
-                  )}
-                </div>
-              ))}
-            </div>
-            {/* Addresses */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold text-slate-600">العناوين</label>
-                <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, addresses: [...s.addresses, ""] }))}
-                  className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                  <Plus className="h-3 w-3" /> إضافة عنوان
-                </button>
-              </div>
-              {customerDraft.addresses.map((a, i) => (
-                <div key={i} className="flex items-center gap-2 mb-1.5">
-                  <input value={a} onChange={(e) => setCustomerDraft(s => ({ ...s, addresses: s.addresses.map((ad, idx) => idx === i ? e.target.value : ad) }))}
-                    placeholder="العنوان..."
-                    className="flex-1 rounded-sm border border-slate-300 px-3 py-1.5 text-[12px] outline-none focus:border-slate-800" />
-                  {customerDraft.addresses.length > 1 && (
-                    <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, addresses: s.addresses.filter((_, idx) => idx !== i) }))}
-                      className="text-rose-500 hover:text-rose-700"><X className="h-4 w-4" /></button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div>
-              <label className="mb-1 block text-[11px] font-bold text-slate-600">ملاحظات</label>
-              <textarea value={customerDraft.notes} onChange={(e) => setCustomerDraft((s) => ({ ...s, notes: e.target.value }))}
-                placeholder="أي ملاحظات..."
-                className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" rows={2} />
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-              <button type="button" onClick={() => setCustomerCreateOpen(false)}
-                className="rounded-sm border border-slate-300 px-5 py-2 text-[13px] font-bold text-slate-700 hover:bg-slate-50">إلغاء</button>
-              <button type="button" onClick={createQuickCustomer}
-                className="rounded-sm bg-slate-900 px-6 py-2 text-[13px] font-bold text-white hover:bg-slate-800">تأكيد وإنشاء</button>
-            </div>
-          </div>
-        </Modal>
-
         {/* Supervisor override modal for list view */}
         <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم">
           <div className="space-y-4 text-center animate-modal-enter">
@@ -2744,6 +2680,28 @@ export default function POSPage() {
           </div>
         )}
         {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} onDismiss={onDismissSaveSuccess} />}
+
+        <InvoiceProfitModal
+          open={profitModalOpen}
+          onClose={() => setProfitModalOpen(false)}
+          lines={lines}
+          items={items}
+        />
+        <AdvancedSearchModal
+          open={advancedSearchOpen}
+          onClose={() => setAdvancedSearchOpen(false)}
+        />
+        <AddCustomerModal
+          open={customerCreateOpen}
+          onClose={() => setCustomerCreateOpen(false)}
+          onCreated={(customer) => { setCustomers((prev) => [customer, ...prev]); setCustomer(customer); setCustomerQuery(customer.name); }}
+        />
+        <CustomerInfoModal
+          open={customerInfoOpen}
+          customerId={customer?.id}
+          onClose={() => setCustomerInfoOpen(false)}
+          onUpdated={(updated) => { setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c)); setCustomer(updated); setCustomerQuery(updated.name); }}
+        />
       </div>
     );
   }
@@ -2879,6 +2837,13 @@ export default function POSPage() {
               <button onClick={() => setDetailedSearchQuery("")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
                 <RefreshCw className="h-4 w-4" />
               </button>
+              <button
+                onClick={() => setAdvancedSearchOpen(true)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                title="بحث متقدم في المخزون"
+              >
+                <Filter className="h-4 w-4" />
+              </button>
             </div>
 
             {/* Category Pills */}
@@ -2975,9 +2940,11 @@ export default function POSPage() {
                 <span className="font-mono bg-white px-1.5 py-0.5 rounded-sm border border-slate-200">{invoiceNumber}</span>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setProfitModalOpen(true)} className="hover:text-emerald-600 transition-colors" title="الربح المتوقع">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                </button>
+                <PermissionGate page="pos" action="profit">
+                  <button onClick={() => setProfitModalOpen(true)} className="hover:text-emerald-600 transition-colors" title="الربح المتوقع">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                  </button>
+                </PermissionGate>
                 <button onClick={() => setReceiptsOpen(true)} className="hover:text-slate-800 transition-colors" title="فواتير اليوم">
                   <ListTodo className="w-3.5 h-3.5" />
                 </button>
@@ -3016,6 +2983,11 @@ export default function POSPage() {
               <button onClick={() => setCustomerCreateOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-800 hover:text-slate-800 transition-colors shadow-sm">
                 <Plus className="h-4 w-4" />
               </button>
+              {customer?.id && (
+                <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-blue-200 bg-blue-50 text-blue-500 hover:border-blue-400 hover:text-blue-700 transition-colors shadow-sm">
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+              )}
             </div>
             {customer?.id && (
               <div className="flex items-center gap-2 mt-1">
@@ -3516,108 +3488,31 @@ export default function POSPage() {
       </Modal>
 
       {/* ── Profit analysis ── */}
-      <Modal open={profitModalOpen} onClose={() => setProfitModalOpen(false)} title="تحليل ربح الإيصال الحالي">
-        <div className="space-y-2 animate-modal-enter">
-          {lines.map((line) => {
-            const item        = items.find((e) => e.id === line.item_id);
-            const purchase    = Number(item?.purchase_price || 0);
-            const unitProfit  = Number(line.unit_price || 0) - purchase;
-            const totalProfit = unitProfit * Number(line.quantity || 0);
-            return (
-              <div key={`${line.item_id}-${line.unit_price}`} className="flex items-center justify-between rounded-sm border border-slate-100 bg-slate-50 px-4 py-3">
-                <div>
-                  <div className="text-[13px] font-black text-slate-800">{line.item_name}</div>
-                  <div className="text-[11px] text-slate-500">شراء: {formatMoney(purchase)} · بيع: {formatMoney(line.unit_price)} · كمية: {line.quantity}</div>
-                </div>
-                <div className={`font-mono text-[13px] font-black ${totalProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>{formatMoney(totalProfit)}</div>
-              </div>
-            );
-          })}
-          {lines.length > 0 && (
-            <div className="flex items-center justify-between rounded-sm border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <div className="font-black text-emerald-800">إجمالي الربح المتوقع</div>
-              <div className="font-mono text-[16px] font-black text-emerald-700">
-                {formatMoney(lines.reduce((sum, l) => {
-                  const item = items.find((e) => e.id === l.item_id);
-                  return sum + (Number(l.unit_price || 0) - Number(item?.purchase_price || 0)) * Number(l.quantity || 0);
-                }, 0))}
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
+      <InvoiceProfitModal
+        open={profitModalOpen}
+        onClose={() => setProfitModalOpen(false)}
+        lines={lines}
+        items={items}
+      />
 
-      {/* ── Quick customer creation ── */}
-      <Modal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} title="إنشاء عميل جديد">
-        <div className="space-y-4 animate-modal-enter">
-          <div>
-            <label className="mb-1 block text-[11px] font-bold text-slate-600">اسم العميل *</label>
-            <input value={customerDraft.name} onChange={(e) => setCustomerDraft((s) => ({ ...s, name: e.target.value }))}
-              placeholder="الاسم بالكامل..."
-              className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-bold text-slate-600">رقم الهاتف الأساسي</label>
-            <input value={customerDraft.phone} onChange={(e) => setCustomerDraft((s) => ({ ...s, phone: e.target.value }))}
-              placeholder="01..."
-              className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" />
-          </div>
-          {/* Additional Phones */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-bold text-slate-600">أرقام هواتف إضافية</label>
-              <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, additionalPhones: [...s.additionalPhones, ""] }))}
-                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                <Plus className="h-3 w-3" /> إضافة رقم
-              </button>
-            </div>
-            {customerDraft.additionalPhones.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 mb-1.5">
-                <input value={p} onChange={(e) => setCustomerDraft(s => ({ ...s, additionalPhones: s.additionalPhones.map((ph, idx) => idx === i ? e.target.value : ph) }))}
-                  placeholder="رقم هاتف إضافي..."
-                  className="flex-1 rounded-sm border border-slate-300 px-3 py-1.5 text-[12px] outline-none focus:border-slate-800" />
-                {customerDraft.additionalPhones.length > 1 && (
-                  <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, additionalPhones: s.additionalPhones.filter((_, idx) => idx !== i) }))}
-                    className="text-rose-500 hover:text-rose-700"><X className="h-4 w-4" /></button>
-                )}
-              </div>
-            ))}
-          </div>
-          {/* Addresses */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-bold text-slate-600">العناوين</label>
-              <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, addresses: [...s.addresses, ""] }))}
-                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                <Plus className="h-3 w-3" /> إضافة عنوان
-              </button>
-            </div>
-            {customerDraft.addresses.map((a, i) => (
-              <div key={i} className="flex items-center gap-2 mb-1.5">
-                <input value={a} onChange={(e) => setCustomerDraft(s => ({ ...s, addresses: s.addresses.map((ad, idx) => idx === i ? e.target.value : ad) }))}
-                  placeholder="العنوان..."
-                  className="flex-1 rounded-sm border border-slate-300 px-3 py-1.5 text-[12px] outline-none focus:border-slate-800" />
-                {customerDraft.addresses.length > 1 && (
-                  <button type="button" onClick={() => setCustomerDraft(s => ({ ...s, addresses: s.addresses.filter((_, idx) => idx !== i) }))}
-                    className="text-rose-500 hover:text-rose-700"><X className="h-4 w-4" /></button>
-                )}
-              </div>
-            ))}
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-bold text-slate-600">ملاحظات</label>
-            <textarea value={customerDraft.notes} onChange={(e) => setCustomerDraft((s) => ({ ...s, notes: e.target.value }))}
-              placeholder="أي ملاحظات..."
-              className="w-full rounded-sm border border-slate-300 px-3 py-2 text-[13px] outline-none focus:border-slate-800" rows={2} />
-          </div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-            <button type="button" onClick={() => setCustomerCreateOpen(false)}
-              className="rounded-sm border border-slate-300 px-5 py-2 text-[13px] font-bold text-slate-700 hover:bg-slate-50">إلغاء</button>
-            <button type="button" onClick={createQuickCustomer}
-              className="rounded-sm bg-slate-900 px-6 py-2 text-[13px] font-bold text-white hover:bg-slate-800">تأكيد وإنشاء</button>
-          </div>
-        </div>
-      </Modal>
+      {/* ── Advanced stock search ── */}
+      <AdvancedSearchModal
+        open={advancedSearchOpen}
+        onClose={() => setAdvancedSearchOpen(false)}
+      />
+
+      <AddCustomerModal
+        open={customerCreateOpen}
+        onClose={() => setCustomerCreateOpen(false)}
+        onCreated={(customer) => { setCustomers((prev) => [customer, ...prev]); setCustomer(customer); setCustomerQuery(customer.name); }}
+      />
+
+      <CustomerInfoModal
+        open={customerInfoOpen}
+        customerId={customer?.id}
+        onClose={() => setCustomerInfoOpen(false)}
+        onUpdated={(updated) => { setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c)); setCustomer(updated); setCustomerQuery(updated.name); }}
+      />
 
       {/* ── Supervisor override ── */}
       <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم">

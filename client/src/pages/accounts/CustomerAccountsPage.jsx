@@ -9,6 +9,8 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
 import PermissionGate from "../../components/ui/PermissionGate";
+import AddCustomerModal from "../../components/modals/AddCustomerModal";
+import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
@@ -44,6 +46,18 @@ const EVENT_TYPES = {
   return:     { icon: RotateCcw,    label: "مرتجع",          color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-100" },
   adjustment: { icon: Scale,        label: "تسوية يدوية",   color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100" },
 };
+
+// ── Parse payment splits string ────────────────────────────
+function parsePaymentSplits(splits) {
+  if (!splits) return [];
+  return splits.split("|||").map(s => {
+    const idx = s.indexOf(":");
+    if (idx === -1) return null;
+    const method = s.slice(0, idx).trim();
+    const amount = Number(s.slice(idx + 1));
+    return { method, amount };
+  }).filter(Boolean).filter(s => s.method !== "credit" && s.amount > 0.005);
+}
 
 // ── Installments expandable within invoice row ────────────
 function InstallmentsBadge({ debtId }) {
@@ -123,28 +137,37 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
       const items = [];
 
       (docsR.value?.data?.data || []).forEach(d => {
+        const total = Number(d.total || 0);
+        const received = Number(d.amount_received || 0);
+        const ajalAmount = Math.max(0, total - received);
+        let chips = parsePaymentSplits(d.payment_splits);
+        // For single-method paid invoices, synthesise a chip from payment_type + received
+        if (chips.length === 0 && d.payment_type !== "credit" && received > 0) {
+          chips = [{ method: d.payment_type, amount: received }];
+        }
         items.push({
           id: `inv-${d.id}`,
           type: "invoice",
           date: new Date(d.created_at),
           ref: d.invoice_no || d.doc_no || `#${d.id}`,
-          description: `فاتورة ${arMethod(d.payment_type) || ""}`,
-          debit: Number(d.total || 0),
-          credit: 0,
+          chips,
+          impactAmount: ajalAmount,
+          impactDir: ajalAmount > 0.005 ? "add" : null,
           raw: d,
-          debtId: d.debt_id || null,
         });
       });
 
-      (paysR.value?.data?.data || []).forEach(p => {
+      // Only standalone payments (not created at invoice creation)
+      (paysR.value?.data?.data || []).filter(p => !p.invoice_id).forEach(p => {
         items.push({
           id: `pay-${p.id}`,
           type: "payment",
           date: new Date(p.created_at),
           ref: p.doc_no || `PAY-${p.id}`,
-          description: `تحصيل دفعة — ${p.method_name || p.method || ""}`,
-          debit: 0,
-          credit: Number(p.amount || 0),
+          methodLabel: arMethod(p.method || ""),
+          description: p.notes || null,
+          impactAmount: Number(p.amount || 0),
+          impactDir: "subtract",
           raw: p,
         });
       });
@@ -155,9 +178,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
           type: "return",
           date: new Date(r.created_at),
           ref: r.doc_no || `RET-${r.id}`,
-          description: `مرتجع${r.original_invoice_no ? ` — ${r.original_invoice_no}` : ""}`,
-          debit: 0,
-          credit: Number(r.total || 0),
+          description: r.original_invoice_no ? `مرتجع فاتورة ${r.original_invoice_no}` : "مرتجع",
+          impactAmount: Number(r.total || 0),
+          impactDir: "subtract",
           raw: r,
         });
       });
@@ -170,20 +193,29 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
           date: new Date(n.created_at),
           ref: `ADJ-${n.id}`,
           description: n.note || "تسوية يدوية",
-          debit: amount > 0 ? amount : 0,
-          credit: amount < 0 ? Math.abs(amount) : 0,
+          impactAmount: Math.abs(amount),
+          impactDir: amount > 0 ? "add" : "subtract",
           raw: n,
         });
       });
 
       items.sort((a, b) => b.date - a.date);
 
-      // Running balance (latest first so we go backwards from current balance)
+      // Compute رصيد افتتاحي by unwinding all impacts from current balance
       const currentBal = Number(party.opening_balance || 0);
       let running = currentBal;
       for (const item of items) {
-        item.runningBalance = running;
-        running = running - item.credit + item.debit;
+        if (item.impactDir === "add") running -= (item.impactAmount || 0);
+        else if (item.impactDir === "subtract") running += (item.impactAmount || 0);
+      }
+      if (Math.abs(running) > 0.005) {
+        items.push({
+          id: "opening",
+          type: "opening",
+          date: null,
+          impactAmount: Math.abs(running),
+          impactDir: running > 0 ? "add" : "subtract",
+        });
       }
 
       setEvents(items);
@@ -202,62 +234,101 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
   );
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {events.map(ev => {
+        if (ev.type === "opening") {
+          return (
+            <div key="opening" className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-slate-200 flex items-center justify-center">
+                  <FileText className="h-3.5 w-3.5 text-slate-500" />
+                </div>
+                <span className="text-[11px] font-black text-slate-500">رصيد افتتاحي</span>
+              </div>
+              <span className={`text-[13px] font-black font-mono ${ev.impactDir === "add" ? "text-rose-500" : "text-emerald-600"}`}>
+                {ev.impactDir === "add" ? "+" : "−"} {fmt(ev.impactAmount)} <span className="text-[10px] opacity-60">ج.م</span>
+              </span>
+            </div>
+          );
+        }
+
         const cfg = EVENT_TYPES[ev.type];
         const Icon = cfg.icon;
+        const hasImpact = ev.impactDir && ev.impactAmount > 0.005;
+
         return (
-          <div key={ev.id} className={`rounded-xl border ${cfg.border} bg-white shadow-sm overflow-hidden`}>
-            <div className="flex items-center gap-3 px-4 py-3">
-              {/* Icon */}
-              <div className={`h-8 w-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
+          <div key={ev.id} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {/* Header row */}
+            <div className="flex items-center gap-2.5 px-4 py-3">
+              <div className={`h-9 w-9 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`h-4 w-4 ${cfg.color}`} />
               </div>
-
-              {/* Main info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
-                  <span className="text-[11px] font-black text-slate-600 font-mono">{ev.ref}</span>
-                  {ev.type === "invoice" && ev.raw?.payment_type && (
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${PTYPE_COLOR[ev.raw.payment_type] || "text-slate-600 bg-slate-100 border-slate-200"}`}>
-                      {arMethod(ev.raw.payment_type)}
-                    </span>
-                  )}
+                  <span className="text-[11px] font-black text-slate-700 font-mono">{ev.ref}</span>
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5 truncate">{ev.description}</div>
-                {/* Installments badge on ajal/installment invoices */}
-                {ev.type === "invoice" && (ev.raw?.payment_type === "credit" || ev.raw?.payment_type === "installments") && ev.raw?.id && (
-                  <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
-                )}
+                {ev.methodLabel && <div className="text-[10px] text-slate-500 font-bold mt-0.5">{ev.methodLabel}</div>}
+                {ev.description && <div className="text-[10px] text-slate-400 mt-0.5 truncate">{ev.description}</div>}
               </div>
-
-              {/* Amounts */}
-              <div className="text-right shrink-0">
-                {ev.debit > 0 && <div className="text-[13px] font-black font-mono text-rose-600">+{fmt(ev.debit)}</div>}
-                {ev.credit > 0 && <div className="text-[13px] font-black font-mono text-emerald-600">-{fmt(ev.credit)}</div>}
-                <div className={`text-[10px] font-bold font-mono mt-0.5 ${ev.runningBalance > 0 ? "text-rose-400" : ev.runningBalance < 0 ? "text-emerald-500" : "text-slate-400"}`}>
-                  رصيد: {fmt(Math.abs(ev.runningBalance))}
-                </div>
-              </div>
-
-              {/* Date + eye */}
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-[10px] text-slate-400">{fmtDate(ev.date)}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-slate-400 font-bold">{fmtDate(ev.date)}</span>
                 {ev.type === "invoice" && (
                   <button onClick={() => onOpenInvoice(ev.raw)}
-                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50">
-                    <Eye className="h-3 w-3" />
+                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    <Eye className="h-3.5 w-3.5" />
                   </button>
                 )}
                 {ev.type === "return" && (
                   <button onClick={() => onOpenReturn(ev.raw)}
-                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50">
-                    <Eye className="h-3 w-3" />
+                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                    <Eye className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
             </div>
+
+            {/* Payment chips — what was actually paid on this invoice */}
+            {ev.type === "invoice" && ev.chips?.length > 0 && (
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                {ev.chips.map((chip, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                    {arMethod(chip.method)}
+                    <span className="font-mono text-slate-500">{fmt(chip.amount)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Invoice total + cash paid — for آجل / تقسيط invoices */}
+            {ev.type === "invoice" && (ev.raw?.payment_type === "credit" || ev.raw?.payment_type === "installments") && (
+              <div className="px-4 pb-2 flex items-center gap-4 text-[10px] font-bold text-slate-500">
+                <span>إجمالي الفاتورة: <span className="font-mono font-black text-slate-700">{fmt(ev.raw.total)} ج.م</span></span>
+                {Number(ev.raw.amount_received) > 0 && (
+                  <span>دفع نقداً: <span className="font-mono font-black text-emerald-600">{fmt(ev.raw.amount_received)} ج.م</span></span>
+                )}
+              </div>
+            )}
+
+            {/* Installments expandable on آجل / تقسيط invoices */}
+            {ev.type === "invoice" && (ev.raw?.payment_type === "credit" || ev.raw?.payment_type === "installments") && ev.raw?.id && (
+              <div className="px-4 pb-3">
+                <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
+              </div>
+            )}
+
+            {/* Balance impact badge */}
+            {hasImpact && (
+              <div className={`mx-3 mb-3 rounded-xl px-4 py-2.5 flex items-center justify-between ${ev.impactDir === "add" ? "bg-rose-50 border border-rose-100" : "bg-emerald-50 border border-emerald-100"}`}>
+                <span className={`text-[10px] font-black tracking-wide ${ev.impactDir === "add" ? "text-rose-400" : "text-emerald-500"}`}>
+                  {ev.impactDir === "add" ? "أُضيف للرصيد" : "خُصم من الرصيد"}
+                </span>
+                <span className={`text-[18px] font-black font-mono leading-none ${ev.impactDir === "add" ? "text-rose-600" : "text-emerald-600"}`}>
+                  {ev.impactDir === "add" ? "+" : "−"}{fmt(ev.impactAmount)}
+                  <span className="text-[11px] font-bold mr-1 opacity-60">ج.م</span>
+                </span>
+              </div>
+            )}
           </div>
         );
       })}
@@ -296,11 +367,11 @@ export default function CustomerAccountsPage() {
 
   // Modal states
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
 
   // Forms
-  const [createForm, setCreateForm] = useState({ name: "", phone: "", additionalPhones: [""], addresses: [""], notes: "", code: "", opening_balance: 0, credit_limit: 0 });
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "" });
   const [adjForm, setAdjForm] = useState({ amount: "", direction: "subtract", reason: "" });
   const [saving, setSaving] = useState(false);
@@ -387,44 +458,23 @@ export default function CustomerAccountsPage() {
   }, [detailInvoice]);
 
   // ── Handlers ──────────────────────────────────────────────
-  const handleCreate = async () => {
-    if (!createForm.name.trim()) return toast.error("الاسم مطلوب");
-    setSaving(true);
-    try {
-      const additionalPhones = createForm.additionalPhones.filter(p => p.trim()).join("|");
-      const addresses = createForm.addresses.filter(a => a.trim()).join("|");
-      const r = await api.post("/api/customers", { ...createForm, additional_phones: additionalPhones || null, addresses: addresses || null });
-      toast.success("تم إضافة العميل");
-      setShowCreate(false);
-      setCreateForm({ name: "", phone: "", additionalPhones: [""], addresses: [""], notes: "", code: "", opening_balance: 0, credit_limit: 0 });
-      await loadCustomers();
-      selectCustomer(r.data.data, "movements");
-    } catch (e) { toast.error(e.response?.data?.message || "فشل الإضافة"); }
-    finally { setSaving(false); }
+  const handleCustomerCreated = (customer) => {
+    toast.success("تم إضافة العميل");
+    loadCustomers();
+    selectCustomer(customer, "movements");
   };
 
   const handlePayment = async () => {
     if (!payForm.amount || !payForm.method_id) return toast.error("أدخل المبلغ ووسيلة الدفع");
     setSaving(true);
     try {
-      const totalAmount = Number(payForm.amount);
-      const debtsRes = await api.get(`/api/ajal-debts?party_type=customer&customer_id=${selected.id}&status=open&limit=100`).catch(() => ({ data: { data: [] } }));
-      const openDebts = (debtsRes.data.data || []).filter(d => d.remaining > 0);
-      if (openDebts.length > 0) {
-        openDebts.sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0));
-        let remaining = totalAmount;
-        for (const debt of openDebts) {
-          if (remaining <= 0) break;
-          const payAmt = Math.min(remaining, debt.remaining);
-          await api.post(`/api/ajal-debts/${debt.id}/pay`, { amount: payAmt, payment_method_id: Number(payForm.method_id), notes: payForm.notes });
-          remaining -= payAmt;
-        }
-        if (remaining > 0) {
-          await api.post("/api/payments", { party_type: "customer", party_id: selected.id, amount: remaining, method_id: Number(payForm.method_id), notes: payForm.notes });
-        }
-      } else {
-        await api.post("/api/payments", { party_type: "customer", party_id: selected.id, amount: totalAmount, method_id: Number(payForm.method_id), notes: payForm.notes });
-      }
+      await api.post("/api/payments", {
+        party_type: "customer",
+        party_id: selected.id,
+        amount: Number(payForm.amount),
+        method_id: Number(payForm.method_id),
+        notes: payForm.notes || null,
+      });
       toast.success("تم تسجيل الدفعة");
       setShowPayment(false);
       setPayForm({ amount: "", method_id: "", notes: "" });
@@ -568,7 +618,7 @@ export default function CustomerAccountsPage() {
           <>
             {/* Customer Header */}
             <div className="bg-white border-b border-slate-200 p-6 shrink-0">
-              <div className="flex items-start mb-5">
+              <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-[26px] font-black text-white shadow-lg shadow-blue-200">
                     {selected.name?.charAt(0)}
@@ -581,6 +631,11 @@ export default function CustomerAccountsPage() {
                           <Phone className="h-3.5 w-3.5" /> {selected.phone}
                         </span>
                       )}
+                      {(() => { try { return JSON.parse(selected.additional_phones || "[]"); } catch { return []; } })().map((p, i) => (
+                        <span key={i} className="flex items-center gap-1.5 text-[12px] text-slate-400 font-mono">
+                          <Phone className="h-3 w-3" /> {p}
+                        </span>
+                      ))}
                       {selected.code && (
                         <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">{selected.code}</span>
                       )}
@@ -588,8 +643,22 @@ export default function CustomerAccountsPage() {
                         <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">محظور</span>
                       )}
                     </div>
+                    {(() => { try { return JSON.parse(selected.addresses || "[]"); } catch { return []; } })().map((a, i) => (
+                      <p key={i} className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1">
+                        <Eye className="h-3 w-3 shrink-0" /> {a}
+                      </p>
+                    ))}
+                    {selected.notes && (
+                      <p className="text-[11px] text-slate-500 font-medium mt-2 leading-relaxed">{selected.notes}</p>
+                    )}
                   </div>
                 </div>
+                <button
+                  onClick={() => setShowEdit(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg px-3 py-1.5 transition-colors shrink-0"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> تعديل
+                </button>
               </div>
 
               {/* Balance Card */}
@@ -770,71 +839,21 @@ export default function CustomerAccountsPage() {
 
       {/* ══ Modals ══════════════════════════════════════════ */}
 
-      {/* Create Customer */}
-      {showCreate && (
-        <Modal onClose={() => setShowCreate(false)}>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[17px] font-black text-slate-900">إضافة عميل جديد</h2>
-              <button onClick={() => setShowCreate(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">الاسم <span className="text-rose-500">*</span></label>
-                <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-blue-500 font-bold" placeholder="اسم العميل" />
-              </div>
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رقم الهاتف الأساسي</label>
-                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-blue-500 font-bold" placeholder="01xxxxxxxxx" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[12px] font-black text-slate-600">أرقام هواتف إضافية</label>
-                  <button type="button" onClick={() => setCreateForm(f => ({ ...f, additionalPhones: [...f.additionalPhones, ""] }))}
-                    className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                    <Plus className="h-3 w-3" /> إضافة رقم
-                  </button>
-                </div>
-                {createForm.additionalPhones.map((p, i) => (
-                  <div key={i} className="flex items-center gap-2 mb-1.5">
-                    <input value={p} onChange={e => setCreateForm(f => ({ ...f, additionalPhones: f.additionalPhones.map((ph, idx) => idx === i ? e.target.value : ph) }))}
-                      placeholder="رقم هاتف إضافي..." className="flex-1 h-9 rounded-lg border border-slate-200 px-3 text-[12px] outline-none focus:border-blue-500" />
-                    {createForm.additionalPhones.length > 1 && (
-                      <button type="button" onClick={() => setCreateForm(f => ({ ...f, additionalPhones: f.additionalPhones.filter((_, idx) => idx !== i) }))} className="text-rose-500"><X className="h-4 w-4" /></button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">رصيد افتتاحي</label>
-                  <input type="number" value={createForm.opening_balance} onChange={e => setCreateForm(f => ({ ...f, opening_balance: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-blue-500 font-mono font-bold" />
-                </div>
-                <div>
-                  <label className="text-[12px] font-black text-slate-600 mb-1.5 block">حد الائتمان</label>
-                  <input type="number" value={createForm.credit_limit} onChange={e => setCreateForm(f => ({ ...f, credit_limit: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-blue-500 font-mono font-bold" />
-                </div>
-              </div>
-              <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">كود العميل</label>
-                <input value={createForm.code} onChange={e => setCreateForm(f => ({ ...f, code: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-blue-500 font-bold font-mono" placeholder="CUST-001" />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleCreate} disabled={saving}
-                className="flex-1 h-11 rounded-xl bg-blue-600 text-white text-[13px] font-black hover:bg-blue-700 disabled:opacity-50 shadow-md shadow-blue-200">
-                {saving ? "جاري الحفظ..." : "حفظ العميل"}
-              </button>
-              <button onClick={() => setShowCreate(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <AddCustomerModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={handleCustomerCreated}
+      />
+
+      <CustomerInfoModal
+        open={showEdit}
+        customerId={selected?.id}
+        onClose={() => setShowEdit(false)}
+        onUpdated={(updated) => {
+          setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
+          setSelected(updated);
+        }}
+      />
 
       {/* Payment Modal */}
       {showPayment && selected && (
