@@ -184,6 +184,7 @@ export default function App() {
                     <Route path="operations/employee-adjustments" element={<PermissionRoute page="employee_adjustments"><EmployeeAdjustmentsPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer" element={<PermissionRoute page="branch_transfer"><BranchTransferPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer/new" element={<PermissionRoute page="branch_transfer"><BranchTransferFormPage /></PermissionRoute>} />
+                    <Route path="operations/branch-transfer/edit/:id" element={<PermissionRoute page="branch_transfer"><BranchTransferFormPage /></PermissionRoute>} />
                     <Route path="operations/quotations" element={<PermissionRoute page="quotations"><QuotationsPage /></PermissionRoute>} />
                     <Route path="operations/quotations/new" element={<PermissionRoute page="quotations"><QuotationFormPage /></PermissionRoute>} />
                     <Route path="reports/center" element={<PermissionRoute page="reports"><ReportsCenterPage /></PermissionRoute>} />

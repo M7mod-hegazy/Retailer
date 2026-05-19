@@ -1,0 +1,330 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowDownToLine, ArrowUpFromLine, Package, Pencil, RefreshCw, Search, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import Modal from "../ui/Modal";
+import DataGrid from "../ui/DataGrid";
+import { fuzzyFilterRows } from "../../utils/search";
+import toast from "react-hot-toast";
+
+function toDateInput(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+function fmtDateTime(d) {
+  return new Intl.DateTimeFormat("ar-EG", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  }).format(new Date(d));
+}
+function fmtQty(v) {
+  return Number(v || 0).toLocaleString("ar-EG");
+}
+function fmtMoney(v) {
+  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function TransferDetailPreview({ transfer, onClose, onEdit }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!transfer) return;
+    setLoading(true);
+    api.get(`/api/branch-transfers/${transfer.id}`)
+      .then(r => setDetail(r.data.data))
+      .catch(() => setDetail(transfer))
+      .finally(() => setLoading(false));
+  }, [transfer?.id]);
+
+  if (!transfer) return null;
+  const d = detail || transfer;
+  const isReceive = d.type === "receive";
+
+  return (
+    <div className="flex flex-col gap-4">
+      {loading ? (
+        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+      ) : (
+        <>
+          <div className={`rounded-xl px-5 py-4 flex flex-wrap gap-x-6 gap-y-2 text-[13px] ${isReceive ? "bg-emerald-50 border border-emerald-200" : "bg-blue-50 border border-blue-200"}`}>
+            <span className={`font-black text-[15px] ${isReceive ? "text-emerald-800" : "text-blue-800"}`}>{d.reference_no}</span>
+            <span className={`px-2 py-0.5 rounded text-[11px] font-black ${isReceive ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
+              {isReceive ? "استلام" : "تسليم"}
+            </span>
+            {d.partner_branch && <span className="text-slate-600">الفرع: <strong>{d.partner_branch}</strong></span>}
+            <span className="text-slate-500">{d.created_at ? fmtDateTime(d.created_at) : "—"}</span>
+          </div>
+
+          <div className="max-h-[280px] overflow-auto rounded-xl border border-slate-200">
+            <table className="w-full text-[12px] border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                <tr>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
+                  <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الوحدة</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">المخزن</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">السعر</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(d.lines || []).map((l, i) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || l.barcode || "—"}</td>
+                    <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name}</td>
+                    <td className="px-3 py-2.5 text-center text-slate-500">{l.unit_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-center text-slate-500">{l.warehouse_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-center font-mono font-black text-slate-700">{fmtQty(l.quantity)}</td>
+                    <td className="px-3 py-2.5 text-center font-mono text-slate-600">{fmtMoney(l.unit_cost)}</td>
+                    <td className="px-3 py-2.5 text-center font-mono font-black text-slate-700">{fmtMoney(l.quantity * l.unit_cost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-50 rounded-xl border border-slate-200 px-5 py-3">
+            <span className="text-[12px] font-black text-slate-500">إجمالي الكمية</span>
+            <span className="font-black font-mono text-[18px] text-slate-900">
+              {fmtQty((d.lines || []).reduce((s, l) => s + Number(l.quantity || 0), 0))}
+            </span>
+          </div>
+
+          {d.notes && (
+            <div className="rounded-xl border border-slate-200 bg-amber-50 px-4 py-2.5 text-[12px] text-slate-600">
+              <span className="font-black text-slate-500 text-[10px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
+            </div>
+          )}
+        </>
+      )}
+      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+        <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
+        <button onClick={() => onEdit(transfer.id)} className="flex items-center gap-2 rounded-xl bg-slate-800 px-6 py-2 text-[13px] font-black text-white hover:bg-slate-900 transition-colors">
+          <Pencil className="h-4 w-4" /> تعديل المستند
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function BranchTransferTodayModal({ open, onClose }) {
+  const navigate = useNavigate();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [dateFrom, setDateFrom] = useState(toDateInput());
+  const [dateTo, setDateTo] = useState(toDateInput());
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [docSearch, setDocSearch] = useState("");
+  const [itemSearch, setItemSearch] = useState("");
+  const [allItems, setAllItems] = useState([]);
+  const [itemLookupOpen, setItemLookupOpen] = useState(false);
+  const [activeItemIdx, setActiveItemIdx] = useState(0);
+  const [previewTransfer, setPreviewTransfer] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const filteredItemSuggestions = useMemo(() => {
+    if (!itemSearch.trim()) return [];
+    return fuzzyFilterRows(allItems, itemSearch, ["name", "item_code", "barcode"]).slice(0, 8);
+  }, [itemSearch, allItems]);
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
+      if (typeFilter !== "all") params.set("type", typeFilter);
+      if (docSearch.trim()) params.set("search", docSearch.trim());
+      if (itemSearch.trim()) params.set("item_search", itemSearch.trim());
+      const r = await api.get(`/api/branch-transfers?${params}`);
+      setData(r.data.data || []);
+    } catch { toast.error("فشل تحميل البيانات"); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    api.get("/api/items").then(r => setAllItems(r.data.data || [])).catch(() => {});
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(loadData, 300);
+    return () => clearTimeout(t);
+  }, [open, dateFrom, dateTo, typeFilter, docSearch, itemSearch]);
+
+  function handleRowClick(row) {
+    setPreviewTransfer(row);
+    setPreviewOpen(true);
+  }
+
+  function handleEdit(id) {
+    onClose();
+    navigate(`/operations/branch-transfer/edit/${id}`);
+  }
+
+  const columns = [
+    {
+      id: "ref", header: "رقم المستند", width: 170, sortable: true,
+      headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
+      cellClass: "px-3 font-mono text-[12px] font-black text-slate-800",
+      render: (r) => r.reference_no,
+    },
+    {
+      id: "type", header: "النوع", width: 100, sortable: true,
+      headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
+      cellClass: "px-3 text-center",
+      render: (r) => r.type === "receive"
+        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200"><ArrowDownToLine className="h-3 w-3" /> استلام</span>
+        : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200"><ArrowUpFromLine className="h-3 w-3" /> تسليم</span>,
+    },
+    {
+      id: "partner_branch", header: "الفرع", width: 130, sortable: true,
+      headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
+      cellClass: "px-3 text-[12px] font-bold text-slate-600",
+      render: (r) => r.partner_branch || "—",
+    },
+    {
+      id: "line_count", header: "الأصناف", width: 80, sortable: true,
+      headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
+      cellClass: "px-3 text-center text-[12px] font-bold text-slate-600",
+      render: (r) => r.line_count,
+    },
+    {
+      id: "total_qty", header: "الكمية", width: 90, sortable: true,
+      headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
+      cellClass: "px-3 text-center font-mono font-black text-[13px] text-slate-800",
+      render: (r) => fmtQty(r.total_qty),
+    },
+    {
+      id: "created_at", header: "التاريخ والوقت", width: 160, sortable: true,
+      headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
+      cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap",
+      render: (r) => fmtDateTime(r.created_at),
+    },
+    {
+      id: "actions", header: "", width: 60, sortable: false,
+      headerClass: "px-3", cellClass: "px-3",
+      render: (r) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleEdit(r.id); }}
+          className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+          title="تعديل"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <Modal open={open} onClose={onClose} title="مستندات النقل الداخلي" maxWidth="max-w-5xl">
+        <div className="flex flex-col gap-4">
+          {/* Search bar */}
+          <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-xl border border-slate-700 flex-wrap">
+            <span className="text-[11px] font-black text-slate-400 shrink-0">رقم المستند:</span>
+            <input
+              value={docSearch}
+              onChange={e => setDocSearch(e.target.value)}
+              placeholder="BT-R-..."
+              className="w-[160px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-[12px] font-bold text-white outline-none focus:border-slate-400"
+            />
+            <span className="text-[11px] font-black text-slate-400 shrink-0">بحث صنف:</span>
+            <div className="relative flex-1 min-w-[160px]">
+              <input
+                value={itemSearch}
+                onChange={e => { setItemSearch(e.target.value); setItemLookupOpen(true); }}
+                onFocus={() => setItemLookupOpen(true)}
+                onBlur={() => setTimeout(() => setItemLookupOpen(false), 150)}
+                onKeyDown={e => {
+                  if (e.key === "ArrowDown") { e.preventDefault(); setActiveItemIdx(i => Math.min(i + 1, filteredItemSuggestions.length - 1)); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setActiveItemIdx(i => Math.max(i - 1, 0)); }
+                  else if (e.key === "Enter" && filteredItemSuggestions[activeItemIdx]) {
+                    const p = filteredItemSuggestions[activeItemIdx];
+                    setItemSearch(p.item_code || p.name);
+                    setItemLookupOpen(false);
+                  }
+                  else if (e.key === "Escape") setItemLookupOpen(false);
+                }}
+                placeholder="اسم الصنف أو SKU..."
+                className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-[12px] font-bold text-white outline-none focus:border-slate-400"
+              />
+              {itemLookupOpen && filteredItemSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl">
+                  <div className="max-h-[200px] overflow-y-auto p-1">
+                    {filteredItemSuggestions.map((item, i) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setItemSearch(item.item_code || item.name); setItemLookupOpen(false); }}
+                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start ${activeItemIdx === i ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                      >
+                        <Package className="w-4 h-4 text-slate-300 shrink-0" />
+                        <span className="text-[12px] font-bold text-slate-800">{item.name}</span>
+                        <span className="text-[10px] font-mono text-slate-400 mr-auto">{item.item_code || ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <button onClick={() => { setDocSearch(""); setItemSearch(""); }} className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-[11px] font-black text-white hover:bg-slate-600">
+              <X className="h-3 w-3" /> مسح
+            </button>
+            <button onClick={loadData} className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-[11px] font-black text-white hover:bg-slate-600">
+              <RefreshCw className="h-3 w-3" />
+            </button>
+          </div>
+
+          {/* Filters row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 border border-slate-200">
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
+              <span className="text-slate-300 text-[11px]">—</span>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
+            </div>
+            <div className="flex items-center gap-1">
+              {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
+                <button key={v} onClick={() => setTypeFilter(v)}
+                  className={`rounded-full px-4 py-1.5 text-[12px] font-black transition-all ${typeFilter === v ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] font-bold text-slate-400 mr-auto">{data.length} مستند</span>
+          </div>
+
+          {/* Grid */}
+          <DataGrid
+            data={data}
+            rowKey={r => r.id}
+            columns={columns}
+            loading={loading}
+            onRowClick={handleRowClick}
+            emptyMessage="لا توجد مستندات في هذا النطاق"
+            emptyIcon={<Package className="h-10 w-10 text-slate-300 mb-2" />}
+            containerClass="max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 bg-white"
+            className="border-0"
+          />
+        </div>
+      </Modal>
+
+      {/* Detail preview sub-modal */}
+      <Modal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={`تفاصيل المستند — ${previewTransfer?.reference_no || ""}`}
+        maxWidth="max-w-3xl"
+      >
+        <TransferDetailPreview
+          transfer={previewTransfer}
+          onClose={() => setPreviewOpen(false)}
+          onEdit={handleEdit}
+        />
+      </Modal>
+    </>
+  );
+}

@@ -288,8 +288,18 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
               </div>
             </div>
 
-            {/* Payment chips — what was actually paid on this invoice */}
-            {ev.type === "invoice" && ev.chips?.length > 0 && (
+            {/* كامل آجل chip — pure credit invoices */}
+            {ev.type === "invoice" && ev.raw?.payment_type === "credit" && (
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                  كامل آجل
+                  <span className="font-mono text-amber-600">{fmt(ev.raw.total)}</span>
+                </span>
+              </div>
+            )}
+
+            {/* Payment chips — non-credit invoices (cash / installments down payment) */}
+            {ev.type === "invoice" && ev.raw?.payment_type !== "credit" && ev.chips?.length > 0 && (
               <div className="px-4 pb-3 flex flex-wrap gap-1.5">
                 {ev.chips.map((chip, i) => (
                   <span key={i} className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
@@ -297,21 +307,27 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                     <span className="font-mono text-slate-500">{fmt(chip.amount)}</span>
                   </span>
                 ))}
-              </div>
-            )}
-
-            {/* Invoice total + cash paid — for آجل / تقسيط invoices */}
-            {ev.type === "invoice" && (ev.raw?.payment_type === "credit" || ev.raw?.payment_type === "installments") && (
-              <div className="px-4 pb-2 flex items-center gap-4 text-[10px] font-bold text-slate-500">
-                <span>إجمالي الفاتورة: <span className="font-mono font-black text-slate-700">{fmt(ev.raw.total)} ج.م</span></span>
-                {Number(ev.raw.amount_received) > 0 && (
-                  <span>دفع نقداً: <span className="font-mono font-black text-emerald-600">{fmt(ev.raw.amount_received)} ج.م</span></span>
+                {ev.raw?.payment_type === "installments" && ev.impactAmount > 0.005 && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                    آجل (قسط)
+                    <span className="font-mono text-amber-600">{fmt(ev.impactAmount)}</span>
+                  </span>
                 )}
               </div>
             )}
 
-            {/* Installments expandable on آجل / تقسيط invoices */}
-            {ev.type === "invoice" && (ev.raw?.payment_type === "credit" || ev.raw?.payment_type === "installments") && ev.raw?.id && (
+            {/* Invoice total + down payment — for أقساط invoices */}
+            {ev.type === "invoice" && ev.raw?.payment_type === "installments" && (
+              <div className="px-4 pb-2 flex items-center gap-4 text-[10px] font-bold text-slate-500">
+                <span>إجمالي الفاتورة: <span className="font-mono font-black text-slate-700">{fmt(ev.raw.total)} ج.م</span></span>
+                {Number(ev.raw.amount_received) > 0 && (
+                  <span>دفعة مقدم: <span className="font-mono font-black text-emerald-600">{fmt(ev.raw.amount_received)} ج.م</span></span>
+                )}
+              </div>
+            )}
+
+            {/* Installments expandable — only for أقساط, not pure آجل */}
+            {ev.type === "invoice" && ev.raw?.payment_type === "installments" && ev.raw?.id && (
               <div className="px-4 pb-3">
                 <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
               </div>
@@ -792,6 +808,7 @@ export default function CustomerAccountsPage() {
                   <div className="bg-slate-900 text-white px-3 py-3">
                     <div className="flex justify-between text-[10px] mb-1"><span className="text-slate-400">الفرعي</span><span className="font-mono">{fmt(detailData.subtotal)}</span></div>
                     {Number(detailData.discount) > 0 && <div className="flex justify-between text-[10px] mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(detailData.discount)}</span></div>}
+                    {Number(detailData.increase) > 0 && <div className="flex justify-between text-[10px] mb-1"><span className="text-slate-400">إضافة / رسوم</span><span className="font-mono text-amber-300">+ {fmt(detailData.increase)}</span></div>}
                     <div className="flex justify-between text-[13px] font-black border-t border-slate-700 pt-2 mt-2"><span>الإجمالي</span><span className="font-mono">{fmt(detailData.total)} ج.م</span></div>
                   </div>
                 </div>

@@ -1205,7 +1205,15 @@ export default function POSPage() {
           payments: [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank_transfer: "بنك", multi: "متعدد" }[paymentType] || paymentType, amount: totals.total }],
         };
         setLastSavedInvoice(receiptSnap);
-        setSaveSuccess({ invoiceNumber: savedNo, total: formatMoney(totals.total), payments: receiptSnap.payments });
+        setSaveSuccess({
+          invoiceNumber: savedNo,
+          total: formatMoney(totals.total),
+          payments: receiptSnap.payments,
+          customerName: customer?.name || null,
+          customerNewBalance: customer?.id ? Number(customer.balance || 0) : null,
+          discount: Number(discount || 0),
+          increase: Number(increase || 0),
+        });
         setSuccessNavigateTo("/pos");
         setAmendContext(null);
         resetActivation();
@@ -1239,7 +1247,38 @@ export default function POSPage() {
         payments: buildPaymentsSnap(),
       };
       setLastSavedInvoice(receiptSnap);
-      setSaveSuccess({ invoiceNumber: savedInvoiceNo, total: formatMoney(totals.total), payments: receiptSnap.payments });
+      const outstandingAdded =
+        (paymentType === "credit" || paymentType === "installments")
+          ? Math.max(0, totals.total - paidAmountNumber)
+          : paymentType === "multi"
+            ? Number(multiCredit) || 0
+            : 0;
+      const customerNewBalance = customer?.id ? Number(customer.balance || 0) + outstandingAdded : null;
+      setSaveSuccess({
+        invoiceNumber: savedInvoiceNo,
+        total: formatMoney(totals.total),
+        payments: receiptSnap.payments,
+        customerName: customer?.name || null,
+        customerNewBalance,
+        discount: Number(discount || 0),
+        increase: Number(increase || 0),
+      });
+      // Update local stock so next invoice sees current quantities without a reload
+      const soldLines = lines;
+      setStockLevels(prev => {
+        const next = { ...prev };
+        soldLines.forEach(l => {
+          if (l.item_id === -1 || !next[l.item_id]) return;
+          next[l.item_id] = { ...next[l.item_id] };
+          const curr = Number(next[l.item_id][l.warehouse_id] ?? 0);
+          next[l.item_id][l.warehouse_id] = Math.max(0, curr - Number(l.quantity || 0));
+        });
+        return next;
+      });
+      setItems(prev => prev.map(item => {
+        const sold = soldLines.filter(l => l.item_id === item.id).reduce((s, l) => s + Number(l.quantity || 0), 0);
+        return sold ? { ...item, stock_quantity: Math.max(0, Number(item.stock_quantity || 0) - sold) } : item;
+      }));
       setAmendContext(null);
       resetActivation();
       clearActiveDraftFromDB();
@@ -1722,7 +1761,7 @@ export default function POSPage() {
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
               <div className="grid grid-cols-3 gap-2">
-                {PAYMENT_TYPES.map(({ type, label, Icon }) => {
+                {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon }) => {
                   const isWalkIn = !customer || customer.id === null;
                   const isDisabled = isWalkIn && (type === "credit" || type === "installments" || type === "bank_transfer");
                   const isActive = paymentType === type;
@@ -1787,7 +1826,7 @@ export default function POSPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">تاريخ القسط:</span>
-                    <input type="date" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                   </div>
                   {customer && (
                     <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-3 py-1.5 text-center border border-violet-200">
@@ -2679,7 +2718,7 @@ export default function POSPage() {
             {saveMessage}
           </div>
         )}
-        {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} onDismiss={onDismissSaveSuccess} />}
+        {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} customerName={saveSuccess.customerName} customerNewBalance={saveSuccess.customerNewBalance} discount={saveSuccess.discount} increase={saveSuccess.increase} onDismiss={onDismissSaveSuccess} />}
 
         <InvoiceProfitModal
           open={profitModalOpen}
@@ -3024,7 +3063,7 @@ export default function POSPage() {
 
           {/* Cart List */}
           <div className="shrink-0 p-3 bg-[#f8fafb] relative">
-            {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} onDismiss={onDismissSaveSuccess} />}
+            {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} customerName={saveSuccess.customerName} customerNewBalance={saveSuccess.customerNewBalance} discount={saveSuccess.discount} increase={saveSuccess.increase} onDismiss={onDismissSaveSuccess} />}
             {lines.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center opacity-40">
                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-sm mb-5">
@@ -3252,7 +3291,7 @@ export default function POSPage() {
             {/* Payment Methods */}
             <div className="flex flex-col p-3 gap-3 bg-white">
               <div className="grid grid-cols-5 gap-1.5">
-                {PAYMENT_TYPES.map(({ type, label, Icon }) => {
+                {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon }) => {
                   const isWalkIn = !customer || customer.id === null;
                   const isDisabled = isWalkIn && (type === "credit" || type === "installments" || type === "bank_transfer");
                   const isActive = paymentType === type;
@@ -3324,7 +3363,7 @@ export default function POSPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">تاريخ القسط:</span>
-                    <input type="date" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                   </div>
                   <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-3 py-1.5 text-center border border-violet-200">المتبقي كأقساط: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))}</div>
                 </div>
