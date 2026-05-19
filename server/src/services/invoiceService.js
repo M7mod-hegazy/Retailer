@@ -614,12 +614,15 @@ function cancelInvoice(invoiceId, reason, userId) {
   })();
 }
 
-function editInvoice(invoiceId, payload) {
+function editInvoice(invoiceId, payload, userId) {
   const db = getDb();
   return db.transaction(() => {
     const invoice = db.prepare("SELECT * FROM invoices WHERE id = ?").get(invoiceId);
     if (!invoice) { const e = new Error("Invoice not found"); e.status = 404; throw e; }
     if (invoice.status === 'cancelled') { const e = new Error("Cannot edit cancelled invoice"); e.status = 400; throw e; }
+
+    const hasReturn = db.prepare("SELECT 1 FROM sales_returns WHERE invoice_id = ? AND status != 'cancelled' LIMIT 1").get(invoiceId);
+    if (hasReturn) { const e = new Error("لا يمكن تعديل الفاتورة لوجود مرتجعات مرتبطة بها"); e.status = 400; throw e; }
 
     const oldLines = db.prepare("SELECT * FROM invoice_lines WHERE invoice_id = ?").all(invoiceId);
     const oldPaymentType = invoice.payment_type;
@@ -719,12 +722,14 @@ function editInvoice(invoiceId, payload) {
     const newStatus = remainingAmount > 0 ? (amountReceived > 0 ? 'partial' : 'unpaid') : 'paid';
     db.prepare(`
       UPDATE invoices SET customer_id = ?, subtotal = ?, discount = ?, increase = ?, total = ?,
-        payment_type = ?, amount_received = ?, status = ?, seller_id = ?
+        payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = CURRENT_TIMESTAMP,
+        updated_by = ?
       WHERE id = ?
     `).run(
       newCustomerId, subtotal, discount, increase, newTotal,
       newPaymentType, amountReceived, newStatus,
       payload.seller_id ? Number(payload.seller_id) : invoice.seller_id,
+      userId || null,
       invoiceId,
     );
 

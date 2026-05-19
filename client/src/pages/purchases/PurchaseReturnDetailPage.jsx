@@ -110,8 +110,8 @@ export default function PurchaseReturnDetailPage() {
 
   function handleAmend() {
     if (!doc) return;
-    navigate("/purchases/returns/amend", {
-      state: { amend_return_id: doc.id, original: doc },
+    navigate("/purchases/returns/new", {
+      state: { edit_return_id: doc.id, original: doc },
     });
   }
 

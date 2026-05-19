@@ -571,8 +571,8 @@ export default function POSPage() {
   }, []);
 
   // Restore active cart and held invoices from DB on mount.
-  // Skip cart restore when entering amend mode — the amend prefill owns the cart.
-  useEffect(() => { if (!location.state?.amend_invoice_id) loadDraftsFromDB(); }, []);
+  // Skip cart restore when entering edit mode — the edit prefill owns the cart.
+  useEffect(() => { if (!location.state?.edit_invoice_id) loadDraftsFromDB(); }, []);
 
   // Debounced sync of active cart to DB (1.5s after last change)
   const syncTimerRef = useRef(null);
@@ -639,11 +639,11 @@ export default function POSPage() {
     setStaging((s) => ({ ...s, warehouseId: s.warehouseId || String(warehouses[0].id) }));
   }, [warehouses]);
 
-  // Amend context — persisted in state so it survives history.replaceState
-  const [amendContext, setAmendContext] = useState(null); // { amend_invoice_id, amend_reason, prefill }
+  // Edit context — persisted in state so it survives history.replaceState
+  const [amendContext, setAmendContext] = useState(null); // { edit_invoice_id, prefill }
   const [showAmendSummary, setShowAmendSummary] = useState(true);
 
-  // Map of (item_id, warehouse_id) -> original quantity from the invoice being amended
+  // Map of (item_id, warehouse_id) -> original quantity from the invoice being edited
   const amendOriginalQty = useMemo(() => {
     if (!amendContext?.prefill?.lines) return {};
     const map = {};
@@ -654,10 +654,10 @@ export default function POSPage() {
     return map;
   }, [amendContext]);
 
-  // Pre-fill cart when navigated from invoice amend flow
+  // Pre-fill cart when navigated from invoice edit flow
   useEffect(() => {
     const amendState = location.state;
-    if (!amendState?.amend_invoice_id || !amendState?.prefill) return;
+    if (!amendState?.edit_invoice_id || !amendState?.prefill) return;
     const { prefill } = amendState;
     clear();
     // Set amendContext FIRST so stock warnings are suppressed before lines are added
@@ -690,12 +690,44 @@ export default function POSPage() {
     setCustomerQuery(prefill.customer_name || "");
   }, [amendContext, customers]);
 
-  // Store amend context for use during submit
-  const amendInvoiceId = amendContext?.amend_invoice_id || null;
-  const amendReason = amendContext?.amend_reason || null;
+  // Pre-fill payment fields when opening an edit — runs after customPayMethods are loaded
+  const paymentPrefillApplied = React.useRef(false);
+  useEffect(() => {
+    if (!amendContext?.prefill || !customPayMethods.length) return;
+    if (paymentPrefillApplied.current) return;
+    paymentPrefillApplied.current = true;
+    const { prefill } = amendContext;
+    if (prefill.payment_type === "installments") {
+      if (prefill.amount_received > 0) setAmountPaid(String(prefill.amount_received));
+    } else if (prefill.payment_type === "multi" && prefill.allocations?.length) {
+      let cash = 0, credit = 0;
+      const customAmts = {};
+      for (const alloc of prefill.allocations) {
+        if (alloc.method === "cash") cash = Number(alloc.amount);
+        else if (alloc.method === "credit") credit = Number(alloc.amount);
+        else {
+          const match = customPayMethods.find(m =>
+            m.name === alloc.method || m.name === alloc.method_name
+          );
+          if (match) customAmts[match.id] = Number(alloc.amount);
+        }
+      }
+      if (cash > 0) setMultiCash(String(cash));
+      if (credit > 0) setMultiCredit(String(credit));
+      if (Object.keys(customAmts).length) setMultiCustomAmounts(customAmts);
+    }
+    if (prefill.treasury_id) setSelectedTreasuryId(String(prefill.treasury_id));
+    if (prefill.bank_id) setSelectedBankId(String(prefill.bank_id));
+  }, [amendContext, customPayMethods]);
 
-  // Read amend seed directly from location.state (available on first render, before the effect sets amendContext)
-  const _amendSeed = location.state?.amend_invoice_id && location.state?.prefill?.invoice_no
+  // Reset the payment prefill guard when edit context clears
+  useEffect(() => { if (!amendContext) paymentPrefillApplied.current = false; }, [amendContext]);
+
+  // Store edit context for use during submit
+  const amendInvoiceId = amendContext?.edit_invoice_id || null;
+
+  // Read edit seed directly from location.state (available on first render, before the effect sets amendContext)
+  const _amendSeed = location.state?.edit_invoice_id && location.state?.prefill?.invoice_no
     ? { docNo: location.state.prefill.invoice_no, createdAt: location.state.prefill.created_at }
     : null;
 
@@ -1189,10 +1221,9 @@ export default function POSPage() {
       };
       let response;
       if (amendInvoiceId) {
-        const amendPayload = amendReason ? { ...payload, reason: amendReason } : payload;
-        response = await api.put(`/api/invoices/${amendInvoiceId}/amend`, amendPayload);
+        response = await api.put(`/api/invoices/${amendInvoiceId}`, payload);
         const savedData = response.data?.data;
-        const savedNo = savedData?.new_invoice?.invoice_no || savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
+        const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
         const receiptSnap = {
           invoice_no: savedNo, date: new Date(), lines: [...lines],
           customer: customer ? { ...customer } : null, totals: { ...totals },
@@ -1727,7 +1758,7 @@ export default function POSPage() {
                   <div className="space-y-1 text-[11px] font-bold text-amber-800">
                     {/* Locked fields — preserved by in-place edit */}
                     <div className="flex gap-1.5 mb-2">
-                      <input disabled value={amendContext.prefill?.invoice_no || `#${amendContext.amend_invoice_id}`}
+                      <input disabled value={amendContext.prefill?.invoice_no || `#${amendContext.edit_invoice_id}`}
                         className="flex-1 h-7 rounded-sm border border-amber-200 bg-amber-100/60 px-2 text-[11px] font-mono font-black text-amber-700 cursor-not-allowed outline-none" />
                       <input disabled value={amendContext.prefill?.created_at ? new Date(amendContext.prefill.created_at).toLocaleString("ar-EG") : ""}
                         className="flex-1 h-7 rounded-sm border border-amber-200 bg-amber-100/60 px-2 text-[11px] font-mono font-black text-amber-700 cursor-not-allowed outline-none" />
@@ -1748,9 +1779,6 @@ export default function POSPage() {
                       <span className="text-amber-600">الدفع</span>
                       <span>{{cash:"نقدي",credit:"آجل",bank_transfer:"بنك/فيزا",installments:"أقساط",multi:"متعدد"}[amendContext.prefill?.payment_type] || amendContext.prefill?.payment_type || "—"}</span>
                     </div>
-                    {amendContext.amend_reason && (
-                      <div className="flex justify-between"><span className="text-amber-600">السبب</span><span className="text-right max-w-[60%]">{amendContext.amend_reason}</span></div>
-                    )}
                     <div className="flex justify-between"><span className="text-amber-600">بواسطة</span><span>{amendContext.prefill?.created_by_username || "—"}</span></div>
                   </div>
                 )}
@@ -1820,13 +1848,15 @@ export default function POSPage() {
                   <div className="text-[11px] font-black text-violet-700 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" /> إعداد الأقساط
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">دفعة مقدم:</span>
-                    <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="flex-1 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">تاريخ القسط:</span>
-                    <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                  <div className="flex flex-col divide-y divide-violet-100/60">
+                    <div className="flex items-center gap-3 py-2 first:pt-0">
+                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600">💰 دفعة مقدم</span>
+                      <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    </div>
+                    <div className="flex items-center gap-3 py-2 last:pb-0">
+                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600">📅 تاريخ استحقاق القسط</span>
+                      <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="w-36 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    </div>
                   </div>
                   {customer && (
                     <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-3 py-1.5 text-center border border-violet-200">
@@ -1836,31 +1866,45 @@ export default function POSPage() {
                 </div>
               )}
               {paymentType === "multi" && (
-                <div className="mt-4 flex flex-col gap-2.5 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
-                  <div className="text-[11px] font-black text-slate-600 mb-0.5 flex items-center gap-1.5">
+                <div className="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
+                  <div className="text-[11px] font-black text-slate-600 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                   </div>
-                  <div className="max-h-[160px] overflow-y-auto custom-scrollbar flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-slate-500 w-24 shrink-0 whitespace-nowrap truncate">نقدي:</span>
-                      <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                  <div className="flex flex-col divide-y divide-slate-100">
+                    {/* Cash */}
+                    <div className="flex items-center gap-3 py-2 first:pt-0">
+                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug">💵 نقدي</span>
+                      <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
+                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     </div>
+                    {/* Custom methods */}
                     {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
-                      <div key={m.id} className="flex items-center gap-2">
-                        <span className="text-[11px] font-black text-slate-500 w-24 shrink-0 whitespace-nowrap truncate" title={`${m.icon} ${m.name}`}>{m.icon} {m.name}:</span>
-                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                      <div key={m.id} className="flex items-center gap-3 py-2">
+                        <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
+                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
+                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                       </div>
                     ))}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-slate-500 w-24 shrink-0 whitespace-nowrap truncate">آجل:</span>
-                      <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)} placeholder={customer?.id ? "0.00" : "اختر عميل..."} disabled={!customer?.id} className={`flex-1 min-w-0 rounded-lg px-3 py-1.5 text-[12px] font-black outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                    {/* Credit */}
+                    <div className="flex items-center gap-3 py-2 last:pb-0">
+                      <span className={`flex-1 min-w-0 text-[12px] font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                      <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
+                        placeholder={customer?.id ? "0.00" : "اختر عميل..."}
+                        disabled={!customer?.id}
+                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
                     </div>
                   </div>
-                  <div className={`text-center text-[11px] font-black rounded-lg py-1.5 border ${Math.abs(
-                    (Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0) - totals.total
-                  ) < 0.01 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
-                    المُدخل: {formatMoney((Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0))} / {formatMoney(totals.total)}
-                  </div>
+                  {/* Total bar */}
+                  {(() => {
+                    const entered = (Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0);
+                    const balanced = Math.abs(entered - totals.total) < 0.01;
+                    return (
+                      <div className={`flex items-center justify-between rounded-lg px-3 py-2 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                        <span>المُدخل</span>
+                        <span className="font-mono">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -2793,9 +2837,6 @@ export default function POSPage() {
               {amendContext.prefill?.payment_type && (
                 <span>{{cash:"نقدي",credit:"آجل",bank_transfer:"بنك/فيزا",installments:"أقساط",multi:"متعدد"}[amendContext.prefill.payment_type] || amendContext.prefill.payment_type}</span>
               )}
-              {amendContext.amend_reason && (
-                <span className="text-amber-600">السبب: {amendContext.amend_reason}</span>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -3369,31 +3410,41 @@ export default function POSPage() {
                 </div>
               )}
               {paymentType === "multi" && (
-                <div className="flex flex-col gap-2.5 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
-                  <div className="text-[11px] font-black text-slate-600 mb-0.5 flex items-center gap-1.5">
+                <div className="flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
+                  <div className="text-[11px] font-black text-slate-600 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-slate-500 w-24 shrink-0 whitespace-nowrap truncate">نقدي:</span>
-                      <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                  <div className="flex flex-col divide-y divide-slate-100">
+                    <div className="flex items-center gap-3 py-2 first:pt-0">
+                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug">💵 نقدي</span>
+                      <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
+                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     </div>
                     {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
-                      <div key={m.id} className="flex items-center gap-2">
-                        <span className="text-[11px] font-black text-slate-500 w-24 shrink-0 whitespace-nowrap truncate" title={`${m.icon} ${m.name}`}>{m.icon} {m.name}:</span>
-                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                      <div key={m.id} className="flex items-center gap-3 py-2">
+                        <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
+                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
+                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                       </div>
                     ))}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-slate-500 w-24 shrink-0 whitespace-nowrap truncate">آجل:</span>
-                      <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)} placeholder={customer?.id ? "0.00" : "اختر عميل..."} disabled={!customer?.id} className={`flex-1 min-w-0 rounded-lg px-3 py-1.5 text-[13px] font-black outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                    <div className="flex items-center gap-3 py-2 last:pb-0">
+                      <span className={`flex-1 min-w-0 text-[12px] font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                      <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
+                        placeholder={customer?.id ? "0.00" : "اختر عميل..."}
+                        disabled={!customer?.id}
+                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
                     </div>
                   </div>
-                  <div className={`text-center text-[11px] font-black rounded-lg py-1.5 border ${Math.abs(
-                    (Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0) - totals.total
-                  ) < 0.01 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
-                    الإجمالي المُدخل: {formatMoney((Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0))} من {formatMoney(totals.total)}
-                  </div>
+                  {(() => {
+                    const entered = (Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0);
+                    const balanced = Math.abs(entered - totals.total) < 0.01;
+                    return (
+                      <div className={`flex items-center justify-between rounded-lg px-3 py-2 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                        <span>المُدخل</span>
+                        <span className="font-mono">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

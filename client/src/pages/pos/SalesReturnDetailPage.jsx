@@ -111,9 +111,9 @@ export default function SalesReturnDetailPage() {
 
   function handleAmend() {
     if (!doc) return;
-    navigate("/pos/sales-returns/amend", {
+    navigate("/sales/returns/new", {
       state: {
-        amend_return_id: doc.id,
+        edit_return_id: doc.id,
         original: doc,
       },
     });

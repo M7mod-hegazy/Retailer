@@ -94,9 +94,7 @@ export default function InvoiceDetailPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [timeline, setTimeline] = useState([]);
 
-  // Cancel / amend modals
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [amendOpen, setAmendOpen] = useState(false);
 
   useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
@@ -151,12 +149,11 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  function handleAmendStart(reason) {
+  function handleEdit() {
     if (!invoice) return;
     navigate("/pos", {
       state: {
-        amend_invoice_id: invoice.id,
-        amend_reason: reason,
+        edit_invoice_id: invoice.id,
         prefill: {
           customer_id: invoice.customer_id,
           customer_name: invoice.customer_name,
@@ -177,6 +174,10 @@ export default function InvoiceDetailPage() {
           invoice_no: invoice.invoice_no,
           created_at: invoice.created_at,
           created_by_username: invoice.created_by_username || null,
+          allocations: invoice.allocations || [],
+          amount_received: invoice.amount_received || 0,
+          treasury_id: invoice.treasury_id || null,
+          bank_id: invoice.bank_id || null,
         },
       },
     });
@@ -253,7 +254,7 @@ export default function InvoiceDetailPage() {
           {!isCancelled && !isAmended && (
             <PermissionGate page="pos" action="edit">
               <button
-                onClick={() => setAmendOpen(true)}
+                onClick={handleEdit}
                 className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all"
               >
                 <Pencil className="h-4 w-4" /> تعديل الفاتورة
@@ -408,14 +409,6 @@ export default function InvoiceDetailPage() {
           title={`إلغاء الفاتورة ${invoice.invoice_no}`}
           onConfirm={handleCancel}
           onClose={() => setCancelOpen(false)}
-        />
-      )}
-
-      {amendOpen && (
-        <CancelReasonModal
-          title={`تعديل الفاتورة ${invoice.invoice_no}`}
-          onConfirm={(reason) => { setAmendOpen(false); handleAmendStart(reason); }}
-          onClose={() => setAmendOpen(false)}
         />
       )}
 

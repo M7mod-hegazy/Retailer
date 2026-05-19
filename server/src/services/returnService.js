@@ -414,7 +414,7 @@ function editSalesReturn(returnId, payload, userId) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, refund_method = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ? WHERE id = ?"
+      "UPDATE sales_returns SET total = ?, refund_method = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ).run(newTotal, newRefundMethod, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, returnId);
 
     // 7. Recalculate linked invoice status

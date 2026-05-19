@@ -299,7 +299,8 @@ router.get("/:id", requirePagePermission("pos", "view"), (req, res, next) => {
 
 router.put("/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
   try {
-    const result = editInvoice(Number(req.params.id), req.body);
+    const userId = req.user?.id ? Number(req.user.id) : null;
+    const result = editInvoice(Number(req.params.id), req.body, userId);
     req.audit("edit", "invoice", { id: Number(req.params.id) }, `🧾 تم تعديل فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }

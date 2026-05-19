@@ -541,6 +541,9 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       if (!purchase) { const e = new Error("Purchase not found"); e.status = 404; throw e; }
       if (purchase.status === "voided") { const e = new Error("Cannot edit a voided purchase"); e.status = 400; throw e; }
 
+      const hasReturn = db.prepare("SELECT 1 FROM purchase_return_lines prl JOIN purchase_lines pl ON pl.id = prl.purchase_line_id WHERE pl.purchase_id = ? LIMIT 1").get(purchase.id);
+      if (hasReturn) { const e = new Error("لا يمكن تعديل الفاتورة لوجود مرتجعات مرتبطة بها"); e.status = 400; throw e; }
+
       const payload = req.body || {};
       const oldTotal = Number(purchase.total);
       const oldPaymentMethod = purchase.payment_method || "cash";
@@ -594,7 +597,7 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       }
 
       // 4. Update purchase header
-      db.prepare("UPDATE purchases SET total = ?, supplier_id = ? WHERE id = ?")
+      db.prepare("UPDATE purchases SET total = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
         .run(newTotal, payload.supplier_id || purchase.supplier_id, purchase.id);
 
       // 5. Update selling prices if changed
@@ -1000,7 +1003,7 @@ function editPurchaseReturn(db, returnId, payload) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE purchase_returns SET total = ?, settlement_type = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ? WHERE id = ?"
+      "UPDATE purchase_returns SET total = ?, settlement_type = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ).run(newTotal, newSettlement, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, returnId);
 
     return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(returnId);
