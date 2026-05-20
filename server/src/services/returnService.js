@@ -315,6 +315,7 @@ function getReturns() {
     FROM sales_returns sr
     LEFT JOIN customers c ON c.id = sr.customer_id
     LEFT JOIN invoices i ON i.id = sr.invoice_id
+    WHERE sr.status != 'cancelled'
     ORDER BY sr.id DESC
   `).all();
 }

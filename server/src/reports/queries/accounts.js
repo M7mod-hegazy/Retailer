@@ -18,7 +18,7 @@ function arAging(startDate, endDate, opts = {}) {
       COALESCE(SUM(CASE WHEN i.status != 'paid' AND julianday('now') - julianday(i.created_at) > 90 THEN i.total ELSE 0 END), 0) AS aging_90_plus,
       MAX(DATE(i.created_at)) AS last_invoice_date
     FROM customers c
-    LEFT JOIN invoices i ON i.customer_id = c.id
+    LEFT JOIN invoices i ON i.customer_id = c.id AND i.status != 'cancelled'
     WHERE 1=1 ${customer_id ? " AND c.id = ?" : ""}
     GROUP BY c.id
     ORDER BY total_due DESC
@@ -41,7 +41,7 @@ function apAging(startDate, endDate, opts = {}) {
       COALESCE(SUM(CASE WHEN (p.status IS NULL OR p.status != 'paid') AND julianday('now') - julianday(p.created_at) > 90 THEN p.total ELSE 0 END), 0) AS aging_90_plus,
       MAX(DATE(p.created_at)) AS last_purchase_date
     FROM suppliers s
-    LEFT JOIN purchases p ON p.supplier_id = s.id
+    LEFT JOIN purchases p ON p.supplier_id = s.id AND p.status != 'cancelled'
     WHERE 1=1 ${supplier_id ? " AND s.id = ?" : ""}
     GROUP BY s.id
     ORDER BY total_due DESC
@@ -95,7 +95,8 @@ function customerStatement(startDate, endDate, opts = {}) {
     SELECT i.invoice_no AS ref_no, DATE(i.created_at) AS date,
       'فاتورة' AS type, i.total AS amount, i.status
     FROM invoices i
-    WHERE i.customer_id = ? ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE i.customer_id = ? AND i.status != 'cancelled'
+      ${addDateFilter("i.created_at", startDate, endDate, params)}
     UNION ALL
     SELECT p.reference_number AS ref_no, DATE(p.created_at) AS date,
       'دفعة' AS type, -p.amount AS amount, 'paid' AS status
@@ -153,9 +154,9 @@ function collectionEfficiency(startDate, endDate, opts = {}) {
       CASE WHEN SUM(i.total) > 0
         THEN ROUND((SUM(CASE WHEN i.status = 'paid' THEN i.total ELSE 0 END) / SUM(i.total)) * 100, 1)
         ELSE 0 END AS collection_rate,
-      ROUND(AVG(CASE WHEN i.status = 'paid' THEN julianday(i.updated_at) - julianday(i.created_at) ELSE NULL END), 1) AS days_to_collect
+      ROUND(AVG(CASE WHEN i.status = 'paid' AND i.paid_at IS NOT NULL THEN julianday(i.paid_at) - julianday(i.created_at) ELSE NULL END), 1) AS days_to_collect
     FROM customers c
-    LEFT JOIN invoices i ON i.customer_id = c.id
+    LEFT JOIN invoices i ON i.customer_id = c.id AND i.status != 'cancelled'
       AND DATE(i.created_at) >= ? AND DATE(i.created_at) <= ?
     WHERE 1=1 ${customer_id ? " AND c.id = ?" : ""}
     GROUP BY c.id
@@ -175,7 +176,8 @@ function supplierStatement(startDate, endDate, opts = {}) {
     SELECT p.purchase_no AS ref_no, DATE(p.created_at) AS date,
       'مشتريات' AS type, p.total AS amount, p.status
     FROM purchases p
-    WHERE p.supplier_id = ? ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.supplier_id = ? AND p.status != 'cancelled'
+      ${addDateFilter("p.created_at", startDate, endDate, params)}
     ORDER BY date ASC
   `).all(supplierId, ...params);
   let running = supplier.opening_balance;

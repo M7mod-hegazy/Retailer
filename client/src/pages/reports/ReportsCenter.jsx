@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Star, Play, Settings2, Filter, Trash2, CalendarDays, LayoutTemplate, Percent } from "lucide-react";
-import { reportsApi } from "../../services/reports";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
-import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS, FILTER_DIMENSIONS } from "./reportsCenterConfig";
+import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS, FILTER_DIMENSIONS, CLASSIFICATIONS } from "./reportsCenterConfig";
 import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, GhostPreviewRows, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -133,14 +131,7 @@ export default function ReportsCenter() {
   const defaultFrom = useMemo(() => fmtDate(new Date(today.getFullYear(), today.getMonth(), 1)), [today]);
   const defaultTo = useMemo(() => fmtDate(today), [today]);
 
-  const { data: registry, isLoading: registryLoading } = useQuery({
-    queryKey: ["report-registry"],
-    queryFn: () => reportsApi.fetchRegistry(),
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
-
-  const classificationsBySource = registry?.classifications || {};
+  const classificationsBySource = CLASSIFICATIONS;
 
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("all");
@@ -419,7 +410,6 @@ export default function ReportsCenter() {
                 </h3>
                 <select
                   value={selectedClassification}
-                  disabled={registryLoading}
                   onChange={(e) => {
                     const clsId = e.target.value;
                     setSourceState((prev) => ({
@@ -427,15 +417,11 @@ export default function ReportsCenter() {
                       [selectedSource.id]: { classification: clsId, dataMode: prev[selectedSource.id]?.dataMode || getDefaultMode(selectedSource.id, clsId) },
                     }));
                   }}
-                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all disabled:opacity-60"
+                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                 >
-                  {registryLoading ? (
-                    <option value="">جاري التحميل...</option>
-                  ) : (
-                    selectedClassifications.map((cls) => (
-                      <option key={cls.id} value={cls.id}>{clsLabel(cls)}</option>
-                    ))
-                  )}
+                  {selectedClassifications.map((cls) => (
+                    <option key={cls.id} value={cls.id}>{clsLabel(cls)}</option>
+                  ))}
                 </select>
               </div>
 

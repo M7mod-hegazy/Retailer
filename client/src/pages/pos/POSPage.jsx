@@ -65,6 +65,8 @@ import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -641,6 +643,9 @@ export default function POSPage() {
 
   // Edit context — persisted in state so it survives history.replaceState
   const [amendContext, setAmendContext] = useState(null); // { edit_invoice_id, prefill }
+
+  const isDirty = lines.length > 0 || !!customer;
+  const { blocker } = useUnsavedChangesGuard(isDirty);
   const [showAmendSummary, setShowAmendSummary] = useState(true);
 
   // Map of (item_id, warehouse_id) -> original quantity from the invoice being edited
@@ -2785,6 +2790,11 @@ export default function POSPage() {
           onClose={() => setCustomerInfoOpen(false)}
           onUpdated={(updated) => { setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c)); setCustomer(updated); setCustomerQuery(updated.name); }}
         />
+        <UnsavedChangesModal
+          open={blocker.state === "blocked"}
+          onStay={() => blocker.reset?.()}
+          onLeave={() => blocker.proceed?.()}
+        />
       </div>
     );
   }
@@ -3904,6 +3914,12 @@ export default function POSPage() {
           </div>
         </div>
       </Modal>
+
+      <UnsavedChangesModal
+        open={blocker.state === "blocked"}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
     </div>
   );
 }

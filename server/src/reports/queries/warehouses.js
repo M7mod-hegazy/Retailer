@@ -28,7 +28,7 @@ function warehouseLevels(startDate, endDate, opts = {}) {
     SELECT w.name AS warehouse_name,
       COUNT(DISTINCT sl.item_id) AS item_count,
       COALESCE(SUM(sl.quantity), 0) AS total_quantity,
-      COALESCE(SUM(sl.quantity * it.purchase_price), 0) AS total_value,
+      COALESCE(SUM(sl.quantity * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price)), 0) AS total_value,
       COUNT(DISTINCT CASE WHEN sl.quantity <= COALESCE(it.min_stock_qty, 0) THEN sl.item_id END) AS low_stock_items
     FROM warehouses w
     LEFT JOIN stock_levels sl ON sl.warehouse_id = w.id

@@ -46,6 +46,38 @@ function parsePaymentSplits(splits) {
 
 const PMETHOD_LABEL = { cash: "نقداً", credit: "آجل", bank_transfer: "تحويل بنكي", multi: "متعدد", future_due: "استحقاق لاحق" };
 
+// Parse ALL splits including credit — used for متعدد display
+function parseAllPaymentSplits(splits) {
+  if (!splits) return [];
+  return splits.split("|||").map(s => {
+    const idx = s.indexOf(":");
+    if (idx === -1) return null;
+    const method = s.slice(0, idx).trim();
+    const amount = Number(s.slice(idx + 1));
+    return { method, amount };
+  }).filter(Boolean).filter(s => s.amount > 0.005);
+}
+
+// Per-method color tokens (shared with customer page pattern)
+const S_METHOD_STYLE = {
+  cash:          { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
+  card:          { bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200",    dot: "bg-blue-500" },
+  bank:          { bg: "bg-sky-50",     text: "text-sky-700",     border: "border-sky-200",     dot: "bg-sky-500" },
+  bank_transfer: { bg: "bg-sky-50",     text: "text-sky-700",     border: "border-sky-200",     dot: "bg-sky-500" },
+  credit:        { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   dot: "bg-amber-500" },
+  installments:  { bg: "bg-violet-50",  text: "text-violet-700",  border: "border-violet-200",  dot: "bg-violet-500" },
+  wallet:        { bg: "bg-purple-50",  text: "text-purple-700",  border: "border-purple-200",  dot: "bg-purple-500" },
+  default:       { bg: "bg-slate-50",   text: "text-slate-700",   border: "border-slate-200",   dot: "bg-slate-400" },
+};
+const sms = (method) => S_METHOD_STYLE[method] || S_METHOD_STYLE.default;
+
+const S_TYPE_ACCENT = {
+  purchase:   "border-r-orange-400",
+  payment:    "border-r-emerald-400",
+  return:     "border-r-rose-400",
+  adjustment: "border-r-amber-400",
+};
+
 function InstallmentsBadge({ debtId }) {
   const [open, setOpen] = useState(false);
   const [schedules, setSchedules] = useState(null);
@@ -118,12 +150,25 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
         if (chips.length === 0 && d.payment_type !== "credit" && received > 0) {
           chips = [{ method: d.payment_type, amount: received }];
         }
+        // For متعدد: parse ALL splits (incl. credit) so آجل is never lost
+        const allChips = d.payment_type === "multi"
+          ? parseAllPaymentSplits(d.payment_splits)
+          : chips;
+        // Original آجل amount from splits (permanent, even if debt later paid off)
+        const ajalChipAmount = d.payment_type === "multi"
+          ? (allChips.find(c => c.method === "credit")?.amount || 0)
+          : 0;
         items.push({
           id: `pur-${d.id}`,
           type: "purchase",
           date: new Date(d.created_at),
           ref: d.doc_no || `#${d.id}`,
           chips,
+          allChips,
+          // Full purchase amount shown on card; balance impact only for أجل portion
+          invoiceTotal: total,
+          ajalAmount,
+          ajalChipAmount,
           impactAmount: ajalAmount,
           impactDir: ajalAmount > 0.005 ? "add" : null,
           raw: d,
@@ -206,94 +251,187 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
   );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {events.map(ev => {
+        // ── Opening balance row
         if (ev.type === "opening") {
           return (
-            <div key="opening" className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-slate-200 flex items-center justify-center">
+            <div key="opening" className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
                   <FileText className="h-3.5 w-3.5 text-slate-500" />
                 </div>
-                <span className="text-[11px] font-black text-slate-500">رصيد افتتاحي</span>
+                <div>
+                  <div className="text-[11px] font-black text-slate-600">رصيد افتتاحي</div>
+                  <div className="text-[9px] text-slate-400 font-bold">قبل هذه الفترة</div>
+                </div>
               </div>
-              <span className={`text-[13px] font-black font-mono ${ev.impactDir === "add" ? "text-rose-500" : "text-emerald-600"}`}>
-                {ev.impactDir === "add" ? "+" : "−"} {fmt(ev.impactAmount)} <span className="text-[10px] opacity-60">ج.م</span>
-              </span>
+              <div className="text-end">
+                <div className={`text-[15px] font-black font-mono ${ev.impactDir === "add" ? "text-rose-600" : "text-emerald-600"}`}>
+                  {ev.impactDir === "add" ? "+" : "−"}{fmt(ev.impactAmount)}
+                </div>
+                <div className="text-[9px] font-bold text-slate-400">ج.م</div>
+              </div>
             </div>
           );
         }
 
         const cfg = EVENT_TYPES[ev.type];
         const Icon = cfg.icon;
-        const hasImpact = ev.impactDir && ev.impactAmount > 0.005;
+        const ptype = ev.raw?.payment_type;
+        const isMulti = ptype === "multi";
+        const isCredit = ptype === "credit";
+        const isInstallments = ptype === "installments";
+        const isDocRow = ev.type === "purchase";
+
+        // For متعدد: use ajalChipAmount (from payment_splits, permanent)
+        const multiAjalAmount = isMulti ? (ev.ajalChipAmount || 0) : 0;
+        const hasImpact = isMulti
+          ? multiAjalAmount > 0.005
+          : (ev.impactDir && ev.impactAmount > 0.005);
+        const displayImpactAmount = isMulti ? multiAjalAmount : ev.impactAmount;
+
+        // For متعدد: use allChips which includes credit from payment_splits directly
+        const multiChips = isMulti ? (ev.allChips || []) : [];
+        const creditChips = isCredit ? [{ method: "credit", amount: ev.raw?.total }] : [];
+        const installChips = isInstallments ? [
+          ...(ev.chips || []),
+          ...(ev.ajalAmount > 0.005 ? [{ method: "credit", amount: ev.ajalAmount }] : []),
+        ] : [];
+        const singleChips = !isMulti && !isCredit && !isInstallments && ev.chips?.length > 0 ? ev.chips : [];
+        const renderChips = isMulti ? multiChips : isCredit ? creditChips : isInstallments ? installChips : singleChips;
 
         return (
-          <div key={ev.id} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3">
-              <div className={`h-9 w-9 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0`}>
+          <div key={ev.id}
+            className={`rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden border-r-4 ${S_TYPE_ACCENT[ev.type] || "border-r-slate-200"}`}
+          >
+            {/* ── Top row */}
+            <div className="flex items-center gap-3 px-3.5 py-3">
+              <div className={`h-8 w-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`h-4 w-4 ${cfg.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
-                  <span className="text-[11px] font-black text-slate-700 font-mono">{ev.ref}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${cfg.bg} ${cfg.color}`}>
+                    {cfg.label}
+                  </span>
+                  <span className="text-[12px] font-black text-slate-800 font-mono tracking-tight">
+                    {ev.ref}
+                  </span>
+                  {!isDocRow && ev.methodLabel && (
+                    <span className="text-[10px] font-bold text-slate-500">{ev.methodLabel}</span>
+                  )}
                 </div>
-                {ev.methodLabel && <div className="text-[10px] text-slate-500 font-bold mt-0.5">{ev.methodLabel}</div>}
-                {ev.description && <div className="text-[10px] text-slate-400 mt-0.5 truncate">{ev.description}</div>}
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[10px] text-slate-400 font-bold">{fmtDate(ev.date)}</span>
-                {ev.type === "purchase" && (
-                  <button onClick={() => onOpenPurchase(ev.raw)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors">
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {ev.type === "return" && (
-                  <button onClick={() => onOpenReturn(ev.raw)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
+                {ev.description && (
+                  <div className="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{ev.description}</div>
                 )}
               </div>
+              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                {isDocRow && (
+                  <div className="text-end">
+                    <div className="text-[9px] font-bold text-slate-400 mb-0">إجمالي الفاتورة</div>
+                    <div className="text-[14px] font-black font-mono text-slate-800 leading-none">
+                      {fmt(ev.invoiceTotal)}
+                      <span className="text-[10px] font-bold text-slate-400 mr-0.5">ج.م</span>
+                    </div>
+                  </div>
+                )}
+                {!isDocRow && (
+                  <div className={`text-[13px] font-black font-mono ${
+                    ev.impactDir === "subtract" ? "text-emerald-700" : "text-rose-600"
+                  }`}>
+                    {fmt(ev.impactAmount)}
+                    <span className="text-[10px] font-bold opacity-60 mr-0.5">ج.م</span>
+                  </div>
+                )}
+                <div className="text-[10px] text-slate-400 font-bold">{fmtDate(ev.date)}</div>
+              </div>
+              {ev.type === "purchase" && (
+                <button onClick={() => onOpenPurchase(ev.raw)}
+                  className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors shrink-0">
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {ev.type === "return" && (
+                <button onClick={() => onOpenReturn(ev.raw)}
+                  className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0">
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
-            {ev.type === "purchase" && ev.chips?.length > 0 && (
-              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                {ev.chips.map((chip, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
-                    {arMethod(chip.method)}
-                    <span className="font-mono text-slate-500">{fmt(chip.amount)}</span>
+            {/* ── Payment methods section */}
+            {isDocRow && renderChips.length > 0 && (
+              <div className="border-t border-slate-100">
+                {/* Total summary bar */}
+                <div className="flex items-center justify-between px-3.5 py-2 bg-slate-50 border-b border-slate-100">
+                  <span className="text-[10px] font-black text-slate-500">إجمالي الفاتورة</span>
+                  <span className="text-[15px] font-black font-mono text-slate-900">
+                    {fmt(ev.invoiceTotal)}
+                    <span className="text-[10px] font-bold text-slate-400 mr-1">ج.م</span>
                   </span>
-                ))}
+                </div>
+                <div className="px-3.5 pt-2 pb-2.5">
+                  {isMulti ? (
+                    <div className="space-y-1">
+                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">تفاصيل الدفع</div>
+                      {renderChips.map((chip, i) => {
+                        const style = sms(chip.method);
+                        const pct = (ev.invoiceTotal || 0) > 0 ? Math.round((chip.amount / ev.invoiceTotal) * 100) : 0;
+                        return (
+                          <div key={i} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${style.bg} border ${style.border}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${style.dot} shrink-0`} />
+                            <span className={`text-[11px] font-black flex-1 ${style.text}`}>{arMethod(chip.method)}</span>
+                            <span className="text-[9px] font-bold text-slate-400">{pct}%</span>
+                            <span className={`text-[12px] font-black font-mono ${style.text}`}>
+                              {fmt(chip.amount)}<span className="text-[9px] font-bold opacity-60 mr-0.5">ج.م</span>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {renderChips.map((chip, i) => {
+                        const style = sms(chip.method);
+                        return (
+                          <span key={i}
+                            className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full border ${style.bg} ${style.text} ${style.border}`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+                            {arMethod(chip.method)}
+                            <span className="font-mono">{fmt(chip.amount)}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Purchase total + cash paid — for آجل purchases */}
-            {ev.type === "purchase" && ev.raw?.payment_type === "credit" && (
-              <div className="px-4 pb-2 flex items-center gap-4 text-[10px] font-bold text-slate-500">
-                <span>إجمالي الفاتورة: <span className="font-mono font-black text-slate-700">{fmt(ev.raw.total)} ج.م</span></span>
-                {Number(ev.raw.amount_received) > 0 && (
-                  <span>دفع نقداً: <span className="font-mono font-black text-emerald-600">{fmt(ev.raw.amount_received)} ج.م</span></span>
-                )}
-              </div>
-            )}
-
-            {ev.type === "purchase" && ev.raw?.payment_type === "credit" && ev.raw?.id && (
-              <div className="px-4 pb-3">
+            {/* ── Installments expandable */}
+            {isDocRow && isInstallments && ev.raw?.id && (
+              <div className="px-3.5 pb-2.5">
                 <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
               </div>
             )}
 
+            {/* ── Balance impact strip */}
             {hasImpact && (
-              <div className={`mx-3 mb-3 rounded-xl px-4 py-2.5 flex items-center justify-between ${ev.impactDir === "add" ? "bg-rose-50 border border-rose-100" : "bg-emerald-50 border border-emerald-100"}`}>
-                <span className={`text-[10px] font-black tracking-wide ${ev.impactDir === "add" ? "text-rose-400" : "text-emerald-500"}`}>
-                  {ev.impactDir === "add" ? "أُضيف للرصيد" : "خُصم من الرصيد"}
+              <div className={`flex items-center justify-between px-3.5 py-2 border-t ${
+                ev.impactDir === "add" || isMulti ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100"
+              }`}>
+                <span className={`text-[10px] font-black tracking-wide ${
+                  ev.impactDir === "add" || isMulti ? "text-rose-500" : "text-emerald-600"
+                }`}>
+                  {ev.impactDir === "add" || isMulti ? "↑ أُضيف للرصيد الآجل" : "↓ خُصم من الرصيد"}
                 </span>
-                <span className={`text-[18px] font-black font-mono leading-none ${ev.impactDir === "add" ? "text-rose-600" : "text-emerald-600"}`}>
-                  {ev.impactDir === "add" ? "+" : "−"}{fmt(ev.impactAmount)}
-                  <span className="text-[11px] font-bold mr-1 opacity-60">ج.م</span>
+                <span className={`text-[14px] font-black font-mono ${
+                  ev.impactDir === "add" || isMulti ? "text-rose-600" : "text-emerald-700"
+                }`}>
+                  {ev.impactDir === "add" || isMulti ? "+" : "−"}{fmt(displayImpactAmount)}
+                  <span className="text-[10px] font-bold opacity-60 mr-1">ج.م</span>
                 </span>
               </div>
             )}
@@ -562,64 +700,56 @@ export default function SupplierAccountsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white border-b border-slate-200 p-6 shrink-0">
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-[26px] font-black text-white shadow-lg shadow-orange-200">
-                    {selected.name?.charAt(0)}
-                  </div>
-                  <div>
-                    <h2 className="text-[20px] font-black text-slate-900">{selected.name}</h2>
-                    <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                      {selected.phone && <span className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold"><Phone className="h-3.5 w-3.5" /> {selected.phone}</span>}
-                      {(() => { try { return JSON.parse(selected.additional_phones || "[]"); } catch { return []; } })().map((p, i) => (
-                        <span key={i} className="flex items-center gap-1.5 text-[12px] text-slate-400 font-mono"><Phone className="h-3 w-3" /> {p}</span>
-                      ))}
-                      {selected.code && <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">{selected.code}</span>}
-                    </div>
-                    {(() => { try { return JSON.parse(selected.addresses || "[]"); } catch { return []; } })().map((a, i) => (
-                      <p key={i} className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1"><Eye className="h-3 w-3 shrink-0" /> {a}</p>
-                    ))}
-                    {selected.notes && (
-                      <p className="text-[11px] text-slate-500 font-medium mt-2 leading-relaxed">{selected.notes}</p>
-                    )}
+            <div className="bg-white border-b border-slate-200 px-4 py-3 shrink-0 space-y-2">
+              {/* Row 1: Avatar + Info + Edit */}
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-[16px] font-black text-white shrink-0">
+                  {selected.name?.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[15px] font-black text-slate-900 truncate">{selected.name}</h2>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    {selected.phone && <span className="flex items-center gap-1 text-[11px] text-slate-500 font-bold"><Phone className="h-3 w-3" /> {selected.phone}</span>}
+                    {selected.code && <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{selected.code}</span>}
                   </div>
                 </div>
                 <button
                   onClick={() => setShowEdit(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg px-3 py-1.5 transition-colors shrink-0"
+                  className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" /> تعديل
+                  <ExternalLink className="h-3 w-3" /> تعديل
                 </button>
               </div>
 
-              <div className={`rounded-2xl p-4 mb-5 flex items-center justify-between border-2 ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
-                <div>
-                  <div className={`text-[11px] font-black uppercase tracking-widest mb-1 ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+              {/* Row 2: Balance Card */}
+              <div className={`rounded-xl px-4 py-2.5 flex items-center justify-between border ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[18px] shrink-0 ${bal > 0 ? "bg-rose-100" : bal < 0 ? "bg-emerald-100" : "bg-slate-100"}`}>
+                  {bal > 0 ? "🔴" : bal < 0 ? "🟢" : "✅"}
+                </div>
+                <div className="text-end">
+                  <div className={`text-[10px] font-black ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                     {bal > 0 ? "له مستحق" : bal < 0 ? "عليه مستحق" : "الحساب مسوّى"}
                   </div>
-                  <div className={`text-[36px] font-black font-mono leading-none ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                    {fmt(Math.abs(bal))}<span className="text-[14px] font-bold mr-1">ج.م</span>
+                  <div className={`text-[24px] font-black font-mono leading-none ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                    {fmt(Math.abs(bal))}<span className="text-[11px] font-bold mr-1">ج.م</span>
                   </div>
-                </div>
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-[28px] shrink-0 ${bal > 0 ? "bg-rose-100" : bal < 0 ? "bg-emerald-100" : "bg-slate-100"}`}>
-                  {bal > 0 ? "🔴" : bal < 0 ? "🟢" : "✅"}
                 </div>
               </div>
 
+              {/* Row 3: Action Buttons */}
               <div className="grid grid-cols-2 gap-2">
                 <PermissionGate page="supplier_accounts" action="edit">
                   <button onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                    className="flex flex-col items-center gap-1.5 rounded-xl bg-orange-600 py-3 text-white hover:bg-orange-700 shadow-md shadow-orange-200 transition-all">
-                    <Plus className="h-5 w-5" />
-                    <span className="text-[11px] font-black">سداد دفعة</span>
+                    className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-white hover:bg-orange-700 shadow-sm shadow-orange-200 transition-all">
+                    <Plus className="h-4 w-4" />
+                    <span className="text-[12px] font-black">سداد دفعة</span>
                   </button>
                 </PermissionGate>
                 <PermissionGate page="supplier_accounts" action="edit">
                   <button onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                    className="flex flex-col items-center gap-1.5 rounded-xl bg-white border border-slate-200 py-3 text-slate-700 hover:bg-slate-50 transition-all">
-                    <SlidersHorizontal className="h-5 w-5 text-slate-500" />
-                    <span className="text-[11px] font-black">تسوية رصيد</span>
+                    className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 py-2.5 text-slate-700 hover:bg-slate-50 transition-all">
+                    <SlidersHorizontal className="h-4 w-4 text-slate-500" />
+                    <span className="text-[12px] font-black">تسوية رصيد</span>
                   </button>
                 </PermissionGate>
               </div>

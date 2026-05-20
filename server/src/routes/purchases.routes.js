@@ -48,7 +48,7 @@ function getPurchaseWithLines(db, purchaseId) {
     : 0;
 
   const payments = db.prepare(`
-    SELECT pp.amount, pm.name AS method_name, pm.type AS method_type
+    SELECT pp.amount, pp.method_id, pm.name AS method_name, pm.type AS method_type
     FROM purchase_payments pp
     LEFT JOIN payment_methods pm ON pm.id = pp.method_id
     WHERE pp.purchase_id = ?
@@ -69,7 +69,7 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   const allowedSort = ["created_at", "total", "doc_no", "payment_method", "supplier_name"];
   const safeSort = allowedSort.includes(sort) ? sort : "created_at";
   const safeDir = dir === "asc" ? "ASC" : "DESC";
-  const conditions = ["1=1"];
+  const conditions = ["p.status != 'cancelled' AND p.status != 'voided'"];
   const params = [];
   if (user_id) { conditions.push("p.created_by = ?"); params.push(user_id); }
   if (search) {
@@ -120,7 +120,7 @@ router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, 
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);
   const { search = "", supplier_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
-  const conditions = ["1=1"];
+  const conditions = ["pr.status != 'cancelled'"];
   const params = [];
   if (search) {
     conditions.push("(s.name LIKE ? OR CAST(pr.id AS TEXT) LIKE ? OR CAST(pr.purchase_id AS TEXT) LIKE ?)");
@@ -534,6 +534,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
 
 router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) => {
   const db = getDb();
+  const userId = req.user?.id ? Number(req.user.id) : null;
   try {
     ensureAjalDebtPurchaseSchema(db);
     const updated = db.transaction(() => {
@@ -597,8 +598,8 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       }
 
       // 4. Update purchase header
-      db.prepare("UPDATE purchases SET total = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-        .run(newTotal, payload.supplier_id || purchase.supplier_id, purchase.id);
+      db.prepare("UPDATE purchases SET total = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?")
+        .run(newTotal, payload.supplier_id || purchase.supplier_id, userId, purchase.id);
 
       // 5. Update selling prices if changed
       for (const line of newLines) {

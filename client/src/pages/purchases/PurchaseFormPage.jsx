@@ -20,6 +20,8 @@ import SearchDropdown from "../../components/ui/SearchDropdown";
 import { scoredFilterRows } from "../../utils/search";
 import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
@@ -190,6 +192,10 @@ export default function PurchaseFormPage() {
   const [multiAmounts, setMultiAmounts] = useState({});
 
   const [isSaving, setIsSaving] = useState(false);
+  const wasSaved = useRef(false);
+  const isDirty = (lines.length > 0 || !!supplier) && !locked && !wasSaved.current;
+  const { blocker } = useUnsavedChangesGuard(isDirty);
+
   const [printPreview, setPrintPreview] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
@@ -366,7 +372,15 @@ export default function PurchaseFormPage() {
       setRefNo(p.doc_no || p.ref_no || "");
       setDocDate((p.created_at || "").slice(0, 10));
       setEditActivation({ docNo: p.doc_no || p.ref_no || "", createdAt: p.created_at || new Date().toISOString() });
-      setPaymentMode(p.payment_method || "cash");
+      const mode = p.payment_method || "cash";
+      setPaymentMode(mode);
+      if (mode === "multi" && Array.isArray(p.payments) && p.payments.length) {
+        const amounts = {};
+        for (const pmt of p.payments) {
+          if (pmt.method_id != null) amounts[pmt.method_id] = pmt.amount;
+        }
+        setMultiAmounts(amounts);
+      }
       setEditDebtRemaining(p.debt_remaining || 0);
       setEditOriginalSupplierId(p.supplier_id || null);
       if (p.supplier_id) {
@@ -544,6 +558,7 @@ export default function PurchaseFormPage() {
       if (isEditMode) {
         await api.put(`/api/purchases/${id}`, buildPayload());
         toast.success("تم تحديث الفاتورة بنجاح");
+        wasSaved.current = true;
         navigate(`/purchases/${id}`);
       } else {
         await api.post("/api/purchases", buildPayload());
@@ -1168,14 +1183,14 @@ export default function PurchaseFormPage() {
                 {paymentMethods.map(m => {
                   const amount = multiAmounts[m.id] || "";
                   return (
-                    <div key={m.id} className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white p-2 hover:border-slate-400 transition-colors">
+                    <div key={m.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
                       <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-slate-50 text-slate-500 shrink-0">
                         {m.type === "cash" ? <Banknote className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
                       </div>
-                      <span className="flex-1 text-[11px] font-black text-slate-800 truncate">{m.name}</span>
+                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-700 leading-snug break-words">{m.name}</span>
                       <input type="number" value={amount} placeholder="0.00" min="0" step="0.01" disabled={isLocked}
                         onChange={(e) => setMultiAmounts(prev => ({ ...prev, [m.id]: e.target.value }))}
-                        className="w-24 rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-right font-mono text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 disabled:cursor-not-allowed" />
+                        className="w-28 shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left font-mono text-[12px] font-black text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:cursor-not-allowed transition-all" />
                     </div>
                   );
                 })}
@@ -1614,6 +1629,12 @@ export default function PurchaseFormPage() {
         onSaveOnly={() => doSave()}
         saveOnlyLabel="حفظ فقط"
         isSaving={isSaving}
+      />
+
+      <UnsavedChangesModal
+        open={blocker.state === "blocked"}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
       />
     </div>
   );

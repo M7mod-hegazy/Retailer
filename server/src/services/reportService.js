@@ -119,41 +119,88 @@ function getPaymentsReport(startDate, endDate) {
   return db.prepare(q).all(...params);
 }
 
-function getProfitLoss(startDate, endDate) {
+const COST_METHOD_LABELS = {
+  wacc: "المتوسط المرجح للتكلفة (WACC)",
+  last_purchase: "آخر سعر شراء",
+  purchase_price: "سعر الشراء الحالي",
+};
+
+function getProfitLoss(startDate, endDate, opts = {}) {
   const db = getDb();
-  const invoiceParams = [];
-  let invoiceWhere = "WHERE status != 'cancelled'";
-  if (startDate) { invoiceWhere += " AND DATE(created_at) >= ?"; invoiceParams.push(startDate); }
-  if (endDate) { invoiceWhere += " AND DATE(created_at) <= ?"; invoiceParams.push(endDate); }
+  const costMethod = opts.cost_method || "wacc";
+  // cost column from invoice_lines snapshot; fallback to items.purchase_price if needed
+  const costCol = costMethod === "last_purchase"
+    ? "COALESCE(il.cost_last_purchase, it.purchase_price, 0)"
+    : costMethod === "purchase_price"
+      ? "COALESCE(it.purchase_price, 0)"
+      : "COALESCE(il.cost_wacc, it.purchase_price, 0)";
 
-  const expenseParams = [];
-  let expenseWhere = "WHERE 1=1";
-  if (startDate) { expenseWhere += " AND DATE(created_at) >= ?"; expenseParams.push(startDate); }
-  if (endDate) { expenseWhere += " AND DATE(created_at) <= ?"; expenseParams.push(endDate); }
+  const dateParams = [];
+  let dateWhere = "";
+  if (startDate) { dateWhere += " AND DATE(i.created_at) >= ?"; dateParams.push(startDate); }
+  if (endDate) { dateWhere += " AND DATE(i.created_at) <= ?"; dateParams.push(endDate); }
 
-  const sales = db.prepare(`SELECT COALESCE(SUM(total),0) as revenue, COALESCE(SUM(discount),0) as discounts FROM invoices ${invoiceWhere}`).get(...invoiceParams);
-  const expenses = db.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM expenses ${expenseWhere}`).get(...expenseParams);
-  const costOfGoods = db.prepare(
-    `SELECT COALESCE(SUM(il.quantity * COALESCE(items.purchase_price, 0)), 0) AS total
-     FROM invoice_lines il
-     JOIN invoices i ON i.id = il.invoice_id
-     LEFT JOIN items ON items.id = il.item_id
-     ${invoiceWhere.replace(/created_at/g, "i.created_at").replace("status", "i.status")}`,
-  ).get(...invoiceParams);
+  const expParams = [];
+  let expWhere = "WHERE 1=1";
+  if (startDate) { expWhere += " AND DATE(created_at) >= ?"; expParams.push(startDate); }
+  if (endDate) { expWhere += " AND DATE(created_at) <= ?"; expParams.push(endDate); }
+
+  // Revenue = SUM(i.total): already nets header discount and includes increase
+  const sales = db.prepare(`
+    SELECT COALESCE(SUM(i.total), 0) AS revenue,
+           COALESCE(SUM(i.discount), 0) AS discounts,
+           COALESCE(SUM(i.increase), 0) AS increases
+    FROM invoices i
+    WHERE i.status != 'cancelled' ${dateWhere}
+  `).get(...dateParams);
+
+  // COGS uses snapshot cost from invoice_lines (not live items.purchase_price)
+  const cogsRow = db.prepare(`
+    SELECT COALESCE(SUM(il.quantity * ${costCol}), 0) AS total
+    FROM invoice_lines il
+    JOIN invoices i ON i.id = il.invoice_id
+    LEFT JOIN items it ON it.id = il.item_id
+    WHERE i.status != 'cancelled' ${dateWhere}
+  `).get(...dateParams);
+
+  // Returns: deduct return revenue and reverse return cost
+  const returnsRow = db.prepare(`
+    SELECT COALESCE(SUM(sr.total), 0) AS return_revenue,
+           COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price, 0)), 0) AS return_cost
+    FROM sales_returns sr
+    JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+    LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+    LEFT JOIN items it ON it.id = srl.item_id
+    WHERE sr.status = 'active'
+      ${startDate ? " AND DATE(sr.created_at) >= ?" : ""}
+      ${endDate ? " AND DATE(sr.created_at) <= ?" : ""}
+  `).get(...(startDate ? [startDate] : []), ...(endDate ? [endDate] : []));
+
+  const expenses = db.prepare(`SELECT COALESCE(SUM(amount), 0) AS total FROM expenses ${expWhere}`).get(...expParams);
 
   const revenue = Number(sales.revenue || 0);
   const discounts = Number(sales.discounts || 0);
+  const increases = Number(sales.increases || 0);
+  const cogs = Number(cogsRow.total || 0);
+  const returnRevenue = Number(returnsRow.return_revenue || 0);
+  const returnCost = Number(returnsRow.return_cost || 0);
   const expenseTotal = Number(expenses.total || 0);
-  const cogs = Number(costOfGoods.total || 0);
-  const grossProfit = revenue - discounts - cogs;
+
+  const netRevenue = revenue - returnRevenue;
+  const netCogs = cogs - returnCost;
+  const grossProfit = netRevenue - netCogs;
 
   return {
     revenue,
     discounts,
-    cost_of_goods_sold: cogs,
+    increases,
+    returns: returnRevenue,
+    net_revenue: netRevenue,
+    cost_of_goods_sold: netCogs,
     expenses: expenseTotal,
     gross_profit: grossProfit,
     net_profit: grossProfit - expenseTotal,
+    cost_method_label: COST_METHOD_LABELS[costMethod] || costMethod,
   };
 }
 

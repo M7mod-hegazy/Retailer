@@ -10,18 +10,32 @@ function dailySales(startDate, endDate, opts = {}) {
   const costCol = getCostColumn(opts.cost_method);
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
-      i.customer_id,
-      COUNT(DISTINCT i.id) AS invoice_count,
+      COUNT(i.id) AS invoice_count,
       SUM(i.total) AS gross_sales,
       SUM(i.discount) AS total_discount,
-      SUM(i.total - i.discount) AS net_sales,
-      COALESCE(SUM(sr.total), 0) AS returns_amount,
-      COUNT(DISTINCT sr.id) AS returns_count,
-      COALESCE(SUM(il.quantity * ${costCol}), 0) AS total_cost,
-      SUM(i.total - i.discount) - COALESCE(SUM(il.quantity * ${costCol}), 0) AS gross_profit
+      COALESCE(SUM(il_agg.total_cost), 0) AS total_cost,
+      COALESCE(SUM(ret.return_total), 0) AS returns_amount,
+      COALESCE(SUM(ret.return_count), 0) AS returns_count,
+      SUM(i.total) - COALESCE(SUM(ret.return_total), 0) AS net_sales,
+      SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
+        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit
     FROM invoices i
-    LEFT JOIN invoice_lines il ON il.invoice_id = i.id
-    LEFT JOIN sales_returns sr ON sr.invoice_id = i.id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(quantity * ${costCol}) AS total_cost
+      FROM invoice_lines GROUP BY invoice_id
+    ) il_agg ON il_agg.invoice_id = i.id
+    LEFT JOIN (
+      SELECT sr.invoice_id,
+        SUM(sr.total) AS return_total,
+        COUNT(DISTINCT sr.id) AS return_count,
+        COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price)), 0) AS return_cost
+      FROM sales_returns sr
+      JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+      LEFT JOIN items it ON it.id = srl.item_id
+      WHERE sr.status = 'active'
+      GROUP BY sr.invoice_id
+    ) ret ON ret.invoice_id = i.id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : ""}
@@ -54,7 +68,7 @@ function detailedSales(startDate, endDate, opts = {}) {
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
     LEFT JOIN invoice_lines il ON il.invoice_id = i.id
-    WHERE 1=1 ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${status ? " AND i.status = ?" : ""}
       ${ptFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
@@ -86,7 +100,7 @@ function _detailSalesQuery(startDate, endDate, opts = {}) {
       i.customer_id,
       i.payment_type, i.status,
       i.subtotal, i.discount, i.total,
-      i.total - i.discount AS net_sales,
+      i.total AS net_sales,
       COUNT(il.id) AS item_count,
       CASE WHEN i.payment_type = 'multi' THEN (
         SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), ' / ')
@@ -167,18 +181,37 @@ function salesByItem(startDate, endDate, opts = {}) {
       it.name AS item_name,
       COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
-      SUM(il.line_total) AS revenue,
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
       SUM(il.discount) AS discount_total,
       SUM(il.quantity * ${costCol}) AS cost,
-      SUM(il.line_total) - SUM(il.quantity * ${costCol}) AS profit_margin,
-      CASE WHEN SUM(il.line_total) > 0
-        THEN ROUND(((SUM(il.line_total) - SUM(il.quantity * ${costCol})) / SUM(il.line_total)) * 100, 1)
+      COALESCE(SUM(ret.return_revenue), 0) AS returns_amount,
+      COALESCE(SUM(ret.return_cost), 0) AS returns_cost,
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
+        - SUM(il.quantity * ${costCol})
+        - COALESCE(SUM(ret.return_revenue), 0) + COALESCE(SUM(ret.return_cost), 0) AS profit_margin,
+      CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) > 0
+        THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})) /
+          SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))) * 100, 1)
         ELSE 0 END AS margin_percent,
-      ROUND(SUM(il.line_total) * 1.0 / SUM(il.quantity), 2) AS avg_unit_price
+      ROUND(SUM(il.line_total) * 1.0 / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_price
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
     LEFT JOIN item_categories c ON c.id = it.category_id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(line_total) AS line_sum
+      FROM invoice_lines GROUP BY invoice_id
+    ) inv_sums ON inv_sums.invoice_id = il.invoice_id
+    LEFT JOIN (
+      SELECT srl.item_id,
+        SUM(srl.line_total) AS return_revenue,
+        SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it2.purchase_price)) AS return_cost
+      FROM sales_return_lines srl
+      JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+      LEFT JOIN items it2 ON it2.id = srl.item_id
+      GROUP BY srl.item_id
+    ) ret ON ret.item_id = il.item_id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
@@ -222,17 +255,24 @@ function salesByCashier(startDate, endDate, opts = {}) {
   if (cashier_id || opts.customer_id || opts.status || opts.payment_type || opts.category_id || opts.item_id) return _detailSalesQuery(startDate, endDate, opts);
   return db.prepare(`
     SELECT u.full_name AS cashier,
-      COUNT(DISTINCT i.id) AS invoice_count,
-      COUNT(DISTINCT CASE WHEN i.status = 'cancelled' THEN i.id END) AS cancelled_count,
-      SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END) AS total_sales,
-      SUM(CASE WHEN i.status != 'cancelled' THEN i.discount ELSE 0 END) AS total_discount,
+      COUNT(CASE WHEN i.status != 'cancelled' THEN 1 END) AS invoice_count,
+      COUNT(CASE WHEN i.status = 'cancelled' THEN 1 END) AS cancelled_count,
+      COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END), 0) AS total_sales,
+      COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.discount ELSE 0 END), 0) AS total_discount,
       AVG(CASE WHEN i.status != 'cancelled' THEN i.total ELSE NULL END) AS avg_invoice_value,
-      COUNT(DISTINCT il.id) AS total_items_sold,
-      COALESCE(SUM(CASE WHEN sr.id IS NOT NULL THEN sr.total ELSE 0 END), 0) AS returns_handled
+      COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN il_agg.item_count ELSE 0 END), 0) AS total_items_sold,
+      COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_total ELSE 0 END), 0) AS returns_handled
     FROM invoices i
     JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
-    LEFT JOIN invoice_lines il ON il.invoice_id = i.id
-    LEFT JOIN sales_returns sr ON sr.invoice_id = i.id
+    LEFT JOIN (
+      SELECT invoice_id, COUNT(id) AS item_count
+      FROM invoice_lines GROUP BY invoice_id
+    ) il_agg ON il_agg.invoice_id = i.id
+    LEFT JOIN (
+      SELECT invoice_id, COALESCE(SUM(total), 0) AS return_total
+      FROM sales_returns WHERE status = 'active'
+      GROUP BY invoice_id
+    ) ret ON ret.invoice_id = i.id
     WHERE 1=1 ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${cashier_id ? " AND u.id = ?" : ""}
     GROUP BY u.id
@@ -263,7 +303,7 @@ function salesByPayment(startDate, endDate, opts = {}) {
       SUM(i.discount) AS total_discount,
       COALESCE(SUM(sr.total), 0) AS returns_amount
     FROM invoices i
-    LEFT JOIN sales_returns sr ON sr.invoice_id = i.id
+    LEFT JOIN sales_returns sr ON sr.invoice_id = i.id AND sr.status = 'active'
     WHERE i.status != 'cancelled' AND i.payment_type != 'multi'
       ${scopeClause(paramsA)}
     GROUP BY i.payment_type
@@ -374,17 +414,30 @@ function grossNetSales(startDate, endDate, opts = {}) {
   const costCol = getCostColumn(opts.cost_method);
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
-      i.customer_id,
+      COUNT(i.id) AS invoice_count,
       SUM(i.total) AS gross_sales,
       SUM(i.discount) AS total_discount,
-      SUM(i.total - i.discount) AS net_sales,
-      COUNT(*) AS invoice_count,
-      COALESCE(SUM(sr.total), 0) AS returns_amount,
-      COALESCE(SUM(il.quantity * ${costCol}), 0) AS total_cost,
-      SUM(i.total - i.discount) - COALESCE(SUM(il.quantity * ${costCol}), 0) AS gross_profit
+      COALESCE(SUM(il_agg.total_cost), 0) AS total_cost,
+      COALESCE(SUM(ret.return_total), 0) AS returns_amount,
+      SUM(i.total) - COALESCE(SUM(ret.return_total), 0) AS net_sales,
+      SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
+        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit
     FROM invoices i
-    LEFT JOIN invoice_lines il ON il.invoice_id = i.id
-    LEFT JOIN sales_returns sr ON sr.invoice_id = i.id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(quantity * ${costCol}) AS total_cost
+      FROM invoice_lines GROUP BY invoice_id
+    ) il_agg ON il_agg.invoice_id = i.id
+    LEFT JOIN (
+      SELECT sr.invoice_id,
+        SUM(sr.total) AS return_total,
+        COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price)), 0) AS return_cost
+      FROM sales_returns sr
+      JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+      LEFT JOIN items it ON it.id = srl.item_id
+      WHERE sr.status = 'active'
+      GROUP BY sr.invoice_id
+    ) ret ON ret.invoice_id = i.id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : ""}
@@ -467,15 +520,34 @@ function marginByItem(startDate, endDate, opts = {}) {
     SELECT COALESCE(it.code, 'ITEM-' || it.id) AS item_code,
       it.name AS item_name,
       SUM(il.quantity) AS quantity_sold,
-      SUM(il.line_total) AS revenue,
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
       SUM(il.quantity * ${costCol}) AS cost,
-      SUM(il.line_total) - SUM(il.quantity * ${costCol}) AS profit_margin,
-      CASE WHEN SUM(il.line_total) > 0
-        THEN ROUND(((SUM(il.line_total) - SUM(il.quantity * ${costCol})) / SUM(il.line_total)) * 100, 1)
+      COALESCE(SUM(ret.return_revenue), 0) AS returns_amount,
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
+        - SUM(il.quantity * ${costCol})
+        - COALESCE(SUM(ret.return_revenue), 0) + COALESCE(SUM(ret.return_cost), 0) AS profit_margin,
+      CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) > 0
+        THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
+          - SUM(il.quantity * ${costCol})) /
+          SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))) * 100, 1)
         ELSE 0 END AS margin_percent
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(line_total) AS line_sum
+      FROM invoice_lines GROUP BY invoice_id
+    ) inv_sums ON inv_sums.invoice_id = il.invoice_id
+    LEFT JOIN (
+      SELECT srl.item_id,
+        SUM(srl.line_total) AS return_revenue,
+        SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it2.purchase_price)) AS return_cost
+      FROM sales_return_lines srl
+      JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+      LEFT JOIN items it2 ON it2.id = srl.item_id
+      GROUP BY srl.item_id
+    ) ret ON ret.item_id = il.item_id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
@@ -526,7 +598,7 @@ function shiftHistory(startDate, endDate, opts = {}) {
       s.status
     FROM shifts s
     JOIN users u ON u.id = s.user_id
-    LEFT JOIN invoices i ON i.shift_id = s.id
+    LEFT JOIN invoices i ON i.shift_id = s.id AND i.status != 'cancelled'
     GROUP BY s.id
     ORDER BY s.id DESC
   `).all();

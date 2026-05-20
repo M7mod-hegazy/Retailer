@@ -33,7 +33,12 @@ function recalculateInvoiceStatus(db, invoiceId) {
     ? "cancelled"
     : outstanding === 0 ? "paid" : allocated > 0 ? "partial" : invoice.payment_type === "credit" ? "unpaid" : invoice.status;
 
-  db.prepare("UPDATE invoices SET status = ? WHERE id = ?").run(status, invoiceId);
+  const becomesPaid = status === "paid" && invoice.status !== "paid";
+  if (becomesPaid) {
+    db.prepare("UPDATE invoices SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, invoiceId);
+  } else {
+    db.prepare("UPDATE invoices SET status = ? WHERE id = ?").run(status, invoiceId);
+  }
   return { ...invoice, status, allocated, outstanding };
 }
 
@@ -435,14 +440,23 @@ function voidInvoice(invoiceId, reason, userId) {
       }
     }
 
-    // 3. Reverse financials
-    if (invoice.payment_type === "credit" && invoice.customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(invoice.total, invoice.customer_id);
-      try { db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE invoice_id = ? AND source_type = 'invoice'").run(invoiceId); } catch (_) {}
-    } else if (invoice.payment_type === "bank_transfer") {
+    // ── Step 1: Always void any ajal_debt tied to this invoice (covers credit,
+    //   installments, partial-cash — any payment type can carry a debt).
+    if (invoice.customer_id) {
+      const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice' AND status != 'voided'").get(invoiceId);
+      if (debt) {
+        const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+        if (remaining > 0)
+          db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
+        db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+      }
+    }
+
+    // ── Step 2: Reverse physical money (treasury / bank) based on payment type ──
+    if (invoice.payment_type === "bank_transfer") {
       if (invoice.bank_id) {
-        const amtToReverse = invoice.amount_received ?? invoice.total;
-        db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
+        const amtToReverse = Number(invoice.amount_received ?? invoice.total);
+        if (amtToReverse > 0) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
       }
     } else if (invoice.payment_type === "multi") {
       const allocations = db.prepare(`
@@ -457,18 +471,10 @@ function voidInvoice(invoiceId, reason, userId) {
         } else if (alloc.method === "bank" && alloc.bank_id) {
           db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(alloc.amount, alloc.bank_id);
         }
-      }
-      if (invoice.customer_id) {
-        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
-        if (debt) {
-          const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
-          if (remaining > 0)
-            db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
-          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
-        }
+        // credit allocations: ajal_debt already voided in step 1
       }
     } else if (invoice.payment_type === "installments") {
-      // Reverse upfront cash payment from treasury
+      // Reverse only the upfront cash portion (ajal_debt already voided in step 1)
       const allocs = db.prepare(`
         SELECT pa.amount, p.method, p.treasury_id
         FROM payment_allocations pa
@@ -479,22 +485,13 @@ function voidInvoice(invoiceId, reason, userId) {
         if (a.method === "cash" && a.treasury_id)
           db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
       }
-      // Reverse ajal_debt
-      if (invoice.customer_id) {
-        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
-        if (debt) {
-          const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
-          if (remaining > 0)
-            db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
-          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
-        }
-      }
     } else {
-      // cash payment — reverse from treasury
+      // cash / default fallback — reverse from treasury
       const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      const amtToReverse = invoice.amount_received ?? invoice.total;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
+      const amtToReverse = Number(invoice.amount_received ?? invoice.total);
+      if (tId && amtToReverse > 0) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
     }
+    // credit payment type: ajal_debt already reversed in step 1, no physical cash movement to undo
 
     // 4. Audit Log
     try {
@@ -541,35 +538,39 @@ function cancelInvoice(invoiceId, reason, userId) {
       }
     }
 
-    if ((invoice.payment_type === "credit" || invoice.payment_type === "installments") && invoice.customer_id) {
-      const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
+    // ── Step 1: Always void any ajal_debt tied to this invoice (covers credit,
+    //   installments, AND partial-cash — any payment type can leave a debt).
+    if (invoice.customer_id) {
+      const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice' AND status != 'voided'").get(invoiceId);
       if (debt) {
         const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
         if (remaining > 0)
           db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
         db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
       }
-      // Reverse upfront cash payment from treasury for installments
-      if (invoice.payment_type === "installments") {
-        const allocs = db.prepare(`
-          SELECT pa.amount, p.method, p.treasury_id
-          FROM payment_allocations pa
-          LEFT JOIN payments p ON p.id = pa.payment_id
-          WHERE pa.invoice_id = ?
-        `).all(invoiceId);
-        for (const a of allocs) {
-          if (a.method === "cash" && a.treasury_id)
-            db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
-        }
-      }
-    } else if (invoice.payment_type === "cash") {
+    }
+
+    // ── Step 2: Reverse physical money (treasury / bank) based on payment type ──
+    if (invoice.payment_type === "cash") {
       const tId = invoice.treasury_id ||
         db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      const amtToReverse = invoice.amount_received ?? invoice.total;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
+      const amtToReverse = Number(invoice.amount_received ?? invoice.total);
+      if (tId && amtToReverse > 0) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
     } else if (invoice.payment_type === "bank_transfer") {
-      const amtToReverse = invoice.amount_received ?? invoice.total;
-      if (invoice.bank_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
+      const amtToReverse = Number(invoice.amount_received ?? invoice.total);
+      if (invoice.bank_id && amtToReverse > 0) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
+    } else if (invoice.payment_type === "installments") {
+      // Only the upfront cash portion is in payment_allocations — ajal_debt already voided in step 1
+      const allocs = db.prepare(`
+        SELECT pa.amount, p.method, p.treasury_id
+        FROM payment_allocations pa
+        LEFT JOIN payments p ON p.id = pa.payment_id
+        WHERE pa.invoice_id = ?
+      `).all(invoiceId);
+      for (const a of allocs) {
+        if (a.method === "cash" && a.treasury_id)
+          db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
+      }
     } else if (invoice.payment_type === "multi") {
       const allocs = db.prepare(`
         SELECT pa.amount, p.method, p.treasury_id, p.bank_id
@@ -582,17 +583,10 @@ function cancelInvoice(invoiceId, reason, userId) {
           db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
         else if (a.method === "bank" && a.bank_id)
           db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(a.amount, a.bank_id);
-      }
-      if (invoice.customer_id) {
-        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
-        if (debt) {
-          const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
-          if (remaining > 0)
-            db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, invoice.customer_id);
-          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
-        }
+        // credit-method allocations: already handled by ajal_debt void in step 1
       }
     }
+    // credit payment type: ajal_debt already fully reversed in step 1, no physical money movement
 
     try {
       const pts = db.prepare("SELECT points FROM loyalty_transactions WHERE invoice_id = ? AND transaction_type = 'earn'").get(invoiceId);

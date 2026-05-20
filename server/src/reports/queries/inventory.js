@@ -11,8 +11,8 @@ function slowMoving(startDate, endDate, opts = {}) {
       it.name AS item_name,
       COALESCE(c.name, 'غير مصنف') AS category_name,
       COALESCE(SUM(sl.quantity), 0) AS stock_quantity,
-      it.purchase_price AS cost_price,
-      COALESCE(SUM(sl.quantity), 0) * it.purchase_price AS total_value,
+      COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price) AS cost_price,
+      COALESCE(SUM(sl.quantity), 0) * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price) AS total_value,
       COALESCE(SUM(sl.quantity), 0) * it.sale_price AS potential_revenue,
       MAX(DATE(i.created_at)) AS last_sale_date
     FROM items it
@@ -44,7 +44,7 @@ function stockLevels(startDate, endDate, opts = {}) {
       COALESCE(sl.quantity, 0) AS quantity,
       it.min_stock_qty,
       u.name AS unit_name,
-      COALESCE(sl.quantity, 0) * it.purchase_price AS total_value,
+      COALESCE(sl.quantity, 0) * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price) AS total_value,
       CASE
         WHEN COALESCE(sl.quantity, 0) <= 0 THEN 'نفذ'
         WHEN COALESCE(sl.quantity, 0) <= COALESCE(it.min_stock_qty, 0) THEN 'منخفض'
@@ -200,7 +200,7 @@ function inventoryAging(startDate, endDate, opts = {}) {
       END AS aging_bucket
     FROM items it
     JOIN stock_levels sl ON sl.item_id = it.id
-    LEFT JOIN stock_movements sm ON sm.item_id = it.id
+    LEFT JOIN stock_movements sm ON sm.item_id = it.id AND sm.deleted_at IS NULL
     WHERE sl.quantity > 0 AND it.deleted_at IS NULL
       ${warehouse_id ? " AND sl.warehouse_id = ?" : ""}
       ${category_id ? " AND it.category_id = ?" : ""}

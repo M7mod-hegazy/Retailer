@@ -106,6 +106,7 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
       SELECT pr.supplier_id, SUM(pr.total) AS return_total
       FROM purchase_returns pr
       WHERE pr.status = 'active'
+        ${addDateFilter("pr.created_at", startDate, endDate, params)}
       GROUP BY pr.supplier_id
     ) pr ON pr.supplier_id = s.id
     WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}

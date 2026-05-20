@@ -3,6 +3,7 @@ const { getDb } = require("../config/database");
 const { adjustStock } = require("../services/stockService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -51,7 +52,7 @@ router.get("/", requirePagePermission("branch_transfer", "view"), (req, res, nex
              SUM(btl.quantity) AS total_qty
       FROM branch_transfers bt
       LEFT JOIN branch_transfer_lines btl ON btl.transfer_id = bt.id
-      WHERE 1=1
+      WHERE COALESCE(bt.status, 'active') != 'cancelled'
     `;
 
     if (date_from) { sql += " AND date(bt.created_at) >= date(?)"; params.push(String(date_from)); }
@@ -289,6 +290,55 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
 
     req.audit("update", "branchTransfers", { id }, `✏️ تم تعديل حركة فرع: ${existing.reference_no}`);
     res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/branch-transfers/:id  — cancel and reverse stock movements
+router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const id = Number(req.params.id);
+    const { reason = "" } = req.body || {};
+    const transfer = db.prepare("SELECT * FROM branch_transfers WHERE id = ?").get(id);
+    if (!transfer) return res.status(404).json({ success: false, message: "المستند غير موجود" });
+    if ((transfer.status || "active") === "cancelled") {
+      return res.status(400).json({ success: false, message: "المستند ملغى بالفعل" });
+    }
+
+    const lines = db.prepare("SELECT * FROM branch_transfer_lines WHERE transfer_id = ?").all(id);
+
+    db.transaction(() => {
+      for (const line of lines) {
+        adjustStock({
+          item_id: line.item_id,
+          warehouse_id: line.warehouse_id,
+          quantityDelta: transfer.type === "receive" ? -line.quantity : line.quantity,
+          movement_type: transfer.type === "receive" ? "branch_receive_reversal" : "branch_send_reversal",
+          reference_type: "branch_transfer",
+          reference_id: id,
+          notes: `إلغاء: ${reason || transfer.reference_no}`,
+        });
+      }
+
+      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+      db.prepare(
+        "UPDATE branch_transfers SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?"
+      ).run(now, req.user?.id || null, reason.trim() || null, id);
+    })();
+
+    try {
+      NotificationModel.create({
+        type: "warning",
+        title: "إلغاء حركة فرع",
+        body: `تم إلغاء مستند ${transfer.reference_no}${reason ? ": " + reason : ""}`,
+        link: `/branch-transfers`,
+      });
+    } catch (_) {}
+
+    req.audit("delete", "branchTransfers", { id }, `🗑️ تم إلغاء حركة فرع: ${transfer.reference_no}`);
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }

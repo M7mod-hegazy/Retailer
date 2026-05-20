@@ -14,6 +14,8 @@ import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 
@@ -113,16 +115,16 @@ export default function BranchTransferFormPage() {
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [savedDoc, setSavedDoc] = useState(null);
-  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+
+  const wasSaved = useRef(false);
+  const isDirty = lines.length > 0 && !wasSaved.current;
+  const { blocker } = useUnsavedChangesGuard(isDirty);
 
   // Header modals
   const [todayModalOpen, setTodayModalOpen] = useState(false);
   const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
 
-  const handleManageBranches = () => {
-    if (lines.length > 0) setConfirmLeaveOpen(true);
-    else navigate("/definitions/branches");
-  };
+  const handleManageBranches = () => navigate("/definitions/branches");
 
   // Image preview modal
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
@@ -312,6 +314,24 @@ export default function BranchTransferFormPage() {
     return stockLevels[selectedItem.id]?.[staging.warehouseId] ?? 0;
   }, [selectedItem, staging.warehouseId, stockLevels]);
 
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  async function handleCancelTransfer() {
+    if (!cancelReason.trim()) return toast.error("سبب الإلغاء مطلوب");
+    setIsCancelling(true);
+    try {
+      await api.delete(`/api/branch-transfers/${editId}`, { data: { reason: cancelReason } });
+      toast.success("تم إلغاء المستند بنجاح");
+      navigate("/operations/branch-transfer");
+    } catch (e) {
+      toast.error(e.response?.data?.message || "فشل الإلغاء");
+    }
+    setIsCancelling(false);
+    setCancelConfirmOpen(false);
+  }
+
   async function handleSave(triggerPrint = false) {
     if (!lines.length) return toast.error("يجب إضافة صنف واحد على الأقل");
 
@@ -342,6 +362,7 @@ export default function BranchTransferFormPage() {
 
       setSavedDoc(doc);
       toast.success(isEditMode ? "تم تحديث المستند بنجاح" : "تم تسجيل المستند بنجاح");
+      wasSaved.current = true;
 
       if (triggerPrint) {
         setPreviewOpen(false);
@@ -676,6 +697,19 @@ export default function BranchTransferFormPage() {
                   {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
                 </button>
               </PermissionGate>
+
+              {isEditMode && (
+                <PermissionGate page="branch_transfer" action="delete">
+                  <button
+                    onClick={() => setCancelConfirmOpen(true)}
+                    disabled={isSaving || isCancelling}
+                    className="w-full h-[46px] flex items-center justify-center gap-2 rounded-[12px] bg-rose-50 border border-rose-200 text-[14px] font-bold text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    إلغاء المستند
+                  </button>
+                </PermissionGate>
+              )}
             </div>
           </div>
         </div>
@@ -878,32 +912,59 @@ export default function BranchTransferFormPage() {
         confirmLabel="تأكيد حفظ المستند وطباعته"
       />
 
-      {/* Confirm leave modal */}
-      <Modal open={confirmLeaveOpen} title="تأكيد مغادرة الصفحة" onClose={() => setConfirmLeaveOpen(false)} maxWidth="max-w-sm">
-        <div className="flex flex-col items-center justify-center p-4 text-center">
-          <div className="h-16 w-16 rounded-full bg-rose-100 flex items-center justify-center mb-4">
-            <Trash2 className="h-8 w-8 text-rose-500" />
-          </div>
-          <h3 className="text-[18px] font-black text-slate-800 mb-2">لديك أصناف لم يتم حفظها</h3>
-          <p className="text-[14px] font-medium text-slate-500 mb-6">
-            مغادرة هذه الصفحة الآن ستؤدي إلى فقدان جميع الأصناف التي قمت بإضافتها، هل أنت متأكد؟
-          </p>
-          <div className="flex gap-3 w-full">
-            <button onClick={() => setConfirmLeaveOpen(false)} className="flex-1 rounded-[12px] bg-slate-100 py-3 text-[14px] font-bold text-slate-700 hover:bg-slate-200 transition-all active:scale-95">
-              إلغاء والبقاء
-            </button>
-            <button onClick={() => navigate("/definitions/branches")} className="flex-1 rounded-[12px] bg-rose-500 py-3 text-[14px] font-bold text-white hover:bg-rose-600 transition-all shadow-[0_4px_12px_rgba(244,63,94,0.25)] active:scale-95">
-              تأكيد المغادرة
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <UnsavedChangesModal
+        open={blocker.state === "blocked"}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
 
       {/* Today's transfers modal */}
       <BranchTransferTodayModal open={todayModalOpen} onClose={() => setTodayModalOpen(false)} />
 
       {/* Advanced stock search modal */}
       <AdvancedSearchModal open={advancedSearchOpen} onClose={() => setAdvancedSearchOpen(false)} />
+
+      {/* Cancel transfer confirmation modal */}
+      {cancelConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[400px] flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-[15px] font-black text-slate-800">إلغاء المستند</p>
+                <p className="text-[12px] text-slate-500">سيتم عكس حركة المخزون بالكامل</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-black text-slate-600">سبب الإلغاء *</label>
+              <input
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="أدخل سبب الإلغاء..."
+                className="w-full rounded-[10px] border border-slate-200 px-3 py-2.5 text-[13px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => { setCancelConfirmOpen(false); setCancelReason(""); }}
+                className="flex-1 h-[44px] rounded-[10px] border border-slate-200 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              >
+                تراجع
+              </button>
+              <button
+                onClick={handleCancelTransfer}
+                disabled={isCancelling || !cancelReason.trim()}
+                className="flex-1 h-[44px] rounded-[10px] bg-rose-600 text-[13px] font-black text-white hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCancelling ? "جاري الإلغاء..." : "تأكيد الإلغاء"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

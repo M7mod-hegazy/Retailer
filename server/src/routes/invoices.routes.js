@@ -19,7 +19,7 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
     const allowedSort = ["created_at", "total", "invoice_no", "payment_type", "status"];
     const safeSort = allowedSort.includes(sort) ? `i.${sort}` : "i.created_at";
     const safeDir  = dir === "asc" ? "ASC" : "DESC";
-    const conditions = [];
+    const conditions = ["i.status != 'cancelled'"];
     const params = [];
     if (date_from && date_to) {
       conditions.push("date(i.created_at) BETWEEN date(?) AND date(?)");
@@ -50,9 +50,17 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
              (SELECT COUNT(*) FROM invoice_lines WHERE invoice_id = i.id) AS items_count,
              CASE
                WHEN i.payment_type = 'multi' THEN (
-                 SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
-                 FROM payments p
-                 JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+                 COALESCE((
+                   SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
+                   FROM payments p
+                   JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+                 ), '') ||
+                 COALESCE((
+                   SELECT '|||credit:' || CAST(ROUND(ad.original_amount, 2) AS TEXT)
+                   FROM ajal_debts ad
+                   WHERE ad.invoice_id = i.id AND ad.source_type = 'invoice'
+                   LIMIT 1
+                 ), '')
                )
                WHEN i.payment_type = 'installments' THEN (
                  SELECT 'cash:' || CAST(ROUND(COALESCE(SUM(pa.amount), 0), 2) AS TEXT) ||
@@ -102,7 +110,7 @@ router.get("/returns", requirePagePermission("sales_returns", "view"), (req, res
   try {
     const db = getDb();
     const { search = "", customer_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
-    const conditions = ["1=1"];
+    const conditions = ["sr.status != 'cancelled'"];
     const params = [];
     if (search) {
       conditions.push("(c.name LIKE ? OR CAST(sr.id AS TEXT) LIKE ? OR i.invoice_no LIKE ?)");
@@ -391,7 +399,7 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
   }
 });
 
-router.delete("/:id", requirePagePermission("pos", "delete"), (req, res, next) => {
+router.delete("/:id", requirePagePermission("pos", "void"), (req, res, next) => {
   try {
     const result = cancelInvoice(Number(req.params.id), req.body?.reason, req.user?.id);
     req.audit("cancel", "invoice", { id: Number(req.params.id), reason: req.body?.reason }, `🧾 تم حذف/إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);

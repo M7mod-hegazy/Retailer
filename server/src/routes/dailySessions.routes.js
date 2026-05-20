@@ -162,7 +162,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           LEFT JOIN employees e ON e.id = i.seller_id
           LEFT JOIN users     u ON u.id = i.cancelled_by
           LEFT JOIN users     uc ON uc.id = i.user_id
-          WHERE date(i.created_at) = ?
+          WHERE date(i.created_at) = ? AND i.status != 'cancelled'
             AND (? = '' OR i.invoice_no LIKE ? OR c.name LIKE ? OR CAST(i.total AS TEXT) LIKE ?)
         `,
         params: [targetDate, search, like, like, like],
@@ -211,7 +211,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           FROM purchases p
           LEFT JOIN suppliers s ON s.id = p.supplier_id
           LEFT JOIN users u ON u.id = p.created_by
-          WHERE date(p.created_at) = ? AND COALESCE(p.status, '') != 'voided'
+          WHERE date(p.created_at) = ? AND COALESCE(p.status, '') NOT IN ('voided', 'cancelled')
             AND (? = '' OR p.doc_no LIKE ? OR s.name LIKE ? OR CAST(p.total AS TEXT) LIKE ?)
         `,
         params: [targetDate, search, like, like, like],
@@ -260,7 +260,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           FROM sales_returns sr
           LEFT JOIN customers c ON c.id = sr.customer_id
           LEFT JOIN users u ON u.id = sr.created_by
-          WHERE date(sr.created_at) = ?
+          WHERE date(sr.created_at) = ? AND COALESCE(sr.status, '') != 'cancelled'
             AND (? = '' OR sr.doc_no LIKE ? OR c.name LIKE ? OR sr.reason LIKE ? OR CAST(sr.total AS TEXT) LIKE ?)
         `,
         params: [targetDate, search, like, like, like, like],
@@ -277,7 +277,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           FROM purchase_returns pr
           LEFT JOIN suppliers s ON s.id = pr.supplier_id
           LEFT JOIN users u ON u.id = pr.created_by
-          WHERE date(pr.created_at) = ?
+          WHERE date(pr.created_at) = ? AND COALESCE(pr.status, '') != 'cancelled'
             AND (? = '' OR pr.doc_no LIKE ? OR s.name LIKE ? OR CAST(pr.total AS TEXT) LIKE ?)
         `,
         params: [targetDate, search, like, like, like],

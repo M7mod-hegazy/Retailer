@@ -7,6 +7,8 @@ import {
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
@@ -99,6 +101,7 @@ export default function PurchaseReturnFormPage() {
   const [isLocked, setIsLocked] = useState(false);
 
   const [cart, setCart] = useState([]);
+
   const [purchaseLines, setPurchaseLines] = useState([]);
   const [loadedPurchase, setLoadedPurchase] = useState(null);
 
@@ -128,6 +131,7 @@ export default function PurchaseReturnFormPage() {
 
   const [warehouses, setWarehouses] = useState([]);
   const [units, setUnits] = useState([]);
+  const [stockLevels, setStockLevels] = useState({});
 
   const [purchasePickerOpen, setPurchasePickerOpen] = useState(false);
 
@@ -147,6 +151,10 @@ export default function PurchaseReturnFormPage() {
   const stagingQtyRef = useRef(null);
   const stagingCostRef = useRef(null);
   const addBtnRef = useRef(null);
+
+  // isDirty must be after all state declarations to avoid TDZ on `supplier`
+  const isDirty = isEditMode ? !isLocked : (cart.length > 0 || !!supplier);
+  const { blocker } = useUnsavedChangesGuard(isDirty);
 
   const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } =
     useInvoiceActivation("purchase_return", editActivation);
@@ -169,6 +177,14 @@ export default function PurchaseReturnFormPage() {
       if (u.length) setStagingUnitId(String(u[0].id));
     }).catch(() => {});
     api.get("/api/suppliers?limit=500").then(r => setSuppliers(r.data.data || [])).catch(() => {});
+    api.get("/api/stock/levels").then(r => {
+      const grouped = {};
+      (r.data.data || []).forEach(row => {
+        if (!grouped[row.item_id]) grouped[row.item_id] = {};
+        grouped[row.item_id][row.warehouse_id] = row.quantity;
+      });
+      setStockLevels(grouped);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -247,6 +263,13 @@ export default function PurchaseReturnFormPage() {
     setStagingItem(item);
     setStagingCost(String(item.purchase_price || item.unit_cost || "0"));
     setStagingQty("1");
+    if (item.unit_id) {
+      setStagingUnitId(String(item.unit_id));
+    } else if (units.length > 0) {
+      setStagingUnitId(String(units[0].id));
+    } else {
+      setStagingUnitId("");
+    }
     setItemQuery(item.name_ar || item.name);
     setItemResults([]);
     setLookupOpen(false);
@@ -267,7 +290,9 @@ export default function PurchaseReturnFormPage() {
       unit_cost: cost,
       quantity: qty,
       warehouse_id: stagingWarehouseId,
+      warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
       unit_id: stagingUnitId,
+      unit_name: units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية",
     }]);
     setStagingItem(null); setStagingQty("1"); setStagingCost("");
     setItemQuery(""); setItemResults([]); setLookupOpen(false); setActiveIndex(-1);
@@ -666,16 +691,18 @@ export default function PurchaseReturnFormPage() {
           {mode === "direct" && (
             <div className="flex flex-1 flex-col gap-4 overflow-hidden">
               {!isLocked && (
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shrink-0">
-                  <div className="mb-3 text-[12px] font-bold text-slate-500">إضافة صنف</div>
-                  <div className="relative mb-3 flex items-start gap-1">
-                    <div className="relative flex-1">
-                      <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${lookupOpen ? "border-amber-400 bg-white" : "border-slate-200 bg-slate-50"}`}>
+                <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
+                  <div className="grid grid-cols-[3fr_110px_100px_80px_100px_160px_80px] gap-2 items-end">
+                    {/* Item search */}
+                    <div className="relative flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-600">الصنف</label>
+                      <div className={`flex items-center gap-2 rounded-sm border px-2.5 h-[37px] ${lookupOpen ? "border-slate-800 bg-white" : "border-slate-300 bg-slate-50"}`}>
                         <Search className="h-4 w-4 shrink-0 text-slate-400" />
                         <input ref={itemInputRef} value={itemQuery}
-                          onChange={e => { setItemQuery(e.target.value); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
+                          onChange={e => { setItemQuery(e.target.value); setLookupOpen(true); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
+                          onFocus={e => { setLookupOpen(true); e.target.select(); }}
                           placeholder="ابحث عن صنف بالاسم أو الباركود..."
-                          className="flex-1 bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
+                          className="flex-1 bg-transparent text-[12px] font-bold text-slate-800 outline-none placeholder:text-slate-400"
                           onKeyDown={e => {
                             if (!lookupOpen || !itemResults.length) return;
                             if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
@@ -689,17 +716,17 @@ export default function PurchaseReturnFormPage() {
                         )}
                       </div>
                       {lookupOpen && itemResults.length > 0 && (
-                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-slate-100 bg-white shadow-xl max-h-60 overflow-y-auto">
+                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-md border border-slate-200 bg-white shadow-xl max-h-60 overflow-y-auto">
                           {itemResults.map((item, idx) => (
                             <button key={item.id} onMouseDown={e => e.preventDefault()} onClick={() => selectItemForStaging(item)}
-                              className={`flex w-full items-center justify-between px-3 py-2.5 text-right transition-colors border-b border-slate-100 last:border-0 ${idx === activeIndex ? "bg-amber-50" : "hover:bg-amber-50"}`}>
+                              className={`flex w-full items-center justify-between px-3 py-2 text-right transition-colors border-b border-slate-100 last:border-0 ${idx === activeIndex ? "bg-amber-50" : "hover:bg-amber-50"}`}>
                               <div className="flex items-center gap-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 border border-slate-200">
-                                  <Package className="h-4 w-4 text-slate-300" />
+                                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 border border-slate-200">
+                                  <Package className="h-3.5 w-3.5 text-slate-400" />
                                 </div>
                                 <div>
-                                  <div className="text-[13px] font-black text-slate-800">{item.name_ar || item.name}</div>
-                                  <div className="text-[10px] font-bold text-slate-400">{item.item_code || item.barcode || `#${item.id}`}</div>
+                                  <div className="text-[12px] font-black text-slate-800">{item.name_ar || item.name}</div>
+                                  <div className="text-[9px] font-bold text-slate-400">{item.item_code || item.barcode || `#${item.id}`}</div>
                                 </div>
                               </div>
                               <div className="text-[12px] font-black text-amber-700">{formatMoney(item.purchase_price || item.unit_cost)} ج.م</div>
@@ -708,47 +735,65 @@ export default function PurchaseReturnFormPage() {
                         </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setAdvancedSearchOpen(true)}
-                      className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-                      title="بحث متقدم في المخزون"
-                    >
-                      <Filter className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className={`rounded-lg border px-4 py-3 transition-opacity ${stagingItem ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50 opacity-40 pointer-events-none"}`}>
-                    {stagingItem && <div className="mb-2 text-[12px] font-black text-amber-800 truncate">{stagingItem.name_ar || stagingItem.name}</div>}
-                    <div className="flex items-end gap-3 flex-wrap">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-500">المستودع</label>
-                        <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingUnitRef, itemInputRef)}
-                          className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-[12px] text-slate-800 outline-none focus:border-amber-400 min-w-[120px]">
-                          {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-500">الوحدة</label>
-                        <select ref={stagingUnitRef} value={stagingUnitId} onChange={e => setStagingUnitId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingQtyRef, stagingWHRef)}
-                          className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-[12px] text-slate-800 outline-none focus:border-amber-400 min-w-[90px]">
-                          {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-500">الكمية</label>
-                        <input ref={stagingQtyRef} type="number" min="1" value={stagingQty} onChange={e => setStagingQty(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingCostRef, stagingUnitRef)}
-                          className="w-16 rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-center text-[13px] font-black text-slate-800 outline-none focus:border-amber-400" />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-500">سعر الشراء</label>
-                        <input ref={stagingCostRef} type="number" min="0" value={stagingCost} onChange={e => setStagingCost(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, addBtnRef, stagingQtyRef, true)}
-                          className="w-24 rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-center text-[13px] font-black text-slate-800 outline-none focus:border-amber-400" />
-                      </div>
-                      <button ref={addBtnRef} onClick={addStagingToCart} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addStagingToCart(); } }}
-                        className="mb-0.5 flex items-center gap-1.5 rounded-md bg-amber-700 px-4 py-1.5 text-[12px] font-black text-white hover:bg-amber-800 transition-colors">
-                        <Plus className="h-3.5 w-3.5" /> إضافة
-                      </button>
+
+                    {/* Warehouse dropdown */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-600">المستودع</label>
+                      <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingUnitRef, itemInputRef)}
+                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800">
+                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      </select>
                     </div>
+
+                    {/* Unit dropdown */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
+                      <select ref={stagingUnitRef} value={stagingUnitId} onChange={e => setStagingUnitId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingQtyRef, stagingWHRef)}
+                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800">
+                        <option value="">أساسية</option>
+                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Qty input */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-600">الكمية</label>
+                      <input ref={stagingQtyRef} type="number" min="0.001" step="any" value={stagingQty} onChange={e => setStagingQty(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingCostRef, stagingUnitRef)}
+                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
+                    </div>
+
+                    {/* Cost input */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-600">سعر الشراء (المرتجع)</label>
+                      <input ref={stagingCostRef} type="number" step="any" value={stagingCost} onChange={e => setStagingCost(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, addBtnRef, stagingQtyRef, true)}
+                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
+                    </div>
+
+                    {/* Warehouse stock table */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-600">المخزون الحالي</label>
+                      <div className="border border-slate-300 rounded-sm bg-slate-50 overflow-y-auto outline-none" style={{height:"37px"}}>
+                        <table className="w-full text-[10px] border-collapse">
+                          <tbody>
+                            {warehouses.map(w => {
+                              const qty = stagingItem && stockLevels[stagingItem.id] ? (stockLevels[stagingItem.id][w.id] || 0) : 0;
+                              return (
+                                <tr key={w.id} className="border-b border-slate-200 last:border-0 hover:bg-slate-100">
+                                  <td className="px-1.5 py-0.5 font-bold text-slate-600 truncate">{w.name}</td>
+                                  <td className={`px-1.5 py-0.5 font-mono text-center ${qty > 0 ? "text-amber-600 font-black" : "text-slate-400"}`}>{qty}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Add button */}
+                    <button ref={addBtnRef} onClick={addStagingToCart} disabled={!stagingItem}
+                      className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-amber-600 px-4 text-[12px] font-bold text-white hover:bg-amber-700 disabled:opacity-40 transition-all shadow-sm">
+                      <Plus className="h-4 w-4" /> إضافة
+                    </button>
                   </div>
                 </div>
               )}
@@ -758,7 +803,9 @@ export default function PurchaseReturnFormPage() {
                     <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
                       <tr>
                         <th className="px-4 py-3 text-[11px] font-bold text-slate-500">الصنف</th>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">سعر الشراء</th>
+                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">المستودع</th>
+                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
+                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">سعر المرتجع</th>
                         <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية</th>
                         <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الإجمالي</th>
                         {!isLocked && <th className="px-3 py-3 w-10"></th>}
@@ -768,7 +815,9 @@ export default function PurchaseReturnFormPage() {
                       {cart.map((l, idx) => (
                         <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50 animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
                           <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
-                          <td className="px-3 py-3 text-center text-[13px] text-slate-600">{formatMoney(l.unit_cost)}</td>
+                          <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.warehouse_name}</td>
+                          <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.unit_name}</td>
+                          <td className="px-3 py-3 text-center text-[13px] text-slate-600 font-mono">{formatMoney(l.unit_cost)}</td>
                           <td className="px-3 py-3 text-center">
                             {!isLocked ? (
                               <div className="flex items-center justify-center gap-1">
@@ -778,7 +827,7 @@ export default function PurchaseReturnFormPage() {
                               </div>
                             ) : <span className="text-[13px] font-black text-slate-700">{l.quantity}</span>}
                           </td>
-                          <td className="px-3 py-3 text-center text-[13px] font-bold text-amber-700">{formatMoney(l.unit_cost * l.quantity)}</td>
+                          <td className="px-3 py-3 text-center text-[13px] font-bold text-amber-700 font-mono">{formatMoney(l.unit_cost * l.quantity)}</td>
                           {!isLocked && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button></td>}
                         </tr>
                       ))}
@@ -942,6 +991,11 @@ export default function PurchaseReturnFormPage() {
       />
       <AddSupplierModal open={supplierCreateOpen} onClose={() => setSupplierCreateOpen(false)} onCreated={s => { setSuppliers(prev => [s, ...prev]); setSupplier({ id: s.id, name: s.name }); }} />
       <SupplierInfoModal open={supplierInfoOpen} supplierId={supplier?.id} onClose={() => setSupplierInfoOpen(false)} onUpdated={(u) => { setSuppliers(prev => prev.map(s => s.id === u.id ? u : s)); setSupplier(prev => prev?.id === u.id ? { ...prev, ...u } : prev); }} />
+      <UnsavedChangesModal
+        open={blocker.state === "blocked"}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
     </div>
   );
 }
