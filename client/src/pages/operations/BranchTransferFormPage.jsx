@@ -12,7 +12,7 @@ import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
-import { fuzzyFilterRows } from "../../utils/search";
+import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
@@ -33,43 +33,6 @@ function fmtDateTime(d) {
   }).format(d);
 }
 
-function LookupList({ items, onPick, activeIndex, query }) {
-  if (!items.length) {
-    return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-        لا توجد نتائج
-      </div>
-    );
-  }
-  return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
-        {items.map((item, i) => (
-          <button
-            key={item.id}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-indigo-50/80" : "hover:bg-slate-50"}`}
-          >
-            <div className="flex items-center gap-2">
-              {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
-              ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300"/></div>
-              )}
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-indigo-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[10px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || `#${item.id}`} query={query} /></span>
-              </div>
-            </div>
-            <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{item.unit_name || ""}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function BranchTransferFormPage() {
   const navigate = useNavigate();
@@ -90,7 +53,6 @@ export default function BranchTransferFormPage() {
   const [storeSettings, setStoreSettings] = useState({});
   const [warehouses, setWarehouses] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [items, setItems] = useState([]);
   const [units, setUnits] = useState([]);
   const [stockLevels, setStockLevels] = useState({});
   const [partnerBranch, setPartnerBranch] = useState("");
@@ -107,7 +69,12 @@ export default function BranchTransferFormPage() {
   const [lockedRef, setLockedRef] = useState("");
   const [lockedDate, setLockedDate] = useState(null);
 
+  const ITEM_PAGE = 20;
   const [itemQuery, setItemQuery] = useState("");
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", unitId: "", warehouseId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -168,7 +135,6 @@ export default function BranchTransferFormPage() {
       setWarehouses(data);
       if (data.length > 0) setStaging(s => ({ ...s, warehouseId: String(data[0].id) }));
     }).catch(() => {});
-    api.get("/api/items").then(r => setItems(r.data.data || [])).catch(() => {});
     api.get("/api/units").then(r => setUnits(r.data.data || [])).catch(() => {});
     api.get("/api/stock/levels").then(r => {
       const data = r.data?.data || [];
@@ -218,24 +184,40 @@ export default function BranchTransferFormPage() {
       .catch(() => {});
   }, [lines.length, isEditMode, refFetched, type]);
 
-  const filteredItems = useMemo(() => {
-    const results = fuzzyFilterRows(items, itemQuery, ["name", "code", "item_code", "barcode"]).slice(0, 12);
-    const q = (itemQuery || "").toLowerCase().trim();
-    if (!q) return results;
-    return [...results].sort((a, b) => {
-      const aCode = (a.item_code || a.code || "").toLowerCase();
-      const bCode = (b.item_code || b.code || "").toLowerCase();
-      const aMatch = aCode.startsWith(q) || aCode === q;
-      const bMatch = bCode.startsWith(q) || bCode === q;
-      if (aMatch && !bMatch) return -1;
-      if (!aMatch && bMatch) return 1;
-      return 0;
-    });
-  }, [itemQuery, items]);
+  useEffect(() => {
+    const q = itemQuery.trim();
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = r.data.data || [];
+          setFilteredItems(rows);
+          setItemOffset(rows.length);
+          setItemHasMore(rows.length === ITEM_PAGE);
+        }).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemQuery]);
+
+  function loadMoreItems() {
+    const q = itemQuery.trim();
+    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+      .then(r => {
+        const rows = r.data.data || [];
+        setFilteredItems(prev => [...prev, ...rows]);
+        setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
 
   function handlePickItem(item) {
     setSelectedItem(item);
     setItemQuery(item.name);
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(false);
     setLookupOpen(false);
     const iStock = stockLevels[item.id] || {};
     let bestWhId = "";
@@ -765,7 +747,15 @@ export default function BranchTransferFormPage() {
                   </div>
                 )}
                 {lookupOpen && itemQuery && (
-                  <LookupList items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} />
+                  <SearchDropdown
+                    items={filteredItems}
+                    onPick={handlePickItem}
+                    activeIndex={activeIndex}
+                    query={itemQuery}
+                    onLoadMore={loadMoreItems}
+                    hasMoreFromServer={itemHasMore}
+                    isLoadingMore={isLoadingMoreItems}
+                  />
                 )}
               </div>
 

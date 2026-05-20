@@ -21,37 +21,63 @@ export default function SearchDropdown({
   pageSize = PAGE_SIZE,
   rawText = "",
   onPickRawText,
+  // Server-side infinite scroll props
+  onLoadMore,
+  hasMoreFromServer = false,
+  isLoadingMore = false,
 }) {
-  const [visibleCount, setVisibleCount] = useState(pageSize);
   const sentinelRef = useRef(null);
   const listRef = useRef(null);
+  // Refs so handleIntersect never goes stale without reconnecting the observer
+  const onLoadMoreRef = useRef(onLoadMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
+  useEffect(() => { isLoadingMoreRef.current = isLoadingMore; }, [isLoadingMore]);
 
+  // Client-side pagination — only used when onLoadMore is NOT provided
+  const [visibleCount, setVisibleCount] = useState(pageSize);
+  const queryRef = useRef(query);
   useEffect(() => {
-    setVisibleCount(pageSize);
-  }, [items, pageSize]);
-
-  const hasMore = visibleCount < items.length;
-  const showRaw = rawText && onPickRawText;
-
-  const handleIntersect = useCallback(() => {
-    if (hasMore) {
-      setVisibleCount(prev => Math.min(prev + pageSize, items.length));
+    // Reset client-side pagination only when query changes, not when items append
+    if (query !== queryRef.current) {
+      queryRef.current = query;
+      setVisibleCount(pageSize);
     }
-  }, [hasMore, pageSize, items.length]);
+  }, [query, pageSize]);
+
+  const serverMode = Boolean(onLoadMore);
+  const hasMoreLocal = !serverMode && visibleCount < items.length;
+  const showSentinel = hasMoreLocal || (serverMode && hasMoreFromServer);
+  const showRaw = rawText && onPickRawText;
+  const visibleItems = serverMode ? items : items.slice(0, visibleCount);
+  const totalItems = items.length;
+  const rawActiveIndex = activeIndex === totalItems;
+
+  const handleIntersect = useCallback(
+    ([entry]) => {
+      if (!entry.isIntersecting) return;
+      if (hasMoreLocal) {
+        setVisibleCount(prev => Math.min(prev + pageSize, items.length));
+      } else if (serverMode && hasMoreFromServer && !isLoadingMoreRef.current) {
+        onLoadMoreRef.current?.();
+      }
+    },
+    // isLoadingMore and onLoadMore intentionally accessed via refs to keep observer stable
+    [hasMoreLocal, serverMode, hasMoreFromServer, pageSize, items.length],
+  );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) handleIntersect(); },
-      { root: listRef.current, rootMargin: "80px" }
-    );
+    const root = listRef.current;
+    if (!sentinel || !root || !showSentinel) return;
+    const observer = new IntersectionObserver(handleIntersect, {
+      root,
+      rootMargin: "60px",
+      threshold: 0,
+    });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, handleIntersect]);
-
-  const totalItems = items.length;
-  const rawActiveIndex = activeIndex === totalItems;
+  }, [showSentinel, handleIntersect]);
 
   if (!items.length && !showRaw) {
     return (
@@ -60,8 +86,6 @@ export default function SearchDropdown({
       </div>
     );
   }
-
-  const visibleItems = items.slice(0, visibleCount);
 
   return (
     <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
@@ -72,7 +96,7 @@ export default function SearchDropdown({
       >
         {visibleItems.map((item, i) => (
           <button
-            key={item.id}
+            key={item.id ?? i}
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(item)}
@@ -108,9 +132,12 @@ export default function SearchDropdown({
             </div>
           </button>
         ))}
-        {hasMore && (
-          <div ref={sentinelRef} className="flex items-center justify-center py-2">
-            <div className="w-4 h-4 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
+        {showSentinel && (
+          <div ref={sentinelRef} className="flex items-center justify-center py-3">
+            {isLoadingMore
+              ? <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+              : <div className="w-4 h-4 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
+            }
           </div>
         )}
         {showRaw && (

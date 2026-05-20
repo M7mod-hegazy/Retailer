@@ -476,6 +476,13 @@ export default function POSPage() {
   const [itemLookupOpen, setItemLookupOpen]       = useState(false);
   const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
 
+  // Item search (paginated server-side)
+  const [searchedItemResults, setSearchedItemResults] = useState([]);
+  const [searchedItemOffset, setSearchedItemOffset]   = useState(0);
+  const [searchedItemHasMore, setSearchedItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems]   = useState(false);
+  const ITEM_PAGE = 20;
+
   // Detailed search
   const [detailedSearchOpen, setDetailedSearchOpen]   = useState(false);
   const [detailedSearchQuery, setDetailedSearchQuery] = useState("");
@@ -904,17 +911,43 @@ export default function POSPage() {
     }));
   }, [customerLookupOpen, customerQuery, customers]);
 
-  const itemResults = useMemo(() => {
+  useEffect(() => {
     const q = (itemNameQuery || itemCodeQuery).trim();
-    const source = q
-      ? scoredFilterRows(items, q, ["name", "code", "item_code", "barcode"])
-      : items.slice(0, 8);
-    return source.map((item) => ({
-      ...item,
-      stock_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
-      price_label: formatMoney(item.sale_price || item.price || 0),
-    }));
-  }, [itemNameQuery, itemCodeQuery, items]);
+    if (!q) { setSearchedItemResults([]); setSearchedItemOffset(0); setSearchedItemHasMore(false); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = (r.data.data || []).map(item => ({
+            ...item,
+            sub_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
+            price_label: formatMoney(item.sale_price || item.price || 0),
+          }));
+          setSearchedItemResults(rows);
+          setSearchedItemOffset(rows.length);
+          setSearchedItemHasMore(rows.length === ITEM_PAGE);
+        }).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemNameQuery, itemCodeQuery]);
+
+  function loadMorePOSItems() {
+    const q = (itemNameQuery || itemCodeQuery).trim();
+    if (!searchedItemHasMore || !q || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${searchedItemOffset}`)
+      .then(r => {
+        const rows = (r.data.data || []).map(item => ({
+          ...item,
+          sub_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
+          price_label: formatMoney(item.sale_price || item.price || 0),
+        }));
+        setSearchedItemResults(prev => [...prev, ...rows]);
+        setSearchedItemOffset(prev => prev + rows.length);
+        setSearchedItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  const itemResults = searchedItemResults;
 
   const detailedItemResults = useMemo(() => {
     const q = (detailedSearchQuery || itemNameQuery || itemCodeQuery).trim();
@@ -1014,6 +1047,9 @@ export default function POSPage() {
     setSelectedItem(item);
     setItemNameQuery(item.name || "");
     setItemCodeQuery(item.code || item.item_code || item.barcode || "");
+    setSearchedItemResults([]);
+    setSearchedItemOffset(0);
+    setSearchedItemHasMore(false);
     setItemLookupOpen(false);
     setDetailedSearchOpen(false);
     // Focus next field depending on view mode
@@ -2109,6 +2145,9 @@ export default function POSPage() {
                         query={itemNameQuery}
                         rawText={itemNameQuery}
                         onPickRawText={(txt) => handleSelectItem({ id: -1, name: txt, code: txt, item_code: txt, barcode: txt, sale_price: 0, price: 0, purchase_price: 0, stock_quantity: 0 })}
+                        onLoadMore={loadMorePOSItems}
+                        hasMoreFromServer={searchedItemHasMore}
+                        isLoadingMore={isLoadingMoreItems}
                       />
                     )}
                   </div>

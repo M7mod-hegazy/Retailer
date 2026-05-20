@@ -272,14 +272,21 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
       });
 
       (retsR.value?.data?.data || []).forEach(r => {
+        const isSplit = r.refund_method === "split";
+        const isCashOnly = r.refund_method === "cash_back";
+        const creditAmt = isSplit ? Number(r.credit_amount || 0) : (isCashOnly ? 0 : Number(r.total || 0));
         items.push({
           id: `ret-${r.id}`,
           type: "return",
           date: new Date(r.created_at),
           ref: r.doc_no || `RET-${r.id}`,
           description: r.original_invoice_no ? `مرتجع فاتورة ${r.original_invoice_no}` : "مرتجع",
-          impactAmount: Number(r.total || 0),
-          impactDir: "subtract",
+          impactAmount: creditAmt,
+          impactDir: creditAmt > 0.005 ? "subtract" : null,
+          totalAmount: Number(r.total || 0),
+          isSplit,
+          isCashOnly,
+          cashAmount: Number(r.cash_amount || 0),
           raw: r,
         });
       });
@@ -446,11 +453,24 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
               {/* Right: total + date */}
               <div className="flex flex-col items-end gap-1 shrink-0">
                 {!isDocRow && (
-                  <div className={`text-[14px] font-bold font-mono tracking-tight ${ev.impactDir === "subtract" ? "text-emerald-700" : "text-rose-600"
+                  <div className={`text-[14px] font-bold font-mono tracking-tight ${ev.impactDir === "subtract" ? "text-emerald-700" : ev.impactDir === "add" ? "text-rose-600" : "text-slate-600"
                     }`}>
-                    {fmt(ev.impactAmount)}
+                    {fmt(ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}
                     <span className="text-[9px] font-bold opacity-60 mr-1">ج.م</span>
                   </div>
+                )}
+                {ev.type === "return" && ev.isSplit && (
+                  <div className="flex flex-col gap-0.5 items-end mt-0.5">
+                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">
+                      نقداً: {fmt(ev.cashAmount)}
+                    </span>
+                    <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5">
+                      حساب: {fmt(ev.impactAmount)}
+                    </span>
+                  </div>
+                )}
+                {ev.type === "return" && ev.isCashOnly && (
+                  <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">نقداً فقط</span>
                 )}
                 <div className="text-[10px] text-slate-450 font-bold font-mono">{fmtDate(ev.date)}</div>
               </div>
@@ -547,7 +567,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                 }`}>
                 <span className={`text-[10px] font-bold tracking-wide ${ev.impactDir === "add" || isMulti ? "text-rose-600" : "text-emerald-700"
                   }`}>
-                  {ev.impactDir === "add" || isMulti ? "أُضيف للرصيد الآجل المترتب على العميل" : "خُصم من الرصيد / تحصيل مالي للمديونية"}
+                  {ev.type === "return"
+                    ? (ev.isSplit ? "خُصم من رصيد الحساب (جزء مختلط)" : "خُصم من رصيد الحساب")
+                    : ev.impactDir === "add" || isMulti ? "أُضيف للرصيد الآجل المترتب على العميل" : "خُصم من الرصيد / تحصيل مالي للمديونية"}
                 </span>
                 <span className={`text-[13px] font-bold font-mono tracking-tight ${ev.impactDir === "add" || isMulti ? "text-rose-600" : "text-emerald-700"
                   }`}>

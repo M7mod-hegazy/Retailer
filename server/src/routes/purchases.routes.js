@@ -426,7 +426,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       const payload = req.body || {};
       const createdDate = normalizeDate(payload.created_at);
       assertCanWriteForDate(db, createdDate);
-      const settlementType = payload.settlement_type === "cash" ? "cash" : "account";
+      const settlementType = ["cash", "account", "split"].includes(payload.settlement_type) ? payload.settlement_type : "account";
       let total = 0;
       const preparedLines = [];
 
@@ -471,25 +471,21 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       }
 
       const returnDocNo = generateDocNumber("purchase_return");
-      const treasuryId =
-        settlementType === "cash"
-          ? payload.treasury_id ||
-            db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id ||
-            1
-          : null;
-
-      if (settlementType === "cash") {
-        const treasury = db.prepare("SELECT id FROM treasuries WHERE id = ?").get(treasuryId);
-        if (!treasury) {
-          const error = new Error("Treasury not found");
-          error.status = 400;
-          throw error;
-        }
-      }
+      const prCashAmt = settlementType === "cash" ? total
+        : settlementType === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+        : 0;
+      const prCreditAmt = settlementType === "account" ? total
+        : settlementType === "split" ? Math.max(0, total - prCashAmt)
+        : 0;
+      const treasuryId = (settlementType === "cash" || settlementType === "split")
+        ? payload.treasury_id ||
+          db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id ||
+          1
+        : null;
 
       const purchaseReturnResult = db
-        .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)")
-        .run(returnDocNo, purchase.id, purchase.supplier_id || null, total, settlementType, treasuryId,
+        .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, cash_amount, credit_amount, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
+        .run(returnDocNo, purchase.id, purchase.supplier_id || null, total, settlementType, prCashAmt, prCreditAmt, treasuryId,
              payload.user_id || null, `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
 
       const prId = purchaseReturnResult.lastInsertRowid;
@@ -514,12 +510,11 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
         });
       }
 
-      if (settlementType === "cash") {
-        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(total, treasuryId);
-      } else if (purchase.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(
-          total, purchase.supplier_id,
-        );
+      if (prCashAmt > 0 && treasuryId) {
+        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(prCashAmt, treasuryId);
+      }
+      if (prCreditAmt > 0 && purchase.supplier_id) {
+        db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(prCreditAmt, purchase.supplier_id);
       }
 
       return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(prId);
@@ -911,10 +906,14 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
       }
 
       // Reverse financials
-      if (pr.settlement_type === 'cash' && pr.treasury_id) {
-        db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(pr.total, pr.treasury_id);
-      } else if (pr.settlement_type === 'account' && pr.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(pr.total, pr.supplier_id);
+      const cancelPrCashAmt = Number(pr.cash_amount || 0);
+      const cancelPrCreditAmt = Number(pr.credit_amount || 0);
+      if (cancelPrCashAmt > 0) {
+        const tId = pr.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+        if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(cancelPrCashAmt, tId);
+      }
+      if (cancelPrCreditAmt > 0 && pr.supplier_id) {
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(cancelPrCreditAmt, pr.supplier_id);
       }
 
       const now = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -949,12 +948,15 @@ function editPurchaseReturn(db, returnId, payload) {
     }
 
     // 2. Reverse old financials
-    const oldSettlement = pr.settlement_type || "account";
-    if (oldSettlement === "cash") {
-      const tId = pr.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(pr.total, tId);
-    } else if (pr.supplier_id) {
-      db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(pr.total, pr.supplier_id);
+    const editPrDefaultTId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+    const oldPrCashAmt = Number(pr.cash_amount || 0);
+    const oldPrCreditAmt = Number(pr.credit_amount || 0);
+    if (oldPrCashAmt > 0) {
+      const tId = pr.treasury_id || editPrDefaultTId;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(oldPrCashAmt, tId);
+    }
+    if (oldPrCreditAmt > 0 && pr.supplier_id) {
+      db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(oldPrCreditAmt, pr.supplier_id);
     }
 
     // 3. Build new lines
@@ -992,20 +994,27 @@ function editPurchaseReturn(db, returnId, payload) {
     }
 
     // 5. Apply new financials
-    const newSettlement = payload.settlement_type || pr.settlement_type || "account";
+    const newSettlement = ["cash", "account", "split"].includes(payload.settlement_type) ? payload.settlement_type : (pr.settlement_type || "account");
     const newTreasuryId = payload.treasury_id || pr.treasury_id;
     const newSupplierId = payload.supplier_id || pr.supplier_id;
-    if (newSettlement === "cash") {
-      const tId = newTreasuryId || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(newTotal, tId);
-    } else if (newSupplierId) {
-      db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(newTotal, newSupplierId);
+    const newPrCashAmt = newSettlement === "cash" ? newTotal
+      : newSettlement === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+      : 0;
+    const newPrCreditAmt = newSettlement === "account" ? newTotal
+      : newSettlement === "split" ? Math.max(0, newTotal - newPrCashAmt)
+      : 0;
+    if (newPrCashAmt > 0) {
+      const tId = newTreasuryId || editPrDefaultTId;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(newPrCashAmt, tId);
+    }
+    if (newPrCreditAmt > 0 && newSupplierId) {
+      db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(newPrCreditAmt, newSupplierId);
     }
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE purchase_returns SET total = ?, settlement_type = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(newTotal, newSettlement, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, returnId);
+      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(newTotal, newSettlement, newPrCashAmt, newPrCreditAmt, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, returnId);
 
     return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(returnId);
   })();

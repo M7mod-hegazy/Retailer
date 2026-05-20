@@ -191,14 +191,21 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
       });
 
       (retsR.value?.data?.data || []).forEach(r => {
+        const isSplit = r.settlement_type === "split";
+        const isCashOnly = r.settlement_type === "cash";
+        const creditAmt = isSplit ? Number(r.credit_amount || 0) : (isCashOnly ? 0 : Number(r.total || 0));
         items.push({
           id: `ret-${r.id}`,
           type: "return",
           date: new Date(r.created_at),
           ref: r.doc_no || `RET-${r.id}`,
           description: r.purchase_id ? `مرتجع فاتورة #${r.purchase_id}` : "مرتجع شراء",
-          impactAmount: Number(r.total || 0),
-          impactDir: "subtract",
+          impactAmount: creditAmt,
+          impactDir: creditAmt > 0.005 ? "subtract" : null,
+          totalAmount: Number(r.total || 0),
+          isSplit,
+          isCashOnly,
+          cashAmount: Number(r.cash_amount || 0),
           raw: r,
         });
       });
@@ -338,11 +345,24 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
                 )}
                 {!isDocRow && (
                   <div className={`text-[13px] font-black font-mono ${
-                    ev.impactDir === "subtract" ? "text-emerald-700" : "text-rose-600"
+                    ev.impactDir === "subtract" ? "text-emerald-700" : ev.impactDir === "add" ? "text-rose-600" : "text-slate-600"
                   }`}>
-                    {fmt(ev.impactAmount)}
+                    {fmt(ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}
                     <span className="text-[10px] font-bold opacity-60 mr-0.5">ج.م</span>
                   </div>
+                )}
+                {ev.type === "return" && ev.isSplit && (
+                  <div className="flex flex-col gap-0.5 items-end">
+                    <span className="text-[8px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5">
+                      نقداً: {fmt(ev.cashAmount)}
+                    </span>
+                    <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5">
+                      حساب: {fmt(ev.impactAmount)}
+                    </span>
+                  </div>
+                )}
+                {ev.type === "return" && ev.isCashOnly && (
+                  <span className="text-[8px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5">نقداً فقط</span>
                 )}
                 <div className="text-[10px] text-slate-400 font-bold">{fmtDate(ev.date)}</div>
               </div>

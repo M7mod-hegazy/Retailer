@@ -4,6 +4,7 @@ import {
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
   Package, UserPlus, Calendar, Loader2, ChevronDown, Filter,
 } from "lucide-react";
+import SearchDropdown from "../../components/ui/SearchDropdown";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
@@ -113,6 +114,7 @@ export default function PurchaseReturnFormPage() {
   const [supplierBalance, setSupplierBalance] = useState(null);
 
   const [settlementType, setSettlementType] = useState("account");
+  const [splitCashAmount, setSplitCashAmount] = useState("");
   const [reason, setReason] = useState("other");
   const [reasonOther, setReasonOther] = useState("");
 
@@ -120,6 +122,9 @@ export default function PurchaseReturnFormPage() {
 
   const [itemQuery, setItemQuery] = useState("");
   const [itemResults, setItemResults] = useState([]);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [stagingItem, setStagingItem] = useState(null);
   const [stagingQty, setStagingQty] = useState("1");
   const [stagingCost, setStagingCost] = useState("");
@@ -194,6 +199,7 @@ export default function PurchaseReturnFormPage() {
       const pr = r.data.data;
       setEditActivation({ docNo: pr.doc_no || "", createdAt: pr.created_at || new Date().toISOString() });
       setSettlementType(pr.settlement_type || "account");
+      if (pr.settlement_type === "split") setSplitCashAmount(String(pr.cash_amount || ""));
       setReason(pr.reason || "other");
       if (pr.supplier_id) setSupplier({ id: pr.supplier_id, name: pr.supplier_name || String(pr.supplier_id) });
       if (pr.purchase_id) {
@@ -224,6 +230,7 @@ export default function PurchaseReturnFormPage() {
           key: `edit-${l.id || idx}`,
           item_id: l.item_id,
           item_name: l.item_name_ar || l.item_name || l.name,
+          item_code: l.item_code || l.barcode || "",
           unit_cost: Number(l.unit_cost || l.unit_price || 0),
           quantity: Number(l.quantity),
           warehouse_id: l.warehouse_id || "",
@@ -238,15 +245,37 @@ export default function PurchaseReturnFormPage() {
     api.get(`/api/suppliers/${supplier.id}`).then(r => setSupplierBalance(Number(r.data.data?.opening_balance || 0))).catch(() => {});
   }, [supplier?.id]);
 
+  const ITEM_PAGE = 20;
   useEffect(() => {
-    if (!itemQuery.trim() || stagingItem) { setItemResults([]); setLookupOpen(false); return; }
+    if (!itemQuery.trim() || stagingItem) { setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); return; }
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=20`)
-        .then(r => { setItemResults(r.data.data || []); setLookupOpen(true); setActiveIndex(-1); })
+      api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = r.data.data || [];
+          setItemResults(rows);
+          setItemOffset(rows.length);
+          setItemHasMore(rows.length === ITEM_PAGE);
+          setLookupOpen(true);
+          setActiveIndex(-1);
+        })
         .catch(() => {});
     }, 250);
     return () => clearTimeout(t);
   }, [itemQuery, stagingItem]);
+
+  function loadMoreItems() {
+    if (!itemHasMore || !itemQuery.trim() || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+      .then(r => {
+        const rows = r.data.data || [];
+        setItemResults(prev => [...prev, ...rows]);
+        setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingMoreItems(false));
+  }
 
   function handleFieldKeyDown(e, nextRef, prevRef, isEnterSubmit = false) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -270,8 +299,10 @@ export default function PurchaseReturnFormPage() {
     } else {
       setStagingUnitId("");
     }
-    setItemQuery(item.name_ar || item.name);
-    setItemResults([]);
+    const code = item.code || item.item_code;
+    const displayName = item.name_ar || item.name;
+    setItemQuery(code ? `${code} - ${displayName}` : displayName);
+    setItemResults([]); setItemOffset(0); setItemHasMore(false);
     setLookupOpen(false);
     setActiveIndex(-1);
     setTimeout(() => stagingWHRef.current?.focus(), 30);
@@ -287,6 +318,7 @@ export default function PurchaseReturnFormPage() {
       key: `direct-${stagingItem.id}-${Date.now()}`,
       item_id: stagingItem.id,
       item_name: stagingItem.name_ar || stagingItem.name,
+      item_code: stagingItem.code || stagingItem.item_code || "",
       unit_cost: cost,
       quantity: qty,
       warehouse_id: stagingWarehouseId,
@@ -295,13 +327,16 @@ export default function PurchaseReturnFormPage() {
       unit_name: units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية",
     }]);
     setStagingItem(null); setStagingQty("1"); setStagingCost("");
-    setItemQuery(""); setItemResults([]); setLookupOpen(false); setActiveIndex(-1);
+    setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); setActiveIndex(-1);
     setTimeout(() => itemInputRef.current?.focus(), 30);
   }
 
   function removeCartLine(key) { setCart(prev => prev.filter(l => l.key !== key)); }
   function updateCartQty(key, delta) {
     setCart(prev => prev.map(l => l.key !== key ? l : { ...l, quantity: Math.max(0, l.quantity + delta) }).filter(l => l.quantity > 0));
+  }
+  function updateCartPrice(key, val) {
+    setCart(prev => prev.map(l => l.key !== key ? l : { ...l, unit_cost: Math.max(0, Number(val) || 0) }));
   }
 
   function selectMode(m) {
@@ -312,7 +347,7 @@ export default function PurchaseReturnFormPage() {
   function resetToIdle() {
     setMode(null); setCart([]); setPurchaseLines([]); setLoadedPurchase(null);
     setSupplier(null); setSupplierLockedFromPurchase(false); setReason("other"); setReasonOther("");
-    setItemQuery(""); setItemResults([]); setStagingItem(null); setStagingQty("1");
+    setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setStagingItem(null); setStagingQty("1");
     setStagingCost(""); setPurchasePickerOpen(false); resetActivation();
   }
 
@@ -373,6 +408,7 @@ export default function PurchaseReturnFormPage() {
     const payload = {
       doc_no: docNo || undefined, supplier_id: supplier?.id || null,
       settlement_type: settlementType, treasury_id: null,
+      cash_amount: settlementType === "split" ? Math.max(0, Number(splitCashAmount) || 0) : undefined,
       reason: reason === "other" ? (reasonOther || "other") : reason, lines,
     };
     setIsSaving(true); setMessage({ text: "", type: "" });
@@ -585,10 +621,14 @@ export default function PurchaseReturnFormPage() {
                   <span className="font-bold text-slate-500">رصيد الحساب</span>
                   <span className={`font-black font-mono ${supplierBalance >= 0 ? "text-rose-600" : "text-amber-600"}`}>{formatMoney(supplierBalance)} ج.م</span>
                 </div>
-                <div className="flex justify-between items-center text-[12px] pt-3 border-t border-slate-100">
-                  <span className="font-bold text-amber-600">الرصيد بعد المرتجع</span>
-                  <span className={`font-black font-mono ${(supplierBalance - total) >= 0 ? "text-rose-600" : "text-amber-700"}`}>{formatMoney(supplierBalance - total)} ج.م</span>
-                </div>
+                {(settlementType === "account" || settlementType === "split") && (
+                  <div className="flex justify-between items-center text-[12px] pt-3 border-t border-slate-100">
+                    <span className="font-bold text-amber-600">الرصيد بعد المرتجع</span>
+                    <span className={`font-black font-mono ${(supplierBalance - (settlementType === "split" ? Math.max(0, total - (Number(splitCashAmount) || 0)) : total)) >= 0 ? "text-rose-600" : "text-amber-700"}`}>
+                      {formatMoney(supplierBalance - (settlementType === "split" ? Math.max(0, total - (Number(splitCashAmount) || 0)) : total))} ج.م
+                    </span>
+                  </div>
+                )}
                 <Link to={`/definitions/suppliers/${supplier.id}`} className="flex items-center justify-center gap-1 mt-2 py-1.5 rounded-lg bg-slate-50 text-[10px] font-bold text-slate-500 hover:text-amber-700 hover:bg-amber-50 transition-colors">
                   <ExternalLink className="h-3 w-3" /> عرض سجل المورد الكامل
                 </Link>
@@ -609,16 +649,40 @@ export default function PurchaseReturnFormPage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">طريقة التسوية</label>
               <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60 shadow-inner">
-                {[{ value: "account", label: "حساب المورد" }, { value: "cash", label: "نقداً" }].map(opt => {
+                {[
+                  { value: "account", label: "حساب المورد", desc: "يُخصم من رصيد المورد" },
+                  { value: "cash", label: "نقداً", desc: "المورد يرد نقداً للصندوق" },
+                  { value: "split", label: "مختلط", desc: "جزء نقداً والباقي من الحساب" },
+                ].map(opt => {
                   const active = settlementType === opt.value;
                   return (
                     <button key={opt.value} onClick={() => !isLocked && setSettlementType(opt.value)} disabled={isLocked}
-                      className={`flex-1 rounded-lg py-2 text-[12px] font-bold transition-all disabled:cursor-not-allowed ${active ? "bg-white text-amber-700 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
-                      {opt.label}
+                      className={`flex-1 rounded-lg py-2 px-1 text-center transition-all disabled:cursor-not-allowed ${active ? "bg-white text-amber-700 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
+                      <div className="text-[12px] font-bold">{opt.label}</div>
+                      <div className="text-[9px] font-medium opacity-70 leading-tight mt-0.5 hidden sm:block">{opt.desc}</div>
                     </button>
                   );
                 })}
               </div>
+              {settlementType === "split" && total > 0 && (
+                <div className="flex flex-col gap-1 rounded-xl border border-indigo-200 bg-indigo-50/50 p-3">
+                  <label className="text-[11px] font-bold text-indigo-600">المبلغ النقدي المستلم</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min="0" max={total} step="0.01"
+                      value={splitCashAmount}
+                      onChange={e => setSplitCashAmount(e.target.value)}
+                      className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[13px] font-bold text-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      placeholder="0.00"
+                    />
+                    <span className="text-[11px] text-slate-500 shrink-0">ج.م</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500 mt-1">
+                    <span>يُخصم من حساب المورد</span>
+                    <span className="font-bold text-indigo-600">{formatMoney(Math.max(0, total - (Number(splitCashAmount) || 0)))} ج.م</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Reason — collapsible */}
@@ -696,69 +760,72 @@ export default function PurchaseReturnFormPage() {
                     {/* Item search */}
                     <div className="relative flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">الصنف</label>
-                      <div className={`flex items-center gap-2 rounded-sm border px-2.5 h-[37px] ${lookupOpen ? "border-slate-800 bg-white" : "border-slate-300 bg-slate-50"}`}>
-                        <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                        <input ref={itemInputRef} value={itemQuery}
-                          onChange={e => { setItemQuery(e.target.value); setLookupOpen(true); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
-                          onFocus={e => { setLookupOpen(true); e.target.select(); }}
-                          placeholder="ابحث عن صنف بالاسم أو الباركود..."
-                          className="flex-1 bg-transparent text-[12px] font-bold text-slate-800 outline-none placeholder:text-slate-400"
-                          onKeyDown={e => {
-                            if (!lookupOpen || !itemResults.length) return;
-                            if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
-                            else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
-                            else if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); selectItemForStaging(itemResults[activeIndex]); }
-                            else if (e.key === "Escape") { setLookupOpen(false); setActiveIndex(-1); }
-                          }} />
-                        {stagingItem && (
-                          <button onClick={() => { setStagingItem(null); setStagingCost(""); setItemQuery(""); setItemResults([]); setLookupOpen(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
-                            className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
-                        )}
-                      </div>
-                      {lookupOpen && itemResults.length > 0 && (
-                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-md border border-slate-200 bg-white shadow-xl max-h-60 overflow-y-auto">
-                          {itemResults.map((item, idx) => (
-                            <button key={item.id} onMouseDown={e => e.preventDefault()} onClick={() => selectItemForStaging(item)}
-                              className={`flex w-full items-center justify-between px-3 py-2 text-right transition-colors border-b border-slate-100 last:border-0 ${idx === activeIndex ? "bg-amber-50" : "hover:bg-amber-50"}`}>
-                              <div className="flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 border border-slate-200">
-                                  <Package className="h-3.5 w-3.5 text-slate-400" />
-                                </div>
-                                <div>
-                                  <div className="text-[12px] font-black text-slate-800">{item.name_ar || item.name}</div>
-                                  <div className="text-[9px] font-bold text-slate-400">{item.item_code || item.barcode || `#${item.id}`}</div>
-                                </div>
-                              </div>
-                              <div className="text-[12px] font-black text-amber-700">{formatMoney(item.purchase_price || item.unit_cost)} ج.م</div>
-                            </button>
-                          ))}
+                      <div className="flex items-center gap-1">
+                        <div className={`relative flex flex-1 items-center gap-2 rounded-sm border px-2.5 h-[37px] ${lookupOpen ? "border-slate-800 bg-white" : "border-slate-300 bg-slate-50"}`}>
+                          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+                          <input ref={itemInputRef} value={itemQuery}
+                            onChange={e => { setItemQuery(e.target.value); setLookupOpen(true); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
+                            onFocus={e => { setLookupOpen(true); e.target.select(); }}
+                            placeholder="ابحث عن صنف بالاسم أو الكود..."
+                            className="flex-1 bg-transparent text-[12px] font-bold text-slate-800 outline-none placeholder:text-slate-400"
+                            onKeyDown={e => {
+                              if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
+                              else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
+                              else if (e.key === "Enter") {
+                                if (!lookupOpen || !itemResults.length) return;
+                                e.preventDefault();
+                                const idx = activeIndex >= 0 ? activeIndex : 0;
+                                if (itemResults[idx]) selectItemForStaging(itemResults[idx]);
+                              }
+                              else if (e.key === "Escape") { setLookupOpen(false); setActiveIndex(-1); }
+                            }} />
+                          {stagingItem && (
+                            <button onClick={() => { setStagingItem(null); setStagingCost(""); setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
+                              className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+                          )}
+                          {lookupOpen && itemResults.length > 0 && (
+                            <SearchDropdown
+                              items={itemResults.map(item => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.purchase_price || item.unit_cost || 0)} ج.م` }))}
+                              onPick={selectItemForStaging}
+                              activeIndex={activeIndex}
+                              query={itemQuery}
+                              onLoadMore={loadMoreItems}
+                              hasMoreFromServer={itemHasMore}
+                              isLoadingMore={isLoadingMoreItems}
+                            />
+                          )}
                         </div>
-                      )}
+                        <button onClick={() => setAdvancedSearchOpen(true)}
+                          className="flex h-[37px] w-[37px] shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                          title="بحث متقدم">
+                          <Filter className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Warehouse dropdown */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">المستودع</label>
-                      <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingUnitRef, itemInputRef)}
+                      <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingQtyRef, itemInputRef)}
                         className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800">
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                       </select>
                     </div>
 
-                    {/* Unit dropdown */}
+                    {/* Unit — read-only preview */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                      <select ref={stagingUnitRef} value={stagingUnitId} onChange={e => setStagingUnitId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingQtyRef, stagingWHRef)}
-                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800">
-                        <option value="">أساسية</option>
-                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
+                      <div className="w-full h-[37px] border border-slate-200 rounded-sm bg-slate-100 py-2 px-2 text-[12px] font-bold text-slate-500 flex items-center">
+                        {stagingItem
+                          ? (units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية")
+                          : "—"}
+                      </div>
                     </div>
 
                     {/* Qty input */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">الكمية</label>
-                      <input ref={stagingQtyRef} type="number" min="0.001" step="any" value={stagingQty} onChange={e => setStagingQty(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingCostRef, stagingUnitRef)}
+                      <input ref={stagingQtyRef} type="number" min="0.001" step="any" value={stagingQty} onChange={e => setStagingQty(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingCostRef, stagingWHRef)}
                         className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                     </div>
 
@@ -802,6 +869,7 @@ export default function PurchaseReturnFormPage() {
                   <table className="w-full text-right">
                     <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
                       <tr>
+                        <th className="px-3 py-3 text-[11px] font-bold text-slate-400 text-center">الكود</th>
                         <th className="px-4 py-3 text-[11px] font-bold text-slate-500">الصنف</th>
                         <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">المستودع</th>
                         <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
@@ -814,10 +882,20 @@ export default function PurchaseReturnFormPage() {
                     <tbody>
                       {cart.map((l, idx) => (
                         <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50 animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                          <td className="px-3 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
                           <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
                           <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.warehouse_name}</td>
                           <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.unit_name}</td>
-                          <td className="px-3 py-3 text-center text-[13px] text-slate-600 font-mono">{formatMoney(l.unit_cost)}</td>
+                          <td className="px-3 py-3 text-center">
+                            {!isLocked ? (
+                              <input type="number" step="any" min="0" value={l.unit_cost}
+                                onChange={e => updateCartPrice(l.key, e.target.value)}
+                                onFocus={e => e.target.select()}
+                                className="w-24 rounded-sm border border-slate-200 px-2 py-1 text-center text-[13px] font-mono text-slate-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200" />
+                            ) : (
+                              <span className="text-[13px] text-slate-600 font-mono">{formatMoney(l.unit_cost)}</span>
+                            )}
+                          </td>
                           <td className="px-3 py-3 text-center">
                             {!isLocked ? (
                               <div className="flex items-center justify-center gap-1">
@@ -964,6 +1042,7 @@ export default function PurchaseReturnFormPage() {
       </Modal>
 
       <PurchasePickerTodayModal open={purchasePickerOpen && !isEditMode} onClose={() => { setPurchasePickerOpen(false); if (!loadedPurchase) setMode(null); }} onSelectPurchase={handleDetailConfirm} suppliers={suppliers} />
+      <AdvancedSearchModal open={advancedSearchOpen} onClose={() => setAdvancedSearchOpen(false)} />
       <AddSupplierModal open={supplierCreateOpen} onClose={() => setSupplierCreateOpen(false)} onCreated={s => { setSuppliers(prev => [s, ...prev]); setSupplier({ id: s.id, name: s.name }); setSupplierCreateOpen(false); }} />
       <PurchaseReturnTodayModal open={todayReturnsOpen} onClose={() => setTodayReturnsOpen(false)} />
       <PrintPreviewModal

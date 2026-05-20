@@ -171,24 +171,40 @@ function cashBreakdown(db, dateText, session) {
 
   // Sales returns that increased customer debt (account refund, not cash)
   const salesReturnsAccount = scalar(db, `
-    SELECT COALESCE(SUM(total), 0) AS total
+    SELECT COALESCE(SUM(
+      CASE WHEN COALESCE(refund_method, 'cash_back') = 'cash_back' THEN 0
+           WHEN refund_method = 'split' THEN COALESCE(credit_amount, 0)
+           ELSE total END
+    ), 0) AS total
     FROM sales_returns
-    WHERE date(created_at) = ? AND COALESCE(refund_method, 'cash_back') != 'cash_back'
+    WHERE date(created_at) = ? AND COALESCE(status, '') != 'cancelled'
   `, [date]);
   const purchaseReturnsCash = scalar(db, `
-    SELECT COALESCE(SUM(total), 0) AS total
+    SELECT COALESCE(SUM(
+      CASE WHEN COALESCE(settlement_type, 'account') = 'cash' THEN total
+           WHEN settlement_type = 'split' THEN COALESCE(cash_amount, 0)
+           ELSE 0 END
+    ), 0) AS total
     FROM purchase_returns
-    WHERE date(created_at) = ? AND COALESCE(settlement_type, 'account') = 'cash'
+    WHERE date(created_at) = ? AND COALESCE(status, '') != 'cancelled'
   `, [date]);
   const purchaseReturnsAccount = scalar(db, `
-    SELECT COALESCE(SUM(total), 0) AS total
+    SELECT COALESCE(SUM(
+      CASE WHEN COALESCE(settlement_type, 'account') = 'cash' THEN 0
+           WHEN settlement_type = 'split' THEN COALESCE(credit_amount, 0)
+           ELSE total END
+    ), 0) AS total
     FROM purchase_returns
-    WHERE date(created_at) = ? AND COALESCE(settlement_type, 'account') != 'cash'
+    WHERE date(created_at) = ? AND COALESCE(status, '') != 'cancelled'
   `, [date]);
   const salesReturnsCash = scalar(db, `
-    SELECT COALESCE(SUM(total), 0) AS total
+    SELECT COALESCE(SUM(
+      CASE WHEN COALESCE(refund_method, 'cash_back') = 'cash_back' THEN total
+           WHEN refund_method = 'split' THEN COALESCE(cash_amount, 0)
+           ELSE 0 END
+    ), 0) AS total
     FROM sales_returns
-    WHERE date(created_at) = ? AND COALESCE(refund_method, 'cash_back') = 'cash_back'
+    WHERE date(created_at) = ? AND COALESCE(status, '') != 'cancelled'
   `, [date]);
 
   const expensesCash = scalar(db, `
@@ -388,8 +404,12 @@ function liveOpeningBalance(db, dateText) {
   `, [since, date]);
 
   const purchaseReturnsCash = scalar(db, `
-    SELECT COALESCE(SUM(total),0) AS total FROM purchase_returns
-    WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(settlement_type,'account') = 'cash'
+    SELECT COALESCE(SUM(
+      CASE WHEN COALESCE(settlement_type,'account') = 'cash' THEN total
+           WHEN settlement_type = 'split' THEN COALESCE(cash_amount, 0)
+           ELSE 0 END
+    ),0) AS total FROM purchase_returns
+    WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(status,'') != 'cancelled'
   `, [since, date]);
 
   const expensesCash = scalar(db, `
@@ -414,8 +434,12 @@ function liveOpeningBalance(db, dateText) {
   `, [since, date]);
 
   const salesReturnsCash = scalar(db, `
-    SELECT COALESCE(SUM(total),0) AS total FROM sales_returns
-    WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(refund_method,'cash_back') = 'cash_back'
+    SELECT COALESCE(SUM(
+      CASE WHEN COALESCE(refund_method,'cash_back') = 'cash_back' THEN total
+           WHEN refund_method = 'split' THEN COALESCE(cash_amount, 0)
+           ELSE 0 END
+    ),0) AS total FROM sales_returns
+    WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(status,'') != 'cancelled'
   `, [since, date]);
 
   const withdrawals = scalar(db, `

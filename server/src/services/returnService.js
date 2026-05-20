@@ -76,10 +76,18 @@ function createReturn(invoiceId, payload) {
       });
     }
 
+    const refundMethod = payload.refund_method || "cash_back";
+    const cashAmt = refundMethod === "cash_back" ? total
+      : refundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+      : 0;
+    const creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? total
+      : refundMethod === "split" ? Math.max(0, total - cashAmt)
+      : 0;
+
     const docNo = generateDocNumber('sales_return');
     const result = db
       .prepare(
-        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, reason, refund_method, notes, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, reason, refund_method, cash_amount, credit_amount, notes, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
       )
       .run(
         docNo,
@@ -87,7 +95,9 @@ function createReturn(invoiceId, payload) {
         invoice.customer_id || null,
         total,
         payload.reason || null,
-        payload.refund_method || "cash_back",
+        refundMethod,
+        cashAmt,
+        creditAmt,
         payload.notes || null,
         payload.user_id || null,
         `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
@@ -115,37 +125,17 @@ function createReturn(invoiceId, payload) {
       });
     }
 
-    if (invoice.customer_id && (invoice.payment_type === "credit" || payload.refund_method === "credit_note")) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(
-        total, invoice.customer_id,
-      );
-      db.prepare("UPDATE ajal_debts SET original_amount = original_amount - ? WHERE invoice_id = ? AND status = 'open'").run(
-        total, invoiceId,
-      );
-    } else if (invoice.payment_type === "bank_transfer" && invoice.bank_id) {
-      db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(total, invoice.bank_id);
-    } else if (invoice.payment_type === "multi") {
-      const allocations = db.prepare(`
-        SELECT pa.amount, p.method, p.treasury_id, p.bank_id
-        FROM payment_allocations pa
-        LEFT JOIN payments p ON p.id = pa.payment_id
-        WHERE pa.invoice_id = ?
-      `).all(invoiceId);
-      const invoiceTotal = Number(invoice.total) || 1;
-      for (const alloc of allocations) {
-        const portion = (Number(alloc.amount) / invoiceTotal) * total;
-        if (alloc.method === "cash" && alloc.treasury_id) {
-          db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(portion, alloc.treasury_id);
-        } else if (alloc.method === "bank" && alloc.bank_id) {
-          db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(portion, alloc.bank_id);
-        }
-      }
-    } else if (invoice.payment_type === "cash" || payload.refund_method === "cash_back") {
-      const treasuryId =
-        payload.treasury_id ||
-        db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (treasuryId) {
-        db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(total, treasuryId);
+    const treasuryId =
+      payload.treasury_id ||
+      db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+
+    if (cashAmt > 0 && treasuryId) {
+      db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(cashAmt, treasuryId);
+    }
+    if (creditAmt > 0 && invoice.customer_id) {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(creditAmt, invoice.customer_id);
+      if (invoice.payment_type === "credit") {
+        db.prepare("UPDATE ajal_debts SET original_amount = original_amount - ? WHERE invoice_id = ? AND status = 'open'").run(creditAmt, invoiceId);
       }
     }
 
@@ -176,9 +166,17 @@ function createGeneralReturn(payload) {
     let total = 0;
     for (const line of lines) total += Number(line.quantity) * Number(line.unit_price);
 
+    const genRefundMethod = refund_method || 'cash_back';
+    const genCashAmt = genRefundMethod === 'cash_back' ? total
+      : genRefundMethod === 'split' ? Math.max(0, Number(payload.cash_amount || 0))
+      : 0;
+    const genCreditAmt = (genRefundMethod === 'credit_note' || genRefundMethod === 'store_credit') ? total
+      : genRefundMethod === 'split' ? Math.max(0, total - genCashAmt)
+      : 0;
+
     const ret = db.prepare(
-      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, refund_method, reason, notes, status, created_by, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'))"
-    ).run(docNo, customer_id || null, total, refund_method || 'cash_back', reason || 'other', notes || null, user_id || null);
+      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'))"
+    ).run(docNo, customer_id || null, total, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null);
 
     const returnId = ret.lastInsertRowid;
 
@@ -200,11 +198,12 @@ function createGeneralReturn(payload) {
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: Number(line.quantity), movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
     }
 
-    if (refund_method === 'cash_back' || !refund_method) {
-      const tId = treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(total, tId);
-    } else if (refund_method === 'credit_note' && customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(total, customer_id);
+    const genTreasuryId = treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+    if (genCashAmt > 0 && genTreasuryId) {
+      db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(genCashAmt, genTreasuryId);
+    }
+    if (genCreditAmt > 0 && customer_id) {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(genCreditAmt, customer_id);
     }
 
     return { id: returnId, doc_no: docNo, total };
@@ -235,12 +234,14 @@ function cancelSalesReturn(returnId, reason, userId) {
     }
 
     // Reverse financials
-    const refundMethod = sr.refund_method;
-    if (refundMethod === 'cash_back') {
-      const tId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(sr.total, tId);
-    } else if (refundMethod === 'credit_note' && sr.customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(sr.total, sr.customer_id);
+    const cancelCashAmt = Number(sr.cash_amount || 0);
+    const cancelCreditAmt = Number(sr.credit_amount || 0);
+    const cancelTreasuryId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+    if (cancelCashAmt > 0 && cancelTreasuryId) {
+      db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(cancelCashAmt, cancelTreasuryId);
+    }
+    if (cancelCreditAmt > 0 && sr.customer_id) {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(cancelCreditAmt, sr.customer_id);
     }
 
     const now = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -358,11 +359,15 @@ function editSalesReturn(returnId, payload, userId) {
     }
 
     // 2. Reverse old financials
-    if (sr.refund_method === "cash_back") {
-      const tId = sr.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(sr.total, tId);
-    } else if (sr.refund_method === "credit_note" && sr.customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(sr.total, sr.customer_id);
+    const editDefaultTId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+    const oldCashAmt = Number(sr.cash_amount || 0);
+    const oldCreditAmt = Number(sr.credit_amount || 0);
+    if (oldCashAmt > 0) {
+      const tId = sr.treasury_id || editDefaultTId;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(oldCashAmt, tId);
+    }
+    if (oldCreditAmt > 0 && sr.customer_id) {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(oldCreditAmt, sr.customer_id);
     }
 
     // 3. Build new lines
@@ -406,17 +411,24 @@ function editSalesReturn(returnId, payload, userId) {
     const newRefundMethod = payload.refund_method || sr.refund_method;
     const newTreasuryId = payload.treasury_id || sr.treasury_id;
     const newCustomerId = payload.customer_id || sr.customer_id;
-    if (newRefundMethod === "cash_back") {
-      const tId = newTreasuryId || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(newTotal, tId);
-    } else if (newRefundMethod === "credit_note" && newCustomerId) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(newTotal, newCustomerId);
+    const newCashAmt = newRefundMethod === "cash_back" ? newTotal
+      : newRefundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+      : 0;
+    const newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? newTotal
+      : newRefundMethod === "split" ? Math.max(0, newTotal - newCashAmt)
+      : 0;
+    if (newCashAmt > 0) {
+      const tId = newTreasuryId || editDefaultTId;
+      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(newCashAmt, tId);
+    }
+    if (newCreditAmt > 0 && newCustomerId) {
+      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(newCreditAmt, newCustomerId);
     }
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, refund_method = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(newTotal, newRefundMethod, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, returnId);
+      "UPDATE sales_returns SET total = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(newTotal, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, returnId);
 
     // 7. Recalculate linked invoice status
     if (sr.invoice_id) {

@@ -3,7 +3,6 @@ import { X, Search, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import SearchDropdown from "../ui/SearchDropdown";
-import { scoredFilterRows } from "../../utils/search";
 
 const REASONS = [
   { value: "defective", label: "عيب في المنتج" },
@@ -28,7 +27,11 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
   const [saving, setSaving] = useState(false);
   const [itemQuery, setItemQuery] = useState("");
   const [itemResults, setItemResults] = useState([]);
-  const [allItems, setAllItems] = useState([]);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+
+  const ITEM_PAGE = 20;
 
   useEffect(() => {
     if (!open) {
@@ -40,13 +43,9 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
       setReason("other");
       setItemQuery("");
       setItemResults([]);
-      setAllItems([]);
+      setItemOffset(0);
+      setItemHasMore(false);
     }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    api.get("/api/items").then(r => setAllItems(r.data.data || [])).catch(() => {});
   }, [open]);
 
   useEffect(() => {
@@ -58,9 +57,31 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
   useEffect(() => {
     const q = itemQuery.trim();
-    if (!q || !allItems.length) { setItemResults([]); return; }
-    setItemResults(scoredFilterRows(allItems, q, ["name", "code", "item_code", "barcode"]));
-  }, [itemQuery, allItems]);
+    if (!q) { setItemResults([]); setItemOffset(0); setItemHasMore(false); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = r.data.data || [];
+          setItemResults(rows);
+          setItemOffset(rows.length);
+          setItemHasMore(rows.length === ITEM_PAGE);
+        }).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemQuery]);
+
+  function loadMoreItems() {
+    const q = itemQuery.trim();
+    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+      .then(r => {
+        const rows = r.data.data || [];
+        setItemResults(prev => [...prev, ...rows]);
+        setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
 
   function addItem(item) {
     if (item.id === -1) {
@@ -74,6 +95,8 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
     }
     setItemQuery("");
     setItemResults([]);
+    setItemOffset(0);
+    setItemHasMore(false);
   }
 
   const total = lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
@@ -227,6 +250,9 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                   emptyLabel="لا توجد نتائج"
                   rawText={itemQuery}
                   onPickRawText={(txt) => addItem({ id: -1, name: txt, code: txt })}
+                  onLoadMore={loadMoreItems}
+                  hasMoreFromServer={itemHasMore}
+                  isLoadingMore={isLoadingMoreItems}
                 />
               )}
             </div>

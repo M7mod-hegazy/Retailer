@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import DataGrid from "../ui/DataGrid";
-import { fuzzyFilterRows } from "../../utils/search";
 import toast from "react-hot-toast";
 
 function toDateInput(d = new Date()) {
@@ -117,16 +116,21 @@ export default function BranchTransferTodayModal({ open, onClose }) {
   const [typeFilter, setTypeFilter] = useState("all");
   const [docSearch, setDocSearch] = useState("");
   const [itemSearch, setItemSearch] = useState("");
-  const [allItems, setAllItems] = useState([]);
+  const [filteredItemSuggestions, setFilteredItemSuggestions] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIdx, setActiveItemIdx] = useState(0);
   const [previewTransfer, setPreviewTransfer] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const filteredItemSuggestions = useMemo(() => {
-    if (!itemSearch.trim()) return [];
-    return fuzzyFilterRows(allItems, itemSearch, ["name", "item_code", "barcode"]).slice(0, 8);
-  }, [itemSearch, allItems]);
+  useEffect(() => {
+    const q = itemSearch.trim();
+    if (!q) { setFilteredItemSuggestions([]); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=8&offset=0`)
+        .then(r => setFilteredItemSuggestions(r.data.data || [])).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemSearch]);
 
   async function loadData() {
     setLoading(true);
@@ -143,7 +147,6 @@ export default function BranchTransferTodayModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    api.get("/api/items").then(r => setAllItems(r.data.data || [])).catch(() => {});
   }, [open]);
 
   useEffect(() => {

@@ -26,7 +26,7 @@ import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
-import { scoredFilterRows } from "../../utils/search";
+
 import PermissionGate from "../../components/ui/PermissionGate";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
@@ -51,6 +51,11 @@ export default function QuotationFormPage() {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchItem, setSearchItem] = useState("");
+  const [itemOffset, setItemOffset] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+
+  const ITEM_PAGE = 20;
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerQuery, setCustomerQuery] = useState("");
   const [showCustomerList, setShowCustomerList] = useState(false);
@@ -101,9 +106,31 @@ export default function QuotationFormPage() {
 
   useEffect(() => {
     const q = searchItem.trim();
-    if (!q) { setFilteredItems([]); return; }
-    setFilteredItems(scoredFilterRows(items, searchItem, ["name", "code", "item_code", "barcode"]));
-  }, [searchItem, items]);
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = r.data.data || [];
+          setFilteredItems(rows);
+          setItemOffset(rows.length);
+          setItemHasMore(rows.length === ITEM_PAGE);
+        }).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchItem]);
+
+  function loadMoreItems() {
+    const q = searchItem.trim();
+    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+      .then(r => {
+        const rows = r.data.data || [];
+        setFilteredItems(prev => [...prev, ...rows]);
+        setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
 
   function addToCart(item) {
     setCart(prev => {
@@ -114,6 +141,9 @@ export default function QuotationFormPage() {
       return [...prev, { id: item.id, name: item.name, code: item.code, price: item.sale_price, qty: 1, discount: 0 }];
     });
     setSearchItem("");
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(false);
   }
 
   const totals = useMemo(() => {
@@ -211,7 +241,7 @@ export default function QuotationFormPage() {
                     }}
                   />
                   {lookupOpen && (
-                    <SearchDropdown 
+                    <SearchDropdown
                       items={filteredItems}
                       onPick={addToCart}
                       activeIndex={activeIndex}
@@ -219,6 +249,9 @@ export default function QuotationFormPage() {
                       emptyLabel="الصنف غير موجود"
                       rawText={searchItem}
                       onPickRawText={(txt) => addToCart({ id: -1, name: txt, code: txt, barcode: txt, sale_price: 0, price: 0, stock_total: 0, stock_quantity: 0 })}
+                      onLoadMore={loadMoreItems}
+                      hasMoreFromServer={itemHasMore}
+                      isLoadingMore={isLoadingMoreItems}
                     />
                   )}
                </div>

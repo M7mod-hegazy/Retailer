@@ -165,7 +165,6 @@ export default function PurchaseFormPage() {
 
   const [lines, setLines] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [items, setItems] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [units, setUnits] = useState([]);
   const [stockLevels, setStockLevels] = useState({});
@@ -177,6 +176,10 @@ export default function PurchaseFormPage() {
   const [refNo, setRefNo] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
 
   const [itemQuery, setItemQuery] = useState("");
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -341,7 +344,7 @@ export default function PurchaseFormPage() {
   useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
     api.get("/api/suppliers").then(r => setSuppliers(r.data.data || [])).catch(() => {});
-    api.get("/api/items").then(r => setItems(r.data.data || [])).catch(() => {});
+
     api.get("/api/units").then(r => setUnits(r.data.data || [])).catch(() => {});
     api.get("/api/payment-methods").then(r => setPaymentMethods((r.data.data || []).filter(m => m.is_active !== 0))).catch(() => {});
     api.get("/api/stock/levels").then(r => {
@@ -412,14 +415,41 @@ export default function PurchaseFormPage() {
     if (!selectedItem) setStaging(s => ({ ...s, warehouseId: defaultWarehouseId }));
   }, [defaultWarehouseId]);
 
-  const filteredItems = useMemo(() => {
+  const ITEM_PAGE = 20;
+
+  useEffect(() => {
     const q = itemQuery.trim();
-    if (!q) return [];
-    return scoredFilterRows(items, q, ["name", "code", "item_code", "barcode"]).map(i => ({
-      ...i,
-      price_label: formatMoney(i.purchase_price || 0),
-    }));
-  }, [itemQuery, items]);
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = (r.data.data || []).map(i => ({
+            ...i,
+            price_label: formatMoney(i.purchase_price || 0),
+          }));
+          setFilteredItems(rows);
+          setItemOffset(rows.length);
+          setItemHasMore(rows.length === ITEM_PAGE);
+        }).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemQuery]);
+
+  function loadMoreItems() {
+    const q = itemQuery.trim();
+    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+      .then(r => {
+        const rows = (r.data.data || []).map(i => ({
+          ...i,
+          price_label: formatMoney(i.purchase_price || 0),
+        }));
+        setFilteredItems(prev => [...prev, ...rows]);
+        setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
 
   const filteredSuppliers = useMemo(() => {
     const q = supplierQuery.trim().toLowerCase();
@@ -430,6 +460,9 @@ export default function PurchaseFormPage() {
   function handlePickItem(item) {
     setSelectedItem(item);
     setItemQuery(item.name);
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(false);
     setStaging(prev => ({
       ...prev,
       unitCost: String(item.purchase_price || 0),
@@ -799,7 +832,7 @@ export default function PurchaseFormPage() {
                           else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
                         }}
                       />
-                      {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} />}
+                      {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} onLoadMore={loadMoreItems} hasMoreFromServer={itemHasMore} isLoadingMore={isLoadingMoreItems} />}
                     </div>
                     <button
                       type="button"

@@ -1290,6 +1290,20 @@ async function handleQuickSave() {
                                               })}
                                             </div>
                                           )}
+                                          {t.payment_method === "split" && (Number(t.cash_amount) > 0 || Number(t.credit_amount) > 0) && (
+                                            <div className="flex flex-wrap gap-1 mt-0.5">
+                                              {Number(t.cash_amount) > 0 && (
+                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded border bg-rose-50 text-rose-700 border-rose-200">
+                                                  نقداً: {fmt(t.cash_amount)} <span className="text-[7px] opacity-70">← خزنة</span>
+                                                </span>
+                                              )}
+                                              {Number(t.credit_amount) > 0 && (
+                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
+                                                  رصيد حساب: {fmt(t.credit_amount)} <span className="text-[7px] opacity-70">← حساب</span>
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
                                         </>
                                       )}
                                     </div>

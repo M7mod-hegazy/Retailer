@@ -253,8 +253,14 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           SELECT sr.id, sr.doc_no, sr.total AS amount, sr.refund_method AS payment_method,
                  sr.created_at, c.name AS party, NULL AS status, sr.reason AS description,
                  'sales_return' AS doc_type,
-                 CASE WHEN COALESCE(sr.refund_method, 'cash_back') = 'cash_back' THEN 'out' ELSE 'account' END AS cash_direction,
-                 CASE WHEN COALESCE(sr.refund_method, 'cash_back') = 'cash_back' THEN -sr.total ELSE 0 END AS cash_effect,
+                 CASE WHEN COALESCE(sr.refund_method, 'cash_back') = 'cash_back' THEN 'out'
+                      WHEN sr.refund_method = 'split' THEN 'split'
+                      ELSE 'account' END AS cash_direction,
+                 CASE WHEN COALESCE(sr.refund_method, 'cash_back') = 'cash_back' THEN -sr.total
+                      WHEN sr.refund_method = 'split' THEN -COALESCE(sr.cash_amount, 0)
+                      ELSE 0 END AS cash_effect,
+                 COALESCE(sr.cash_amount, 0) AS cash_amount,
+                 COALESCE(sr.credit_amount, 0) AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM sales_returns sr
@@ -270,8 +276,14 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           SELECT pr.id, pr.doc_no, pr.total AS amount, COALESCE(pr.settlement_type, 'account') AS payment_method,
                  pr.created_at, s.name AS party, NULL AS status, NULL AS description,
                  'purchase_return' AS doc_type,
-                 CASE WHEN COALESCE(pr.settlement_type, 'account') = 'cash' THEN 'in' ELSE 'account' END AS cash_direction,
-                 CASE WHEN COALESCE(pr.settlement_type, 'account') = 'cash' THEN pr.total ELSE 0 END AS cash_effect,
+                 CASE WHEN COALESCE(pr.settlement_type, 'account') = 'cash' THEN 'in'
+                      WHEN pr.settlement_type = 'split' THEN 'split'
+                      ELSE 'account' END AS cash_direction,
+                 CASE WHEN COALESCE(pr.settlement_type, 'account') = 'cash' THEN pr.total
+                      WHEN pr.settlement_type = 'split' THEN COALESCE(pr.cash_amount, 0)
+                      ELSE 0 END AS cash_effect,
+                 COALESCE(pr.cash_amount, 0) AS cash_amount,
+                 COALESCE(pr.credit_amount, 0) AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM purchase_returns pr

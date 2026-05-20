@@ -26,7 +26,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
-import { scoredFilterRows } from "../../utils/search";
+
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 function resolveImageUrl(u) {
@@ -38,10 +38,11 @@ function resolveImageUrl(u) {
 export default function PurchaseOrderFormPage() {
   const navigate = useNavigate();
   
+  const ITEM_PAGE = 20;
+
   // --- Data States ---
   const [lines, setLines] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [items, setItems] = useState([]);
   const [units, setUnits] = useState([]);
   const [stockLevels, setStockLevels] = useState({});
   
@@ -56,6 +57,10 @@ export default function PurchaseOrderFormPage() {
   
   // Entry States
   const [itemQuery, setItemQuery] = useState("");
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(false);
+  const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", unitId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -94,7 +99,6 @@ export default function PurchaseOrderFormPage() {
   // --- Init ---
   useEffect(() => {
     api.get("/api/suppliers").then(r => setSuppliers(r.data.data || [])).catch(() => {});
-    api.get("/api/items").then(r => setItems(r.data.data || [])).catch(() => {});
     api.get("/api/units").then(r => setUnits(r.data.data || [])).catch(() => {});
     api.get("/api/stock/levels").then(r => {
       const grouped = {};
@@ -106,16 +110,42 @@ export default function PurchaseOrderFormPage() {
     }).catch(() => {});
   }, []);
 
-  // --- Filtering ---
-  const filteredItems = useMemo(() => {
+  // --- Item search ---
+  useEffect(() => {
     const q = itemQuery.trim();
-    if (!q) return [];
-    return scoredFilterRows(items, q, ["name", "code", "item_code", "barcode"]).map(i => ({
-      ...i,
-      sub_label: `مخزون: ${stockLevels[i.id] || 0}`,
-      price_label: `${i.purchase_price || 0}`
-    }));
-  }, [itemQuery, items, stockLevels]);
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+        .then(r => {
+          const rows = (r.data.data || []).map(i => ({
+            ...i,
+            sub_label: `مخزون: ${stockLevels[i.id] || 0}`,
+            price_label: `${i.purchase_price || 0}`,
+          }));
+          setFilteredItems(rows);
+          setItemOffset(rows.length);
+          setItemHasMore(rows.length === ITEM_PAGE);
+        }).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemQuery, stockLevels]);
+
+  function loadMoreItems() {
+    const q = itemQuery.trim();
+    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+      .then(r => {
+        const rows = (r.data.data || []).map(i => ({
+          ...i,
+          sub_label: `مخزون: ${stockLevels[i.id] || 0}`,
+          price_label: `${i.purchase_price || 0}`,
+        }));
+        setFilteredItems(prev => [...prev, ...rows]);
+        setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
 
   const filteredSuppliers = useMemo(() => {
     const q = supplierQuery.trim().toLowerCase();
@@ -128,8 +158,11 @@ export default function PurchaseOrderFormPage() {
   function handlePickItem(item) {
     setSelectedItem(item);
     setItemQuery(item.name);
-    setStaging(prev => ({ 
-      ...prev, 
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(false);
+    setStaging(prev => ({
+      ...prev,
       unitCost: String(item.purchase_price || 0),
       unitId: String(item.unit_id || prev.unitId)
     }));
@@ -311,14 +344,17 @@ export default function PurchaseOrderFormPage() {
                       }}
                     />
                     {lookupOpen && (
-                      <SearchDropdown 
-                        items={filteredItems} 
-                        onPick={handlePickItem} 
+                      <SearchDropdown
+                        items={filteredItems}
+                        onPick={handlePickItem}
                         activeIndex={activeIndex}
                         query={itemQuery}
                         emptyLabel="الصنف غير موجود"
                         rawText={itemQuery}
                         onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })}
+                        onLoadMore={loadMoreItems}
+                        hasMoreFromServer={itemHasMore}
+                        isLoadingMore={isLoadingMoreItems}
                       />
                     )}
                   </div>

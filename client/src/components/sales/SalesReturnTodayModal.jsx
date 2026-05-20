@@ -6,7 +6,6 @@ import Modal from "../ui/Modal";
 import DataGrid from "../ui/DataGrid";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
-import { fuzzyFilterRows } from "../../utils/search";
 import toast from "react-hot-toast";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
@@ -150,7 +149,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
   const [docSearch, setDocSearch] = useState("");
   const [itemSearch, setItemSearch] = useState("");
   const [rawItems, setRawItems] = useState([]);
-  const [allItems, setAllItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -163,10 +162,15 @@ export default function SalesReturnTodayModal({ open, onClose }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
 
-  const filteredItems = useMemo(() => {
-    if (!itemSearch.trim() || !allItems.length) return [];
-    return fuzzyFilterRows(allItems, itemSearch, ["name", "code", "barcode"]).slice(0, 8);
-  }, [itemSearch, allItems]);
+  useEffect(() => {
+    const q = itemSearch.trim();
+    if (!q) { setFilteredItems([]); return; }
+    const t = setTimeout(() => {
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=8&offset=0`)
+        .then(r => setFilteredItems(r.data.data || [])).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [itemSearch]);
 
   const filteredCustomers = useMemo(() => {
     if (!customerLookupOpen) return [];
@@ -231,7 +235,6 @@ export default function SalesReturnTodayModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    api.get("/api/items").then(r => setAllItems(r.data.data || [])).catch(() => {});
     if (!usersList.length) {
       api.get("/api/users").then(r => setUsersList(r.data.data || [])).catch(() => {});
     }

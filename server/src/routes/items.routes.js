@@ -153,7 +153,7 @@ function computeCodeAndSequence({ categoryId, incomingCode, currentCode }) {
   return { code: `${prefix}.${next}`, skuSequence: next };
 }
 
-function getItemsList(search = "", categoryId = null, includeDeleted = false) {
+function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0 } = {}) {
   let sql = `
     SELECT i.*, c.name AS category_name, c.sku_prefix, u.name AS unit_name,
            COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity
@@ -166,17 +166,40 @@ function getItemsList(search = "", categoryId = null, includeDeleted = false) {
   if (!includeDeleted) {
     sql += " AND i.deleted_at IS NULL";
   }
-  if (search) {
-    sql += " AND (i.name LIKE ? OR i.barcode LIKE ? OR i.code LIKE ?)";
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+  // In paginated mode (limit provided), skip WHERE filter so all items appear ordered by relevance.
+  // In non-paginated mode, filter to matching items only (backward compat for list pages).
+  if (search && !limit) {
+    sql += " AND (i.name LIKE ? OR i.name_en LIKE ? OR i.barcode LIKE ? OR i.code LIKE ?)";
+    const like = `%${search}%`;
+    params.push(like, like, like, like);
   }
   if (categoryId) {
     sql += " AND i.category_id = ?";
     params.push(Number(categoryId));
   }
-  sql += categoryId
-    ? " ORDER BY (i.deleted_at IS NOT NULL) ASC, COALESCE(i.sku_sequence, 999999) ASC, i.id ASC"
-    : " ORDER BY (i.deleted_at IS NOT NULL) ASC, i.id DESC";
+  if (search) {
+    // Exact code → code prefix → code contains → name prefix → name contains → everything else
+    sql += `
+      ORDER BY
+        (i.deleted_at IS NOT NULL) ASC,
+        CASE WHEN LOWER(COALESCE(i.code,'')) = LOWER(?) THEN 0
+             WHEN LOWER(COALESCE(i.code,'')) LIKE LOWER(?) || '%' THEN 1
+             WHEN LOWER(COALESCE(i.code,'')) LIKE '%' || LOWER(?) || '%' THEN 2
+             WHEN LOWER(COALESCE(i.name,'')) LIKE LOWER(?) || '%' THEN 3
+             WHEN LOWER(COALESCE(i.name,'')) LIKE '%' || LOWER(?) || '%' THEN 4
+             ELSE 5 END ASC,
+        i.id DESC
+    `;
+    params.push(search, search, search, search, search);
+  } else {
+    sql += categoryId
+      ? " ORDER BY (i.deleted_at IS NOT NULL) ASC, COALESCE(i.sku_sequence, 999999) ASC, i.id ASC"
+      : " ORDER BY (i.deleted_at IS NOT NULL) ASC, i.id DESC";
+  }
+  if (limit) {
+    sql += " LIMIT ? OFFSET ?";
+    params.push(Number(limit), Number(offset));
+  }
 
   const rows = getDb().prepare(sql).all(...params);
   return withImages(rows);
@@ -186,8 +209,10 @@ router.get("/", requirePagePermission("items", "view"), (req, res) => {
   const search = String(req.query.search || "").trim();
   const categoryId = req.query.category_id ? Number(req.query.category_id) : null;
   const includeDeleted = req.query.include_deleted === "1" || req.query.include_deleted === "true";
-  const rows = getItemsList(search, categoryId, includeDeleted);
-  res.json({ success: true, data: rows });
+  const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 200) : null;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+  const rows = getItemsList(search, categoryId, includeDeleted, { limit, offset });
+  res.json({ success: true, data: rows, meta: { offset, limit, count: rows.length } });
 });
 
 router.get("/search/detailed", requirePagePermission("items", "view"), (req, res) => {
