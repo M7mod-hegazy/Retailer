@@ -14,13 +14,15 @@ When opening an existing sales or purchase return for editing, the cart shows bl
 
 Additionally, a correctness bug in `editSalesReturn` uses a single root-level `warehouse_id` for all direct-return lines instead of per-line values, causing stock reversals to target the wrong warehouse.
 
-The original doc number and date/time are already shown correctly (via `useInvoiceActivation` with `editActivation` seed).
+The original doc number and date/time also show `"—"` in edit mode due to the same async race: `useInvoiceActivation` initializes its internal state from `editValues` using `useState`, which only runs once on first render. At that moment `editActivation` is still `null` (API call not yet complete), so `docNo`, `createdAt`, and `isActive` all initialize to falsy values and never update when `setEditActivation` is later called.
 
 ---
 
 ## Approach
 
 **Client-side resolution (POS amendment pattern):** Keep the API mostly unchanged. Split the current single edit effect into two effects — matching how POSPage handles `amendContext` — so that name resolution happens after reference lists are loaded.
+
+**Hook fix:** Make `useInvoiceActivation` reactive to async edit values so doc number and date/time populate correctly after the API call returns.
 
 **Server:** Minimal additions only — two extra SELECT columns in the return line queries, and one warehouse bug fix.
 
@@ -74,6 +76,28 @@ warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1
 ```
 
 This ensures stock reversals on direct-return edits target the correct per-line warehouse.
+
+---
+
+## Hook Fix — `useInvoiceActivation`
+
+**File:** `client/src/hooks/useInvoiceActivation.js`
+
+Add one `useEffect` inside the hook to sync when `editValues` arrive asynchronously:
+
+```js
+useEffect(() => {
+  if (editValues?.docNo && !isActive) {
+    setDocNo(editValues.docNo);
+    setCreatedAt(editValues.createdAt ?? null);
+    setIsActive(true);
+  }
+}, [editValues?.docNo]);
+```
+
+**Why this is safe for POS:** The POS passes `_amendSeed` from `location.state` synchronously, so `isActive` is already `true` from `useState(!!editValues)`. The `!isActive` guard prevents the effect from re-firing. No behavioural change for POS.
+
+**Why this fixes returns:** Returns start with `editActivation = null` → `isActive = false`. When Effect 1 calls `setEditActivation({ docNo, createdAt })`, this effect fires, sets all three values, and the header inputs now show the real doc number and date.
 
 ---
 
@@ -156,6 +180,7 @@ No changes needed to this logic — the per-line warehouse fix (Fix 3) is the on
 
 | File | Change |
 |------|--------|
+| `client/src/hooks/useInvoiceActivation.js` | Add reactive `useEffect` to sync async edit values (fixes doc number + date/time) |
 | `server/src/services/returnService.js` | `getReturnDetails` lines query: +2 SELECT columns; `editSalesReturn`: per-line warehouse fix |
 | `server/src/routes/purchases.routes.js` | Purchase return detail lines query: +2 SELECT columns |
 | `client/src/pages/sales/SalesReturnFormPage.jsx` | Add `rawEditData` state; split edit effect into Effect 1 + Effect 2 |
