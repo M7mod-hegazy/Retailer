@@ -2793,7 +2793,7 @@ export default function POSPage() {
         <UnsavedChangesModal
           open={blocker.state === "blocked"}
           onStay={() => blocker.reset?.()}
-          onLeave={() => blocker.proceed?.()}
+          onLeave={() => { clearActiveDraftFromDB(); blocker.proceed?.(); }}
         />
       </div>
     );
@@ -3918,7 +3918,7 @@ export default function POSPage() {
       <UnsavedChangesModal
         open={blocker.state === "blocked"}
         onStay={() => blocker.reset?.()}
-        onLeave={() => blocker.proceed?.()}
+        onLeave={() => { clearActiveDraftFromDB(); blocker.proceed?.(); }}
       />
     </div>
   );

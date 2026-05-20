@@ -136,7 +136,7 @@ export const usePosStore = create(
               _activeDraftDbId: active.id,
             });
           } else {
-            set({ heldInvoices: heldSlots });
+            set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", heldInvoices: heldSlots, _activeDraftDbId: null });
           }
         } catch (_) {
           // silently fail — in-memory/localStorage state remains

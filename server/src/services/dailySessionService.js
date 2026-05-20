@@ -29,15 +29,6 @@ function ensureDailySessionSchema(db) {
   try { db.exec("ALTER TABLE purchase_returns ADD COLUMN treasury_id INTEGER REFERENCES treasuries(id)"); } catch (_) {}
   try { db.exec("ALTER TABLE payments ADD COLUMN invoice_id INTEGER REFERENCES invoices(id)"); } catch (_) {}
   try { db.exec("ALTER TABLE invoices ADD COLUMN amount_received REAL"); } catch (_) {}
-  // Backfill invoice_id for existing multi/installment payment splits linked via payment_allocations
-  try {
-    db.exec(`
-      UPDATE payments
-      SET invoice_id = (SELECT pa.invoice_id FROM payment_allocations pa WHERE pa.payment_id = payments.id LIMIT 1)
-      WHERE invoice_id IS NULL
-        AND id IN (SELECT payment_id FROM payment_allocations)
-    `);
-  } catch (_) {}
 }
 
 function ensurePurchaseReturnSettlementSchema(db) {
@@ -279,6 +270,19 @@ function cashBreakdown(db, dateText, session) {
     WHERE date(created_at) = ? AND COALESCE(payment_method, 'cash') = 'cash'
   `, [date]);
 
+  // آجل portion of multi-payment invoices — stored in ajal_debts, not in payments table
+  const multiCreditPortion = scalar(db, `
+    SELECT COALESCE(SUM(ad.original_amount), 0) AS total
+    FROM ajal_debts ad
+    JOIN invoices i ON i.id = ad.invoice_id
+    WHERE date(i.created_at) = ?
+      AND i.payment_type = 'multi'
+      AND i.status != 'cancelled'
+      AND ad.source_type = 'invoice'
+      AND COALESCE(ad.party_type, 'customer') = 'customer'
+      AND COALESCE(ad.status, 'active') != 'voided'
+  `, [date]);
+
   const customerCashCollections = customerPayments + customerAjalPayments;
   const supplierCashPayments = supplierPayments + supplierAjalPayments;
   // Cash in = all cash received from sales (including installment/multi cash portions) + collections + revenues + purchase returns
@@ -318,6 +322,7 @@ function cashBreakdown(db, dateText, session) {
     supplier_cash_payments: supplierCashPayments,
     sales_returns_cash: salesReturnsCash,
     withdrawals,
+    multi_credit_portion: multiCreditPortion,
     cash_in: cashIn,
     cash_out: cashOut,
   };

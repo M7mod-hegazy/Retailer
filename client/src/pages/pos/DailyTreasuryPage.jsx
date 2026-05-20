@@ -60,6 +60,68 @@ const DOC_TYPE_COLOR = {
   withdrawal: "text-slate-700 bg-slate-100 border-slate-200",
 };
 
+function getEquationRowAffects(tx) {
+  const ce = Number(tx.cash_effect ?? tx.amount ?? 0);
+  const total = Number(tx.amount ?? 0);
+  const affects = [];
+
+  switch (tx.doc_type) {
+    case "pos_invoice":
+      if (tx.payment_type === "cash") {
+        affects.push({ id: "pos_cash_sales", amount: ce });
+      } else if (tx.payment_type === "installments") {
+        if (ce > 0) affects.push({ id: "pos_installments", amount: ce });
+        const instCreditPart = total - ce;
+        if (instCreditPart > 0) affects.push({ id: "pos_credit_sales", amount: instCreditPart });
+      } else if (tx.payment_type === "multi") {
+        let cashAmt = 0, nonCashAmt = 0, creditAmt = 0;
+        if (tx.payment_splits) {
+          tx.payment_splits.split("|||").forEach(s => {
+            const idx = s.lastIndexOf(":");
+            const method = s.slice(0, idx);
+            const amt = Number(s.slice(idx + 1));
+            if (method === "cash") cashAmt += amt;
+            else if (method === "credit") creditAmt += amt;
+            else nonCashAmt += amt;
+          });
+        } else { cashAmt = ce; nonCashAmt = total - ce; }
+        if (cashAmt > 0) affects.push({ id: "pos_multi_cash", amount: cashAmt });
+        if (nonCashAmt > 0) affects.push({ id: "non_cash_movements", amount: nonCashAmt });
+        if (creditAmt > 0) affects.push({ id: "pos_credit_sales", amount: creditAmt });
+      } else if (tx.payment_type === "credit") {
+        affects.push({ id: "pos_credit_sales", amount: total });
+      } else {
+        affects.push({ id: "non_cash_movements", amount: total });
+      }
+      break;
+    case "installment_invoice": {
+      const cashDown = ce;
+      const creditPart = total - cashDown;
+      if (cashDown > 0) affects.push({ id: "pos_installments", amount: cashDown });
+      if (creditPart > 0) affects.push({ id: "pos_credit_sales", amount: creditPart });
+      break;
+    }
+    case "credit_invoice": affects.push({ id: "pos_credit_sales", amount: total }); break;
+    case "expense": affects.push({ id: "expenses_cash", amount: Math.abs(ce) }); break;
+    case "revenue": affects.push({ id: "revenues_cash", amount: ce }); break;
+    case "purchase": affects.push({ id: "purchases_payable", amount: total }); break;
+    case "supplier_payment": affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) }); break;
+    case "sales_return":
+      if (ce !== 0) affects.push({ id: "sales_returns_cash", amount: Math.abs(ce) });
+      else affects.push({ id: "sales_returns_account", amount: total });
+      break;
+    case "purchase_return":
+      if (ce !== 0) affects.push({ id: "purchase_returns_cash", amount: Math.abs(ce) });
+      else affects.push({ id: "purchase_returns_payable", amount: total });
+      break;
+    case "ajal_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
+    case "customer_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
+    case "withdrawal": affects.push({ id: "withdrawals", amount: Math.abs(ce) }); break;
+    default: break;
+  }
+  return affects;
+}
+
 const TABS = [
   { id: "all", label: "كل الحركات" },
   { id: "pos", label: "فواتير POS" },
@@ -86,8 +148,9 @@ export default function DailyTreasuryPage() {
   const [txSort, setTxSort] = useState("time_desc");
   const [globalAmountSearch, setGlobalAmountSearch] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
-
-
+  const [activeEquationRowId, setActiveEquationRowId] = useState(null);
+  const [clickedTxId, setClickedTxId] = useState(null);
+  const [txAffects, setTxAffects] = useState(null);
 
   // Money count modal
   const [moneyOpen, setMoneyOpen] = useState(false);
@@ -138,6 +201,11 @@ export default function DailyTreasuryPage() {
   const [calcPrev, setCalcPrev] = useState(null);
   const [calcOp, setCalcOp] = useState(null);
   const [calcNew, setCalcNew] = useState(true);
+
+  const equationSectionRef = useRef(null);
+  const txSectionRef = useRef(null);
+  const equationRowRefs = useRef({});
+  const clickedTxTimerRef = useRef(null);
 
   const isToday = date === todayStr();
   const isClosed = summary?.session?.status === "closed";
@@ -314,27 +382,29 @@ async function handleQuickSave() {
   const cashIn = Number(summary?.cash_in || 0);
   const cashOut = Number(summary?.cash_out || 0);
   const cashInRows = [
-    { label: "نقد من مبيعات POS", value: summary?.pos_cash_sales, tab: "pos" },
-    { label: "نقد من أقساط (دفعة أولى أو لاحقة)", value: summary?.pos_installment_cash, tab: "pos" },
-    { label: "نقد من دفع متعدد", value: summary?.pos_multi_cash, tab: "pos" },
-    { label: "نقد تم تحصيله من العملاء", value: summary?.customer_cash_collections ?? (Number(summary?.customer_payments || 0) + Number(summary?.ajal_payments || 0)), tab: "customer_cash_collections" },
-    { label: "إيرادات نقدية", value: summary?.revenues_cash, tab: "revenues" },
-    { label: "نقد مسترد من مرتجعات الشراء", value: summary?.purchase_returns_cash, tab: "purchase_returns" },
+    { id: "pos_cash_sales", label: "نقد من مبيعات POS", value: summary?.pos_cash_sales, tab: "pos", matchTx: (t) => t.doc_type === "pos_invoice" && t.payment_type === "cash" },
+    { id: "pos_installments", label: "نقد من أقساط (دفعة أولى أو لاحقة)", value: summary?.pos_installment_cash, tab: "pos", matchTx: (t) => t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && t.payment_type === "installments") },
+    { id: "pos_multi_cash", label: "نقد من دفع متعدد", value: summary?.pos_multi_cash, tab: "pos", matchTx: (t) => t.doc_type === "pos_invoice" && t.payment_type === "multi" },
+    { id: "customer_collections", label: "نقد تم تحصيله من العملاء", value: summary?.customer_cash_collections ?? (Number(summary?.customer_payments || 0) + Number(summary?.ajal_payments || 0)), tab: "customer_cash_collections", matchTx: (t) => ["customer_payment", "ajal_payment"].includes(t.doc_type) },
+    { id: "revenues_cash", label: "إيرادات نقدية", value: summary?.revenues_cash, tab: "revenues", matchTx: (t) => t.doc_type === "revenue" },
+    { id: "purchase_returns_cash", label: "نقد مسترد من مرتجعات الشراء", value: summary?.purchase_returns_cash, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && Number(t.cash_effect ?? 0) !== 0 },
   ];
   const cashOutRows = [
-    { label: "نقد مدفوع للموردين", value: summary?.supplier_cash_payments ?? (Number(summary?.supplier_payments || 0) + Number(summary?.supplier_ajal_payments || 0)), tab: "supplier_cash_payments" },
-    { label: "مصروفات نقدية", value: summary?.expenses_cash, tab: "expenses" },
-    { label: "نقد مدفوع لمرتجعات المبيعات", value: summary?.sales_returns_cash, tab: "sales_returns" },
-    { label: "مسحوبات من الخزنة", value: summary?.withdrawals, tab: "withdrawals" },
+    { id: "supplier_cash_payments", label: "نقد مدفوع للموردين", value: summary?.supplier_cash_payments ?? (Number(summary?.supplier_payments || 0) + Number(summary?.supplier_ajal_payments || 0)), tab: "supplier_cash_payments", matchTx: (t) => t.doc_type === "supplier_payment" },
+    { id: "expenses_cash", label: "مصروفات نقدية", value: summary?.expenses_cash, tab: "expenses", matchTx: (t) => t.doc_type === "expense" },
+    { id: "sales_returns_cash", label: "نقد مدفوع لمرتجعات المبيعات", value: summary?.sales_returns_cash, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && Number(t.cash_effect ?? 0) !== 0 },
+    { id: "withdrawals", label: "مسحوبات من الخزنة", value: summary?.withdrawals, tab: "withdrawals", matchTx: (t) => t.doc_type === "withdrawal" },
   ];
-  const netCreditSales = (summary?.pos_credit_sales || 0) - (summary?.pos_installment_cash || 0);
+  const netCreditSales = (summary?.pos_credit_sales || 0) - (summary?.pos_installment_cash || 0) + (summary?.multi_credit_portion || 0);
   const nonCashRows = [
-    { label: "مبيعات آجلة زادت دين العملاء (صافي)", value: netCreditSales, tab: "pos" },
-    { label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns" },
-    { label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases" },
-    { label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns" },
-    { label: "مدفوعات/تحصيلات بنك أو كارت", value: summary?.non_cash_movements_total ?? summary?.pos_bank_sales, tab: "all" },
+    { id: "pos_credit_sales", label: "مبيعات آجلة زادت دين العملاء (صافي)", value: netCreditSales, tab: "pos", matchTx: (t) => t.doc_type === "credit_invoice" || t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && (t.payment_type === "credit" || t.payment_type === "installments" || (t.payment_type === "multi" && (t.payment_splits || "").includes("credit:")))) },
+    { id: "sales_returns_account", label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && Number(t.cash_effect ?? 0) === 0 },
+    { id: "purchases_payable", label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases", matchTx: (t) => t.doc_type === "purchase" },
+    { id: "purchase_returns_payable", label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && Number(t.cash_effect ?? 0) === 0 },
+    { id: "non_cash_movements", label: "مبيعات POS بطرق دفع إلكترونية وبنكية", value: summary?.non_cash_movements_total ?? summary?.pos_bank_sales, tab: "all", matchTx: (t) => t.doc_type === "pos_invoice" && !["cash", "installments", "credit"].includes(t.payment_type) },
   ];
+  const allEquationRows = [...cashInRows, ...cashOutRows, ...nonCashRows];
+  const activeEquationRow = activeEquationRowId ? allEquationRows.find(r => r.id === activeEquationRowId) : null;
   const discrepancySuggestions = (() => {
     const diff = draftDiscrepancy ?? discrepancy;
     if (diff == null || Math.abs(diff) < 0.01) return ["الرصيد متطابق. راجع آخر حركة فقط قبل الاعتماد."];
@@ -440,6 +510,39 @@ async function handleQuickSave() {
     setCalcDisplay(String(-current));
   }
 
+  useEffect(() => {
+    return () => { if (clickedTxTimerRef.current) clearTimeout(clickedTxTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === "Escape") { setActiveEquationRowId(null); setTxAffects(null); }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function handleEquationRowClick(row) {
+    if (!row) return;
+    setActiveTab(row.tab);
+    setGlobalAmountSearch("");
+    setActiveEquationRowId(row.id);
+    setTxAffects(null);
+    setTimeout(() => txSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+
+  function handleTransactionClick(tx) {
+    const affects = getEquationRowAffects(tx);
+    setActiveEquationRowId(null);
+    setTxAffects(affects.length > 0 ? affects : null);
+    if (affects.length > 0) {
+      setTimeout(() => equationRowRefs.current[affects[0].id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    }
+    setClickedTxId(tx.id);
+    if (clickedTxTimerRef.current) clearTimeout(clickedTxTimerRef.current);
+    clickedTxTimerRef.current = setTimeout(() => setClickedTxId(null), 1500);
+  }
+
   // Animation variants
   const staggerContainer = {
     hidden: { opacity: 0 },
@@ -459,7 +562,7 @@ async function handleQuickSave() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl">
+    <div className="min-h-[100dvh] bg-slate-50 flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl" onClick={() => { setActiveEquationRowId(null); setTxAffects(null); }}>
       {/* Impeccable Animated Architectural Background */}
       <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
         {/* Base Grid */}
@@ -749,7 +852,7 @@ async function handleQuickSave() {
                 {/* ═══════════════════════════════════════ */}
                 {/*  معادلة الخزينة  -  MAIN FOCUS         */}
                 {/* ═══════════════════════════════════════ */}
-                <motion.div variants={fadeInUp}>
+                <motion.div ref={equationSectionRef} variants={fadeInUp} onClick={(e) => e.stopPropagation()}>
                   <div className="rounded-3xl bg-white border border-slate-200/80 shadow-lg overflow-hidden">
                     {/* Prominent Header */}
                     <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/80 flex items-center gap-4">
@@ -787,20 +890,40 @@ async function handleQuickSave() {
                               <span className="text-[24px] font-black font-mono text-emerald-700">+ {fmt(cashIn)}</span>
                             </div>
                             <div className="space-y-2">
-                              {cashInRows.map(({ label, value, tab }) => (
-                                <button
-                                  type="button"
-                                  key={label}
-                                  onClick={() => { if (tab) { setActiveTab(tab); setGlobalAmountSearch(""); } }}
-                                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-colors hover:bg-emerald-100/60 bg-white/60 border border-emerald-100/50"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                                    <span className="text-[13px] text-slate-700 font-bold">{label}</span>
-                                  </div>
-                                  <span className="font-black text-[14px] font-mono text-emerald-700">{fmt(value)}</span>
-                                </button>
-                              ))}
+                              {cashInRows.map((row) => {
+                                const affect = txAffects?.find(a => a.id === row.id);
+                                const isActiveFwd = activeEquationRowId === row.id;
+                                const isActiveRev = !!affect;
+                                const isActive = isActiveFwd || isActiveRev;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={row.id}
+                                    ref={el => { equationRowRefs.current[row.id] = el; }}
+                                    onClick={() => handleEquationRowClick(row)}
+                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${
+                                      isActive
+                                        ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.01]"
+                                        : txAffects ? "bg-white/40 border-emerald-100/30 opacity-40" : "bg-white/60 border-emerald-100/50 hover:bg-emerald-100/60"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                                      <span className="text-[13px] text-slate-700 font-bold">{row.label}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span className={`font-black text-[14px] font-mono transition-all ${
+                                        isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
+                                      }`}>{fmt(row.value)}</span>
+                                      {affect && (
+                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                          ← هذه الحركة: {fmt(affect.amount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
 
@@ -814,20 +937,39 @@ async function handleQuickSave() {
                               <span className="text-[24px] font-black font-mono text-rose-700">− {fmt(cashOut)}</span>
                             </div>
                             <div className="space-y-2">
-                              {cashOutRows.map(({ label, value, tab }) => (
-                                <button
-                                  type="button"
-                                  key={label}
-                                  onClick={() => { if (tab) { setActiveTab(tab); setGlobalAmountSearch(""); } }}
-                                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-colors hover:bg-rose-100/60 bg-white/60 border border-rose-100/50"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-rose-400" />
-                                    <span className="text-[13px] text-slate-700 font-bold">{label}</span>
-                                  </div>
-                                  <span className="font-black text-[14px] font-mono text-rose-700">{fmt(value)}</span>
-                                </button>
-                              ))}
+                              {cashOutRows.map((row) => {
+                                const affect = txAffects?.find(a => a.id === row.id);
+                                const isActiveFwd = activeEquationRowId === row.id;
+                                const isActive = isActiveFwd || !!affect;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={row.id}
+                                    ref={el => { equationRowRefs.current[row.id] = el; }}
+                                    onClick={() => handleEquationRowClick(row)}
+                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${
+                                      isActive
+                                        ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.01]"
+                                        : txAffects ? "bg-white/40 border-rose-100/30 opacity-40" : "bg-white/60 border-rose-100/50 hover:bg-rose-100/60"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-2 w-2 rounded-full bg-rose-400" />
+                                      <span className="text-[13px] text-slate-700 font-bold">{row.label}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span className={`font-black text-[14px] font-mono transition-all ${
+                                        isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
+                                      }`}>{fmt(row.value)}</span>
+                                      {affect && (
+                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                          ← هذه الحركة: {fmt(affect.amount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
 
@@ -835,20 +977,39 @@ async function handleQuickSave() {
                           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
                             <div className="mb-2 text-[13px] font-black text-slate-600">حركات لا تؤثر على الخزنة نقدياً</div>
                             <div className="space-y-1">
-                              {nonCashRows.map(({ label, value, tab }) => (
-                                <button
-                                  type="button"
-                                  key={label}
-                                  onClick={() => { if (tab) { setActiveTab(tab); setGlobalAmountSearch(""); } }}
-                                  className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-right transition-colors hover:bg-white"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Lock className="h-3.5 w-3.5 text-slate-300" />
-                                    <span className="text-[12px] font-bold text-slate-500">{label}</span>
-                                  </div>
-                                  <span className="font-black text-[13px] font-mono text-slate-600">{fmt(value)}</span>
-                                </button>
-                              ))}
+                              {nonCashRows.map((row) => {
+                                const affect = txAffects?.find(a => a.id === row.id);
+                                const isActiveFwd = activeEquationRowId === row.id;
+                                const isActive = isActiveFwd || !!affect;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={row.id}
+                                    ref={el => { equationRowRefs.current[row.id] = el; }}
+                                    onClick={() => handleEquationRowClick(row)}
+                                    className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-right transition-all ${
+                                      isActive
+                                        ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
+                                        : txAffects ? "opacity-40" : "hover:bg-white"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Lock className="h-3.5 w-3.5 text-slate-300" />
+                                      <span className="text-[12px] font-bold text-slate-500">{row.label}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span className={`font-black text-[13px] font-mono transition-all ${
+                                        isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
+                                      }`}>{fmt(row.value)}</span>
+                                      {affect && (
+                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                          ← هذه الحركة: {fmt(affect.amount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
@@ -945,8 +1106,8 @@ async function handleQuickSave() {
                 {/* ═══════════════════════════════════════ */}
                 {/*  حركات اليوم  -  TRANSACTIONS          */}
                 {/* ═══════════════════════════════════════ */}
-                <motion.div variants={fadeInUp} className="flex flex-col gap-3">
-                  
+                <motion.div ref={txSectionRef} variants={fadeInUp} className="flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+
                   {/* Search Bar */}
                   <div data-help="search-bar" className="relative group w-full">
                     <Search className="absolute right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-zinc-900 transition-colors" />
@@ -970,7 +1131,7 @@ async function handleQuickSave() {
                       {TABS.map((t) => (
                         <button
                           key={t.id}
-                          onClick={() => { setActiveTab(t.id); setGlobalAmountSearch(""); }}
+                          onClick={() => { setActiveTab(t.id); setGlobalAmountSearch(""); setActiveEquationRowId(null); setTxAffects(null); }}
                           className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${
                             activeTab === t.id ? "bg-zinc-900 text-white shadow-md shadow-zinc-900/20" : "text-slate-500 hover:bg-slate-100"
                           }`}
@@ -1026,14 +1187,25 @@ async function handleQuickSave() {
                           <tbody className="divide-y divide-slate-50">
                             <AnimatePresence>
                               {sortedTransactions.map((t) => (
-                                <motion.tr 
+                                <motion.tr
                                   key={t.id}
                                   layout
                                   initial={{ opacity: 0, x: 20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   exit={{ opacity: 0, scale: 0.95 }}
-                                  whileHover={{ x: -2, backgroundColor: "rgba(248,250,252,0.8)" }}
-                                  className="group transition-colors relative"
+                                  whileHover={{ x: -2 }}
+                                  onClick={() => handleTransactionClick(t)}
+                                  className={`group transition-all relative cursor-pointer ${
+                                    clickedTxId === t.id
+                                      ? "bg-blue-50 ring-1 ring-inset ring-blue-300"
+                                      : txAffects
+                                        ? ""
+                                        : activeEquationRow
+                                          ? activeEquationRow.matchTx(t)
+                                            ? "bg-indigo-50 ring-1 ring-inset ring-indigo-300"
+                                            : "opacity-30"
+                                          : ""
+                                  }`}
                                 >
                                   <td className={`px-3 py-3 font-black text-[11px] tracking-wider ${t.is_cancelled ? "text-slate-300 line-through" : "text-slate-500"}`}>{t.doc_no || `#${t.id}`}</td>
                                   <td className="px-3 py-3">
