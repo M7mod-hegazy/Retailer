@@ -56,7 +56,7 @@ function getInvoiceWithLines(invoiceId) {
 
   const lines = db
     .prepare(
-      `SELECT il.*, i.name AS item_name, i.barcode, i.code AS item_code
+      `SELECT il.*, i.name AS item_name, i.barcode, i.code AS item_code, i.purchase_price
               ,COALESCE((SELECT SUM(srl.quantity) FROM sales_return_lines srl WHERE srl.invoice_line_id = il.id), 0) AS returned_quantity
        FROM invoice_lines il
        LEFT JOIN items i ON i.id = il.item_id

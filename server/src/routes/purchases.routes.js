@@ -33,7 +33,7 @@ function getPurchaseWithLines(db, purchaseId) {
   `).get(purchaseId);
   if (!purchase) return null;
   const lines = db.prepare(`
-    SELECT pl.*, i.name AS item_name, i.code AS item_code, i.barcode
+    SELECT pl.*, i.name AS item_name, i.code AS item_code, i.barcode, i.purchase_price
            ,COALESCE((SELECT SUM(prl.quantity) FROM purchase_return_lines prl WHERE prl.purchase_line_id = pl.id), 0) AS returned_quantity
     FROM purchase_lines pl
     LEFT JOIN items i ON i.id = pl.item_id
@@ -155,7 +155,8 @@ router.get("/returns/:id", requirePagePermission("purchase_returns", "view"), (r
         SELECT prl.*,
                i.name as item_name,
                i.code as item_code,
-               i.unit_id
+               i.unit_id,
+               i.purchase_price
         FROM purchase_return_lines prl
         LEFT JOIN items i ON i.id = prl.item_id
         WHERE prl.purchase_return_id = ?

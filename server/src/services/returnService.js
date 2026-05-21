@@ -339,7 +339,8 @@ function getReturnDetails(id) {
     SELECT srl.*,
            COALESCE(srl.item_name_ar, i.name) as item_name,
            i.code as item_code,
-           i.unit_id
+           i.unit_id,
+           i.purchase_price
     FROM sales_return_lines srl
     LEFT JOIN items i ON i.id = srl.item_id
     WHERE srl.sales_return_id = ?

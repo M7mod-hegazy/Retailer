@@ -173,6 +173,7 @@ export default function SalesReturnFormPage() {
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
   const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
 
+  const [pendingBelowCostAdd, setPendingBelowCostAdd] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -216,6 +217,15 @@ export default function SalesReturnFormPage() {
     if (mode === "invoice") return invoiceLines.filter(l => l.checked).reduce((acc, l) => acc + l.unit_price * l.qty_to_return, 0);
     return 0;
   }, [mode, cart, invoiceLines]);
+
+  const returnCreditEffect = useMemo(() => {
+    if (!total) return 0;
+    if (refundMethod === "store_credit") return total;
+    if (refundMethod === "split") return Math.max(0, total - (Number(splitCashAmount) || 0));
+    return 0;
+  }, [refundMethod, total, splitCashAmount]);
+
+  const hasCustomerBalance = customerBalance !== null && customerBalance > 0;
 
   useEffect(() => {
     api.get("/api/warehouses").then(r => {
@@ -274,6 +284,7 @@ export default function SalesReturnFormPage() {
             item_code: l.item_code || l.barcode || "",
             item_name: l.item_name_ar || l.item_name || l.name,
             unit_price: Number(l.unit_price || 0),
+            purchase_price: Number(l.purchase_price || 0),
             original_qty: Number(l.quantity),
             already_returned: alreadyReturned,
             qty_to_return: returnLine ? Number(returnLine.quantity) : 0,
@@ -288,6 +299,7 @@ export default function SalesReturnFormPage() {
         item_name: l.item_name_ar || l.item_name || l.name,
         item_code: l.item_code || "",
         unit_price: Number(l.unit_price || 0),
+        purchase_price: Number(l.purchase_price || 0),
         quantity: Number(l.quantity),
         warehouse_id: l.warehouse_id || "",
         warehouse_name: warehouses.find(w => String(w.id) === String(l.warehouse_id))?.name || "—",
@@ -378,6 +390,18 @@ export default function SalesReturnFormPage() {
     const qty = Math.max(0, Number(stagingQty) || 0);
     const price = Math.max(0, Number(stagingPrice) || 0);
     if (!qty) return;
+    const purchasePrice = Number(stagingPurchasePrice || 0);
+    if (purchasePrice > 0 && price > 0 && price < purchasePrice) {
+      if (!pendingBelowCostAdd) {
+        setPendingBelowCostAdd(true);
+        setMessage({ text: `تحذير: السعر (${formatMoney(price)}) أقل من سعر الشراء (${formatMoney(purchasePrice)}). اضغط إضافة مرة أخرى للتأكيد.`, type: "warning" });
+        setTimeout(() => { setMessage({ text: "", type: "" }); setPendingBelowCostAdd(false); }, 4000);
+        return;
+      }
+      setPendingBelowCostAdd(false);
+    } else {
+      setPendingBelowCostAdd(false);
+    }
     if (!invoiceIsActive) activateInvoice();
     setCart(prev => [...prev, {
       key: `direct-${stagingItem.id}-${Date.now()}`,
@@ -385,6 +409,7 @@ export default function SalesReturnFormPage() {
       item_name: stagingItem.name_ar || stagingItem.name,
       item_code: stagingItem.code || stagingItem.item_code || "",
       unit_price: price,
+      purchase_price: purchasePrice,
       quantity: qty,
       warehouse_id: stagingWarehouseId,
       warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
@@ -429,6 +454,7 @@ export default function SalesReturnFormPage() {
       item_code: l.item_code || l.barcode || "",
       item_name: l.item_name_ar || l.item_name || l.name,
       unit_price: Number(l.unit_price || 0),
+      purchase_price: Number(l.purchase_price || 0),
       original_qty: Number(l.quantity),
       already_returned: Number(l.returned_quantity || 0),
       qty_to_return: 0,
@@ -553,7 +579,7 @@ export default function SalesReturnFormPage() {
             </button>
           </div>
           {message.text && (
-            <div className={`flex items-center gap-2 rounded-xl px-6 py-3 text-[14px] font-black ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+            <div className={`flex items-center gap-2 rounded-xl px-6 py-3 text-[14px] font-black ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
               {message.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
               {message.text}
             </div>
@@ -600,7 +626,7 @@ export default function SalesReturnFormPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {message.text && (
-            <div className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-[12px] font-bold ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+            <div className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-[12px] font-bold ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
               {message.type === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />} {message.text}
             </div>
           )}
@@ -678,7 +704,7 @@ export default function SalesReturnFormPage() {
                   onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
                   onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
                   disabled={isLocked || customerLockedFromInvoice}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm placeholder:font-normal placeholder:text-slate-400"
+                  className={`w-full h-10 rounded-xl border px-3 text-[13px] font-bold outline-none disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm placeholder:font-normal placeholder:text-slate-400 ${hasCustomerBalance ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100" : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"}`}
                 />
                 {customerLookupOpen && !isLocked && !customerLockedFromInvoice && (
                   <SearchDropdown
@@ -695,6 +721,23 @@ export default function SalesReturnFormPage() {
                   <ExternalLink className="h-3 w-3" /> بيانات العميل
                 </button>
               )}
+              {customer?.id && customerBalance !== null && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  <div className={`text-[11px] font-black px-2 py-1 rounded-sm border ${customerBalance > 0 ? "text-amber-700 bg-amber-100/50 border-amber-200" : "text-slate-600 bg-slate-100/50 border-slate-200"}`}>
+                    الرصيد: {formatMoney(customerBalance)}
+                  </div>
+                  {returnCreditEffect > 0 && total > 0 && (
+                    <>
+                      <div className="text-[11px] font-black text-emerald-700 bg-emerald-100/50 border border-emerald-200 px-2 py-1 rounded-sm">
+                        خصم: −{formatMoney(returnCreditEffect)}
+                      </div>
+                      <div className={`text-[11px] font-black px-2 py-1 rounded-sm border ${(customerBalance - returnCreditEffect) > 0 ? "text-rose-700 bg-rose-100/50 border-rose-200" : "text-emerald-700 bg-emerald-100/50 border-emerald-200"}`}>
+                        بعد المرتجع: {formatMoney(customerBalance - returnCreditEffect)}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Customer balance */}
@@ -702,15 +745,21 @@ export default function SalesReturnFormPage() {
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-1 h-full bg-slate-200" />
                 <div className="flex justify-between items-center text-[12px]">
-                  <span className="font-bold text-slate-500">رصيد الحساب</span>
-                  <span className={`font-black font-mono ${customerBalance >= 0 ? "text-rose-600" : "text-emerald-600"}`}>{formatMoney(customerBalance)} ج.م</span>
+                  <span className="font-bold text-slate-500">الرصيد الحالي</span>
+                  <span className={`font-black font-mono ${customerBalance > 0 ? "text-rose-600" : "text-emerald-600"}`}>{formatMoney(customerBalance)} ج.م</span>
                 </div>
-                {(refundMethod === "store_credit" || refundMethod === "split") && (
-                  <div className="flex justify-between items-center text-[12px] pt-3 border-t border-slate-100">
-                    <span className="font-bold text-emerald-600">الرصيد بعد المرتجع</span>
-                    <span className={`font-black font-mono ${(customerBalance - (refundMethod === "split" ? Math.max(0, total - (Number(splitCashAmount) || 0)) : total)) >= 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                      {formatMoney(customerBalance - (refundMethod === "split" ? Math.max(0, total - (Number(splitCashAmount) || 0)) : total))} ج.م
-                    </span>
+                {returnCreditEffect > 0 && total > 0 && (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-600">الخصم من الرصيد</span>
+                      <span className="text-[13px] font-black font-mono text-emerald-700">−{formatMoney(returnCreditEffect)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-emerald-200/60 pt-1.5">
+                      <span className="text-[11px] font-bold text-emerald-600">الرصيد بعد المرتجع</span>
+                      <span className={`text-[13px] font-black font-mono ${(customerBalance - returnCreditEffect) > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                        {formatMoney(customerBalance - returnCreditEffect)}
+                      </span>
+                    </div>
                   </div>
                 )}
                 {ajalDebt > 0 && (
@@ -970,17 +1019,20 @@ export default function SalesReturnFormPage() {
                     </div>
 
                     {/* Return price input */}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-0.5">
                       <label className="text-[11px] font-bold text-slate-600">سعر المرتجع</label>
                       <input ref={stagingPriceRef} type="number" step="any" value={stagingPrice} onChange={e => setStagingPrice(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, addBtnRef, stagingQtyRef, true)}
-                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
-                    </div>
-
-                    {/* Purchase Price (read-only indicator) */}
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-600">التكلفة (شراء)</label>
-                      <input type="number" value={stagingPurchasePrice} disabled tabIndex={-1}
-                        className="w-full h-[37px] border border-slate-200 rounded-sm bg-slate-100 py-2 px-2 text-[12px] font-bold text-slate-400 outline-none cursor-not-allowed text-center" />
+                        className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black outline-none text-center transition-colors
+                          ${stagingItem && Number(stagingPurchasePrice) > 0 && Number(stagingPrice) > 0 && Number(stagingPrice) < Number(stagingPurchasePrice)
+                            ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
+                            : "border-slate-300 bg-slate-50 text-slate-800 focus:border-slate-800"}`} />
+                      <div className="h-[18px] flex items-center justify-center rounded-sm bg-slate-100 border border-slate-200 px-1">
+                        <span className="text-[10px] font-mono text-slate-400">
+                          {stagingItem && Number(stagingPurchasePrice) > 0
+                            ? `آخر شراء: ${Number(stagingPurchasePrice).toFixed(2)}`
+                            : stagingItem ? "لا يوجد سعر مرجعي" : "—"}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Warehouse stock table */}
@@ -1035,10 +1087,18 @@ export default function SalesReturnFormPage() {
                           <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.unit_name}</td>
                           <td className="px-3 py-3 text-center">
                             {!isLocked ? (
-                              <input type="number" step="any" min="0" value={l.unit_price}
-                                onChange={e => updateCartPrice(l.key, e.target.value)}
-                                onFocus={e => e.target.select()}
-                                className="w-24 rounded-sm border border-slate-200 px-2 py-1 text-center text-[13px] font-mono text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" />
+                              <div className="flex flex-col items-center gap-0.5">
+                                <input type="number" step="any" min="0" value={l.unit_price}
+                                  onChange={e => updateCartPrice(l.key, e.target.value)}
+                                  onFocus={e => e.target.select()}
+                                  className={`w-24 rounded-sm border px-2 py-1 text-center text-[13px] font-mono outline-none focus:ring-1 transition-colors
+                                    ${l.purchase_price > 0 && Number(l.unit_price) > 0 && Number(l.unit_price) < l.purchase_price
+                                      ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
+                                      : "border-slate-200 text-slate-800 focus:border-emerald-400 focus:ring-emerald-200"}`} />
+                                {l.purchase_price > 0 && (
+                                  <span className="text-[9px] font-mono text-slate-400">{Number(l.purchase_price).toFixed(2)}</span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-[13px] text-slate-600 font-mono">{formatMoney(l.unit_price)}</span>
                             )}
@@ -1123,7 +1183,16 @@ export default function SalesReturnFormPage() {
                                 </td>
                                 <td className="px-2 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
                                 <td className="px-3 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
-                                <td className="px-3 py-3 text-center text-[12px] text-slate-600">{formatMoney(l.unit_price)}</td>
+                                <td className="px-3 py-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <span className={`text-[12px] font-mono ${l.purchase_price > 0 && l.unit_price < l.purchase_price ? "text-rose-600 font-bold" : "text-slate-600"}`}>
+                                      {formatMoney(l.unit_price)}
+                                    </span>
+                                    {l.purchase_price > 0 && l.unit_price < l.purchase_price && (
+                                      <AlertCircle className="h-3.5 w-3.5 text-rose-400 shrink-0" title={`أقل من سعر المخزون (${formatMoney(l.purchase_price)})`} />
+                                    )}
+                                  </div>
+                                </td>
                                 <td className="px-3 py-3 text-center text-[13px] text-slate-600">{l.original_qty}</td>
                                 <td className="px-3 py-3 text-center text-[12px] font-bold text-slate-700">{formatMoney(originalTotal)}</td>
                                 <td className="px-3 py-3 text-center text-[13px] text-slate-500">{l.already_returned || "—"}</td>

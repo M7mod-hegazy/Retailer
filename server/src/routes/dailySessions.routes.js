@@ -134,6 +134,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                    )
                    ELSE 0
                  END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  CASE WHEN i.status = 'cancelled' THEN 1 ELSE 0 END AS is_cancelled,
                  i.amended_by,
                  i.amendment_of,
@@ -174,6 +175,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  'expense' AS doc_type,
                  CASE WHEN COALESCE(e.payment_method, 'cash') = 'cash' THEN 'out' ELSE 'account' END AS cash_direction,
                  CASE WHEN COALESCE(e.payment_method, 'cash') = 'cash' THEN -e.amount ELSE 0 END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM expenses e
@@ -191,6 +193,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  'revenue' AS doc_type,
                  CASE WHEN COALESCE(r.payment_method, 'cash') = 'cash' THEN 'in' ELSE 'account' END AS cash_direction,
                  CASE WHEN COALESCE(r.payment_method, 'cash') = 'cash' THEN r.amount ELSE 0 END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM revenues r
@@ -206,6 +209,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           SELECT p.id, p.doc_no, p.total AS amount, 'cash' AS payment_method,
                  p.created_at, s.name AS party, p.status, NULL AS description,
                  'purchase' AS doc_type, 'account' AS cash_direction, 0 AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM purchases p
@@ -223,6 +227,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  'customer_payment' AS doc_type,
                  CASE WHEN py.method = 'cash' THEN 'in' ELSE 'account' END AS cash_direction,
                  CASE WHEN py.method = 'cash' THEN py.amount ELSE 0 END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  NULL AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM payments py
@@ -239,6 +244,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  'supplier_payment' AS doc_type,
                  CASE WHEN py.method = 'cash' THEN 'out' ELSE 'account' END AS cash_direction,
                  CASE WHEN py.method = 'cash' THEN -py.amount ELSE 0 END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  NULL AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM payments py
@@ -309,6 +315,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                    WHEN COALESCE(d.party_type, 'customer') = 'supplier' THEN -ap.amount
                    ELSE ap.amount
                  END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM ajal_payments ap
@@ -329,6 +336,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  'ajal_payment' AS doc_type,
                  CASE WHEN COALESCE(pm.type, pm.category, pm.name, 'cash') = 'cash' THEN 'in' ELSE 'account' END AS cash_direction,
                  CASE WHEN COALESCE(pm.type, pm.category, pm.name, 'cash') = 'cash' THEN ap.amount ELSE 0 END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM ajal_payments ap
@@ -349,6 +357,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  'ajal_payment' AS doc_type,
                  CASE WHEN COALESCE(pm.type, pm.category, pm.name, 'cash') = 'cash' THEN 'out' ELSE 'account' END AS cash_direction,
                  CASE WHEN COALESCE(pm.type, pm.category, pm.name, 'cash') = 'cash' THEN -ap.amount ELSE 0 END AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM ajal_payments ap
@@ -367,6 +376,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           SELECT w.id, w.doc_no, w.amount, w.payment_method,
                  w.created_at, wc.name AS party, NULL AS status, w.note AS description,
                  'withdrawal' AS doc_type, 'out' AS cash_direction, -w.amount AS cash_effect,
+                 0 AS cash_amount, 0 AS credit_amount,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
                  u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM withdrawals w
@@ -402,6 +412,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                )
                ELSE 0
              END AS cash_effect,
+             0 AS cash_amount, 0 AS credit_amount,
              0 AS is_cancelled,
              NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
              NULL AS seller_name, u.username AS cancelled_by_name,

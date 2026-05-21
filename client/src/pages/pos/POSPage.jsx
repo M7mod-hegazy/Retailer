@@ -238,11 +238,11 @@ const WALK_IN_CUSTOMER = { id: null, name: "زبون نقدي", phone: "", openi
 const DEFAULT_WAREHOUSE = { id: "default", name: "المخزن الرئيسي" };
 
 const PAYMENT_TYPES = [
-  { type: "cash",          label: "نقدي",      Icon: Banknote   },
-  { type: "bank_transfer", label: "بنك / فيزا", Icon: CreditCard },
-  { type: "credit",        label: "آجل",        Icon: Wallet     },
-  { type: "installments",  label: "أقساط",      Icon: Calendar   },
-  { type: "multi",         label: "متعدد",      Icon: Layers     },
+  { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
+  { type: "bank_transfer", label: "بنك / فيزا", desc: "مدى / فيزا / تحويل", Icon: CreditCard },
+  { type: "credit",        label: "آجل",        desc: "تسجيل دين على العميل", Icon: Wallet     },
+  { type: "installments",  label: "أقساط",      desc: "دفعات أقساط مجدولة", Icon: Calendar   },
+  { type: "multi",         label: "متعدد",      desc: "تجزئة على عدة طرق", Icon: Layers     },
 ];
 
 const PAYMENT_STATUS_LABELS = {
@@ -1830,7 +1830,7 @@ export default function POSPage() {
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
               <div className="grid grid-cols-3 gap-2">
-                {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon }) => {
+                {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, desc, Icon }) => {
                   const isWalkIn = !customer || customer.id === null;
                   const isDisabled = isWalkIn && (type === "credit" || type === "installments" || type === "bank_transfer");
                   const isActive = paymentType === type;
@@ -1860,6 +1860,9 @@ export default function POSPage() {
                         <Icon className={`h-3.5 w-3.5 ${isActive ? "text-white" : c.text}`} />
                       </div>
                       <span className="text-[10px] font-black leading-tight whitespace-nowrap">{label}</span>
+                      <span className={`text-[8.5px] font-medium leading-tight text-center mt-0.5 transition-colors duration-150 ${
+                        isActive ? "text-white/80" : "text-slate-400"
+                      }`}>{desc}</span>
                       {isActive && <div className="absolute top-1 left-1 h-1.5 w-1.5 rounded-full bg-white/80" />}
                     </button>
                   );
@@ -3381,7 +3384,7 @@ export default function POSPage() {
             {/* Payment Methods */}
             <div className="flex flex-col p-3 gap-3 bg-white">
               <div className="grid grid-cols-5 gap-1.5">
-                {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon }) => {
+                {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, desc, Icon }) => {
                   const isWalkIn = !customer || customer.id === null;
                   const isDisabled = isWalkIn && (type === "credit" || type === "installments" || type === "bank_transfer");
                   const isActive = paymentType === type;
@@ -3399,7 +3402,7 @@ export default function POSPage() {
                       type="button"
                       onClick={() => !isDisabled && setPaymentType(type)}
                       disabled={isDisabled}
-                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-[10px] font-black transition-all whitespace-nowrap
+                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-[10px] font-black transition-all
                         ${isActive
                           ? `${c.activeBg} text-white border-transparent shadow-sm`
                           : isDisabled
@@ -3408,7 +3411,10 @@ export default function POSPage() {
                       title={isDisabled ? "متاح للعملاء المسجلين فقط" : label}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" />
-                      <span>{label}</span>
+                      <span className="whitespace-nowrap">{label}</span>
+                      <span className={`text-[8.5px] font-medium leading-tight text-center mt-0.5 transition-colors duration-150 px-1 ${
+                        isActive ? "text-white/80" : "text-slate-400"
+                      }`}>{desc}</span>
                     </button>
                   );
                 })}

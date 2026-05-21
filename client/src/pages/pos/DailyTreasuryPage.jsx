@@ -106,14 +106,20 @@ function getEquationRowAffects(tx) {
     case "revenue": affects.push({ id: "revenues_cash", amount: ce }); break;
     case "purchase": affects.push({ id: "purchases_payable", amount: total }); break;
     case "supplier_payment": affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) }); break;
-    case "sales_return":
+    case "sales_return": {
+      const creditAmt = Number(tx.credit_amount ?? 0);
       if (ce !== 0) affects.push({ id: "sales_returns_cash", amount: Math.abs(ce) });
-      else affects.push({ id: "sales_returns_account", amount: total });
+      if (creditAmt > 0) affects.push({ id: "sales_returns_account", amount: creditAmt });
+      else if (ce === 0) affects.push({ id: "sales_returns_account", amount: total });
       break;
-    case "purchase_return":
+    }
+    case "purchase_return": {
+      const creditAmt = Number(tx.credit_amount ?? 0);
       if (ce !== 0) affects.push({ id: "purchase_returns_cash", amount: Math.abs(ce) });
-      else affects.push({ id: "purchase_returns_payable", amount: total });
+      if (creditAmt > 0) affects.push({ id: "purchase_returns_payable", amount: creditAmt });
+      else if (ce === 0) affects.push({ id: "purchase_returns_payable", amount: total });
       break;
+    }
     case "ajal_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
     case "customer_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
     case "withdrawal": affects.push({ id: "withdrawals", amount: Math.abs(ce) }); break;
@@ -294,9 +300,9 @@ export default function DailyTreasuryPage() {
   }, [slideOver]);
 
   useEffect(() => {
-    api.get("/api/expenses/categories").then(r => setExpenseCategories(r.data.data || [])).catch(()=>{});
-    api.get("/api/revenues/categories").then(r => setRevenueCategories(r.data.data || [])).catch(()=>{});
-    api.get("/api/withdrawals/categories").then(r => setWithdrawalCategories(r.data.data || [])).catch(()=>{});
+    api.get("/api/expenses/categories").then(r => setExpenseCategories(r.data.data || [])).catch(() => { });
+    api.get("/api/revenues/categories").then(r => setRevenueCategories(r.data.data || [])).catch(() => { });
+    api.get("/api/withdrawals/categories").then(r => setWithdrawalCategories(r.data.data || [])).catch(() => { });
   }, []);
 
   const moneyTotal = DENOMS.reduce((s, d) => s + Number(counts[d] || 0) * d, 0);
@@ -304,7 +310,7 @@ export default function DailyTreasuryPage() {
   const expected = summary?.expected_cash ?? 0;
   const discrepancy = summary?.discrepancy;
 
-async function handleQuickSave() {
+  async function handleQuickSave() {
     if (!quickAmount) return;
     if (!quickCategoryId) { toast.error("يرجى اختيار الفئة أولاً"); return; }
     try {
@@ -398,9 +404,9 @@ async function handleQuickSave() {
   const netCreditSales = (summary?.pos_credit_sales || 0) - (summary?.pos_installment_cash || 0) + (summary?.multi_credit_portion || 0);
   const nonCashRows = [
     { id: "pos_credit_sales", label: "مبيعات آجلة زادت دين العملاء (صافي)", value: netCreditSales, tab: "pos", matchTx: (t) => t.doc_type === "credit_invoice" || t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && (t.payment_type === "credit" || t.payment_type === "installments" || (t.payment_type === "multi" && (t.payment_splits || "").includes("credit:")))) },
-    { id: "sales_returns_account", label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && Number(t.cash_effect ?? 0) === 0 },
+    { id: "sales_returns_account", label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
     { id: "purchases_payable", label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases", matchTx: (t) => t.doc_type === "purchase" },
-    { id: "purchase_returns_payable", label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && Number(t.cash_effect ?? 0) === 0 },
+    { id: "purchase_returns_payable", label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
     { id: "non_cash_movements", label: "مبيعات POS بطرق دفع إلكترونية وبنكية", value: summary?.non_cash_movements_total ?? summary?.pos_bank_sales, tab: "all", matchTx: (t) => t.doc_type === "pos_invoice" && !["cash", "installments", "credit"].includes(t.payment_type) },
   ];
   const allEquationRows = [...cashInRows, ...cashOutRows, ...nonCashRows];
@@ -568,7 +574,7 @@ async function handleQuickSave() {
         {/* Base Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]" />
         {/* Cinematic Shimmer Sweep */}
-        <motion.div 
+        <motion.div
           animate={{ x: ["-150%", "200%"] }}
           transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
           className="absolute inset-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/60 to-transparent skew-x-12 mix-blend-overlay"
@@ -579,7 +585,7 @@ async function handleQuickSave() {
 
       {/* Cinematic Hero Header */}
       <header className="relative z-10 w-full pt-6 pb-4 px-6 shrink-0">
-        <motion.div 
+        <motion.div
           initial="hidden"
           animate="show"
           variants={staggerContainer}
@@ -590,7 +596,7 @@ async function handleQuickSave() {
               <Wallet className="h-4 w-4" />
               <span className="text-[10px] font-black uppercase tracking-[0.15em] font-mono">المالية // تسوية ومراجعة الحركات</span>
             </motion.div>
-            
+
             <motion.h1 variants={fadeInUp} className="text-3xl md:text-4xl font-black text-zinc-950 tracking-tighter">
               الخزينة اليومية
             </motion.h1>
@@ -611,13 +617,12 @@ async function handleQuickSave() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { setDate(todayStr()); setActiveTab("all"); setGlobalAmountSearch(""); }}
-              className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-[12px] font-black transition-colors ${
-                isToday ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-[12px] font-black transition-colors ${isToday ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <Calendar className="h-3.5 w-3.5" /> اليوم
             </motion.button>
-            
+
             <div className={`flex items-center gap-1.5 h-10 px-3 rounded-xl border ${isClosed ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700"}`}>
               {isClosed ? <Lock className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
               <span className="text-[13px] font-black">{isClosed ? "مغلق" : "مفتوح"}</span>
@@ -641,7 +646,7 @@ async function handleQuickSave() {
             >
               <History className="h-3.5 w-3.5 text-emerald-400" /> الأيام السابقة
             </motion.button>
-            
+
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
@@ -650,7 +655,7 @@ async function handleQuickSave() {
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </motion.button>
-            
+
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
@@ -665,7 +670,7 @@ async function handleQuickSave() {
 
       {/* Main Grid Layout (AIDA: Interest & Action) */}
       <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-6 pb-24">
-        <motion.div 
+        <motion.div
           initial="hidden"
           animate="show"
           variants={staggerContainer}
@@ -692,7 +697,7 @@ async function handleQuickSave() {
                   <div className="flex items-center gap-3">
                     <Lock className="h-5 w-5 text-blue-500" />
                     <span className="text-[13px] font-black text-blue-800">
-                      {isToday && isClosed 
+                      {isToday && isClosed
                         ? "اليومية مغلقة. يمكنك إعادة فتحها إذا أُغلقت بالخطأ."
                         : `عرض يوم ${date} للقراءة والمراجعة.`}
                     </span>
@@ -746,7 +751,7 @@ async function handleQuickSave() {
                     <div className="bg-white/20 p-1.5 rounded-xl"><TrendingUp className="h-4 w-4" /></div>
                     تسجيل إيراد سريع
                   </motion.button>
-                      <motion.button
+                  <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setWithdrawalOpen(true)}
@@ -764,7 +769,7 @@ async function handleQuickSave() {
                     <div className="bg-white/20 p-1.5 rounded-xl"><Coins className="h-4 w-4" /></div>
                     عد العملة (جرد الخزينة)
                   </motion.button>
-              
+
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
@@ -901,20 +906,18 @@ async function handleQuickSave() {
                                     key={row.id}
                                     ref={el => { equationRowRefs.current[row.id] = el; }}
                                     onClick={() => handleEquationRowClick(row)}
-                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${
-                                      isActive
+                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${isActive
                                         ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.01]"
                                         : txAffects ? "bg-white/40 border-emerald-100/30 opacity-40" : "bg-white/60 border-emerald-100/50 hover:bg-emerald-100/60"
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex items-center gap-2">
                                       <div className="h-2 w-2 rounded-full bg-emerald-400" />
                                       <span className="text-[13px] text-slate-700 font-bold">{row.label}</span>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5">
-                                      <span className={`font-black text-[14px] font-mono transition-all ${
-                                        isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
-                                      }`}>{fmt(row.value)}</span>
+                                      <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
+                                        }`}>{fmt(row.value)}</span>
                                       {affect && (
                                         <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
                                           ← هذه الحركة: {fmt(affect.amount)}
@@ -947,20 +950,18 @@ async function handleQuickSave() {
                                     key={row.id}
                                     ref={el => { equationRowRefs.current[row.id] = el; }}
                                     onClick={() => handleEquationRowClick(row)}
-                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${
-                                      isActive
+                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${isActive
                                         ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.01]"
                                         : txAffects ? "bg-white/40 border-rose-100/30 opacity-40" : "bg-white/60 border-rose-100/50 hover:bg-rose-100/60"
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex items-center gap-2">
                                       <div className="h-2 w-2 rounded-full bg-rose-400" />
                                       <span className="text-[13px] text-slate-700 font-bold">{row.label}</span>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5">
-                                      <span className={`font-black text-[14px] font-mono transition-all ${
-                                        isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
-                                      }`}>{fmt(row.value)}</span>
+                                      <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
+                                        }`}>{fmt(row.value)}</span>
                                       {affect && (
                                         <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
                                           ← هذه الحركة: {fmt(affect.amount)}
@@ -987,20 +988,18 @@ async function handleQuickSave() {
                                     key={row.id}
                                     ref={el => { equationRowRefs.current[row.id] = el; }}
                                     onClick={() => handleEquationRowClick(row)}
-                                    className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-right transition-all ${
-                                      isActive
+                                    className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-right transition-all ${isActive
                                         ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
                                         : txAffects ? "opacity-40" : "hover:bg-white"
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex items-center gap-2">
                                       <Lock className="h-3.5 w-3.5 text-slate-300" />
                                       <span className="text-[12px] font-bold text-slate-500">{row.label}</span>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5">
-                                      <span className={`font-black text-[13px] font-mono transition-all ${
-                                        isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
-                                      }`}>{fmt(row.value)}</span>
+                                      <span className={`font-black text-[13px] font-mono transition-all ${isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
+                                        }`}>{fmt(row.value)}</span>
                                       {affect && (
                                         <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
                                           ← هذه الحركة: {fmt(affect.amount)}
@@ -1021,9 +1020,9 @@ async function handleQuickSave() {
                             <div className="text-[14px] font-bold text-slate-400 mb-3 uppercase tracking-widest">المتوقع في الخزنة</div>
                             <div className="text-[40px] font-black font-mono tracking-tighter leading-none">{fmt(expected)}</div>
                             <div className="text-[14px] font-bold text-slate-500 mt-3">جنيه مصري</div>
-                            
+
                             {sess.actual_cash != null && (
-                              <motion.div 
+                              <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className={"mt-6 w-full rounded-2xl p-4 border text-center " + (discrepancy >= 0 ? "bg-emerald-500/20 border-emerald-500/30" : "bg-rose-500/20 border-rose-500/30")}
@@ -1132,9 +1131,8 @@ async function handleQuickSave() {
                         <button
                           key={t.id}
                           onClick={() => { setActiveTab(t.id); setGlobalAmountSearch(""); setActiveEquationRowId(null); setTxAffects(null); }}
-                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${
-                            activeTab === t.id ? "bg-zinc-900 text-white shadow-md shadow-zinc-900/20" : "text-slate-500 hover:bg-slate-100"
-                          }`}
+                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${activeTab === t.id ? "bg-zinc-900 text-white shadow-md shadow-zinc-900/20" : "text-slate-500 hover:bg-slate-100"
+                            }`}
                         >
                           {t.label}
                         </button>
@@ -1178,7 +1176,7 @@ async function handleQuickSave() {
                           <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
                             <tr>
                               {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
-                                <th key={h} className={`px-3 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest select-none ${i===0?'rounded-tr-xl':''} ${i===6?'rounded-tl-xl':''}`}>
+                                <th key={h} className={`px-3 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest select-none ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
                                   {h}
                                 </th>
                               ))}
@@ -1195,8 +1193,7 @@ async function handleQuickSave() {
                                   exit={{ opacity: 0, scale: 0.95 }}
                                   whileHover={{ x: -2 }}
                                   onClick={() => handleTransactionClick(t)}
-                                  className={`group transition-all relative cursor-pointer ${
-                                    clickedTxId === t.id
+                                  className={`group transition-all relative cursor-pointer ${clickedTxId === t.id
                                       ? "bg-blue-50 ring-1 ring-inset ring-blue-300"
                                       : txAffects
                                         ? ""
@@ -1205,7 +1202,7 @@ async function handleQuickSave() {
                                             ? "bg-indigo-50 ring-1 ring-inset ring-indigo-300"
                                             : "opacity-30"
                                           : ""
-                                  }`}
+                                    }`}
                                 >
                                   <td className={`px-3 py-3 font-black text-[11px] tracking-wider ${t.is_cancelled ? "text-slate-300 line-through" : "text-slate-500"}`}>{t.doc_no || `#${t.id}`}</td>
                                   <td className="px-3 py-3">
@@ -1265,10 +1262,24 @@ async function handleQuickSave() {
                                       )}
                                       {t.payment_type !== "installments" && (
                                         <>
-                                          <span className={`font-black font-mono text-[12px] ${Number(t.cash_effect ?? t.amount) < 0 ? "text-rose-700" : "text-emerald-700"}`}>
-                                            {Number(t.cash_effect ?? t.amount) > 0 ? "+" : ""}{fmt(t.cash_effect ?? t.amount)}
-                                          </span>
-                                          {t.payment_type === "multi" && t.amount !== t.cash_effect && (
+                                          {(() => {
+                                            const ce = Number(t.cash_effect ?? t.amount);
+                                            const total = Number(t.amount ?? 0);
+                                            const isZeroCash = ce === 0 && total > 0;
+                                            return isZeroCash ? (
+                                              <div className="flex flex-col gap-0.5">
+                                                <span className="font-black font-mono text-[13px] text-slate-600">{fmt(total)}</span>
+                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded border bg-slate-100 text-slate-400 border-slate-200 whitespace-nowrap self-start">
+                                                  صفر نقدي — لا يؤثر على الحساب
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <span className={`font-black font-mono text-[12px] ${ce < 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                                                {ce > 0 ? "+" : ""}{fmt(ce)}
+                                              </span>
+                                            );
+                                          })()}
+                                          {t.payment_type === "multi" && t.amount !== t.cash_effect && Number(t.cash_effect ?? 0) !== 0 && (
                                             <span className="text-[9px] font-bold text-slate-400">إجمالي الفاتورة: {fmt(t.amount)}</span>
                                           )}
                                           {t.payment_splits && (
@@ -1369,13 +1380,13 @@ async function handleQuickSave() {
       {/* Detail Modal */}
       <AnimatePresence>
         {slideOver && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 p-4 overflow-y-auto" dir="rtl"
           >
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className="relative w-full max-w-2xl bg-white shadow-2xl rounded-[2rem] flex flex-col overflow-hidden my-20 mx-auto"
@@ -1558,9 +1569,9 @@ async function handleQuickSave() {
                 </motion.button>
               </div>
             </motion.div>
-            <div 
-              className="fixed inset-0 -z-10 bg-slate-900/50 backdrop-blur-md" 
-              onClick={() => { setSlideOver(null); setSlideOverDetails(null); }} 
+            <div
+              className="fixed inset-0 -z-10 bg-slate-900/50 backdrop-blur-md"
+              onClick={() => { setSlideOver(null); setSlideOverDetails(null); }}
             />
           </motion.div>
         )}
@@ -1611,12 +1622,12 @@ async function handleQuickSave() {
       <AnimatePresence>
         {quickModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" 
-              onClick={() => setQuickModal(null)} 
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setQuickModal(null)}
             />
-            <motion.div 
+            <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
               className="relative w-full max-w-[420px] rounded-[2.5rem] bg-white shadow-2xl p-8 border border-slate-100" dir="rtl"
             >
@@ -1785,12 +1796,12 @@ async function handleQuickSave() {
       <AnimatePresence>
         {moneyOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" 
-              onClick={() => setMoneyOpen(false)} 
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setMoneyOpen(false)}
             />
-            <motion.div 
+            <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
               className="relative w-full max-w-[480px] max-h-[90vh] overflow-hidden flex flex-col rounded-[2.5rem] bg-white shadow-2xl border border-slate-100" dir="rtl"
             >
@@ -1808,7 +1819,7 @@ async function handleQuickSave() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div className="rounded-3xl bg-slate-50 border border-slate-200/60 p-4">
                   <div className="grid grid-cols-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">
