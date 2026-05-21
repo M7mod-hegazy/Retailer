@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import api from "../services/api";
 
 /**
@@ -16,6 +16,15 @@ export function useInvoiceActivation(documentType, editValues = null) {
   const [createdAt, setCreatedAt] = useState(editValues?.createdAt ?? null);
   const [isActive, setIsActive] = useState(isEditMode);
   const activating = useRef(false);
+
+  // Sync when editValues arrive asynchronously (returns pages load edit data from API after mount)
+  useEffect(() => {
+    if (editValues?.docNo && !isActive) {
+      setDocNo(editValues.docNo);
+      setCreatedAt(editValues.createdAt ?? null);
+      setIsActive(true);
+    }
+  }, [editValues?.docNo]);
 
   // Call on first meaningful user interaction (add item / select party / toggle search).
   const activate = useCallback(async () => {
