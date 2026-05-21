@@ -150,6 +150,8 @@ export default function PurchaseReturnFormPage() {
   const [showEditWarnModal, setShowEditWarnModal] = useState(false);
   const [showSwitchPurchaseWarning, setShowSwitchPurchaseWarning] = useState(false);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -194,6 +196,25 @@ export default function PurchaseReturnFormPage() {
     if (settlementType === "split") return Math.max(0, total - (Number(splitCashAmount) || 0));
     return 0;
   }, [settlementType, total, splitCashAmount]);
+
+  // In edit mode, the DB balance already has the ORIGINAL return's credit effect applied.
+  // Compute the NET change so we never double-count.
+  const originalCreditEffect = useMemo(() => {
+    if (!isEditMode || !rawEditData) return 0;
+    const origTotal = Number(rawEditData.total || 0);
+    const origMethod = rawEditData.settlement_type || "cash";
+    if (origMethod === "account") return origTotal;
+    if (origMethod === "split") return Math.max(0, origTotal - Number(rawEditData.cash_amount || 0));
+    return 0;
+  }, [isEditMode, rawEditData]);
+
+  // NET credit adjustment = what changes in the supplier balance after saving.
+  // In create mode: netCreditAdjustment = returnCreditEffect (original is 0)
+  // In edit mode:   = new - old (0 if same, positive if more credit, negative if less)
+  const netCreditAdjustment = returnCreditEffect - originalCreditEffect;
+
+  // Predicted balance = current DB balance minus the net change
+  const predictedBalance = supplierBalance !== null ? supplierBalance - netCreditAdjustment : null;
 
   const hasSupplierBalance = supplierBalance !== null && supplierBalance > 0;
 
@@ -490,6 +511,20 @@ export default function PurchaseReturnFormPage() {
     } finally { setIsSaving(false); }
   }
 
+  async function handleDelete() {
+    if (!editReturnId) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/purchases/returns/${editReturnId}`);
+      navigate("/purchases/returns", { replace: true });
+    } catch (e) {
+      setMessage({ text: e.response?.data?.message || "فشل حذف المرتجع", type: "error" });
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   // ══ IDLE SCREEN ══
   if (mode === null && !isEditMode) {
     return (
@@ -614,7 +649,7 @@ export default function PurchaseReturnFormPage() {
           )}
           {isEditMode && !isLocked && (
             <PermissionGate page="purchase_returns" action="delete">
-              <button onClick={() => setMessage({ text: "حذف المرتجع غير متاح حالياً", type: "error" })} className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
+              <button onClick={() => setShowDeleteModal(true)} className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
                 <Trash2 className="h-4 w-4" /> حذف
               </button>
             </PermissionGate>
@@ -688,15 +723,20 @@ export default function PurchaseReturnFormPage() {
                   <div className={`text-[11px] font-black px-2 py-1 rounded-sm border ${supplierBalance > 0 ? "text-amber-700 bg-amber-100/50 border-amber-200" : "text-slate-600 bg-slate-100/50 border-slate-200"}`}>
                     الرصيد: {formatMoney(supplierBalance)}
                   </div>
-                  {returnCreditEffect > 0 && total > 0 && (
+                  {netCreditAdjustment !== 0 && total > 0 && (
                     <>
-                      <div className="text-[11px] font-black text-emerald-700 bg-emerald-100/50 border border-emerald-200 px-2 py-1 rounded-sm">
-                        خصم: −{formatMoney(returnCreditEffect)}
+                      <div className={`text-[11px] font-black px-2 py-1 rounded-sm border ${netCreditAdjustment > 0 ? "text-emerald-700 bg-emerald-100/50 border-emerald-200" : "text-rose-700 bg-rose-100/50 border-rose-200"}`}>
+                        {netCreditAdjustment > 0 ? `خصم: −${formatMoney(netCreditAdjustment)}` : `إضافة: +${formatMoney(Math.abs(netCreditAdjustment))}`}
                       </div>
-                      <div className={`text-[11px] font-black px-2 py-1 rounded-sm border ${(supplierBalance - returnCreditEffect) > 0 ? "text-rose-700 bg-rose-100/50 border-rose-200" : "text-amber-700 bg-amber-100/50 border-amber-200"}`}>
-                        بعد المرتجع: {formatMoney(supplierBalance - returnCreditEffect)}
+                      <div className={`text-[11px] font-black px-2 py-1 rounded-sm border ${predictedBalance > 0 ? "text-rose-700 bg-rose-100/50 border-rose-200" : "text-amber-700 bg-amber-100/50 border-amber-200"}`}>
+                        بعد المرتجع: {formatMoney(predictedBalance)}
                       </div>
                     </>
+                  )}
+                  {netCreditAdjustment === 0 && returnCreditEffect > 0 && total > 0 && (
+                    <div className="text-[11px] font-black text-slate-500 bg-slate-100/50 border border-slate-200 px-2 py-1 rounded-sm">
+                      لا تغيير في الرصيد
+                    </div>
                   )}
                 </div>
               )}
@@ -710,18 +750,27 @@ export default function PurchaseReturnFormPage() {
                   <span className="font-bold text-slate-500">الرصيد الحالي</span>
                   <span className={`font-black font-mono ${supplierBalance > 0 ? "text-rose-600" : "text-amber-600"}`}>{formatMoney(supplierBalance)} ج.م</span>
                 </div>
-                {returnCreditEffect > 0 && total > 0 && (
+                {total > 0 && netCreditAdjustment !== 0 && (
                   <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-emerald-600">الخصم من رصيد المورد</span>
-                      <span className="text-[13px] font-black font-mono text-emerald-700">−{formatMoney(returnCreditEffect)}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-emerald-200/60 pt-1.5">
-                      <span className="text-[11px] font-bold text-emerald-600">الرصيد بعد المرتجع</span>
-                      <span className={`text-[13px] font-black font-mono ${(supplierBalance - returnCreditEffect) > 0 ? "text-rose-600" : "text-amber-700"}`}>
-                        {formatMoney(supplierBalance - returnCreditEffect)}
+                      <span className="text-[11px] font-bold text-emerald-600">
+                        {netCreditAdjustment > 0 ? "الخصم من رصيد المورد" : "إضافة لرصيد المورد"}
+                      </span>
+                      <span className={`text-[13px] font-black font-mono ${netCreditAdjustment > 0 ? "text-emerald-700" : "text-rose-600"}`}>
+                        {netCreditAdjustment > 0 ? "−" : "+"}{formatMoney(Math.abs(netCreditAdjustment))}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between border-t border-emerald-200/60 pt-1.5">
+                      <span className="text-[11px] font-bold text-slate-600">الرصيد بعد الحفظ</span>
+                      <span className={`text-[13px] font-black font-mono ${predictedBalance > 0 ? "text-rose-600" : "text-amber-700"}`}>
+                        {formatMoney(predictedBalance)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {total > 0 && netCreditAdjustment === 0 && returnCreditEffect > 0 && (
+                  <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] font-bold text-slate-500 text-center">
+                    لا تغيير في الرصيد — نفس التأثير كما كان مسجلاً
                   </div>
                 )}
                 <Link to={`/definitions/suppliers/${supplier.id}`} className="flex items-center justify-center gap-1 mt-2 py-1.5 rounded-lg bg-slate-50 text-[10px] font-bold text-slate-500 hover:text-amber-700 hover:bg-amber-50 transition-colors">
@@ -1265,6 +1314,53 @@ export default function PurchaseReturnFormPage() {
         onStay={() => blocker.reset?.()}
         onLeave={() => blocker.proceed?.()}
       />
+
+      {/* Delete warning modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => !isDeleting && setShowDeleteModal(false)}
+        >
+          <div
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-rose-400" />
+            <div className="p-7">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-rose-500" />
+                </div>
+                <div>
+                  <h2 className="text-[17px] font-black text-slate-900 mb-1">تأكيد حذف المرتجع</h2>
+                  <p className="text-[13px] font-medium text-slate-500 leading-relaxed">
+                    سيتم حذف هذا المرتجع نهائياً وعكس تأثيره على المخزون ورصيد المورد. هذا الإجراء لا يمكن التراجع عنه.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 mb-6 text-[12px] font-bold text-rose-700">
+                تأكد من صحة قرارك قبل المتابعة.
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[13px] font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                >
+                  {isDeleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200 transition-colors"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

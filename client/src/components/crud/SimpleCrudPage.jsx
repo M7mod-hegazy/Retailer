@@ -410,6 +410,34 @@ export default function SimpleCrudPage({
                         placeholder={`إدخال ${field.label}...`}
                       />
                     </div>
+                    {/* Live balance preview for opening_balance field */}
+                    {field.name === "opening_balance" && form[field.name] !== "" && (() => {
+                      const bal = Number(form[field.name] || 0);
+                      const isDebit = bal > 0;
+                      const isCredit = bal < 0;
+                      const isZero = bal === 0;
+                      return (
+                        <div className={`mt-2 flex items-center justify-between rounded-xl px-3 py-2 border transition-all duration-200 ${
+                          isDebit
+                            ? "bg-rose-50/80 border-rose-200/60"
+                            : isCredit
+                            ? "bg-emerald-50/80 border-emerald-200/60"
+                            : "bg-slate-50/80 border-slate-200/60"
+                        }`}>
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${
+                            isDebit ? "text-rose-500" : isCredit ? "text-emerald-600" : "text-slate-400"
+                          }`}>
+                            {isDebit ? "عليه رصيد (مديون)" : isCredit ? "له رصيد (دائن)" : "رصيد مسوّى"}
+                          </span>
+                          <span className={`text-[15px] font-black font-mono ${
+                            isDebit ? "text-rose-600" : isCredit ? "text-emerald-600" : "text-slate-400"
+                          }`}>
+                            {Math.abs(bal).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}
+                            <span className="text-[10px] font-bold mr-1 opacity-70">ج.م</span>
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </motion.div>
                 ))}
               </div>

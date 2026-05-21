@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, RotateCcw, X, Printer, Eye, Pencil, Search, SlidersHorizontal, ArrowDownLeft, FileText } from "lucide-react";
+import { Plus, RotateCcw, X, Printer, Eye, Pencil, Search, Trash2, AlertTriangle, ArrowDownLeft, FileText } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
@@ -65,7 +65,71 @@ function MagneticButton({ children, onClick, className, disabled }) {
   );
 }
 
-function ReturnRow({ row, navigate }) {
+function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
+  return (
+    <AnimatePresence>
+      {row && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Red top stripe */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-rose-400" />
+
+            <div className="p-7">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-rose-500" />
+                </div>
+                <div>
+                  <h2 className="text-[17px] font-black text-zinc-900 mb-1">تأكيد حذف المرتجع</h2>
+                  <p className="text-[13px] font-medium text-zinc-500 leading-relaxed">
+                    سيتم حذف المرتجع <span className="font-black text-zinc-800 font-mono">{row.doc_no || `RT-${String(row.id).padStart(5, "0")}`}</span> نهائياً.
+                    سيؤدي ذلك إلى عكس تأثيره على المخزون ورصيد العميل.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 mb-6 text-[12px] font-bold text-rose-700 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>هذا الإجراء لا يمكن التراجع عنه. تأكد من صحة قرارك قبل المتابعة.</span>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={onConfirm}
+                  disabled={deleting}
+                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[13px] font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98] shadow-sm shadow-rose-200"
+                >
+                  {deleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="h-11 px-6 rounded-2xl bg-zinc-100 text-zinc-700 text-[13px] font-black hover:bg-zinc-200 transition-colors"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function ReturnRow({ row, navigate, onDeleteRequest }) {
   return (
     <motion.div
       variants={FADE_UP}
@@ -137,7 +201,6 @@ function ReturnRow({ row, navigate }) {
           const total     = Number(row.total         || 0);
           return (
             <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl overflow-hidden shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)]">
-              {/* Total */}
               <div className="flex flex-col items-end justify-center px-3 py-2 min-w-[90px]">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
                 <div className="text-[15px] font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
@@ -145,8 +208,6 @@ function ReturnRow({ row, navigate }) {
                   <span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
                 </div>
               </div>
-
-              {/* Cash portion */}
               {cashAmt > 0.005 && (
                 <>
                   <div className="w-px self-stretch bg-slate-200/80" />
@@ -162,8 +223,6 @@ function ReturnRow({ row, navigate }) {
                   </div>
                 </>
               )}
-
-              {/* Credit/account portion */}
               {creditAmt > 0.005 && (
                 <>
                   <div className="w-px self-stretch bg-slate-200/80" />
@@ -195,6 +254,11 @@ function ReturnRow({ row, navigate }) {
               <Pencil className="w-4 h-4" />
             </button>
           </PermissionGate>
+          <PermissionGate page="sales_returns" action="delete">
+            <button onClick={() => onDeleteRequest(row)} className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </PermissionGate>
         </div>
       </div>
     </motion.div>
@@ -212,6 +276,8 @@ export default function SalesReturnsListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -232,6 +298,21 @@ export default function SalesReturnsListPage() {
   }
 
   useEffect(() => { loadData(); }, [debouncedSearch, dateFrom, dateTo, invoiceIdFilter]);
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/invoices/returns/${deleteTarget.id}`);
+      toast.success(`تم حذف المرتجع ${deleteTarget.doc_no || `#${deleteTarget.id}`} بنجاح`);
+      setDeleteTarget(null);
+      loadData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "فشل حذف المرتجع");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function clearInvoiceFilter() {
     searchParams.delete("invoice_id");
@@ -323,10 +404,17 @@ export default function SalesReturnsListPage() {
               <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي إشعارات مرتجع تطابق بحثك الحالي.</p>
             </div>
           ) : (
-            rows.map(row => <ReturnRow key={row.id} row={row} navigate={navigate} />)
+            rows.map(row => <ReturnRow key={row.id} row={row} navigate={navigate} onDeleteRequest={setDeleteTarget} />)
           )}
         </motion.div>
       </div>
+
+      <DeleteWarningModal
+        row={deleteTarget}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteTarget(null)}
+        deleting={deleting}
+      />
     </div>
   );
 }
