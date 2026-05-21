@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Building, Search, Plus, X, Phone, SlidersHorizontal,
   MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
@@ -49,13 +50,16 @@ const PMETHOD_LABEL = { cash: "نقداً", credit: "آجل", bank_transfer: "ت
 // Parse ALL splits including credit — used for متعدد display
 function parseAllPaymentSplits(splits) {
   if (!splits) return [];
-  return splits.split("|||").map(s => {
+  const raw = splits.split("|||").map(s => {
     const idx = s.indexOf(":");
     if (idx === -1) return null;
     const method = s.slice(0, idx).trim();
     const amount = Number(s.slice(idx + 1));
     return { method, amount };
   }).filter(Boolean).filter(s => s.amount > 0.005);
+  const map = {};
+  for (const item of raw) map[item.method] = (map[item.method] || 0) + item.amount;
+  return Object.entries(map).map(([method, amount]) => ({ method, amount }));
 }
 
 // Per-method color tokens (shared with customer page pattern)
@@ -71,11 +75,12 @@ const S_METHOD_STYLE = {
 };
 const sms = (method) => S_METHOD_STYLE[method] || S_METHOD_STYLE.default;
 
-const S_TYPE_ACCENT = {
-  purchase:   "border-r-orange-400",
-  payment:    "border-r-emerald-400",
-  return:     "border-r-rose-400",
-  adjustment: "border-r-amber-400",
+const TYPE_CARD_STYLE = {
+  purchase: "border-slate-200/70 hover:border-orange-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  payment: "border-slate-200/70 hover:border-emerald-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  return: "border-slate-200/70 hover:border-rose-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  adjustment: "border-slate-200/70 hover:border-amber-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  opening: "border-slate-200 border-dashed bg-slate-50/50",
 };
 
 function InstallmentsBadge({ debtId }) {
@@ -126,6 +131,108 @@ function InstallmentsBadge({ debtId }) {
 function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const filteredEvents = events.filter(ev => {
+    if (filterType !== "all" && ev.type !== filterType) return false;
+    if (ev.date) {
+      const d = new Date(ev.date);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (d < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) return false;
+      }
+    } else {
+      if (startDate || endDate) return false;
+    }
+    return true;
+  });
+
+  const renderFilterBar = () => (
+    <div className="bg-slate-50/45 border border-slate-100 rounded-[28px] p-5 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.015)] backdrop-blur-md select-none text-right" dir="rtl">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        {/* Type Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[11.5px] font-black text-slate-400 ml-1.5 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" />
+            تصفية الحركات:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "all", label: "الكل", color: "hover:border-slate-350 hover:bg-slate-50 text-slate-650 bg-white" },
+              { id: "purchase", label: "مشتريات آجل", color: "hover:border-orange-200 hover:bg-orange-50/30 text-orange-700 bg-white" },
+              { id: "payment", label: "سداد دفعة", color: "hover:border-emerald-200 hover:bg-emerald-50/30 text-emerald-750 bg-white" },
+              { id: "return", label: "مرتجع", color: "hover:border-rose-200 hover:bg-rose-50/30 text-rose-700 bg-white" },
+              { id: "adjustment", label: "تسوية", color: "hover:border-amber-200 hover:bg-amber-50/30 text-amber-700 bg-white" },
+            ].map(btn => {
+              const active = filterType === btn.id;
+              return (
+                <button
+                  key={btn.id}
+                  onClick={() => setFilterType(btn.id)}
+                  className={`text-[12px] font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                    active 
+                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
+                      : `${btn.color} border-slate-200/80 shadow-sm hover:scale-[1.01]`
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Date Filter */}
+        <div className="flex flex-wrap items-center gap-3 border-t lg:border-t-0 border-slate-100 pt-4 lg:pt-0">
+          <span className="text-[11.5px] font-black text-slate-400 ml-1.5 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
+            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+            تحديد الفترة:
+          </span>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* From Date Pill */}
+            <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
+              <span className="text-[10px] font-black text-slate-450 shrink-0">من</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="text-[12px] font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+              />
+            </div>
+
+            {/* To Date Pill */}
+            <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
+              <span className="text-[10px] font-black text-slate-450 shrink-0">إلى</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="text-[12px] font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+              />
+            </div>
+
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(""); setEndDate(""); }}
+                className="p-2 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200/80 hover:border-rose-250 rounded-2xl transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
+                title="إعادة تعيين الفترة"
+              >
+                <X className="h-4 w-4 stroke-[2.5px]" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   const arMethod = (key) => PMETHOD_LABEL[key] || key;
 
@@ -249,56 +356,75 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="flex h-32 items-center justify-center text-[12px] font-black text-slate-400 animate-pulse">جاري التحميل...</div>;
-  if (events.length === 0) return (
-    <div className="flex flex-col items-center justify-center h-32 text-slate-300 gap-2">
-      <FileText className="h-8 w-8 opacity-40" />
-      <span className="font-black text-[13px]">لا توجد حركات مسجلة</span>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 animate-pulse">
+        <RefreshCw className="h-7 w-7 animate-spin text-orange-600" />
+        <span className="text-[12px] font-bold">جاري تحميل سجل الحركات...</span>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-350 gap-4 border border-dashed border-slate-200 rounded-[24px] bg-white/40 max-w-5xl mx-auto shadow-inner animate-fade-in">
+        <div className="p-4 rounded-full bg-slate-50 border border-slate-100/80 shadow-sm">
+          <FileText className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
+        </div>
+        <span className="font-extrabold text-[13px] text-slate-500 tracking-tight">لا توجد حركات مالية مسجلة للمورد حالياً</span>
+      </div>
+    );
+  }
+
+  if (filteredEvents.length === 0) {
+    return (
+      <div className="max-w-5xl mx-auto flex flex-col relative px-1 select-none">
+        {renderFilterBar()}
+        
+        <div className="flex flex-col items-center justify-center py-16 text-slate-350 gap-4 border border-dashed border-slate-200 rounded-[28px] bg-white/40 shadow-inner animate-fade-in text-right">
+          <div className="p-4 rounded-full bg-slate-50 border border-slate-100 shadow-sm">
+            <SlidersHorizontal className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
+          </div>
+          <span className="font-extrabold text-[13px] text-slate-500 tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
+          <button 
+            onClick={() => { setFilterType("all"); setStartDate(""); setEndDate(""); }}
+            className="text-[11px] font-black text-blue-650 bg-blue-50 border border-blue-150 rounded-xl px-4 py-2 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
+          >
+            إعادة تعيين الفلاتر
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-2.5">
-      {events.map(ev => {
-        // ── Opening balance row
-        if (ev.type === "opening") {
-          return (
-            <div key="opening" className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
-                  <FileText className="h-3.5 w-3.5 text-slate-500" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-black text-slate-600">رصيد افتتاحي</div>
-                  <div className="text-[9px] text-slate-400 font-bold">قبل هذه الفترة</div>
-                </div>
-              </div>
-              <div className="text-end">
-                <div className={`text-[15px] font-black font-mono ${ev.impactDir === "add" ? "text-rose-600" : "text-emerald-600"}`}>
-                  {ev.impactDir === "add" ? "+" : "−"}{fmt(ev.impactAmount)}
-                </div>
-                <div className="text-[9px] font-bold text-slate-400">ج.م</div>
-              </div>
-            </div>
-          );
-        }
-
-        const cfg = EVENT_TYPES[ev.type];
+    <div className="max-w-5xl mx-auto flex flex-col relative px-1 select-none">
+      {renderFilterBar()}
+      
+      {filteredEvents.map((ev, index) => {
+        const isOpening = ev.type === "opening";
+        const cfg = !isOpening ? EVENT_TYPES[ev.type] : {
+          icon: FileText,
+          label: "رصيد افتتاحي",
+          color: "text-slate-500",
+          bg: "bg-slate-50/80",
+          border: "border-slate-200"
+        };
         const Icon = cfg.icon;
+
+        // Document flags
         const ptype = ev.raw?.payment_type;
         const isMulti = ptype === "multi";
         const isCredit = ptype === "credit";
         const isInstallments = ptype === "installments";
         const isDocRow = ev.type === "purchase";
 
-        // For متعدد: use ajalChipAmount (from payment_splits, permanent)
         const multiAjalAmount = isMulti ? (ev.ajalChipAmount || 0) : 0;
         const hasImpact = isMulti
           ? multiAjalAmount > 0.005
           : (ev.impactDir && ev.impactAmount > 0.005);
         const displayImpactAmount = isMulti ? multiAjalAmount : ev.impactAmount;
 
-        // For متعدد: use allChips which includes credit from payment_splits directly
         const multiChips = isMulti ? (ev.allChips || []) : [];
         const creditChips = isCredit ? [{ method: "credit", amount: ev.raw?.total }] : [];
         const installChips = isInstallments ? [
@@ -308,153 +434,242 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
         const singleChips = !isMulti && !isCredit && !isInstallments && ev.chips?.length > 0 ? ev.chips : [];
         const renderChips = isMulti ? multiChips : isCredit ? creditChips : isInstallments ? installChips : singleChips;
 
+        // Theme mapping for suppliers
+        const theme = {
+          purchase: {
+            bezel: "bg-gradient-to-br from-orange-50/60 to-amber-50/20 border-orange-200/50 hover:border-orange-300/80",
+            borderRight: "border-r-orange-500",
+            badge: "bg-orange-50 text-orange-700 border-orange-200/50",
+            label: "مشتريات آجل"
+          },
+          payment: {
+            bezel: "bg-gradient-to-br from-emerald-50/60 to-teal-50/20 border-emerald-200/50 hover:border-emerald-300/80",
+            borderRight: "border-r-emerald-500",
+            badge: "bg-emerald-50 text-emerald-700 border-emerald-200/50",
+            label: "دفعة مسددة"
+          },
+          return: {
+            bezel: "bg-gradient-to-br from-rose-50/60 to-pink-50/20 border-rose-200/50 hover:border-rose-300/80",
+            borderRight: "border-r-rose-500",
+            badge: "bg-rose-50 text-rose-750 border-rose-200/50",
+            label: "مرتجع مشتريات"
+          },
+          adjustment: {
+            bezel: "bg-gradient-to-br from-amber-50/60 to-orange-50/20 border-amber-200/50 hover:border-amber-300/80",
+            borderRight: "border-r-amber-500",
+            badge: "bg-amber-50 text-amber-700 border-amber-200/50",
+            label: "تسوية رصيد"
+          },
+          opening: {
+            bezel: "bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200/80",
+            borderRight: "border-r-slate-400",
+            badge: "bg-slate-100 text-slate-700 border-slate-200/60",
+            label: "رصيد افتتاحي"
+          }
+        }[ev.type];
+
         return (
-          <div key={ev.id}
-            className={`rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden border-r-4 ${S_TYPE_ACCENT[ev.type] || "border-r-slate-200"}`}
-          >
-            {/* ── Top row */}
-            <div className="flex items-center gap-3 px-3.5 py-3">
-              <div className={`h-8 w-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
-                <Icon className={`h-4 w-4 ${cfg.color}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${cfg.bg} ${cfg.color}`}>
-                    {cfg.label}
-                  </span>
-                  <span className="text-[12px] font-black text-slate-800 font-mono tracking-tight">
-                    {ev.ref}
-                  </span>
-                  {!isDocRow && ev.methodLabel && (
-                    <span className="text-[10px] font-bold text-slate-500">{ev.methodLabel}</span>
-                  )}
-                </div>
-                {ev.description && (
-                  <div className="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{ev.description}</div>
-                )}
-              </div>
-              <div className="flex flex-col items-end gap-0.5 shrink-0">
-                {isDocRow && (
-                  <div className="text-end">
-                    <div className="text-[9px] font-bold text-slate-400 mb-0">إجمالي الفاتورة</div>
-                    <div className="text-[14px] font-black font-mono text-slate-800 leading-none">
-                      {fmt(ev.invoiceTotal)}
-                      <span className="text-[10px] font-bold text-slate-400 mr-0.5">ج.م</span>
-                    </div>
-                  </div>
-                )}
-                {!isDocRow && (
-                  <div className={`text-[13px] font-black font-mono ${
-                    ev.impactDir === "subtract" ? "text-emerald-700" : ev.impactDir === "add" ? "text-rose-600" : "text-slate-600"
-                  }`}>
-                    {fmt(ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}
-                    <span className="text-[10px] font-bold opacity-60 mr-0.5">ج.م</span>
-                  </div>
-                )}
-                {ev.type === "return" && ev.isSplit && (
-                  <div className="flex flex-col gap-0.5 items-end">
-                    <span className="text-[8px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5">
-                      نقداً: {fmt(ev.cashAmount)}
+          <div key={ev.id} className="flex gap-6 items-stretch relative py-5 select-none">
+            {/* Premium Timeline Node Column with Integrated Date */}
+            <div className="flex flex-col items-center shrink-0 w-24 relative select-none">
+              {/* Dual-layered highly aesthetic connecting line track */}
+              <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[3.5px] bg-slate-100 rounded-full pointer-events-none" />
+              <div className={`absolute left-1/2 -translate-x-1/2 w-[2px] pointer-events-none ${
+                index === 0 
+                  ? "top-8 bottom-0 bg-gradient-to-b from-blue-500 to-slate-200" 
+                  : index === filteredEvents.length - 1 
+                    ? "top-0 h-8 bg-gradient-to-b from-slate-200 to-transparent" 
+                    : "top-0 bottom-0 bg-slate-200"
+              }`} />
+              
+              {/* Sleek Date Squircle Node */}
+              <div className="w-16 h-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative">
+                {/* Floating micro-badge for event icon */}
+                <span className={`absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-6.5 w-6.5 rounded-lg border ${cfg.bg} ${cfg.color} ${cfg.border} shadow-[0_2px_6px_rgba(0,0,0,0.04)] z-20 transition-transform duration-300 group-hover:scale-110`}>
+                  <Icon className="h-3.5 w-3.5 stroke-[2.3px]" />
+                </span>
+
+                {/* Vertical Date typography */}
+                {ev.date ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-black text-slate-450 uppercase tracking-wide leading-none whitespace-nowrap">
+                      {new Date(ev.date).toLocaleDateString("ar-EG", { month: "short", year: "numeric" })}
                     </span>
-                    <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5">
-                      حساب: {fmt(ev.impactAmount)}
+                    <span className="text-[20px] font-black text-slate-800 font-mono tracking-tighter leading-none mt-1">
+                      {new Date(ev.date).toLocaleDateString("ar-EG", { day: "2-digit" })}
                     </span>
                   </div>
+                ) : (
+                  <span className="text-[10.5px] font-black text-slate-500 leading-none">البداية</span>
                 )}
-                {ev.type === "return" && ev.isCashOnly && (
-                  <span className="text-[8px] font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5">نقداً فقط</span>
-                )}
-                <div className="text-[10px] text-slate-400 font-bold">{fmtDate(ev.date)}</div>
               </div>
-              {ev.type === "purchase" && (
-                <button onClick={() => onOpenPurchase(ev.raw)}
-                  className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors shrink-0">
-                  <Eye className="h-3.5 w-3.5" />
-                </button>
-              )}
-              {ev.type === "return" && (
-                <button onClick={() => onOpenReturn(ev.raw)}
-                  className="h-7 w-7 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0">
-                  <Eye className="h-3.5 w-3.5" />
-                </button>
-              )}
             </div>
 
-            {/* ── Payment methods section */}
-            {isDocRow && renderChips.length > 0 && (
-              <div className="border-t border-slate-100">
-                {/* Total summary bar */}
-                <div className="flex items-center justify-between px-3.5 py-2 bg-slate-50 border-b border-slate-100">
-                  <span className="text-[10px] font-black text-slate-500">إجمالي الفاتورة</span>
-                  <span className="text-[15px] font-black font-mono text-slate-900">
-                    {fmt(ev.invoiceTotal)}
-                    <span className="text-[10px] font-bold text-slate-400 mr-1">ج.م</span>
-                  </span>
-                </div>
-                <div className="px-3.5 pt-2 pb-2.5">
-                  {isMulti ? (
-                    <div className="space-y-1">
-                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">تفاصيل الدفع</div>
-                      {renderChips.map((chip, i) => {
-                        const style = sms(chip.method);
-                        const pct = (ev.invoiceTotal || 0) > 0 ? Math.round((chip.amount / ev.invoiceTotal) * 100) : 0;
-                        return (
-                          <div key={i} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${style.bg} border ${style.border}`}>
-                            <div className={`h-1.5 w-1.5 rounded-full ${style.dot} shrink-0`} />
-                            <span className={`text-[11px] font-black flex-1 ${style.text}`}>{arMethod(chip.method)}</span>
-                            <span className="text-[9px] font-bold text-slate-400">{pct}%</span>
-                            <span className={`text-[12px] font-black font-mono ${style.text}`}>
-                              {fmt(chip.amount)}<span className="text-[9px] font-bold opacity-60 mr-0.5">ج.م</span>
+            {/* Event Card: Double-Bezel Concentric architecture with asymmetric colored edge */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.998 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28, delay: Math.min(0.3, index * 0.02) }}
+              className={`flex-1 p-[3px] rounded-[28px] border shadow-[0_8px_24px_rgba(0,0,0,0.015)] backdrop-blur-md transition-all duration-300 ${theme.bezel}`}
+            >
+              <div className={`bg-white rounded-[24px] p-5 md:p-6 relative overflow-hidden border border-slate-100/80 ${theme.borderRight} flex flex-col gap-4 shadow-[inset_0_2px_4px_rgba(255,255,255,1)]`}>
+                <div className="flex flex-col gap-4">
+                  {/* ── Main Asymmetric Ledger Row ── */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                    
+                    {/* Column 1: Stylized Card Type Header & Reference (spans 3 cols) */}
+                    <div className="lg:col-span-3 flex flex-col justify-center min-w-0 pr-1 select-none">
+                      <div className="flex items-center gap-2.5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[16px] font-black text-slate-800 tracking-tight leading-none">
+                              {isOpening ? "رصيد افتتاحي سابق" : cfg.label}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full border shadow-sm ${theme.badge}`}>
+                              {theme.label}
                             </span>
                           </div>
-                        );
-                      })}
+                          
+                          <div className="mt-2.5 flex items-center gap-1">
+                            <span className="text-[9.5px] font-bold text-slate-400 select-none">المرجع:</span>
+                            <span className="text-[10px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
+                              {isOpening ? "سجل افتتاحي" : ev.ref}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {renderChips.map((chip, i) => {
-                        const style = sms(chip.method);
-                        return (
-                          <span key={i}
-                            className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full border ${style.bg} ${style.text} ${style.border}`}
-                          >
-                            <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                            {arMethod(chip.method)}
-                            <span className="font-mono">{fmt(chip.amount)}</span>
+
+                    {/* Column 2: Payment splits / method tags / notes (spans 4 cols) */}
+                    <div className="lg:col-span-4 flex flex-wrap items-center gap-2 min-w-0">
+                      {isDocRow && renderChips.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {renderChips.map((chip, i) => {
+                            const style = sms(chip.method);
+                            const pct = ev.invoiceTotal > 0 ? Math.round((chip.amount / ev.invoiceTotal) * 100) : 0;
+                            return (
+                              <span
+                                key={i}
+                                className={`inline-flex items-center gap-1.5 text-[9.5px] font-extrabold px-2.5 py-1.5 rounded-xl border transition-all duration-200 hover:scale-102 shadow-sm ${style.bg} ${style.text} ${style.border}`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${style.dot} animate-pulse`} />
+                                {arMethod(chip.method)}
+                                <span className="font-mono text-[10px] font-black">{fmt(chip.amount)}</span>
+                                {isMulti && <span className="opacity-60 text-[8.5px] font-bold mr-0.5">({pct}%)</span>}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {!isDocRow && !isOpening && ev.methodLabel && (
+                        <span className="inline-flex items-center gap-1.5 text-[9.5px] font-extrabold px-2.5 py-1.5 rounded-xl border bg-slate-50 border-slate-200 text-slate-650 shadow-sm">
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                          {ev.methodLabel}
+                        </span>
+                      )}
+                      {isOpening && (
+                        <span className="text-[11px] text-slate-450 font-bold font-mono">
+                          قبل سجل الحركات المالية المعروضة في الكشف الحالي
+                        </span>
+                      )}
+                      {ev.description && (
+                        <span className="text-[11.5px] text-slate-450 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
+                          {ev.description}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Column 3: Unified Ledger Cockpit Widget (spans 4 cols) */}
+                    <div className="lg:col-span-4 flex flex-row items-center justify-end gap-3 shrink-0 ml-auto lg:ml-0">
+                      <div className="flex items-center gap-4 shrink-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-2.5 hover:bg-slate-50/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)] min-w-[315px] ml-auto lg:ml-0">
+                        {/* Metric 1: Total Transaction Value */}
+                        <div className="flex flex-col items-end px-3 py-0.5 flex-1 min-w-0">
+                          <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
+                            {isOpening ? "القيمة الافتتاحية" : isDocRow ? "إجمالي الفاتورة" : ev.type === "return" ? "إجمالي المرتجع" : ev.type === "payment" ? "المبلغ المسدد" : "قيمة التسوية"}
                           </span>
-                        );
-                      })}
+                          <div className="text-[18px] font-black text-slate-800 font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                            <span>{fmt(isOpening ? ev.impactAmount : isDocRow ? ev.invoiceTotal : ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}</span>
+                            <span className="text-[9.5px] font-bold text-slate-400 mr-0.5">ج.م</span>
+                          </div>
+                        </div>
+
+                        {/* Vertical Divider */}
+                        {hasImpact && <div className="h-10 w-[1px] bg-slate-200/80 self-center" />}
+
+                        {/* Metric 2: Balance Impact */}
+                        {hasImpact && (
+                          <div className={`flex flex-col items-end px-3 py-1.5 rounded-[12px] border flex-1 transition-all ${
+                            ev.impactDir === "add" || isMulti
+                              ? "bg-rose-500/[0.04] text-rose-700 border-rose-200/60 shadow-[0_2px_8px_rgba(244,63,94,0.03)]"
+                              : "bg-emerald-500/[0.04] text-emerald-700 border-emerald-200/60 shadow-[0_2px_8px_rgba(16,185,129,0.03)]"
+                          }`}>
+                            <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
+                              {ev.type === "return"
+                                ? "المخصوم من الآجل"
+                                : ev.impactDir === "add" || isMulti
+                                  ? "المضاف للآجل"
+                                  : "المخصوم من الرصيد"}
+                            </span>
+                            <div className="text-[18px] font-black font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                              <span className="text-[13px] font-black select-none leading-none mr-0.5">
+                                {ev.impactDir === "add" || isMulti ? "+" : "−"}
+                              </span>
+                              <span>{fmt(displayImpactAmount)}</span>
+                              <span className="text-[9.5px] font-bold mr-0.5">ج.م</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {ev.type === "return" && ev.isSplit && (
+                        <div className="flex flex-col gap-1 items-end shrink-0 select-none">
+                          <span className="text-[8.5px] font-bold text-rose-600 bg-rose-50 border border-rose-250 rounded-lg px-2 py-0.5">
+                            نقداً: {fmt(ev.cashAmount)}
+                          </span>
+                          <span className="text-[8.5px] font-bold text-indigo-650 bg-indigo-50 border border-indigo-200 rounded-lg px-2 py-0.5">
+                            رصيد: {fmt(ev.impactAmount)}
+                          </span>
+                        </div>
+                      )}
+                      {ev.type === "return" && ev.isCashOnly && (
+                        <span className="text-[8.5px] font-bold text-rose-600 bg-rose-50 border border-rose-250 rounded-lg px-2 py-0.5 select-none">نقداً فقط</span>
+                      )}
+                    </div>
+
+                    {/* Column 4: Detail Action Button (spans 1 col) */}
+                    <div className="lg:col-span-1 flex items-center justify-end shrink-0">
+                      {ev.type === "purchase" && (
+                        <button
+                          onClick={() => onOpenPurchase(ev.raw)}
+                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-600 border border-slate-200/80 hover:border-orange-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
+                          title="عرض تفاصيل الفاتورة"
+                        >
+                          <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
+                        </button>
+                      )}
+                      {ev.type === "return" && (
+                        <button
+                          onClick={() => onOpenReturn(ev.raw)}
+                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/80 hover:border-rose-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
+                          title="عرض تفاصيل المرتجع"
+                        >
+                          <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Installments schedule expandable sub-section ── */}
+                  {isDocRow && isInstallments && ev.raw?.id && (
+                    <div className="pt-3 border-t border-slate-100">
+                      <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
                     </div>
                   )}
                 </div>
               </div>
-            )}
-
-            {/* ── Installments expandable */}
-            {isDocRow && isInstallments && ev.raw?.id && (
-              <div className="px-3.5 pb-2.5">
-                <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
-              </div>
-            )}
-
-            {/* ── Balance impact strip */}
-            {hasImpact && (
-              <div className={`flex items-center justify-between px-3.5 py-2 border-t ${
-                ev.impactDir === "add" || isMulti ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100"
-              }`}>
-                <span className={`text-[10px] font-black tracking-wide ${
-                  ev.impactDir === "add" || isMulti ? "text-rose-500" : "text-emerald-600"
-                }`}>
-                  {ev.impactDir === "add" || isMulti ? "↑ أُضيف للرصيد الآجل" : "↓ خُصم من الرصيد"}
-                </span>
-                <span className={`text-[14px] font-black font-mono ${
-                  ev.impactDir === "add" || isMulti ? "text-rose-600" : "text-emerald-700"
-                }`}>
-                  {ev.impactDir === "add" || isMulti ? "+" : "−"}{fmt(displayImpactAmount)}
-                  <span className="text-[10px] font-bold opacity-60 mr-1">ج.م</span>
-                </span>
-              </div>
-            )}
+            </motion.div>
           </div>
         );
       })}
@@ -720,16 +935,16 @@ export default function SupplierAccountsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white border-b border-slate-200 px-4 py-3 shrink-0 space-y-2">
+            <div className="bg-white border-b border-slate-200 px-4 py-3 shrink-0 space-y-2.5">
               {/* Row 1: Avatar + Info + Edit */}
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-[16px] font-black text-white shrink-0">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-[14px] font-black text-white shrink-0">
                   {selected.name?.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-[15px] font-black text-slate-900 truncate">{selected.name}</h2>
+                  <h2 className="text-[14px] font-black text-slate-900 truncate">{selected.name}</h2>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                    {selected.phone && <span className="flex items-center gap-1 text-[11px] text-slate-500 font-bold"><Phone className="h-3 w-3" /> {selected.phone}</span>}
+                    {selected.phone && <span className="flex items-center gap-1 text-[10px] text-slate-500 font-bold"><Phone className="h-3 w-3" /> {selected.phone}</span>}
                     {selected.code && <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{selected.code}</span>}
                   </div>
                 </div>
@@ -741,18 +956,13 @@ export default function SupplierAccountsPage() {
                 </button>
               </div>
 
-              {/* Row 2: Balance Card */}
-              <div className={`rounded-xl px-4 py-2.5 flex items-center justify-between border ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[18px] shrink-0 ${bal > 0 ? "bg-rose-100" : bal < 0 ? "bg-emerald-100" : "bg-slate-100"}`}>
-                  {bal > 0 ? "🔴" : bal < 0 ? "🟢" : "✅"}
+              {/* Row 2: Balance Row */}
+              <div className={`rounded-xl px-3 py-2 flex items-center justify-between border ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
+                <div className={`text-[10px] font-black ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  {bal > 0 ? "له مستحق علينا" : bal < 0 ? "عليه مستحق لنا" : "الحساب مسوّى"}
                 </div>
-                <div className="text-end">
-                  <div className={`text-[10px] font-black ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                    {bal > 0 ? "له مستحق" : bal < 0 ? "عليه مستحق" : "الحساب مسوّى"}
-                  </div>
-                  <div className={`text-[24px] font-black font-mono leading-none ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                    {fmt(Math.abs(bal))}<span className="text-[11px] font-bold mr-1">ج.م</span>
-                  </div>
+                <div className={`text-[20px] font-black font-mono leading-none ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  {fmt(Math.abs(bal))}<span className="text-[11px] font-bold mr-1">ج.م</span>
                 </div>
               </div>
 
@@ -760,14 +970,14 @@ export default function SupplierAccountsPage() {
               <div className="grid grid-cols-2 gap-2">
                 <PermissionGate page="supplier_accounts" action="edit">
                   <button onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-white hover:bg-orange-700 shadow-sm shadow-orange-200 transition-all">
+                    className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2 text-white hover:bg-orange-700 shadow-sm shadow-orange-200 transition-all">
                     <Plus className="h-4 w-4" />
                     <span className="text-[12px] font-black">سداد دفعة</span>
                   </button>
                 </PermissionGate>
                 <PermissionGate page="supplier_accounts" action="edit">
                   <button onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 py-2.5 text-slate-700 hover:bg-slate-50 transition-all">
+                    className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 py-2 text-slate-700 hover:bg-slate-50 transition-all">
                     <SlidersHorizontal className="h-4 w-4 text-slate-500" />
                     <span className="text-[12px] font-black">تسوية رصيد</span>
                   </button>

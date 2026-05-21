@@ -18,13 +18,7 @@ The original doc number and date/time also show `"—"` in edit mode due to the 
 
 ---
 
-## Approach
-
-**Client-side resolution (POS amendment pattern):** Keep the API mostly unchanged. Split the current single edit effect into two effects — matching how POSPage handles `amendContext` — so that name resolution happens after reference lists are loaded.
-
-**Hook fix:** Make `useInvoiceActivation` reactive to async edit values so doc number and date/time populate correctly after the API call returns.
-
-**Server:** Minimal additions only — two extra SELECT columns in the return line queries, and one warehouse bug fix.
+LECT columns in the return line queries, and one warehouse bug fix.
 
 ---
 

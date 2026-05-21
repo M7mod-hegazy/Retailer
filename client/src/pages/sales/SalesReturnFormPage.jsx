@@ -141,6 +141,8 @@ export default function SalesReturnFormPage() {
   const [customerInfoOpen, setCustomerInfoOpen] = useState(false);
   const [customerBalance, setCustomerBalance] = useState(null);
   const [ajalDebt, setAjalDebt] = useState(0);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
 
   const [refundMethod, setRefundMethod] = useState("cash_back");
   const [splitCashAmount, setSplitCashAmount] = useState("");
@@ -176,6 +178,7 @@ export default function SalesReturnFormPage() {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showEditWarnModal, setShowEditWarnModal] = useState(false);
   const [showSwitchInvoiceWarning, setShowSwitchInvoiceWarning] = useState(false);
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -190,6 +193,19 @@ export default function SalesReturnFormPage() {
 
   // isDirty must be after all state declarations to avoid TDZ on `customer`
   const isDirty = isEditMode ? !isLocked : (cart.length > 0 || !!customer);
+
+  const customerResults = useMemo(() => {
+    if (!customerLookupOpen) return [];
+    const q = customerQuery.trim().toLowerCase();
+    const list = q
+      ? customers.filter(c => String(c.name || "").toLowerCase().includes(q) || String(c.phone || "").includes(q))
+      : customers.slice(0, 8);
+    return list.slice(0, 8).map(c => ({
+      ...c,
+      sub_label: c.phone || "",
+      price_label: "",
+    }));
+  }, [customerLookupOpen, customerQuery, customers]);
   const { blocker } = useUnsavedChangesGuard(isDirty);
 
   const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } =
@@ -234,7 +250,7 @@ export default function SalesReturnFormPage() {
       setRefundMethod(sr.refund_method || "cash_back");
       if (sr.refund_method === "split") setSplitCashAmount(String(sr.cash_amount || ""));
       setReason(sr.reason || "other");
-      if (sr.customer_id) setCustomer({ id: sr.customer_id, name: sr.customer_name || String(sr.customer_id) });
+      if (sr.customer_id) { const name = sr.customer_name || String(sr.customer_id); setCustomer({ id: sr.customer_id, name }); setCustomerQuery(name); }
       setMode(sr.invoice_id ? "invoice" : "direct");
     }).catch(() => {});
   }, [isEditMode, editReturnId]);
@@ -419,7 +435,9 @@ export default function SalesReturnFormPage() {
       checked: false,
     })).filter(l => l.original_qty - l.already_returned > 0));
     if (inv.customer_id) {
-      setCustomer({ id: inv.customer_id, name: inv.customer_name || String(inv.customer_id) });
+      const name = inv.customer_name || String(inv.customer_id);
+      setCustomer({ id: inv.customer_id, name });
+      setCustomerQuery(name);
       setCustomerLockedFromInvoice(true);
     }
   }
@@ -613,10 +631,16 @@ export default function SalesReturnFormPage() {
               </button>
             </PermissionGate>
           )}
+          {!isEditMode && (
+            <button onClick={() => setShowWarningModal(true)}
+              className="flex h-9 items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 text-[13px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
+              <RotateCcw className="h-4 w-4" /> مرتجع جديد
+            </button>
+          )}
           {mode && !isLocked && (
             <PermissionGate page="sales_returns" action={isEditMode ? "edit" : "add"}>
               <button
-                onClick={isEditMode ? handleSave : () => setPrintPreview(true)}
+                onClick={() => setShowSaveConfirmModal(true)}
                 disabled={isSaving || !total}
                 className="flex h-9 items-center gap-2 rounded-sm bg-emerald-700 px-6 text-[13px] font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
               >
@@ -646,13 +670,24 @@ export default function SalesReturnFormPage() {
                 )}
               </div>
               <div className="relative">
-                <select value={customer?.id || ""} onChange={e => { const c = customers.find(x => String(x.id) === e.target.value); setCustomer(c ? { id: c.id, name: c.name } : null); }}
+                <input
+                  type="text"
+                  value={customerQuery}
+                  placeholder={customer?.id ? customer.name : "ابحث عن عميل..."}
+                  onChange={e => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); if (!e.target.value) setCustomer(null); }}
+                  onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
+                  onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
                   disabled={isLocked || customerLockedFromInvoice}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none">
-                  <option value="">— بدون عميل —</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm placeholder:font-normal placeholder:text-slate-400"
+                />
+                {customerLookupOpen && !isLocked && !customerLockedFromInvoice && (
+                  <SearchDropdown
+                    items={customerResults}
+                    onPick={c => { setCustomer({ id: c.id, name: c.name }); setCustomerQuery(c.name); setCustomerLookupOpen(false); }}
+                    query={customerQuery}
+                    emptyLabel="لم يتم العثور على عميل"
+                  />
+                )}
               </div>
               {customerLockedFromInvoice && !isLocked && <p className="text-[10px] text-slate-400 font-medium">العميل محدد من الفاتورة الأصلية</p>}
               {customer?.id && (
@@ -763,6 +798,55 @@ export default function SalesReturnFormPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Action buttons — mirrors header */}
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="w-full h-px bg-slate-100" />
+              <div className="flex gap-2">
+                <button onClick={() => setTodayReturnsOpen(true)}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
+                  <Calendar className="h-4 w-4" /> مرتجعات اليوم
+                </button>
+                <PermissionGate page="sales_returns" action="print">
+                  <button onClick={() => setPrintPreview(true)} disabled={!total}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    <Printer className="h-4 w-4" /> طباعة
+                  </button>
+                </PermissionGate>
+              </div>
+              {mode && !isLocked && (
+                <PermissionGate page="sales_returns" action={isEditMode ? "edit" : "add"}>
+                  <button onClick={() => setShowSaveConfirmModal(true)} disabled={isSaving || !total}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
+                    {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                  </button>
+                </PermissionGate>
+              )}
+              <div className="flex gap-2">
+                {isEditMode && isLocked && (
+                  <PermissionGate page="sales_returns" action="edit">
+                    <button onClick={() => setShowEditWarnModal(true)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2.5 text-[12px] font-black text-white hover:bg-indigo-700 transition-all">
+                      <Pencil className="h-4 w-4" /> تعديل
+                    </button>
+                  </PermissionGate>
+                )}
+                {isEditMode && !isLocked && (
+                  <PermissionGate page="sales_returns" action="delete">
+                    <button onClick={() => setMessage({ text: "حذف المرتجع غير متاح حالياً", type: "error" })}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-600 hover:bg-rose-100 transition-all">
+                      <Trash2 className="h-4 w-4" /> حذف
+                    </button>
+                  </PermissionGate>
+                )}
+                {!isEditMode && (
+                  <button onClick={() => setShowWarningModal(true)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
+                    <RotateCcw className="h-4 w-4" /> مرتجع جديد
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Invoice selected count */}
@@ -1072,6 +1156,25 @@ export default function SalesReturnFormPage() {
           )}
         </main>
       </div>
+
+      <Modal open={showSaveConfirmModal} onClose={() => setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع">
+        <div className="flex flex-col gap-5 animate-modal-enter">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex flex-col gap-1">
+              <p className="text-[14px] font-black text-slate-800">هل أنت متأكد من حفظ هذا المرتجع؟</p>
+              <p className="text-[12px] text-slate-600">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة إجمالية <span className="font-black text-emerald-700">{formatMoney(total)} ج.م</span> وتحديث المخزون والحسابات.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setShowSaveConfirmModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowSaveConfirmModal(false); handleSave(); }} disabled={isSaving}
+              className="flex items-center gap-2 rounded-md bg-emerald-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-all active:scale-[0.98]">
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><CheckCircle2 className="w-4 h-4" /> نعم، حفظ المرتجع</>}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء">
         <div className="flex flex-col gap-5 animate-modal-enter">
