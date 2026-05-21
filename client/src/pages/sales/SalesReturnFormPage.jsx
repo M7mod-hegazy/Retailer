@@ -148,6 +148,7 @@ export default function SalesReturnFormPage() {
   const [reasonOther, setReasonOther] = useState("");
 
   const [editActivation, setEditActivation] = useState(null);
+  const [rawEditData, setRawEditData] = useState(null);
 
   const [itemQuery, setItemQuery] = useState("");
   const [itemResults, setItemResults] = useState([]);
@@ -222,53 +223,63 @@ export default function SalesReturnFormPage() {
     }).catch(() => {});
   }, []);
 
+  // Effect 1: fetch edit data — sets non-cart fields only
   useEffect(() => {
     if (!isEditMode) return;
     setIsLocked(true);
     api.get(`/api/invoices/returns/${editReturnId}`).then(r => {
       const sr = r.data.data;
+      setRawEditData(sr);
       setEditActivation({ docNo: sr.doc_no || "", createdAt: sr.created_at || new Date().toISOString() });
       setRefundMethod(sr.refund_method || "cash_back");
       if (sr.refund_method === "split") setSplitCashAmount(String(sr.cash_amount || ""));
       setReason(sr.reason || "other");
       if (sr.customer_id) setCustomer({ id: sr.customer_id, name: sr.customer_name || String(sr.customer_id) });
-      if (sr.invoice_id) {
-        setMode("invoice");
-        api.get(`/api/invoices/${sr.invoice_id}`).then(inv => {
-          const invData = inv.data.data;
-          setLoadedInvoice(invData);
-          const returnedIds = new Set((sr.lines || []).map(l => l.invoice_line_id));
-          setInvoiceLines((invData.lines || []).map(l => {
-            const returnLine = (sr.lines || []).find(rl => rl.invoice_line_id === l.id);
-            const alreadyReturned = Number(l.returned_quantity || 0);
-            return {
-              invoice_line_id: l.id,
-              item_id: l.item_id,
-              item_code: l.item_code || l.barcode || "",
-              item_name: l.item_name_ar || l.item_name || l.name,
-              unit_price: Number(l.unit_price || 0),
-              original_qty: Number(l.quantity),
-              already_returned: alreadyReturned,
-              qty_to_return: returnLine ? Number(returnLine.quantity) : 0,
-              checked: !!returnLine,
-            };
-          }).filter(l => l.original_qty - l.already_returned > 0 || returnedIds.has(l.invoice_line_id)));
-        }).catch(() => {});
-      } else {
-        setMode("direct");
-        setCart((sr.lines || []).map((l, idx) => ({
-          key: `edit-${l.id || idx}`,
-          item_id: l.item_id,
-          item_name: l.item_name_ar || l.item_name || l.name,
-          item_code: l.item_code || l.barcode || "",
-          unit_price: Number(l.unit_price || 0),
-          quantity: Number(l.quantity),
-          warehouse_id: l.warehouse_id || "",
-          unit_id: l.unit_id || "",
-        })));
-      }
+      setMode(sr.invoice_id ? "invoice" : "direct");
     }).catch(() => {});
   }, [isEditMode, editReturnId]);
+
+  // Effect 2: resolve warehouse/unit names once reference lists are loaded
+  useEffect(() => {
+    if (!rawEditData || !warehouses.length || !units.length) return;
+    const sr = rawEditData;
+
+    if (sr.invoice_id) {
+      api.get(`/api/invoices/${sr.invoice_id}`).then(inv => {
+        const invData = inv.data.data;
+        setLoadedInvoice(invData);
+        const returnedIds = new Set((sr.lines || []).map(l => l.invoice_line_id));
+        setInvoiceLines((invData.lines || []).map(l => {
+          const returnLine = (sr.lines || []).find(rl => rl.invoice_line_id === l.id);
+          const alreadyReturned = Number(l.returned_quantity || 0);
+          return {
+            invoice_line_id: l.id,
+            item_id: l.item_id,
+            item_code: l.item_code || l.barcode || "",
+            item_name: l.item_name_ar || l.item_name || l.name,
+            unit_price: Number(l.unit_price || 0),
+            original_qty: Number(l.quantity),
+            already_returned: alreadyReturned,
+            qty_to_return: returnLine ? Number(returnLine.quantity) : 0,
+            checked: !!returnLine,
+          };
+        }).filter(l => l.original_qty - l.already_returned > 0 || returnedIds.has(l.invoice_line_id)));
+      }).catch(() => {});
+    } else {
+      setCart((sr.lines || []).map((l, idx) => ({
+        key: `edit-${l.id || idx}`,
+        item_id: l.item_id,
+        item_name: l.item_name_ar || l.item_name || l.name,
+        item_code: l.item_code || "",
+        unit_price: Number(l.unit_price || 0),
+        quantity: Number(l.quantity),
+        warehouse_id: l.warehouse_id || "",
+        warehouse_name: warehouses.find(w => String(w.id) === String(l.warehouse_id))?.name || "—",
+        unit_id: String(l.unit_id || ""),
+        unit_name: units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية",
+      })));
+    }
+  }, [rawEditData, warehouses, units]);
 
   useEffect(() => {
     if (!customer?.id) { setCustomerBalance(null); setAjalDebt(0); return; }
