@@ -336,7 +336,10 @@ function getReturnDetails(id) {
   `).get(id);
   if (!sr) return null;
   const lines = db.prepare(`
-    SELECT srl.*, COALESCE(srl.item_name_ar, i.name) as item_name
+    SELECT srl.*,
+           COALESCE(srl.item_name_ar, i.name) as item_name,
+           i.code as item_code,
+           i.unit_id
     FROM sales_return_lines srl
     LEFT JOIN items i ON i.id = srl.item_id
     WHERE srl.sales_return_id = ?
@@ -381,7 +384,7 @@ function editSalesReturn(returnId, payload, userId) {
         const snap = getSnapshotCosts(requestedLine.item_id, db);
         const lineTotal = Number(requestedLine.quantity) * Number(requestedLine.unit_price);
         newTotal += lineTotal;
-        preparedLines.push({ invoice_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_price: Number(requestedLine.unit_price), line_total: lineTotal, warehouse_id: payload.warehouse_id || 1, item_name_ar: itemRow?.name || null, item_name_en: itemRow?.name_en || null, cost_wacc: snap.cost_wacc, cost_last_purchase: snap.cost_last_purchase });
+        preparedLines.push({ invoice_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_price: Number(requestedLine.unit_price), line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1, item_name_ar: itemRow?.name || null, item_name_en: itemRow?.name_en || null, cost_wacc: snap.cost_wacc, cost_last_purchase: snap.cost_last_purchase });
       } else {
         const invoiceLine = db.prepare("SELECT * FROM invoice_lines WHERE id = ? AND invoice_id = ?").get(requestedLine.invoice_line_id, sr.invoice_id);
         if (!invoiceLine) continue;
