@@ -940,46 +940,46 @@ export default function CustomerAccountsPage() {
 
   const bal = Number(selected?.opening_balance || 0);
   const creditLimit = Number(selected?.credit_limit || 0);
-  const creditPct = creditLimit > 0 ? Math.min(100, Math.max(0, (bal / creditLimit) * 100)) : 0;
+  const creditPct = creditLimit > 0 ? (bal / creditLimit) * 100 : 0;
 
   return (
-    <div className="flex flex-1 min-h-0 bg-slate-50/50 overflow-hidden" dir="rtl">
+    <div className="flex flex-1 min-h-0 bg-slate-100 overflow-hidden font-sans" dir="rtl">
 
-      {/* ── Left Panel ── */}
-      <div className="w-[370px] bg-white border-l border-slate-200/80 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] z-20">
+      {/* ── Left Sidebar Panel ── */}
+      <div className="w-[360px] bg-slate-50/40 border-l border-slate-200/80 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] select-none">
         <div className="p-4.5 border-b border-slate-200/50 bg-slate-50/20 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200/80">
+              <div className="h-9.5 w-9.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-650 flex items-center justify-center shadow-md shadow-blue-200/80 ring-4 ring-blue-50/50">
                 <Users className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-[14px] font-black text-slate-800 tracking-tight">حسابات العملاء</h1>
             </div>
             <PermissionGate page="customer_accounts" action="add">
               <button onClick={() => setShowCreate(true)}
-                className="flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3.5 text-[11px] font-bold text-white shadow-sm shadow-blue-100 transition-all duration-200 active:scale-[0.98]">
-                <Plus className="h-4 w-4" /> عميل جديد
+                className="flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-3.5 text-[11px] font-bold text-white shadow-md shadow-blue-200/50 hover:shadow-blue-200/70 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer">
+                <Plus className="h-4 w-4 stroke-[2.5px]" /> عميل جديد
               </button>
             </PermissionGate>
           </div>
 
           <div className="relative">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-blue-500 transition-colors" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="البحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10.5 rounded-xl border border-slate-200 pr-10 pl-3.5 text-[12px] font-semibold outline-none focus:border-blue-500 bg-white transition-all focus:shadow-sm" />
+              className="w-full h-11 rounded-xl border border-slate-200 focus:border-blue-500/80 pr-10 pl-3.5 text-[12px] font-semibold outline-none bg-white transition-all focus:shadow-[0_4px_16px_rgba(37,99,235,0.04)] focus:ring-1 focus:ring-blue-100" />
           </div>
 
-          <div className="flex bg-slate-100/80 p-1 rounded-xl relative">
+          <div className="flex bg-slate-200/60 p-1 rounded-xl relative">
             {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
-                className="flex-1 py-2 text-[11px] font-bold rounded-lg relative z-10 transition-colors duration-200"
-                style={{ color: filter === f.id ? "#2563eb" : "#64748b" }}
+                className="flex-1 py-2 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
+                style={{ color: filter === f.id ? "#1e3a8a" : "#475569" }}
               >
                 {filter === f.id && (
                   <motion.div
                     layoutId="activeFilterBg"
-                    className="absolute inset-0 bg-white rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.05)] -z-10"
+                    className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_6px_rgba(0,0,0,0.06)] -z-10"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -990,35 +990,45 @@ export default function CustomerAccountsPage() {
         </div>
 
         {/* ── Net Balance Ticker Summary ── */}
-        <div className="mx-4 mt-4 mb-2.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-800/80 p-4.5 shadow-[0_12px_24px_-8px_rgba(15,23,42,0.15)] relative overflow-hidden group">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-blue-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-all duration-500" />
-          <div className="absolute -left-4 -top-4 w-20 h-20 rounded-full bg-indigo-500/10 blur-lg pointer-events-none group-hover:scale-150 transition-all duration-500" />
+        <div className="mx-4 mt-4 mb-2.5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-4.5 shadow-[0_16px_36px_rgba(0,0,0,0.25)] relative overflow-hidden group">
+          {/* Dynamic background glowing ambient lights depending on status */}
+          <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full blur-xl pointer-events-none group-hover:scale-150 transition-all duration-500 ${netBalance > 0 ? "bg-rose-500/10" : netBalance < 0 ? "bg-emerald-500/10" : "bg-blue-500/10"}`} />
+          <div className={`absolute -left-4 -top-4 w-20 h-20 rounded-full blur-lg pointer-events-none group-hover:scale-150 transition-all duration-500 ${netBalance > 0 ? "bg-rose-600/5" : netBalance < 0 ? "bg-emerald-600/5" : "bg-indigo-600/5"}`} />
 
           <div className="flex justify-between items-start mb-2 relative z-10">
-            <span className="text-[10px] font-bold text-slate-450 tracking-wider">إجمالي صافي مديونية العملاء</span>
-            <span className={`p-1.5 rounded-xl ${netBalance > 0 ? "bg-rose-500/15 text-rose-400" : netBalance < 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-slate-700 text-slate-450"}`}>
+            <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">إجمالي صافي مديونية العملاء</span>
+            <span className={`p-1.5 rounded-xl border ${netBalance > 0 ? "bg-rose-500/15 border-rose-500/25 text-rose-450" : netBalance < 0 ? "bg-emerald-500/15 border-emerald-500/25 text-emerald-450" : "bg-slate-800 border-slate-700 text-slate-400"}`}>
               {netBalance > 0 ? <TrendingUp className="h-4 w-4" /> : netBalance < 0 ? <TrendingDown className="h-4 w-4" /> : <Scale className="h-4 w-4" />}
             </span>
           </div>
 
           <div className="relative z-10 flex items-baseline gap-1.5">
-            <span className={`text-[23px] font-bold font-mono tracking-tight ${netBalance > 0 ? "text-rose-400" : netBalance < 0 ? "text-emerald-400" : "text-slate-300"}`}>
+            <span className={`text-[24px] font-black font-mono tracking-tight bg-gradient-to-r ${netBalance > 0 ? "from-rose-400 to-rose-350" : netBalance < 0 ? "from-emerald-400 to-emerald-350" : "from-slate-200 to-slate-400"} text-transparent bg-clip-text`}>
               {summaryLoading ? (
                 <span className="inline-block w-16 h-7 bg-slate-800 rounded animate-pulse" />
               ) : (
                 fmt(netBalance ?? 0)
               )}
             </span>
-            <span className="text-[11px] font-bold text-slate-450">ج.م</span>
+            <span className="text-[11px] font-bold text-slate-400">ج.م</span>
           </div>
 
-          <div className="mt-2.5 text-[9.5px] font-bold text-slate-400 flex items-center gap-1.5 relative z-10">
+          <div className="mt-2.5 text-[9.5px] font-bold flex items-center gap-1.5 relative z-10">
             {netBalance < 0 ? (
-              <span className="text-emerald-400 flex items-center gap-1">رصيد دائن لصالح العملاء</span>
+              <span className="text-emerald-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-450 animate-pulse" />
+                رصيد دائن لصالح العملاء
+              </span>
             ) : netBalance > 0 ? (
-              <span className="text-rose-400 flex items-center gap-1">مديونية معلقة مستحقة على العملاء</span>
+              <span className="text-rose-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-450 animate-pulse" />
+                مديونية معلقة مستحقة على العملاء
+              </span>
             ) : (
-              <span className="text-slate-400 flex items-center gap-1">جميع الحسابات مسواة حالياً</span>
+              <span className="text-slate-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                جميع الحسابات مسواة حالياً
+              </span>
             )}
           </div>
         </div>
@@ -1044,37 +1054,37 @@ export default function CustomerAccountsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: Math.min(0.3, index * 0.02) }}
                 onClick={() => selectCustomer(c, activeTab)}
-                className={`p-3.5 mx-2 my-1 rounded-2xl cursor-pointer border transition-all duration-200 relative group flex items-center gap-3 ${isSelected
-                    ? "bg-blue-50/50 border-blue-200/80 shadow-[0_2px_8px_rgba(37,99,235,0.04)]"
+                className={`p-4 mx-2 my-1 rounded-[22px] cursor-pointer border transition-all duration-300 relative group flex items-center gap-3.5 ${isSelected
+                    ? "bg-gradient-to-br from-blue-500/[0.04] to-indigo-500/[0.01] border-blue-200/80 shadow-[0_4px_16px_rgba(37,99,235,0.06)]"
                     : "bg-white border-transparent hover:bg-slate-50/60 hover:border-slate-200"
                   }`}
               >
-                {/* Visual Accent dot for selected state */}
+                {/* Visual Accent dot and vertical line for selected state */}
                 {isSelected && (
-                  <div className="absolute right-0 top-1/3 bottom-1/3 w-[3px] bg-blue-600 rounded-l-md" />
+                  <div className="absolute right-0 top-3 bottom-3 w-[3.5px] bg-gradient-to-b from-blue-500 to-indigo-650 rounded-l-md" />
                 )}
 
-                {/* Letter Avatar with Deterministic Gradient */}
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-[14px] font-bold text-white shrink-0 shadow-sm bg-gradient-to-br transition-all duration-300 group-hover:scale-105 ${getAvatarBg(c.name)}`}
+                {/* Letter Avatar with Deterministic Gradient & Sleek Outer Ring */}
+                <div className={`h-10.5 w-10.5 rounded-2xl flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm bg-gradient-to-br transition-all duration-300 group-hover:scale-105 ${getAvatarBg(c.name)} ring-2 ring-white/80 border border-slate-200/40`}
                 >
                   {c.name?.charAt(0)}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <div className={`text-[12.5px] font-bold truncate transition-colors ${isSelected ? "text-blue-900" : "text-slate-800"}`}>{c.name}</div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className={`text-[13px] font-extrabold truncate transition-colors ${isSelected ? "text-blue-900" : "text-slate-800"}`}>{c.name}</div>
                     {nearLimit && (
-                      <span className="flex items-center shrink-0" title="تنبيه: اقتراب من الحد الائتماني">
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="flex items-center shrink-0 p-1 bg-amber-50 rounded-lg border border-amber-200" title="تنبيه: اقتراب من الحد الائتماني">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
                       </span>
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] text-slate-400 font-mono font-bold truncate">{c.phone || c.code || "—"}</div>
+                    <div className="text-[10px] text-slate-450 font-mono font-bold truncate bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">{c.phone || c.code || "—"}</div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {b < 0 && <span className="text-[8px] font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/10 px-1.5 py-0.5 rounded-lg">له رصيد</span>}
-                      {b > 0 && <span className="text-[8px] font-bold bg-rose-500/10 text-rose-700 border border-rose-500/10 px-1.5 py-0.5 rounded-lg">عليه دين</span>}
-                      <span className={`text-[12px] font-bold font-mono tracking-tight ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                      {b < 0 && <span className="text-[8.5px] font-black bg-emerald-500/[0.08] text-emerald-700 border border-emerald-250 px-2 py-0.5 rounded-lg">له رصيد</span>}
+                      {b > 0 && <span className="text-[8.5px] font-black bg-rose-500/[0.08] text-rose-750 border border-rose-250 px-2 py-0.5 rounded-lg">عليه دين</span>}
+                      <span className={`text-[12.5px] font-black font-mono tracking-tight ${b > 0 ? "text-rose-650" : b < 0 ? "text-emerald-650" : "text-slate-400"}`}>
                         {fmt(Math.abs(b))}
                       </span>
                     </div>
@@ -1098,151 +1108,119 @@ export default function CustomerAccountsPage() {
         ) : (
           <>
             {/* Customer Header Panel */}
-            <div className="bg-white border-b border-slate-200/60 px-6 py-4.5 shrink-0 space-y-4 shadow-sm relative z-10">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  {/* Letter Avatar */}
-                  <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-[18px] font-bold text-white shrink-0 shadow-md shadow-blue-150/40 bg-gradient-to-br ${getAvatarBg(selected.name)}`}>
+            <div className="bg-white border-b border-slate-200/60 px-6 py-4 shrink-0 shadow-[0_4px_20px_rgba(0,0,0,0.01)] relative z-10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                {/* Right Column: Customer Info & Avatar (lg:col-span-5) */}
+                <div className="lg:col-span-5 flex items-center gap-3.5 min-w-0">
+                  {/* Avatar */}
+                  <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-[16px] font-black text-white shrink-0 shadow-sm bg-gradient-to-br ${getAvatarBg(selected.name)} border border-white ring-2 ring-slate-100`}>
                     {selected.name?.charAt(0)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-[16px] font-black text-slate-900 truncate leading-snug">{selected.name}</h2>
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[15px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
+                      <button
+                        onClick={() => setShowEdit(true)}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all shrink-0 cursor-pointer active:scale-95"
+                        title="تعديل بيانات الملف"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       {selected.phone && (
-                        <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-bold bg-slate-50 border border-slate-200/60 rounded-xl px-2.5 py-1 transition-colors hover:bg-slate-100/80">
-                          <Phone className="h-3.5 w-3.5" />
+                        <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 font-bold bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-0.5 transition-all hover:bg-slate-100/50">
+                          <Phone className="h-3 w-3 text-slate-450" />
                           <span className="font-mono">{selected.phone}</span>
                           <button
                             onClick={() => handleCopy(selected.phone, "phone")}
-                            className="hover:text-blue-600 p-0.5 transition-colors mr-1"
-                            title="نسخ رقم الهاتف"
+                            className="hover:text-blue-600 p-0.5 transition-colors mr-0.5 cursor-pointer"
                           >
-                            {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3" />}
+                            {copiedBadge === "phone" ? <Check className="h-2.5 w-2.5 text-emerald-500 animate-scale" /> : <Copy className="h-2.5 w-2.5" />}
                           </button>
                         </span>
                       )}
                       {selected.code && (
-                        <span className="text-[10px] font-bold font-mono bg-slate-50 text-slate-500 border border-slate-200/60 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold font-mono bg-slate-50 text-slate-500 border border-slate-200/50 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all hover:bg-slate-100/50">
                           <span>كود: {selected.code}</span>
                           <button
                             onClick={() => handleCopy(selected.code, "code")}
-                            className="hover:text-blue-600 p-0.5 transition-colors mr-0.5"
-                            title="نسخ الكود"
+                            className="hover:text-blue-600 p-0.5 transition-colors mr-0.5 cursor-pointer"
                           >
-                            {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3" />}
+                            {copiedBadge === "code" ? <Check className="h-2.5 w-2.5 text-emerald-500 animate-scale" /> : <Copy className="h-2.5 w-2.5" />}
                           </button>
                         </span>
                       )}
                       {selected.is_blacklisted === 1 && (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-rose-50/80 text-rose-700 border border-rose-200/60 px-2.5 py-1 rounded-xl">
-                          <AlertCircle className="h-3.5 w-3.5 animate-pulse text-rose-500" /> محظور من التعامل الآجل
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-lg">
+                          <AlertCircle className="h-3 w-3 text-rose-500" /> محظور
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setShowEdit(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-650 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 transition-all duration-200 shadow-sm shrink-0"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" /> تعديل بيانات الملف
-                </button>
-              </div>
-
-              {/* Status and Balance Widget */}
-              <div className={`rounded-2xl p-4.5 flex items-center justify-between border relative overflow-hidden transition-all duration-300 ${bal > 0
-                  ? "bg-rose-50/40 border-rose-100 shadow-[0_2px_12px_rgba(239,68,68,0.02)]"
-                  : bal < 0
-                    ? "bg-emerald-50/40 border-emerald-100 shadow-[0_2px_12px_rgba(16,185,129,0.02)]"
-                    : "bg-slate-50/80 border-slate-200"
-                }`}>
-                {/* Background soft ambient glows */}
-                {bal > 0 && <div className="absolute left-[-20px] top-[-20px] w-24 h-24 rounded-full bg-rose-500/5 blur-xl pointer-events-none" />}
-                {bal < 0 && <div className="absolute left-[-20px] top-[-20px] w-24 h-24 rounded-full bg-emerald-500/5 blur-xl pointer-events-none" />}
-
-                <div className="flex items-center gap-3.5 relative z-10">
-                  <div className={`h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-transform duration-300 hover:rotate-12 ${bal > 0
-                      ? "bg-rose-100/80 border-rose-200/60 text-rose-600"
-                      : bal < 0
-                        ? "bg-emerald-100/80 border-emerald-200/60 text-emerald-600"
-                        : "bg-slate-100 border-slate-200/80 text-slate-500"
-                    }`}>
-                    {bal > 0 ? (
-                      <TrendingUp className="h-5 w-5" />
-                    ) : bal < 0 ? (
-                      <TrendingDown className="h-5 w-5" />
-                    ) : (
-                      <Check className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div>
-                    <div className={`text-[10px] font-bold tracking-wider uppercase ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-500" : "text-slate-450"
-                      }`}>
-                      {bal > 0 ? "صافي الرصيد المستحق بذمته (عليه مديونية)" : bal < 0 ? "الرصيد الدائن للعميل (له رصيد متبقي)" : "رصيد الحساب مسوّى بالكامل"}
+                {/* Middle Column: Balance & Credit Limit (lg:col-span-4) */}
+                <div className="lg:col-span-4 flex flex-col justify-center min-w-0">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8.5 w-8.5 rounded-lg flex items-center justify-center shrink-0 border shadow-sm ${bal > 0 ? "bg-rose-50 border-rose-200/60 text-rose-600" : bal < 0 ? "bg-emerald-50 border-emerald-200/60 text-emerald-600" : "bg-slate-50 border-slate-200/80 text-slate-400"}`}>
+                      {bal > 0 ? <TrendingUp className="h-4 w-4 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-4 w-4 stroke-[2.3px]" /> : <Check className="h-4 w-4 stroke-[2.5px]" />}
                     </div>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <div className={`text-[25px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-700"
-                        }`}>
-                        {fmt(Math.abs(bal))}
+                    <div>
+                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                        {bal > 0 ? "صافي الرصيد المستحق بذمته" : bal < 0 ? "الرصيد الدائن للعميل" : "رصيد الحساب مسوّى"}
                       </div>
-                      <span className={`text-[12px] font-bold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"
-                        }`}>ج.م</span>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <div className={`text-[17px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-700"}`}>
+                          {fmt(Math.abs(bal))}
+                        </div>
+                        <span className={`text-[10px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
+                      </div>
                     </div>
                   </div>
+                  {creditLimit > 0 && bal > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="flex justify-between text-[9px] font-extrabold text-slate-450">
+                        <span className={creditPct > 90 ? "text-rose-600" : creditPct > 70 ? "text-orange-600" : "text-emerald-600"}>مستنفذ من الحد {Math.round(creditPct)}%</span>
+                        <span className="font-mono text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+                        <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
+                            ? "bg-gradient-to-r from-rose-500 to-red-600"
+                            : creditPct > 70
+                              ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                              : "bg-gradient-to-r from-emerald-400 via-teal-500 to-blue-500"
+                          }`} style={{ width: `${creditPct}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Credit Limit Indicator */}
-              {creditLimit > 0 && bal > 0 && (
-                <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl p-4 transition-all hover:bg-slate-100/20">
-                  <div className="flex justify-between text-[11px] font-bold mb-2.5">
-                    <span className="text-slate-500 flex items-center gap-1.5">
-                      <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" />
-                      <span>الحد الائتماني الأقصى المسموح للعميل</span>
-                    </span>
-                    <span className="text-slate-700 font-mono font-bold">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
-                  </div>
-                  <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden shadow-inner relative">
-                    <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
-                        ? "bg-gradient-to-r from-rose-500 to-red-600"
-                        : creditPct > 70
-                          ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                          : "bg-gradient-to-r from-emerald-400 to-blue-500"
-                      }`}
-                      style={{ width: `${creditPct}%` }} />
-                  </div>
-                  <div className="flex justify-between text-[9.5px] font-bold text-slate-450 mt-2 font-mono">
-                    <span>مستنفذ من الحد {Math.round(creditPct)}%</span>
-                    <span>المتبقي الآمن {fmt(Math.max(0, creditLimit - bal))} ج.م</span>
-                  </div>
+                {/* Left Column: Quick Actions (lg:col-span-3) */}
+                <div className="lg:col-span-3 flex items-center justify-end gap-2 shrink-0">
+                  <PermissionGate page="customer_accounts" action="edit">
+                    <motion.button
+                      whileHover={{ y: -1, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-700 px-3.5 py-2.5 text-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                    >
+                      <Plus className="h-4 w-4 stroke-[2.5px]" />
+                      <span>{bal < 0 ? "رد دفعة" : "تحصيل دفعة"}</span>
+                    </motion.button>
+                  </PermissionGate>
+                  <PermissionGate page="customer_accounts" action="edit">
+                    <motion.button
+                      whileHover={{ y: -1, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 px-3.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                    >
+                      <SlidersHorizontal className="h-4 w-4 text-slate-450" />
+                      <span>تسوية رصيد</span>
+                    </motion.button>
+                  </PermissionGate>
                 </div>
-              )}
-
-              {/* Grid CTAs with Spring Scale */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <PermissionGate page="customer_accounts" action="edit">
-                  <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 py-3 text-white shadow-md shadow-blue-200/40 transition-all duration-200"
-                  >
-                    <Plus className="h-4.5 w-4.5" />
-                    <span className="text-[12px] font-bold">{bal < 0 ? "رد دفعة للعميل" : "تحصيل دفعة مالية"}</span>
-                  </motion.button>
-                </PermissionGate>
-                <PermissionGate page="customer_accounts" action="edit">
-                  <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-white border border-slate-250 hover:border-slate-350 py-3 text-slate-700 shadow-sm transition-all duration-200"
-                  >
-                    <SlidersHorizontal className="h-4.5 w-4.5 text-slate-450" />
-                    <span className="text-[12px] font-bold">تسوية رصيد يدوية</span>
-                  </motion.button>
-                </PermissionGate>
               </div>
             </div>
 

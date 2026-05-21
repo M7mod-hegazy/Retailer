@@ -5,6 +5,7 @@ import {
   Building, Search, Plus, X, Phone, SlidersHorizontal,
   MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
   ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
+  Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -26,6 +27,26 @@ function Modal({ onClose, children, width = "480px" }) {
     </div>
   );
 }
+
+// Deterministic avatar gradient
+const getAvatarBg = (name) => {
+  if (!name) return "from-slate-400 to-slate-500";
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = [
+    "from-orange-500 to-amber-650",
+    "from-emerald-500 to-teal-650",
+    "from-rose-500 to-pink-650",
+    "from-indigo-500 to-blue-650",
+    "from-sky-500 to-indigo-600",
+    "from-violet-500 to-purple-600",
+    "from-cyan-500 to-emerald-600",
+  ];
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
 
 const EVENT_TYPES = {
   purchase:   { icon: ShoppingBag, label: "فاتورة شراء",   color: "text-orange-600",  bg: "bg-orange-50",  border: "border-orange-100" },
@@ -709,6 +730,16 @@ export default function SupplierAccountsPage() {
   const [adjForm, setAdjForm] = useState({ amount: "", direction: "subtract", reason: "" });
   const [saving, setSaving] = useState(false);
 
+  // Copy badges state hook
+  const [copiedBadge, setCopiedBadge] = useState(null);
+
+  const handleCopy = (text, type) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBadge(type);
+    toast.success(type === "phone" ? "تم نسخ رقم الهاتف" : "تم نسخ كود المورد");
+    setTimeout(() => setCopiedBadge(null), 2000);
+  };
+
   const loadSuppliers = useCallback(async () => {
     try {
       const [res, methodsReq] = await Promise.all([
@@ -929,59 +960,95 @@ export default function SupplierAccountsPage() {
       {/* ── Right Panel ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {!selected ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-300">
-            <Building className="h-20 w-20 opacity-30" />
-            <p className="text-[15px] font-black">اختر مورداً من القائمة</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-350 bg-slate-50/20">
+            <div className="p-5 rounded-full bg-slate-100/50 border border-slate-200/50 shadow-inner">
+              <Building className="h-14 w-14 text-slate-400 opacity-60" />
+            </div>
+            <p className="text-[13px] font-bold text-slate-400">برجاء اختيار أحد الموردين من القائمة الجانبية لعرض الملف والتحركات المالية</p>
           </div>
         ) : (
           <>
-            <div className="bg-white border-b border-slate-200 px-4 py-3 shrink-0 space-y-2.5">
-              {/* Row 1: Avatar + Info + Edit */}
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-[14px] font-black text-white shrink-0">
-                  {selected.name?.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-[14px] font-black text-slate-900 truncate">{selected.name}</h2>
-                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                    {selected.phone && <span className="flex items-center gap-1 text-[10px] text-slate-500 font-bold"><Phone className="h-3 w-3" /> {selected.phone}</span>}
-                    {selected.code && <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{selected.code}</span>}
+            {/* Supplier Header Panel */}
+            <div className="bg-white border-b border-slate-200/60 px-6 py-4 shrink-0 shadow-[0_4px_20px_rgba(0,0,0,0.01)] relative z-10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                {/* Right Column: Supplier Info & Avatar (lg:col-span-5) */}
+                <div className="lg:col-span-5 flex items-center gap-3.5 min-w-0">
+                  {/* Avatar */}
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-750 flex items-center justify-center text-[16px] font-black text-white shrink-0 shadow-sm border border-white ring-2 ring-slate-100">
+                    {selected.name?.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[15px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
+                      <button
+                        onClick={() => setShowEdit(true)}
+                        className="p-1 text-slate-400 hover:text-orange-600 hover:bg-slate-50 rounded-lg transition-all shrink-0 cursor-pointer active:scale-95"
+                        title="تعديل بيانات الملف"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {selected.phone && (
+                        <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 font-bold bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-0.5 transition-all hover:bg-slate-100/50">
+                          <Phone className="h-3 w-3 text-slate-450" />
+                          <span className="font-mono">{selected.phone}</span>
+                        </span>
+                      )}
+                      {selected.code && (
+                        <span className="text-[9px] font-bold font-mono bg-slate-50 text-slate-550 border border-slate-200/50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <span>كود: {selected.code}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowEdit(true)}
-                  className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
-                >
-                  <ExternalLink className="h-3 w-3" /> تعديل
-                </button>
-              </div>
 
-              {/* Row 2: Balance Row */}
-              <div className={`rounded-xl px-3 py-2 flex items-center justify-between border ${bal > 0 ? "bg-rose-50 border-rose-200" : bal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
-                <div className={`text-[10px] font-black ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                  {bal > 0 ? "له مستحق علينا" : bal < 0 ? "عليه مستحق لنا" : "الحساب مسوّى"}
+                {/* Middle Column: Balance (lg:col-span-4) */}
+                <div className="lg:col-span-4 flex flex-col justify-center min-w-0">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8.5 w-8.5 rounded-lg flex items-center justify-center shrink-0 border shadow-sm ${bal > 0 ? "bg-rose-50 border-rose-200/60 text-rose-600" : bal < 0 ? "bg-emerald-50 border-emerald-200/60 text-emerald-600" : "bg-slate-50 border-slate-200/80 text-slate-400"}`}>
+                      {bal > 0 ? <TrendingUp className="h-4 w-4 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-4 w-4 stroke-[2.3px]" /> : <Check className="h-4 w-4 stroke-[2.5px]" />}
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                        {bal > 0 ? "له مستحق بذمتنا" : bal < 0 ? "عليه مستحق لنا" : "رصيد الحساب مسوّى"}
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <div className={`text-[17px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-700"}`}>
+                          {fmt(Math.abs(bal))}
+                        </div>
+                        <span className={`text-[10px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className={`text-[20px] font-black font-mono leading-none ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                  {fmt(Math.abs(bal))}<span className="text-[11px] font-bold mr-1">ج.م</span>
-                </div>
-              </div>
 
-              {/* Row 3: Action Buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <PermissionGate page="supplier_accounts" action="edit">
-                  <button onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2 text-white hover:bg-orange-700 shadow-sm shadow-orange-200 transition-all">
-                    <Plus className="h-4 w-4" />
-                    <span className="text-[12px] font-black">سداد دفعة</span>
-                  </button>
-                </PermissionGate>
-                <PermissionGate page="supplier_accounts" action="edit">
-                  <button onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 py-2 text-slate-700 hover:bg-slate-50 transition-all">
-                    <SlidersHorizontal className="h-4 w-4 text-slate-500" />
-                    <span className="text-[12px] font-black">تسوية رصيد</span>
-                  </button>
-                </PermissionGate>
+                {/* Left Column: Quick CTA Actions (lg:col-span-3) */}
+                <div className="lg:col-span-3 flex items-center justify-end gap-2 shrink-0">
+                  <PermissionGate page="supplier_accounts" action="edit">
+                    <motion.button
+                      whileHover={{ y: -1, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-650 hover:from-orange-600 hover:to-orange-700 px-3.5 py-2.5 text-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                    >
+                      <Plus className="h-4 w-4 stroke-[2.5px]" />
+                      <span>سداد دفعة</span>
+                    </motion.button>
+                  </PermissionGate>
+                  <PermissionGate page="supplier_accounts" action="edit">
+                    <motion.button
+                      whileHover={{ y: -1, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 px-3.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                    >
+                      <SlidersHorizontal className="h-4 w-4 text-slate-450" />
+                      <span>تسوية رصيد</span>
+                    </motion.button>
+                  </PermissionGate>
+                </div>
               </div>
             </div>
 
