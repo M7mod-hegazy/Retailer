@@ -152,7 +152,10 @@ router.get("/returns/:id", requirePagePermission("purchase_returns", "view"), (r
       const pr = db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(req.params.id);
       if (!pr) throw new Error("Return not found");
       const lines = db.prepare(`
-        SELECT prl.*, i.name as item_name
+        SELECT prl.*,
+               i.name as item_name,
+               i.code as item_code,
+               i.unit_id
         FROM purchase_return_lines prl
         LEFT JOIN items i ON i.id = prl.item_id
         WHERE prl.purchase_return_id = ?
@@ -968,7 +971,7 @@ function editPurchaseReturn(db, returnId, payload) {
       if (!pr.purchase_id) {
         const lineTotal = Number(requestedLine.quantity) * Number(requestedLine.unit_cost);
         newTotal += lineTotal;
-        preparedLines.push({ purchase_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_cost: Number(requestedLine.unit_cost), line_total: lineTotal, warehouse_id: payload.warehouse_id || 1 });
+        preparedLines.push({ purchase_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_cost: Number(requestedLine.unit_cost), line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1 });
       } else {
         const purchaseLine = db.prepare("SELECT * FROM purchase_lines WHERE id = ? AND purchase_id = ?").get(requestedLine.purchase_line_id, pr.purchase_id);
         if (!purchaseLine) continue;
@@ -980,7 +983,7 @@ function editPurchaseReturn(db, returnId, payload) {
         if (qty <= 0) continue;
         const lineTotal = purchaseLine.unit_cost * qty;
         newTotal += lineTotal;
-        preparedLines.push({ purchase_line_id: purchaseLine.id, item_id: purchaseLine.item_id, quantity: qty, unit_cost: purchaseLine.unit_cost, line_total: lineTotal, warehouse_id: payload.warehouse_id || 1 });
+        preparedLines.push({ purchase_line_id: purchaseLine.id, item_id: purchaseLine.item_id, quantity: qty, unit_cost: purchaseLine.unit_cost, line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || purchaseLine.warehouse_id || payload.warehouse_id || 1 });
       }
     }
 
