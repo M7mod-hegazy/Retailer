@@ -632,7 +632,7 @@ export default function SalesReturnFormPage() {
           )}
           <button onClick={() => setTodayReturnsOpen(true)}
             className="flex h-9 items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 text-[13px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
-            <Calendar className="h-4 w-4" /> مرتجعات اليوم
+            <Calendar className="h-4 w-4" /> سجل المرتجعات
           </button>
           <PermissionGate page="sales_returns" action="print">
             <button
@@ -855,7 +855,7 @@ export default function SalesReturnFormPage() {
               <div className="flex gap-2">
                 <button onClick={() => setTodayReturnsOpen(true)}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
-                  <Calendar className="h-4 w-4" /> مرتجعات اليوم
+                  <Calendar className="h-4 w-4" /> سجل المرتجعات
                 </button>
                 <PermissionGate page="sales_returns" action="print">
                   <button onClick={() => setPrintPreview(true)} disabled={!total}
@@ -1136,7 +1136,7 @@ export default function SalesReturnFormPage() {
                     <Search className="h-12 w-12 opacity-20" />
                     <p className="text-[14px] font-black">لم يتم اختيار فاتورة بعد</p>
                     <button onClick={() => setInvoicePickerOpen(true)} className="flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-[13px] font-black text-white hover:bg-emerald-800 transition-colors">
-                      <Search className="h-4 w-4" /> اختيار فاتورة
+                      <Search className="h-4 w-4" /> اختيار فاتورة مبيعات
                     </button>
                   </div>
                 ) : (

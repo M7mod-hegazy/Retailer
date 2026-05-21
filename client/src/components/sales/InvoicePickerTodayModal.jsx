@@ -67,6 +67,14 @@ const PAYMENT_METHOD_LABELS = {
   future_due: "استحقاق لاحق", multi: "متعدد",
 };
 
+const PAYMENT_METHOD_STYLES = {
+  cash:          { label: "نقدي",            cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  bank_transfer: { label: "حوالة بنكية",     cls: "bg-sky-50 text-sky-700 border-sky-200" },
+  credit:        { label: "آجل",             cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  future_due:    { label: "استحقاق لاحق",    cls: "bg-orange-50 text-orange-700 border-orange-200" },
+  multi:         { label: "متعدد",           cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+};
+
 const STATUS_STYLES_PICKER = {
   paid:      { label: "مدفوع",  cls: "bg-emerald-100 text-emerald-700" },
   partial:   { label: "جزئي",   cls: "bg-amber-100 text-amber-700" },
@@ -317,7 +325,7 @@ export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice
     { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (inv) => inv.customer_name || "—" },
     { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (inv) => inv.items_count },
     { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (inv) => formatMoney(inv.total) },
-    { id: "payment_method", header: "طريقة الدفع", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-600", render: (inv) => PAYMENT_METHOD_LABELS[inv.payment_method] || inv.payment_method || "—" },
+    { id: "payment_method", header: "طريقة الدفع", width: 130, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => { const info = PAYMENT_METHOD_STYLES[inv.payment_method]; return info ? <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span> : <span className="text-[11px] font-bold text-slate-600">{inv.payment_method || "—"}</span>; } },
     { id: "status", header: "الحالة", width: 100, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => { const info = INVOICE_STATUS_STYLES[inv.status] || INVOICE_STATUS_STYLES.active; return <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>; } },
     { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
     { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
@@ -325,8 +333,13 @@ export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="اختيار فاتورة للمرتجع" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="فواتير المبيعات — اختيار للمرتجع" maxWidth="max-w-5xl">
         <div className="flex flex-col gap-4">
+          {/* Context banner */}
+          <div className="flex items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">فواتير نقطة البيع (POS)</span>
+            <span className="text-[10px] text-emerald-600 font-bold">— اختر فاتورة مبيعات أصلية لإنشاء المرتجع منها.</span>
+          </div>
           <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-sm border border-emerald-200">
             <span className="text-[11px] font-black text-emerald-700 shrink-0">بحث برقم المستند:</span>
             <input value={docSearch} onChange={e => setDocSearch(e.target.value)}

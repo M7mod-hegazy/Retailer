@@ -1,4 +1,5 @@
 import axios from "axios";
+import toast from "react-hot-toast";
 import { useAuthStore } from "../stores/authStore";
 
 const api = axios.create({
@@ -16,7 +17,20 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Network error — server is unreachable (ECONNREFUSED, timeout, etc.)
+    if (!error.response && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("server:unreachable"));
+    }
+
     const status = error?.response?.status;
+
+    // 5xx → server is up but crashing internally; show a deduped toast
+    if (status >= 500 && typeof window !== "undefined") {
+      toast.error("خطأ في الخادم الداخلي، يرجى المحاولة مرة أخرى", {
+        id: "server-5xx",
+        duration: 4000,
+      });
+    }
     const reqUrl = String(error?.config?.url || "");
     const isAuthLoginRequest = reqUrl.includes("/api/auth/login");
 

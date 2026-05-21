@@ -134,10 +134,12 @@ router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, 
   const safeSort = allowedSort.includes(sort) ? sort : "created_at";
   const safeDir = dir === "asc" ? "ASC" : "DESC";
   const returns = db.prepare(`
-    SELECT pr.*, s.name AS supplier_name, u.username AS created_by_username
+    SELECT pr.*, s.name AS supplier_name, u.username AS created_by_username,
+           p.doc_no AS original_purchase_no
     FROM purchase_returns pr
     LEFT JOIN suppliers s ON s.id = pr.supplier_id
     LEFT JOIN users u ON u.id = pr.created_by
+    LEFT JOIN purchases p ON p.id = pr.purchase_id
     WHERE ${conditions.join(" AND ")}
     ORDER BY ${safeSort === "settlement_type" ? "pr.settlement_type" : `pr.${safeSort}`} ${safeDir}
   `).all(...params);

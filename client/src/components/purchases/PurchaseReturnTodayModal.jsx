@@ -63,8 +63,9 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
 }
 
 const SETTLEMENT_LABELS = {
-  account: { label: "حساب", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  account: { label: "حساب المورد", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  cash:    { label: "نقداً",       cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  split:   { label: "مختلط",       cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
 };
 
 const STATUS_STYLES = {
@@ -99,7 +100,7 @@ function ReturnPreviewModal({ ret, onClose }) {
               <span className="font-bold text-amber-700">الإجمالي: {formatMoney((detail || ret).total)} ج.م</span>
             </div>
           </div>
-          <div className="max-h-[320px] overflow-auto rounded-sm border border-slate-200">
+          <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">
             <table className="w-full text-[12px] border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
@@ -123,12 +124,40 @@ function ReturnPreviewModal({ ret, onClose }) {
               </tbody>
             </table>
           </div>
+          {/* Payment breakdown */}
+          {detail && (() => {
+            const st = detail.settlement_type || "account";
+            const cashAmt   = st === "cash"    ? Number(detail.total || 0)
+                            : st === "split"   ? Number(detail.cash_amount || 0)
+                            : 0;
+            const creditAmt = st === "account" ? Number(detail.total || 0)
+                            : st === "split"   ? Number(detail.credit_amount || 0)
+                            : 0;
+            if (!cashAmt && !creditAmt) return null;
+            return (
+              <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة التسوية</p>
+                {cashAmt > 0.005 && (
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />نقداً للمورد</span>
+                    <span className="font-black font-mono text-emerald-700">{formatMoney(cashAmt)} ج.م</span>
+                  </div>
+                )}
+                {creditAmt > 0.005 && (
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />حساب المورد (خصم من المديونية)</span>
+                    <span className="font-black font-mono text-amber-700">{formatMoney(creditAmt)} ج.م</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => navigate(`/purchases/returns/${ret.id}`)} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
-          <Pencil className="h-4 w-4" /> فتح المرتجع
+        <button onClick={() => { onClose(); navigate("/purchases/returns/new", { state: { edit_return_id: ret.id } }); }} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
+          <Pencil className="h-4 w-4" /> فتح وتعديل
         </button>
       </div>
     </div>
@@ -269,15 +298,39 @@ export default function PurchaseReturnTodayModal({ open, onClose }) {
   const docColumns = [
     { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[12px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
     { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (r) => r.supplier_name || "—" },
-    { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (r) => r.items_count },
+    { id: "original_purchase_no", header: "أمر الشراء", width: 140, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.original_purchase_no ? r.original_purchase_no : <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black bg-amber-50 text-amber-700 border-amber-200">مباشر</span> },
     { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-amber-700", render: (r) => formatMoney(r.total) },
-    { id: "settlement_type", header: "التسوية", width: 110, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => { const info = SETTLEMENT_LABELS[r.settlement_type] || SETTLEMENT_LABELS.account; return <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>; } },
+    { id: "settlement_type", header: "طريقة التسوية", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => {
+      const settlementType = r.settlement_type || "account";
+      const info = SETTLEMENT_LABELS[settlementType] || SETTLEMENT_LABELS.account;
+      const cashAmt   = settlementType === "cash"    ? Number(r.total || 0)
+                      : settlementType === "split"   ? Number(r.cash_amount || 0)
+                      : 0;
+      const creditAmt = settlementType === "account" ? Number(r.total || 0)
+                      : settlementType === "split"   ? Number(r.credit_amount || 0)
+                      : 0;
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>
+          {settlementType === "split" && (<>
+            {cashAmt > 0 && <span className="text-[10px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>}
+            {creditAmt > 0 && <span className="text-[10px] text-amber-600 font-bold">حساب: {formatMoney(creditAmt)}</span>}
+          </>)}
+          {settlementType === "account" && creditAmt > 0 && (
+            <span className="text-[10px] text-amber-600 font-bold">حساب: {formatMoney(creditAmt)}</span>
+          )}
+          {settlementType === "cash" && cashAmt > 0 && (
+            <span className="text-[10px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>
+          )}
+        </div>
+      );
+    } },
     { id: "status", header: "الحالة", width: 100, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => { const info = STATUS_STYLES[r.status] || STATUS_STYLES.active; return <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>; } },
     { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (r) => r.created_by_username || "—" },
     { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
-        <button onClick={() => navigate(`/purchases/returns/${r.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={() => { onClose(); navigate("/purchases/returns/new", { state: { edit_return_id: r.id } }); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
         <button onClick={() => handleCancel(r)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
     )},
@@ -294,15 +347,20 @@ export default function PurchaseReturnTodayModal({ open, onClose }) {
     { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
-        <button onClick={(e) => { e.stopPropagation(); navigate(`/purchases/returns/${r.return_id || r.id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.stopPropagation(); onClose(); navigate("/purchases/returns/new", { state: { edit_return_id: r.return_id || r.id } }); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
       </div>
     )},
   ];
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="مرتجعات اليوم" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="سجل مرتجعات المشتريات" maxWidth="max-w-5xl">
         <div className="flex flex-col gap-4">
+          {/* Context banner */}
+          <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
+            <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">سجل المرتجعات المسجلة</span>
+            <span className="text-[10px] text-amber-600 font-bold">— هذه قائمة بمرتجعات المشتريات التي تم إنشاؤها مسبقاً، وليست أوامر الشراء.</span>
+          </div>
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-sm border border-amber-200">
             <span className="text-[11px] font-black text-amber-700 shrink-0">بحث برقم المستند:</span>

@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppShell from "./components/layout/AppShell";
+import ServerDownOverlay from "./components/ServerDownOverlay";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
 import ScreenLock from "./components/auth/ScreenLock";
@@ -112,6 +113,7 @@ export default function App() {
 
   return (
     <Suspense fallback={<FullPageLoader />}>
+      <ServerDownOverlay />
       <Toaster position="top-left" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} />
       <ScreenLock />
       <GlobalSearchPage />

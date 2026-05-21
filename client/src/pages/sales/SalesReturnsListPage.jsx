@@ -16,10 +16,6 @@ const REASON_MAP = {
   other: "أخرى",
 };
 
-const REFUND_MAP = {
-  cash_back: "نقداً",
-  credit_note: "رصيد حساب",
-};
 
 const STATUS_MAP = {
   active: { label: "نشط", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -85,13 +81,22 @@ function ReturnRow({ row, navigate }) {
         </div>
         
         <div className="flex flex-col gap-1 min-w-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-base font-black text-zinc-900 font-mono tracking-tight">
               {row.doc_no || `RT-${String(row.id).padStart(5, "0")}`}
             </span>
             <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${STATUS_MAP[row.status]?.cls || STATUS_MAP.active.cls}`}>
               {STATUS_MAP[row.status]?.label || "نشط"}
             </span>
+            {row.invoice_id ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-indigo-50 text-indigo-700 border-indigo-200">
+                <FileText className="w-3 h-3" /> من فاتورة سابقة
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-amber-50 text-amber-700 border-amber-200">
+                <RotateCcw className="w-3 h-3" /> مرتجع مباشر
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
             {row.customer_id ? (
@@ -113,26 +118,70 @@ function ReturnRow({ row, navigate }) {
           <span className="text-[10px] uppercase tracking-widest text-zinc-400">السبب</span>
           {REASON_MAP[row.reason] || "أخرى"}
         </p>
-        <p className="text-xs font-bold text-zinc-500 flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest text-zinc-400">الفاتورة</span>
-          {row.original_invoice_no ? (
+        {row.original_invoice_no && (
+          <p className="text-xs font-bold text-zinc-500 flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-zinc-400">الفاتورة</span>
             <Link to={`/pos/invoices/${row.invoice_id}`} className="font-mono text-zinc-700 hover:text-emerald-600">
               {row.original_invoice_no}
             </Link>
-          ) : "—"}
-        </p>
+          </p>
+        )}
       </div>
 
       {/* Financials & Actions */}
-      <div className="flex items-center gap-8 flex-shrink-0 z-10">
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-lg font-black text-zinc-900 font-mono">
-            {formatMoney(row.total)} <span className="text-xs text-zinc-400 font-sans">ج.م</span>
-          </span>
-          <span className="text-[10px] font-black text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-md border border-zinc-100">
-            {REFUND_MAP[row.refund_method] || row.refund_method || "—"}
-          </span>
-        </div>
+      <div className="flex items-center gap-4 flex-shrink-0 z-10">
+        {/* Payment Cockpit Widget */}
+        {(() => {
+          const cashAmt   = Number(row.cash_amount   || 0);
+          const creditAmt = Number(row.credit_amount || 0);
+          const total     = Number(row.total         || 0);
+          return (
+            <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl overflow-hidden shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)]">
+              {/* Total */}
+              <div className="flex flex-col items-end justify-center px-3 py-2 min-w-[90px]">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
+                <div className="text-[15px] font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
+                  <span>{formatMoney(total)}</span>
+                  <span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
+                </div>
+              </div>
+
+              {/* Cash portion */}
+              {cashAmt > 0.005 && (
+                <>
+                  <div className="w-px self-stretch bg-slate-200/80" />
+                  <div className="flex flex-col items-end justify-center px-3 py-2 bg-emerald-50/80 min-w-[90px]">
+                    <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                      نقداً — صندوق
+                    </span>
+                    <div className="text-[14px] font-black text-emerald-700 font-mono leading-none flex items-baseline gap-0.5">
+                      <span>{formatMoney(cashAmt)}</span>
+                      <span className="text-[8px] font-bold mr-0.5">ج.م</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Credit/account portion */}
+              {creditAmt > 0.005 && (
+                <>
+                  <div className="w-px self-stretch bg-slate-200/80" />
+                  <div className="flex flex-col items-end justify-center px-3 py-2 bg-blue-50/80 min-w-[90px]">
+                    <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
+                      رصيد حساب
+                    </span>
+                    <div className="text-[14px] font-black text-blue-700 font-mono leading-none flex items-baseline gap-0.5">
+                      <span>{formatMoney(creditAmt)}</span>
+                      <span className="text-[8px] font-bold mr-0.5">ج.م</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button onClick={() => navigate(`/pos/sales-returns/${row.id}`)} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors">
