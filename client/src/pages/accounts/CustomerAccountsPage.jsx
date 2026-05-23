@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -406,19 +406,27 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
 
       items.sort((a, b) => b.date - a.date);
 
+      // ── Compute running balance (newest→oldest, display order) ──
+      // party.opening_balance = current balance AFTER all transactions
       const currentBal = Number(party.opening_balance || 0);
-      let running = currentBal;
-      for (const item of items) {
-        if (item.impactDir === "add") running -= (item.impactAmount || 0);
-        else if (item.impactDir === "subtract") running += (item.impactAmount || 0);
+      let runBal = currentBal;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        item.balanceAfter = runBal;
+        if (item.impactDir === "add")      runBal -= (item.impactAmount || 0);
+        else if (item.impactDir === "subtract") runBal += (item.impactAmount || 0);
+        item.balanceBefore = runBal;
       }
-      if (Math.abs(running) > 0.005) {
+      // runBal = balance before any of these transactions (the "opening")
+      if (Math.abs(runBal) > 0.005) {
         items.push({
           id: "opening",
           type: "opening",
           date: null,
-          impactAmount: Math.abs(running),
-          impactDir: running > 0 ? "add" : "subtract",
+          impactAmount: Math.abs(runBal),
+          impactDir: runBal > 0 ? "add" : "subtract",
+          balanceBefore: 0,
+          balanceAfter: runBal,
         });
       }
 
@@ -542,10 +550,10 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
         }[ev.type];
 
         return (
-          <div key={ev.id} className="flex gap-6 items-stretch relative py-5 select-none">
-            {/* Premium Timeline Node Column with Integrated Date */}
-            <div className="flex flex-col items-center shrink-0 w-24 relative select-none">
-              {/* Dual-layered highly aesthetic connecting line track */}
+          <div key={ev.id} className="flex gap-3 items-stretch relative py-5 select-none">
+            {/* ① Timeline Node — squircle + connecting lines only, w-16 */}
+            <div className="flex flex-col items-center shrink-0 w-16 relative select-none">
+              {/* Dual-layered connecting line track */}
               <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[3.5px] bg-slate-100 rounded-full pointer-events-none" />
               <div className={`absolute left-1/2 -translate-x-1/2 w-[2px] pointer-events-none ${
                 index === 0 
@@ -555,14 +563,11 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                     : "top-0 bottom-0 bg-slate-200"
               }`} />
               
-              {/* Sleek Date Squircle Node */}
+              {/* Date Squircle */}
               <div className="w-16 h-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative">
-                {/* Floating micro-badge for event icon */}
                 <span className={`absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-6.5 w-6.5 rounded-lg border ${cfg.bg} ${cfg.color} ${cfg.border} shadow-[0_2px_6px_rgba(0,0,0,0.04)] z-20 transition-transform duration-300 group-hover:scale-110`}>
                   <Icon className="h-3.5 w-3.5 stroke-[2.3px]" />
                 </span>
-
-                {/* Vertical Date typography */}
                 {ev.date ? (
                   <div className="flex flex-col items-center justify-center">
                     <span className="text-[9px] font-black text-slate-450 uppercase tracking-wide leading-none whitespace-nowrap">
@@ -578,7 +583,52 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
               </div>
             </div>
 
-            {/* Event Card: Double-Bezel Concentric architecture with asymmetric colored edge */}
+            {/* ② Balance section — sibling to squircle, self-start prevents row height inflation */}
+            {ev.balanceBefore !== undefined && (() => {
+              const increased = ev.balanceAfter > ev.balanceBefore + 0.005;
+              const decreased = ev.balanceAfter < ev.balanceBefore - 0.005;
+              return (
+                <div className="flex flex-col items-center gap-[3px] shrink-0 self-start pt-1 w-[76px]">
+                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">قبل</span>
+                  <span className={`text-[9px] font-black font-mono px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
+                    ev.balanceBefore > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
+                    : ev.balanceBefore < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
+                    : "bg-slate-50 text-slate-500 border-slate-200/70"
+                  }`}>{fmt(Math.abs(ev.balanceBefore))}</span>
+
+                  <svg viewBox="0 0 24 6" className="w-[32px] h-[5px]" fill="none">
+                    <line x1="0" y1="3" x2="24" y2="3" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2 2"/>
+                  </svg>
+
+                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">بعد</span>
+                  <span className={`text-[9px] font-black font-mono px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
+                    ev.balanceAfter > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
+                    : ev.balanceAfter < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
+                    : "bg-slate-50/80 text-slate-400 border-slate-200/50"
+                  }`}>{fmt(Math.abs(ev.balanceAfter))}</span>
+
+                  {(increased || decreased) && (
+                    <span className={`inline-flex items-center gap-[2px] text-[7px] font-black px-1.5 py-[2px] rounded-full border leading-none mt-[1px] ${
+                      increased ? "bg-rose-100 text-rose-700 border-rose-200/70"
+                      : "bg-emerald-100 text-emerald-700 border-emerald-200/70"
+                    }`}>
+                      {increased ? (
+                        <svg viewBox="0 0 8 8" className="h-[7px] w-[7px]" fill="none">
+                          <path d="M4 7V1M1 4l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 8 8" className="h-[7px] w-[7px]" fill="none">
+                          <path d="M4 1v6M1 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      {increased ? "زيادة" : "تخفيض"}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ③ Event Card */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}

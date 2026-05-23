@@ -173,7 +173,13 @@ export default function PurchaseFormPage() {
   const [supplier, setSupplier] = useState(null);
   const [defaultWarehouseId, setDefaultWarehouseId] = useState("");
   const [docDate, setDocDate] = useState(new Date().toISOString().split("T")[0]);
-  const [refNo, setRefNo] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
+  const [refNo, setRefNo] = useState(() => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `INV-${yy}${mm}${dd}-${String(Date.now()).slice(-4)}`;
+  });
 
   const [itemQuery, setItemQuery] = useState("");
   const [filteredItems, setFilteredItems] = useState([]);
@@ -196,6 +202,7 @@ export default function PurchaseFormPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const wasSaved = useRef(false);
+  const originalSnap = useRef(null);
   const isDirty = (lines.length > 0 || !!supplier) && !locked && !wasSaved.current;
   const { blocker } = useUnsavedChangesGuard(isDirty);
 
@@ -393,7 +400,7 @@ export default function PurchaseFormPage() {
           setSupplierQuery(s.name);
         }).catch(() => {});
       }
-      setLines((p.lines || []).map(l => ({
+      const loadedLines = (p.lines || []).map(l => ({
         item_id: l.item_id,
         name: l.item_name || l.name || "",
         code: l.code || l.barcode || "",
@@ -406,7 +413,17 @@ export default function PurchaseFormPage() {
         warehouse_id: String(l.warehouse_id || ""),
         unit_id: l.unit_id || null,
         total: l.line_total || (l.quantity * l.unit_cost),
-      })));
+      }));
+      setLines(loadedLines);
+      originalSnap.current = {
+        supplier_id: p.supplier_id || null,
+        payment_method: p.payment_method || "cash",
+        lines: loadedLines.map(l => ({
+          item_id: l.item_id, quantity: l.quantity, unit_cost: l.unit_cost,
+          selling_price: l.selling_price, wholesale_price: l.wholesale_price,
+          warehouse_id: l.warehouse_id,
+        })),
+      };
     }).catch(() => toast.error("فشل تحميل الفاتورة"))
       .finally(() => setLoadingExisting(false));
   }, [id, isEditMode]);
@@ -538,6 +555,24 @@ export default function PurchaseFormPage() {
     Object.values(multiAmounts).reduce((s, v) => s + Number(v || 0), 0),
     [multiAmounts]);
 
+  const isEditDirty = useMemo(() => {
+    if (!isEditMode || !originalSnap.current) return false;
+    const snap = originalSnap.current;
+    if ((supplier?.id ?? null) !== snap.supplier_id) return true;
+    if (paymentMode !== snap.payment_method) return true;
+    if (lines.length !== snap.lines.length) return true;
+    for (let i = 0; i < lines.length; i++) {
+      const cur = lines[i]; const orig = snap.lines[i];
+      if (!orig || cur.item_id !== orig.item_id) return true;
+      if (Number(cur.quantity) !== Number(orig.quantity)) return true;
+      if (Number(cur.unit_cost) !== Number(orig.unit_cost)) return true;
+      if (Number(cur.selling_price) !== Number(orig.selling_price)) return true;
+      if (Number(cur.wholesale_price) !== Number(orig.wholesale_price)) return true;
+      if (String(cur.warehouse_id) !== String(orig.warehouse_id)) return true;
+    }
+    return false;
+  }, [isEditMode, supplier, paymentMode, lines]);
+
   const multiBalanced = Math.abs(multiTotal - totals.total) < 0.005;
 
   function handleSelectPayment(mode) {
@@ -556,7 +591,7 @@ export default function PurchaseFormPage() {
       warehouse_id: defaultWarehouseId,
       doc_no: docNo || refNo,
       ref_no: docNo || refNo,
-      date: invoiceCreatedAt || docDate,
+      date: docDate,
       payment_method: paymentMode,
       bank_ref: paymentMode === "bank_transfer" ? bankRef : undefined,
       due_date: paymentMode === "future_due" ? dueDate : undefined,
@@ -694,14 +729,18 @@ export default function PurchaseFormPage() {
               المحرر: {user.name}
             </div>
           )}
-          {!isLocked && (
-            <div className="flex gap-1.5">
-              <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"} placeholder="رقم المستند"
-                className="h-6 w-24 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none" />
-              <input disabled value={invoiceIsActive && invoiceCreatedAt ? new Date(invoiceCreatedAt).toLocaleString("en-US") : "—"}
-                className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none" />
-            </div>
-          )}
+          <div className="flex gap-1.5 items-center">
+            <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"}
+              className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
+            {!isEditMode && !invoiceIsActive ? (
+              <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
+                className="h-6 w-32 rounded-sm border border-slate-300 bg-white px-2 text-[11px] font-mono font-bold text-slate-700 outline-none focus:border-emerald-500" />
+            ) : (
+              <input disabled
+                value={invoiceCreatedAt ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt)) : "—"}
+                className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {priceChangedLines.length > 0 && !isLocked && (
@@ -737,7 +776,7 @@ export default function PurchaseFormPage() {
                 </button>
               </PermissionGate>
               <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
-                <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length}
+                <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
                   className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
                   {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري...</> : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
                 </button>
@@ -793,9 +832,13 @@ export default function PurchaseFormPage() {
               <label className="text-[11px] font-bold text-slate-600">تاريخ الفاتورة</label>
               <div className="relative">
                 <Calendar className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
-                  disabled={isLocked}
-                  className="w-full border border-slate-300 rounded-sm bg-white py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800 disabled:bg-slate-50 disabled:cursor-not-allowed" />
+                {isEditMode ? (
+                  <input disabled value={docDate}
+                    className="w-full border border-slate-200 rounded-sm bg-slate-50 py-2 pl-3 pr-9 text-[12px] font-bold text-slate-500 outline-none cursor-not-allowed font-mono" />
+                ) : (
+                  <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
+                    className="w-full border border-slate-300 rounded-sm bg-white py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800" />
+                )}
               </div>
             </div>
 

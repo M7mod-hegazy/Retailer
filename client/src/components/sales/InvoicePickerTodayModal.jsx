@@ -258,7 +258,7 @@ export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice
           id, invoice_no: line.invoice_no || line.doc_no, customer_name: line.customer_name,
           customer_id: line.customer_id, created_at: line.created_at,
           total: 0, items_count: 0, status: line.status,
-          payment_method: line.payment_method,
+          payment_method: line.payment_method || line.payment_type,
           created_by_username: line.created_by_username,
         };
       }
@@ -325,7 +325,7 @@ export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice
     { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (inv) => inv.customer_name || "—" },
     { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (inv) => inv.items_count },
     { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (inv) => formatMoney(inv.total) },
-    { id: "payment_method", header: "طريقة الدفع", width: 130, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => { const info = PAYMENT_METHOD_STYLES[inv.payment_method]; return info ? <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span> : <span className="text-[11px] font-bold text-slate-600">{inv.payment_method || "—"}</span>; } },
+    { id: "payment_method", header: "طريقة الدفع", width: 130, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => { const method = inv.payment_method || inv.payment_type; const info = PAYMENT_METHOD_STYLES[method]; return info ? <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span> : <span className="text-[11px] font-bold text-slate-600">{method || "—"}</span>; } },
     { id: "status", header: "الحالة", width: 100, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => { const info = INVOICE_STATUS_STYLES[inv.status] || INVOICE_STATUS_STYLES.active; return <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>; } },
     { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
     { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
