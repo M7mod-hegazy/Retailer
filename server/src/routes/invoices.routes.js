@@ -54,6 +54,7 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
                    SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
                    FROM payments p
                    JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+                   WHERE p.method != 'credit'
                  ), '') ||
                  COALESCE((
                    SELECT '|||credit:' || CAST(ROUND(ad.original_amount, 2) AS TEXT)

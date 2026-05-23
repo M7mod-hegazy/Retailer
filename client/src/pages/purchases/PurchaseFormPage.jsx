@@ -3,7 +3,7 @@ import {
   Plus, ShoppingCart, Trash2, User, Package, Calendar, FileText,
   Warehouse, ChevronDown, ArrowLeft, X, CreditCard, Wallet, Banknote,
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
-  ImageIcon, ZoomIn, Printer, CheckCircle2, Layers, Lock, Pencil,
+  ImageIcon, Printer, CheckCircle2, Layers, Lock, Pencil,
   FilePlus, Sparkles, Receipt, RefreshCw, ArrowUpDown, Save,
   Loader2, Filter,
 } from "lucide-react";
@@ -705,7 +705,7 @@ export default function PurchaseFormPage() {
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col">
               <h1 className="text-[14px] font-black text-emerald-800">
-                {isEditMode ? `فاتورة مشتريات #${refNo}` : "فاتورة مشتريات جديدة"}
+                {isEditMode ? "فاتورة مشتريات" : "فاتورة مشتريات جديدة"}
               </h1>
               <span className="text-[10px] font-bold text-slate-400">
                 {isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : "إدخال مخزون جديد"}
@@ -713,17 +713,12 @@ export default function PurchaseFormPage() {
             </div>
             <div className="mx-2 h-8 w-px bg-slate-200" />
             {invoiceIsActive && (
-              <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2 py-1 text-[11px] font-bold text-emerald-700">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                {isLocked ? <Lock className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                 {isLocked ? "مقفلة" : "نشطة"}
               </div>
             )}
           </div>
-          {isLocked && (
-            <div className="flex items-center gap-1.5 rounded-sm bg-slate-100 border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-              <Lock className="h-3 w-3" /> مقفلة
-            </div>
-          )}
           {!isLocked && isEditMode && user?.name && (
             <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
               المحرر: {user.name}
@@ -732,14 +727,9 @@ export default function PurchaseFormPage() {
           <div className="flex gap-1.5 items-center">
             <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"}
               className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
-            {!isEditMode && !invoiceIsActive ? (
-              <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
-                className="h-6 w-32 rounded-sm border border-slate-300 bg-white px-2 text-[11px] font-mono font-bold text-slate-700 outline-none focus:border-emerald-500" />
-            ) : (
-              <input disabled
-                value={invoiceCreatedAt ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt)) : "—"}
-                className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
-            )}
+            <input disabled
+              value={invoiceIsActive && invoiceCreatedAt ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt)) : "—"}
+              className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -794,7 +784,7 @@ export default function PurchaseFormPage() {
         {/* Left: Main Content */}
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
           {/* Header Info Grid */}
-          <section className={`grid grid-cols-3 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0 ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
+          <section className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0 ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
             {/* Supplier */}
             <div data-help="supplier-select" className="relative flex flex-col gap-1">
               <label className="text-[11px] font-bold text-slate-600">
@@ -824,31 +814,6 @@ export default function PurchaseFormPage() {
                     <Plus className="h-4 w-4" />
                   </button>
                 )}
-              </div>
-            </div>
-
-            {/* Date */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold text-slate-600">تاريخ الفاتورة</label>
-              <div className="relative">
-                <Calendar className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                {isEditMode ? (
-                  <input disabled value={docDate}
-                    className="w-full border border-slate-200 rounded-sm bg-slate-50 py-2 pl-3 pr-9 text-[12px] font-bold text-slate-500 outline-none cursor-not-allowed font-mono" />
-                ) : (
-                  <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
-                    className="w-full border border-slate-300 rounded-sm bg-white py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800" />
-                )}
-              </div>
-            </div>
-
-            {/* Ref No */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold text-slate-600">رقم مرجع المورد</label>
-              <div className="relative">
-                <FileText className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <input type="text" readOnly value={refNo}
-                  className="w-full border border-slate-300 rounded-sm bg-slate-50 py-2 pl-3 pr-9 text-[12px] font-bold text-slate-500 outline-none font-mono cursor-not-allowed" />
               </div>
             </div>
           </section>
@@ -1015,23 +980,12 @@ export default function PurchaseFormPage() {
               { id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-slate-500 border-l border-slate-100", render: (l) => l.code || "-" },
               {
                 id: "name", header: "البيان", width: 220, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-2", headerClass: "text-right px-2",
-                render: (l) => {
-                  const item = items.find(i => i.id === l.item_id);
-                  const imgUrl = item?.primary_image_url || item?.image_url || item?.image;
-                  return (
-                    <div className="flex items-center gap-2 py-1">
-                      {imgUrl ? (
-                        <button onClick={() => { setImagePreviewUrl(resolveImageUrl(imgUrl)); setImageModalOpen(true); }} className="shrink-0 group relative rounded-md overflow-hidden border border-slate-200">
-                          <img src={resolveImageUrl(imgUrl)} alt={l.name} className="w-8 h-8 object-cover" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><ZoomIn className="w-4 h-4 text-white" /></div>
-                        </button>
-                      ) : (
-                        <div className="w-8 h-8 shrink-0 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-4 h-4 text-slate-300"/></div>
-                      )}
-                      <span className="truncate">{l.name}</span>
-                    </div>
-                  );
-                }
+                render: (l) => (
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="w-8 h-8 shrink-0 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-4 h-4 text-slate-300"/></div>
+                    <span className="truncate">{l.name}</span>
+                  </div>
+                )
               },
               { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => <input type="number" min="0.001" step="any" value={l.quantity} disabled={isLocked} onChange={(e) => updateLineField(i, "quantity", Number(e.target.value))} className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed" /> },

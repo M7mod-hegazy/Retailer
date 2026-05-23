@@ -45,6 +45,14 @@ const DOC_TYPE_LABEL = {
   withdrawal: "مسحوب من الخزنة",
 };
 
+const REASON_MAP = {
+  defective: "عيب في المنتج",
+  wrong_order: "خطأ في الطلب",
+  damaged_shipping: "تلف أثناء الشحن",
+  not_as_described: "لا يطابق الوصف",
+  other: "أخرى",
+};
+
 const DOC_TYPE_COLOR = {
   pos_invoice: "text-emerald-700 bg-emerald-50 border-emerald-200",
   credit_invoice: "text-amber-700 bg-amber-50 border-amber-200",
@@ -285,12 +293,27 @@ export default function DailyTreasuryPage() {
   useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
 
-  // Load invoice details when viewing a POS invoice
+  // Load invoice/return details when viewing a transaction
   useEffect(() => {
-    if (["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver?.doc_type) && slideOver?.id) {
+    if (!slideOver?.id) { setSlideOverDetails(null); return; }
+    if (["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver.doc_type)) {
       setSlideOverLoading(true);
       setSlideOverDetails(null);
       api.get("/api/invoices/" + slideOver.id)
+        .then(r => setSlideOverDetails(r.data.data))
+        .catch(() => setSlideOverDetails(null))
+        .finally(() => setSlideOverLoading(false));
+    } else if (slideOver.doc_type === "sales_return") {
+      setSlideOverLoading(true);
+      setSlideOverDetails(null);
+      api.get("/api/invoices/returns/" + slideOver.id)
+        .then(r => setSlideOverDetails(r.data.data))
+        .catch(() => setSlideOverDetails(null))
+        .finally(() => setSlideOverLoading(false));
+    } else if (slideOver.doc_type === "purchase_return") {
+      setSlideOverLoading(true);
+      setSlideOverDetails(null);
+      api.get("/api/purchases/returns/" + slideOver.id)
         .then(r => setSlideOverDetails(r.data.data))
         .catch(() => setSlideOverDetails(null))
         .finally(() => setSlideOverLoading(false));
@@ -1233,7 +1256,77 @@ export default function DailyTreasuryPage() {
                                   </td>
                                   <td className="px-3 py-3">
                                     <div className="flex flex-col gap-0.5">
-                                      {t.payment_type === "installments" && (
+                                      {/* Payment Cockpit for sales/purchase returns */}
+                                      {["sales_return", "purchase_return"].includes(t.doc_type) && (() => {
+                                        const cashAmt   = Number(t.cash_amount   || 0);
+                                        const creditAmt = Number(t.credit_amount || 0);
+                                        const total     = Number(t.amount        || 0);
+                                        const isSalesReturn = t.doc_type === "sales_return";
+                                        const isFromInvoice = isSalesReturn && !!t.invoice_id;
+                                        return (
+                                          <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-xl overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] w-full">
+                                            {/* Source badge */}
+                                            {isSalesReturn && (
+                                              <>
+                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 flex-1 min-w-0">
+                                                  {isFromInvoice ? (
+                                                    <>
+                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[8px] font-black bg-indigo-50 text-indigo-700 border-indigo-200 mb-0.5 whitespace-nowrap">
+                                                        <FileText className="w-2.5 h-2.5" /> من فاتورة سابقة
+                                                      </span>
+                                                      <span className="text-[10px] font-black text-indigo-600 font-mono">{t.original_invoice_no}</span>
+                                                    </>
+                                                  ) : (
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[8px] font-black bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap">
+                                                      <RotateCcw className="w-2.5 h-2.5" /> مرتجع مباشر
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <div className="w-px self-stretch bg-slate-200/80" />
+                                              </>
+                                            )}
+                                            {/* Total */}
+                                            <div className="flex flex-col items-end justify-center px-2.5 py-1.5 min-w-[80px]">
+                                              <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي</span>
+                                              <div className="text-[13px] font-black text-slate-800 font-mono leading-none">{fmt(total)}</div>
+                                            </div>
+                                            {cashAmt > 0.005 && (
+                                              <>
+                                                <div className="w-px self-stretch bg-slate-200/80" />
+                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 bg-emerald-50/80 min-w-[80px]">
+                                                  <span className="text-[7px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                                                    <span className="w-1 h-1 rounded-full bg-emerald-500 inline-block" />
+                                                    {isSalesReturn ? "نقداً — صندوق" : "نقداً"}
+                                                  </span>
+                                                  <div className="text-[12px] font-black text-emerald-700 font-mono leading-none">{fmt(cashAmt)}</div>
+                                                </div>
+                                              </>
+                                            )}
+                                            {creditAmt > 0.005 && (
+                                              <>
+                                                <div className="w-px self-stretch bg-slate-200/80" />
+                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 bg-blue-50/80 min-w-[80px]">
+                                                  <span className="text-[7px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                                                    <span className="w-1 h-1 rounded-full bg-blue-500 inline-block" />
+                                                    {isSalesReturn ? "رصيد حساب" : "ذمة مورد"}
+                                                  </span>
+                                                  <div className="text-[12px] font-black text-blue-700 font-mono leading-none">{fmt(creditAmt)}</div>
+                                                </div>
+                                              </>
+                                            )}
+                                            {cashAmt < 0.005 && creditAmt < 0.005 && (
+                                              <>
+                                                <div className="w-px self-stretch bg-slate-200/80" />
+                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 bg-slate-100/80 min-w-[80px]">
+                                                  <span className="text-[7px] font-black text-slate-400 tracking-wider mb-0.5">صفر نقدي</span>
+                                                  <span className="text-[8px] font-black text-slate-500">لا يؤثر على الحساب</span>
+                                                </div>
+                                              </>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                      {!["sales_return", "purchase_return"].includes(t.doc_type) && t.payment_type === "installments" && (
                                         <div className="flex flex-col gap-1 rounded-lg bg-violet-50 border border-violet-200 p-2">
                                           {t.payment_splits && t.payment_splits.split("|||").map((split, i) => {
                                             const colonIdx = split.lastIndexOf(":");
@@ -1260,7 +1353,7 @@ export default function DailyTreasuryPage() {
                                           </div>
                                         </div>
                                       )}
-                                      {t.payment_type !== "installments" && (
+                                      {!["sales_return", "purchase_return"].includes(t.doc_type) && t.payment_type !== "installments" && (
                                         <>
                                           {(() => {
                                             const ce = Number(t.cash_effect ?? t.amount);
@@ -1434,6 +1527,149 @@ export default function DailyTreasuryPage() {
                   </div>
                 </div>
 
+                {/* Payment Cockpit + Lines for Sales/Purchase Return */}
+                {["sales_return", "purchase_return"].includes(slideOver.doc_type) && (
+                  <div className="flex flex-col gap-3 mb-4">
+                    {/* Payment Cockpit Widget */}
+                    {(() => {
+                      const cashAmt   = Number(slideOver.cash_amount   || 0);
+                      const creditAmt = Number(slideOver.credit_amount || 0);
+                      const total     = Number(slideOver.amount        || 0);
+                      const isSalesReturn = slideOver.doc_type === "sales_return";
+                      return (
+                        <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
+                          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-slate-400" />
+                            <span className="text-[12px] font-black text-slate-700">تفاصيل الاسترداد</span>
+                          </div>
+                          <div className="p-3 flex flex-wrap items-stretch gap-0 bg-slate-50/80 border-b border-slate-200/80">
+                            {/* Total */}
+                            <div className="flex flex-col items-end justify-center px-4 py-2.5 min-w-[110px]">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
+                              <div className="text-[18px] font-black text-slate-800 font-mono leading-none">
+                                {fmt(total)} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+                              </div>
+                            </div>
+                            {cashAmt > 0.005 && (
+                              <>
+                                <div className="w-px self-stretch bg-slate-200/80" />
+                                <div className="flex flex-col items-end justify-center px-4 py-2.5 bg-emerald-50/80 min-w-[110px]">
+                                  <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                                    {isSalesReturn ? "نقداً — صندوق" : "نقداً مُستردّ"}
+                                  </span>
+                                  <div className="text-[16px] font-black text-emerald-700 font-mono leading-none">
+                                    {fmt(cashAmt)} <span className="text-[10px] font-bold">ج.م</span>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                            {creditAmt > 0.005 && (
+                              <>
+                                <div className="w-px self-stretch bg-slate-200/80" />
+                                <div className="flex flex-col items-end justify-center px-4 py-2.5 bg-blue-50/80 min-w-[110px]">
+                                  <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
+                                    {isSalesReturn ? "رصيد حساب العميل" : "خصم من ذمة المورد"}
+                                  </span>
+                                  <div className="text-[16px] font-black text-blue-700 font-mono leading-none">
+                                    {fmt(creditAmt)} <span className="text-[10px] font-bold">ج.م</span>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                            {cashAmt < 0.005 && creditAmt < 0.005 && (
+                              <>
+                                <div className="w-px self-stretch bg-slate-200/80" />
+                                <div className="flex flex-col items-end justify-center px-4 py-2.5 bg-slate-100/80 min-w-[110px]">
+                                  <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5">صفر نقدي</span>
+                                  <span className="text-[11px] font-black text-slate-500">لا يؤثر على الخزنة</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {/* Metadata rows */}
+                          <div className="divide-y divide-slate-50">
+                            {isSalesReturn && slideOverDetails?.invoice_id && (
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-indigo-50 text-indigo-700 border-indigo-200">
+                                  <FileText className="w-3 h-3" /> من فاتورة سابقة
+                                </span>
+                              </div>
+                            )}
+                            {isSalesReturn && !slideOverDetails?.invoice_id && slideOverDetails && (
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-amber-50 text-amber-700 border-amber-200">
+                                  <RotateCcw className="w-3 h-3" /> مرتجع مباشر
+                                </span>
+                              </div>
+                            )}
+                            {(slideOver.description || slideOverDetails?.reason) && (
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">السبب</span>
+                                <span className="text-[12px] font-bold text-zinc-900 text-right">
+                                  {REASON_MAP[slideOver.description || slideOverDetails?.reason] || slideOver.description || slideOverDetails?.reason || "أخرى"}
+                                </span>
+                              </div>
+                            )}
+                            {slideOverDetails?.original_invoice_no && (
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">الفاتورة الأصلية</span>
+                                <span className="text-[12px] font-black text-indigo-700 font-mono">{slideOverDetails.original_invoice_no}</span>
+                              </div>
+                            )}
+                            {(slideOverDetails?.notes || slideOver.notes) && (
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">ملاحظات</span>
+                                <span className="text-[12px] font-bold text-zinc-700 text-right truncate">{slideOverDetails?.notes || slideOver.notes}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Return Lines */}
+                    <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-slate-400" />
+                        <span className="text-[12px] font-black text-slate-700">الأصناف المرتجعة</span>
+                      </div>
+                      {slideOverLoading ? (
+                        <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                      ) : slideOverDetails?.lines?.length ? (
+                        <div className="divide-y divide-slate-100">
+                          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                            <div className="col-span-5">الصنف</div>
+                            <div className="col-span-2 text-center">الكمية</div>
+                            <div className="col-span-2 text-center">السعر</div>
+                            <div className="col-span-3 text-left">الإجمالي</div>
+                          </div>
+                          {slideOverDetails.lines.map((line, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50 transition-colors">
+                              <div className="col-span-5 flex flex-col min-w-0">
+                                <span className="text-[11px] font-black text-slate-800 truncate">{line.item_name || line.name}</span>
+                                <span className="text-[9px] font-mono text-slate-400 truncate">{line.item_code || "#" + line.item_id}</span>
+                              </div>
+                              <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{line.quantity}</div>
+                              <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{fmt(line.unit_price)}</div>
+                              <div className="col-span-3 text-left font-mono text-[11px] font-black text-rose-700">{fmt(line.line_total || line.unit_price * line.quantity)}</div>
+                            </div>
+                          ))}
+                          <div className="bg-slate-900 text-white px-3 py-3 flex justify-between text-[12px] font-black">
+                            <span className="text-slate-400">الإجمالي</span>
+                            <span className="font-mono">{fmt(slideOver.amount)} ج.م</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-6 text-center text-[12px] text-slate-400">لا توجد تفاصيل متاحة</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Invoice Lines for POS Invoice */}
                 {["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver.doc_type) && (
                   <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
@@ -1557,6 +1793,16 @@ export default function DailyTreasuryPage() {
                     className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-[12px] font-black text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> فتح الفاتورة الكاملة
+                  </motion.button>
+                )}
+                {slideOver.doc_type === "sales_return" && (
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => window.open("/pos/sales-returns/" + slideOver.id, "_blank")}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-pink-600 py-2.5 text-[12px] font-black text-white hover:bg-pink-700 shadow-lg shadow-pink-600/20"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح المرتجع الكامل
                   </motion.button>
                 )}
                 <motion.button
