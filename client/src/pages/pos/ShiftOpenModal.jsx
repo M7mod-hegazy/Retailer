@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import Modal from "../../components/ui/Modal";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -24,7 +24,7 @@ export default function ShiftOpenModal({ open, onClose, onSuccess }) {
             <Clock3 className="h-7 w-7" />
           </div>
           <div className="text-sm text-text-secondary">الوقت الحالي</div>
-          <div className="mt-2 text-2xl font-black text-text-primary">{new Date().toLocaleTimeString("ar-EG")}</div>
+          <div className="mt-2 text-2xl font-black text-text-primary">{new Date().toLocaleTimeString("ar-EG-u-nu-latn")}</div>
         </div>
         <div className="rounded-[20px] border border-border-subtle bg-[var(--bg-overlay)] p-5">
           <div className="mb-3 flex items-center gap-2 text-text-primary">

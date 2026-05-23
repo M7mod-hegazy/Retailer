@@ -1,4 +1,4 @@
-const os = require("os");
+﻿const os = require("os");
 const path = require("path");
 const ExcelJS = require("exceljs");
 const PDFDocument = require("pdfkit");
@@ -140,7 +140,7 @@ async function exportRowsToExcelV2({
 
     // Footer row
     worksheet.addRow([]);
-    const footerRow = worksheet.addRow([`تم التصدير: ${new Date().toLocaleDateString("ar-EG")} - ${new Date().toLocaleTimeString("ar-EG")}`]);
+    const footerRow = worksheet.addRow([`تم التصدير: ${new Date().toLocaleDateString("ar-EG-u-nu-latn")} - ${new Date().toLocaleTimeString("ar-EG-u-nu-latn")}`]);
     footerRow.font = { italic: true, size: 9, color: { argb: "FF64748B" } };
     footerRow.alignment = { horizontal: rtl ? "left" : "right" };
     worksheet.mergeCells(footerRow.number, 1, footerRow.number, keys.length);
@@ -248,7 +248,7 @@ async function exportRowsToDocx({
         const value = row?.[k] ?? "";
         const isNumeric = typeof value === "number" || (!isNaN(Number(value)) && value !== "");
         const displayVal = isNumeric && colTypes[k] === "money"
-          ? Number(value).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          ? Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           : String(value);
         return new TableCell({
           borders: {
@@ -292,7 +292,7 @@ async function exportRowsToDocx({
             spacing: { before: 60, after: 60 },
             children: [new TextRun({
               text: hasVal
-                ? Number(val).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : "",
               bold: true,
               size: 20,
@@ -307,10 +307,10 @@ async function exportRowsToDocx({
 
   // Build date/time footer text
   const now = new Date();
-  const dateStr = now.toLocaleDateString("ar-EG");
-  const timeStr = now.toLocaleTimeString("ar-EG");
+  const dateStr = now.toLocaleDateString("ar-EG-u-nu-latn");
+  const timeStr = now.toLocaleTimeString("ar-EG-u-nu-latn");
   const footerText = `تم التصدير: ${dateStr} ${timeStr}`;
-  const totalRowsText = `إجمالي الصفوف: ${safeRows.length.toLocaleString("ar-EG")}`;
+  const totalRowsText = `إجمالي الصفوف: ${safeRows.length.toLocaleString("en-US")}`;
 
   const doc = new Document({
     sections: [{
@@ -540,7 +540,7 @@ async function exportRowsToPdfV3({
     keys.forEach((k) => {
       const val = totals[k];
       const display = val != null && !isNaN(Number(val))
-        ? Number(val).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : "";
       doc.text(display, xPos - colWidth + 3, doc.y + 6, { width: colWidth - 6, align: "center", ellipsis: true });
       xPos -= colWidth;
@@ -551,7 +551,7 @@ async function exportRowsToPdfV3({
   // Footer
   doc.y = Math.max(doc.y + 10, doc.page.height - 60);
   doc.fontSize(8).font(FONT_ARIAL).fillColor("#94a3b8");
-  doc.text(`تم التصدير: ${new Date().toLocaleDateString("ar-EG")} - ${new Date().toLocaleTimeString("ar-EG")}`, 40, doc.y, { align: "center" });
+  doc.text(`تم التصدير: ${new Date().toLocaleDateString("ar-EG-u-nu-latn")} - ${new Date().toLocaleTimeString("ar-EG-u-nu-latn")}`, 40, doc.y, { align: "center" });
 
   if (safeRows.length > maxRows) {
     doc.moveDown(0.3);

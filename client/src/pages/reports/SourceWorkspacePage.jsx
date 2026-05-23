@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -902,7 +902,7 @@ export default function SourceWorkspacePage() {
                 >
                   {isFetching ? "جاري التحديث..." : "البيانات"}
                 </motion.span>
-                <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("ar-EG")} صف</span>
+                <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("en-US")} صف</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative" ref={columnDropdownRef}>
@@ -979,7 +979,7 @@ export default function SourceWorkspacePage() {
                           const suffix = c.type === "percent" ? "%" : "";
                           return (
                             <span className="tabular-nums text-[13px] font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
-                              {num.toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
+                              {num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
                             </span>
                           );
                         }
@@ -1001,7 +1001,7 @@ export default function SourceWorkspacePage() {
                       >
                         {hasVal ? (
                           <span className="text-[13px] font-black text-emerald-800 tabular-nums" dir="ltr">
-                            {Number(val).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+                            {Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                           </span>
                         ) : (
                           <span className="text-[11px] font-bold text-emerald-600">الإجمالي</span>
@@ -1015,11 +1015,11 @@ export default function SourceWorkspacePage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-3 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
                 <div className="flex items-center gap-2 text-[12px] font-bold text-zinc-500">
-                  <span>إجمالي الصفحات: {totalPages.toLocaleString("ar-EG")}</span>
+                  <span>إجمالي الصفحات: {totalPages.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-30"><ChevronRight size={16} /></button>
-                  <span className="text-[12px] font-bold text-zinc-700 px-2">{currentPage.toLocaleString("ar-EG")} / {totalPages.toLocaleString("ar-EG")}</span>
+                  <span className="text-[12px] font-bold text-zinc-700 px-2">{currentPage.toLocaleString("en-US")} / {totalPages.toLocaleString("en-US")}</span>
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-30"><ChevronLeft size={16} /></button>
                 </div>
               </div>

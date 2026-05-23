@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   TrendingUp, Plus, Pencil, Trash2, Search, Download, Calendar,
   X, ChevronDown, RefreshCw, AlertTriangle, Filter, Database, Check,
@@ -12,7 +12,7 @@ import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const today = () => new Date().toISOString().slice(0, 10);
 
 function Highlight({ text, query }) {

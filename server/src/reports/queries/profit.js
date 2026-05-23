@@ -9,18 +9,23 @@ function _costSubquery(costCol) {
   )`;
 }
 
-// Pre-aggregated returns subquery per invoice: deducts return revenue and reverses cost
-const _returnsSubquery = `(
-  SELECT sr.invoice_id,
-    SUM(sr.total) AS return_revenue,
-    COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price, 0)), 0) AS return_cost
-  FROM sales_returns sr
-  JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
-  LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
-  LEFT JOIN items it ON it.id = srl.item_id
-  WHERE sr.status = 'active'
-  GROUP BY sr.invoice_id
-)`;
+// Build returns subquery using the same cost method as the main query
+function _returnsSubquery(costMethod) {
+  const costCol = costMethod === "last_purchase"
+    ? "COALESCE(ref_il.cost_last_purchase, srl.cost_last_purchase, it.purchase_price, 0)"
+    : "COALESCE(ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
+  return `(
+    SELECT sr.invoice_id,
+      SUM(sr.total) AS return_revenue,
+      COALESCE(SUM(srl.quantity * ${costCol}), 0) AS return_cost
+    FROM sales_returns sr
+    JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+    LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+    LEFT JOIN items it ON it.id = srl.item_id
+    WHERE sr.status = 'active'
+    GROUP BY sr.invoice_id
+  )`;
+}
 
 function profitByCategory(startDate, endDate, opts = {}) {
   const db = getDb();
@@ -57,7 +62,7 @@ function profitByCategory(startDate, endDate, opts = {}) {
       SELECT invoice_id, SUM(line_total) AS line_sum
       FROM invoice_lines GROUP BY invoice_id
     ) inv_sums ON inv_sums.invoice_id = il.invoice_id
-    LEFT JOIN ${_returnsSubquery} ret ON ret.invoice_id = il.invoice_id
+    LEFT JOIN ${_returnsSubquery(opts.cost_method)} ret ON ret.invoice_id = il.invoice_id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${category_id ? " AND c.id = ?" : ""}
     GROUP BY c.id
@@ -91,7 +96,7 @@ function profitByCustomer(startDate, endDate, opts = {}) {
     FROM invoices i
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN ${_costSubquery(costCol)} il_agg ON il_agg.invoice_id = i.id
-    LEFT JOIN ${_returnsSubquery} ret ON ret.invoice_id = i.id
+    LEFT JOIN ${_returnsSubquery(opts.cost_method)} ret ON ret.invoice_id = i.id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${customer_id ? " AND i.customer_id = ?" : ""}
     GROUP BY i.customer_id
@@ -124,7 +129,7 @@ function profitByPeriod(startDate, endDate, opts = {}) {
         - COALESCE((SELECT SUM(e2.amount) FROM expenses e2 WHERE DATE(e2.created_at) = DATE(i.created_at)), 0) AS net_profit
     FROM invoices i
     LEFT JOIN ${_costSubquery(costCol)} il_agg ON il_agg.invoice_id = i.id
-    LEFT JOIN ${_returnsSubquery} ret ON ret.invoice_id = i.id
+    LEFT JOIN ${_returnsSubquery(opts.cost_method)} ret ON ret.invoice_id = i.id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
     GROUP BY DATE(i.created_at)
     ORDER BY date DESC

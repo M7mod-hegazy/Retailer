@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -146,8 +146,6 @@ const DATE_PRESETS = [
 const COST_METHODS = [
   { value: "wacc", label_key: "reports_wacc" },
   { value: "last_purchase", label_key: "reports_last_purchase" },
-  { value: "fifo", label_key: "reports_fifo" },
-  { value: "purchase_price", label_key: "reports_purchase_price" },
 ];
 
 // Mirror print template constants so workspace pagination matches print pages exactly
@@ -688,11 +686,11 @@ export default function ReportWorkspacePage() {
     
     // Take top 3 max
     entries.slice(0, 3).forEach(([k, v]) => {
-      out.push({ label: allColumns.find((c) => c.id === k)?.header || prettifyLabel(k), value: v.toLocaleString("ar-EG", { maximumFractionDigits: 2 }) });
+      out.push({ label: allColumns.find((c) => c.id === k)?.header || prettifyLabel(k), value: v.toLocaleString("en-US", { maximumFractionDigits: 2 }) });
     });
     
     if (out.length === 0) {
-      out.push({ label: "عدد السجلات", value: rows.length.toLocaleString("ar-EG") });
+      out.push({ label: "عدد السجلات", value: rows.length.toLocaleString("en-US") });
     }
     return out;
   }, [rows, columnTotals, allColumns]);
@@ -1075,7 +1073,7 @@ export default function ReportWorkspacePage() {
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200 shadow-sm text-zinc-500"><LayoutList size={12} /></span>
                 <span className="text-[13px] font-black text-zinc-900">سجلات التقرير التفصيلية</span>
-                {!isLoading && <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("ar-EG")} صف</span>}
+                {!isLoading && <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("en-US")} صف</span>}
               </div>
               <div className="flex items-center gap-3">
                 {/* Column settings */}
@@ -1140,7 +1138,7 @@ export default function ReportWorkspacePage() {
                           if (val == null || val === "") return <span className="text-zinc-300">—</span>;
                           const num = Number(val);
                           const isNum = !isNaN(num) && String(val).trim() !== "";
-                          if (isNum) return (<span className="tabular-nums text-[13px] font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{num.toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>);
+                          if (isNum) return (<span className="tabular-nums text-[13px] font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>);
                           return <span className="text-[13px] font-medium text-zinc-700">{String(val)}</span>;
                         },
                   }))}
@@ -1162,7 +1160,7 @@ export default function ReportWorkspacePage() {
                     >
                       {hasVal ? (
                         <span className="text-[13px] font-black text-emerald-800 tabular-nums" dir="ltr">
-                          {Number(val).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+                          {Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                         </span>
                       ) : (
                         <span className="text-[11px] font-bold text-emerald-600">الإجمالي</span>
@@ -1177,7 +1175,7 @@ export default function ReportWorkspacePage() {
             {!isLoading && totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 bg-zinc-50 shrink-0">
                 <div className="flex items-center gap-2 text-[12px] font-bold text-zinc-500">
-                  <span>إجمالي الصفحات: {totalPages.toLocaleString("ar-EG")}</span>
+                  <span>إجمالي الصفحات: {totalPages.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-xl p-1 shadow-sm">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 hover:text-zinc-900 transition-all"><ChevronRight size={16} /></button>

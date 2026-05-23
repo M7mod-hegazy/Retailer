@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, BarChart3, Box, DollarSign, Pencil, Plus, Tag, Trash2, TrendingUp } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
@@ -23,7 +23,7 @@ function CatThumb({ url }) {
 }
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 // ─── main page ───────────────────────────────────────────────────────────────

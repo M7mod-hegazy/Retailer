@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import {
   Plus, Calendar, User, PackageCheck, Clock, CheckCircle2,
@@ -52,7 +52,7 @@ const ROW_ANIMATION = {
 };
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 export default function PurchaseOrdersPage() {
@@ -288,7 +288,7 @@ export default function PurchaseOrdersPage() {
                         
                         <div className="hidden xl:flex flex-col gap-1 border-r border-slate-100 pr-8">
                           <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">تاريخ الأمر</span>
-                          <span className="text-[14px] font-bold text-slate-700 font-mono tracking-tight">{new Date(row.created_at).toLocaleDateString("ar-EG")}</span>
+                          <span className="text-[14px] font-bold text-slate-700 font-mono tracking-tight">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
                         </div>
                       </div>
 
@@ -352,7 +352,7 @@ export default function PurchaseOrdersPage() {
               <div className="w-px bg-slate-200 hidden md:block" />
               <div className="flex-1">
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">تاريخ الإصدار</span>
-                <span className="text-[16px] font-black font-mono text-slate-900 tracking-tight">{new Date(detailOrder.created_at).toLocaleDateString("ar-EG")}</span>
+                <span className="text-[16px] font-black font-mono text-slate-900 tracking-tight">{new Date(detailOrder.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
               </div>
               <div className="w-px bg-slate-200 hidden md:block" />
               <div className="flex-1">

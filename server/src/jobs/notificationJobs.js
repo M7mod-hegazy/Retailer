@@ -1,4 +1,4 @@
-const cron = require("node-cron");
+﻿const cron = require("node-cron");
 const { getDb } = require("../config/database");
 const NotificationModel = require("../models/notification.model");
 
@@ -72,7 +72,7 @@ function scanOverdueDebts() {
     if (alreadyNotified) continue;
 
     const remaining = Math.max(0, Number(debt.original_amount) - Number(debt.paid_amount || 0));
-    const remainingFormatted = remaining.toLocaleString('ar-EG');
+    const remainingFormatted = remaining.toLocaleString('en-US');
     const partyName = debt.party_name || (debt.party_type === "supplier" ? `مورد #${debt.supplier_id}` : `عميل #${debt.customer_id}`);
     const dueDateFormatted = debt.due_date
       ? new Date(debt.due_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })

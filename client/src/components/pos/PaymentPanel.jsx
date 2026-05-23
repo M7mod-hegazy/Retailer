@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import api from "../../services/api";
 import { usePosStore } from "../../stores/posStore";
 import { queueOfflineInvoice } from "../../services/offlineSync";
@@ -256,7 +256,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
               >
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{held.customer?.name || "زبون نقدي"}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{held.lines.length} بنود • {new Date(held.heldAt).toLocaleTimeString("ar-EG")}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{held.lines.length} بنود • {new Date(held.heldAt).toLocaleTimeString("ar-EG-u-nu-latn")}</div>
                 </div>
                 <PlayCircle size={14} color="var(--primary)" />
               </button>

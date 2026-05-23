@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import { Receipt, X, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -9,7 +9,7 @@ const PAYMENT_LABELS = {
 };
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 function todayStr() {
@@ -224,7 +224,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                         </td>
                         <td className="px-4 py-3 text-[11px] font-bold text-slate-400 whitespace-nowrap font-mono">
                           {inv.created_at
-                            ? new Date(inv.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })
+                            ? new Date(inv.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
                             : "—"}
                         </td>
                       </tr>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+﻿import React, { useEffect, useRef, useState, useCallback } from "react";
 import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
@@ -372,7 +372,7 @@ export default function PrintPreviewModal({
                   <ChevronRight size={14} />
                 </button>
                 <span className="text-[11px] font-bold text-slate-700 tabular-nums min-w-[44px] text-center mx-1">
-                  {printPage.toLocaleString("ar-EG")} / {totalPrintPages.toLocaleString("ar-EG")}
+                  {printPage.toLocaleString("en-US")} / {totalPrintPages.toLocaleString("en-US")}
                 </span>
                 <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
                   className="p-1 rounded text-slate-500 hover:text-slate-900 disabled:opacity-25 transition-colors">
@@ -593,7 +593,7 @@ export default function PrintPreviewModal({
                     min={1}
                     max={totalPrintPages}
                   />
-                  <span className="text-[11px] font-bold text-slate-500">/ {totalPrintPages.toLocaleString("ar-EG")}</span>
+                  <span className="text-[11px] font-bold text-slate-500">/ {totalPrintPages.toLocaleString("en-US")}</span>
                 </div>
                 <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
                   className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30">

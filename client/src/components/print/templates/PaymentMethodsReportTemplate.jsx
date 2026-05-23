@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, totalIn = 0, totalOut = 0, settings = {} }) {
   const {
@@ -24,7 +24,7 @@ export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, 
           <div style={{ fontSize: 18, fontWeight: 900 }}>تقرير وسائل الدفع</div>
           {filters.from && <div style={{ color: "#64748b", fontSize: 11 }}>من: {filters.from}</div>}
           {filters.to && <div style={{ color: "#64748b", fontSize: 11 }}>إلى: {filters.to}</div>}
-          <div style={{ color: "#64748b", fontSize: 11 }}>تاريخ: {new Date().toLocaleDateString("ar-EG")}</div>
+          <div style={{ color: "#64748b", fontSize: 11 }}>تاريخ: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</div>
         </div>
       </div>
 
@@ -62,7 +62,7 @@ export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, 
               </td>
               <td style={{ padding: "8px 12px", color: "#64748b" }}>{row.party || row.description || "-"}</td>
               <td style={{ padding: "8px 12px" }}>{row.method_name || "-"}</td>
-              <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{row.created_at ? new Date(row.created_at).toLocaleDateString("ar-EG") : "-"}</td>
+              <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{row.created_at ? new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</td>
             </tr>
           ))}
         </tbody>

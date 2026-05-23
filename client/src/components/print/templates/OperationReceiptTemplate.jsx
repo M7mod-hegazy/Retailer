@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 export default function OperationReceiptTemplate({ title = "إيصال عملية", operation = {}, settings = {} }) {
   const {
@@ -26,7 +26,7 @@ export default function OperationReceiptTemplate({ title = "إيصال عملي�
         <div style={{ textAlign: "left" }}>
           <div style={{ fontSize: 20, fontWeight: 900 }}>{title}</div>
           <div style={{ color: "#64748b", fontSize: 11 }}>المرجع: {operation.reference || operation.doc_no || "-"}</div>
-          <div style={{ color: "#64748b", fontSize: 11 }}>التاريخ: {operation.created_at ? new Date(operation.created_at).toLocaleDateString("ar-EG") : new Date().toLocaleDateString("ar-EG")}</div>
+          <div style={{ color: "#64748b", fontSize: 11 }}>التاريخ: {operation.created_at ? new Date(operation.created_at).toLocaleDateString("ar-EG-u-nu-latn") : new Date().toLocaleDateString("ar-EG-u-nu-latn")}</div>
         </div>
       </div>
 

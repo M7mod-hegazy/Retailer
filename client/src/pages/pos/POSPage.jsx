@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -167,14 +167,14 @@ function GalleryModal({ open, onClose, images, idx, setIdx, zoom, setZoom }) {
 }
 
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString("ar-EG", {
+  return Number(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
 }
 
 function formatArabicDate(date) {
-  return new Intl.DateTimeFormat("ar-EG-u-nu-arab", {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -182,7 +182,7 @@ function formatArabicDate(date) {
 }
 
 function formatArabicDateTime(date) {
-  return new Intl.DateTimeFormat("ar-EG", {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -859,7 +859,7 @@ export default function POSPage() {
       const quantity = Number(l.quantity || 0);
       const lineDiscount = Number(l.line_discount || 0);
       const stockQty = Number(stockLevels[l.item_id]?.[l.warehouse_id] ?? l.stock_quantity ?? 0);
-      const costPrice = Number(item?.purchase_price || 0);
+      const costPrice = Number(item?.current_cost || item?.purchase_price || 0);
       const lineTotal = unitPrice * quantity;
 
       if (unitPrice <= 0) warnings.push({ type: "error", code: "zero_price", msg: "سعر صفر" });
@@ -1518,7 +1518,7 @@ export default function POSPage() {
               />
               {invoiceIsActive && invoiceCreatedAt && (
                 <input readOnly disabled
-                  value={new Intl.DateTimeFormat("ar-EG", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
+                  value={new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
                   className="w-[130px] rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-mono font-bold text-slate-400 cursor-default text-center select-none disabled:opacity-70"
                 />
               )}
@@ -1759,7 +1759,7 @@ export default function POSPage() {
                 <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
                   <div className="text-[10px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                   <div className="text-[32px] font-black tracking-tighter font-mono leading-none mt-1.5">
-                    {totals.total.toLocaleString("ar-EG", { minimumFractionDigits: 2 })}
+                    {totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </div>
                   <div className="text-[10px] opacity-40 mt-1">ج.م</div>
                 </div>
@@ -1801,7 +1801,7 @@ export default function POSPage() {
                     <div className="flex gap-1.5 mb-2">
                       <input disabled value={amendContext.prefill?.invoice_no || `#${amendContext.edit_invoice_id}`}
                         className="flex-1 h-7 rounded-sm border border-amber-200 bg-amber-100/60 px-2 text-[11px] font-mono font-black text-amber-700 cursor-not-allowed outline-none" />
-                      <input disabled value={amendContext.prefill?.created_at ? new Date(amendContext.prefill.created_at).toLocaleString("ar-EG") : ""}
+                      <input disabled value={amendContext.prefill?.created_at ? new Date(amendContext.prefill.created_at).toLocaleString("en-US") : ""}
                         className="flex-1 h-7 rounded-sm border border-amber-200 bg-amber-100/60 px-2 text-[11px] font-mono font-black text-amber-700 cursor-not-allowed outline-none" />
                     </div>
                     {amendContext.prefill?.customer_name && (
@@ -1812,7 +1812,7 @@ export default function POSPage() {
                       <span className="font-mono">{(() => {
                         const lines = amendContext.prefill?.lines || [];
                         const sub = lines.reduce((s, l) => s + (Number(l.unit_price||0) * Number(l.quantity||1) * (1 - Number(l.discount||0)/100)), 0);
-                        return (sub - (amendContext.prefill?.discount||0) + (amendContext.prefill?.increase||0)).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+                        return (sub - (amendContext.prefill?.discount||0) + (amendContext.prefill?.increase||0)).toLocaleString("en-US", { minimumFractionDigits: 2 });
                       })()} ج.م</span>
                     </div>
                     <div className="flex justify-between"><span className="text-amber-600">الأصناف</span><span>{(amendContext.prefill?.lines||[]).length} صنف</span></div>
@@ -2883,7 +2883,7 @@ export default function POSPage() {
                 const sub = lines.reduce((s, l) => s + (Number(l.unit_price || 0) * Number(l.quantity || 1) * (1 - Number(l.discount || 0) / 100)), 0);
                 const disc = amendContext.prefill?.discount || 0;
                 const inc = amendContext.prefill?.increase || 0;
-                return (sub - disc + inc).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+                return (sub - disc + inc).toLocaleString("en-US", { minimumFractionDigits: 2 });
               })()} ج.م</span>
               <span>{(amendContext.prefill?.lines || []).length} صنف</span>
               {amendContext.prefill?.payment_type && (
@@ -2922,7 +2922,7 @@ export default function POSPage() {
               />
               {invoiceIsActive && invoiceCreatedAt && (
                 <input readOnly disabled
-                  value={new Intl.DateTimeFormat("ar-EG", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
+                  value={new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
                   className="w-[120px] rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-mono font-bold text-slate-400 cursor-default text-center select-none disabled:opacity-70"
                 />
               )}

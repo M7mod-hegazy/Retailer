@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -39,7 +39,7 @@ function resolveImageUrl(u) {
 
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 export default function QuotationFormPage() {

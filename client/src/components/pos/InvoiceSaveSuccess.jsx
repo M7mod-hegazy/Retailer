@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 
 const COLORS = ['#10B981', '#34D399', '#059669', '#6EE7B7', '#F59E0B', '#3B82F6', '#A78BFA'];
 
@@ -14,7 +14,7 @@ function buildParticles(count = 28) {
 }
 
 function fmt(n) {
-  return Number(n).toLocaleString('ar-EG', { minimumFractionDigits: 2 });
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 });
 }
 
 function PaymentBadge({ p }) {

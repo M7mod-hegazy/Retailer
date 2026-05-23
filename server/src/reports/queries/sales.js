@@ -1,5 +1,5 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumn, addPaymentTypeFilter } = require("../helpers");
+const { addDateFilter, getCostColumn, getReturnCostColumn, addPaymentTypeFilter } = require("../helpers");
 const { getItemsBelowMargin } = require("../../services/waccService");
 
 function dailySales(startDate, endDate, opts = {}) {
@@ -28,7 +28,7 @@ function dailySales(startDate, endDate, opts = {}) {
       SELECT sr.invoice_id,
         SUM(sr.total) AS return_total,
         COUNT(DISTINCT sr.id) AS return_count,
-        COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price)), 0) AS return_cost
+        COALESCE(SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}), 0) AS return_cost
       FROM sales_returns sr
       JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
@@ -205,7 +205,7 @@ function salesByItem(startDate, endDate, opts = {}) {
     LEFT JOIN (
       SELECT srl.item_id,
         SUM(srl.line_total) AS return_revenue,
-        SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it2.purchase_price)) AS return_cost
+        SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
@@ -430,7 +430,7 @@ function grossNetSales(startDate, endDate, opts = {}) {
     LEFT JOIN (
       SELECT sr.invoice_id,
         SUM(sr.total) AS return_total,
-        COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price)), 0) AS return_cost
+        COALESCE(SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}), 0) AS return_cost
       FROM sales_returns sr
       JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
@@ -541,7 +541,7 @@ function marginByItem(startDate, endDate, opts = {}) {
     LEFT JOIN (
       SELECT srl.item_id,
         SUM(srl.line_total) AS return_revenue,
-        SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it2.purchase_price)) AS return_cost
+        SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id

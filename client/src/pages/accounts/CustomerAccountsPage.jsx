@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,7 +15,7 @@ import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const PAYMENT_METHOD_AR = {
   cash: "نقداً", card: "بطاقة", bank: "بنك", bank_transfer: "تحويل بنكي",
@@ -566,10 +566,10 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                 {ev.date ? (
                   <div className="flex flex-col items-center justify-center">
                     <span className="text-[9px] font-black text-slate-450 uppercase tracking-wide leading-none whitespace-nowrap">
-                      {new Date(ev.date).toLocaleDateString("ar-EG", { month: "short", year: "numeric" })}
+                      {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { month: "short", year: "numeric" })}
                     </span>
                     <span className="text-[20px] font-black text-slate-800 font-mono tracking-tighter leading-none mt-1">
-                      {new Date(ev.date).toLocaleDateString("ar-EG", { day: "2-digit" })}
+                      {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { day: "2-digit" })}
                     </span>
                   </div>
                 ) : (
@@ -1563,53 +1563,59 @@ function NotesTab({ notes, loading, onAdd }) {
   }
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-6 max-w-2xl select-none" dir="rtl">
       {/* Add note inline */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.02)] transition-shadow duration-200">
-        <div className="text-[10px] font-bold text-slate-450 mb-2 uppercase tracking-wider">إضافة ملاحظة أو تنبيه جديد لملف العميل</div>
-        <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
-          className="w-full rounded-xl border border-slate-200 p-3 text-[13px] font-semibold outline-none focus:border-amber-500 resize-none transition-all focus:shadow-sm"
-          placeholder="اكتب هنا أي ملاحظة هامة تتعلق بالتعامل المالي، المبيعات أو شروط التسوية..." />
-        <div className="flex justify-end mt-2">
-          <button onClick={submit} disabled={saving || !text.trim()}
-            className="h-9 px-5 rounded-xl bg-amber-650 hover:bg-amber-700 text-white text-[12px] font-bold disabled:opacity-40 transition-colors shadow-sm shadow-amber-100">
-            {saving ? "جاري الحفظ..." : "حفظ الملاحظة الآن"}
-          </button>
+      <div className="p-[3px] rounded-[24px] bg-slate-200/40 border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.025)] transition-shadow duration-300">
+        <div className="bg-white rounded-[21px] p-5 border border-slate-200/20 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
+          <div className="text-[10px] font-black text-slate-400 mb-2.5 uppercase tracking-wider">إضافة ملاحظة أو تنبيه جديد لملف العميل</div>
+          <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
+            className="w-full rounded-[14px] border border-slate-200 p-3 text-[13px] font-semibold outline-none focus:border-amber-500/60 focus:ring-4 focus:ring-amber-500/[0.05] resize-none transition-all"
+            placeholder="اكتب هنا أي ملاحظة هامة تتعلق بالتعامل المالي، المبيعات أو شروط التسوية..." />
+          <div className="flex justify-end mt-3">
+            <button onClick={submit} disabled={saving || !text.trim()}
+              className="h-9.5 px-6 rounded-xl bg-amber-650 hover:bg-amber-700 text-white text-[12px] font-black disabled:opacity-40 transition-all shadow-sm shadow-amber-100 hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
+              {saving ? "جاري الحفظ..." : "حفظ الملاحظة الآن"}
+            </button>
+          </div>
         </div>
       </div>
 
       {notes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-slate-350 gap-3 bg-white/40 border border-dashed border-slate-200 rounded-2xl p-6">
-          <div className="p-3.5 rounded-full bg-slate-100/50 border border-slate-200/50">
-            <MessageSquare className="h-6 w-6 text-slate-400" />
+        <div className="p-[3px] rounded-[24px] bg-slate-200/30 border border-slate-200/60">
+          <div className="flex flex-col items-center justify-center py-12 text-slate-350 gap-4 bg-white rounded-[21px] border border-slate-200/10 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
+            <div className="p-4 rounded-full bg-slate-50 border border-slate-200/60 shadow-sm">
+              <MessageSquare className="h-6 w-6 text-slate-400 stroke-[1.8px]" />
+            </div>
+            <span className="font-extrabold text-[12.5px] text-slate-455 tracking-tight">لا توجد ملاحظات أو تنبيهات مسجلة لهذا العميل حالياً</span>
           </div>
-          <span className="font-bold text-[12px] text-slate-400">لا توجد ملاحظات أو تنبيهات مسجلة لهذا العميل</span>
         </div>
       ) : (
-        <div className="relative pr-6 border-r-2 border-slate-200 space-y-4">
+        <div className="relative pr-8 border-r border-slate-200/80 space-y-5">
           {notes.map((n, index) => (
             <motion.div
               key={n.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: Math.min(0.4, index * 0.03) }}
-              className="relative rounded-2xl border border-slate-200 bg-white p-4.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.02)] transition-all duration-200"
+              className="relative p-[3px] rounded-[22px] bg-slate-200/25 border border-slate-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.025)] transition-shadow duration-200"
             >
-              {/* Timeline marker */}
-              <div className="absolute right-[-31px] top-6 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm animate-pulse" />
+              {/* Glowing timeline marker squircle node */}
+              <div className="absolute right-[-37px] top-6.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm ring-4 ring-amber-100" />
 
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5 text-amber-600" />
-                  <span>ملاحظة مسجلة</span>
-                </span>
-                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
-                  <span>بواسطة: {n.user_name || "النظام"}</span>
-                  <span>•</span>
-                  <span className="font-mono">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG") : "—"}</span>
+              <div className="bg-white rounded-[19px] p-4.5 border border-slate-200/15 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
+                <div className="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-100/60">
+                  <span className="text-[9.5px] font-black bg-amber-500/[0.08] text-amber-700 border border-amber-200/60 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5 text-amber-600 stroke-[2px]" />
+                    <span>ملاحظة مسجلة</span>
+                  </span>
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-extrabold">
+                    <span>بواسطة: {n.user_name || "النظام"}</span>
+                    <span className="opacity-60">•</span>
+                    <span className="font-mono">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
+                  </div>
                 </div>
+                <p className="text-[12.5px] font-semibold leading-relaxed text-slate-700 whitespace-pre-wrap">{n.note}</p>
               </div>
-              <p className="text-[12.5px] font-semibold leading-relaxed text-slate-700 whitespace-pre-wrap">{n.note}</p>
             </motion.div>
           ))}
         </div>

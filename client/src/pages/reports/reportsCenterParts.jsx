@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, CalendarDays, Search, X, Package, User, List, LayoutList, BarChart3, Filter } from "lucide-react";
 import { PREVIEW_COLUMNS, GHOST_ROWS, CAT_PREVIEW_COLUMNS, CAT_GHOST_ROWS, COL_TYPE_STYLE, FILTER_DIMENSIONS } from "./reportsCenterConfig";
@@ -340,7 +340,7 @@ function fmtSampleDate(iso) {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("ar-EG");
+  return d.toLocaleDateString("ar-EG-u-nu-latn");
 }
 
 function sampleValueForColumn(col, rowIndex, dateRange) {
@@ -965,7 +965,7 @@ export function FilterPanelTop({
                     <select value={costMethod || "wacc"} onChange={(e) => onCostChange?.(e.target.value)}
                       className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
                     >
-                      {[{ value: "wacc", label: "متوسط التكلفة" }, { value: "last_purchase", label: "آخر سعر شراء" }, { value: "fifo", label: "FIFO" }, { value: "purchase_price", label: "سعر الشراء" }].map((m) => (
+                      {[{ value: "wacc", label: "متوسط التكلفة (WACC)" }, { value: "last_purchase", label: "آخر سعر شراء" }].map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>
                       ))}
                     </select>

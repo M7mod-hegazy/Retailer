@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Search,
@@ -460,12 +460,12 @@ export default function PurchaseOrderFormPage() {
                   },
                   {
                     id: "unit_cost", header: "سعر الوحدة", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-[13px] text-slate-500 border-l border-slate-100",
-                    render: (l) => Number(l.unit_cost).toLocaleString("ar-EG", { minimumFractionDigits: 2 })
+                    render: (l) => Number(l.unit_cost).toLocaleString("en-US", { minimumFractionDigits: 2 })
                   },
                   {
                     id: "total", header: "إجمالي المتوقع", width: 140, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-[14px] text-slate-900 bg-slate-50/50 border-l-0",
                     sortValue: (l) => l.total,
-                    render: (l) => Number(l.total).toLocaleString("ar-EG", { minimumFractionDigits: 2 })
+                    render: (l) => Number(l.total).toLocaleString("en-US", { minimumFractionDigits: 2 })
                   },
                   {
                     id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center border-l-0",
@@ -490,7 +490,7 @@ export default function PurchaseOrderFormPage() {
                  </div>
                  <div className="flex items-center gap-3">
                     <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">القيمة الإجمالية المتوقعة</span>
-                    <span className="text-[20px] font-black text-slate-900 font-mono">{totals.total.toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</span>
+                    <span className="text-[20px] font-black text-slate-900 font-mono">{totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                     <span className="text-[10px] font-bold text-slate-400">ج.م</span>
                  </div>
               </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo } from "react";
 import {
   ArrowLeft, Lock, Pencil, Trash2, AlertTriangle, CheckCircle2,
   User, Calendar, CreditCard, Banknote, Wallet, Clock, X,
@@ -79,7 +79,7 @@ const STATUS_MAP = {
 };
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 export default function InvoiceDetailPage() {
@@ -276,13 +276,13 @@ export default function InvoiceDetailPage() {
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
               <span className="text-[13px] font-black text-slate-800">
-                {invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-EG") : "—"}
+                {invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}
               </span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">الوقت</span>
               <span className="text-[13px] font-black text-slate-800 font-mono">
-                {invoice.created_at ? new Date(invoice.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                {invoice.created_at ? new Date(invoice.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" }) : "—"}
               </span>
             </div>
             <div className="flex flex-col gap-1">
@@ -397,7 +397,7 @@ export default function InvoiceDetailPage() {
               <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">سبب الإلغاء</p>
               <p className="text-[12px] font-bold text-rose-700">{invoice.cancel_reason}</p>
               {invoice.cancelled_at && (
-                <p className="text-[10px] text-rose-400 mt-1">{new Date(invoice.cancelled_at).toLocaleString("ar-EG")}</p>
+                <p className="text-[10px] text-rose-400 mt-1">{new Date(invoice.cancelled_at).toLocaleString("en-US")}</p>
               )}
             </div>
           )}

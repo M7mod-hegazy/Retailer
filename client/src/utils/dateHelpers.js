@@ -1,4 +1,4 @@
-export function formatDate(dateStr, format = "YYYY/MM/DD") {
+﻿export function formatDate(dateStr, format = "YYYY/MM/DD") {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   const y = d.getFullYear();
@@ -17,7 +17,7 @@ export function formatDate(dateStr, format = "YYYY/MM/DD") {
 
 export function formatDateArabic(dateStr) {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "long", day: "numeric" });
 }
 
 export function today() {

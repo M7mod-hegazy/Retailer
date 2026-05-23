@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import {
   FileText, Plus, Printer, Calendar, User, Search, X, Copy, Send,
@@ -15,10 +15,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePageTour } from "../../hooks/usePageTour";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 function formatDate(d) {
-  return new Date(d).toLocaleDateString("ar-EG");
+  return new Date(d).toLocaleDateString("ar-EG-u-nu-latn");
 }
 
 const STATUS_MAP = {

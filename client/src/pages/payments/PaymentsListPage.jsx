@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { 
   ArrowRightLeft, 
@@ -22,7 +22,7 @@ import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 function StatCard({ label, value, icon: Icon, colorClass = "text-slate-600", bgClass = "bg-slate-50" }) {
@@ -223,7 +223,7 @@ export default function PaymentsListPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-slate-500">
                         <Calendar className="h-3.5 w-3.5 opacity-50" />
-                        <span className="text-[12px] font-medium">{new Date(row.created_at).toLocaleDateString("ar-EG")}</span>
+                        <span className="text-[12px] font-medium">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-left">

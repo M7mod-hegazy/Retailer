@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, Printer, RotateCcw,
   User, Calendar, X, Package,
@@ -10,7 +10,7 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 function CancelReasonModal({ onConfirm, onClose }) {
@@ -203,7 +203,7 @@ export default function SalesReturnDetailPage() {
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
-              <span className="text-[13px] font-black text-slate-800">{new Date(doc.created_at).toLocaleDateString("ar-EG")}</span>
+              <span className="text-[13px] font-black text-slate-800">{new Date(doc.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">طريقة الاسترداد</span>
@@ -271,7 +271,7 @@ export default function SalesReturnDetailPage() {
                   {i === 0 && timeline.length > 1 && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">الأصلي</span>}
                   {i === timeline.length - 1 && timeline.length > 1 && i !== 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">الأحدث</span>}
                 </div>
-                <div className="text-[10px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG")}</div>
+                <div className="text-[10px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
                 <div className="text-[10px] font-bold text-slate-500">{fmt(t.total)} ج.م</div>
                 <span className={`inline-flex mt-1 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-black ${STATUS_MAP[t.status]?.cls || STATUS_MAP.active.cls}`}>
                   {STATUS_MAP[t.status]?.label || "نشط"}

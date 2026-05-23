@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import api from "../../services/api";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 export default function MultiPaymentInput({
   totalAmount = 0,

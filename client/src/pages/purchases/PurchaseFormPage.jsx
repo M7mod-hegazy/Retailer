@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus, ShoppingCart, Trash2, User, Package, Calendar, FileText,
   Warehouse, ChevronDown, ArrowLeft, X, CreditCard, Wallet, Banknote,
@@ -42,7 +42,7 @@ function formatMoney(value) {
 }
 
 function formatArabicDateTime(date) {
-  return new Intl.DateTimeFormat("ar-EG", {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit",
   }).format(date);
@@ -698,7 +698,7 @@ export default function PurchaseFormPage() {
             <div className="flex gap-1.5">
               <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"} placeholder="رقم المستند"
                 className="h-6 w-24 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none" />
-              <input disabled value={invoiceIsActive && invoiceCreatedAt ? new Date(invoiceCreatedAt).toLocaleString("ar-EG") : "—"}
+              <input disabled value={invoiceIsActive && invoiceCreatedAt ? new Date(invoiceCreatedAt).toLocaleString("en-US") : "—"}
                 className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none" />
             </div>
           )}
@@ -1135,7 +1135,7 @@ export default function PurchaseFormPage() {
               <div className="mt-3 rounded-sm bg-emerald-800 p-4 text-center text-white">
                 <div className="text-[10px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                 <div className="text-[26px] font-black tracking-tighter font-mono">
-                  {totals.total.toLocaleString("ar-EG", { minimumFractionDigits: 2 })}
+                  {totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </div>
                 <div className="text-[10px] opacity-40">ج.م</div>
               </div>
@@ -1211,7 +1211,7 @@ export default function PurchaseFormPage() {
               <div className="mt-3 flex flex-col gap-2">
                 <div className="rounded-sm bg-slate-950 px-3 py-2 text-center">
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">المطلوب توزيعه</p>
-                  <p className="font-mono text-[16px] font-black text-white">{totals.total.toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</p>
+                  <p className="font-mono text-[16px] font-black text-white">{totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                 </div>
                 {paymentMethods.map(m => {
                   const amount = multiAmounts[m.id] || "";
@@ -1234,7 +1234,7 @@ export default function PurchaseFormPage() {
                 )}
                 <div className={`flex items-center justify-between rounded-sm px-3 py-2 text-[12px] font-black ${multiBalanced ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-600 border border-rose-200"}`}>
                   <span>الموزع:</span>
-                  <span className="font-mono">{multiTotal.toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</span>
+                  <span className="font-mono">{multiTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                 </div>
                 {!multiBalanced && totals.total > 0 && (
                   <div className="text-[10px] font-bold text-rose-500 flex items-center gap-1">
@@ -1294,7 +1294,7 @@ export default function PurchaseFormPage() {
               <p className="text-[12px] font-bold text-slate-500 leading-relaxed">
                 {isEditMode
                   ? "سيتم تحديث المخزون والأرصدة المالية بالفرق فقط."
-                  : `${lines.length} صنف — إجمالي ${totals.total.toLocaleString("ar-EG", { minimumFractionDigits: 2 })} ج.م`}
+                  : `${lines.length} صنف — إجمالي ${totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })} ج.م`}
               </p>
             </div>
           </div>

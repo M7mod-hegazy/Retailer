@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo } from "react";
 import { Search, X, RefreshCw, Package, Loader2, Filter, ChevronDown } from "lucide-react";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function FilterSelect({ value, onChange, children, icon: Icon }) {

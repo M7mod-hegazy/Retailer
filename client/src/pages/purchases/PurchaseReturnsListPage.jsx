@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, RotateCcw, X, Eye, Pencil, Search, Trash2, AlertTriangle, ArrowUpRight, FileText } from "lucide-react";
 import api from "../../services/api";
@@ -28,7 +28,7 @@ const FADE_UP = {
 };
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 function MagneticButton({ children, onClick, className, disabled }) {
@@ -163,7 +163,7 @@ function ReturnRow({ row, navigate, onDeleteRequest }) {
               <span>{row.supplier_name || "—"}</span>
             )}
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
-            <span dir="ltr">{new Date(row.created_at).toLocaleDateString("ar-EG")}</span>
+            <span dir="ltr">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
           </div>
         </div>
       </div>

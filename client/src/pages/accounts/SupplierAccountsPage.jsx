@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,7 +15,7 @@ import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 
 function Modal({ onClose, children, width = "480px" }) {
@@ -514,10 +514,10 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
                 {ev.date ? (
                   <div className="flex flex-col items-center justify-center">
                     <span className="text-[9px] font-black text-slate-450 uppercase tracking-wide leading-none whitespace-nowrap">
-                      {new Date(ev.date).toLocaleDateString("ar-EG", { month: "short", year: "numeric" })}
+                      {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { month: "short", year: "numeric" })}
                     </span>
                     <span className="text-[20px] font-black text-slate-800 font-mono tracking-tighter leading-none mt-1">
-                      {new Date(ev.date).toLocaleDateString("ar-EG", { day: "2-digit" })}
+                      {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { day: "2-digit" })}
                     </span>
                   </div>
                 ) : (
@@ -1298,7 +1298,7 @@ function NotesTab({ notes, loading, onAdd }) {
             <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">📝 ملاحظة</span>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-slate-400 font-bold">{n.user_name || "النظام"}</span>
-              <span className="text-[10px] text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG") : "—"}</span>
+              <span className="text-[10px] text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
             </div>
           </div>
           <p className="text-[13px] font-bold leading-relaxed text-slate-800">{n.note}</p>

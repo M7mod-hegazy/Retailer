@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Bell, Check, Trash2, CheckSquare, Filter, X, Info, AlertTriangle, AlertCircle } from "lucide-react";
@@ -115,7 +115,7 @@ function NotifRow({ note, onMarkRead, onDelete, index }) {
             )}
           </div>
           <span className="text-[11px] text-[oklch(0.55_0.04_278)] shrink-0 mt-0.5 font-mono" dir="ltr">
-            {new Date(note.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+            {new Date(note.created_at).toLocaleString("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" })}
           </span>
         </div>
 

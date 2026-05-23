@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 export default function AjalStatementTemplate({ debt, settings = {} }) {
   const {
@@ -26,7 +26,7 @@ export default function AjalStatementTemplate({ debt, settings = {} }) {
         <div style={{ textAlign: "left" }}>
           <div style={{ fontSize: 20, fontWeight: 900 }}>كشف دين آجل</div>
           <div style={{ color: "#64748b", fontSize: 11 }}>فاتورة: {debt?.invoice_no}</div>
-          <div style={{ color: "#64748b", fontSize: 11 }}>تاريخ: {new Date().toLocaleDateString("ar-EG")}</div>
+          <div style={{ color: "#64748b", fontSize: 11 }}>تاريخ: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</div>
         </div>
       </div>
 
@@ -34,7 +34,7 @@ export default function AjalStatementTemplate({ debt, settings = {} }) {
         <div><span style={{ color: "#64748b", fontSize: 10 }}>العميل: </span><strong>{debt?.customer_name}</strong></div>
         <div><span style={{ color: "#64748b", fontSize: 10 }}>الهاتف: </span><strong>{debt?.customer_phone || debt?.phone || "-"}</strong></div>
         <div><span style={{ color: "#64748b", fontSize: 10 }}>إجمالي الدين: </span><strong style={{ color: "#dc2626" }}>{fmt(debt?.original_amount)} ج.م</strong></div>
-        <div><span style={{ color: "#64748b", fontSize: 10 }}>تاريخ الاستحقاق: </span><strong>{debt?.due_date ? new Date(debt.due_date).toLocaleDateString("ar-EG") : "-"}</strong></div>
+        <div><span style={{ color: "#64748b", fontSize: 10 }}>تاريخ الاستحقاق: </span><strong>{debt?.due_date ? new Date(debt.due_date).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</strong></div>
         <div><span style={{ color: "#64748b", fontSize: 10 }}>المدفوع: </span><strong style={{ color: "#16a34a" }}>{fmt(debt?.paid_amount)} ج.م</strong></div>
         <div><span style={{ color: "#64748b", fontSize: 10 }}>المتبقي: </span><strong style={{ color: accent_color, fontSize: 14 }}>{fmt(debt?.remaining)} ج.م</strong></div>
       </div>
@@ -53,7 +53,7 @@ export default function AjalStatementTemplate({ debt, settings = {} }) {
             <tbody>
               {payments.map((payment, i) => (
                 <tr key={payment.id || i} style={{ background: i % 2 === 0 ? "#f8fafc" : "white", borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "8px 12px" }}>{payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("ar-EG") : "-"}</td>
+                  <td style={{ padding: "8px 12px" }}>{payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</td>
                   <td style={{ padding: "8px 12px" }}>{payment.method_name || "-"}</td>
                   <td style={{ padding: "8px 12px", fontWeight: 900, color: "#16a34a" }}>{fmt(payment.amount)} ج.م</td>
                 </tr>

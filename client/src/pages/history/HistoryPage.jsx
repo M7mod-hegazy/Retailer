@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useSpring, useMotionValue } from "framer-motion";
@@ -170,10 +170,10 @@ function SummaryCard({ data, resource }) {
   if (!entries.length) return null;
 
   const fmt = (key, val) => {
-    if (["total", "subtotal", "discount", "debt_remaining"].includes(key)) return `${Number(val).toLocaleString("ar-EG")} ج`;
+    if (["total", "subtotal", "discount", "debt_remaining"].includes(key)) return `${Number(val).toLocaleString("en-US")} ج`;
     if (key === "status") return STATUS_LABELS[val] || val;
     if (key === "payment_type" || key === "payment_method") return PAYMENT_LABELS[val] || val;
-    if (key === "created_at") return new Date(val).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
+    if (key === "created_at") return new Date(val).toLocaleString("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" });
     return String(val);
   };
 
@@ -408,7 +408,7 @@ function LogRow({ log, index, highlighted, autoExpand }) {
             )}
             {hasDetails && payloadEntries.slice(0, 3).map(([key, val]) => {
               const isMonetary = ["total", "amount", "subtotal", "price", "cost"].some(k => key.toLowerCase().includes(k));
-              const displayVal = isMonetary ? Number(val).toLocaleString("ar-EG") : (typeof val === "object" ? JSON.stringify(val) : String(val ?? "—"));
+              const displayVal = isMonetary ? Number(val).toLocaleString("en-US") : (typeof val === "object" ? JSON.stringify(val) : String(val ?? "—"));
               return (
                 <span key={key} className="text-[10px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded flex items-center gap-1">
                   <span className="text-zinc-400">{key}:</span>
@@ -438,7 +438,7 @@ function LogRow({ log, index, highlighted, autoExpand }) {
           </div>
           <time dir="ltr" className="text-[10px] font-mono font-bold text-zinc-400" title={log.created_at}>
             {log.created_at
-              ? new Intl.DateTimeFormat("ar-EG", {
+              ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
                   year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
                 }).format(new Date(log.created_at))
               : "—"}

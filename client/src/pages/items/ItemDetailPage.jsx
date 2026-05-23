@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Package, ArrowRight } from "lucide-react";
 import api from "../../services/api";
@@ -92,7 +92,7 @@ export default function ItemDetailPage() {
           rowKey="id"
           className="border-0"
           columns={[
-            { id: "created_at", header: "التاريخ", width: 150, sortable: true, render: r => new Date(r.created_at).toLocaleString("ar-EG") },
+            { id: "created_at", header: "التاريخ", width: 150, sortable: true, render: r => new Date(r.created_at).toLocaleString("en-US") },
             { id: "type", header: "النوع", width: 150, sortable: true },
             { id: "quantity", header: "الكمية", width: 100, sortable: true, cellClass: "font-mono font-black text-slate-700" },
             { id: "warehouse_name", header: "المخزن", width: 200, sortable: true },

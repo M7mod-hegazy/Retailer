@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, ShoppingBag, MapPin } from "lucide-react";
 import { usePosStore } from "../../stores/posStore";
 import api from "../../services/api";
@@ -133,7 +133,7 @@ export default function InvoiceLines() {
             <div style={{ flex: '0 0 auto', textAlign: 'end', minWidth: '70px', alignSelf: 'flex-end', paddingBottom: '4px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>الإجمالي</div>
               <div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'Inter, monospace', color: 'var(--primary)' }}>
-                {(line.quantity * line.unit_price).toLocaleString('ar-EG', { minimumFractionDigits: 2 })}
+                {(line.quantity * line.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
 

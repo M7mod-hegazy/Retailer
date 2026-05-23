@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
@@ -95,7 +95,7 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
       return created;
     })();
 
-    const expenseAuditId = req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd(), `/expenses`);
+    const expenseAuditId = req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('en-US')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd(), `/expenses`);
   try {
     const expenseAmount = Number(payload.amount || 0);
     if (expenseAmount > 500) {
@@ -120,7 +120,7 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
     const payload = req.body || {};
     db.prepare(`UPDATE expenses SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now') WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
-    req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('ar-EG')}` : ''}`, `/expenses`);
+    req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`, `/expenses`);
     res.json({ success: true, data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
+﻿import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
 
 function safeText(value) {
   if (value == null) return "";
@@ -9,7 +9,7 @@ function formatDateEG(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return safeText(iso);
-  return d.toLocaleDateString("ar-EG");
+  return d.toLocaleDateString("ar-EG-u-nu-latn");
 }
 
 function isNumericLike(value) {
@@ -327,10 +327,10 @@ export default function ReportPrintTemplate({
             </div>
           ) : null}
           <div style={{ marginTop: "2px" }}>
-            طباعة: {new Date().toLocaleDateString("ar-EG")}
+            طباعة: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}
           </div>
           <div style={{ marginTop: "2px" }}>
-            صفحة {currentPage.toLocaleString("ar-EG")} من {totalPrintPages.toLocaleString("ar-EG")}
+            صفحة {currentPage.toLocaleString("en-US")} من {totalPrintPages.toLocaleString("en-US")}
           </div>
         </div>
       </div>
@@ -434,7 +434,7 @@ export default function ReportPrintTemplate({
                         : column.type === "date" || key === "date" || key.endsWith("_date")
                           ? formatDateEG(value)
                           : numeric
-                            ? `${column.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${column.type === "percent" ? "%" : ""}`
+                            ? `${column.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${column.type === "percent" ? "%" : ""}`
                             : safeText(value);
 
                     const isTextWrap = column.type === "text" || column.type === "name" ||
@@ -495,7 +495,7 @@ export default function ReportPrintTemplate({
                     }}
                   >
                     {hasVal
-                      ? Number(val).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                      ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                       : ""}
                   </div>
                 );
@@ -549,9 +549,9 @@ export default function ReportPrintTemplate({
           fontWeight: 700,
         }}
       >
-        <span>تم التصدير: {new Date().toLocaleDateString("ar-EG")}</span>
+        <span>تم التصدير: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</span>
         {footerText ? <span>{safeText(footerText)}</span> : null}
-        <span>صفحة {currentPage.toLocaleString("ar-EG")} من {totalPrintPages.toLocaleString("ar-EG")}</span>
+        <span>صفحة {currentPage.toLocaleString("en-US")} من {totalPrintPages.toLocaleString("en-US")}</span>
       </div>
 
       <style>{`

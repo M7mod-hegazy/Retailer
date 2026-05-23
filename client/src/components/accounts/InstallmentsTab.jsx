@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Calendar, CheckCircle2, ChevronRight, Edit3, Printer, RefreshCw, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -6,7 +6,7 @@ import PrintPreviewModal from "../print/PrintPreviewModal";
 import AjalStatementTemplate from "../print/templates/AjalStatementTemplate";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG") : "-");
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "-");
 
 export default function InstallmentsTab({ party, partyType = "customer", accent = "amber", onChanged }) {
   const [schedules, setSchedules] = useState([]);

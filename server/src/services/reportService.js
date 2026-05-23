@@ -30,23 +30,22 @@ function getSalesSummary(startDate, endDate) {
 
 function getInventoryValuation() {
   const db = getDb();
-  const query = `
-    SELECT 
-      COALESCE(i.code, 'ITEM-' || i.id) as item_code,
+  // Use WACC as cost basis — consistent with stockValuation report
+  return db.prepare(`
+    SELECT
+      COALESCE(i.code, 'ITEM-' || i.id) AS item_code,
       i.name,
-      c.name as category_name,
-      COALESCE(SUM(sl.quantity), 0) as total_quantity,
-      i.purchase_price as cost_price,
-      (COALESCE(SUM(sl.quantity), 0) * i.purchase_price) as total_value
+      c.name AS category_name,
+      COALESCE(SUM(sl.quantity), 0) AS total_quantity,
+      COALESCE(sl.wacc, sl.last_purchase_cost, i.purchase_price, 0) AS cost_price,
+      COALESCE(SUM(sl.quantity), 0) * COALESCE(sl.wacc, sl.last_purchase_cost, i.purchase_price, 0) AS total_value
     FROM items i
     LEFT JOIN stock_levels sl ON i.id = sl.item_id
     LEFT JOIN item_categories c ON c.id = i.category_id
-    WHERE COALESCE(i.is_active, 1) = 1
+    WHERE COALESCE(i.is_active, 1) = 1 AND i.deleted_at IS NULL
     GROUP BY i.id
     ORDER BY total_value DESC
-  `;
-
-  return db.prepare(query).all();
+  `).all();
 }
 
 function getCashierPerformance(startDate, endDate) {
@@ -122,7 +121,6 @@ function getPaymentsReport(startDate, endDate) {
 const COST_METHOD_LABELS = {
   wacc: "المتوسط المرجح للتكلفة (WACC)",
   last_purchase: "آخر سعر شراء",
-  purchase_price: "سعر الشراء الحالي",
 };
 
 function getProfitLoss(startDate, endDate, opts = {}) {
@@ -131,9 +129,7 @@ function getProfitLoss(startDate, endDate, opts = {}) {
   // cost column from invoice_lines snapshot; fallback to items.purchase_price if needed
   const costCol = costMethod === "last_purchase"
     ? "COALESCE(il.cost_last_purchase, it.purchase_price, 0)"
-    : costMethod === "purchase_price"
-      ? "COALESCE(it.purchase_price, 0)"
-      : "COALESCE(il.cost_wacc, it.purchase_price, 0)";
+    : "COALESCE(il.cost_wacc, it.purchase_price, 0)";
 
   const dateParams = [];
   let dateWhere = "";
@@ -163,10 +159,15 @@ function getProfitLoss(startDate, endDate, opts = {}) {
     WHERE i.status != 'cancelled' ${dateWhere}
   `).get(...dateParams);
 
-  // Returns: deduct return revenue and reverse return cost
+  // Returns: deduct return revenue and reverse return cost using same cost method
+  const returnCostCol = costMethod === "last_purchase"
+    ? "COALESCE(ref_il.cost_last_purchase, srl.cost_last_purchase, it.purchase_price, 0)"
+    : costMethod === "purchase_price"
+      ? "COALESCE(it.purchase_price, 0)"
+      : "COALESCE(ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
   const returnsRow = db.prepare(`
     SELECT COALESCE(SUM(sr.total), 0) AS return_revenue,
-           COALESCE(SUM(srl.quantity * COALESCE(ref_il.cost_wacc, it.purchase_price, 0)), 0) AS return_cost
+           COALESCE(SUM(srl.quantity * ${returnCostCol}), 0) AS return_cost
     FROM sales_returns sr
     JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
     LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 /**
  * 80mm Thermal Receipt Print Component
@@ -86,7 +86,7 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
         </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>التاريخ:</span>
-          <span>{new Date(invoice.created_at).toLocaleString("ar")}</span>
+          <span>{new Date(invoice.created_at).toLocaleString("ar-u-nu-latn")}</span>
         </div>
         {invoice.customer_name && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>

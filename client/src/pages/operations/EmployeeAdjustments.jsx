@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { CircleDollarSign } from "lucide-react";
 import toast from "react-hot-toast";
@@ -164,7 +164,7 @@ export default function EmployeeAdjustments() {
             className="border-0"
             columns={[
               { id: "id", header: "#", width: 80, sortable: true, cellClass: "font-mono font-bold text-slate-500" },
-              { id: "created_at", header: "التاريخ", width: 150, sortable: true, render: r => new Date(r.created_at).toLocaleString("ar-EG") },
+              { id: "created_at", header: "التاريخ", width: 150, sortable: true, render: r => new Date(r.created_at).toLocaleString("en-US") },
               { id: "adjustment_type", header: "النوع", width: 100, sortable: true, render: r => r.adjustment_type === 'incentive' ? <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-sm text-[11px]">حافز +</span> : <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-sm text-[11px]">جزاء -</span> },
               { id: "amount", header: "القيمة", width: 120, sortable: true, cellClass: "font-mono font-black" },
               { id: "reason", header: "السبب", width: 250, sortable: true }

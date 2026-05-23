@@ -120,22 +120,29 @@ function createInvoice(payload) {
       const warehouseId = Number(line.warehouse_id || payload.warehouse_id || 1);
       const item = db.prepare("SELECT id, name, name_en, barcode, purchase_price FROM items WHERE id = ?").get(itemId);
       const stockRow = db
-        .prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?")
+        .prepare("SELECT quantity, wacc, last_purchase_cost FROM stock_levels WHERE item_id = ? AND warehouse_id = ?")
         .get(itemId, warehouseId);
       const currentStock = Number(stockRow?.quantity || 0);
-      const purchasePrice = Number(item?.purchase_price || 0);
+      // Use WACC as true cost basis; fall back to last_purchase_cost then items.purchase_price
+      const trueCost = Number(stockRow?.wacc || stockRow?.last_purchase_cost || item?.purchase_price || 0);
       const snapshotCosts = getSnapshotCosts(itemId, db);
 
       if (!item) lineErrors.push(`الصنف غير موجود (سطر ${index + 1})`);
       if (!Number.isFinite(quantity) || quantity <= 0) lineErrors.push(`الكمية غير صالحة في السطر ${index + 1}`);
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) lineErrors.push(`السعر يجب أن يكون أكبر من صفر في السطر ${index + 1}`);
       if (quantity > currentStock) lineErrors.push(`المخزون غير كافٍ للصنف ${item?.name || itemId} (المتاح ${currentStock})`);
-      if (unitPrice < purchasePrice && !payload.allow_loss_sale) {
-        const error = new Error(`سعر البيع أقل من سعر الشراء للصنف ${item?.name || itemId}`);
-        error.status = 409;
-        error.code = "PRICE_BELOW_COST";
-        error.data = { item_id: itemId, item_name: item?.name || null, purchase_price: purchasePrice, sale_price: unitPrice };
-        throw error;
+      // Soft warning: flag below-cost sales instead of hard blocking
+      const isBelowCost = trueCost > 0 && unitPrice < trueCost;
+      if (isBelowCost && !payload.allow_loss_sale) {
+        // Log the below-cost attempt to audit_logs for daily review
+        try {
+          db.prepare(
+            "INSERT INTO audit_logs (user_id, resource, resource_id, action, details) VALUES (?, ?, ?, ?, ?)"
+          ).run(
+            payload.user_id || null, "invoice_line", itemId, "below_cost_sale",
+            JSON.stringify({ item_name: item?.name, unit_price: unitPrice, wacc: trueCost, deficit: trueCost - unitPrice })
+          );
+        } catch (_) {}
       }
 
       const rowSubtotal = quantity * unitPrice;
@@ -153,6 +160,7 @@ function createInvoice(payload) {
         barcode:            item?.barcode   || null,
         cost_wacc:          snapshotCosts.cost_wacc,
         cost_last_purchase: snapshotCosts.cost_last_purchase,
+        is_below_cost:      isBelowCost,
       };
     });
 

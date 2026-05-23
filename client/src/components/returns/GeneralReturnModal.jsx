@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { X, Search, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -13,7 +13,7 @@ const REASONS = [
 ];
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 export default function GeneralReturnModal({ open, onClose, onSuccess }) {

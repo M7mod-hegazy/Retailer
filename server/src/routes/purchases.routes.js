@@ -3,7 +3,7 @@ const { getDb } = require("../config/database");
 const { adjustStock } = require("../services/stockService");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
-const { recalculateWACC } = require("../services/waccService");
+const { recalculateWACC, recomputeWACCForItem } = require("../services/waccService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
@@ -523,6 +523,10 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
         db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(prCreditAmt, purchase.supplier_id);
       }
 
+      // Recompute WACC after return reduces stock
+      const returnItemIds = [...new Set(preparedLines.map(l => l.item_id))];
+      for (const itemId of returnItemIds) recomputeWACCForItem(itemId, db);
+
       return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(prId);
     })();
 
@@ -602,7 +606,14 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       db.prepare("UPDATE purchases SET total = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?")
         .run(newTotal, payload.supplier_id || purchase.supplier_id, userId, purchase.id);
 
-      // 5. Update selling prices if changed
+      // 5. Recompute WACC from surviving history for all affected items (old + new)
+      const editItemIds = [...new Set([
+        ...(purchase.lines || []).map(l => l.item_id),
+        ...newLines.map(l => Number(l.item_id)),
+      ])];
+      for (const itemId of editItemIds) recomputeWACCForItem(itemId, db);
+
+      // 6. Update selling prices if changed
       for (const line of newLines) {
         const newSalePrice = Number(line.selling_price);
         if (!newSalePrice || newSalePrice <= 0) continue;
@@ -691,6 +702,10 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
 
   db.prepare("UPDATE purchases SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
     .run(now, userId || null, reason || null, purchase.id);
+
+  // Recompute WACC from surviving purchase history for all affected items
+  const cancelledItemIds = [...new Set((purchase.lines || []).map(l => l.item_id))];
+  for (const itemId of cancelledItemIds) recomputeWACCForItem(itemId, db);
 
   try {
     db.prepare("INSERT INTO audit_logs (user_id, resource, resource_id, action, details) VALUES (?, ?, ?, ?, ?)").run(
@@ -790,7 +805,33 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
         }
       }
 
-      // 5. Link original → new
+      // 5. Update selling prices from amended lines
+      const amendOpId = `PUR-${newPurchaseId}`;
+      const amendReason = `تحديث من تعديل فاتورة شراء #${newPurchaseId}`;
+      const priceHistoryCols = db.prepare("PRAGMA table_info(price_history)").all().map(c => c.name);
+      const amendHasChangedBy = priceHistoryCols.includes("changed_by");
+      for (const line of newLines) {
+        const newSalePrice = Number(line.selling_price);
+        if (!newSalePrice || newSalePrice <= 0) continue;
+        const current = db.prepare("SELECT sale_price FROM items WHERE id = ?").get(line.item_id);
+        if (!current) continue;
+        const oldPrice = Number(current.sale_price || 0);
+        if (Math.abs(newSalePrice - oldPrice) < 0.001) continue;
+        db.prepare("UPDATE items SET sale_price = ?, updated_at = datetime('now') WHERE id = ?").run(newSalePrice, line.item_id);
+        if (amendHasChangedBy) {
+          db.prepare(
+            `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).run(line.item_id, "sale_price", oldPrice, newSalePrice, "absolute", newSalePrice, amendReason, amendOpId, "purchase_amend");
+        } else {
+          db.prepare(
+            `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).run(line.item_id, "sale_price", oldPrice, newSalePrice, "absolute", newSalePrice, amendReason, amendOpId);
+        }
+      }
+
+      // 6. Link original → new
       db.prepare("UPDATE purchases SET amended_by = ? WHERE id = ?").run(newPurchaseId, original.id);
 
       try {
@@ -862,6 +903,10 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       }
 
       db.prepare("UPDATE purchases SET status = 'voided' WHERE id = ?").run(purchase.id);
+
+      // Recompute WACC from surviving history for all affected items
+      const voidedItemIds = [...new Set((purchase.lines || []).map(l => l.item_id))];
+      for (const itemId of voidedItemIds) recomputeWACCForItem(itemId, db);
     })();
     req.audit("void", "purchase", { id: Number(req.params.id) }, `📦 تم إلغاء (فويد) مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     res.json({ success: true });

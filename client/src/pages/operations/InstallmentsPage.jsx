@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import {
   Plus, Calendar, User, AlertCircle, CheckCircle2,
@@ -10,11 +10,11 @@ import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 function dateStr(d) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("ar-EG");
+  return new Date(d).toLocaleDateString("ar-EG-u-nu-latn");
 }
 
 const STATUS_MAP = {

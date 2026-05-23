@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 const STATUS_COLORS = {
   open: { background: "#dbeafe", color: "#1d4ed8" },
@@ -31,7 +31,7 @@ export default function AjalFullStatementTemplate({ party, debts = [], settings 
   const totalPaid = debts.reduce((s, d) => s + Number(d.paid_amount || 0), 0);
   const totalRemaining = debts.reduce((s, d) => s + Number(d.remaining || 0), 0);
 
-  const printDate = new Date().toLocaleDateString("ar-EG");
+  const printDate = new Date().toLocaleDateString("ar-EG-u-nu-latn");
 
   return (
     <div style={{ fontFamily: print_font, direction: "rtl", padding: 24, fontSize: 12, color: "#1e293b" }}>
@@ -93,7 +93,7 @@ export default function AjalFullStatementTemplate({ party, debts = [], settings 
                   <td style={{ padding: "8px 10px", color: "#dc2626", fontWeight: 700 }}>{fmt(debt.original_amount)} ج.م</td>
                   <td style={{ padding: "8px 10px", color: "#16a34a", fontWeight: 700 }}>{fmt(debt.paid_amount)} ج.م</td>
                   <td style={{ padding: "8px 10px", color: accent_color, fontWeight: 700 }}>{fmt(debt.remaining)} ج.م</td>
-                  <td style={{ padding: "8px 10px" }}>{debt.due_date ? new Date(debt.due_date).toLocaleDateString("ar-EG") : "-"}</td>
+                  <td style={{ padding: "8px 10px" }}>{debt.due_date ? new Date(debt.due_date).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</td>
                   <td style={{ padding: "8px 10px" }}>
                     <span style={{ ...statusStyle, borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, display: "inline-block" }}>
                       {STATUS_LABELS[debt.status] || debt.status || "-"}
@@ -111,7 +111,7 @@ export default function AjalFullStatementTemplate({ party, debts = [], settings 
                             {" — "}
                             <span>{p.method_name || "-"}</span>
                             {" — "}
-                            <span style={{ color: "#64748b" }}>{p.payment_date ? new Date(p.payment_date).toLocaleDateString("ar-EG") : "-"}</span>
+                            <span style={{ color: "#64748b" }}>{p.payment_date ? new Date(p.payment_date).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</span>
                           </div>
                         ))}
                       </div>

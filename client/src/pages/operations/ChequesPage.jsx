@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { 
   Plus, 
@@ -25,7 +25,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 function StatusBadge({ status }) {
@@ -242,7 +242,7 @@ export default function ChequesPage() {
             {Object.entries(calendarData).sort(([a], [b]) => a.localeCompare(b)).map(([date, cheques]) => (
               <div key={date} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
                 <div>
-                  <div className="text-[13px] font-black text-slate-800">{new Date(date).toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
+                  <div className="text-[13px] font-black text-slate-800">{new Date(date).toLocaleDateString("ar-EG-u-nu-latn", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
                   <div className="text-[11px] text-slate-400">{cheques.length} شيك</div>
                 </div>
                 <div className="text-[16px] font-black text-violet-700">{formatMoney(cheques.reduce((s, c) => s + Number(c.amount || 0), 0))} ج.م</div>
@@ -284,7 +284,7 @@ export default function ChequesPage() {
                    </div>
                    <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                       <span className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest"><Calendar className="h-3.5 w-3.5" /> تاريخ الاستحقاق</span>
-                      <span className="text-[12px] font-black text-slate-700">{new Date(row.due_date).toLocaleDateString("ar-EG")}</span>
+                      <span className="text-[12px] font-black text-slate-700">{new Date(row.due_date).toLocaleDateString("ar-EG-u-nu-latn")}</span>
                    </div>
                    <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                       <span className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest"><Search className="h-3.5 w-3.5" /> رقم الشيك</span>

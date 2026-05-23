@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { Landmark, Plus, Minus, ArrowUpCircle, ArrowDownCircle, RefreshCw, X, List, ArrowLeftRight, AlertCircle, Printer } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -7,7 +7,7 @@ import BankStatementTemplate from "../../components/print/templates/BankStatemen
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 function BankModal({ bank, mode, onClose, onDone }) {
   const [form, setForm] = useState({ amount: "", reference: "", notes: "" });

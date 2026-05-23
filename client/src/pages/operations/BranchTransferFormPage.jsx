@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine, ArrowUpFromLine, ArrowLeft, Package, ImageIcon,
   Trash2, Warehouse, FileText, Settings, Printer, CheckCircle, ShoppingCart, Plus, CalendarClock,
@@ -27,7 +27,7 @@ function resolveImageUrl(u) {
 }
 
 function fmtDateTime(d) {
-  return new Intl.DateTimeFormat("ar-EG", {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit",
   }).format(d);
@@ -433,7 +433,7 @@ export default function BranchTransferFormPage() {
     },
     {
       id: "total_cost", header: "الإجمالي", width: 110, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-[13px] font-black text-slate-700 border-l border-slate-100",
-      render: (l) => Number(l.quantity * l.unit_cost).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      render: (l) => Number(l.quantity * l.unit_cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     },
   ];
 
@@ -647,12 +647,12 @@ export default function BranchTransferFormPage() {
             <div className="flex flex-col gap-3 bg-slate-50/50 rounded-[14px] py-5 px-4 border border-slate-100 shadow-inner">
               <div className="flex items-center justify-between">
                 <span className="text-[12px] font-black uppercase tracking-widest text-slate-400">إجمالي الكميات</span>
-                <span className={`text-3xl font-black font-mono text-${theme.primary}-600`}>{totalQty.toLocaleString("ar-EG")}</span>
+                <span className={`text-3xl font-black font-mono text-${theme.primary}-600`}>{totalQty.toLocaleString("en-US")}</span>
               </div>
               <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                 <span className="text-[12px] font-black uppercase tracking-widest text-slate-400">إجمالي التكلفة</span>
                 <span className="text-2xl font-black font-mono text-slate-700">
-                  {totalCost.toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

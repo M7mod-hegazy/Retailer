@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { BlockRenderer, getCustomBlocks } from "../../pages/settings/CustomTextBlocks";
 
 const DEFAULTS = {
@@ -111,7 +111,7 @@ export function PrintThermalDoc({ invoice = {}, settings: s = {} }) {
         {g(s, "show_invoice_date") !== false && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>التاريخ:</span>
-            <span>{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-SA") : new Date().toLocaleDateString("ar-SA")}</span>
+            <span>{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-SA-u-nu-latn") : new Date().toLocaleDateString("ar-SA-u-nu-latn")}</span>
           </div>
         )}
         {g(s, "show_customer_name") !== false && invoice.customer_name && (
@@ -311,7 +311,7 @@ export function PrintA4Doc({ invoice = {}, settings: s = {}, size = "A4" }) {
           <div style={{ fontSize: "10px", color: "#64748b", fontFamily: "monospace" }}>{invoice.invoice_no || invoice.invoice_number || ""}</div>
           {g(s, "show_invoice_date") !== false && (
             <div style={{ fontSize: "10px", color: "#94a3b8" }}>
-              {invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-SA") : ""}
+              {invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-SA-u-nu-latn") : ""}
             </div>
           )}
         </div>

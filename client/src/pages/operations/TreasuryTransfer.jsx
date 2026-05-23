@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { 
   ArrowLeftRight, 
   CheckCircle2, 
@@ -15,7 +15,7 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 export default function TreasuryTransfer() {

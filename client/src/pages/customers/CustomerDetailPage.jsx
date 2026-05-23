@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../services/api";
 import DataGrid from "../../components/ui/DataGrid";
@@ -33,14 +33,14 @@ export default function CustomerDetailPage() {
         <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3">
           <span className="text-[13px] font-bold text-blue-700">رصيد دائن (مبلغ لصالح العميل):</span>
           <span className="font-black font-mono text-blue-900">
-            {Math.abs(Number(customer.opening_balance)).toLocaleString("ar-EG", { minimumFractionDigits: 2 })} ج.م
+            {Math.abs(Number(customer.opening_balance)).toLocaleString("en-US", { minimumFractionDigits: 2 })} ج.م
           </span>
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-4">
         {[
           ["الهاتف", customer.phone || "-"],
-          ["الرصيد", Number(customer.opening_balance || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 })],
+          ["الرصيد", Number(customer.opening_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })],
           ["الحد الائتماني", customer.credit_limit || 0],
           ["الحالة", customer.is_blacklisted ? "محظور" : "نشط"],
         ].map(([label, value]) => (

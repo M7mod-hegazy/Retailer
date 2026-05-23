@@ -8,6 +8,19 @@ const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
 
+function withWacc(item) {
+  if (!item) return item;
+  const db = getDb();
+  const sl = db.prepare("SELECT wacc, last_purchase_cost, quantity FROM stock_levels WHERE item_id = ? LIMIT 1").get(item.id);
+  const totalQty = db.prepare("SELECT COALESCE(SUM(quantity),0) AS qty FROM stock_levels WHERE item_id = ?").get(item.id)?.qty || 0;
+  return {
+    ...item,
+    current_cost: sl?.wacc ?? item.purchase_price ?? 0,
+    last_purchase_cost: sl?.last_purchase_cost ?? item.purchase_price ?? 0,
+    has_stock: totalQty > 0,
+  };
+}
+
 function normalizeImageUrls(payload = {}) {
   if (Array.isArray(payload.image_urls)) {
     return [...new Set(payload.image_urls.map((entry) => String(entry || "").trim()).filter(Boolean))];
@@ -156,7 +169,9 @@ function computeCodeAndSequence({ categoryId, incomingCode, currentCode }) {
 function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0 } = {}) {
   let sql = `
     SELECT i.*, c.name AS category_name, c.sku_prefix, u.name AS unit_name,
-           COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity
+           COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity,
+           COALESCE((SELECT wacc FROM stock_levels sl WHERE sl.item_id = i.id LIMIT 1), i.purchase_price, 0) AS current_cost,
+           COALESCE((SELECT last_purchase_cost FROM stock_levels sl WHERE sl.item_id = i.id LIMIT 1), i.purchase_price, 0) AS last_purchase_cost
     FROM items i
     LEFT JOIN item_categories c ON c.id = i.category_id
     LEFT JOIN units u ON u.id = i.unit_id
@@ -278,15 +293,26 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
 
   req.audit("create", "items", { id: info.lastInsertRowid }, `📦 تم إضافة صنف: ${payload.name || ''}`);
   const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(info.lastInsertRowid);
-  return res.status(201).json({ success: true, data: withImages([row])[0] });
+  return res.status(201).json({ success: true, data: withWacc(withImages([row])[0]) });
 });
 
 router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
   const payload = req.body || {};
   const id = Number(req.params.id);
-  const existing = getDb().prepare("SELECT * FROM items WHERE id = ?").get(id);
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM items WHERE id = ?").get(id);
   if (!existing) {
     return res.status(404).json({ success: false, message: "Item not found" });
+  }
+
+  // Lock purchase_price once the item has stock — WACC is the source of truth after first receipt
+  if (payload.purchase_price !== undefined && payload.purchase_price !== null) {
+    const stockRow = db.prepare("SELECT COALESCE(SUM(quantity), 0) AS qty FROM stock_levels WHERE item_id = ?").get(id);
+    const hasStock = Number(stockRow?.qty || 0) > 0;
+    if (hasStock) {
+      // Silently ignore purchase_price changes when stock exists; WACC governs cost
+      delete payload.purchase_price;
+    }
   }
 
   const categoryId =
@@ -302,8 +328,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
     currentCode: existing.code,
   });
 
-  getDb()
-    .prepare(
+  db.prepare(
       `UPDATE items
        SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -332,8 +357,8 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
   }
 
   req.audit("update", "items", { id }, `📦 تم تعديل صنف: ${payload.name || ''}`);
-  const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(id);
-  return res.json({ success: true, data: withImages([row])[0] });
+  const row = db.prepare("SELECT * FROM items WHERE id = ?").get(id);
+  return res.json({ success: true, data: withWacc(withImages([row])[0]) });
 });
 
 // Swap the code and sku_sequence of two items (same category, adjacent positions)

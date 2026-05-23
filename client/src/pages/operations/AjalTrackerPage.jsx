@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   AlertCircle, Clock, CheckCircle2, ChevronRight, X, Plus, Printer,
   Calendar, User, FileText, BarChart2, Search, RefreshCw
@@ -10,8 +10,8 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import AjalStatementTemplate from "../../components/print/templates/AjalStatementTemplate";
 import AjalScheduleTemplate from "../../components/print/templates/AjalScheduleTemplate";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const STATUS_MAP = {
   open: { label: "مفتوح", cls: "bg-blue-100 text-blue-700" },

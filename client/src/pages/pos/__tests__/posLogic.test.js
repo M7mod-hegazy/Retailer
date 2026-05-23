@@ -1,4 +1,4 @@
-/**
+﻿/**
  * posLogic.test.js
  *
  * Comprehensive Vitest unit tests for POS business logic.
@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 /** formatMoney — mirrors POSPage.jsx line 48-53 */
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString("ar-EG", {
+  return Number(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });

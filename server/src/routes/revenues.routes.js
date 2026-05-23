@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
@@ -94,7 +94,7 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
       return created;
     })();
 
-  req.audit("create", "revenues", { id: result.lastInsertRowid }, `💰 تم إضافة إيراد بمبلغ ${Number(payload.amount || 0).toLocaleString('ar-EG')}${payload.description || payload.notes ? ` — ${payload.description || payload.notes}` : ''}`);
+  req.audit("create", "revenues", { id: result.lastInsertRowid }, `💰 تم إضافة إيراد بمبلغ ${Number(payload.amount || 0).toLocaleString('en-US')}${payload.description || payload.notes ? ` — ${payload.description || payload.notes}` : ''}`);
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(result.lastInsertRowid),
@@ -107,7 +107,7 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
     const payload = req.body || {};
     db.prepare(`UPDATE revenues SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now') WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
-    req.audit("update", "revenues", { id: req.params.id }, `💰 تم تعديل إيراد #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('ar-EG')}` : ''}`);
+    req.audit("update", "revenues", { id: req.params.id }, `💰 تم تعديل إيراد #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

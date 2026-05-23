@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
   AlertCircle, CheckCircle2, X, ArrowDownRight, Calculator,
@@ -16,7 +16,7 @@ import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 
 const fmt = (n) =>
-  Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -1327,7 +1327,7 @@ export default function DailyTreasuryPage() {
                                   </td>
                                   <td className="px-3 py-3 text-slate-400 text-[10px] whitespace-nowrap font-medium">
                                     {t.created_at
-                                      ? new Date(t.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })
+                                      ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
                                       : "—"}
                                   </td>
                                   <td className="px-3 py-3">
@@ -1422,7 +1422,7 @@ export default function DailyTreasuryPage() {
                       {
                         label: "تاريخ ووقت التسجيل",
                         value: slideOver.created_at
-                          ? new Date(slideOver.created_at).toLocaleString("ar-EG")
+                          ? new Date(slideOver.created_at).toLocaleString("en-US")
                           : "—",
                       },
                     ].map(({ label, value }) => (

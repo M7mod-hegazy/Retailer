@@ -174,17 +174,23 @@ function buildColumnsFromRows(rows) {
 function getCostColumn(costMethod) {
   switch (costMethod) {
     case "last_purchase": return "il.cost_last_purchase";
-    case "fifo": return "il.cost_fifo";
-    case "purchase_price": return "it.purchase_price";
-    default: return "il.cost_wacc";
+    case "fifo":          return "il.cost_fifo";
+    default:              return "il.cost_wacc";  // wacc is the only meaningful default
   }
 }
 
 function getCostColumnForValuation(costMethod) {
   switch (costMethod) {
     case "last_purchase": return "sl.last_purchase_cost";
-    case "purchase_price": return "it.purchase_price";
-    default: return "sl.wacc";
+    default:              return "sl.wacc";
+  }
+}
+
+// Returns cost column that matches selected cost method — for use in return-line subqueries
+function getReturnCostColumn(costMethod) {
+  switch (costMethod) {
+    case "last_purchase": return "COALESCE(ref_il.cost_last_purchase, srl.cost_last_purchase, it.purchase_price, 0)";
+    default:              return "COALESCE(ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
   }
 }
 
@@ -200,6 +206,7 @@ module.exports = {
   labelForKey,
   buildColumnsFromRows,
   getCostColumn,
+  getReturnCostColumn,
   getCostColumnForValuation,
   addPaymentTypeFilter,
 };

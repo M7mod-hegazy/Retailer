@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
@@ -115,11 +115,11 @@ export default function Topbar() {
     const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
     if (diff < 3600) return `منذ ${Math.max(1, Math.floor(diff / 60))} دقيقة`;
     if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
-    return new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "short" }).format(new Date(dateStr));
+    return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { day: "numeric", month: "short" }).format(new Date(dateStr));
   }
 
   const unreadItems = useMemo(() => items.filter((n) => !n.is_read).slice(0, 10), [items]);
-  const today = useMemo(() => new Intl.DateTimeFormat("ar-EG", { weekday: "long", day: "numeric", month: "long" }).format(new Date()), []);
+  const today = useMemo(() => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }).format(new Date()), []);
   const currentLabel = routeLabelMatchers.find((entry) => location.pathname.startsWith(entry.match))?.label || "العمل اليومي";
   const breadcrumbs = useBreadcrumbs(location.pathname, dynamicBreadcrumb);
 

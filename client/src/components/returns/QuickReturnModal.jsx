@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Search, ArrowRight, ArrowLeft, CheckCircle2, Package, RotateCcw,
   User, Calendar, X, AlertCircle, ChevronLeft, Filter, SlidersHorizontal,
@@ -33,11 +33,11 @@ const PURCHASE_SETTLEMENTS = [
 ];
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 function fmtDate(d) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("ar-EG-u-nu-latn", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 // ─── Step indicator ──────────────────────────────────────────────────────────

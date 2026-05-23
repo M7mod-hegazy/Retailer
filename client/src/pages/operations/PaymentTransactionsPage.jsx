@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { BookOpen, RefreshCw, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import api from "../../services/api";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 const DOC_TYPES = {
   pos_invoice: "فاتورة POS",
@@ -113,7 +113,7 @@ export default function PaymentTransactionsPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-600 truncate max-w-[160px]">{r.party || r.description || "—"}</td>
                     <td className="px-4 py-3 text-slate-400">
-                      {r.created_at ? new Date(r.created_at).toLocaleDateString("ar-EG") : "—"}
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}
                     </td>
                   </tr>
                 ))}

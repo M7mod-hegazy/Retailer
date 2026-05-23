@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowRight, User, Phone, Mail, Star, ShoppingCart, CreditCard,
@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const STATUS_AR = { open: "مفتوح", partial: "جزئي", overdue: "متأخر", paid: "مسدد" };
 const STATUS_CLS = { open: "bg-blue-50 text-blue-700", partial: "bg-amber-50 text-amber-700", overdue: "bg-rose-50 text-rose-700", paid: "bg-emerald-50 text-emerald-700" };

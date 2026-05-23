@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import api from "../../services/api";
 import { usePosStore } from "../../stores/posStore";
 import { Search, Package } from "lucide-react";
@@ -131,7 +131,7 @@ export default function ItemGrid() {
             
             <div style={{ marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
               <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary)', fontFamily: 'Inter, sans-serif' }}>
-                {Number(item.sale_price).toLocaleString('ar-EG', { minimumFractionDigits: 2 })}
+                {Number(item.sale_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </span>
             </div>
           </button>

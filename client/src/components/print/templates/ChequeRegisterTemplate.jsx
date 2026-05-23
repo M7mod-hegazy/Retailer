@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 const STATUS_LABELS = { pending: "معلق", deposited: "مودع", cleared: "محصّل", bounced: "مرتجع", replaced: "مستبدل" };
 const STATUS_COLORS = { pending: "#d97706", deposited: "#2563eb", cleared: "#16a34a", bounced: "#dc2626", replaced: "#7c3aed" };
@@ -31,7 +31,7 @@ export default function ChequeRegisterTemplate({ rows = [], settings = {} }) {
         </div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontSize: 20, fontWeight: 900 }}>سجل الشيكات</div>
-          <div style={{ color: "#64748b", fontSize: 11 }}>تاريخ: {new Date().toLocaleDateString("ar-EG")}</div>
+          <div style={{ color: "#64748b", fontSize: 11 }}>تاريخ: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</div>
           <div style={{ color: "#64748b", fontSize: 11 }}>إجمالي الشيكات: {rows.length}</div>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function ChequeRegisterTemplate({ rows = [], settings = {} }) {
                 <td style={{ padding: "8px 12px", fontFamily: "monospace", fontWeight: 900 }}>{row.cheque_no}</td>
                 <td style={{ padding: "8px 12px" }}>{row.bank_name}</td>
                 <td style={{ padding: "8px 12px" }}>{row.drawer_name || "-"}</td>
-                <td style={{ padding: "8px 12px" }}>{row.due_date ? new Date(row.due_date).toLocaleDateString("ar-EG") : "-"}</td>
+                <td style={{ padding: "8px 12px" }}>{row.due_date ? new Date(row.due_date).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</td>
                 <td style={{ padding: "8px 12px", fontWeight: 900 }}>{fmt(row.amount)} ج.م</td>
                 <td style={{ padding: "8px 12px" }}>
                   <span style={{ background: `${color}22`, color, borderRadius: 12, padding: "2px 8px", fontWeight: 900 }}>

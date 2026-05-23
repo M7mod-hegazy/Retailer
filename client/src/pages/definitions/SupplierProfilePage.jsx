@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Truck, Phone, Mail, ChevronLeft, Plus } from "lucide-react";
 import api from "../../services/api";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const TABS = [
   { id: "purchases", label: "فواتير المشتريات" },

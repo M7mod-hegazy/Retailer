@@ -1,10 +1,10 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+﻿import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 
 function fmtDateEG(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString("ar-EG");
+  return d.toLocaleDateString("ar-EG-u-nu-latn");
 }
 
 function isNumericLike(value) {
@@ -81,9 +81,9 @@ function A4Sheet({
             {filters?.from && filters?.to ? (
               <div>الفترة: {filters.from} إلى {filters.to}</div>
             ) : null}
-            <div style={{ marginTop: 2 }}>طباعة: {new Date().toLocaleDateString("ar-EG")}</div>
+            <div style={{ marginTop: 2 }}>طباعة: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</div>
             <div style={{ marginTop: 2, fontWeight: 800, color: accent }}>
-              صفحة {pageNum.toLocaleString("ar-EG")} / {totalPages.toLocaleString("ar-EG")}
+              صفحة {pageNum.toLocaleString("en-US")} / {totalPages.toLocaleString("en-US")}
             </div>
           </div>
         </div>
@@ -146,7 +146,7 @@ function A4Sheet({
                       if (dateCol) {
                         display = fmtDateEG(value);
                       } else if (numeric) {
-                        display = `${col.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}${col.type === "percent" ? "%" : ""}`;
+                        display = `${col.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })}${col.type === "percent" ? "%" : ""}`;
                       } else {
                         display = value == null ? "-" : String(value);
                       }
@@ -209,11 +209,11 @@ function A4Sheet({
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   }}
-                  title={numeric ? Number(val).toLocaleString("ar-EG", { maximumFractionDigits: 2 }) : undefined}
+                  title={numeric ? Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 }) : undefined}
                 >
                   {val != null
                     ? (numeric
-                      ? `${col.type === "money" && currency ? `${currency} ` : ""}${Number(val).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}${col.type === "percent" ? "%" : ""}`
+                      ? `${col.type === "money" && currency ? `${currency} ` : ""}${Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}${col.type === "percent" ? "%" : ""}`
                       : String(val))
                     : ""}
                 </div>
@@ -250,9 +250,9 @@ function A4Sheet({
           fontWeight: 700,
         }}
       >
-        <span>تم التصدير: {new Date().toLocaleDateString("ar-EG")}</span>
-        <span>إجمالي الصفوف: {totalRows.toLocaleString("ar-EG")}</span>
-        <span>صفحة {pageNum.toLocaleString("ar-EG")} من {totalPages.toLocaleString("ar-EG")}</span>
+        <span>تم التصدير: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</span>
+        <span>إجمالي الصفوف: {totalRows.toLocaleString("en-US")}</span>
+        <span>صفحة {pageNum.toLocaleString("en-US")} من {totalPages.toLocaleString("en-US")}</span>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo } from "react";
 import { 
   Banknote, 
   Receipt, 
@@ -20,7 +20,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 
 export default function PaymentFormPage() {
@@ -369,7 +369,7 @@ export default function PaymentFormPage() {
                               className={`group cursor-pointer grid grid-cols-[150px_1fr_120px_120px_150px] items-center gap-4 rounded-md border p-4 transition-all ${isAllocated ? 'border-blue-500 bg-blue-50/20 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50/50'}`}
                             >
                                <div className="font-mono text-[13px] font-black text-slate-800">{inv.invoice_no}</div>
-                               <div className="text-[12px] font-bold text-slate-500 line-clamp-1">{new Date(inv.created_at).toLocaleDateString("ar-EG")}</div>
+                               <div className="text-[12px] font-bold text-slate-500 line-clamp-1">{new Date(inv.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
                                <div className="text-left text-[13px] font-bold text-slate-400">{formatMoney(inv.total)}</div>
                                <div className="text-left text-[13px] font-black text-slate-800">{formatMoney(inv.outstanding)}</div>
                                <div className="flex items-center justify-center gap-3">

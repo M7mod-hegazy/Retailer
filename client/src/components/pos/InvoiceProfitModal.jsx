@@ -1,13 +1,13 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Modal from "../ui/Modal";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
 
 function formatPct(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 export default function InvoiceProfitModal({ open, onClose, lines, items }) {

@@ -99,4 +99,38 @@ function getItemsBelowMargin(db_instance) {
   return results.sort((a, b) => (a.current_margin_percent ?? -999) - (b.current_margin_percent ?? -999));
 }
 
-module.exports = { recalculateWACC, getSnapshotCosts, checkItemMargin, getItemsBelowMargin };
+/**
+ * Recompute WACC for an item by replaying all surviving (non-cancelled, non-voided) purchase lines
+ * in chronological order. Call this after any cancel, void, purchase return, or edit.
+ */
+function recomputeWACCForItem(item_id, db) {
+  const lines = db.prepare(`
+    SELECT pl.quantity, pl.unit_cost
+    FROM purchase_lines pl
+    JOIN purchases p ON p.id = pl.purchase_id
+    WHERE pl.item_id = ?
+      AND p.status NOT IN ('cancelled', 'voided')
+    ORDER BY p.created_at ASC, pl.id ASC
+  `).all(item_id);
+
+  let wacc = 0;
+  let runningQty = 0;
+  let lastCost = 0;
+
+  for (const line of lines) {
+    const qty = Number(line.quantity);
+    const cost = Number(line.unit_cost);
+    const totalQty = runningQty + qty;
+    wacc = totalQty > 0 ? (runningQty * wacc + qty * cost) / totalQty : cost;
+    runningQty = totalQty;
+    lastCost = cost;
+  }
+
+  // If no surviving lines, reset to 0
+  db.prepare("UPDATE stock_levels SET wacc = ?, last_purchase_cost = ? WHERE item_id = ?")
+    .run(lines.length > 0 ? wacc : 0, lines.length > 0 ? lastCost : 0, item_id);
+
+  return wacc;
+}
+
+module.exports = { recalculateWACC, recomputeWACCForItem, getSnapshotCosts, checkItemMargin, getItemsBelowMargin };

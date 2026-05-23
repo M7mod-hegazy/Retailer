@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import {
   CreditCard, Plus, Pencil, Trash2, X, Lock, ArrowUpCircle, ArrowDownCircle,
   BookOpen, RefreshCw, Search, Printer, Settings2, Wallet, Banknote, ShieldCheck
@@ -11,7 +11,7 @@ import PaymentMethodsReportTemplate from "../../components/print/templates/Payme
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const CATEGORIES = [
   { value: "cash", label: "نقدي", icon: "💵" },
@@ -415,7 +415,7 @@ function TransactionsTab() {
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="text-[13px] font-bold text-slate-400 font-mono tracking-tight group-hover:text-slate-600 transition-colors">
-                          {r.created_at ? new Date(r.created_at).toLocaleString("ar-EG", { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : "—"}
+                          {r.created_at ? new Date(r.created_at).toLocaleString("en-US", { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : "—"}
                         </span>
                       </td>
                     </motion.tr>

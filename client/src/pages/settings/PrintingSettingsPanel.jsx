@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+﻿import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   Ruler, Hash, AlignLeft, Baseline, ListChecks, Eye, Receipt,
   FileBarChart2, ToggleLeft, ToggleRight, Info, Zap, MousePointerClick,
@@ -291,7 +291,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       <div style={{ fontSize: `${get(s,"item_font_size")}px`, marginBottom: "5px" }}>
         <BlockRenderer blocks={customBlocks} position="before_meta" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
         <div style={{ display: "flex", justifyContent: "space-between" }}><span>رقم الفاتورة:</span><span style={{ fontWeight: "bold" }} onClick={() => onElementClick("invoice_prefix")}>{get(s,"invoice_prefix")}-2025-0042</span></div>
-        {get(s,"show_invoice_date")   !== false && <div style={{ display: "flex", justifyContent: "space-between" }}><span>التاريخ:</span><span>{new Date().toLocaleDateString("ar-SA")}</span></div>}
+        {get(s,"show_invoice_date")   !== false && <div style={{ display: "flex", justifyContent: "space-between" }}><span>التاريخ:</span><span>{new Date().toLocaleDateString("ar-SA-u-nu-latn")}</span></div>}
         {get(s,"show_customer_name")  !== false && <div onClick={() => onElementClick("show_customer_name")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_customer_name") }}><span>العميل:</span><span>محمد الهيجازي</span></div>}
         {get(s,"show_cashier_name")   !== false && <div onClick={() => onElementClick("show_cashier_name")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_cashier_name") }}><span>الكاشير:</span><span>أحمد صالح</span></div>}
       </div>
@@ -430,7 +430,7 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
           <div onClick={() => onElementClick("invoice_prefix")} style={{ fontSize: "10px", color: "#64748b", ...hl("invoice_prefix") }}>{get(s,"invoice_prefix")}-2025-0042</div>
         </div>
         <div style={{ textAlign: "left", fontSize: "10px", color: "#64748b" }}>
-          {get(s,"show_invoice_date")  !== false && <div>التاريخ: {new Date().toLocaleDateString("ar-SA")}</div>}
+          {get(s,"show_invoice_date")  !== false && <div>التاريخ: {new Date().toLocaleDateString("ar-SA-u-nu-latn")}</div>}
           {get(s,"show_customer_name") !== false && <div onClick={() => onElementClick("show_customer_name")} style={hl("show_customer_name")}>العميل: محمد الهيجازي</div>}
           {get(s,"show_cashier_name")  !== false && <div onClick={() => onElementClick("show_cashier_name")} style={hl("show_cashier_name")}>الكاشير: أحمد صالح</div>}
         </div>
@@ -611,7 +611,7 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
         <div style={{ textAlign:"left" }}>
           <div style={{ fontSize:"18px", fontWeight:900, color:accent }}>{title}</div>
           <div style={{ fontSize:"10px", color:"#64748b", fontFamily:"monospace" }}>{docNo}</div>
-          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA")}</div>}
+          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA-u-nu-latn")}</div>}
         </div>
       </div>
 
@@ -922,7 +922,7 @@ function DailyTreasuryPreview({ s }) {
         </div>
         <div style={{ textAlign:"left" }}>
           <div style={{ fontSize:"18px", fontWeight:900, color:accent }}>تقرير الخزينة اليومي</div>
-          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA")}</div>}
+          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA-u-nu-latn")}</div>}
           {get(s,"show_cashier_name") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>الكاشير: أحمد صالح</div>}
         </div>
       </div>

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 
-export default function AnimatedNumber({ value = 0, duration = 600, className = "", formatter = (next) => next.toLocaleString("ar-EG") }) {
+export default function AnimatedNumber({ value = 0, duration = 600, className = "", formatter = (next) => next.toLocaleString("en-US") }) {
   const numericValue = Number(value || 0);
   const [display, setDisplay] = useState(0);
 

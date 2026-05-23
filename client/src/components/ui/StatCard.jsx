@@ -1,4 +1,4 @@
-/**
+﻿/**
  * StatCard.jsx - Clean KPI Card
  * Modern design with left accent bar and clean typography
  */
@@ -55,8 +55,8 @@ export function StatCard({
 
   const displayValue = formatted ?? (
     numValue % 1 === 0
-      ? Math.round(countedValue).toLocaleString('ar-EG')
-      : countedValue.toLocaleString('ar-EG', {
+      ? Math.round(countedValue).toLocaleString('en-US')
+      : countedValue.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })

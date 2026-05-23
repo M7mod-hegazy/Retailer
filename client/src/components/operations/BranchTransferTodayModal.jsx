@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Package, Pencil, RefreshCw, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -10,16 +10,16 @@ function toDateInput(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 function fmtDateTime(d) {
-  return new Intl.DateTimeFormat("ar-EG", {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit",
   }).format(new Date(d));
 }
 function fmtQty(v) {
-  return Number(v || 0).toLocaleString("ar-EG");
+  return Number(v || 0).toLocaleString("en-US");
 }
 function fmtMoney(v) {
-  return Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function TransferDetailPreview({ transfer, onClose, onEdit }) {

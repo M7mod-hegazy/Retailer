@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -432,7 +432,7 @@ export default function SimpleCrudPage({
                           <span className={`text-[15px] font-black font-mono ${
                             isDebit ? "text-rose-600" : isCredit ? "text-emerald-600" : "text-slate-400"
                           }`}>
-                            {Math.abs(bal).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}
+                            {Math.abs(bal).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             <span className="text-[10px] font-bold mr-1 opacity-70">ج.م</span>
                           </span>
                         </div>

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate } from "react-router-dom";
 import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -29,7 +29,7 @@ export default function CustomersListPage() {
           label: "الرصيد",
           render: (v) => (
             <span className={Number(v) < 0 ? "text-blue-600 font-black" : Number(v) > 0 ? "text-rose-600 font-black" : "text-emerald-700 font-black"}>
-              {Number(v || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}
+              {Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
               {Number(v) < 0 && <span className="mr-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md">دائن</span>}
             </span>
           ),

@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 
-const fmt = (n) => Number(n || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 export default function AjalScheduleTemplate({ debt, settings = {} }) {
   const { company_name = "", accent_color = "#7c3aed", print_font = "Cairo" } = settings;
@@ -31,7 +31,7 @@ export default function AjalScheduleTemplate({ debt, settings = {} }) {
           {schedule.map((row, i) => (
             <tr key={row.id || i} style={{ background: i % 2 === 0 ? "#f8fafc" : "white", borderBottom: "1px solid #e2e8f0" }}>
               <td style={{ padding: "10px 12px", fontWeight: 900 }}>{row.installment_no}</td>
-              <td style={{ padding: "10px 12px" }}>{row.due_date ? new Date(row.due_date).toLocaleDateString("ar-EG") : "-"}</td>
+              <td style={{ padding: "10px 12px" }}>{row.due_date ? new Date(row.due_date).toLocaleDateString("ar-EG-u-nu-latn") : "-"}</td>
               <td style={{ padding: "10px 12px", fontWeight: 900, color: accent_color }}>{fmt(row.amount)} ج.م</td>
               <td style={{ padding: "10px 12px" }}>
                 <span style={{
