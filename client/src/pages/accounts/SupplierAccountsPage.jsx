@@ -924,84 +924,132 @@ export default function SupplierAccountsPage() {
   const bal = Number(selected?.opening_balance || 0);
 
   return (
-    <div className="flex flex-1 min-h-0 bg-zinc-50 overflow-hidden" dir="rtl">
+    <div className="flex flex-1 min-h-0 bg-slate-100 overflow-hidden font-sans" dir="rtl">
 
       {/* ── Left Panel ── */}
-      <div className="w-[360px] bg-white border-l border-slate-200 flex flex-col shrink-0 shadow-lg">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
+      <div className="w-[360px] bg-slate-50/40 border-l border-slate-200/80 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] select-none">
+        <div className="p-4.5 border-b border-slate-200/50 bg-slate-50/20 space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-200">
-                <Building className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-orange-50/80 text-orange-650 border border-orange-100/50 flex items-center justify-center shadow-[inset_0_1px_2px_rgba(255,255,255,1)]">
+                <Building className="h-4 w-4 stroke-[2.3px]" />
               </div>
-              <h1 className="text-[15px] font-black text-slate-900">حسابات الموردين</h1>
+              <h1 className="text-[13.5px] font-black text-slate-800 tracking-tight">حسابات الموردين</h1>
             </div>
             <PermissionGate page="supplier_accounts" action="add">
               <button onClick={() => setShowCreate(true)}
-                className="flex h-8 items-center gap-1.5 rounded-lg bg-orange-600 px-3 text-[11px] font-black text-white hover:bg-orange-700 transition-colors shadow-md shadow-orange-200">
-                <Plus className="h-3.5 w-3.5" /> مورد جديد
+                className="flex h-9 items-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 px-3.5 text-[11px] font-black text-white shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer">
+                <Plus className="h-3.8 w-3.8 stroke-[3px]" /> مورد جديد
               </button>
             </PermissionGate>
           </div>
           <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-orange-655 transition-colors stroke-[2.3px]" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10 rounded-xl border border-slate-200 pr-9 pl-3 text-[12px] font-bold outline-none focus:border-orange-500 bg-white" />
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-[12px] font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-orange-500/80 focus:shadow-[0_4px_16px_rgba(249,115,22,0.03)] focus:ring-4 focus:ring-orange-500/[0.03]" />
           </div>
-          <div className="flex bg-slate-100 p-1 rounded-lg">
+          <div className="flex bg-slate-250/50 p-1 rounded-xl relative">
             {[{ id: "all", label: "الكل" }, { id: "creditors", label: "ندين لهم" }, { id: "debtors", label: "يدينون لنا" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
-                className={`flex-1 py-1.5 text-[11px] font-black rounded-md transition-all ${filter === f.id ? "bg-white text-orange-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                className="flex-1 py-1.5 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
+                style={{ color: filter === f.id ? "#c2410c" : "#475569" }}
+              >
+                {filter === f.id && (
+                  <motion.div
+                    layoutId="activeFilterBg"
+                    className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_5px_rgba(0,0,0,0.05)] -z-10"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
                 {f.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Net Balance Summary ── */}
-        <div className="mx-2 mt-2 mb-1 rounded-xl bg-orange-50 border border-orange-100 p-3">
-          <div className="text-[10px] font-black text-slate-500 mb-0.5">إجمالي المديونية</div>
-          <div className={`text-[20px] font-black font-mono ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-            {summaryLoading ? "..." : fmt(netBalance ?? 0)}
-            <span className="text-[11px] font-bold text-slate-400 mr-1">ج.م</span>
+        {/* ── Net Balance Typographic Summary ── */}
+        <div className="mx-4.5 mt-4 mb-2.5 bg-slate-100/65 border border-slate-200/50 rounded-2xl p-4.5 transition-all duration-300">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10.5px] font-bold text-slate-450 tracking-wide uppercase">صافي مديونية الموردين</span>
+            {summaryLoading ? (
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-ping" />
+            ) : (
+              <span className={`h-2 w-2 rounded-full ${netBalance > 0 ? "bg-rose-500 animate-pulse" : netBalance < 0 ? "bg-emerald-500 animate-pulse" : "bg-slate-350"}`} />
+            )}
           </div>
-          {netBalance > 0 && <div className="text-[9px] font-black text-rose-500 mt-0.5">مستحقات للموردين</div>}
-          {netBalance < 0 && <div className="text-[9px] font-black text-emerald-600 mt-0.5">رصيد لصالحنا</div>}
+
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-[23px] font-black font-mono tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
+              {summaryLoading ? (
+                <span className="inline-block w-16 h-7 bg-slate-200 rounded animate-pulse" />
+              ) : (
+                fmt(netBalance ?? 0)
+              )}
+            </span>
+            <span className="text-[10.5px] font-extrabold text-slate-450">ج.م</span>
+          </div>
+
+          <div className="mt-2 text-[9.5px] font-extrabold text-slate-450 flex items-center gap-1.5">
+            {netBalance > 0 ? (
+              <span className="text-rose-500">مستحقات معلقة للموردين بذمتنا حالياً</span>
+            ) : netBalance < 0 ? (
+              <span className="text-emerald-600">أرصدة دائنة مستحقة لنا طرف الموردين</span>
+            ) : (
+              <span>جميع حسابات الموردين مسواة بالكامل</span>
+            )}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {/* ── Suppliers List Scroll ── */}
+        <div className="flex-1 overflow-y-auto px-1 pb-4">
           {loading ? (
             <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center">
-              <Building className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-              <p className="text-[12px] font-black text-slate-400">لا يوجد موردين</p>
+            <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
+              <Building className="h-9 w-9 text-slate-350 opacity-60" />
+              <p className="text-[12px] font-black text-slate-400">لا يوجد موردين مطابقين للبحث</p>
             </div>
-          ) : filtered.map(s => {
+          ) : filtered.map((s, index) => {
             const b = Number(s.opening_balance || 0);
+            const isSelected = selected?.id === s.id;
             return (
-              <div key={s.id} onClick={() => selectSupplier(s, "movements")}
-                className={`p-3 rounded-xl cursor-pointer border transition-all ${selected?.id === s.id ? "bg-orange-50 border-orange-300" : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"}`}>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-[14px] font-black text-white shrink-0">
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: Math.min(0.2, index * 0.015) }}
+                onClick={() => selectSupplier(s, "movements")}
+                className={`py-3.5 px-4.5 cursor-pointer border-b border-slate-100/80 transition-all duration-200 relative group flex items-center justify-between gap-3 ${isSelected
+                    ? "bg-orange-55/65 border-r-[4.5px] border-r-orange-600 border-b-orange-100/40"
+                    : "bg-transparent border-r-[4.5px] border-r-transparent hover:bg-slate-100/40"
+                  }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Letter Avatar with Sleek Minimalist Squircle Aesthetic */}
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[13px] font-black shrink-0 transition-all duration-200 ${
+                    isSelected 
+                      ? "bg-orange-600 text-white shadow-sm shadow-orange-300/30" 
+                      : "bg-slate-200/50 text-slate-550"
+                  }`}
+                  >
                     {s.name?.charAt(0)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-black text-slate-900 truncate mb-0.5">{s.name}</div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[10px] text-slate-400 font-mono truncate">{s.phone || s.code || "—"}</div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {b > 0 && <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full">له مستحق</span>}
-                        {b < 0 && <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">عليه مستحق</span>}
-                        <span className={`text-[12px] font-black font-mono ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                          {fmt(Math.abs(b))}
-                        </span>
-                      </div>
-                    </div>
+
+                  <div className="min-w-0">
+                    <div className={`text-[12.5px] font-extrabold truncate transition-colors mb-1 ${isSelected ? "text-orange-950" : "text-slate-800"}`}>{s.name}</div>
+                    <div className="text-[10px] text-slate-400 font-mono font-bold leading-none">{s.phone || s.code || "—"}</div>
                   </div>
                 </div>
-              </div>
+
+                <div className="flex flex-col items-end shrink-0 select-none">
+                  <span className={`text-[13px] font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                    {fmt(Math.abs(b))}
+                  </span>
+                  {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">له مستحق</span>}
+                  {b < 0 && <span className="text-[8.5px] font-extrabold text-emerald-600 leading-none mt-1 tracking-wide">عليه مستحق</span>}
+                </div>
+              </motion.div>
             );
           })}
         </div>
@@ -1019,35 +1067,47 @@ export default function SupplierAccountsPage() {
         ) : (
           <>
             {/* Supplier Header Panel */}
-            <div className="bg-white border-b border-slate-200/60 px-6 py-4 shrink-0 shadow-[0_4px_20px_rgba(0,0,0,0.01)] relative z-10">
+            <div className="bg-white border-b border-slate-200/50 px-6 py-5 shrink-0 shadow-[0_4px_24px_rgba(0,0,0,0.015)] relative z-10">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
                 {/* Right Column: Supplier Info & Avatar (lg:col-span-5) */}
-                <div className="lg:col-span-5 flex items-center gap-3.5 min-w-0">
+                <div className="lg:col-span-5 flex items-center gap-4 min-w-0">
                   {/* Avatar */}
-                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-750 flex items-center justify-center text-[16px] font-black text-white shrink-0 shadow-sm border border-white ring-2 ring-slate-100">
+                  <div className="h-12 w-12 rounded-[18px] flex items-center justify-center text-[18px] font-black text-white shrink-0 shadow-md shadow-slate-200/20 bg-gradient-to-br from-orange-500 to-orange-600 border-2 border-white ring-4 ring-slate-100/60">
                     {selected.name?.charAt(0)}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-[15px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
+                      <h2 className="text-[16px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
                       <button
                         onClick={() => setShowEdit(true)}
-                        className="p-1 text-slate-400 hover:text-orange-600 hover:bg-slate-50 rounded-lg transition-all shrink-0 cursor-pointer active:scale-95"
+                        className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-slate-100 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
                         title="تعديل بيانات الملف"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
                       </button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {selected.phone && (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 font-bold bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-0.5 transition-all hover:bg-slate-100/50">
-                          <Phone className="h-3 w-3 text-slate-450" />
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
+                          <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
                           <span className="font-mono">{selected.phone}</span>
+                          <button
+                            onClick={() => handleCopy(selected.phone, "phone")}
+                            className="hover:text-orange-655 p-0.5 transition-colors mr-0.5 cursor-pointer"
+                          >
+                            {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                          </button>
                         </span>
                       )}
                       {selected.code && (
-                        <span className="text-[9px] font-bold font-mono bg-slate-50 text-slate-550 border border-slate-200/50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <span className="text-[10px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
                           <span>كود: {selected.code}</span>
+                          <button
+                            onClick={() => handleCopy(selected.code, "code")}
+                            className="hover:text-orange-655 p-0.5 transition-colors mr-0.5 cursor-pointer"
+                          >
+                            {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                          </button>
                         </span>
                       )}
                     </div>
@@ -1057,33 +1117,39 @@ export default function SupplierAccountsPage() {
                 {/* Middle Column: Balance (lg:col-span-4) */}
                 <div className="lg:col-span-4 flex flex-col justify-center min-w-0">
                   <div className="flex items-center gap-3">
-                    <div className={`h-8.5 w-8.5 rounded-lg flex items-center justify-center shrink-0 border shadow-sm ${bal > 0 ? "bg-rose-50 border-rose-200/60 text-rose-600" : bal < 0 ? "bg-emerald-50 border-emerald-200/60 text-emerald-600" : "bg-slate-50 border-slate-200/80 text-slate-400"}`}>
-                      {bal > 0 ? <TrendingUp className="h-4 w-4 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-4 w-4 stroke-[2.3px]" /> : <Check className="h-4 w-4 stroke-[2.5px]" />}
+                    <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all ${
+                      bal > 0 
+                        ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
+                        : bal < 0 
+                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_rgba(16,185,129,0.08)]" 
+                          : "bg-slate-100 border-slate-200/60 text-slate-400"
+                    }`}>
+                      {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
                     </div>
                     <div>
-                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block">
                         {bal > 0 ? "له مستحق بذمتنا" : bal < 0 ? "عليه مستحق لنا" : "رصيد الحساب مسوّى"}
                       </div>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <div className={`text-[17px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-700"}`}>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <div className={`text-[20px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
                           {fmt(Math.abs(bal))}
                         </div>
-                        <span className={`text-[10px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
+                        <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-455" : bal < 0 ? "text-emerald-455" : "text-slate-455"}`}>ج.م</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Left Column: Quick CTA Actions (lg:col-span-3) */}
-                <div className="lg:col-span-3 flex items-center justify-end gap-2 shrink-0">
+                <div className="lg:col-span-3 flex items-center justify-end gap-2.5 shrink-0">
                   <PermissionGate page="supplier_accounts" action="edit">
                     <motion.button
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-650 hover:from-orange-600 hover:to-orange-700 px-3.5 py-2.5 text-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(234,88,12,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
                     >
-                      <Plus className="h-4 w-4 stroke-[2.5px]" />
+                      <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
                       <span>سداد دفعة</span>
                     </motion.button>
                   </PermissionGate>
@@ -1092,9 +1158,9 @@ export default function SupplierAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 px-3.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
                     >
-                      <SlidersHorizontal className="h-4 w-4 text-slate-450" />
+                      <SlidersHorizontal className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
                       <span>تسوية رصيد</span>
                     </motion.button>
                   </PermissionGate>

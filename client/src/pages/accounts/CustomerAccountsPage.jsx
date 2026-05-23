@@ -1000,36 +1000,36 @@ export default function CustomerAccountsPage() {
         <div className="p-4.5 border-b border-slate-200/50 bg-slate-50/20 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="h-9.5 w-9.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-650 flex items-center justify-center shadow-md shadow-blue-200/80 ring-4 ring-blue-50/50">
-                <Users className="h-5 w-5 text-white" />
+              <div className="h-9 w-9 rounded-xl bg-blue-50/80 text-blue-650 border border-blue-100/50 flex items-center justify-center shadow-[inset_0_1px_2px_rgba(255,255,255,1)]">
+                <Users className="h-4.5 w-4.5 stroke-[2.3px]" />
               </div>
-              <h1 className="text-[14px] font-black text-slate-800 tracking-tight">حسابات العملاء</h1>
+              <h1 className="text-[13.5px] font-black text-slate-800 tracking-tight">حسابات العملاء</h1>
             </div>
             <PermissionGate page="customer_accounts" action="add">
               <button onClick={() => setShowCreate(true)}
-                className="flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-3.5 text-[11px] font-bold text-white shadow-md shadow-blue-200/50 hover:shadow-blue-200/70 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer">
-                <Plus className="h-4 w-4 stroke-[2.5px]" /> عميل جديد
+                className="flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3.5 text-[11px] font-black text-white shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer">
+                <Plus className="h-3.8 w-3.8 stroke-[3px]" /> عميل جديد
               </button>
             </PermissionGate>
           </div>
 
           <div className="relative">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-blue-500 transition-colors" />
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-blue-650 transition-colors stroke-[2.3px]" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="البحث بالاسم، الهاتف، الكود..."
-              className="w-full h-11 rounded-xl border border-slate-200 focus:border-blue-500/80 pr-10 pl-3.5 text-[12px] font-semibold outline-none bg-white transition-all focus:shadow-[0_4px_16px_rgba(37,99,235,0.04)] focus:ring-1 focus:ring-blue-100" />
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-[12px] font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
           </div>
 
-          <div className="flex bg-slate-200/60 p-1 rounded-xl relative">
+          <div className="flex bg-slate-250/50 p-1 rounded-xl relative">
             {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
-                className="flex-1 py-2 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
+                className="flex-1 py-1.5 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
                 style={{ color: filter === f.id ? "#1e3a8a" : "#475569" }}
               >
                 {filter === f.id && (
                   <motion.div
                     layoutId="activeFilterBg"
-                    className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_6px_rgba(0,0,0,0.06)] -z-10"
+                    className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_5px_rgba(0,0,0,0.05)] -z-10"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -1039,52 +1039,41 @@ export default function CustomerAccountsPage() {
           </div>
         </div>
 
-        {/* ── Net Balance Ticker Summary ── */}
-        <div className="mx-4 mt-4 mb-2.5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-4.5 shadow-[0_16px_36px_rgba(0,0,0,0.25)] relative overflow-hidden group">
-          {/* Dynamic background glowing ambient lights depending on status */}
-          <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full blur-xl pointer-events-none group-hover:scale-150 transition-all duration-500 ${netBalance > 0 ? "bg-rose-500/10" : netBalance < 0 ? "bg-emerald-500/10" : "bg-blue-500/10"}`} />
-          <div className={`absolute -left-4 -top-4 w-20 h-20 rounded-full blur-lg pointer-events-none group-hover:scale-150 transition-all duration-500 ${netBalance > 0 ? "bg-rose-600/5" : netBalance < 0 ? "bg-emerald-600/5" : "bg-indigo-600/5"}`} />
-
-          <div className="flex justify-between items-start mb-2 relative z-10">
-            <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">إجمالي صافي مديونية العملاء</span>
-            <span className={`p-1.5 rounded-xl border ${netBalance > 0 ? "bg-rose-500/15 border-rose-500/25 text-rose-450" : netBalance < 0 ? "bg-emerald-500/15 border-emerald-500/25 text-emerald-450" : "bg-slate-800 border-slate-700 text-slate-400"}`}>
-              {netBalance > 0 ? <TrendingUp className="h-4 w-4" /> : netBalance < 0 ? <TrendingDown className="h-4 w-4" /> : <Scale className="h-4 w-4" />}
-            </span>
+        {/* ── Net Balance Typographic Summary ── */}
+        <div className="mx-4.5 mt-4 mb-2.5 bg-slate-100/65 border border-slate-200/50 rounded-2xl p-4.5 transition-all duration-300">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10.5px] font-bold text-slate-450 tracking-wide uppercase">صافي مديونية العملاء</span>
+            {summaryLoading ? (
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-ping" />
+            ) : (
+              <span className={`h-2 w-2 rounded-full ${netBalance > 0 ? "bg-rose-500 animate-pulse" : netBalance < 0 ? "bg-emerald-500 animate-pulse" : "bg-slate-350"}`} />
+            )}
           </div>
 
-          <div className="relative z-10 flex items-baseline gap-1.5">
-            <span className={`text-[24px] font-black font-mono tracking-tight bg-gradient-to-r ${netBalance > 0 ? "from-rose-400 to-rose-350" : netBalance < 0 ? "from-emerald-400 to-emerald-350" : "from-slate-200 to-slate-400"} text-transparent bg-clip-text`}>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-[23px] font-black font-mono tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
               {summaryLoading ? (
-                <span className="inline-block w-16 h-7 bg-slate-800 rounded animate-pulse" />
+                <span className="inline-block w-16 h-7 bg-slate-200 rounded animate-pulse" />
               ) : (
                 fmt(netBalance ?? 0)
               )}
             </span>
-            <span className="text-[11px] font-bold text-slate-400">ج.م</span>
+            <span className="text-[10.5px] font-extrabold text-slate-450">ج.م</span>
           </div>
 
-          <div className="mt-2.5 text-[9.5px] font-bold flex items-center gap-1.5 relative z-10">
+          <div className="mt-2 text-[9.5px] font-extrabold text-slate-450 flex items-center gap-1.5">
             {netBalance < 0 ? (
-              <span className="text-emerald-400 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-450 animate-pulse" />
-                رصيد دائن لصالح العملاء
-              </span>
+              <span className="text-emerald-600">أرصدة دائنة مستحقة لصالح العملاء</span>
             ) : netBalance > 0 ? (
-              <span className="text-rose-400 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-450 animate-pulse" />
-                مديونية معلقة مستحقة على العملاء
-              </span>
+              <span className="text-rose-500">مديونية معلقة مستحقة على العملاء حالياً</span>
             ) : (
-              <span className="text-slate-400 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-                جميع الحسابات مسواة حالياً
-              </span>
+              <span>جميع حسابات العملاء مسواة بالكامل</span>
             )}
           </div>
         </div>
 
         {/* ── Customers List Scroll ── */}
-        <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
+        <div className="flex-1 overflow-y-auto px-1 pb-4">
           {loading ? (
             <div className="py-20 text-center text-[12px] font-bold text-slate-400 animate-pulse">جاري تحميل القائمة...</div>
           ) : filtered.length === 0 ? (
@@ -1102,43 +1091,43 @@ export default function CustomerAccountsPage() {
                 key={c.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: Math.min(0.3, index * 0.02) }}
+                transition={{ duration: 0.25, delay: Math.min(0.2, index * 0.015) }}
                 onClick={() => selectCustomer(c, activeTab)}
-                className={`p-4 mx-2 my-1 rounded-[22px] cursor-pointer border transition-all duration-300 relative group flex items-center gap-3.5 ${isSelected
-                    ? "bg-gradient-to-br from-blue-500/[0.04] to-indigo-500/[0.01] border-blue-200/80 shadow-[0_4px_16px_rgba(37,99,235,0.06)]"
-                    : "bg-white border-transparent hover:bg-slate-50/60 hover:border-slate-200"
+                className={`py-3.5 px-4.5 cursor-pointer border-b border-slate-100/80 transition-all duration-200 relative group flex items-center justify-between gap-3 ${isSelected
+                    ? "bg-blue-50/65 border-r-[4.5px] border-r-blue-600 border-b-blue-100/40"
+                    : "bg-transparent border-r-[4.5px] border-r-transparent hover:bg-slate-100/40"
                   }`}
               >
-                {/* Visual Accent dot and vertical line for selected state */}
-                {isSelected && (
-                  <div className="absolute right-0 top-3 bottom-3 w-[3.5px] bg-gradient-to-b from-blue-500 to-indigo-650 rounded-l-md" />
-                )}
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Letter Avatar with Sleek Minimalist Squircle Aesthetic */}
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[13px] font-black shrink-0 transition-all duration-200 ${
+                    isSelected 
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-300/30" 
+                      : "bg-slate-200/50 text-slate-550"
+                  }`}
+                  >
+                    {c.name?.charAt(0)}
+                  </div>
 
-                {/* Letter Avatar with Deterministic Gradient & Sleek Outer Ring */}
-                <div className={`h-10.5 w-10.5 rounded-2xl flex items-center justify-center text-[14px] font-black text-white shrink-0 shadow-sm bg-gradient-to-br transition-all duration-300 group-hover:scale-105 ${getAvatarBg(c.name)} ring-2 ring-white/80 border border-slate-200/40`}
-                >
-                  {c.name?.charAt(0)}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className={`text-[12.5px] font-extrabold truncate transition-colors leading-none ${isSelected ? "text-blue-900" : "text-slate-800"}`}>{c.name}</div>
+                      {nearLimit && (
+                        <span className="flex items-center shrink-0" title="تنبيه: اقتراب من الحد الائتماني">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono font-bold leading-none">{c.phone || c.code || "—"}</div>
+                  </div>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className={`text-[13px] font-extrabold truncate transition-colors ${isSelected ? "text-blue-900" : "text-slate-800"}`}>{c.name}</div>
-                    {nearLimit && (
-                      <span className="flex items-center shrink-0 p-1 bg-amber-50 rounded-lg border border-amber-200" title="تنبيه: اقتراب من الحد الائتماني">
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] text-slate-450 font-mono font-bold truncate bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">{c.phone || c.code || "—"}</div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {b < 0 && <span className="text-[8.5px] font-black bg-emerald-500/[0.08] text-emerald-700 border border-emerald-250 px-2 py-0.5 rounded-lg">له رصيد</span>}
-                      {b > 0 && <span className="text-[8.5px] font-black bg-rose-500/[0.08] text-rose-750 border border-rose-250 px-2 py-0.5 rounded-lg">عليه دين</span>}
-                      <span className={`text-[12.5px] font-black font-mono tracking-tight ${b > 0 ? "text-rose-650" : b < 0 ? "text-emerald-650" : "text-slate-400"}`}>
-                        {fmt(Math.abs(b))}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex flex-col items-end shrink-0 select-none">
+                  <span className={`text-[13px] font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                    {fmt(Math.abs(b))}
+                  </span>
+                  {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">عليه دين</span>}
+                  {b < 0 && <span className="text-[8.5px] font-extrabold text-emerald-600 leading-none mt-1 tracking-wide">له رصيد</span>}
                 </div>
               </motion.div>
             );
@@ -1158,52 +1147,52 @@ export default function CustomerAccountsPage() {
         ) : (
           <>
             {/* Customer Header Panel */}
-            <div className="bg-white border-b border-slate-200/60 px-6 py-4 shrink-0 shadow-[0_4px_20px_rgba(0,0,0,0.01)] relative z-10">
+            <div className="bg-white border-b border-slate-200/50 px-6 py-5 shrink-0 shadow-[0_4px_24px_rgba(0,0,0,0.015)] relative z-10">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
                 {/* Right Column: Customer Info & Avatar (lg:col-span-5) */}
-                <div className="lg:col-span-5 flex items-center gap-3.5 min-w-0">
+                <div className="lg:col-span-5 flex items-center gap-4 min-w-0">
                   {/* Avatar */}
-                  <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-[16px] font-black text-white shrink-0 shadow-sm bg-gradient-to-br ${getAvatarBg(selected.name)} border border-white ring-2 ring-slate-100`}>
+                  <div className={`h-12 w-12 rounded-[18px] flex items-center justify-center text-[18px] font-black text-white shrink-0 shadow-md shadow-slate-200/20 bg-gradient-to-br ${getAvatarBg(selected.name)} border-2 border-white ring-4 ring-slate-100/60`}>
                     {selected.name?.charAt(0)}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-[15px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
+                      <h2 className="text-[16px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
                       <button
                         onClick={() => setShowEdit(true)}
-                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all shrink-0 cursor-pointer active:scale-95"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
                         title="تعديل بيانات الملف"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
                       </button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {selected.phone && (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 font-bold bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-0.5 transition-all hover:bg-slate-100/50">
-                          <Phone className="h-3 w-3 text-slate-450" />
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
+                          <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
                           <span className="font-mono">{selected.phone}</span>
                           <button
                             onClick={() => handleCopy(selected.phone, "phone")}
-                            className="hover:text-blue-600 p-0.5 transition-colors mr-0.5 cursor-pointer"
+                            className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
                           >
-                            {copiedBadge === "phone" ? <Check className="h-2.5 w-2.5 text-emerald-500 animate-scale" /> : <Copy className="h-2.5 w-2.5" />}
+                            {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
                           </button>
                         </span>
                       )}
                       {selected.code && (
-                        <span className="text-[9px] font-bold font-mono bg-slate-50 text-slate-500 border border-slate-200/50 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all hover:bg-slate-100/50">
+                        <span className="text-[10px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
                           <span>كود: {selected.code}</span>
                           <button
                             onClick={() => handleCopy(selected.code, "code")}
-                            className="hover:text-blue-600 p-0.5 transition-colors mr-0.5 cursor-pointer"
+                            className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
                           >
-                            {copiedBadge === "code" ? <Check className="h-2.5 w-2.5 text-emerald-500 animate-scale" /> : <Copy className="h-2.5 w-2.5" />}
+                            {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
                           </button>
                         </span>
                       )}
                       {selected.is_blacklisted === 1 && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-lg">
-                          <AlertCircle className="h-3 w-3 text-rose-500" /> محظور
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1 rounded-xl shadow-sm">
+                          <AlertCircle className="h-3.5 w-3.5 text-rose-500" /> محظور
                         </span>
                       )}
                     </div>
@@ -1213,33 +1202,39 @@ export default function CustomerAccountsPage() {
                 {/* Middle Column: Balance & Credit Limit (lg:col-span-4) */}
                 <div className="lg:col-span-4 flex flex-col justify-center min-w-0">
                   <div className="flex items-center gap-3">
-                    <div className={`h-8.5 w-8.5 rounded-lg flex items-center justify-center shrink-0 border shadow-sm ${bal > 0 ? "bg-rose-50 border-rose-200/60 text-rose-600" : bal < 0 ? "bg-emerald-50 border-emerald-200/60 text-emerald-600" : "bg-slate-50 border-slate-200/80 text-slate-400"}`}>
-                      {bal > 0 ? <TrendingUp className="h-4 w-4 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-4 w-4 stroke-[2.3px]" /> : <Check className="h-4 w-4 stroke-[2.5px]" />}
+                    <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all ${
+                      bal > 0 
+                        ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
+                        : bal < 0 
+                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_rgba(16,185,129,0.08)]" 
+                          : "bg-slate-100 border-slate-200/60 text-slate-400"
+                    }`}>
+                      {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
                     </div>
                     <div>
-                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block">
                         {bal > 0 ? "صافي الرصيد المستحق بذمته" : bal < 0 ? "الرصيد الدائن للعميل" : "رصيد الحساب مسوّى"}
                       </div>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <div className={`text-[17px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-700"}`}>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <div className={`text-[20px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
                           {fmt(Math.abs(bal))}
                         </div>
-                        <span className={`text-[10px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
+                        <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
                       </div>
                     </div>
                   </div>
                   {creditLimit > 0 && bal > 0 && (
-                    <div className="mt-2 space-y-1.5">
-                      <div className="flex justify-between text-[9px] font-extrabold text-slate-450">
+                    <div className="mt-2.5 space-y-1.5">
+                      <div className="flex justify-between text-[9.5px] font-extrabold text-slate-455">
                         <span className={creditPct > 90 ? "text-rose-600" : creditPct > 70 ? "text-orange-600" : "text-emerald-600"}>مستنفذ من الحد {Math.round(creditPct)}%</span>
                         <span className="font-mono text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
                       </div>
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
                         <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
-                            ? "bg-gradient-to-r from-rose-500 to-red-600"
+                            ? "bg-rose-500"
                             : creditPct > 70
-                              ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                              : "bg-gradient-to-r from-emerald-400 via-teal-500 to-blue-500"
+                              ? "bg-orange-500"
+                              : "bg-emerald-500"
                           }`} style={{ width: `${creditPct}%` }} />
                       </div>
                     </div>
@@ -1247,15 +1242,15 @@ export default function CustomerAccountsPage() {
                 </div>
 
                 {/* Left Column: Quick Actions (lg:col-span-3) */}
-                <div className="lg:col-span-3 flex items-center justify-end gap-2 shrink-0">
+                <div className="lg:col-span-3 flex items-center justify-end gap-2.5 shrink-0">
                   <PermissionGate page="customer_accounts" action="edit">
                     <motion.button
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-700 px-3.5 py-2.5 text-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
                     >
-                      <Plus className="h-4 w-4 stroke-[2.5px]" />
+                      <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
                       <span>{bal < 0 ? "رد دفعة" : "تحصيل دفعة"}</span>
                     </motion.button>
                   </PermissionGate>
@@ -1264,9 +1259,9 @@ export default function CustomerAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 px-3.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[11px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
                     >
-                      <SlidersHorizontal className="h-4 w-4 text-slate-450" />
+                      <SlidersHorizontal className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
                       <span>تسوية رصيد</span>
                     </motion.button>
                   </PermissionGate>
