@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "../stores/authStore";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:5000",
+  baseURL: import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000"),
 });
 
 let isRedirectingToLogin = false;

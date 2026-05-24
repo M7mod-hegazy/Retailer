@@ -9,7 +9,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+const BASE = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 
 function resolveUrl(u) {
   if (!u) return null;

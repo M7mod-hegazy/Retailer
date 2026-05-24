@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Image, Loader2, Trash2, Upload } from "lucide-react";
 import api from "../../services/api";
 
-const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+const BASE = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 
 /**
  * ImageUpload — click to pick a file, uploads immediately, calls onUpload(url) with the

@@ -81,14 +81,42 @@ function createSplashWindow() {
   splashWindow.once("ready-to-show", () => splashWindow.show());
 }
 
+function loadWindowState() {
+  try {
+    const stateFile = path.join(app.getPath("userData"), "window-state.json");
+    const fs = require("fs");
+    if (fs.existsSync(stateFile)) return JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  } catch (_) {}
+  return { maximized: true };
+}
+
+function saveWindowState(win) {
+  try {
+    const stateFile = path.join(app.getPath("userData"), "window-state.json");
+    const fs = require("fs");
+    const maximized = win.isMaximized();
+    const state = { maximized };
+    if (!maximized) {
+      const b = win.getBounds();
+      state.x = b.x; state.y = b.y; state.width = b.width; state.height = b.height;
+    }
+    fs.writeFileSync(stateFile, JSON.stringify(state));
+  } catch (_) {}
+}
+
 function createMainWindow() {
+  const winState = loadWindowState();
+
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1100,
+    width:     winState.width  || 1400,
+    height:    winState.height || 900,
+    x:         winState.x,
+    y:         winState.y,
+    minWidth:  1100,
     minHeight: 700,
     show: false,
     title: "ElHegazi Retailer",
+    autoHideMenuBar: true,
     icon: path.join(__dirname, "assets", process.platform === "win32" ? "icon.ico" : "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -112,10 +140,20 @@ function createMainWindow() {
       splashWindow.destroy();
       splashWindow = null;
     }
+    if (winState.maximized !== false) {
+      mainWindow.maximize();
+    }
     mainWindow.show();
     mainWindow.focus();
     if (isDev) mainWindow.webContents.openDevTools();
   });
+
+  // Save window state on resize/move/close
+  const persistState = () => saveWindowState(mainWindow);
+  mainWindow.on("resize", persistState);
+  mainWindow.on("move", persistState);
+  mainWindow.on("maximize", persistState);
+  mainWindow.on("unmaximize", persistState);
 
   // Minimize to tray instead of closing
   mainWindow.on("close", (e) => {

@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import Highlight from "./Highlight";
 import { Package } from "lucide-react";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 function resolveImageUrl(u) {
   if (!u) return null;
   if (u.startsWith("http") || u.startsWith("data:")) return u;

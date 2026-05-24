@@ -28,7 +28,7 @@ import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 function resolveImageUrl(u) {
   if (!u) return null;
   if (u.startsWith("http") || u.startsWith("data:")) return u;
@@ -633,6 +633,7 @@ export default function PurchaseFormPage() {
         if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار بيع ${priceChangedLines.length} صنف`);
         toast.success("تم حفظ فاتورة المشتريات بنجاح");
         // Reset to idle state — doc number and date shown only after next interaction
+        wasSaved.current = true;
         setLines([]);
         setSupplier(null);
         setSupplierQuery("");

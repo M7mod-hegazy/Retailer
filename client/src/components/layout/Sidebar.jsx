@@ -25,7 +25,7 @@ function useCategoryCount() {
     if (fetched.current) return;
     fetched.current = true;
     const token = useAuthStore.getState().token;
-    const base = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+    const base = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
     fetch(`${base}/api/categories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d?.data)) setCount(d.data.length); })

@@ -116,6 +116,18 @@ function createApp() {
   app.use("/api/documents", documentsRoutes);
   app.use("/api/pos-drafts", posDraftsRoutes);
 
+  // Serve built React frontend in production web mode (client/dist must exist)
+  const path = require("path");
+  const fs = require("fs");
+  const clientDist = path.join(__dirname, "../../client/dist");
+  if (fs.existsSync(clientDist)) {
+    app.use(express.static(clientDist, { maxAge: "1h" }));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/")) return next();
+      res.sendFile(path.join(clientDist, "index.html"));
+    });
+  }
+
   app.use(errorHandler);
   return app;
 }
