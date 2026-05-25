@@ -4,6 +4,7 @@ const { calculateEarnedPoints, earnPointsForInvoice } = require("./loyaltyServic
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("./dailySessionService");
 const { getSnapshotCosts } = require("./waccService");
+const { captureInvoiceLineOverrides } = require("./overrideTrackingService");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -224,8 +225,9 @@ function createInvoice(payload) {
     db.prepare("UPDATE invoices SET created_at = ? WHERE id = ?")
       .run(`${createdDate} ${new Date().toTimeString().slice(0, 8)}`, inv.lastInsertRowid);
 
+    const createdInvoiceLines = [];
     for (const line of normalizedLines) {
-      db.prepare(
+      const lr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
            item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase)
@@ -244,6 +246,7 @@ function createInvoice(payload) {
         line.cost_wacc,
         line.cost_last_purchase,
       );
+      createdInvoiceLines.push({ id: lr.lastInsertRowid });
 
       adjustStock({
         item_id: line.item_id,
@@ -254,6 +257,9 @@ function createInvoice(payload) {
         reference_id: inv.lastInsertRowid,
       });
     }
+
+    // Capture master_price_at_time for override tracking
+    captureInvoiceLineOverrides(createdInvoiceLines, db);
 
     // ── Payment type handling ──────────────────────────────────────────
     // 1) Debt creation (credit + partial-payment non-installment)
@@ -638,6 +644,7 @@ function editInvoice(invoiceId, payload, userId) {
 
     // ── 2. Insert new lines ──────────────────────────────────────────────
     const newLines = payload.lines || [];
+    const editInvoiceLines = [];
     let subtotal = 0;
     for (const line of newLines) {
       const lineDiscount = Number(line.discount || 0);
@@ -655,7 +662,7 @@ function editInvoice(invoiceId, payload, userId) {
       subtotal += lineSubtotal;
       const itemRow = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
       const snap = getSnapshotCosts(line.item_id, db);
-      db.prepare(
+      const elr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
            item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase)
@@ -663,8 +670,12 @@ function editInvoice(invoiceId, payload, userId) {
       ).run(invoiceId, line.item_id, warehouseId, line.quantity, line.unit_price, lineDiscount, lineTotal,
             itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null,
             snap.cost_wacc, snap.cost_last_purchase);
+      editInvoiceLines.push({ id: elr.lastInsertRowid });
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: -Number(line.quantity), movement_type: "sale", reference_type: "invoice", reference_id: invoiceId });
     }
+
+    // Capture master_price_at_time for override tracking
+    captureInvoiceLineOverrides(editInvoiceLines, db);
 
     const discount = Number(payload.discount ?? invoice.discount ?? 0);
     const increase = Number(payload.increase ?? invoice.increase ?? 0);

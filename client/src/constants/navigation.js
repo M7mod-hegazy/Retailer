@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Store, Wallet, Activity,
   ShoppingCart, PackageSearch, ClipboardList, ArrowRightLeft, ReceiptText, Truck, Receipt,
   CircleDollarSign, HeartHandshake, Building, Coins, TrendingUp, TrendingDown, Banknote,
-  CreditCard, Landmark,
+  CreditCard, Landmark, FilePlus,
   Boxes, Box, Tags, FileSpreadsheet, BadgePercent,
   Database, Warehouse, Scale, Briefcase,
   ShieldCheck, PieChart, Fingerprint, UsersRound, Settings, ArrowUpCircle, ClipboardCheck,
@@ -20,6 +20,7 @@ export const NAV_MODULES = [
     title: "المبيعات والمشتريات", id: "trade", icon: ShoppingCart,
     items: [
       { path: "/purchases", label: "فواتير المشتريات", icon: PackageSearch, pageKey: "purchases" },
+      { path: "/purchases/new", label: "فاتورة شراء جديدة", icon: FilePlus, pageKey: "purchases" },
       { path: "/purchases/orders", label: "أوامر الشراء", icon: ClipboardList, pageKey: "purchase_orders" },
       { path: "/purchases/returns", label: "مرتجع المشتريات", icon: ArrowRightLeft, pageKey: "purchase_returns" },
       { path: "/sales/returns", label: "مرتجع المبيعات", icon: ReceiptText, pageKey: "sales_returns" },

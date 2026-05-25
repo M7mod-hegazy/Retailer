@@ -3,7 +3,9 @@ const { getDb } = require("../config/database");
 const { adjustStock } = require("../services/stockService");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
-const { recalculateWACC, recomputeWACCForItem } = require("../services/waccService");
+const { recomputeWACCForItem } = require("../services/waccService");
+const { applyPurchaseLinePriceUpdates, revertPurchaseLinePriceUpdates } = require("../services/priceLockService");
+const { capturePurchaseReturnLineOverrides } = require("../services/overrideTrackingService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
@@ -205,7 +207,7 @@ router.get("/items-search", requirePagePermission("purchases", "view"), (req, re
              p.payment_method, p.created_by,
              u.username AS created_by_username,
              pl.item_id, i.name AS item_name, i.code AS item_code, i.barcode,
-             pl.quantity, pl.unit_cost, pl.line_total, pl.selling_price
+             pl.quantity, pl.unit_cost, pl.line_total, i.sale_price AS selling_price
       FROM purchase_lines pl
       JOIN purchases p ON p.id = pl.purchase_id
       JOIN items i ON i.id = pl.item_id
@@ -272,27 +274,41 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
 
       const purchaseId = result.lastInsertRowid;
 
+      const newPurchaseLines = [];
       for (const line of payload.lines || []) {
-        const qty      = Number(line.quantity);
-        const cost     = Number(line.unit_cost);
+        const qty         = Number(line.quantity);
+        const cost        = Number(line.unit_cost);
         const warehouseId = Number(line.warehouse_id || payload.warehouse_id || 1);
-        const itemRow  = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
+        const itemRow     = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
+        const lockBuy     = line.update_master_purchase_price  !== false ? 1 : 0;
+        const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
+        const lockWhole   = line.update_master_wholesale_price  !== false ? 1 : 0;
 
-        // Recalculate WACC before stock adjustment (uses current qty)
-        const newWacc = recalculateWACC(line.item_id, qty, cost, db);
-
-        db.prepare(
+        const lineResult = db.prepare(
           `INSERT INTO purchase_lines
             (purchase_id, item_id, quantity, unit_cost, line_total,
-             item_name_ar, item_name_en, barcode, supplier_name)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             item_name_ar, item_name_en, barcode, supplier_name,
+             update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           purchaseId, line.item_id, qty, cost, qty * cost,
           itemRow?.name    || null,
           itemRow?.name_en || null,
           itemRow?.barcode || null,
           supplier?.name   || null,
+          lockBuy, lockSell, lockWhole,
         );
+
+        newPurchaseLines.push({
+          id: lineResult.lastInsertRowid,
+          item_id: Number(line.item_id),
+          unit_cost: cost,
+          unit_price: Number(line.selling_price || line.unit_price || 0),
+          wholesale_price: Number(line.wholesale_price || 0),
+          update_master_purchase_price: lockBuy,
+          update_master_sale_price:     lockSell,
+          update_master_wholesale_price: lockWhole,
+        });
 
         adjustStock({
           item_id: line.item_id,
@@ -303,6 +319,10 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           reference_id: purchaseId,
         });
       }
+
+      // WACC replay after all lines are inserted (always-recompute pattern)
+      const newPurchaseItemIds = [...new Set(newPurchaseLines.map(l => l.item_id))];
+      for (const itemId of newPurchaseItemIds) recomputeWACCForItem(itemId, db);
 
       // ── Payment handling ──────────────────────────────────────────────────────
       const defaultTreasuryId = () => {
@@ -368,32 +388,8 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         }
       }
 
-      // ── Update selling prices ──────────────────────────────────────────────────
-      const opId = `PUR-${purchaseId}`;
-      const reason = `تحديث من فاتورة شراء #${purchaseId}`;
-      const priceHistoryCols = db.prepare("PRAGMA table_info(price_history)").all().map(c => c.name);
-      const hasChangedBy = priceHistoryCols.includes("changed_by");
-
-      for (const line of payload.lines || []) {
-        const newSalePrice = Number(line.selling_price);
-        if (!newSalePrice || newSalePrice <= 0) continue;
-        const current = db.prepare("SELECT sale_price FROM items WHERE id = ?").get(line.item_id);
-        if (!current) continue;
-        const oldPrice = Number(current.sale_price || 0);
-        if (Math.abs(newSalePrice - oldPrice) < 0.001) continue;
-        db.prepare("UPDATE items SET sale_price = ?, updated_at = datetime('now') WHERE id = ?").run(newSalePrice, line.item_id);
-        if (hasChangedBy) {
-          db.prepare(
-            `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(line.item_id, "sale_price", oldPrice, newSalePrice, "absolute", newSalePrice, reason, opId, "purchase_form");
-        } else {
-          db.prepare(
-            `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(line.item_id, "sale_price", oldPrice, newSalePrice, "absolute", newSalePrice, reason, opId);
-        }
-      }
+      // ── Apply lock-controlled master price updates ────────────────────────────
+      applyPurchaseLinePriceUpdates(newPurchaseLines, purchaseId, payload.user_id || null, db);
 
       return getPurchaseWithLines(db, purchaseId);
     })();
@@ -496,8 +492,9 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
 
       const prId = purchaseReturnResult.lastInsertRowid;
 
+      const returnSavedLines = [];
       for (const line of preparedLines) {
-        db.prepare(
+        const rl = db.prepare(
           `INSERT INTO purchase_return_lines
            (purchase_return_id, purchase_line_id, item_id, quantity, unit_cost, line_total,
             warehouse_id, item_name_ar, item_name_en)
@@ -505,6 +502,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
         ).run(prId, line.purchase_line_id, line.item_id, line.quantity,
               line.unit_cost, line.line_total, line.warehouse_id,
               line.item_name_ar, line.item_name_en);
+        returnSavedLines.push({ id: rl.lastInsertRowid });
 
         adjustStock({
           item_id: line.item_id,
@@ -515,6 +513,9 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
           reference_id: prId,
         });
       }
+
+      // Capture master_price_at_time for override tracking
+      capturePurchaseReturnLineOverrides(returnSavedLines, db);
 
       if (prCashAmt > 0 && treasuryId) {
         db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(prCashAmt, treasuryId);
@@ -570,13 +571,30 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       db.prepare("DELETE FROM purchase_lines WHERE purchase_id = ?").run(purchase.id);
       const newLines = payload.lines || [];
       let newTotal = 0;
+      const editInsertedLines = [];
       for (const line of newLines) {
-        const qty = Number(line.quantity);
-        const cost = Number(line.unit_cost);
+        const qty       = Number(line.quantity);
+        const cost      = Number(line.unit_cost);
         const lineTotal = qty * cost;
         newTotal += lineTotal;
-        db.prepare("INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total) VALUES (?, ?, ?, ?, ?)")
-          .run(purchase.id, line.item_id, qty, cost, lineTotal);
+        const lockBuy   = line.update_master_purchase_price  !== false ? 1 : 0;
+        const lockSell  = line.update_master_sale_price       !== false ? 1 : 0;
+        const lockWhole = line.update_master_wholesale_price  !== false ? 1 : 0;
+        const lr = db.prepare(
+          `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total,
+             update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(purchase.id, line.item_id, qty, cost, lineTotal, lockBuy, lockSell, lockWhole);
+        editInsertedLines.push({
+          id: lr.lastInsertRowid,
+          item_id: Number(line.item_id),
+          unit_cost: cost,
+          unit_price: Number(line.selling_price || line.unit_price || 0),
+          wholesale_price: Number(line.wholesale_price || 0),
+          update_master_purchase_price: lockBuy,
+          update_master_sale_price:     lockSell,
+          update_master_wholesale_price: lockWhole,
+        });
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id || payload.warehouse_id || 1,
@@ -613,16 +631,8 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       ])];
       for (const itemId of editItemIds) recomputeWACCForItem(itemId, db);
 
-      // 6. Update selling prices if changed
-      for (const line of newLines) {
-        const newSalePrice = Number(line.selling_price);
-        if (!newSalePrice || newSalePrice <= 0) continue;
-        const current = db.prepare("SELECT sale_price FROM items WHERE id = ?").get(line.item_id);
-        if (!current) continue;
-        const oldPrice = Number(current.sale_price || 0);
-        if (Math.abs(newSalePrice - oldPrice) < 0.001) continue;
-        db.prepare("UPDATE items SET sale_price = ?, updated_at = datetime('now') WHERE id = ?").run(newSalePrice, line.item_id);
-      }
+      // 6. Apply lock-controlled master price updates
+      applyPurchaseLinePriceUpdates(editInsertedLines, purchase.id, userId, db);
 
       return getPurchaseWithLines(db, purchase.id);
     })();
@@ -766,19 +776,37 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
 
       const newPurchaseId = newResult.lastInsertRowid;
 
+      const amendInsertedLines = [];
       for (const line of newLines) {
-        const qty = Number(line.quantity);
-        const cost = Number(line.unit_cost);
+        const qty         = Number(line.quantity);
+        const cost        = Number(line.unit_cost);
         const warehouseId = Number(line.warehouse_id || 1);
-        const itemRow = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
-        recalculateWACC(line.item_id, qty, cost, db);
-        db.prepare(
-          `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total, item_name_ar, item_name_en, barcode, supplier_name)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        const itemRow     = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
+        const lockBuy     = line.update_master_purchase_price  !== false ? 1 : 0;
+        const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
+        const lockWhole   = line.update_master_wholesale_price  !== false ? 1 : 0;
+        const lr = db.prepare(
+          `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total, item_name_ar, item_name_en, barcode, supplier_name,
+             update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(newPurchaseId, line.item_id, qty, cost, qty * cost,
-              itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null, supplier?.name || null);
+              itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null, supplier?.name || null,
+              lockBuy, lockSell, lockWhole);
+        amendInsertedLines.push({
+          id: lr.lastInsertRowid,
+          item_id: Number(line.item_id),
+          unit_cost: cost,
+          unit_price: Number(line.selling_price || line.unit_price || 0),
+          wholesale_price: Number(line.wholesale_price || 0),
+          update_master_purchase_price: lockBuy,
+          update_master_sale_price:     lockSell,
+          update_master_wholesale_price: lockWhole,
+        });
         adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: qty, movement_type: "purchase", reference_type: "purchase", reference_id: newPurchaseId });
       }
+      // WACC replay after all lines inserted
+      const amendItemIds = [...new Set(amendInsertedLines.map(l => l.item_id))];
+      for (const itemId of amendItemIds) recomputeWACCForItem(itemId, db);
 
       // 4. Payment handling (same as create)
       if (paymentMethod === "cash") {
@@ -805,31 +833,8 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
         }
       }
 
-      // 5. Update selling prices from amended lines
-      const amendOpId = `PUR-${newPurchaseId}`;
-      const amendReason = `تحديث من تعديل فاتورة شراء #${newPurchaseId}`;
-      const priceHistoryCols = db.prepare("PRAGMA table_info(price_history)").all().map(c => c.name);
-      const amendHasChangedBy = priceHistoryCols.includes("changed_by");
-      for (const line of newLines) {
-        const newSalePrice = Number(line.selling_price);
-        if (!newSalePrice || newSalePrice <= 0) continue;
-        const current = db.prepare("SELECT sale_price FROM items WHERE id = ?").get(line.item_id);
-        if (!current) continue;
-        const oldPrice = Number(current.sale_price || 0);
-        if (Math.abs(newSalePrice - oldPrice) < 0.001) continue;
-        db.prepare("UPDATE items SET sale_price = ?, updated_at = datetime('now') WHERE id = ?").run(newSalePrice, line.item_id);
-        if (amendHasChangedBy) {
-          db.prepare(
-            `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(line.item_id, "sale_price", oldPrice, newSalePrice, "absolute", newSalePrice, amendReason, amendOpId, "purchase_amend");
-        } else {
-          db.prepare(
-            `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(line.item_id, "sale_price", oldPrice, newSalePrice, "absolute", newSalePrice, amendReason, amendOpId);
-        }
-      }
+      // 5. Apply lock-controlled master price updates for amended lines
+      applyPurchaseLinePriceUpdates(amendInsertedLines, newPurchaseId, payload.user_id || null, db);
 
       // 6. Link original → new
       db.prepare("UPDATE purchases SET amended_by = ? WHERE id = ?").run(newPurchaseId, original.id);
@@ -907,6 +912,10 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       // Recompute WACC from surviving history for all affected items
       const voidedItemIds = [...new Set((purchase.lines || []).map(l => l.item_id))];
       for (const itemId of voidedItemIds) recomputeWACCForItem(itemId, db);
+
+      // Revert master price changes that were applied by this purchase's locked lines
+      const voidUserId = req.user?.id ? Number(req.user.id) : null;
+      revertPurchaseLinePriceUpdates(purchase.id, voidUserId, db);
     })();
     req.audit("void", "purchase", { id: Number(req.params.id) }, `📦 تم إلغاء (فويد) مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     res.json({ success: true });

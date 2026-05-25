@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import PriceHistoryTab from "../../components/operations/PriceHistoryTab";
 import {
   ArrowDown,
   ArrowUp,
@@ -22,7 +23,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { usePageTour } from "../../hooks/usePageTour";
 
 const PRICE_FIELDS = [
@@ -126,6 +126,7 @@ export default function BulkPriceUpdatePage() {
   // ── Submit ──
   const [loading, setLoading] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [previewItems, setPreviewItems] = useState([]);
 
   // ── History ──
   const [history, setHistory] = useState([]);
@@ -300,13 +301,33 @@ export default function BulkPriceUpdatePage() {
     const hasOverrides = Object.keys(inlineOverrides).some((id) => selected.has(Number(id)));
     const v = parseFloat(adjValue);
     const hasBulkFormula = v && !isNaN(v) && v !== 0;
-    const nonOverrideSelected = [...selected].filter((id) => inlineOverrides[id] === undefined);
 
     if (!hasOverrides && !hasBulkFormula) {
       toast.error("أدخل قيمة تعديل أو عدّل السعر يدوياً لأحد الأصناف");
       return;
     }
     if (selected.size === 0) { toast.error("اختر صنفاً واحداً على الأقل"); return; }
+
+    // Build preview: compute old → new for every selected item
+    const preview = [...selected].map((id) => {
+      const item = items.find((it) => it.id === id);
+      if (!item) return null;
+      const oldPrice = parseFloat(item[fieldKey]) || 0;
+      const newPrice = effectiveNewPrice(item);
+      if (newPrice === null) return null;
+      return {
+        id: item.id,
+        name: item.name,
+        code: item.code || "",
+        category: item.category_name || "",
+        oldPrice,
+        newPrice,
+        diff: newPrice - oldPrice,
+        isOverride: inlineOverrides[id] !== undefined,
+      };
+    }).filter(Boolean);
+
+    setPreviewItems(preview);
     setPendingSubmit(true);
   }
 
@@ -389,15 +410,9 @@ export default function BulkPriceUpdatePage() {
     }
   }
 
-  const adjSuffix = adjType === "percentage" ? "%" : " ج";
   const hasInlineOverrides = [...selected].some((id) => inlineOverrides[id] !== undefined);
   const v = parseFloat(adjValue);
   const hasBulkFormula = v && !isNaN(v) && v !== 0;
-
-  const confirmMsg = hasInlineOverrides
-    ? `سيتم تطبيق تعديل الأسعار على ${selected.size} صنف (بعضها بأسعار مخصصة). هل تريد المتابعة؟`
-    : `سيتم ${direction === "up" ? "رفع" : "تخفيض"} ${fieldLabelOf(priceField)} بمقدار ${adjValue}${adjSuffix} على ${selected.size} صنف. هل تريد المتابعة؟`;
-
   const sortConfig = { key: sortCol, direction: sortDir };
 
   return (
@@ -551,6 +566,7 @@ export default function BulkPriceUpdatePage() {
         <div className="flex items-center bg-slate-50 border-b border-slate-200">
           <Tab active={tab === "items"} onClick={() => setTab("items")}>قائمة الأصناف ({filtered.length})</Tab>
           <Tab active={tab === "history"} onClick={() => setTab("history")}>سجل العمليات السابقة ({history.length})</Tab>
+          <Tab active={tab === "price_history"} onClick={() => setTab("price_history")}>سجل تغييرات الأسعار</Tab>
         </div>
 
         {/* ══════════ ITEMS TAB ══════════ */}
@@ -898,15 +914,111 @@ export default function BulkPriceUpdatePage() {
             )}
           </div>
         )}
+
+        {/* ══════════ PRICE HISTORY TAB ══════════ */}
+        {tab === "price_history" && (
+          <div className="flex-1 min-h-0" style={{ height: "70vh" }}>
+            <PriceHistoryTab />
+          </div>
+        )}
       </div>
 
-      <ConfirmDialog
-        open={pendingSubmit}
-        title="تأكيد فرض الأسعار"
-        message={confirmMsg}
-        onCancel={() => setPendingSubmit(false)}
-        onConfirm={confirmApply}
-      />
+      {/* ══════════ PREVIEW MODAL ══════════ */}
+      {pendingSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setPendingSubmit(false)}>
+          <div className="w-full max-w-2xl bg-white rounded-sm shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-[16px] font-black text-slate-900">معاينة التغييرات قبل التطبيق</h2>
+                <p className="text-[12px] font-bold text-slate-400 mt-0.5">
+                  {previewItems.length} صنف · حقل: {fieldLabelOf(priceField)}
+                </p>
+              </div>
+              <button onClick={() => setPendingSubmit(false)} className="h-8 w-8 flex items-center justify-center rounded hover:bg-slate-100 text-slate-400">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Summary bar */}
+            {(() => {
+              const ups   = previewItems.filter((it) => it.diff > 0);
+              const downs = previewItems.filter((it) => it.diff < 0);
+              const unchanged = previewItems.filter((it) => it.diff === 0);
+              const totalImpact = previewItems.reduce((s, it) => s + it.diff, 0);
+              return (
+                <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[12px] font-bold flex-wrap">
+                  {ups.length > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                      <ArrowUp className="h-3 w-3" /> {ups.length} زيادة
+                    </span>
+                  )}
+                  {downs.length > 0 && (
+                    <span className="flex items-center gap-1 text-rose-700 bg-rose-50 px-2 py-1 rounded">
+                      <ArrowDown className="h-3 w-3" /> {downs.length} تخفيض
+                    </span>
+                  )}
+                  {unchanged.length > 0 && (
+                    <span className="text-slate-400 bg-slate-100 px-2 py-1 rounded">{unchanged.length} بدون تغيير</span>
+                  )}
+                  <span className="mr-auto font-mono font-black text-slate-700">
+                    إجمالي الفارق:
+                    <span className={`mr-1 ${totalImpact > 0 ? "text-emerald-600" : totalImpact < 0 ? "text-rose-600" : "text-slate-400"}`}>
+                      {totalImpact > 0 ? "+" : ""}{totalImpact.toFixed(2)} ج
+                    </span>
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Items table */}
+            <div className="overflow-auto flex-1 scrollbar-thin">
+              <table className="w-full border-collapse text-right text-[12px]">
+                <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-2 font-black text-slate-500 text-right">الصنف</th>
+                    <th className="px-4 py-2 font-black text-slate-500 w-[100px]">القيمة الحالية</th>
+                    <th className="px-4 py-2 font-black text-slate-500 w-[100px]">القيمة الجديدة</th>
+                    <th className="px-4 py-2 font-black text-slate-500 w-[90px] text-left">الفرق</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {previewItems.map((it) => (
+                    <tr key={it.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-2">
+                        <p className="font-black text-slate-800">{it.name}</p>
+                        {it.code && <p className="font-mono text-[10px] text-slate-400">{it.code}</p>}
+                        {it.isOverride && <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded">مخصص</span>}
+                      </td>
+                      <td className="px-4 py-2 font-mono font-bold text-slate-500 text-right">{it.oldPrice.toFixed(2)}</td>
+                      <td className="px-4 py-2 font-mono font-black text-slate-900 text-right">{it.newPrice.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-left">
+                        <span className={`font-mono font-black text-[11px] px-1.5 py-0.5 rounded ${it.diff > 0 ? "text-emerald-700 bg-emerald-50" : it.diff < 0 ? "text-rose-700 bg-rose-50" : "text-slate-400 bg-slate-100"}`}>
+                          {it.diff > 0 ? "+" : ""}{it.diff.toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
+              <button onClick={() => setPendingSubmit(false)}
+                className="px-5 py-2 rounded-sm border border-slate-200 bg-white text-[13px] font-black text-slate-600 hover:bg-slate-50 transition-colors">
+                إلغاء
+              </button>
+              <button onClick={() => { setPendingSubmit(false); confirmApply(); }}
+                disabled={loading}
+                className="flex items-center gap-2 px-5 py-2 rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-black shadow-sm transition-colors disabled:opacity-40">
+                <CheckCircle2 className="h-4 w-4" />
+                {loading ? "جاري التطبيق..." : `تأكيد تطبيق التسعير (${previewItems.length} صنف)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

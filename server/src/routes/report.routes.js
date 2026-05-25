@@ -18,11 +18,24 @@ function buildOpts(query = {}) {
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
     category_id, item_id, cashier_id, treasury_id, bank_id,
   } = query;
+
+  // If caller didn't specify a cost method, fall back to the active setting
+  let activeCostMethod = cost_method;
+  if (!activeCostMethod) {
+    try {
+      const { getDb } = require("../config/database");
+      const row = getDb().prepare("SELECT margin_alert_cost_method FROM settings WHERE id = 1").get();
+      activeCostMethod = row?.margin_alert_cost_method || "wacc";
+    } catch (_) {
+      activeCostMethod = "wacc";
+    }
+  }
+
   return {
     q, status, payment_type, movement_type, action, resource, user_id,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
     category_id, item_id, cashier_id, treasury_id, bank_id,
-    cost_method: cost_method || "wacc",
+    cost_method: activeCostMethod,
   };
 }
 

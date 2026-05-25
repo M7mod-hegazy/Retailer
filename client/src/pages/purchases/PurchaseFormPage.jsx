@@ -14,6 +14,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import toast from "react-hot-toast";
+import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -27,6 +28,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
+import PurchaseProfitModal from "../../components/purchases/PurchaseProfitModal";
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 function resolveImageUrl(u) {
@@ -188,6 +190,9 @@ export default function PurchaseFormPage() {
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "" });
+  // Lock toggles: true = update master price on save (🔒), false = this invoice only (🔓)
+  const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
+  const [profitModalOpen, setProfitModalOpen] = useState(false);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -201,6 +206,7 @@ export default function PurchaseFormPage() {
   const [multiAmounts, setMultiAmounts] = useState({});
 
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(null);
   const wasSaved = useRef(false);
   const originalSnap = useRef(null);
   const isDirty = (lines.length > 0 || !!supplier) && !locked && !wasSaved.current;
@@ -518,9 +524,13 @@ export default function PurchaseFormPage() {
       original_sale_price: Number(selectedItem.sale_price || 0),
       wholesale_price: wholesalePrice,
       original_wholesale_price: Number(selectedItem.wholesale_price || 0),
+      last_purchase_cost: Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0),
       warehouse_id: wid,
       unit_id: staging.unitId || null,
       total: qty * cost,
+      update_master_purchase_price: stagingLocks.purchase,
+      update_master_sale_price:     stagingLocks.sale,
+      update_master_wholesale_price: stagingLocks.wholesale,
     }]);
     setSelectedItem(null);
     setItemQuery("");
@@ -601,8 +611,12 @@ export default function PurchaseFormPage() {
         quantity: l.quantity,
         unit_cost: l.unit_cost,
         selling_price: l.selling_price,
+        unit_price: l.selling_price,
         wholesale_price: l.wholesale_price,
         warehouse_id: l.warehouse_id || defaultWarehouseId,
+        update_master_purchase_price:  l.update_master_purchase_price  !== false,
+        update_master_sale_price:      l.update_master_sale_price      !== false,
+        update_master_wholesale_price: l.update_master_wholesale_price !== false,
       })),
     };
   }
@@ -619,6 +633,19 @@ export default function PurchaseFormPage() {
     return true;
   }
 
+  function onDismissSaveSuccess() {
+    setSaveSuccess(null);
+    setLines([]);
+    setSupplier(null);
+    setSupplierQuery("");
+    setPaymentMode("cash");
+    setBankRef("");
+    setDueDate("");
+    setMultiAmounts({});
+    resetActivation();
+    setTimeout(() => itemInputRef.current?.focus(), 50);
+  }
+
   async function doSave() {
     if (!validateBeforeSave()) return;
     setIsSaving(true);
@@ -629,20 +656,29 @@ export default function PurchaseFormPage() {
         wasSaved.current = true;
         navigate(`/purchases/${id}`);
       } else {
-        await api.post("/api/purchases", buildPayload());
+        const res = await api.post("/api/purchases", buildPayload());
+        const savedDocNo = res.data?.data?.doc_no || docNo || refNo;
+        const paymentMethodLabel = {
+          cash: "نقدي", bank_transfer: "حوالة بنكية",
+          credit: "آجل", future_due: "استحقاق لاحق", multi: "متعدد",
+        }[paymentMode] || paymentMode;
+        const paymentsForDisplay = paymentMode === "multi"
+          ? Object.entries(multiAmounts)
+              .filter(([, v]) => Number(v) > 0)
+              .map(([method_id, amount]) => {
+                const m = paymentMethods.find(pm => String(pm.id) === String(method_id));
+                return { method: m?.type || "cash", method_name: m?.name || "دفعة", amount: Number(amount) };
+              })
+          : [{ method: paymentMode, method_name: paymentMethodLabel, amount: totals.total }];
         if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار بيع ${priceChangedLines.length} صنف`);
-        toast.success("تم حفظ فاتورة المشتريات بنجاح");
-        // Reset to idle state — doc number and date shown only after next interaction
         wasSaved.current = true;
-        setLines([]);
-        setSupplier(null);
-        setSupplierQuery("");
-        setPaymentMode("cash");
-        setBankRef("");
-        setDueDate("");
-        setMultiAmounts({});
-        resetActivation();
-        navigate("/purchases/new", { replace: true });
+        setSaveSuccess({
+          invoiceNumber: savedDocNo,
+          total: `${formatMoney(totals.total)} ج.م`,
+          payments: paymentsForDisplay,
+          customerName: supplier?.name || null,
+          customerNewBalance: null,
+        });
       }
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل حفظ الفاتورة");
@@ -699,10 +735,28 @@ export default function PurchaseFormPage() {
   }
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6 animate-fade-in" dir="rtl">
+    <div className="relative flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6 animate-fade-in" dir="rtl">
+      {saveSuccess && (
+        <InvoiceSaveSuccess
+          invoiceNumber={saveSuccess.invoiceNumber}
+          total={saveSuccess.total}
+          payments={saveSuccess.payments}
+          customerName={saveSuccess.customerName}
+          customerNewBalance={saveSuccess.customerNewBalance}
+          onDismiss={onDismissSaveSuccess}
+        />
+      )}
+      {profitModalOpen && (
+        <PurchaseProfitModal lines={lines} onClose={() => setProfitModalOpen(false)} />
+      )}
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b-2 border-emerald-500 bg-white px-5">
         <div className="flex items-center gap-3">
+          <Link to="/purchases"
+            className="flex items-center gap-1 text-slate-400 hover:text-emerald-700 transition-colors mr-1"
+            title="فواتير المشتريات">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col">
               <h1 className="text-[14px] font-black text-emerald-800">
@@ -739,6 +793,13 @@ export default function PurchaseFormPage() {
               <TrendingUp className="h-3.5 w-3.5" />
               {priceChangedLines.length} أسعار بيع ستتغير
             </div>
+          )}
+          {/* Profit analysis button */}
+          {lines.length > 0 && (
+            <button onClick={() => setProfitModalOpen(true)}
+              className="flex h-7 items-center gap-1.5 rounded-sm border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-all">
+              <TrendingUp className="h-3.5 w-3.5" /> تحليل الربح
+            </button>
           )}
           {/* Today's Purchases button */}
           <button onClick={() => setTodayPurchOpen(true)}
@@ -879,50 +940,133 @@ export default function PurchaseFormPage() {
                   </div>
                 </div>
 
-                {/* Cost */}
+                {/* Cost (with lock toggle) */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">التكلفة</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-600">التكلفة</label>
+                    <button type="button"
+                      onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
+                      title={stagingLocks.purchase ? "يحدّث السعر الرئيسي عند الحفظ — اضغط لإلغاء" : "هذه الفاتورة فقط — اضغط للتحديث"}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+                        stagingLocks.purchase
+                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                          : "bg-amber-100 text-amber-700 border border-amber-300"
+                      }`}>
+                      {stagingLocks.purchase ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
+                      {stagingLocks.purchase ? "يحدّث" : "للفاتورة"}
+                    </button>
+                  </div>
                   <input ref={costInputRef} type="number" step="any" value={staging.unitCost}
                     onChange={(e) => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, sellInputRef, unitSelectRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
+                    className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
+                      !stagingLocks.purchase ? "border-amber-300 bg-amber-50/60"
+                      : selectedItem && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && Number(staging.unitCost) > 0
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300 bg-slate-50"
+                    }`} />
+                  {/* Cost before→after badge (parity with selling/wholesale) */}
+                  {selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
+                    <span className="text-[9px] text-center leading-tight">
+                      <span className="text-slate-400 font-mono">{Number(selectedItem.purchase_price).toFixed(2)}</span>
+                      <span className="text-slate-300 mx-1">→</span>
+                      <span className={`font-mono font-black ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                        {Number(staging.unitCost).toFixed(2)}
+                      </span>
+                      <span className="text-slate-400 mr-1">
+                        ({(((Number(staging.unitCost) - Number(selectedItem.purchase_price)) / Number(selectedItem.purchase_price)) * 100).toFixed(1)}%)
+                      </span>
+                    </span>
+                  )}
+                  {/* آخر شراء hint */}
+                  {selectedItem && Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0) > 0 && (
+                    <span className="text-[9px] text-slate-400 text-center leading-tight">
+                      آخر شراء: <span className="font-mono font-black text-slate-500">
+                        {Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0).toFixed(2)}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
-                {/* Selling price (مستهلك) */}
+                {/* Selling price (مستهلك — with lock toggle) */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                    مستهلك
-                    {selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0 && (
-                      <span className="text-amber-600 text-[9px]">• متغير</span>
-                    )}
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                      مستهلك
+                    </label>
+                    <button type="button"
+                      onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
+                      title={stagingLocks.sale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+                        stagingLocks.sale
+                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                          : "bg-amber-100 text-amber-700 border border-amber-300"
+                      }`}>
+                      {stagingLocks.sale ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
+                      {stagingLocks.sale ? "يحدّث" : "للفاتورة"}
+                    </button>
+                  </div>
                   <input ref={sellInputRef} type="number" step="any" value={staging.sellingPrice}
                     onChange={(e) => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, wholesaleInputRef, costInputRef)}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
-                      selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0
-                        ? "border-amber-400 bg-amber-50" : "border-slate-300 bg-slate-50"
+                      !stagingLocks.sale ? "border-amber-300 bg-amber-50/60"
+                      : selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300 bg-slate-50"
                     }`} />
+                  {/* Before→after badge */}
+                  {selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
+                    <span className="text-[9px] text-center leading-tight">
+                      <span className="text-slate-400 font-mono">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-300 mx-1">→</span>
+                      <span className={`font-mono font-black ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                        {Number(staging.sellingPrice).toFixed(2)}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
-                {/* Wholesale price (جملة) */}
+                {/* Wholesale price (جملة — with lock toggle) */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                    جملة
-                    {selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0 && (
-                      <span className="text-amber-600 text-[9px]">• متغير</span>
-                    )}
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                      جملة
+                    </label>
+                    <button type="button"
+                      onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
+                      title={stagingLocks.wholesale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+                        stagingLocks.wholesale
+                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                          : "bg-amber-100 text-amber-700 border border-amber-300"
+                      }`}>
+                      {stagingLocks.wholesale ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
+                      {stagingLocks.wholesale ? "يحدّث" : "للفاتورة"}
+                    </button>
+                  </div>
                   <input ref={wholesaleInputRef} type="number" step="any" value={staging.wholesalePrice}
                     onChange={(e) => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); warehouseTableRef.current?.focus(); } else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); sellInputRef.current?.focus(); sellInputRef.current?.select(); } }}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
-                      selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0
-                        ? "border-amber-400 bg-amber-50" : "border-slate-300 bg-slate-50"
+                      !stagingLocks.wholesale ? "border-amber-300 bg-amber-50/60"
+                      : selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300 bg-slate-50"
                     }`} />
+                  {/* Before→after badge */}
+                  {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                    <span className="text-[9px] text-center leading-tight">
+                      <span className="text-slate-400 font-mono">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-300 mx-1">→</span>
+                      <span className={`font-mono font-black ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                        {Number(staging.wholesalePrice).toFixed(2)}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
                 {/* Warehouse table */}
@@ -976,6 +1120,10 @@ export default function PurchaseFormPage() {
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
             className="border-0"
             containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0 animate-fade-in"
+            rowClass={(l) => {
+              const anyUnlocked = l.update_master_purchase_price === false || l.update_master_sale_price === false || l.update_master_wholesale_price === false;
+              return anyUnlocked ? "!bg-amber-50" : "";
+            }}
             columns={[
               { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
               { id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-slate-500 border-l border-slate-100", render: (l) => l.code || "-" },
@@ -1046,6 +1194,33 @@ export default function PurchaseFormPage() {
                         onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
                         className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
                       {changed && <span title={`السعر الحالي: ${l.original_wholesale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+                    </div>
+                  );
+                }
+              },
+              {
+                id: "locks", header: "قفل", width: 80, sortable: false, headerClass: "text-center px-1", cellClass: "p-0 border-l border-slate-100",
+                render: (l, i) => {
+                  if (isLocked) return null;
+                  const mk = (field, label, lockKey) => {
+                    const on = l[lockKey] !== false;
+                    return (
+                      <button
+                        title={on ? `${label}: يحدّث السعر الرئيسي` : `${label}: للفاتورة فقط`}
+                        onClick={() => updateLineField(i, lockKey, !on)}
+                        className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all leading-none ${
+                          on ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                        }`}>
+                        <Lock size={7} className={on ? "" : "opacity-50"} />
+                        {label}
+                      </button>
+                    );
+                  };
+                  return (
+                    <div className="flex flex-col items-center gap-0.5 py-1 px-1">
+                      {mk("cost", "ش", "update_master_purchase_price")}
+                      {mk("sell", "ب", "update_master_sale_price")}
+                      {mk("whole", "ج", "update_master_wholesale_price")}
                     </div>
                   );
                 }

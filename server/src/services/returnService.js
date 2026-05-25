@@ -3,6 +3,7 @@ const { adjustStock } = require("./stockService");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("./dailySessionService");
 const { getSnapshotCosts } = require("./waccService");
+const { captureSalesReturnLineOverrides } = require("./overrideTrackingService");
 
 function generateAmendmentDocNo(originalDocNo, db, table) {
   const base = originalDocNo.replace(/-A\d+$/, "");
@@ -105,8 +106,9 @@ function createReturn(invoiceId, payload) {
 
     const returnId = result.lastInsertRowid;
 
+    const createdReturnLines = [];
     for (const line of preparedLines) {
-      db.prepare(
+      const rlr = db.prepare(
         `INSERT INTO sales_return_lines
           (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total,
            warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase)
@@ -114,6 +116,7 @@ function createReturn(invoiceId, payload) {
       ).run(returnId, line.invoice_line_id, line.item_id, line.quantity,
             line.unit_price, line.line_total, line.warehouse_id,
             line.item_name_ar, line.item_name_en, line.cost_wacc, line.cost_last_purchase);
+      createdReturnLines.push({ id: rlr.lastInsertRowid });
 
       adjustStock({
         item_id: line.item_id,
@@ -124,6 +127,7 @@ function createReturn(invoiceId, payload) {
         reference_id: returnId,
       });
     }
+    captureSalesReturnLineOverrides(createdReturnLines, db);
 
     const treasuryId =
       payload.treasury_id ||
@@ -180,13 +184,14 @@ function createGeneralReturn(payload) {
 
     const returnId = ret.lastInsertRowid;
 
+    const genReturnLines = [];
     for (const line of lines) {
       const lineTotal = Number(line.quantity) * Number(line.unit_price);
       const itemRow = db.prepare("SELECT name, name_en FROM items WHERE id = ?").get(line.item_id);
       const snap = getSnapshotCosts(line.item_id, db);
       const warehouseId = Number(line.warehouse_id || 1);
 
-      db.prepare(
+      const grr = db.prepare(
         `INSERT INTO sales_return_lines
           (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total,
            warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase)
@@ -194,9 +199,11 @@ function createGeneralReturn(payload) {
       ).run(returnId, line.item_id, line.quantity, line.unit_price, lineTotal,
             warehouseId, itemRow?.name || null, itemRow?.name_en || null,
             snap.cost_wacc, snap.cost_last_purchase);
+      genReturnLines.push({ id: grr.lastInsertRowid });
 
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: Number(line.quantity), movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
     }
+    captureSalesReturnLineOverrides(genReturnLines, db);
 
     const genTreasuryId = treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
     if (genCashAmt > 0 && genTreasuryId) {

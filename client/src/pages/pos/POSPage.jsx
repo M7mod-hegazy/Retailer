@@ -395,6 +395,8 @@ export default function POSPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
+  const { permissions } = useAuthStore();
+  const canOverridePrice = user?.role === "dev" || user?.role === "admin" || (Array.isArray(permissions?.pos) && permissions.pos.includes("override_price"));
   const { playBeep } = useSound();
 
   // POS store
@@ -1165,12 +1167,21 @@ export default function POSPage() {
       setPendingBelowCostAdd(false);
     }
 
+    // The "expected" master price depends on which price-type the cashier chose.
+    // wholesale = wholesale_price; retail = sale_price. Override is detected against
+    // THIS expected price so legitimate wholesale sales don't light up amber.
+    const expectedMaster = priceType === "wholesale" && Number(selectedItem.wholesale_price) > 0
+      ? Number(selectedItem.wholesale_price)
+      : Number(selectedItem.sale_price || selectedItem.price || 0);
+
     addLine({
       id: selectedItem.id,
       name: selectedItem.name,
       code: selectedItem.code || selectedItem.item_code || "",
       barcode: selectedItem.barcode || "",
       sale_price: unitPrice,
+      master_sale_price: expectedMaster,
+      price_type: priceType,
       category_name: selectedItem.category_name || "غير مصنف",
       warehouse_id: warehouse.id,
       warehouse_name: warehouse.name,
@@ -2208,13 +2219,17 @@ export default function POSPage() {
                     type="number"
                     step="any"
                     value={staging.unitPrice}
-                    onChange={(e) => setStaging(s => ({ ...s, unitPrice: e.target.value }))}
-                    onFocus={e => e.target.select()}
+                    onChange={(e) => canOverridePrice && setStaging(s => ({ ...s, unitPrice: e.target.value }))}
+                    onFocus={e => canOverridePrice && e.target.select()}
                     onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
-                    className={`w-full h-[30px] border rounded-sm bg-slate-50 py-1 px-2 text-[12px] font-black outline-none text-center transition-colors
-                      ${selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0)
-                        ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
-                        : "border-slate-300 text-slate-800 focus:border-slate-800"}`}
+                    readOnly={!canOverridePrice}
+                    title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}
+                    className={`w-full h-[30px] border rounded-sm py-1 px-2 text-[12px] font-black outline-none text-center transition-colors
+                      ${!canOverridePrice
+                        ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
+                        : selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0)
+                          ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
+                          : "bg-slate-50 border-slate-300 text-slate-800 focus:border-slate-800"}`}
                   />
                   <div className="h-[20px] flex items-center justify-center rounded-sm bg-slate-100 border border-slate-200 px-1">
                     <span className="text-[10px] font-mono text-slate-400">
@@ -2463,11 +2478,24 @@ export default function POSPage() {
                 {
                   id: "unitPrice", header: "السعر", width: 100, sortable: true,
                   headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-                  render: (l, i) => (
-                    <input type="number" step="any" value={l.unit_price}
-                      onChange={(e) => updateLine(l.item_id, { unit_price: Number(e.target.value) || 0 })}
-                      className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:bg-indigo-50/50 transition-colors" />
-                  )
+                  render: (l) => {
+                    const isOverride = l.item_id !== -1 && l.master_sale_price > 0 && Math.abs(Number(l.unit_price) - Number(l.master_sale_price)) > 0.001;
+                    return (
+                      <div className="relative w-full h-full" title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}>
+                        <input type="number" step="any" value={l.unit_price}
+                          onChange={(e) => canOverridePrice && updateLine(l.item_id, { unit_price: Number(e.target.value) || 0 })}
+                          readOnly={!canOverridePrice}
+                          className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${
+                            !canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" :
+                            isOverride ? "bg-amber-50 text-amber-800 focus:bg-amber-100" : "bg-transparent focus:bg-indigo-50/50"
+                          }`} />
+                        {isOverride && (
+                          <span title={`السعر الأصلي: ${Number(l.sale_price).toFixed(2)}`}
+                            className="absolute top-1 left-1 h-1.5 w-1.5 rounded-full bg-amber-500 pointer-events-none" />
+                        )}
+                      </div>
+                    );
+                  }
                 },
                 {
                   id: "lineDiscount", header: "خصم", width: 110, sortable: false,
@@ -3169,13 +3197,14 @@ export default function POSPage() {
               <div className="flex flex-col gap-2.5">
                 {lines.map((line, idx) => {
                   const isExceedingStock = Number(line.quantity || 0) > Number(line.stock_quantity || 0);
-                  const lineTotal = Math.max(0, Number(line.quantity || 0) * Number(line.sale_price || line.unit_price || 0) - Number(line.line_discount || 0));
-                  const unitPrice = Number(line.sale_price || line.unit_price || 0);
+                  const lineTotal = Math.max(0, Number(line.quantity || 0) * Number(line.unit_price || 0) - Number(line.line_discount || 0));
+                  const unitPrice = Number(line.unit_price || 0);
                   const qty = Number(line.quantity || 0);
                   const item = items.find((it) => it.id === line.item_id);
                   const cost = Number(item?.purchase_price || 0);
                   const isBelowCost = cost > 0 && unitPrice > 0 && unitPrice < cost;
                   const isDiscountOverflow = Number(line.line_discount || 0) > unitPrice * qty && unitPrice > 0;
+                  const isPriceOverride = line.item_id !== -1 && line.master_sale_price > 0 && Math.abs(unitPrice - Number(line.master_sale_price)) > 0.001;
                   const hasWarning = isExceedingStock || isBelowCost || isDiscountOverflow;
                   return (
                     <div key={`${line.item_id}-${idx}`} className={`animate-slide-up group relative flex flex-col gap-2.5 p-3 rounded-2xl border bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-px ${
@@ -3273,10 +3302,16 @@ export default function POSPage() {
 
                         {/* Price */}
                         <div className="flex flex-col items-end gap-0.5 shrink-0">
-                          <div className="rounded-xl bg-indigo-50 px-2.5 py-1 border border-indigo-100 whitespace-nowrap">
-                            <span className="font-mono text-[14px] font-black text-indigo-700">{formatMoney(lineTotal)}</span>
+                          <div className={`rounded-xl px-2.5 py-1 border whitespace-nowrap ${isPriceOverride ? "bg-amber-50 border-amber-200" : "bg-indigo-50 border-indigo-100"}`}>
+                            <span className={`font-mono text-[14px] font-black ${isPriceOverride ? "text-amber-700" : "text-indigo-700"}`}>{formatMoney(lineTotal)}</span>
                           </div>
-                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{formatMoney(line.sale_price || line.unit_price)} للقطعة</span>
+                          {isPriceOverride ? (
+                            <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">
+                              {formatMoney(unitPrice)} <span className="text-slate-400 mx-0.5">←</span> {formatMoney(line.master_sale_price)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{formatMoney(unitPrice)} للقطعة</span>
+                          )}
                         </div>
                       </div>
 

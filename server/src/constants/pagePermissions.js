@@ -1,5 +1,5 @@
 const PAGE_PERMISSIONS = {
-  pos: { label: 'نقطة البيع', actions: ['view','add','edit','delete','void','hold','discount','print'] },
+  pos: { label: 'نقطة البيع', actions: ['view','add','edit','delete','void','hold','discount','print','override_price'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view','add','edit','delete','print'] },
   analytics: { label: 'التحليلات والمبيعات', actions: ['view','export'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view','add','edit','delete','print'] },

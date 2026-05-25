@@ -4,6 +4,7 @@ const { adjustStock } = require("../services/stockService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
+const { captureBranchTransferLineOverrides } = require("../services/overrideTrackingService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -153,6 +154,7 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
       const insertLine = db.prepare(
         "INSERT INTO branch_transfer_lines (transfer_id, item_id, quantity, warehouse_id, unit_cost, selling_price, unit_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
       );
+      const transferSavedLines = [];
 
       for (const item of items) {
         const itemId = Number(item.item_id);
@@ -187,8 +189,12 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
           notes: notes || null,
         });
 
-        insertLine.run(transferId, itemId, qty, lineWhId, unitCost, sellingPrice, unitId);
+        const tlr = insertLine.run(transferId, itemId, qty, lineWhId, unitCost, sellingPrice, unitId);
+        transferSavedLines.push({ id: tlr.lastInsertRowid });
       }
+
+      // Capture master_price_at_time for override tracking (backend-only, no UI amber)
+      captureBranchTransferLineOverrides(transferSavedLines, db);
 
       return db.prepare("SELECT * FROM branch_transfers WHERE id = ?").get(transferId);
     })();

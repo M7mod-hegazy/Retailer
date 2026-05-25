@@ -75,6 +75,8 @@ export const usePosStore = create(
                   primary_image_url: item.primary_image_url || null,
                   quantity: nextQuantity,
                   unit_price: nextPrice,
+                  master_sale_price: Number(item.master_sale_price ?? item.sale_price ?? 0),
+                  price_type: item.price_type || "retail",
                   line_discount: nextDiscount,
                   warehouse_id: item.warehouse_id || null,
                   warehouse_name: item.warehouse_name || "",

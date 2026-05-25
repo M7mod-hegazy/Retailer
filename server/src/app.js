@@ -46,6 +46,7 @@ const ajalDebtsRoutes = require("./routes/ajalDebts.routes");
 const auditRoutes = require("./routes/audit.routes");
 const installmentsRoutes = require("./routes/installments.routes");
 const posDraftsRoutes = require("./routes/posDrafts");
+const pricingRoutes = require("./routes/pricing.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 function createApp() {
@@ -115,6 +116,7 @@ function createApp() {
   app.use("/api/audit-logs", auditRoutes);
   app.use("/api/documents", documentsRoutes);
   app.use("/api/pos-drafts", posDraftsRoutes);
+  app.use("/api/pricing", pricingRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");

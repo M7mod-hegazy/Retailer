@@ -291,7 +291,22 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
   const imageUrls = normalizeImageUrls(payload);
   storeItemImages(info.lastInsertRowid, imageUrls);
 
-  req.audit("create", "items", { id: info.lastInsertRowid }, `📦 تم إضافة صنف: ${payload.name || ''}`);
+  // Write item-create baseline price_history rows
+  const newItemId = info.lastInsertRowid;
+  const insertBaseline = getDb().prepare(
+    `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, source, operation_id, changed_by)
+     VALUES (?, ?, 0, ?, 'set', ?, 'item_create', ?, ?)`
+  );
+  const createdBy = req.user?.name || req.user?.username || "غير محدد";
+  const opId = `CREATE-${newItemId}`;
+  const salePrice  = Number(payload.sale_price || 0);
+  const purchPrice = Number(payload.purchase_price || payload.cost_price || 0);
+  const wholePrice = Number(payload.wholesale_price || 0);
+  if (salePrice  > 0) insertBaseline.run(newItemId, "sale_price",      salePrice,  salePrice,  opId, createdBy);
+  if (purchPrice > 0) insertBaseline.run(newItemId, "purchase_price",  purchPrice, purchPrice, opId, createdBy);
+  if (wholePrice > 0) insertBaseline.run(newItemId, "wholesale_price", wholePrice, wholePrice, opId, createdBy);
+
+  req.audit("create", "items", { id: newItemId }, `📦 تم إضافة صنف: ${payload.name || ''}`);
   const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(info.lastInsertRowid);
   return res.status(201).json({ success: true, data: withWacc(withImages([row])[0]) });
 });
@@ -312,6 +327,20 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
     if (hasStock) {
       // Silently ignore purchase_price changes when stock exists; WACC governs cost
       delete payload.purchase_price;
+    }
+  }
+
+  // Lock sale_price and wholesale_price — these must change via /purchases/new (with lock)
+  // or /operations/bulk-price-update only. If a change is attempted here, allow it but
+  // record it in price_history with source='manual_correction' for auditability.
+  const priceChanges = [];
+  for (const f of ["sale_price", "wholesale_price"]) {
+    if (payload[f] !== undefined && payload[f] !== null) {
+      const newVal = Number(payload[f]);
+      const oldVal = Number(existing[f] || 0);
+      if (Math.abs(newVal - oldVal) > 0.0001) {
+        priceChanges.push({ field: f, oldVal, newVal });
+      }
     }
   }
 
@@ -354,6 +383,19 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
 
   if (payload.image_urls !== undefined || payload.image_urls_text !== undefined) {
     storeItemImages(id, normalizeImageUrls(payload));
+  }
+
+  // Log direct price changes from the items edit page as manual_correction
+  if (priceChanges.length) {
+    const insertHist = db.prepare(
+      `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, source, operation_id, changed_by)
+       VALUES (?, ?, ?, ?, 'set', ?, 'manual_correction', ?, ?)`
+    );
+    const changedBy = req.user?.name || req.user?.username || "غير محدد";
+    const opId = `ITEM-EDIT-${id}-${Date.now()}`;
+    for (const c of priceChanges) {
+      insertHist.run(id, c.field, c.oldVal, c.newVal, c.newVal, opId, changedBy);
+    }
   }
 
   req.audit("update", "items", { id }, `📦 تم تعديل صنف: ${payload.name || ''}`);
@@ -848,8 +890,8 @@ router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, r
 
     const changedBy = req.user?.name || req.user?.username || "غير محدد";
     const insertHistory = db.prepare(
-      `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'bulk_update')`
     );
     const updateItem = db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`);
 

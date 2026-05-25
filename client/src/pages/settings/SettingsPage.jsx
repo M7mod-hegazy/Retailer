@@ -423,18 +423,56 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "financial" && (
-              <FieldGroup title="المالية والضرائب" hint="تحكم في العملة، الضريبة، وبادئات أرقام المستندات">
-                <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  <DenseInput label="رمز العملة" value={settings.currency_symbol || ""} onChange={(e) => handleChange("currency_symbol", e.target.value)} />
-                  <DenseSelect label="كسور العملة" value={settings.decimal_places ?? 2} onChange={(e) => handleChange("decimal_places", Number(e.target.value))} options={[
-                    {value: 0, label: "0"}, {value: 2, label: "2"}, {value: 3, label: "3"}
-                  ]} />
-                  <DenseSelect label="نوع الضريبة الافتراضي" value={settings.tax_type || "none"} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
-                    {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
-                  ]} />
-                  <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
-                </div>
-              </FieldGroup>
+              <div className="space-y-10">
+                <FieldGroup title="المالية والضرائب" hint="تحكم في العملة، الضريبة، وبادئات أرقام المستندات">
+                  <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <DenseInput label="رمز العملة" value={settings.currency_symbol || ""} onChange={(e) => handleChange("currency_symbol", e.target.value)} />
+                    <DenseSelect label="كسور العملة" value={settings.decimal_places ?? 2} onChange={(e) => handleChange("decimal_places", Number(e.target.value))} options={[
+                      {value: 0, label: "0"}, {value: 2, label: "2"}, {value: 3, label: "3"}
+                    ]} />
+                    <DenseSelect label="نوع الضريبة الافتراضي" value={settings.tax_type || "none"} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
+                      {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
+                    ]} />
+                    <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
+                  </div>
+                </FieldGroup>
+
+                <FieldGroup title="هوامش الربح والتسعير" hint="إعدادات حساب التكلفة وحدود الهامش">
+                  <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <DenseSelect
+                      label="طريقة حساب التكلفة"
+                      value={settings.margin_alert_cost_method || "wacc"}
+                      onChange={(e) => handleChange("margin_alert_cost_method", e.target.value)}
+                      options={[
+                        {value: "wacc",          label: "المتوسط المرجح (WACC)"},
+                        {value: "last_purchase", label: "آخر سعر شراء"},
+                        {value: "standard",      label: "تكلفة معيارية"},
+                        {value: "fifo",          label: "الوارد أولاً (FIFO)"},
+                        {value: "lifo",          label: "الوارد أخيراً (LIFO)"},
+                      ]}
+                    />
+                    <DenseInput
+                      label="الحد الأدنى للهامش (%)"
+                      type="number" step="0.1" min="0" max="100"
+                      value={settings.min_margin_percent ?? 15}
+                      onChange={(e) => handleChange("min_margin_percent", Number(e.target.value))}
+                    />
+                    <DenseInput
+                      label="هامش الربح المستهدف (%)"
+                      type="number" step="0.1" min="0" max="100"
+                      value={settings.target_margin_percent ?? 25}
+                      onChange={(e) => handleChange("target_margin_percent", Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="mt-4 flex items-start gap-3 rounded-sm border border-blue-100 bg-blue-50/60 p-3 text-blue-700 text-[11px] font-bold leading-relaxed">
+                    <span className="shrink-0 mt-0.5">ℹ</span>
+                    <span>
+                      طريقة حساب التكلفة تُستخدم في تحليل الربح عند إنشاء فواتير الشراء وفي تقارير هامش الربح.
+                      FIFO وLIFO محسوبان لحظة إنشاء التقرير فقط وليس في الوقت الفعلي.
+                    </span>
+                  </div>
+                </FieldGroup>
+              </div>
             )}
 
             {activeTab === "printing" && (
