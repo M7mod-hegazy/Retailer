@@ -17,7 +17,10 @@ PRIMARY_MENU.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] =
 NAV_MODULES.forEach((mod) => mod.items.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; }));
 
 const EXTRA_BREADCRUMB_PARENTS = [
-  { match: /^\/invoices\//, parent: { label: "نقطة البيع (POS)", path: "/pos" } },
+  { match: /^\/pos$/, parents: [{ label: "سجل المبيعات", path: "/sales" }], current: "نقطة البيع (POS)" },
+  { match: /^\/invoices\//, parents: [{ label: "سجل المبيعات", path: "/sales" }, { label: "نقطة البيع (POS)", path: "/pos" }] },
+  { match: /^\/purchases\/new$/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة جديدة" },
+  { match: /^\/purchases\/(?!new$|orders|returns)/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة مشتريات" },
 ];
 
 function useBreadcrumbs(pathname, dynamicBreadcrumb) {
@@ -28,8 +31,10 @@ function useBreadcrumbs(pathname, dynamicBreadcrumb) {
     // Handle known dynamic sub-routes (e.g. /pos/invoices/:id)
     for (const entry of EXTRA_BREADCRUMB_PARENTS) {
       if (entry.match.test(pathname)) {
-        const crumbs = [root, entry.parent];
+        const parents = entry.parents || (entry.parent ? [entry.parent] : []);
+        const crumbs = [root, ...parents];
         if (dynamicBreadcrumb) crumbs.push({ label: dynamicBreadcrumb.label, path: dynamicBreadcrumb.path });
+        else if (entry.current) crumbs.push({ label: entry.current, path: pathname });
         return crumbs;
       }
     }
@@ -67,6 +72,7 @@ const routeLabelMatchers = [
   { match: ROUTES.DASHBOARD, label: "مركز القيادة" },
   { match: ROUTES.POS, label: "نقطة البيع" },
   { match: "/definitions", label: "البيانات الأساسية" },
+  { match: "/sales", label: "سجل المبيعات" },
   { match: ROUTES.PURCHASES, label: "المشتريات" },
   { match: ROUTES.PAYMENTS, label: "المدفوعات والتحصيل" },
   { match: ROUTES.EXPENSES, label: "المصروفات" },

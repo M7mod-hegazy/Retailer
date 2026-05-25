@@ -83,6 +83,54 @@ router.get("/", requirePagePermission("branch_transfer", "view"), (req, res, nex
   }
 });
 
+// GET /api/branch-transfers/items-search?q=...&date_from=...&date_to=...&type=...
+router.get("/items-search", requirePagePermission("branch_transfer", "view"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const { q = "", date_from, date_to, type } = req.query;
+    if (!q.trim()) return res.json({ success: true, data: [] });
+
+    const conditions = ["COALESCE(bt.status, 'active') != 'cancelled'"];
+    const params = [];
+
+    conditions.push("(i.name LIKE ? OR i.item_code LIKE ? OR i.barcode LIKE ?)");
+    const searchTerm = `%${q.trim()}%`;
+    params.push(searchTerm, searchTerm, searchTerm);
+
+    if (type) { conditions.push("bt.type = ?"); params.push(type); }
+    if (date_from && date_to) {
+      conditions.push("date(bt.created_at) BETWEEN date(?) AND date(?)");
+      params.push(date_from, date_to);
+    } else if (date_from || date_to) {
+      conditions.push("date(bt.created_at) = date(?)");
+      params.push(date_from || date_to);
+    }
+
+    const where = `WHERE ${conditions.join(" AND ")}`;
+    const rows = db.prepare(`
+      SELECT btl.id AS line_id, btl.transfer_id, bt.reference_no, bt.created_at, bt.type,
+             bt.partner_branch,
+             btl.item_id, i.name AS item_name, i.item_code, i.barcode,
+             COALESCE(u2.name, u.name) AS unit_name,
+             w.name AS warehouse_name,
+             btl.quantity, btl.unit_cost, btl.selling_price
+      FROM branch_transfer_lines btl
+      JOIN branch_transfers bt ON bt.id = btl.transfer_id
+      JOIN items i ON i.id = btl.item_id
+      LEFT JOIN units u ON u.id = i.unit_id
+      LEFT JOIN units u2 ON u2.id = btl.unit_id
+      LEFT JOIN warehouses w ON w.id = btl.warehouse_id
+      ${where}
+      ORDER BY bt.created_at DESC
+      LIMIT 100
+    `).all(...params);
+
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/branch-transfers/:id
 router.get("/:id", requirePagePermission("branch_transfer", "view"), (req, res, next) => {
   try {

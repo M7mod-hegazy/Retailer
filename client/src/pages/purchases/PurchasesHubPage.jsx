@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar, 
-  User, FileText, Loader2, CreditCard, Clock, Ban, ArrowUpRight, 
+import {
+  Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar,
+  User, FileText, Loader2, CreditCard, Clock, Ban, ArrowUpRight,
   Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp
 } from "lucide-react";
 import api from "../../services/api";
@@ -10,6 +10,8 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import SearchInput from "../../components/ui/SearchInput";
+import SearchDropdown from "../../components/ui/SearchDropdown";
 import { usePageTour } from "../../hooks/usePageTour";
 
 const METHOD_LABELS = {
@@ -186,8 +188,23 @@ function PreviewDrawer({ purchaseId, onClose }) {
   }, [purchaseId]);
 
   const d = data;
-  const totalPaid = d?.payments?.reduce((s, p) => s + Number(p.amount || 0), 0) ?? 0;
-  const remaining = d ? Math.max(0, Number(d.total || 0) - totalPaid) : 0;
+
+  // Determine how much has been paid based on payment method
+  // cash/bank_transfer: fully paid immediately (no payment records created)
+  // credit/future_due:  nothing paid upfront — use debt_remaining if available
+  // multi:              sum the payment split records
+  const totalPaid = (() => {
+    if (!d) return 0;
+    if (d.amount_paid != null) return Number(d.amount_paid);
+    const method = d.payment_method;
+    if (method === "cash" || method === "bank_transfer") return Number(d.total || 0);
+    if (method === "multi") return (d.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    // credit / future_due — any recorded partial payments
+    return (d.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+  })();
+  const remaining = d
+    ? (d.debt_remaining != null ? Number(d.debt_remaining) : Math.max(0, Number(d.total || 0) - totalPaid))
+    : 0;
 
   return (
     <div className="flex flex-col gap-5 min-w-[320px] md:min-w-[620px] max-h-[80vh] overflow-y-auto" dir="rtl">
@@ -503,12 +520,22 @@ export default function PurchasesHubPage() {
   const [dateTo, setDateTo] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  
+
+  // Item autocomplete for the items tab
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemLookupOpen, setItemLookupOpen] = useState(false);
+  const [itemResults, setItemResults] = useState([]);
+  const [selectedItemFilter, setSelectedItemFilter] = useState(null);
+  const [activeLookupIndex, setActiveLookupIndex] = useState(-1);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const itemInputRef = useRef(null);
+
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [previewTarget, setPreviewTarget] = useState(null);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedItemQuery = useDebounce(itemQuery, 300);
 
   // Load suppliers filter dropdown
   useEffect(() => {
@@ -516,6 +543,16 @@ export default function PurchasesHubPage() {
       .then(r => setSuppliers(r.data?.data || r.data || []))
       .catch(() => {});
   }, []);
+
+  // Fetch item autocomplete results
+  useEffect(() => {
+    if (!debouncedItemQuery.trim()) { setItemResults([]); return; }
+    setIsLoadingItems(true);
+    api.get(`/api/items?search=${encodeURIComponent(debouncedItemQuery)}&limit=20`)
+      .then(r => setItemResults(r.data?.data || r.data || []))
+      .catch(() => setItemResults([]))
+      .finally(() => setIsLoadingItems(false));
+  }, [debouncedItemQuery]);
 
   // Fetch Invoices ledger
   const loadInvoices = async () => {
@@ -527,7 +564,7 @@ export default function PurchasesHubPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       if (supplierId) params.set("supplier_id", supplierId);
-      
+
       const res = await api.get(`/api/purchases?${params}`);
       setInvoices(res.data?.data || []);
     } catch {
@@ -537,10 +574,13 @@ export default function PurchasesHubPage() {
     }
   };
 
-  // Fetch Item detail search
-  const loadItemRows = async () => {
+  // Fetch Item detail search — driven by selectedItemFilter or raw itemQuery
+  const loadItemRows = async (queryOverride) => {
     if (activeTab !== "items") return;
-    if (!debouncedSearch.trim()) {
+    const q = queryOverride ?? (selectedItemFilter
+      ? (selectedItemFilter.name || selectedItemFilter.code || selectedItemFilter.barcode)
+      : itemQuery.trim());
+    if (!q) {
       setItemRows([]);
       setSearched(false);
       setLoading(false);
@@ -549,11 +589,11 @@ export default function PurchasesHubPage() {
     setLoading(true);
     setSearched(true);
     try {
-      const params = new URLSearchParams({ q: debouncedSearch });
+      const params = new URLSearchParams({ q });
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       if (supplierId) params.set("supplier_id", supplierId);
-      
+
       const res = await api.get(`/api/purchases/items-search?${params}`);
       setItemRows(res.data?.data || []);
     } catch {
@@ -570,7 +610,7 @@ export default function PurchasesHubPage() {
     } else {
       loadItemRows();
     }
-  }, [activeTab, debouncedSearch, dateFrom, dateTo, supplierId]);
+  }, [activeTab, debouncedSearch, selectedItemFilter, dateFrom, dateTo, supplierId]);
 
   // Handle invoice cancellation
   const handleConfirmCancel = async (reason) => {
@@ -635,11 +675,11 @@ export default function PurchasesHubPage() {
         </motion.header>
 
         {/* Tab Selection Pill Slider */}
-        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex justify-start">
-          <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5">
+        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col gap-2">
+          <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5 self-start">
             <button
-              onClick={() => { setActiveTab("invoices"); setSearchTerm(""); }}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
+              onClick={() => { setActiveTab("invoices"); setSearchTerm(""); setItemQuery(""); setSelectedItemFilter(null); setItemResults([]); }}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
                 activeTab === "invoices"
                   ? "bg-white text-zinc-950 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900"
@@ -648,8 +688,8 @@ export default function PurchasesHubPage() {
               سجل الفواتير
             </button>
             <button
-              onClick={() => { setActiveTab("items"); setSearchTerm(""); }}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
+              onClick={() => { setActiveTab("items"); setSearchTerm(""); setItemQuery(""); setSelectedItemFilter(null); setItemResults([]); }}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
                 activeTab === "items"
                   ? "bg-white text-zinc-950 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900"
@@ -658,6 +698,20 @@ export default function PurchasesHubPage() {
               البحث التفصيلي بالأصناف
             </button>
           </div>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={activeTab}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="text-[11px] font-bold text-zinc-400 px-2"
+            >
+              {activeTab === "invoices"
+                ? "عرض وبحث في جميع فواتير المشتريات المسجلة"
+                : "تتبّع مشتريات صنف بعينه عبر كامل سجل الفواتير"}
+            </motion.p>
+          </AnimatePresence>
         </motion.div>
 
         {/* Unified Search & Filters Action Bar */}
@@ -669,19 +723,101 @@ export default function PurchasesHubPage() {
         >
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div className="relative flex-1 w-full">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={
-                  activeTab === "invoices" 
-                    ? "ابحث برقم الفاتورة أو اسم المورد..." 
-                    : "ابحث باسم المنتج أو الباركود أو SKU..."
-                }
-                className="w-full bg-zinc-50 border border-zinc-200/60 rounded-2xl py-3.5 pr-12 pl-4 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all"
-                autoFocus
-              />
+              {activeTab === "invoices" ? (
+                <SearchInput
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  onClear={() => setSearchTerm("")}
+                  placeholder="ابحث برقم الفاتورة أو اسم المورد..."
+                  size="lg"
+                  autoFocus
+                  className="w-full"
+                />
+              ) : (
+                <div className="relative">
+                  <SearchInput
+                    ref={itemInputRef}
+                    value={itemQuery}
+                    onChange={(val) => {
+                      setItemQuery(val);
+                      setSelectedItemFilter(null);
+                      setActiveLookupIndex(-1);
+                      setItemLookupOpen(true);
+                    }}
+                    onClear={() => {
+                      setItemQuery("");
+                      setSelectedItemFilter(null);
+                      setItemResults([]);
+                      setItemRows([]);
+                      setSearched(false);
+                    }}
+                    onFocus={() => setItemLookupOpen(true)}
+                    onBlur={() => setTimeout(() => setItemLookupOpen(false), 200)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (itemResults.length > 0 && activeLookupIndex >= 0) {
+                          const picked = itemResults[activeLookupIndex];
+                          setSelectedItemFilter(picked);
+                          setItemQuery(picked.name);
+                          setItemLookupOpen(false);
+                        } else if (itemQuery.trim()) {
+                          setSelectedItemFilter(null);
+                          setItemLookupOpen(false);
+                          loadItemRows(itemQuery.trim());
+                        }
+                      } else if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setActiveLookupIndex(p => Math.min(p + 1, itemResults.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setActiveLookupIndex(p => Math.max(p - 1, 0));
+                      }
+                    }}
+                    placeholder="ابحث باسم المنتج أو الباركود أو SKU..."
+                    size="lg"
+                    loading={isLoadingItems}
+                    autoFocus
+                    className="w-full"
+                  />
+                  {itemLookupOpen && (itemResults.length > 0 || itemQuery.trim()) && (
+                    <SearchDropdown
+                      items={itemResults}
+                      activeIndex={activeLookupIndex}
+                      query={itemQuery}
+                      emptyLabel="لا توجد نتائج"
+                      onPick={(item) => {
+                        setSelectedItemFilter(item);
+                        setItemQuery(item.name);
+                        setItemLookupOpen(false);
+                        setActiveLookupIndex(-1);
+                      }}
+                    />
+                  )}
+                  {selectedItemFilter && (
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 mt-2">
+                      <span className="font-mono text-[11px] font-black text-emerald-700 shrink-0">
+                        {selectedItemFilter.code || selectedItemFilter.item_code || `#${selectedItemFilter.id}`}
+                      </span>
+                      <div className="h-3 w-px bg-emerald-300 shrink-0" />
+                      <span className="text-[12px] text-emerald-700 font-bold truncate">{selectedItemFilter.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedItemFilter(null);
+                          setItemQuery("");
+                          setItemResults([]);
+                          setItemRows([]);
+                          setSearched(false);
+                        }}
+                        className="mr-auto text-emerald-400 hover:text-rose-500 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             <button

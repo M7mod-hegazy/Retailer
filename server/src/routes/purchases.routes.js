@@ -118,6 +118,45 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   res.json({ success: true, data: purchases, summary: { count: purchases.length, total } });
 });
 
+router.get("/returns/items-search", requirePagePermission("purchase_returns", "view"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const { q = "", supplier_id = "", date_from, date_to } = req.query;
+    if (!q.trim()) return res.json({ success: true, data: [] });
+
+    const conditions = [];
+    const params = [];
+    conditions.push("(it.name LIKE ? OR it.code LIKE ? OR it.barcode LIKE ?)");
+    const like = `%${q.trim()}%`;
+    params.push(like, like, like);
+    if (supplier_id) { conditions.push("pr.supplier_id = ?"); params.push(supplier_id); }
+    if (date_from && date_to) {
+      conditions.push("date(pr.created_at) BETWEEN date(?) AND date(?)");
+      params.push(date_from, date_to);
+    } else if (date_from || date_to) {
+      conditions.push("date(pr.created_at) = date(?)");
+      params.push(date_from || date_to);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const rows = db.prepare(`
+      SELECT prl.id AS line_id, prl.purchase_return_id, pr.doc_no, pr.created_at,
+             pr.supplier_id, s.name AS supplier_name,
+             prl.item_id, it.name AS item_name, it.code AS item_code, it.barcode,
+             prl.quantity, prl.unit_cost, prl.unit_price, prl.line_total
+      FROM purchase_return_lines prl
+      JOIN purchase_returns pr ON pr.id = prl.purchase_return_id
+      JOIN items it ON it.id = prl.item_id
+      LEFT JOIN suppliers s ON s.id = pr.supplier_id
+      ${where}
+      ORDER BY pr.created_at DESC
+      LIMIT 100
+    `).all(...params);
+
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+});
+
 router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, res) => {
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);

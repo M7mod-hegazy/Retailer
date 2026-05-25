@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  ChevronDown, Search, LogOut, Settings, Radar, PanelRightClose,
+  ChevronDown, Search, LogOut, Settings, Radar, PanelRightClose, ShoppingBag,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
@@ -124,6 +124,40 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
         <div className="space-y-1 mb-6">
           {visiblePrimary.map((item) => {
             const isActive = location.pathname === item.path;
+            if (item.highlight) {
+              const isSalesActive = location.pathname === "/sales";
+              return (
+                <div key={item.path} className={`flex items-stretch rounded-lg overflow-hidden transition-all ${
+                  isActive ? "bg-zinc-950 shadow-sm" : "bg-emerald-50 hover:bg-emerald-100"
+                }`}>
+                  <Link
+                    to={item.path}
+                    className={`flex flex-1 items-center gap-3 px-3 py-2.5 min-w-0 ${
+                      isActive ? "text-white" : "text-emerald-700"
+                    }`}
+                  >
+                    <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-emerald-400" : ""}`} />
+                    <div className="flex flex-col min-w-0">
+                      <span className={`text-[12px] truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
+                      {!isActive && <span className="text-[9px] text-emerald-500 font-bold">اختصار لوحة المفاتيح <kbd className="rounded px-0.5 bg-emerald-100 text-emerald-600 font-mono text-[8px]">F2</kbd></span>}
+                    </div>
+                  </Link>
+                  <Link
+                    to="/sales"
+                    title="سجل المبيعات"
+                    className={`flex items-center justify-center w-9 shrink-0 border-r transition-colors ${
+                      isActive
+                        ? "border-zinc-800 text-emerald-400 hover:bg-zinc-800"
+                        : isSalesActive
+                          ? "border-emerald-300 bg-emerald-200 text-emerald-800"
+                          : "border-emerald-200 text-emerald-500 hover:bg-emerald-200 hover:text-emerald-800"
+                    }`}
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              );
+            }
             return (
               <Link
                 key={item.path}
@@ -131,9 +165,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                 className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
                   isActive
                     ? "bg-zinc-950 text-white shadow-sm"
-                    : item.highlight
-                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                 }`}
               >
                 <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-emerald-400" : ""}`} />

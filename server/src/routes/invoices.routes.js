@@ -107,6 +107,44 @@ router.get("/last-price/:itemId", requirePagePermission("pos", "view"), (req, re
   }
 });
 
+router.get("/returns/items-search", requirePagePermission("sales_returns", "view"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const { q = "", customer_id = "", date_from, date_to } = req.query;
+    if (!q.trim()) return res.json({ success: true, data: [] });
+
+    const conditions = ["sr.status != 'cancelled'"];
+    const params = [];
+    conditions.push("(it.name LIKE ? OR it.code LIKE ? OR it.barcode LIKE ?)");
+    const like = `%${q.trim()}%`;
+    params.push(like, like, like);
+    if (customer_id) { conditions.push("sr.customer_id = ?"); params.push(customer_id); }
+    if (date_from && date_to) {
+      conditions.push("date(sr.created_at) BETWEEN date(?) AND date(?)");
+      params.push(date_from, date_to);
+    } else if (date_from || date_to) {
+      conditions.push("date(sr.created_at) = date(?)");
+      params.push(date_from || date_to);
+    }
+
+    const rows = db.prepare(`
+      SELECT srl.id AS line_id, srl.sales_return_id, sr.doc_no, sr.created_at, sr.status,
+             sr.customer_id, c.name AS customer_name,
+             srl.item_id, it.name AS item_name, it.code AS item_code, it.barcode,
+             srl.quantity, srl.unit_price, srl.line_total
+      FROM sales_return_lines srl
+      JOIN sales_returns sr ON sr.id = srl.sales_return_id
+      JOIN items it ON it.id = srl.item_id
+      LEFT JOIN customers c ON c.id = sr.customer_id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY sr.created_at DESC
+      LIMIT 100
+    `).all(...params);
+
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+});
+
 router.get("/returns", requirePagePermission("sales_returns", "view"), (req, res) => {
   try {
     const db = getDb();

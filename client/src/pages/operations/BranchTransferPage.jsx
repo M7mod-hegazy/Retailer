@@ -1,9 +1,9 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import {
   Eye, Warehouse, Pencil,
   ArrowDownToLine, ArrowUpFromLine, RotateCcw,
-  Search, ArrowLeftRight, Package,
+  Search, ArrowLeftRight, Package, X, Loader2,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -13,6 +13,13 @@ import { adaptForServer } from "../../utils/search";
 import { useNavigate } from "react-router-dom";
 import { usePageTour } from "../../hooks/usePageTour";
 import { motion, AnimatePresence } from "framer-motion";
+import SearchInput from "../../components/ui/SearchInput";
+import SearchDropdown from "../../components/ui/SearchDropdown";
+
+const FADE_UP = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } },
+};
 
 const STAGGER_CONTAINER = {
   hidden: { opacity: 0 },
@@ -145,16 +152,33 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
 export default function BranchTransferPage() {
   usePageTour('branch_transfer');
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("transfers"); // "transfers" | "items"
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [itemSearchTerm, setItemSearchTerm] = useState("");
+
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const debouncedSearch = useDebounce(searchTerm, 300);
-  const debouncedItemSearch = useDebounce(itemSearchTerm, 300);
+
+
+  // Items tab state
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemLookupOpen, setItemLookupOpen] = useState(false);
+  const [itemLookupResults, setItemLookupResults] = useState([]);
+  const [selectedItemFilter, setSelectedItemFilter] = useState(null);
+  const [activeLookupIndex, setActiveLookupIndex] = useState(-1);
+  const [isLoadingLookup, setIsLoadingLookup] = useState(false);
+  const [itemRows, setItemRows] = useState([]);
+  const [itemRowsLoading, setItemRowsLoading] = useState(false);
+  const [itemSearched, setItemSearched] = useState(false);
+  const [itemTypeFilter, setItemTypeFilter] = useState("all");
+  const [itemDateFrom, setItemDateFrom] = useState("");
+  const [itemDateTo, setItemDateTo] = useState("");
+  const itemInputRef = useRef(null);
+  const debouncedItemQuery = useDebounce(itemQuery, 300);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTransfer, setActiveTransfer] = useState(null);
@@ -164,7 +188,6 @@ export default function BranchTransferPage() {
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set("search", adaptForServer(debouncedSearch));
-      if (debouncedItemSearch) params.set("item_search", adaptForServer(debouncedItemSearch));
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       if (typeFilter !== "all") params.set("type", typeFilter);
@@ -176,7 +199,7 @@ export default function BranchTransferPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, [debouncedSearch, debouncedItemSearch, dateFrom, dateTo, typeFilter]);
+  useEffect(() => { loadData(); }, [debouncedSearch, dateFrom, dateTo, typeFilter]);
 
   function handleShowDetail(row) {
     setActiveTransfer(row);
@@ -188,6 +211,42 @@ export default function BranchTransferPage() {
     navigate(`/operations/branch-transfer/edit/${id}`);
   }
 
+  // Item autocomplete lookup
+  useEffect(() => {
+    if (!debouncedItemQuery.trim()) { setItemLookupResults([]); return; }
+    setIsLoadingLookup(true);
+    api.get(`/api/items?search=${encodeURIComponent(debouncedItemQuery)}&limit=20`)
+      .then(r => setItemLookupResults(r.data?.data || []))
+      .catch(() => setItemLookupResults([]))
+      .finally(() => setIsLoadingLookup(false));
+  }, [debouncedItemQuery]);
+
+  async function loadItemRows(queryOverride) {
+    const q = queryOverride ?? (selectedItemFilter
+      ? (selectedItemFilter.name || selectedItemFilter.item_code || selectedItemFilter.barcode)
+      : itemQuery.trim());
+    if (!q) { setItemRows([]); setItemSearched(false); return; }
+    setItemRowsLoading(true);
+    setItemSearched(true);
+    try {
+      const params = new URLSearchParams({ q });
+      if (itemDateFrom) params.set("date_from", itemDateFrom);
+      if (itemDateTo) params.set("date_to", itemDateTo);
+      if (itemTypeFilter !== "all") params.set("type", itemTypeFilter);
+      const res = await api.get(`/api/branch-transfers/items-search?${params}`);
+      setItemRows(res.data?.data || []);
+    } catch {
+      setItemRows([]);
+      toast.error("فشل البحث بالأصناف");
+    } finally {
+      setItemRowsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "items") loadItemRows();
+  }, [activeTab, selectedItemFilter, itemDateFrom, itemDateTo, itemTypeFilter]);
+
   const stats = useMemo(() => ({
     receiveCount: rows.filter(r => r.type === "receive").length,
     sendCount: rows.filter(r => r.type === "send").length,
@@ -195,169 +254,376 @@ export default function BranchTransferPage() {
   }), [rows]);
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto font-sans flex flex-col gap-6 pb-10" dir="rtl">
+    <div className="relative min-h-[100dvh] p-6 lg:p-10 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
 
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200/60 flex flex-col overflow-hidden">
+      {/* Background light emitters */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/3 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-        {/* Top Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-8 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-5">
-            <div className="bg-emerald-100 p-4 rounded-[1.5rem]"><ArrowLeftRight className="h-8 w-8 text-emerald-600" /></div>
-            <div>
-              <h1 className="text-[28px] font-black text-slate-900 tracking-tight">حركات النقل الداخلي</h1>
-              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">تسجيل ومراقبة استلام وتسليم البضائع بين الفروع والمخازن.</p>
-            </div>
-          </div>
+      <div className="relative z-10 max-w-6xl mx-auto flex flex-col gap-8">
 
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="flex items-center gap-8 px-6 lg:border-r border-slate-200">
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">الكميات المتداولة</span>
-                <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter font-mono">{formatQty(stats.totalQty)}</span>
+        {/* Cinematic Header */}
+        <motion.header initial="hidden" animate="visible" variants={FADE_UP}
+          className="flex flex-col md:flex-row md:items-end justify-between gap-6"
+        >
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
+                <ArrowLeftRight className="w-5 h-5 text-emerald-500" />
               </div>
+              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">العمليات الداخلية</span>
             </div>
-
-            <div className="flex items-center gap-3">
-              <PermissionGate page="branch_transfer" action="add">
-                <button data-help="add-button" onClick={() => navigate("/operations/branch-transfer/new?type=receive")} className="group flex items-center justify-center gap-2 rounded-[1.2rem] bg-emerald-600 px-6 py-4 text-[15px] font-black text-white hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20 active:scale-95">
-                  <ArrowDownToLine className="h-5 w-5" />
-                  <span>استلام</span>
-                </button>
-              </PermissionGate>
-              <PermissionGate page="branch_transfer" action="add">
-                <button onClick={() => navigate("/operations/branch-transfer/new?type=send")} className="group flex items-center justify-center gap-2 rounded-[1.2rem] bg-blue-600 px-6 py-4 text-[15px] font-black text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
-                  <ArrowUpFromLine className="h-5 w-5" />
-                  <span>تسليم</span>
-                </button>
-              </PermissionGate>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col gap-3 p-4 bg-white border-b border-slate-100">
-          {/* Row 1: doc search + item search */}
-          <div className="flex flex-col lg:flex-row items-center gap-3">
-            <div data-help="search-bar" className="relative w-full lg:w-[300px]">
-              <Search className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-slate-400" />
-              <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                placeholder="البحث برقم الوصل..."
-                className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3 text-[14px] font-black text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all outline-none" />
-            </div>
-
-            <div className="relative w-full lg:w-[300px]">
-              <Package className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-slate-400" />
-              <input type="text" value={itemSearchTerm} onChange={e => setItemSearchTerm(e.target.value)}
-                placeholder="بحث بالصنف أو SKU..."
-                className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3 text-[14px] font-black text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none" />
-            </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide w-full lg:w-auto">
-              {[["all", "الكل"], ["receive", "استلام فقط"], ["send", "تسليم فقط"]].map(([v, l]) => (
-                <button key={v} onClick={() => setTypeFilter(v)}
-                  className={`whitespace-nowrap rounded-full px-5 py-3 text-[13px] font-black transition-all ${
-                    typeFilter === v ? "bg-slate-900 text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                  }`}>
-                  {l}
-                </button>
-              ))}
-            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">
+              حركات <span className="text-emerald-600">النقل الداخلي</span>
+            </h1>
+            <p className="text-sm font-bold text-zinc-400 mt-2">تسجيل ومراقبة استلام وتسليم البضائع بين الفروع والمخازن.</p>
           </div>
 
-          {/* Row 2: date range */}
-          <div className="flex items-center gap-3 w-full lg:w-auto bg-slate-50 rounded-full p-2 border border-slate-200/50 self-start">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="rounded-full bg-white px-4 py-2 text-[13px] font-bold text-slate-600 outline-none border border-slate-100 focus:border-emerald-300" />
-            <ArrowLeftRight className="h-4 w-4 text-slate-300 shrink-0" />
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="rounded-full bg-white px-4 py-2 text-[13px] font-bold text-slate-600 outline-none border border-slate-100 focus:border-emerald-300" />
+          <div className="flex flex-wrap gap-3">
+            <PermissionGate page="branch_transfer" action="add">
+              <button
+                data-help="add-button"
+                onClick={() => navigate("/operations/branch-transfer/new?type=receive")}
+                className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-4 rounded-2xl font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 transition-colors active:scale-95"
+              >
+                <ArrowDownToLine className="w-5 h-5" /> استلام
+              </button>
+            </PermissionGate>
+            <PermissionGate page="branch_transfer" action="add">
+              <button
+                onClick={() => navigate("/operations/branch-transfer/new?type=send")}
+                className="flex items-center gap-2 bg-blue-600 text-white px-5 py-4 rounded-2xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-colors active:scale-95"
+              >
+                <ArrowUpFromLine className="w-5 h-5" /> تسليم
+              </button>
+            </PermissionGate>
           </div>
-        </div>
-      </div>
+        </motion.header>
 
-      <div data-help="main-table" className="min-h-[500px]">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-[400px]">
-            <div className="w-16 h-16 border-[4px] border-slate-100 border-t-slate-900 rounded-full animate-spin mb-8" />
+        {/* Tab Pill Slider */}
+        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col gap-2">
+          <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5 self-start">
+            <button
+              onClick={() => { setActiveTab("transfers"); setSearchTerm(""); }}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                activeTab === "transfers" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
+              }`}
+            >
+              سجل الحركات
+            </button>
+            <button
+              onClick={() => { setActiveTab("items"); setItemQuery(""); setSelectedItemFilter(null); setItemLookupResults([]); setItemRows([]); setItemSearched(false); }}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                activeTab === "items" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
+              }`}
+            >
+              البحث التفصيلي بالأصناف
+            </button>
           </div>
-        ) : rows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[400px] bg-slate-50/50 rounded-[3rem] border border-slate-200 border-dashed">
-            <RotateCcw className="h-24 w-24 opacity-10 mb-6 text-slate-900" />
-            <p className="text-[18px] font-black text-slate-400">لا توجد حركات نقل مسجلة ضمن هذا النطاق.</p>
-          </div>
-        ) : (
-          <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-6">
-            <AnimatePresence mode="popLayout">
-              {rows.map(row => {
-                const isReceive = row.type === "receive";
-                return (
-                  <motion.div key={row.id} layout layoutId={`transfer-${row.id}`} variants={ROW_ANIMATION}
-                    className="group flex flex-col md:flex-row md:items-center justify-between gap-8 bg-white border border-slate-200/60 rounded-[2.5rem] p-6 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer"
-                    onClick={() => handleShowDetail(row)}
-                  >
-                    <div className="flex items-center gap-6 lg:w-[35%]">
-                      <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl transition-transform duration-500 group-hover:scale-105 shadow-lg ${
-                        isReceive ? "bg-emerald-600 text-white shadow-emerald-600/20" : "bg-blue-600 text-white shadow-blue-600/20"
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={activeTab}
+              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="text-[11px] font-bold text-zinc-400 px-2"
+            >
+              {activeTab === "transfers"
+                ? "عرض وبحث في جميع حركات النقل المسجلة"
+                : "تتبّع حركات صنف بعينه عبر كامل سجل المستندات"}
+            </motion.p>
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Search & Filters Card */}
+        <motion.div initial="hidden" animate="visible" variants={FADE_UP}
+          className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4"
+        >
+          {activeTab === "transfers" ? (
+            <>
+              <div className="flex flex-col md:flex-row items-center gap-3">
+                <div data-help="search-bar" className="relative flex-1 w-full">
+                  <Search className="absolute top-1/2 -translate-y-1/2 right-4 h-4 w-4 text-zinc-400" />
+                  <input
+                    type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="البحث برقم الوصل أو الفرع..."
+                    autoFocus
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pr-10 pl-4 py-3 text-[14px] font-bold text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0">
+                  {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
+                    <button key={v} onClick={() => setTypeFilter(v)}
+                      className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
+                        typeFilter === v ? "bg-zinc-950 text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                       }`}>
-                        {isReceive ? <ArrowDownToLine className="h-8 w-8" strokeWidth={2} /> : <ArrowUpFromLine className="h-8 w-8" strokeWidth={2} />}
-                      </div>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 self-start bg-zinc-50 rounded-2xl p-2 border border-zinc-200/50">
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
+                <ArrowLeftRight className="h-4 w-4 text-zinc-300 shrink-0" />
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
+                {(dateFrom || dateTo) && (
+                  <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+                    className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="relative flex-1 w-full">
+                <SearchInput
+                  ref={itemInputRef}
+                  value={itemQuery}
+                  onChange={(val) => { setItemQuery(val); setSelectedItemFilter(null); setActiveLookupIndex(-1); setItemLookupOpen(true); }}
+                  onClear={() => { setItemQuery(""); setSelectedItemFilter(null); setItemLookupResults([]); setItemRows([]); setItemSearched(false); }}
+                  onFocus={() => setItemLookupOpen(true)}
+                  onBlur={() => setTimeout(() => setItemLookupOpen(false), 200)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (itemLookupResults.length > 0 && activeLookupIndex >= 0) {
+                        const picked = itemLookupResults[activeLookupIndex];
+                        setSelectedItemFilter(picked); setItemQuery(picked.name); setItemLookupOpen(false);
+                      } else if (itemQuery.trim()) {
+                        setSelectedItemFilter(null); setItemLookupOpen(false); loadItemRows(itemQuery.trim());
+                      }
+                    } else if (e.key === "ArrowDown") { e.preventDefault(); setActiveLookupIndex(p => Math.min(p + 1, itemLookupResults.length - 1)); }
+                    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveLookupIndex(p => Math.max(p - 1, 0)); }
+                  }}
+                  placeholder="ابحث باسم المنتج أو الباركود أو SKU..."
+                  size="lg"
+                  loading={isLoadingLookup}
+                  autoFocus
+                  className="w-full"
+                />
+                {itemLookupOpen && (itemLookupResults.length > 0 || itemQuery.trim()) && (
+                  <SearchDropdown
+                    items={itemLookupResults} activeIndex={activeLookupIndex} query={itemQuery}
+                    emptyLabel="لا توجد نتائج"
+                    onPick={(item) => { setSelectedItemFilter(item); setItemQuery(item.name); setItemLookupOpen(false); setActiveLookupIndex(-1); }}
+                  />
+                )}
+                {selectedItemFilter && (
+                  <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 mt-2">
+                    <span className="font-mono text-[11px] font-black text-emerald-700 shrink-0">
+                      {selectedItemFilter.item_code || selectedItemFilter.code || `#${selectedItemFilter.id}`}
+                    </span>
+                    <div className="h-3 w-px bg-emerald-300 shrink-0" />
+                    <span className="text-[12px] text-emerald-700 font-bold truncate">{selectedItemFilter.name}</span>
+                    <button type="button" onClick={() => { setSelectedItemFilter(null); setItemQuery(""); setItemLookupResults([]); setItemRows([]); setItemSearched(false); }}
+                      className="mr-auto text-emerald-400 hover:text-rose-500 transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                  {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
+                    <button key={v} onClick={() => setItemTypeFilter(v)}
+                      className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
+                        itemTypeFilter === v ? "bg-zinc-950 text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                      }`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 bg-zinc-50 rounded-2xl p-2 border border-zinc-200/50">
+                  <input type="date" value={itemDateFrom} onChange={e => setItemDateFrom(e.target.value)}
+                    className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
+                  <ArrowLeftRight className="h-4 w-4 text-zinc-300 shrink-0" />
+                  <input type="date" value={itemDateTo} onChange={e => setItemDateTo(e.target.value)}
+                    className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
+                  {(itemDateFrom || itemDateTo) && (
+                    <button onClick={() => { setItemDateFrom(""); setItemDateTo(""); }}
+                      className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </motion.div>
 
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-[20px] font-black text-slate-900 tracking-tight">{row.reference_no}</span>
-                          <span className={`px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-widest border ${
-                            isReceive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}>
-                            {isReceive ? "استلام" : "تسليم"}
-                          </span>
-                        </div>
-                        {row.partner_branch && (
-                          <div className="flex items-center gap-2">
-                            <Warehouse className="h-4 w-4 text-slate-400" />
-                            <span className="text-[15px] font-bold text-slate-600">{row.partner_branch}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-12 lg:w-[50%] bg-slate-50/80 rounded-[2rem] p-6">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">التاريخ</span>
-                        <span className="text-[15px] font-bold text-slate-700 mt-1">{formatDate(row.created_at)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-12 border-r border-slate-200/60 pr-12">
-                        <div className="flex flex-col items-center">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">الأصناف</span>
-                          <span className="text-[20px] font-black text-slate-900 mt-1">{row.line_count}</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">إجمالي الكمية</span>
-                          <span className="text-[24px] font-black font-mono tracking-tighter text-slate-950 mt-1">{formatQty(row.total_qty)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end lg:w-[15%] shrink-0 gap-3">
-                      <PermissionGate page="branch_transfer" action="edit">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleEdit(row.id); }}
-                          className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-white border-2 border-slate-100 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all duration-200"
-                          title="تعديل"
+        {/* Results Area */}
+        <motion.div initial="hidden" animate="visible" variants={FADE_UP}
+          className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
+        >
+          {activeTab === "transfers" ? (
+            loading ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4 opacity-50">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري التحميل</span>
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
+                <div className="w-20 h-20 bg-zinc-50 rounded-3xl flex items-center justify-center mb-6 border border-zinc-100">
+                  <RotateCcw className="w-8 h-8 text-zinc-300" />
+                </div>
+                <h3 className="text-xl font-black text-zinc-900 mb-2">لا توجد حركات</h3>
+                <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على حركات نقل مطابقة للمعايير المحددة.</p>
+              </div>
+            ) : (
+              <div data-help="main-table" className="p-4 flex flex-col gap-4">
+                <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-4">
+                  <AnimatePresence mode="popLayout">
+                    {rows.map(row => {
+                      const isReceive = row.type === "receive";
+                      return (
+                        <motion.div key={row.id} layout layoutId={`transfer-${row.id}`} variants={ROW_ANIMATION}
+                          className="group flex flex-col md:flex-row md:items-center justify-between gap-6 border border-zinc-100 rounded-[1.5rem] p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer bg-white"
+                          onClick={() => handleShowDetail(row)}
                         >
-                          <Pencil className="h-5 w-5" />
-                        </button>
-                      </PermissionGate>
-                      <button className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-white border-2 border-slate-100 text-slate-400 group-hover:bg-slate-950 group-hover:border-slate-950 group-hover:text-white transition-all duration-300">
-                        <Eye className="h-6 w-6" />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
-        )}
+                          <div className="flex items-center gap-5 lg:w-[38%]">
+                            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl shadow-md ${
+                              isReceive ? "bg-emerald-600 text-white shadow-emerald-600/20" : "bg-blue-600 text-white shadow-blue-600/20"
+                            }`}>
+                              {isReceive ? <ArrowDownToLine className="h-6 w-6" strokeWidth={2.5} /> : <ArrowUpFromLine className="h-6 w-6" strokeWidth={2.5} />}
+                            </div>
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-[16px] font-black text-zinc-900 tracking-tight">{row.reference_no}</span>
+                                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black border ${
+                                  isReceive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                                }`}>
+                                  {isReceive ? "استلام" : "تسليم"}
+                                </span>
+                              </div>
+                              {row.partner_branch && (
+                                <div className="flex items-center gap-1.5 text-zinc-400">
+                                  <Warehouse className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="text-[13px] font-bold text-zinc-500 truncate">{row.partner_branch}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-6 lg:w-[42%] bg-zinc-50 rounded-xl px-5 py-3">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">التاريخ</span>
+                              <span className="text-[13px] font-bold text-zinc-700 mt-0.5">{formatDate(row.created_at)}</span>
+                            </div>
+                            <div className="h-8 w-px bg-zinc-200 shrink-0" />
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">الأصناف</span>
+                              <span className="text-[18px] font-black text-zinc-900 mt-0.5">{row.line_count}</span>
+                            </div>
+                            <div className="h-8 w-px bg-zinc-200 shrink-0" />
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">الكمية</span>
+                              <span className="text-[20px] font-black font-mono text-zinc-950 mt-0.5">{formatQty(row.total_qty)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end lg:w-[20%] shrink-0 gap-2">
+                            <PermissionGate page="branch_transfer" action="edit">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEdit(row.id); }}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
+                                title="تعديل"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                            </PermissionGate>
+                            <button className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 group-hover:bg-zinc-950 group-hover:border-zinc-950 group-hover:text-white transition-all duration-300">
+                              <Eye className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              </div>
+            )
+          ) : (
+            /* Items tab results */
+            itemRowsLoading ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4 opacity-50">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري البحث</span>
+              </div>
+            ) : !itemSearched ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-20 text-center text-zinc-400">
+                <Search className="w-12 h-12 opacity-25 mb-4" />
+                <h3 className="text-base font-black text-zinc-800 mb-1">بحث تفصيلي بالأصناف</h3>
+                <p className="text-xs font-bold text-zinc-400 max-w-[45ch] leading-relaxed">
+                  اكتب اسم المنتج أو الكود للوصول لجميع سطور حركات النقل المرتبطة به.
+                </p>
+              </div>
+            ) : itemRows.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
+                <div className="w-20 h-20 bg-zinc-50 rounded-3xl flex items-center justify-center mb-6 border border-zinc-100">
+                  <Package className="w-8 h-8 text-zinc-300" />
+                </div>
+                <h3 className="text-xl font-black text-zinc-900 mb-2">لا توجد نتائج مطابقة</h3>
+                <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي صنف يطابق بحثك عبر جميع حركات النقل.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-right border-collapse">
+                  <thead className="bg-zinc-50 border-b border-zinc-100 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-5 py-3.5 font-black text-zinc-500">المستند</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500">التاريخ</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">النوع</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500">الفرع</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">كود الصنف</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500">اسم المنتج</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">الوحدة</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">المخزن</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">الكمية</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">التكلفة</th>
+                      <th className="px-5 py-3.5 font-black text-zinc-500 text-center">عرض</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemRows.map((r, i) => {
+                      const isReceive = r.type === "receive";
+                      return (
+                        <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-emerald-50/10 transition-colors">
+                          <td className="px-5 py-4 font-mono font-black text-zinc-700">{r.reference_no || "—"}</td>
+                          <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{formatDate(r.created_at)}</td>
+                          <td className="px-5 py-4 text-center">
+                            <span className={`px-2 py-1 rounded-lg text-[11px] font-black border ${
+                              isReceive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}>
+                              {isReceive ? "استلام" : "تسليم"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 font-bold text-zinc-600">{r.partner_branch || "—"}</td>
+                          <td className="px-5 py-4 text-center font-mono text-[11px] font-black text-zinc-400">{r.item_code || r.barcode || "—"}</td>
+                          <td className="px-5 py-4 font-bold text-zinc-800">{r.item_name || "—"}</td>
+                          <td className="px-5 py-4 text-center font-bold text-zinc-500">{r.unit_name || "—"}</td>
+                          <td className="px-5 py-4 text-center font-bold text-zinc-600">{r.warehouse_name || "—"}</td>
+                          <td className="px-5 py-4 text-center font-mono font-black text-zinc-900">{r.quantity}</td>
+                          <td className="px-5 py-4 text-center font-mono font-black text-zinc-600">{fmtMoney(r.unit_cost)}</td>
+                          <td className="px-5 py-4 text-center">
+                            <button
+                              onClick={() => { setActiveTransfer({ id: r.transfer_id, reference_no: r.reference_no }); setDetailOpen(true); }}
+                              className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors inline-block"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+        </motion.div>
+
       </div>
 
       <Modal

@@ -218,6 +218,7 @@ export default function PurchaseFormPage() {
   const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [priceReportOpen, setPriceReportOpen] = useState(false);
   const [editWarnOpen, setEditWarnOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -635,6 +636,10 @@ export default function PurchaseFormPage() {
 
   function onDismissSaveSuccess() {
     setSaveSuccess(null);
+    if (isEditMode) {
+      navigate("/purchases");
+      return;
+    }
     setLines([]);
     setSupplier(null);
     setSupplierQuery("");
@@ -650,26 +655,33 @@ export default function PurchaseFormPage() {
     if (!validateBeforeSave()) return;
     setIsSaving(true);
     try {
+      const paymentMethodLabel = {
+        cash: "نقدي", bank_transfer: "حوالة بنكية",
+        credit: "آجل", future_due: "استحقاق لاحق", multi: "متعدد",
+      }[paymentMode] || paymentMode;
+      const paymentsForDisplay = paymentMode === "multi"
+        ? Object.entries(multiAmounts)
+            .filter(([, v]) => Number(v) > 0)
+            .map(([method_id, amount]) => {
+              const m = paymentMethods.find(pm => String(pm.id) === String(method_id));
+              return { method: m?.type || "cash", method_name: m?.name || "دفعة", amount: Number(amount) };
+            })
+        : [{ method: paymentMode, method_name: paymentMethodLabel, amount: totals.total }];
+
       if (isEditMode) {
         await api.put(`/api/purchases/${id}`, buildPayload());
-        toast.success("تم تحديث الفاتورة بنجاح");
+        if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار بيع ${priceChangedLines.length} صنف`);
         wasSaved.current = true;
-        navigate(`/purchases/${id}`);
+        setSaveSuccess({
+          invoiceNumber: docNo || refNo,
+          total: `${formatMoney(totals.total)} ج.م`,
+          payments: paymentsForDisplay,
+          customerName: supplier?.name || null,
+          customerNewBalance: null,
+        });
       } else {
         const res = await api.post("/api/purchases", buildPayload());
         const savedDocNo = res.data?.data?.doc_no || docNo || refNo;
-        const paymentMethodLabel = {
-          cash: "نقدي", bank_transfer: "حوالة بنكية",
-          credit: "آجل", future_due: "استحقاق لاحق", multi: "متعدد",
-        }[paymentMode] || paymentMode;
-        const paymentsForDisplay = paymentMode === "multi"
-          ? Object.entries(multiAmounts)
-              .filter(([, v]) => Number(v) > 0)
-              .map(([method_id, amount]) => {
-                const m = paymentMethods.find(pm => String(pm.id) === String(method_id));
-                return { method: m?.type || "cash", method_name: m?.name || "دفعة", amount: Number(amount) };
-              })
-          : [{ method: paymentMode, method_name: paymentMethodLabel, amount: totals.total }];
         if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار بيع ${priceChangedLines.length} صنف`);
         wasSaved.current = true;
         setSaveSuccess({
@@ -685,6 +697,7 @@ export default function PurchaseFormPage() {
     } finally {
       setIsSaving(false);
       setSaveConfirmOpen(false);
+      setPriceReportOpen(false);
     }
   }
 
@@ -828,7 +841,7 @@ export default function PurchaseFormPage() {
                 </button>
               </PermissionGate>
               <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
-                <button onClick={() => { if (validateBeforeSave()) setSaveConfirmOpen(true); }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
+                <button onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
                   className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
                   {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري...</> : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
                 </button>
@@ -1450,6 +1463,60 @@ export default function PurchaseFormPage() {
               <p className="font-bold">الصورة غير متوفرة</p>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Price Update Report Modal */}
+      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار">
+        <div className="p-4 space-y-4 animate-modal-enter">
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[12px] font-bold text-amber-700 leading-relaxed">
+              سيتم تحديث أسعار البيع التالية عند حفظ الفاتورة. راجع التغييرات قبل المتابعة.
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-200 overflow-hidden">
+            <table className="w-full text-[12px] border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (بعد)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {priceChangedLines.map((l, i) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-3 py-2 font-bold text-slate-800 max-w-[160px] truncate">{l.name}</td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black">
+                      {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
+                        <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
+                          {Number(l.selling_price).toFixed(2)}
+                        </span>
+                      ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black">
+                      {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
+                        <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
+                          {Number(l.wholesale_price).toFixed(2)}
+                        </span>
+                      ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <button onClick={() => setPriceReportOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+            <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد وحفظ"}
+            </button>
+          </div>
         </div>
       </Modal>
 

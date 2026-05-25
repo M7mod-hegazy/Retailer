@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Edit3,
   Trash2,
@@ -13,6 +13,16 @@ import {
   Settings,
   Eye,
   EyeOff,
+  ShoppingCart,
+  ShoppingBag,
+  Package,
+  DollarSign,
+  Users as UsersIcon,
+  UserCheck,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Lock,
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -29,6 +39,54 @@ import {
 } from "../../constants/pagePermissions";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+
+const CATEGORY_ICONS = {
+  sales: ShoppingCart,
+  purchases: ShoppingBag,
+  stock: Package,
+  finance: DollarSign,
+  contacts: UsersIcon,
+  hr: UserCheck,
+  system: Settings,
+};
+
+const CATEGORIES = [
+  {
+    id: "sales",
+    label: "المبيعات ونقاط البيع",
+    pages: ["pos", "sales_returns", "quotations", "promotions", "analytics"]
+  },
+  {
+    id: "purchases",
+    label: "المشتريات والعمليات",
+    pages: ["purchases", "purchase_orders", "purchase_returns"]
+  },
+  {
+    id: "stock",
+    label: "المخزون والمستودعات",
+    pages: ["stock", "items", "categories", "bulk_price_update", "stock_transfer", "physical_count", "branch_transfer", "warehouses", "units"]
+  },
+  {
+    id: "finance",
+    label: "المالية والحسابات",
+    pages: ["daily_treasury", "customer_accounts", "supplier_accounts", "revenues", "expenses", "withdrawals", "payment_methods", "bank_operations", "cheques", "payments", "banks", "financial_categories"]
+  },
+  {
+    id: "contacts",
+    label: "العملاء والموردين",
+    pages: ["customers", "suppliers"]
+  },
+  {
+    id: "hr",
+    label: "الموظفين والصلاحيات",
+    pages: ["employees", "users", "employee_adjustments"]
+  },
+  {
+    id: "system",
+    label: "النظام والإعدادات",
+    pages: ["settings", "branches", "reports", "dashboard", "backup", "notifications", "updates", "history"]
+  }
+];
 
 const EMPTY_FORM = { full_name: "", username: "", password: "", role: "user", is_active: true, can_view_updates: false };
 const CREATE_TEMPLATE_ROLE = { user: "user", admin: "admin", none: "user" };
@@ -68,6 +126,7 @@ export default function UsersPage() {
   const [permLoading, setPermLoading] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
   const [permSearch, setPermSearch] = useState("");
+  const [expandedCats, setExpandedCats] = useState({});
 
   const [permSaved, setPermSaved] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
@@ -298,6 +357,44 @@ export default function UsersPage() {
     }
   }
 
+  const filteredCategories = useMemo(() => {
+    if (!permSearch) return CATEGORIES;
+    return CATEGORIES.map((cat) => {
+      const matchingPages = cat.pages.filter((pageKey) => {
+        const meta = PAGE_PERMISSIONS[pageKey];
+        return meta && meta.label.includes(permSearch);
+      });
+      if (matchingPages.length > 0) {
+        return { ...cat, pages: matchingPages };
+      }
+      return null;
+    }).filter(Boolean);
+  }, [permSearch]);
+
+  const handleToggleCategoryAll = (catPages, type) => {
+    setPermissions((prev) => {
+      const next = { ...prev };
+      catPages.forEach((pageKey) => {
+        const meta = PAGE_PERMISSIONS[pageKey];
+        if (!meta) return;
+        if (type === "all") {
+          next[pageKey] = [...meta.actions];
+        } else if (type === "none") {
+          next[pageKey] = [];
+        }
+      });
+      return next;
+    });
+    toast.success(type === "all" ? "تم تمكين القسم بالكامل" : "تم تعطيل القسم بالكامل");
+  };
+
+  const getPageStatus = (pageKey, actions) => {
+    const active = permissions[pageKey] || [];
+    if (active.length === 0) return "blocked";
+    if (actions.every((act) => active.includes(act))) return "full";
+    return "custom";
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -431,16 +528,6 @@ export default function UsersPage() {
               className="w-full h-12 bg-white/80 rounded-xl pr-12 pl-6 text-sm font-bold text-zinc-800 outline-none focus:bg-white focus:ring-2 focus:ring-zinc-900/10 shadow-sm border border-white"
             />
           </div>
-          {isAdmin && (
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setDefaultPermissionsModalOpen(true)}
-              className="flex items-center gap-2 h-12 px-4 rounded-xl bg-white border border-slate-200 text-[12px] font-black text-zinc-900 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
-            >
-              <Settings className="h-4 w-4" />
-              إعدادات افتراضية
-            </motion.button>
-          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -699,7 +786,7 @@ export default function UsersPage() {
                   </button>
                 </div>
 
-                {/* Matrix */}
+                {/* Search */}
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <input
@@ -709,71 +796,282 @@ export default function UsersPage() {
                     className="w-full h-9 bg-white rounded-lg pr-9 pl-3 text-[12px] font-bold text-zinc-800 outline-none focus:ring-2 focus:ring-amber-400/40 border border-slate-200"
                   />
                 </div>
+
+                {/* Horizontal Navigation Pill Track */}
+                {!permSearch && !permLoading && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none dir-rtl select-none">
+                    {CATEGORIES.map((cat) => {
+                      const IconComponent = CATEGORY_ICONS[cat.id] || Shield;
+                      const isOpen = !!expandedCats[cat.id];
+                      const activeCount = cat.pages.filter(pageKey => (permissions[pageKey] || []).includes('view')).length;
+                      
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            if (!isOpen) {
+                              setExpandedCats(p => ({ ...p, [cat.id]: true }));
+                            }
+                            setTimeout(() => {
+                              const el = document.getElementById(`cat-panel-${cat.id}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }, 50);
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap transition-all shadow-sm shrink-0 ${
+                            isOpen 
+                              ? "bg-amber-600 text-white border-amber-600 font-black scale-105" 
+                              : activeCount > 0
+                                ? "bg-amber-50 text-amber-900 border-amber-200"
+                                : "bg-white text-slate-500 border-slate-200/60 hover:bg-slate-50"
+                          }`}
+                        >
+                          <IconComponent className="h-3 w-3" />
+                          <span>{cat.label.split(" ")[0]}</span>
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-black ${
+                            isOpen ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                          }`}>
+                            {activeCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {permLoading ? (
                   <div className="text-center py-8 text-sm font-bold text-amber-900/70">
                     جاري التحميل...
                   </div>
                 ) : (
-                  <div className="rounded-xl bg-white border border-slate-200 overflow-x-auto max-h-[50vh] overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-slate-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="text-right p-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                            الصفحة
-                          </th>
-                          {ALL_ACTIONS.map((a) => (
-                            <th
-                              key={a}
-                              className="text-center p-2 text-[10px] font-black uppercase tracking-widest text-slate-600 w-14"
+                  <div className="flex flex-col gap-3 max-h-[52vh] overflow-y-auto pr-1">
+                    <AnimatePresence>
+                      {filteredCategories.map((cat) => {
+                        const IconComponent = CATEGORY_ICONS[cat.id] || Shield;
+                        const isOpen = permSearch || !!expandedCats[cat.id];
+                        
+                        // Calculate active vs total pages in this category
+                        const activeCount = cat.pages.filter(pageKey => (permissions[pageKey] || []).includes('view')).length;
+                        const totalCount = cat.pages.length;
+
+                        return (
+                          <motion.div
+                            key={cat.id}
+                            id={`cat-panel-${cat.id}`}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -12 }}
+                            transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                            className={`bg-white/95 border rounded-2xl p-1.5 transition-all duration-300 ${
+                              isOpen 
+                                ? "border-amber-300 shadow-[0_8px_30px_-6px_rgba(245,158,11,0.08)] ring-1 ring-amber-400/20" 
+                                : "border-slate-100 hover:border-slate-200/80 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)]"
+                            }`}
+                          >
+                            {/* Category Header (Sticky top-0 within its container when expanded) */}
+                            <div 
+                              onClick={() => {
+                                if (permSearch) return;
+                                setExpandedCats(p => ({ ...p, [cat.id]: !p[cat.id] }));
+                              }}
+                              className={`flex items-center justify-between p-3 rounded-xl cursor-pointer select-none transition-all ${
+                                isOpen 
+                                  ? "sticky top-0 z-10 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 py-3.5 mb-1.5" 
+                                  : "hover:bg-slate-50/50"
+                              }`}
                             >
-                              <SmartTooltip side="bottom" fill content={ACTION_DESCRIPTIONS[a] || ""}>
-                                <div className="w-full text-center cursor-help">{ACTION_LABELS[a]}</div>
-                              </SmartTooltip>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(PAGE_PERMISSIONS)
-                          .filter(([, meta]) => !permSearch || meta.label.includes(permSearch))
-                          .map(
-                          ([pageKey, meta]) => (
-                            <tr
-                              key={pageKey}
-                              className="border-t border-slate-100 hover:bg-slate-50/60"
-                            >
-                              <td className="text-right p-2 text-[12px] font-bold text-slate-800">
-                                {meta.label}
-                              </td>
-                              {ALL_ACTIONS.map((a) => {
-                                const enabled = meta.actions.includes(a);
-                                const checked =
-                                  (permissions[pageKey] || []).includes(a);
-                                return (
-                                  <td
-                                    key={a}
-                                    className="text-center p-2"
-                                  >
-                                    {enabled ? (
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() =>
-                                          toggleAction(pageKey, a)
-                                        }
-                                        className="h-4 w-4 accent-zinc-900 cursor-pointer"
-                                      />
-                                    ) : (
-                                      <span className="text-slate-200">—</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
+                              <div className="flex items-center gap-2.5">
+                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                                  activeCount > 0 ? "bg-amber-100/70 text-amber-800" : "bg-slate-100 text-slate-400"
+                                }`}>
+                                  <IconComponent className="h-4.5 w-4.5" />
+                                </div>
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className="text-xs font-black text-slate-800">{cat.label}</span>
+                                  <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                    {activeCount} / {totalCount} نشط
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                                {/* Quick Category Bulk Actions */}
+                                <div className="flex items-center gap-1 bg-white border border-slate-200/60 p-0.5 rounded-lg shadow-sm">
+                                  <SmartTooltip content="تمكين الكل للقسم">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleCategoryAll(cat.pages, "all")}
+                                      className="flex h-6 px-1.5 items-center justify-center rounded-md text-[9px] font-bold text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition"
+                                    >
+                                      تمكين الكل
+                                    </button>
+                                  </SmartTooltip>
+                                  <div className="h-3 w-px bg-slate-200" />
+                                  <SmartTooltip content="حظر الكل للقسم">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleCategoryAll(cat.pages, "none")}
+                                      className="flex h-6 px-1.5 items-center justify-center rounded-md text-[9px] font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                    >
+                                      تعطيل الكل
+                                    </button>
+                                  </SmartTooltip>
+                                </div>
+
+                                {!permSearch && (
+                                  <div className="text-slate-400">
+                                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Pages inside this Category - Indented with vertical dashed connector line */}
+                            {isOpen && (
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mr-5 pr-4 border-r-2 border-dashed border-amber-500/20 bg-slate-50/50 rounded-xl flex flex-col gap-2.5 mt-2 py-2.5 pl-2.5"
+                              >
+                                {cat.pages.map((pageKey) => {
+                                  const meta = PAGE_PERMISSIONS[pageKey];
+                                  if (!meta) return null;
+                                  
+                                  const currentActions = permissions[pageKey] || [];
+                                  const hasView = currentActions.includes("view");
+                                  const status = getPageStatus(pageKey, meta.actions);
+                                  
+                                  return (
+                                    <div 
+                                      key={pageKey}
+                                      className={`border transition-all duration-300 rounded-xl p-3 bg-white relative before:absolute before:-right-4 before:top-8 before:w-4 before:h-[2px] before:border-t-2 before:border-dashed before:border-amber-500/20 ${
+                                        hasView 
+                                          ? "border-amber-200/80 shadow-[0_2px_8px_-3px_rgba(245,158,11,0.06)]" 
+                                          : "border-slate-100 opacity-70 hover:opacity-100"
+                                      }`}
+                                    >
+                                      {/* Page Header */}
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex flex-col items-start gap-0.5">
+                                            {/* Eyebrow Breadcrumb Tag */}
+                                            <span className="text-[9px] font-black text-amber-600/70 tracking-wide uppercase">
+                                              {cat.label}
+                                            </span>
+                                            <span className="text-[12px] font-black text-slate-800">{meta.label}</span>
+                                          </div>
+                                          
+                                          {/* Glowing Status badge */}
+                                          {status === "full" && (
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/50 flex items-center gap-0.5">
+                                              <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                                              كاملة
+                                            </span>
+                                          )}
+                                          {status === "custom" && (
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/50 flex items-center gap-0.5">
+                                              <span className="h-1 w-1 rounded-full bg-amber-500 animate-pulse" />
+                                              مخصصة
+                                            </span>
+                                          )}
+                                          {status === "blocked" && (
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200/40">
+                                              محظورة
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Segmented Preset Controls */}
+                                        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/50 shadow-inner select-none shrink-0">
+                                          <SmartTooltip content="حظر الوصول — لا توجد صلاحيات">
+                                            <button
+                                              type="button"
+                                              onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: [] }))}
+                                              className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
+                                                status === "blocked"
+                                                  ? "bg-rose-600 text-white shadow-sm"
+                                                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                              }`}
+                                            >
+                                              <Lock className="h-2.5 w-2.5" />
+                                              حظر
+                                            </button>
+                                          </SmartTooltip>
+                                          <SmartTooltip content="قراءة فقط — عرض البيانات دون تعديل">
+                                            <button
+                                              type="button"
+                                              onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: ["view"] }))}
+                                              className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
+                                                status === "custom" && currentActions.length === 1 && currentActions.includes("view")
+                                                  ? "bg-zinc-950 text-white shadow-sm"
+                                                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-200"
+                                              }`}
+                                            >
+                                              <Eye className="h-2.5 w-2.5" />
+                                              عرض
+                                            </button>
+                                          </SmartTooltip>
+                                          {meta.actions.length > 2 && (
+                                            <SmartTooltip content="كامل الصلاحيات — تمكين كل الإجراءات المتاحة">
+                                              <button
+                                                type="button"
+                                                onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: [...meta.actions] }))}
+                                                className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
+                                                  status === "full"
+                                                    ? "bg-amber-600 text-white shadow-sm"
+                                                    : "text-slate-400 hover:text-amber-700 hover:bg-amber-50"
+                                                }`}
+                                              >
+                                                <Check className="h-2.5 w-2.5" />
+                                                كامل
+                                              </button>
+                                            </SmartTooltip>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Sub actions Chips */}
+                                      {hasView && meta.actions.length > 1 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-100/60">
+                                          {meta.actions
+                                            .filter((act) => act !== "view")
+                                            .map((act) => {
+                                              const checked = currentActions.includes(act);
+                                              return (
+                                                <SmartTooltip key={act} content={ACTION_DESCRIPTIONS[act] || ""}>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => toggleAction(pageKey, act)}
+                                                    className={`h-7 px-2.5 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 select-none ${
+                                                      checked 
+                                                        ? "bg-zinc-950 text-white border-zinc-950 font-black shadow-sm" 
+                                                        : "bg-slate-50 text-slate-500 border-slate-200/60 hover:bg-slate-100 hover:text-slate-700"
+                                                    }`}
+                                                  >
+                                                    {checked && <Check className="h-3 w-3 text-amber-500" />}
+                                                    {ACTION_LABELS[act]}
+                                                  </button>
+                                                </SmartTooltip>
+                                              );
+                                            })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </motion.div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                    
+                    {filteredCategories.length === 0 && (
+                      <div className="text-center py-12 text-xs font-bold text-slate-400 bg-white border border-slate-100 rounded-2xl">
+                        لم يتم العثور على صفحات مطابقة للبحث
+                      </div>
+                    )}
                   </div>
                 )}
 

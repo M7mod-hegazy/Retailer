@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote } from "lucide-react";
+import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
@@ -433,29 +433,49 @@ export default function DashboardPage() {
             const shortcut = SHORTCUTS[item.pageKey];
             return (
               <motion.div key={item.path} variants={FADE_UP}>
-                <Link
-                  to={item.path}
-                  className={`group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
-                    isPOS
-                      ? "bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-2"
-                      : "bg-white/5 border border-white/10 hover:bg-white/10 hover:-translate-y-2 backdrop-blur-xl"
-                  }`}
-                >
-                  <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${
-                    isPOS ? "bg-black/20 text-white" : "bg-white/10 text-white"
-                  }`}>
-                    <item.icon className="h-7 w-7" strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 z-10">
-                    <div className="text-xl font-black text-white mb-1">{item.label}</div>
-                    {shortcut && (
-                      <div className={`text-xs font-bold flex items-center gap-2 ${isPOS ? "text-emerald-100" : "text-zinc-400"}`}>
-                        <kbd className={`font-mono text-[10px] px-2 py-0.5 rounded-md ${isPOS ? "bg-black/20 text-white" : "bg-white/10 text-white"}`}>{shortcut}</kbd>
-                        <span>اختصار لوحة المفاتيح</span>
+                {isPOS ? (
+                  <div className={`group relative flex items-stretch rounded-[2rem] transition-all duration-500 overflow-hidden bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-2`}>
+                    <Link to={item.path} className="flex flex-1 items-center gap-6 p-6 min-w-0">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-black/20 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <item.icon className="h-7 w-7" strokeWidth={1.5} />
                       </div>
-                    )}
+                      <div className="min-w-0 z-10">
+                        <div className="text-xl font-black text-white mb-1">{item.label}</div>
+                        {shortcut && (
+                          <div className="text-xs font-bold flex items-center gap-2 text-emerald-100">
+                            <kbd className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-black/20 text-white">{shortcut}</kbd>
+                            <span>اختصار لوحة المفاتيح</span>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                    <Link
+                      to="/sales"
+                      title="سجل المبيعات"
+                      className="flex items-center justify-center w-16 shrink-0 border-r border-emerald-400/50 bg-black/10 hover:bg-black/25 transition-colors"
+                    >
+                      <ShoppingBag className="h-6 w-6 text-white/80" strokeWidth={1.5} />
+                    </Link>
                   </div>
-                </Link>
+                ) : (
+                  <Link
+                    to={item.path}
+                    className="group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden bg-white/5 border border-white/10 hover:bg-white/10 hover:-translate-y-2 backdrop-blur-xl"
+                  >
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-white/10 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                      <item.icon className="h-7 w-7" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0 z-10">
+                      <div className="text-xl font-black text-white mb-1">{item.label}</div>
+                      {shortcut && (
+                        <div className="text-xs font-bold flex items-center gap-2 text-zinc-400">
+                          <kbd className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-white/10 text-white">{shortcut}</kbd>
+                          <span>اختصار لوحة المفاتيح</span>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                )}
               </motion.div>
             );
           })}

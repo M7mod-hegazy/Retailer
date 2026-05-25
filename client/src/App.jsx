@@ -45,6 +45,7 @@ const PurchaseReturnDetailPage = lazy(() => import("./pages/purchases/PurchaseRe
 const PurchaseReturnsListPage = lazy(() => import("./pages/purchases/PurchaseReturnsListPage"));
 const SalesReturnFormPage = lazy(() => import("./pages/sales/SalesReturnFormPage"));
 const SalesReturnsListPage = lazy(() => import("./pages/sales/SalesReturnsListPage"));
+const SalesHubPage = lazy(() => import("./pages/sales/SalesHubPage"));
 const PurchaseFormPage = lazy(() => import("./pages/purchases/PurchaseFormPage"));
 const PurchasesHubPage = lazy(() => import("./pages/purchases/PurchasesHubPage"));
 const PurchaseOrdersPage = lazy(() => import("./pages/purchases/PurchaseOrdersPage"));
@@ -160,6 +161,7 @@ export default function App() {
                     <Route path="daily-treasury" element={<PermissionRoute page="daily_treasury"><DailyTreasuryPage /></PermissionRoute>} />
                     <Route path="operations/payment-methods" element={<PermissionRoute page="payment_methods"><PaymentMethodsPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<PermissionRoute page="payments"><PaymentTransactionsPage /></PermissionRoute>} />
+                    <Route path="sales" element={<PermissionRoute page="pos"><SalesHubPage /></PermissionRoute>} />
                     <Route path="sales/returns" element={<PermissionRoute page="sales_returns"><SalesReturnsListPage /></PermissionRoute>} />
                     <Route path="sales/returns/new" element={<PermissionRoute page="sales_returns"><SalesReturnFormPage /></PermissionRoute>} />
                     <Route path="sales/returns/amend" element={<PermissionRoute page="sales_returns"><SalesReturnFormPage /></PermissionRoute>} />
