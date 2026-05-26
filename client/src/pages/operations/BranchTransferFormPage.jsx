@@ -1,11 +1,12 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine, ArrowUpFromLine, ArrowLeft, Package, ImageIcon,
   Trash2, Warehouse, FileText, Settings, Printer, CheckCircle, ShoppingCart, Plus, CalendarClock,
   ZoomIn, ZoomOut, Maximize, ChevronDown, Hash, Clock, Search, Layers,
+  AlertTriangle, TrendingUp, Lock, Loader2, ExternalLink, CheckCircle2,
 } from "lucide-react";
 import api from "../../services/api";
-import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import DataGrid from "../../components/ui/DataGrid";
 import Modal from "../../components/ui/Modal";
@@ -18,6 +19,7 @@ import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
+import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 function resolveImageUrl(u) {
@@ -76,12 +78,14 @@ export default function BranchTransferFormPage() {
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", unitId: "", warehouseId: "" });
+  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: "" });
+  const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [savedDoc, setSavedDoc] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(null);
 
   const wasSaved = useRef(false);
   const isDirty = lines.length > 0 && !wasSaved.current;
@@ -106,13 +110,14 @@ export default function BranchTransferFormPage() {
   }, [imageModalOpen]);
 
   // Keyboard navigation refs
-  const itemInputRef = useRef(null);
+  const itemInputRef      = useRef(null);
   const warehouseTableRef = useRef(null);
-  const unitSelectRef = useRef(null);
-  const qtyInputRef = useRef(null);
-  const costInputRef = useRef(null);
-  const sellInputRef = useRef(null);
-  const addBtnRef = useRef(null);
+  const unitSelectRef     = useRef(null);
+  const qtyInputRef       = useRef(null);
+  const costInputRef      = useRef(null);
+  const sellInputRef      = useRef(null);
+  const wholesaleInputRef = useRef(null);
+  const addBtnRef         = useRef(null);
 
   const handleFieldKeyDown = (e, nextRef, prevRef, isEnterSubmit = false) => {
     if (e.key === "Enter") {
@@ -169,6 +174,13 @@ export default function BranchTransferFormPage() {
         quantity: l.quantity,
         unit_cost: l.unit_cost || 0,
         selling_price: l.selling_price || 0,
+        wholesale_price: l.wholesale_price || 0,
+        original_purchase_price: Number(l.original_purchase_price || l.unit_cost || 0),
+        original_sale_price: Number(l.original_sale_price || l.selling_price || 0),
+        original_wholesale_price: Number(l.original_wholesale_price || l.wholesale_price || 0),
+        update_master_purchase_price:  l.update_master_purchase_price !== 0,
+        update_master_sale_price:      l.update_master_sale_price     !== 0,
+        update_master_wholesale_price: l.update_master_wholesale_price !== 0,
         primary_image_url: null,
       })));
     }).catch(() => toast.error("فشل تحميل المستند"));
@@ -229,6 +241,7 @@ export default function BranchTransferFormPage() {
       ...s,
       unitCost: String(item.purchase_price || 0),
       sellingPrice: String(item.sale_price || 0),
+      wholesalePrice: String(item.wholesale_price || 0),
       unitId: String(item.unit_id || ""),
       warehouseId: bestWhId || s.warehouseId,
     }));
@@ -258,6 +271,8 @@ export default function BranchTransferFormPage() {
     const selectedUnit = units.find(u => String(u.id) === String(uId));
     const selectedWarehouse = warehouses.find(w => String(w.id) === String(whId));
 
+    const wholesale = Math.max(0, Number(staging.wholesalePrice) || 0);
+
     setLines(prev => [...prev, {
       id: Math.random().toString(36).substr(2, 9),
       item_id: selectedItem.id,
@@ -270,12 +285,19 @@ export default function BranchTransferFormPage() {
       quantity: qty,
       unit_cost: cost,
       selling_price: sell,
+      wholesale_price: wholesale,
+      original_purchase_price: Number(selectedItem.purchase_price || 0),
+      original_sale_price: Number(selectedItem.sale_price || 0),
+      original_wholesale_price: Number(selectedItem.wholesale_price || 0),
+      update_master_purchase_price:  isReceive ? stagingLocks.purchase : false,
+      update_master_sale_price:      isReceive ? stagingLocks.sale     : false,
+      update_master_wholesale_price: isReceive ? stagingLocks.wholesale: false,
       primary_image_url: selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image || null,
     }]);
 
     setSelectedItem(null);
     setItemQuery("");
-    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", unitId: "", warehouseId: s.warehouseId }));
+    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: s.warehouseId }));
     setLookupOpen(false);
     setTimeout(() => itemInputRef.current?.focus(), 50);
   }
@@ -291,11 +313,22 @@ export default function BranchTransferFormPage() {
   const totalQty = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
   const totalCost = useMemo(() => lines.reduce((s, l) => s + l.quantity * l.unit_cost, 0), [lines]);
 
+  const priceChangedLines = useMemo(() => {
+    if (!isReceive) return [];
+    return lines.filter(l =>
+      (Number(l.selling_price)    !== Number(l.original_sale_price)      && Number(l.selling_price)    > 0) ||
+      (Number(l.wholesale_price)  !== Number(l.original_wholesale_price) && Number(l.wholesale_price)  > 0) ||
+      (Number(l.unit_cost)        !== Number(l.original_purchase_price)  && Number(l.unit_cost)        > 0)
+    );
+  }, [lines, isReceive]);
+
   const availableStock = useMemo(() => {
     if (!selectedItem || !staging.warehouseId) return null;
     return stockLevels[selectedItem.id]?.[staging.warehouseId] ?? 0;
   }, [selectedItem, staging.warehouseId, stockLevels]);
 
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [priceReportOpen, setPriceReportOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
@@ -314,7 +347,18 @@ export default function BranchTransferFormPage() {
     setCancelConfirmOpen(false);
   }
 
-  async function handleSave(triggerPrint = false) {
+  function handleSaveClick() {
+    if (!lines.length) return toast.error("يجب إضافة صنف واحد على الأقل");
+    if (isReceive && priceChangedLines.length > 0) {
+      setPriceReportOpen(true);
+    } else {
+      setSaveConfirmOpen(true);
+    }
+  }
+
+  async function doSave() {
+    setSaveConfirmOpen(false);
+    setPriceReportOpen(false);
     if (!lines.length) return toast.error("يجب إضافة صنف واحد على الأقل");
 
     setIsSaving(true);
@@ -329,7 +373,11 @@ export default function BranchTransferFormPage() {
           warehouse_id: Number(l.warehouse_id),
           unit_cost: l.unit_cost,
           selling_price: l.selling_price,
+          wholesale_price: l.wholesale_price || 0,
           unit_id: l.unit_id || undefined,
+          update_master_purchase_price:  !!l.update_master_purchase_price,
+          update_master_sale_price:      !!l.update_master_sale_price,
+          update_master_wholesale_price: !!l.update_master_wholesale_price,
         })),
       };
 
@@ -343,16 +391,14 @@ export default function BranchTransferFormPage() {
       }
 
       setSavedDoc(doc);
-      toast.success(isEditMode ? "تم تحديث المستند بنجاح" : "تم تسجيل المستند بنجاح");
       wasSaved.current = true;
-
-      if (triggerPrint) {
-        setPreviewOpen(false);
-        setTimeout(() => window.print(), 300);
-        setTimeout(() => navigate("/operations/branch-transfer"), 1800);
-      } else {
-        navigate("/operations/branch-transfer");
-      }
+      setSaveSuccess({
+        invoiceNumber: doc?.reference_no || "",
+        total: `${totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م`,
+        payments: [],
+        customerName: partnerBranch || null,
+        customerNewBalance: null,
+      });
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل الحفظ");
     }
@@ -411,26 +457,115 @@ export default function BranchTransferFormPage() {
   const extraColumns = [
     {
       id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-      render: (l, i) => (
-        <input
-          type="number" step="any"
-          value={l.unit_cost}
-          onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
-          className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 text-slate-700 transition-colors"
-        />
-      ),
+      render: (l, i) => {
+        const changed = isReceive && Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0;
+        return (
+          <div className="relative w-full h-full">
+            <input
+              type="number" step="any"
+              value={l.unit_cost}
+              onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
+              className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+            />
+            {changed && <span title={`التكلفة الحالية: ${l.original_purchase_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+          </div>
+        );
+      },
     },
-    {
-      id: "selling_price", header: "مستهلك", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-      render: (l, i) => (
-        <input
-          type="number" step="any"
-          value={l.selling_price}
-          onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
-          className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-amber-50/50 text-amber-700 transition-colors"
-        />
-      ),
-    },
+    ...(isReceive ? [
+      {
+        id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        render: (l, i) => {
+          const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0;
+          return (
+            <div className="relative w-full h-full">
+              <input
+                type="number" step="any"
+                value={l.selling_price}
+                onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
+                className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-amber-50/50 text-amber-700"}`}
+              />
+              {changed && <span title={`السعر الحالي: ${l.original_sale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+            </div>
+          );
+        },
+      },
+      {
+        id: "profit_pct", header: "نسبة الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        render: (l, i) => {
+          const cost = Number(l.unit_cost) || 0;
+          const price = Number(l.selling_price) || 0;
+          const pct = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+          return (
+            <input
+              type="number" step="0.1"
+              value={Number(pct.toFixed(2))}
+              onChange={(e) => {
+                const newPct = Number(e.target.value);
+                const newPrice = cost * (1 + newPct / 100);
+                updateLineField(i, "selling_price", Math.round(newPrice * 1000) / 1000);
+              }}
+              className="w-full h-[40px] text-center text-[12px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50/50 text-blue-700 transition-colors"
+            />
+          );
+        },
+      },
+      {
+        id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        render: (l, i) => {
+          const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0;
+          return (
+            <div className="relative w-full h-full">
+              <input
+                type="number" step="any"
+                value={l.wholesale_price ?? 0}
+                onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
+                className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+              />
+              {changed && <span title={`السعر الحالي: ${l.original_wholesale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+            </div>
+          );
+        },
+      },
+      {
+        id: "locks", header: "قفل", width: 80, sortable: false, headerClass: "text-center px-1", cellClass: "p-0 border-l border-slate-100",
+        render: (l, i) => {
+          const mk = (label, lockKey) => {
+            const on = l[lockKey] !== false && l[lockKey] !== 0;
+            return (
+              <button
+                title={on ? `${label}: يحدّث السعر الرئيسي` : `${label}: للمستند فقط`}
+                onClick={() => updateLineField(i, lockKey, !on)}
+                className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all leading-none ${
+                  on ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                }`}>
+                <Lock size={7} className={on ? "" : "opacity-50"} />
+                {label}
+              </button>
+            );
+          };
+          return (
+            <div className="flex flex-col items-center gap-0.5 py-1 px-1">
+              {mk("ش", "update_master_purchase_price")}
+              {mk("ب", "update_master_sale_price")}
+              {mk("ج", "update_master_wholesale_price")}
+            </div>
+          );
+        },
+      },
+    ] : [
+      {
+        id: "selling_price", header: "مستهلك", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        render: (l, i) => (
+          <input
+            type="number" step="any"
+            value={l.selling_price}
+            onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
+            className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-amber-50/50 text-amber-700 transition-colors"
+          />
+        ),
+      },
+    ]),
     {
       id: "total_cost", header: "الإجمالي", width: 110, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-[13px] font-black text-slate-700 border-l border-slate-100",
       render: (l) => Number(l.quantity * l.unit_cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -463,8 +598,23 @@ export default function BranchTransferFormPage() {
     })),
   };
 
+  const onDismissSaveSuccess = useCallback(() => {
+    setSaveSuccess(null);
+    navigate("/operations/branch-transfer");
+  }, [navigate]);
+
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 font-sans" dir="rtl">
+    <div className="min-h-screen bg-slate-50/50 p-4 font-sans relative" dir="rtl">
+      {saveSuccess && (
+        <InvoiceSaveSuccess
+          invoiceNumber={saveSuccess.invoiceNumber}
+          total={saveSuccess.total}
+          payments={saveSuccess.payments}
+          customerName={saveSuccess.customerName}
+          customerNewBalance={saveSuccess.customerNewBalance}
+          onDismiss={onDismissSaveSuccess}
+        />
+      )}
       {/* Image zoom modal */}
       <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="صورة المنتج" maxWidth="max-w-2xl">
         <div
@@ -537,6 +687,13 @@ export default function BranchTransferFormPage() {
 
           {/* Doc number + datetime + action buttons */}
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Price-change count badge — receive only */}
+            {priceChangedLines.length > 0 && (
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3 py-1 text-[12px] font-black text-amber-900 shadow-inner">
+                <TrendingUp className="h-3.5 w-3.5" />
+                {priceChangedLines.length} أسعار ستتغير
+              </div>
+            )}
             {/* Draft / locked ref & time */}
             {(displayRef || displayDate) && (
               <div className="flex items-center gap-2">
@@ -661,7 +818,7 @@ export default function BranchTransferFormPage() {
               <PermissionGate page="branch_transfer" action="print">
                 <button
                   onClick={() => setPreviewOpen(true)}
-                  disabled={isSaving || !lines.length}
+                  disabled={isSaving || !lines.length || !partnerBranch}
                   className={`w-full h-[52px] flex items-center justify-center gap-2.5 rounded-[12px] text-[15px] font-black text-white transition-all shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.12)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 bg-gradient-to-l ${theme.gradient}`}
                 >
                   <Printer className="h-5 w-5" />
@@ -671,12 +828,11 @@ export default function BranchTransferFormPage() {
 
               <PermissionGate page="branch_transfer" action={isEditMode ? "edit" : "add"}>
                 <button
-                  onClick={() => handleSave(false)}
-                  disabled={isSaving || !lines.length}
+                  onClick={() => handleSaveClick()}
+                  disabled={isSaving || !lines.length || !partnerBranch}
                   className="w-full h-[46px] flex items-center justify-center gap-2 rounded-[12px] bg-slate-100 border border-slate-200 text-[14px] font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
+                  {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> جاري...</> : <><CheckCircle className="h-4 w-4" /> {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}</>}
                 </button>
               </PermissionGate>
 
@@ -813,8 +969,21 @@ export default function BranchTransferFormPage() {
               </div>
 
               {/* Cost / Price */}
-              <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
-                <label className="text-[11px] font-bold text-slate-500 text-center">{isReceive ? "التكلفة" : "السعر"}</label>
+              <div className="flex flex-col gap-1 w-[100px] shrink-0">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-500">{isReceive ? "التكلفة" : "السعر"}</label>
+                  {isReceive && (
+                    <button type="button"
+                      onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
+                      title={stagingLocks.purchase ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
+                      className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
+                        stagingLocks.purchase ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                      }`}>
+                      <Lock size={8} className={stagingLocks.purchase ? "" : "opacity-50"} />
+                      {stagingLocks.purchase ? "يحدّث" : "للمستند"}
+                    </button>
+                  )}
+                </div>
                 <input
                   ref={costInputRef}
                   type="number" step="any"
@@ -822,32 +991,108 @@ export default function BranchTransferFormPage() {
                   onChange={e => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                   onFocus={e => e.target.select()}
                   onKeyDown={(e) => handleFieldKeyDown(e, sellInputRef, unitSelectRef)}
-                  className={`w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-[13px] font-mono font-black text-slate-800 outline-none focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10 transition-all shadow-inner text-center`}
+                  className={`w-full h-11 border rounded-[10px] px-1 text-[13px] font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
+                    isReceive && !stagingLocks.purchase
+                      ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                      : isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price)
+                        ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
+                        : `border-slate-200 bg-slate-50/50 focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10`
+                  }`}
                 />
+                {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
+                  <span className="text-[9px] text-center leading-tight">
+                    <span className="text-slate-400 font-mono">{Number(selectedItem.purchase_price).toFixed(2)}</span>
+                    <span className="text-slate-300 mx-0.5">→</span>
+                    <span className={`font-mono font-black ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                      {Number(staging.unitCost).toFixed(2)}
+                    </span>
+                  </span>
+                )}
               </div>
 
               {/* Selling price */}
-              <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
-                <label className="text-[11px] font-bold text-slate-500 text-center flex items-center justify-center gap-1">
-                  مستهلك
-                  {selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
-                    <span className="text-amber-600 text-[9px]">• متغير</span>
+              <div className="flex flex-col gap-1 w-[100px] shrink-0">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-500">{isReceive ? "سعر البيع" : "مستهلك"}</label>
+                  {isReceive && (
+                    <button type="button"
+                      onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
+                      title={stagingLocks.sale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
+                      className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
+                        stagingLocks.sale ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                      }`}>
+                      <Lock size={8} className={stagingLocks.sale ? "" : "opacity-50"} />
+                      {stagingLocks.sale ? "يحدّث" : "للمستند"}
+                    </button>
                   )}
-                </label>
+                </div>
                 <input
                   ref={sellInputRef}
                   type="number" step="any"
                   value={staging.sellingPrice}
                   onChange={e => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                   onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, qtyInputRef, costInputRef)}
-                  className={`w-full h-11 border rounded-[10px] px-1 text-[13px] font-mono font-black text-slate-800 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10 transition-all shadow-inner text-center ${
-                    selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price)
-                      ? "border-amber-400 bg-amber-50"
-                      : "border-slate-200 bg-slate-50/50"
+                  onKeyDown={(e) => handleFieldKeyDown(e, isReceive ? wholesaleInputRef : qtyInputRef, costInputRef)}
+                  className={`w-full h-11 border rounded-[10px] px-1 text-[13px] font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
+                    isReceive && !stagingLocks.sale
+                      ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                      : isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price)
+                        ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
+                        : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
                   }`}
                 />
+                {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
+                  <span className="text-[9px] text-center leading-tight">
+                    <span className="text-slate-400 font-mono">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
+                    <span className="text-slate-300 mx-0.5">→</span>
+                    <span className={`font-mono font-black ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                      {Number(staging.sellingPrice).toFixed(2)}
+                    </span>
+                  </span>
+                )}
               </div>
+
+              {/* Wholesale price — receive only */}
+              {isReceive && (
+                <div className="flex flex-col gap-1 w-[100px] shrink-0">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-500">جملة</label>
+                    <button type="button"
+                      onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
+                      title={stagingLocks.wholesale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
+                      className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
+                        stagingLocks.wholesale ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                      }`}>
+                      <Lock size={8} className={stagingLocks.wholesale ? "" : "opacity-50"} />
+                      {stagingLocks.wholesale ? "يحدّث" : "للمستند"}
+                    </button>
+                  </div>
+                  <input
+                    ref={wholesaleInputRef}
+                    type="number" step="any"
+                    value={staging.wholesalePrice}
+                    onChange={e => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={(e) => handleFieldKeyDown(e, qtyInputRef, sellInputRef)}
+                    className={`w-full h-11 border rounded-[10px] px-1 text-[13px] font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
+                      !stagingLocks.wholesale
+                        ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                        : selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price)
+                          ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
+                          : "border-slate-200 bg-slate-50/50 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-400/10"
+                    }`}
+                  />
+                  {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                    <span className="text-[9px] text-center leading-tight">
+                      <span className="text-slate-400 font-mono">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-300 mx-0.5">→</span>
+                      <span className={`font-mono font-black ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                        {Number(staging.wholesalePrice).toFixed(2)}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Quantity */}
               <div className="flex flex-col gap-1.5 w-[75px] shrink-0">
@@ -880,6 +1125,16 @@ export default function BranchTransferFormPage() {
           </section>
 
           {/* Lines table */}
+          {priceChangedLines.length > 0 && (
+            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 text-[11px] text-amber-700 font-bold shrink-0 border border-amber-200 rounded-md">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              سيتم تحديث أسعار البيع لـ {priceChangedLines.map(l => l.item_name).join("، ")}
+              <Link to="/operations/bulk-price-update" className="mr-auto flex items-center gap-1 text-amber-600 hover:underline">
+                <ExternalLink className="h-3 w-3" /> سجل الأسعار
+              </Link>
+            </div>
+          )}
+
           <DataGrid
             data={lines}
             rowKey={(row, i) => `${row.item_id}-${i}`}
@@ -887,6 +1142,12 @@ export default function BranchTransferFormPage() {
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2 text-slate-300" />}
             className="border-0"
             containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-[16px] border border-slate-200 shadow-[0_5px_20px_rgba(0,0,0,0.03)] min-h-[350px]"
+            rowClass={isReceive ? (l) => {
+              const anyUnlocked = l.update_master_purchase_price === false || l.update_master_purchase_price === 0 ||
+                                  l.update_master_sale_price === false || l.update_master_sale_price === 0 ||
+                                  l.update_master_wholesale_price === false || l.update_master_wholesale_price === 0;
+              return anyUnlocked ? "!bg-amber-50" : "";
+            } : undefined}
             columns={columns}
           />
         </div>
@@ -898,8 +1159,11 @@ export default function BranchTransferFormPage() {
         invoice={invoiceDummy}
         settings={storeSettings}
         operationLabel={isReceive ? "وثيقة استلام فروع" : "وثيقة تحويل فروع"}
-        onConfirmPrint={() => handleSave(true)}
-        confirmLabel="تأكيد حفظ المستند وطباعته"
+        onConfirmPrint={doSave}
+        confirmLabel="حفظ وطباعة"
+        onSaveOnly={() => { setPreviewOpen(false); handleSaveClick(); }}
+        saveOnlyLabel="حفظ بدون طباعة"
+        isSaving={isSaving}
       />
 
       <UnsavedChangesModal
@@ -955,6 +1219,95 @@ export default function BranchTransferFormPage() {
           </div>
         </div>
       )}
+
+      {/* Price Update Report Modal */}
+      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار">
+        <div className="p-4 space-y-4">
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[12px] font-bold text-amber-700 leading-relaxed">
+              سيتم تحديث أسعار البيع التالية عند حفظ المستند. راجع التغييرات قبل المتابعة.
+            </p>
+          </div>
+          <div className="rounded-md border border-slate-200 overflow-hidden">
+            <table className="w-full text-[12px] border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">التكلفة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">التكلفة (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (بعد)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {priceChangedLines.map((l, i) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-3 py-2 font-bold text-slate-800 max-w-[140px] truncate">{l.item_name}</td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_purchase_price) > 0 ? Number(l.original_purchase_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black">
+                      {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_purchase_price) ? (
+                        <span className={Number(l.unit_cost) > Number(l.original_purchase_price) ? "text-rose-600" : "text-emerald-600"}>
+                          {Number(l.unit_cost).toFixed(2)}
+                        </span>
+                      ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black">
+                      {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
+                        <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
+                          {Number(l.selling_price).toFixed(2)}
+                        </span>
+                      ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black">
+                      {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
+                        <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
+                          {Number(l.wholesale_price).toFixed(2)}
+                        </span>
+                      ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <button onClick={() => setPriceReportOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+            <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin inline ml-1" /> جاري الحفظ...</> : "تأكيد وحفظ"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Save Confirmation Modal */}
+      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل المستند" : "تأكيد حفظ المستند"}>
+        <div className="p-4 space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-black text-slate-900 mb-1">
+                {isEditMode ? "هل تريد حفظ التعديلات؟" : "هل تريد حفظ هذا المستند؟"}
+              </h3>
+              <p className="text-[12px] font-bold text-slate-500 leading-relaxed">
+                {lines.length} صنف — إجمالي الكميات: {totalQty.toLocaleString("en-US")}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+            <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
+              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin inline ml-1" /> جاري الحفظ...</> : "نعم، احفظ"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

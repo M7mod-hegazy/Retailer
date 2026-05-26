@@ -8,14 +8,27 @@ const { roundMoney, multiplyMoney, divideMoney } = require("../utils/money");
  * Called after any purchase create/edit/void/return.
  */
 function recomputeWACCForItem(item_id, db) {
+  // Full chronological replay across both purchase lines and branch-receive lines.
+  // Branch-receive docs that are cancelled are excluded (status column present on branch_transfers).
   const lines = db.prepare(`
-    SELECT pl.quantity, pl.unit_cost
-    FROM purchase_lines pl
-    JOIN purchases p ON p.id = pl.purchase_id
-    WHERE pl.item_id = ?
-      AND p.status NOT IN ('cancelled', 'voided')
-    ORDER BY p.created_at ASC, pl.id ASC
-  `).all(item_id);
+    SELECT quantity, unit_cost, created_at_sort, line_id FROM (
+      SELECT pl.quantity, pl.unit_cost,
+             p.created_at AS created_at_sort, pl.id AS line_id, 'P' AS src
+      FROM purchase_lines pl
+      JOIN purchases p ON p.id = pl.purchase_id
+      WHERE pl.item_id = ?
+        AND p.status NOT IN ('cancelled', 'voided')
+      UNION ALL
+      SELECT btl.quantity, btl.unit_cost,
+             bt.created_at AS created_at_sort, btl.id AS line_id, 'B' AS src
+      FROM branch_transfer_lines btl
+      JOIN branch_transfers bt ON bt.id = btl.transfer_id
+      WHERE btl.item_id = ?
+        AND bt.type = 'receive'
+        AND COALESCE(bt.status, 'active') NOT IN ('cancelled', 'voided')
+    )
+    ORDER BY created_at_sort ASC, src ASC, line_id ASC
+  `).all(item_id, item_id);
 
   let wacc = 0;
   let runningQty = 0;

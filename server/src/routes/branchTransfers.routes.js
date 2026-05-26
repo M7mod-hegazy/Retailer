@@ -5,6 +5,8 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { captureBranchTransferLineOverrides } = require("../services/overrideTrackingService");
+const { applyLinePriceUpdates, revertLinePriceUpdates } = require("../services/priceLockService");
+const { recomputeWACCForItem } = require("../services/waccService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -68,7 +70,7 @@ router.get("/", requirePagePermission("branch_transfer", "view"), (req, res, nex
       sql += ` AND bt.id IN (
         SELECT DISTINCT btl2.transfer_id FROM branch_transfer_lines btl2
         LEFT JOIN items i ON i.id = btl2.item_id
-        WHERE i.name LIKE ? OR i.item_code LIKE ? OR i.barcode LIKE ?
+        WHERE i.name LIKE ? OR i.code LIKE ? OR i.barcode LIKE ?
       )`;
       const like = `%${item_search}%`;
       params.push(like, like, like);
@@ -93,7 +95,7 @@ router.get("/items-search", requirePagePermission("branch_transfer", "view"), (r
     const conditions = ["COALESCE(bt.status, 'active') != 'cancelled'"];
     const params = [];
 
-    conditions.push("(i.name LIKE ? OR i.item_code LIKE ? OR i.barcode LIKE ?)");
+    conditions.push("(i.name LIKE ? OR i.code LIKE ? OR i.barcode LIKE ?)");
     const searchTerm = `%${q.trim()}%`;
     params.push(searchTerm, searchTerm, searchTerm);
 
@@ -110,7 +112,7 @@ router.get("/items-search", requirePagePermission("branch_transfer", "view"), (r
     const rows = db.prepare(`
       SELECT btl.id AS line_id, btl.transfer_id, bt.reference_no, bt.created_at, bt.type,
              bt.partner_branch,
-             btl.item_id, i.name AS item_name, i.item_code, i.barcode,
+             btl.item_id, i.name AS item_name, i.code AS item_code, i.barcode,
              COALESCE(u2.name, u.name) AS unit_name,
              w.name AS warehouse_name,
              btl.quantity, btl.unit_cost, btl.selling_price
@@ -145,7 +147,11 @@ router.get("/:id", requirePagePermission("branch_transfer", "view"), (req, res, 
     if (!transfer) return res.status(404).json({ success: false, message: "Transfer not found" });
 
     const lines = db.prepare(`
-      SELECT btl.*, i.name AS item_name, i.barcode, i.item_code,
+      SELECT btl.*,
+             i.name AS item_name, i.barcode, i.code AS item_code,
+             i.purchase_price AS original_purchase_price,
+             i.sale_price     AS original_sale_price,
+             i.wholesale_price AS original_wholesale_price,
              COALESCE(u2.name, u.name) AS unit_name,
              w.name AS warehouse_name
       FROM branch_transfer_lines btl
@@ -185,9 +191,10 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
       const headerWhId = Number(items[0]?.warehouse_id) || 1;
 
       const ins = db.prepare(`
-        INSERT INTO branch_transfers (reference_no, type, warehouse_id, partner_branch, notes, created_by)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(`${prefix}PENDING`, type, headerWhId, partner_branch || null, notes || null, userId);
+        INSERT INTO branch_transfers
+          (reference_no, type, warehouse_id, from_warehouse_id, to_warehouse_id, partner_branch, notes, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(`${prefix}PENDING`, type, headerWhId, headerWhId, headerWhId, partner_branch || null, notes || null, userId);
 
       const transferId = ins.lastInsertRowid;
 
@@ -200,9 +207,13 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
       db.prepare("UPDATE branch_transfers SET reference_no = ? WHERE id = ?").run(refNo, transferId);
 
       const insertLine = db.prepare(
-        "INSERT INTO branch_transfer_lines (transfer_id, item_id, quantity, warehouse_id, unit_cost, selling_price, unit_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        `INSERT INTO branch_transfer_lines
+           (transfer_id, item_id, quantity, warehouse_id, unit_cost, selling_price, wholesale_price,
+            update_master_purchase_price, update_master_sale_price, update_master_wholesale_price, unit_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
       const transferSavedLines = [];
+      const priceLines = [];
 
       for (const item of items) {
         const itemId = Number(item.item_id);
@@ -210,7 +221,11 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
         const lineWhId = Number(item.warehouse_id) || headerWhId;
         const unitCost = Math.max(0, Number(item.unit_cost) || 0);
         const sellingPrice = Math.max(0, Number(item.selling_price) || 0);
+        const wholesalePrice = Math.max(0, Number(item.wholesale_price) || 0);
         const unitId = item.unit_id ? Number(item.unit_id) : null;
+        const lockBuy   = type === "receive" ? (item.update_master_purchase_price  !== false ? 1 : 0) : 0;
+        const lockSell  = type === "receive" ? (item.update_master_sale_price       !== false ? 1 : 0) : 0;
+        const lockWhole = type === "receive" ? (item.update_master_wholesale_price  !== false ? 1 : 0) : 0;
         if (!itemId || qty <= 0) continue;
 
         if (type === "send") {
@@ -237,18 +252,54 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
           notes: notes || null,
         });
 
-        const tlr = insertLine.run(transferId, itemId, qty, lineWhId, unitCost, sellingPrice, unitId);
+        const tlr = insertLine.run(
+          transferId, itemId, qty, lineWhId, unitCost, sellingPrice, wholesalePrice,
+          lockBuy, lockSell, lockWhole, unitId
+        );
         transferSavedLines.push({ id: tlr.lastInsertRowid });
+
+        if (type === "receive") {
+          priceLines.push({
+            item_id: itemId,
+            unit_cost: unitCost,
+            unit_price: sellingPrice,
+            wholesale_price: wholesalePrice,
+            update_master_purchase_price:  lockBuy,
+            update_master_sale_price:      lockSell,
+            update_master_wholesale_price: lockWhole,
+          });
+        }
       }
 
-      // Capture master_price_at_time for override tracking (backend-only, no UI amber)
+      // Capture master_price_at_time for override tracking (backend-only)
       captureBranchTransferLineOverrides(transferSavedLines, db);
 
-      return db.prepare("SELECT * FROM branch_transfers WHERE id = ?").get(transferId);
+      // Apply master price updates for receive documents
+      let priceUpdateCount = 0;
+      if (type === "receive" && priceLines.length > 0) {
+        const results = applyLinePriceUpdates(priceLines, {
+          source: "branch_receive_locked",
+          operationId: `BTR-${transferId}`,
+          changedBy: userId,
+          db,
+        });
+        priceUpdateCount = results.filter(r => r.applied).length;
+
+        // Recompute WACC for each unique item
+        const uniqueItemIds = [...new Set(priceLines.map(l => l.item_id))];
+        for (const itemId of uniqueItemIds) {
+          recomputeWACCForItem(itemId, db);
+        }
+      }
+
+      const saved = db.prepare("SELECT * FROM branch_transfers WHERE id = ?").get(transferId);
+      return { ...saved, priceUpdateCount };
     })();
 
-    req.audit("create", "branchTransfers", { id: result.id }, `📦 تم تسجيل حركة فرع: ${result.reference_no || ''}`);
-    res.status(201).json({ success: true, data: result });
+    const { priceUpdateCount, ...savedDoc } = result;
+    const priceNote = priceUpdateCount > 0 ? ` — تحديث ${priceUpdateCount} سعر` : "";
+    req.audit("create", "branchTransfers", { id: savedDoc.id }, `📦 تم تسجيل حركة فرع: ${savedDoc.reference_no || ''}${priceNote}`);
+    res.status(201).json({ success: true, data: savedDoc });
   } catch (err) {
     next(err);
   }
@@ -272,7 +323,19 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
       "SELECT * FROM branch_transfer_lines WHERE transfer_id = ?"
     ).all(id);
 
+    const userId = req.user?.id || null;
+
     const result = db.transaction(() => {
+      // Revert master price changes for receive docs before re-inserting lines
+      if (existing.type === "receive") {
+        revertLinePriceUpdates({
+          source: "branch_receive_locked",
+          operationId: `BTR-${id}`,
+          changedBy: userId,
+          db,
+        });
+      }
+
       // Reverse original stock movements
       for (const line of existingLines) {
         adjustStock({
@@ -300,8 +363,12 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
       );
 
       const insertLine = db.prepare(
-        "INSERT INTO branch_transfer_lines (transfer_id, item_id, quantity, warehouse_id, unit_cost, selling_price, unit_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        `INSERT INTO branch_transfer_lines
+           (transfer_id, item_id, quantity, warehouse_id, unit_cost, selling_price, wholesale_price,
+            update_master_purchase_price, update_master_sale_price, update_master_wholesale_price, unit_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
+      const priceLines = [];
 
       for (const item of items) {
         const itemId = Number(item.item_id);
@@ -309,7 +376,11 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
         const lineWhId = Number(item.warehouse_id) || existing.warehouse_id;
         const unitCost = Math.max(0, Number(item.unit_cost) || 0);
         const sellingPrice = Math.max(0, Number(item.selling_price) || 0);
+        const wholesalePrice = Math.max(0, Number(item.wholesale_price) || 0);
         const unitId = item.unit_id ? Number(item.unit_id) : null;
+        const lockBuy   = existing.type === "receive" ? (item.update_master_purchase_price  !== false ? 1 : 0) : 0;
+        const lockSell  = existing.type === "receive" ? (item.update_master_sale_price       !== false ? 1 : 0) : 0;
+        const lockWhole = existing.type === "receive" ? (item.update_master_wholesale_price  !== false ? 1 : 0) : 0;
         if (!itemId || qty <= 0) continue;
 
         if (existing.type === "send") {
@@ -336,14 +407,47 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
           notes: notes || null,
         });
 
-        insertLine.run(id, itemId, qty, lineWhId, unitCost, sellingPrice, unitId);
+        insertLine.run(id, itemId, qty, lineWhId, unitCost, sellingPrice, wholesalePrice,
+          lockBuy, lockSell, lockWhole, unitId);
+
+        if (existing.type === "receive") {
+          priceLines.push({
+            item_id: itemId,
+            unit_cost: unitCost,
+            unit_price: sellingPrice,
+            wholesale_price: wholesalePrice,
+            update_master_purchase_price:  lockBuy,
+            update_master_sale_price:      lockSell,
+            update_master_wholesale_price: lockWhole,
+          });
+        }
       }
 
-      return db.prepare("SELECT * FROM branch_transfers WHERE id = ?").get(id);
+      // Apply new master price updates and recompute WACC for receive docs
+      let priceUpdateCount = 0;
+      if (existing.type === "receive" && priceLines.length > 0) {
+        const results = applyLinePriceUpdates(priceLines, {
+          source: "branch_receive_locked",
+          operationId: `BTR-${id}`,
+          changedBy: userId,
+          db,
+        });
+        priceUpdateCount = results.filter(r => r.applied).length;
+
+        const uniqueItemIds = [...new Set(priceLines.map(l => l.item_id))];
+        for (const itemId of uniqueItemIds) {
+          recomputeWACCForItem(itemId, db);
+        }
+      }
+
+      const saved = db.prepare("SELECT * FROM branch_transfers WHERE id = ?").get(id);
+      return { ...saved, priceUpdateCount };
     })();
 
-    req.audit("update", "branchTransfers", { id }, `✏️ تم تعديل حركة فرع: ${existing.reference_no}`);
-    res.json({ success: true, data: result });
+    const { priceUpdateCount, ...updatedDoc } = result;
+    const priceNote = priceUpdateCount > 0 ? ` — تحديث ${priceUpdateCount} سعر` : "";
+    req.audit("update", "branchTransfers", { id }, `✏️ تم تعديل حركة فرع: ${existing.reference_no}${priceNote}`);
+    res.json({ success: true, data: updatedDoc });
   } catch (err) {
     next(err);
   }
@@ -362,8 +466,19 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
     }
 
     const lines = db.prepare("SELECT * FROM branch_transfer_lines WHERE transfer_id = ?").all(id);
+    const cancelUserId = req.user?.id || null;
 
     db.transaction(() => {
+      // Revert master prices before marking cancelled
+      if (transfer.type === "receive") {
+        revertLinePriceUpdates({
+          source: "branch_receive_locked",
+          operationId: `BTR-${id}`,
+          changedBy: cancelUserId,
+          db,
+        });
+      }
+
       for (const line of lines) {
         adjustStock({
           item_id: line.item_id,
@@ -376,10 +491,18 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
         });
       }
 
+      // Recompute WACC after price revert + stock reversal
+      if (transfer.type === "receive") {
+        const uniqueItemIds = [...new Set(lines.map(l => l.item_id))];
+        for (const itemId of uniqueItemIds) {
+          recomputeWACCForItem(itemId, db);
+        }
+      }
+
       const now = new Date().toISOString().replace("T", " ").slice(0, 19);
       db.prepare(
         "UPDATE branch_transfers SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?"
-      ).run(now, req.user?.id || null, reason.trim() || null, id);
+      ).run(now, cancelUserId, reason.trim() || null, id);
     })();
 
     try {

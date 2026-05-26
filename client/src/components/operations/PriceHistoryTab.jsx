@@ -21,19 +21,21 @@ const FIELD_LABELS = {
 };
 
 const SOURCE_LABELS = {
-  item_create:      "إنشاء صنف",
-  bulk_update:      "تحديث جماعي",
-  purchase_locked:  "فاتورة شراء",
-  manual_correction:"تصحيح يدوي",
-  revert:           "استرجاع",
+  item_create:            "إنشاء صنف",
+  bulk_update:            "تحديث جماعي",
+  purchase_locked:        "فاتورة شراء",
+  branch_receive_locked:  "استلام تحويل فرع",
+  manual_correction:      "تصحيح يدوي",
+  revert:                 "استرجاع",
 };
 
 const SOURCE_COLORS = {
-  item_create:      "bg-blue-100 text-blue-700",
-  bulk_update:      "bg-purple-100 text-purple-700",
-  purchase_locked:  "bg-emerald-100 text-emerald-700",
-  manual_correction:"bg-amber-100 text-amber-700",
-  revert:           "bg-slate-100 text-slate-600",
+  item_create:            "bg-blue-100 text-blue-700",
+  bulk_update:            "bg-purple-100 text-purple-700",
+  purchase_locked:        "bg-emerald-100 text-emerald-700",
+  branch_receive_locked:  "bg-teal-100 text-teal-700",
+  manual_correction:      "bg-amber-100 text-amber-700",
+  revert:                 "bg-slate-100 text-slate-600",
 };
 
 const DOC_TYPE_LABELS = {

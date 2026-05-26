@@ -37,14 +37,17 @@ import PermissionGate from "../../components/ui/PermissionGate";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const MOVEMENT_LABELS = {
-  transfer_in:       { label: "وارد تحويل",      color: "text-green-700",  badge: "bg-green-50 border-green-200", Icon: TrendingUp   },
-  transfer_out:      { label: "صادر تحويل",      color: "text-rose-700",   badge: "bg-rose-50 border-rose-200", Icon: TrendingDown },
-  manual_adjustment: { label: "تسوية يدوية",     color: "text-slate-700",  badge: "bg-slate-100 border-slate-200", Icon: BarChart3    },
-  physical_count:    { label: "جرد فعلي",        color: "text-violet-700", badge: "bg-violet-50 border-violet-200", Icon: Package      },
-  sale:              { label: "بيع",             color: "text-orange-700", badge: "bg-orange-50 border-orange-200", Icon: TrendingDown },
-  purchase:          { label: "شراء",            color: "text-emerald-700", badge: "bg-emerald-50 border-emerald-200", Icon: TrendingUp   },
-  purchase_return:   { label: "مرتجع مشتريات",   color: "text-rose-700",   badge: "bg-rose-50 border-rose-200", Icon: TrendingDown },
-  sale_return:       { label: "مرتجع مبيعات",    color: "text-emerald-700", badge: "bg-emerald-50 border-emerald-200", Icon: TrendingUp   },
+  transfer_in:              { label: "وارد تحويل",        color: "text-green-700",  badge: "bg-green-50 border-green-200", Icon: TrendingUp   },
+  transfer_out:             { label: "صادر تحويل",        color: "text-rose-700",   badge: "bg-rose-50 border-rose-200", Icon: TrendingDown },
+  manual_adjustment:        { label: "تسوية يدوية",       color: "text-slate-700",  badge: "bg-slate-100 border-slate-200", Icon: BarChart3    },
+  physical_count:           { label: "جرد فعلي",          color: "text-violet-700", badge: "bg-violet-50 border-violet-200", Icon: Package      },
+  sale:                     { label: "بيع",               color: "text-orange-700", badge: "bg-orange-50 border-orange-200", Icon: TrendingDown },
+  purchase:                 { label: "شراء",              color: "text-emerald-700", badge: "bg-emerald-50 border-emerald-200", Icon: TrendingUp   },
+  purchase_return:          { label: "مرتجع مشتريات",     color: "text-rose-700",   badge: "bg-rose-50 border-rose-200", Icon: TrendingDown },
+  sale_return:              { label: "مرتجع مبيعات",      color: "text-emerald-700", badge: "bg-emerald-50 border-emerald-200", Icon: TrendingUp   },
+  branch_receive:           { label: "استلام من فرع",     color: "text-teal-700",   badge: "bg-teal-50 border-teal-200", Icon: TrendingUp   },
+  branch_receive_reversal:  { label: "إلغاء استلام فرع",  color: "text-rose-700",   badge: "bg-rose-50 border-rose-200", Icon: TrendingDown },
+  purchase_void:            { label: "إلغاء مشتريات",     color: "text-rose-700",   badge: "bg-rose-50 border-rose-200", Icon: TrendingDown },
 };
 const MOV_META = (t) => MOVEMENT_LABELS[t] || { label: t, color: "text-slate-600", badge: "bg-slate-50 border-slate-200", Icon: BarChart3 };
 const PAGE = 50;
