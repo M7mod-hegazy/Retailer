@@ -1,4 +1,6 @@
 export const ACTION_LABELS = {
+  save: "حفظ",
+  lock: "إقفال",
   view: "رؤية",
   add: "إضافة",
   edit: "تعديل",
@@ -19,6 +21,8 @@ export const ACTION_LABELS = {
 };
 
 export const ACTION_DESCRIPTIONS = {
+  save: "حفظ نسخة من بيانات الفترة الحالية",
+  lock: "إقفال النسخة ومنع تعديلها لاحقا",
   view: "مشاهدة وعرض محتوى الصفحة والبيانات",
   add: "إضافة سجلات وبيانات جديدة",
   edit: "تعديل وتحديث السجلات والبيانات الموجودة",
@@ -39,6 +43,7 @@ export const ACTION_DESCRIPTIONS = {
 };
 
 export const PAGE_PERMISSIONS = {
+  owner_statement: { label: 'لوحة صاحب المحل', actions: ['view', 'save', 'lock', 'print'] },
   pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print', 'profit'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export'] },

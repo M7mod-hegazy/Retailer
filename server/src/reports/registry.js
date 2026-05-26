@@ -137,6 +137,9 @@ const REPORT_REGISTRY = {
       { id: "discounts", label_key: "cls_sales_discounts", detailedQuery: "discount-analysis", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "payment_type", "status"], filters: [
         { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
       ], multiSelectFilters: [] },
+      { id: "cashier-override-impact", label_key: "cls_sales_cashier_override_impact", detailedQuery: "cashier-override-impact", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["cashier_id"], filters: [
+        { key: "cashier_id", type: "lookup", label_key: "cashier", entity: "user" },
+      ], multiSelectFilters: [] },
       { id: "margin", label_key: "cls_sales_margin", detailedQuery: "margin-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id"], filters: [
         { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
         { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
@@ -200,6 +203,9 @@ const REPORT_REGISTRY = {
       ], multiSelectFilters: [] },
       { id: "purchases-history", label_key: "cls_supplier_purchases", detailedQuery: "supplier-purchases-history", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
       { id: "returns-history", label_key: "cls_supplier_returns", detailedQuery: "supplier-returns-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
+      { id: "supplier-reliability", label_key: "cls_supplier_reliability", detailedQuery: "supplier-reliability", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
+        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+      ], multiSelectFilters: [] },
     ],
     // ── العملاء (Customers) ──
     customers: [
@@ -216,6 +222,9 @@ const REPORT_REGISTRY = {
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
       ], multiSelectFilters: [] },
       { id: "loyalty", label_key: "cls_customer_loyalty", detailedQuery: "customer-loyalty", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "customer-profitability", label_key: "cls_customer_profitability", detailedQuery: "customer-profitability", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [
+        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+      ], multiSelectFilters: [] },
     ],
     // ── الموظفين (Employees) ──
     employees: [
@@ -275,6 +284,24 @@ const REPORT_REGISTRY = {
         { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
         { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
       ], multiSelectFilters: [] },
+      { id: "cost-movements", label_key: "cls_item_cost_movements", detailedQuery: "cost-movements", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["item_id", "warehouse_id"], filters: [
+        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+        { key: "movement_type", type: "select", label_key: "movement_type", options: [{ value: "purchase", label: "purchase" }, { value: "branch_receive", label: "branch_receive" }, { value: "opening_balance", label: "opening_balance" }] },
+      ], multiSelectFilters: [] },
+      { id: "cost-method-comparison", label_key: "cls_item_cost_method_comparison", detailedQuery: "cost-method-comparison", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
+        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+      ], multiSelectFilters: [] },
+      { id: "item-lifecycle", label_key: "cls_item_lifecycle", detailedQuery: "item-lifecycle", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id"], filters: [
+        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+      ], multiSelectFilters: [] },
+      { id: "inventory-turnover", label_key: "cls_item_inventory_turnover", detailedQuery: "inventory-turnover", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
+        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+      ], multiSelectFilters: [] },
     ],
     // ── مخازن (Warehouses) ──
     warehouses: [
@@ -286,6 +313,11 @@ const REPORT_REGISTRY = {
       ], multiSelectFilters: [] },
       { id: "transfers", label_key: "cls_wh_transfers", detailedQuery: "branch-transfers", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id"], filters: [], multiSelectFilters: [] },
       { id: "per-warehouse", label_key: "cls_wh_per_warehouse", detailedQuery: "warehouse-levels", summaryQuery: "warehouse-levels-summary", availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id", "category_id"], filters: [], multiSelectFilters: [] },
+      { id: "stock-adjustment-audit", label_key: "cls_wh_stock_adjustment_audit", detailedQuery: "stock-adjustment-audit", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["warehouse_id", "category_id", "item_id"], filters: [
+        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+      ], multiSelectFilters: [] },
     ],
     // ── مصروفات (Expenses) ──
     expenses: [
@@ -325,6 +357,10 @@ const REPORT_REGISTRY = {
       { id: "health", label_key: "cls_profit_health", detailedQuery: "margin-health", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: true, supportsScope: false, dimensions: ["category_id"], filters: [
         { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
       ], multiSelectFilters: [] },
+      { id: "margin-drift", label_key: "cls_profit_margin_drift", detailedQuery: "margin-drift", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id"], filters: [
+        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+      ], multiSelectFilters: [] },
     ],
     // ── صافي الربح (Net Profit) ──
     "net-profit": [
@@ -332,6 +368,7 @@ const REPORT_REGISTRY = {
       { id: "by-category", label_key: "cls_net_by_category", detailedQuery: "profit-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
       { id: "by-customer", label_key: "cls_net_by_customer", detailedQuery: "profit-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
       { id: "by-period", label_key: "cls_net_by_period", detailedQuery: "profit-by-period", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "daily-owner-snapshot", label_key: "cls_net_daily_owner_snapshot", detailedQuery: "daily-owner-snapshot", summaryQuery: null, availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
     ],
   },
 
@@ -351,12 +388,14 @@ const slugSourceMap = {
   "sales-by-payment": "sales",
   "sales-heatmap": "sales",
   "period-comparison": "sales",
+  "cashier-override-impact": "sales",
   "gross-net-sales": "sales",
   "sales-returns": "sales-returns",
   "discount-analysis": "sales",
   "margin-by-item": "profit-loader",
   "margin-by-category": "profit-loader",
   "margin-health": "profit-loader",
+  "margin-drift": "profit-loader",
   "shift-history": "employees",
   // Purchases
   "purchase-summary": "purchases",
@@ -375,6 +414,11 @@ const slugSourceMap = {
   "expiry": "items",
   "inventory-aging": "items",
   "dead-stock": "items",
+  "cost-movements": "items",
+  "cost-method-comparison": "items",
+  "item-lifecycle": "items",
+  "inventory-turnover": "items",
+  "stock-adjustment-audit": "warehouses",
   // Accounts
   "ar-aging": "customers",
   "ap-aging": "suppliers",
@@ -383,6 +427,9 @@ const slugSourceMap = {
   "top-customers": "customers",
   "collection-efficiency": "customers",
   "supplier-statement": "suppliers",
+  "customer-profitability": "customers",
+  "supplier-reliability": "suppliers",
+  "daily-owner-snapshot": "net-profit",
   // Treasury
   "cash-flow": "treasury",
   "treasury": "treasury",
@@ -414,10 +461,12 @@ const clsMap = {
   "sales-by-payment": { classification: "by-payment", dataMode: "detailed" },
   "sales-heatmap": { classification: "heatmap", dataMode: "summary" },
   "period-comparison": { classification: "period-compare", dataMode: "detailed" },
+  "cashier-override-impact": { classification: "cashier-override-impact", dataMode: "detailed" },
   "discount-analysis": { classification: "discounts", dataMode: "detailed" },
   "margin-by-item": { classification: "by-item", dataMode: "detailed" },
   "margin-by-category": { classification: "by-category", dataMode: "detailed" },
   "margin-health": { classification: "health", dataMode: "summary" },
+  "margin-drift": { classification: "margin-drift", dataMode: "detailed" },
   "gross-net-sales": { classification: "daily-summary", dataMode: "summary" },
   "sales-returns": { classification: "detailed", dataMode: "detailed" },
   "shift-history": { classification: "shifts", dataMode: "detailed" },
@@ -436,6 +485,11 @@ const clsMap = {
   "expiry": { classification: "expiry", dataMode: "detailed" },
   "inventory-aging": { classification: "aging", dataMode: "detailed" },
   "dead-stock": { classification: "dead-stock", dataMode: "detailed" },
+  "cost-movements": { classification: "cost-movements", dataMode: "detailed" },
+  "cost-method-comparison": { classification: "cost-method-comparison", dataMode: "detailed" },
+  "item-lifecycle": { classification: "item-lifecycle", dataMode: "detailed" },
+  "inventory-turnover": { classification: "inventory-turnover", dataMode: "detailed" },
+  "stock-adjustment-audit": { classification: "stock-adjustment-audit", dataMode: "detailed" },
   "ar-aging": { classification: "aging", dataMode: "summary" },
   "ap-aging": { classification: "aging", dataMode: "summary" },
   "profit-loss": { classification: "income-statement", dataMode: "summary" },
@@ -443,6 +497,9 @@ const clsMap = {
   "top-customers": { classification: "top-customers", dataMode: "detailed" },
   "collection-efficiency": { classification: "collection", dataMode: "detailed" },
   "supplier-statement": { classification: "statement", dataMode: "detailed" },
+  "customer-profitability": { classification: "customer-profitability", dataMode: "detailed" },
+  "supplier-reliability": { classification: "supplier-reliability", dataMode: "detailed" },
+  "daily-owner-snapshot": { classification: "daily-owner-snapshot", dataMode: "summary" },
   "cash-flow": { classification: "cash-flow", dataMode: "detailed" },
   "treasury": { classification: "balances", dataMode: "summary" },
   "cash-consistency": { classification: "reconciliation", dataMode: "detailed" },
@@ -508,7 +565,7 @@ REPORT_REGISTRY.reports = [
   { id: "R33", cat: "sales", slug: "margin-by-category", title_key: "r33_title", desc_key: "r33_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
   ]},
-  { id: "R60", cat: "sales", slug: "margin-health", title_key: "r60_title", desc_key: "r60_desc", supportsDates: false, hasProfit: true, exportFormats: ["pdf", "excel", "print"], filters: [
+  { id: "R33A", cat: "sales", slug: "margin-health", title_key: "r60_title", desc_key: "r60_desc", supportsDates: false, hasProfit: true, exportFormats: ["pdf", "excel", "print"], filters: [
     { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
   ]},
   // Purchases
@@ -635,6 +692,43 @@ REPORT_REGISTRY.reports = [
   { id: "R55", cat: "users", slug: "login-history", title_key: "r55_title", desc_key: "r55_desc", supportsDates: true, exportFormats: ["pdf", "excel", "print"], filters: [
     { key: "user_id", type: "lookup", label_key: "user", entity: "user" },
   ]},
+  { id: "R56", cat: "inventory", slug: "cost-movements", title_key: "r56_title", desc_key: "r56_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+    { key: "movement_type", type: "select", label_key: "movement_type", options: [{ value: "purchase", label: "purchase" }, { value: "branch_receive", label: "branch_receive" }, { value: "opening_balance", label: "opening_balance" }] },
+  ]},
+  { id: "R57", cat: "inventory", slug: "cost-method-comparison", title_key: "r57_title", desc_key: "r57_desc", supportsDates: false, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+    { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+    { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+  ]},
+  { id: "R58", cat: "inventory", slug: "item-lifecycle", title_key: "r58_title", desc_key: "r58_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+    { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+  ]},
+  { id: "R59", cat: "sales", slug: "margin-drift", title_key: "r59_title", desc_key: "r59_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+    { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+  ]},
+  { id: "R60", cat: "inventory", slug: "inventory-turnover", title_key: "r60_inventory_title", desc_key: "r60_inventory_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+    { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+    { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+  ]},
+  { id: "R61", cat: "sales", slug: "cashier-override-impact", title_key: "r61_title", desc_key: "r61_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "cashier_id", type: "lookup", label_key: "cashier", entity: "user" },
+  ]},
+  { id: "R62", cat: "accounts", slug: "customer-profitability", title_key: "r62_title", desc_key: "r62_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+  ]},
+  { id: "R63", cat: "purchases", slug: "supplier-reliability", title_key: "r63_title", desc_key: "r63_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+  ]},
+  { id: "R64", cat: "inventory", slug: "stock-adjustment-audit", title_key: "r64_title", desc_key: "r64_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+    { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
+    { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+  ]},
+  { id: "R65", cat: "accounts", slug: "daily-owner-snapshot", title_key: "r65_title", desc_key: "r65_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"] },
 ];
 
 function getSource(sourceKey) {

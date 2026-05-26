@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 export const PRIMARY_MENU = [
+  { path: "/owner-statement", label: "لوحة صاحب المحل", icon: ClipboardCheck, pageKey: "owner_statement" },
   { path: "/dashboard", label: "مساحة العمل", icon: LayoutDashboard, pageKey: "dashboard" },
   { path: "/pos", label: "نقطة البيع (POS)", icon: Store, highlight: true, pageKey: "pos" },
   { path: "/daily-treasury", label: "الخزينة اليومية", icon: Wallet, pageKey: "daily_treasury" },

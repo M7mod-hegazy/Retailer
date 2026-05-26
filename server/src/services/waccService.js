@@ -1,5 +1,6 @@
 const { getDb } = require("../config/database");
 const { roundMoney, multiplyMoney, divideMoney } = require("../utils/money");
+const { deriveWACC, deriveFIFO, deriveLIFO, hasTable } = require("./costLedger");
 
 /**
  * Full chronological replay of WACC for an item.
@@ -7,7 +8,7 @@ const { roundMoney, multiplyMoney, divideMoney } = require("../utils/money");
  * This prevents floating-point drift from accumulating over hundreds of purchases.
  * Called after any purchase create/edit/void/return.
  */
-function recomputeWACCForItem(item_id, db) {
+function legacyReplayWACC(item_id, db) {
   // Full chronological replay across both purchase lines and branch-receive lines.
   // Branch-receive docs that are cancelled are excluded (status column present on branch_transfers).
   const lines = db.prepare(`
@@ -49,48 +50,47 @@ function recomputeWACCForItem(item_id, db) {
   const finalWacc = lines.length > 0 ? wacc : 0;
   const finalLast = lines.length > 0 ? lastCost : 0;
 
-  db.prepare("UPDATE stock_levels SET wacc = ?, last_purchase_cost = ? WHERE item_id = ?")
-    .run(finalWacc, finalLast, item_id);
-
-  return finalWacc;
+  return { wacc: finalWacc, last_cost: finalLast };
 }
 
-/**
- * Incremental WACC helper kept for callers that pass new purchase data before
- * inserting the purchase line. After any insert, callers MUST follow up with
- * recomputeWACCForItem to guarantee accuracy.
- * Deprecated: prefer recomputeWACCForItem exclusively when performance allows.
- */
-function recalculateWACC(item_id, new_qty, new_cost, db) {
-  const row = db.prepare(
-    "SELECT quantity, wacc FROM stock_levels WHERE item_id = ? LIMIT 1"
-  ).get(item_id);
-
-  const current_qty  = roundMoney(row?.quantity || 0);
-  const current_wacc = roundMoney(row?.wacc     || 0);
-  const total_qty    = roundMoney(current_qty + new_qty);
-  const new_wacc     = total_qty > 0
-    ? divideMoney(roundMoney(multiplyMoney(current_qty, current_wacc) + multiplyMoney(new_qty, new_cost)), total_qty)
-    : roundMoney(new_cost);
-
-  db.prepare(
+function persistStockCost(db, item_id, wacc, lastCost) {
+  const result = db.prepare(
     "UPDATE stock_levels SET wacc = ?, last_purchase_cost = ? WHERE item_id = ?"
-  ).run(new_wacc, roundMoney(new_cost), item_id);
+  ).run(roundMoney(wacc), roundMoney(lastCost), item_id);
 
-  return new_wacc;
+  if (result.changes > 0) return;
+
+  const warehouseId = db.prepare("SELECT id FROM warehouses ORDER BY id ASC LIMIT 1").get()?.id || 1;
+  db.prepare(`
+    INSERT INTO stock_levels (item_id, warehouse_id, quantity, wacc, last_purchase_cost)
+    VALUES (?, ?, 0, ?, ?)
+  `).run(item_id, warehouseId, roundMoney(wacc), roundMoney(lastCost));
+}
+
+function recomputeWACCForItem(item_id, db) {
+  const derived = hasTable(db, "cost_movements")
+    ? deriveWACC(db, item_id)
+    : legacyReplayWACC(item_id, db);
+
+  persistStockCost(db, item_id, derived.wacc, derived.last_cost);
+  return derived.wacc;
 }
 
 /**
  * Read current snapshot costs for an item.
  * Called at invoice creation time to freeze costs on invoice lines.
  */
-function getSnapshotCosts(item_id, db) {
+function getSnapshotCosts(item_id, db, quantity = 1) {
   const row = db.prepare(
     "SELECT wacc, last_purchase_cost FROM stock_levels WHERE item_id = ? LIMIT 1"
   ).get(item_id);
+  const fifo = hasTable(db, "cost_movements") ? deriveFIFO(db, item_id, quantity) : null;
+  const lifo = hasTable(db, "cost_movements") ? deriveLIFO(db, item_id, quantity) : null;
   return {
     cost_wacc:          roundMoney(row?.wacc               || 0),
     cost_last_purchase: roundMoney(row?.last_purchase_cost || 0),
+    cost_fifo:          roundMoney(fifo?.unit_cost || row?.wacc || 0),
+    cost_lifo:          roundMoney(lifo?.unit_cost || row?.wacc || 0),
   };
 }
 
@@ -155,7 +155,6 @@ function getItemsBelowMargin(db_instance) {
 }
 
 module.exports = {
-  recalculateWACC,
   recomputeWACCForItem,
   getSnapshotCosts,
   checkItemMargin,

@@ -126,7 +126,7 @@ function createInvoice(payload) {
       const currentStock = Number(stockRow?.quantity || 0);
       // Use WACC as true cost basis; fall back to last_purchase_cost then items.purchase_price
       const trueCost = Number(stockRow?.wacc || stockRow?.last_purchase_cost || item?.purchase_price || 0);
-      const snapshotCosts = getSnapshotCosts(itemId, db);
+      const snapshotCosts = getSnapshotCosts(itemId, db, quantity);
 
       if (!item) lineErrors.push(`الصنف غير موجود (سطر ${index + 1})`);
       if (!Number.isFinite(quantity) || quantity <= 0) lineErrors.push(`الكمية غير صالحة في السطر ${index + 1}`);
@@ -161,6 +161,8 @@ function createInvoice(payload) {
         barcode:            item?.barcode   || null,
         cost_wacc:          snapshotCosts.cost_wacc,
         cost_last_purchase: snapshotCosts.cost_last_purchase,
+        cost_fifo:          snapshotCosts.cost_fifo,
+        cost_lifo:          snapshotCosts.cost_lifo,
         is_below_cost:      isBelowCost,
       };
     });
@@ -230,8 +232,8 @@ function createInvoice(payload) {
       const lr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
-           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         inv.lastInsertRowid,
         line.item_id,
@@ -245,6 +247,8 @@ function createInvoice(payload) {
         line.barcode,
         line.cost_wacc,
         line.cost_last_purchase,
+        line.cost_fifo,
+        line.cost_lifo,
       );
       createdInvoiceLines.push({ id: lr.lastInsertRowid });
 
@@ -661,15 +665,15 @@ function editInvoice(invoiceId, payload, userId) {
       }
       subtotal += lineSubtotal;
       const itemRow = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
-      const snap = getSnapshotCosts(line.item_id, db);
+      const snap = getSnapshotCosts(line.item_id, db, Number(line.quantity));
       const elr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
-           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(invoiceId, line.item_id, warehouseId, line.quantity, line.unit_price, lineDiscount, lineTotal,
             itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null,
-            snap.cost_wacc, snap.cost_last_purchase);
+            snap.cost_wacc, snap.cost_last_purchase, snap.cost_fifo, snap.cost_lifo);
       editInvoiceLines.push({ id: elr.lastInsertRowid });
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: -Number(line.quantity), movement_type: "sale", reference_type: "invoice", reference_id: invoiceId });
     }

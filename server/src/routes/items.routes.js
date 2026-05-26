@@ -2,6 +2,8 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { recomputeWACCForItem } = require("../services/waccService");
+const { hasTable, recordMovement } = require("../services/costLedger");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -253,6 +255,154 @@ router.get("/barcode/:barcode", requirePagePermission("items", "view"), (req, re
   if (!row) return res.status(404).json({ success: false, message: "Item not found" });
   const item = withImages([row])[0];
   return res.json({ success: true, data: item });
+});
+
+router.get("/:id/operations", requirePagePermission("items", "view"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const itemId = Number(req.params.id);
+    const item = db.prepare(`
+      SELECT i.id, i.name, i.code, i.sale_price, i.purchase_price, i.wholesale_price,
+             c.name AS category_name,
+             COALESCE(SUM(sl.quantity), 0) AS current_stock
+      FROM items i
+      LEFT JOIN item_categories c ON c.id = i.category_id
+      LEFT JOIN stock_levels sl ON sl.item_id = i.id
+      WHERE i.id = ? AND i.deleted_at IS NULL
+      GROUP BY i.id
+    `).get(itemId);
+    if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+
+    const types = new Set(String(req.query.types || "sales,purchases,sales_returns,purchase_returns,branch_transfers,opening_balance")
+      .split(",").map((type) => type.trim()).filter(Boolean));
+    const from = req.query.from || null;
+    const to = req.query.to || null;
+    const dir = req.query.dir === "asc" ? "asc" : "desc";
+    const search = String(req.query.search || "").trim().toLowerCase();
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit || 10)));
+    const rows = [];
+
+    const keep = (row) => {
+      const date = String(row.date || "").slice(0, 10);
+      if (from && date < from) return false;
+      if (to && date > to) return false;
+      if (!search) return true;
+      return [row.doc_no, row.party_name, row.type_label, row.context_key, row.context_source].some((value) => String(value || "").toLowerCase().includes(search));
+    };
+    const pushRows = (items) => rows.push(...items.filter(keep));
+
+    if (types.has("sales")) {
+      pushRows(db.prepare(`
+        SELECT 'sales' AS type, 'مبيعات' AS type_label, i.id AS source_id, il.id AS source_line_id,
+          i.invoice_no AS doc_no, i.created_at AS date, COALESCE(c.name, 'نقدي') AS party_name,
+          il.quantity, il.unit_price, il.line_total, il.cost_wacc AS unit_cost,
+          il.line_total - (il.quantity * COALESCE(il.cost_wacc, 0)) AS profit
+        FROM invoice_lines il
+        JOIN invoices i ON i.id = il.invoice_id
+        LEFT JOIN customers c ON c.id = i.customer_id
+        WHERE il.item_id = ? AND i.status != 'cancelled'
+      `).all(itemId));
+    }
+
+    if (types.has("purchases") || types.has("opening_balance")) {
+      pushRows(db.prepare(`
+        SELECT CASE WHEN COALESCE(pl.is_opening_balance, 0) = 1 OR COALESCE(p.doc_no, '') LIKE 'OB-%' THEN 'opening_balance' ELSE 'purchases' END AS type,
+          CASE WHEN COALESCE(pl.is_opening_balance, 0) = 1 OR COALESCE(p.doc_no, '') LIKE 'OB-%' THEN 'رصيد افتتاحي' ELSE 'مشتريات' END AS type_label,
+          p.id AS source_id, pl.id AS source_line_id, p.doc_no, p.created_at AS date,
+          COALESCE(s.name, pl.supplier_name, '') AS party_name,
+          pl.quantity, pl.unit_cost AS unit_price, pl.line_total, pl.unit_cost, NULL AS profit
+        FROM purchase_lines pl
+        JOIN purchases p ON p.id = pl.purchase_id
+        LEFT JOIN suppliers s ON s.id = p.supplier_id
+        WHERE pl.item_id = ? AND COALESCE(p.status, 'active') NOT IN ('cancelled', 'voided')
+      `).all(itemId).filter((row) => types.has(row.type)));
+    }
+
+    if (types.has("sales_returns")) {
+      pushRows(db.prepare(`
+        SELECT 'sales_returns' AS type, 'مرتجع مبيعات' AS type_label, sr.id AS source_id, srl.id AS source_line_id,
+          sr.doc_no, sr.created_at AS date, COALESCE(c.name, 'نقدي') AS party_name,
+          srl.quantity, srl.unit_price, srl.line_total, srl.cost_wacc AS unit_cost, NULL AS profit
+        FROM sales_return_lines srl
+        JOIN sales_returns sr ON sr.id = srl.sales_return_id
+        LEFT JOIN customers c ON c.id = sr.customer_id
+        WHERE srl.item_id = ? AND sr.status = 'active'
+      `).all(itemId));
+    }
+
+    if (types.has("purchase_returns")) {
+      pushRows(db.prepare(`
+        SELECT 'purchase_returns' AS type, 'مرتجع مشتريات' AS type_label, pr.id AS source_id, prl.id AS source_line_id,
+          pr.doc_no, pr.created_at AS date, COALESCE(s.name, '') AS party_name,
+          prl.quantity, prl.unit_cost AS unit_price, prl.line_total, prl.unit_cost, NULL AS profit
+        FROM purchase_return_lines prl
+        JOIN purchase_returns pr ON pr.id = prl.purchase_return_id
+        LEFT JOIN suppliers s ON s.id = pr.supplier_id
+        WHERE prl.item_id = ? AND COALESCE(pr.status, 'active') = 'active'
+      `).all(itemId));
+    }
+
+    if (types.has("branch_transfers")) {
+      pushRows(db.prepare(`
+        SELECT 'branch_transfers' AS type,
+          CASE WHEN bt.type = 'receive' THEN 'استلام فرع' ELSE 'إرسال فرع' END AS type_label,
+          bt.id AS source_id, btl.id AS source_line_id, bt.reference_no AS doc_no,
+          bt.created_at AS date, COALESCE(bt.partner_branch, '') AS party_name,
+          btl.quantity, btl.unit_cost AS unit_price, btl.quantity * COALESCE(btl.unit_cost, 0) AS line_total,
+          btl.unit_cost, NULL AS profit
+        FROM branch_transfer_lines btl
+        JOIN branch_transfers bt ON bt.id = btl.transfer_id
+        WHERE btl.item_id = ? AND COALESCE(bt.status, 'active') NOT IN ('cancelled', 'voided')
+      `).all(itemId));
+    }
+
+    if (types.has("cost_movements") && hasTable(db, "cost_movements")) {
+      pushRows(db.prepare(`
+        SELECT 'cost_movements' AS type, movement_type AS type_label, source_id, source_line_id,
+          source_table AS doc_no, occurred_at AS date, '' AS party_name,
+          quantity, unit_cost AS unit_price, quantity * unit_cost AS line_total, unit_cost, NULL AS profit
+        FROM cost_movements
+        WHERE item_id = ?
+      `).all(itemId));
+    }
+
+    if (types.has("price_changes")) {
+      pushRows(db.prepare(`
+        SELECT 'price_changes' AS type, 'تغيير سعر' AS type_label, ph.id AS source_id, ph.id AS source_line_id,
+          COALESCE(ph.operation_id, ph.source, 'price_history') AS doc_no, ph.changed_at AS date,
+          COALESCE(u.username, u.full_name, ph.changed_by, '') AS party_name,
+          NULL AS quantity, ph.new_value AS unit_price, ph.new_value - ph.old_value AS line_total,
+          NULL AS unit_cost, NULL AS profit,
+          ph.field AS context_key, ph.old_value AS context_before, ph.new_value AS context_after, ph.source AS context_source
+        FROM price_history ph
+        LEFT JOIN users u ON u.id = CAST(ph.changed_by AS INTEGER)
+        WHERE ph.item_id = ?
+      `).all(itemId));
+    }
+
+    if (types.has("stock_movements")) {
+      pushRows(db.prepare(`
+        SELECT 'stock_movements' AS type, sm.movement_type AS type_label, sm.id AS source_id, sm.id AS source_line_id,
+          COALESCE(sm.reference_type, 'stock') || CASE WHEN sm.reference_id IS NOT NULL THEN '#' || sm.reference_id ELSE '' END AS doc_no,
+          sm.created_at AS date, COALESCE(w.name, '') AS party_name,
+          sm.quantity, NULL AS unit_price, NULL AS line_total, NULL AS unit_cost, NULL AS profit,
+          'stock' AS context_key, sm.before_qty AS context_before, sm.after_qty AS context_after, sm.notes AS context_source
+        FROM stock_movements sm
+        LEFT JOIN warehouses w ON w.id = sm.warehouse_id
+        WHERE sm.item_id = ? AND sm.deleted_at IS NULL
+      `).all(itemId));
+    }
+
+    rows.sort((a, b) => {
+      const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+      const lineCompare = Number(a.source_line_id || 0) - Number(b.source_line_id || 0);
+      return dir === "asc" ? (dateCompare || lineCompare) : -(dateCompare || lineCompare);
+    });
+    res.json({ success: true, item, data: rows.slice((page - 1) * limit, page * limit), total: rows.length, page, limit });
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post("/", requirePagePermission("items", "add"), (req, res) => {
@@ -551,6 +701,76 @@ function resolveWarehouseId(db, payload, options = {}) {
   return db.prepare("SELECT id FROM warehouses ORDER BY id ASC LIMIT 1").get()?.id || null;
 }
 
+function tableColumns(db, table) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().map((col) => col.name);
+}
+
+function insertWithAvailableColumns(db, table, valuesByColumn) {
+  const cols = tableColumns(db, table).filter((col) => Object.prototype.hasOwnProperty.call(valuesByColumn, col));
+  const placeholders = cols.map(() => "?").join(", ");
+  const values = cols.map((col) => valuesByColumn[col]);
+  return db.prepare(`INSERT INTO ${table} (${cols.join(", ")}) VALUES (${placeholders})`).run(...values);
+}
+
+function ensureImportOpeningBalance(db, itemId, payload, warehouseId, quantity) {
+  const unitCost = Number(payload.purchase_price || 0);
+  const qty = Number(quantity || 0);
+  if (qty <= 0 || unitCost <= 0) return;
+
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const item = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(itemId);
+  const docNo = `OB-IMPORT-${itemId}`;
+  let purchase = db.prepare("SELECT id FROM purchases WHERE doc_no = ?").get(docNo);
+  if (!purchase) {
+    const result = insertWithAvailableColumns(db, "purchases", {
+      doc_no: docNo,
+      supplier_id: null,
+      total: 0,
+      payment_method: "cash",
+      warehouse_id: warehouseId,
+      created_at: now,
+      updated_at: now,
+      created_by: null,
+      status: "active",
+      is_opening_balance: 1,
+    });
+    purchase = { id: result.lastInsertRowid };
+  }
+
+  const lineTotal = qty * unitCost;
+  const line = insertWithAvailableColumns(db, "purchase_lines", {
+    purchase_id: purchase.id,
+    item_id: itemId,
+    quantity: qty,
+    unit_cost: unitCost,
+    line_total: lineTotal,
+    is_opening_balance: 1,
+    item_name_ar: item?.name || null,
+    item_name_en: item?.name_en || null,
+    barcode: item?.barcode || null,
+    supplier_name: null,
+    update_master_purchase_price: 0,
+    update_master_sale_price: 0,
+    update_master_wholesale_price: 0,
+  });
+
+  db.prepare("UPDATE purchases SET total = COALESCE(total, 0) + ? WHERE id = ?").run(lineTotal, purchase.id);
+
+  if (hasTable(db, "cost_movements")) {
+    recordMovement(db, {
+      item_id: itemId,
+      warehouse_id: warehouseId,
+      occurred_at: now,
+      movement_type: "opening_balance",
+      quantity: qty,
+      unit_cost: unitCost,
+      source_table: "purchase_lines",
+      source_id: purchase.id,
+      source_line_id: line.lastInsertRowid,
+    });
+  }
+}
+
 function setImportedStockLevel(db, itemId, payload, options = {}) {
   if (payload.stock_quantity === undefined || !Number.isFinite(payload.stock_quantity)) return;
   const warehouseId = resolveWarehouseId(db, payload, options);
@@ -559,15 +779,29 @@ function setImportedStockLevel(db, itemId, payload, options = {}) {
   const beforeQty = Number(existing?.quantity || 0);
   const afterQty = Number(payload.stock_quantity || 0);
   const delta = afterQty - beforeQty;
+  const unitCost = Number(payload.purchase_price || 0);
   if (existing) {
-    db.prepare("UPDATE stock_levels SET quantity = ? WHERE item_id = ? AND warehouse_id = ?").run(afterQty, itemId, warehouseId);
+    db.prepare(`
+      UPDATE stock_levels
+      SET quantity = ?,
+          wacc = CASE WHEN COALESCE(wacc, 0) = 0 AND ? > 0 THEN ? ELSE wacc END,
+          last_purchase_cost = CASE WHEN COALESCE(last_purchase_cost, 0) = 0 AND ? > 0 THEN ? ELSE last_purchase_cost END
+      WHERE item_id = ? AND warehouse_id = ?
+    `).run(afterQty, unitCost, unitCost, unitCost, unitCost, itemId, warehouseId);
   } else {
-    db.prepare("INSERT INTO stock_levels (item_id, warehouse_id, quantity) VALUES (?, ?, ?)").run(itemId, warehouseId, afterQty);
+    db.prepare(`
+      INSERT INTO stock_levels (item_id, warehouse_id, quantity, wacc, last_purchase_cost)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(itemId, warehouseId, afterQty, unitCost, unitCost);
   }
   if (delta !== 0) {
     db.prepare(
       "INSERT INTO stock_movements (item_id, warehouse_id, movement_type, quantity, before_qty, after_qty, reference_type, reference_id, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run(itemId, warehouseId, "branch_receive", delta, beforeQty, afterQty, "item_import", itemId, "استيراد أصناف - استلام مخزون بدون خزنة", null);
+  }
+  if (delta > 0 && unitCost > 0) {
+    ensureImportOpeningBalance(db, itemId, payload, warehouseId, delta);
+    recomputeWACCForItem(itemId, db);
   }
 }
 

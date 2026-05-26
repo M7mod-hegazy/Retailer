@@ -12,6 +12,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
+import { PAYMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 
 function CancelReasonModal({ title, onConfirm, onClose }) {
   const [reason, setReason] = useState("");
@@ -62,21 +63,6 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
     </div>
   );
 }
-
-const PAYMENT_LABELS = {
-  cash: "نقدي",
-  bank_transfer: "حوالة بنكية",
-  credit: "آجل",
-  installments: "أقساط",
-  multi: "متعدد",
-};
-
-const STATUS_MAP = {
-  paid:      { label: "مدفوع",  cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  partial:   { label: "جزئي",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  cancelled: { label: "ملغي",   cls: "bg-slate-100 text-slate-500 border-slate-200" },
-  unpaid:    { label: "آجل",    cls: "bg-rose-50 text-rose-700 border-rose-200" },
-};
 
 function fmt(n) {
   return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -201,7 +187,7 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const statusInfo = STATUS_MAP[invoice.status] || STATUS_MAP.unpaid;
+  const statusInfo = statusBadge(invoice.status, "unpaid");
   const isCancelled = invoice.status === "cancelled";
   const isAmended   = !!invoice.amended_by;   // was replaced by a newer invoice
   const isAmendment = !!invoice.amendment_of; // is itself a replacement of an older invoice

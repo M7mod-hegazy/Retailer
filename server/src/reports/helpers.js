@@ -171,11 +171,17 @@ function buildColumnsFromRows(rows) {
   return ordered.map((k) => ({ key: k, label: labelForKey(k) }));
 }
 
+// Returns a SQL expression that resolves a per-line cost using the selected method.
+// Callers may use it inside any context where invoice_lines (or sales_return_lines)
+// columns are in scope — with or without a table alias. Unqualified column references
+// are safe because cost_wacc/cost_fifo/cost_lifo/cost_last_purchase live only on
+// invoice_lines and sales_return_lines, and queries never join both.
 function getCostColumn(costMethod) {
   switch (costMethod) {
-    case "last_purchase": return "il.cost_last_purchase";
-    case "fifo":          return "il.cost_fifo";
-    default:              return "il.cost_wacc";  // wacc is the only meaningful default
+    case "last_purchase": return "COALESCE(cost_last_purchase, cost_wacc, 0)";
+    case "fifo":          return "COALESCE(cost_fifo, cost_wacc, cost_last_purchase, 0)";
+    case "lifo":          return "COALESCE(cost_lifo, cost_wacc, cost_last_purchase, 0)";
+    default:              return "COALESCE(cost_wacc, cost_last_purchase, 0)";
   }
 }
 
@@ -190,6 +196,8 @@ function getCostColumnForValuation(costMethod) {
 function getReturnCostColumn(costMethod) {
   switch (costMethod) {
     case "last_purchase": return "COALESCE(ref_il.cost_last_purchase, srl.cost_last_purchase, it.purchase_price, 0)";
+    case "fifo":          return "COALESCE(ref_il.cost_fifo, srl.cost_fifo, ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
+    case "lifo":          return "COALESCE(ref_il.cost_lifo, srl.cost_lifo, ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
     default:              return "COALESCE(ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
   }
 }

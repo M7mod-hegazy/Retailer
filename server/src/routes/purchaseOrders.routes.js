@@ -2,6 +2,8 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { adjustStock } = require("../services/stockService");
 const { generateDocNumber } = require("../utils/docNumber");
+const { recomputeWACCForItem } = require("../services/waccService");
+const { hasTable, recordMovement } = require("../services/costLedger");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 
@@ -9,6 +11,21 @@ const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
+
+function recordReceiptCost(db, purchaseId, lineId, line, warehouseId) {
+  if (!hasTable(db, "cost_movements")) return;
+  recordMovement(db, {
+    item_id: line.item_id,
+    warehouse_id: warehouseId,
+    occurred_at: new Date().toISOString().replace("T", " ").slice(0, 19),
+    movement_type: "purchase",
+    quantity: line.receiveQty,
+    unit_cost: line.unit_cost,
+    source_table: "purchase_lines",
+    source_id: purchaseId,
+    source_line_id: lineId,
+  });
+}
 
 router.get("/", requirePagePermission("purchase_orders", "view"), (req, res) => {
   const db = getDb();
@@ -155,8 +172,9 @@ router.patch("/:id/receive", requirePagePermission("purchase_orders", "edit"), (
         .prepare("INSERT INTO purchases (doc_no, supplier_id, total) VALUES (?, ?, ?)")
         .run(receiptDocNo, order.supplier_id || null, total);
 
+      const receivedItemIds = new Set();
       for (const line of receiptLines) {
-        db.prepare(
+        const purchaseLine = db.prepare(
           "INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total) VALUES (?, ?, ?, ?, ?)",
         ).run(
           purchase.lastInsertRowid,
@@ -165,6 +183,9 @@ router.patch("/:id/receive", requirePagePermission("purchase_orders", "edit"), (
           line.unit_cost,
           line.receiveQty * line.unit_cost,
         );
+        const warehouseId = req.body?.warehouse_id || 1;
+        recordReceiptCost(db, purchase.lastInsertRowid, purchaseLine.lastInsertRowid, line, warehouseId);
+        receivedItemIds.add(Number(line.item_id));
 
         db.prepare(
           "UPDATE purchase_order_lines SET received_quantity = received_quantity + ? WHERE id = ?",
@@ -172,13 +193,14 @@ router.patch("/:id/receive", requirePagePermission("purchase_orders", "edit"), (
 
         adjustStock({
           item_id: line.item_id,
-          warehouse_id: req.body?.warehouse_id || 1,
+          warehouse_id: warehouseId,
           quantityDelta: line.receiveQty,
           movement_type: "purchase_order_receive",
           reference_type: "purchase_order",
           reference_id: Number(req.params.id),
         });
       }
+      for (const itemId of receivedItemIds) recomputeWACCForItem(itemId, db);
 
       const updatedLines = db
         .prepare("SELECT quantity, received_quantity FROM purchase_order_lines WHERE purchase_order_id = ?")

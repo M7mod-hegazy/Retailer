@@ -28,6 +28,7 @@ const withdrawalsRoutes = require("./routes/withdrawals.routes");
 const stockRoutes = require("./routes/stock.routes");
 const operationsRoutes = require("./routes/operations.routes");
 const reportRoutes = require("./routes/report.routes");
+const ownerStatementsRoutes = require("./routes/ownerStatements.routes");
 const notificationsRoutes = require("./routes/notifications.routes");
 const promotionsRoutes = require("./routes/promotions.routes");
 const helpRoutes = require("./routes/help.routes");
@@ -98,6 +99,7 @@ function createApp() {
   app.use("/api/stock", stockRoutes);
   app.use("/api/operations", operationsRoutes);
   app.use("/api/reports", reportRoutes);
+  app.use("/api/owner-statements", ownerStatementsRoutes);
   app.use("/api/notifications", notificationsRoutes);
   app.use("/api/promotions", promotionsRoutes);
   app.use("/api/help", helpRoutes);

@@ -144,9 +144,33 @@ const DATE_PRESETS = [
 ];
 
 const COST_METHODS = [
-  { value: "wacc", label_key: "reports_wacc" },
-  { value: "last_purchase", label_key: "reports_last_purchase" },
+  { value: "wacc", label: "المتوسط المرجح" },
+  { value: "fifo", label: "الوارد أولا" },
+  { value: "lifo", label: "الوارد أخيرا" },
+  { value: "last_purchase", label: "آخر سعر شراء" },
 ];
+
+const COST_METHOD_REPORTS = new Set([
+  "stock-valuation",
+  "inventory-aging",
+  "dead-stock",
+  "slow-moving",
+  "supplier-pricing",
+  "top-customers",
+  "period-comparison",
+  "profit-loss",
+  "cost-method-comparison",
+  "item-lifecycle",
+  "margin-drift",
+  "inventory-turnover",
+  "cashier-override-impact",
+  "customer-profitability",
+  "daily-owner-snapshot",
+]);
+
+function supportsCostMethod(definition) {
+  return !!definition?.hasProfit || COST_METHOD_REPORTS.has(definition?.slug);
+}
 
 // Mirror print template constants so workspace pagination matches print pages exactly
 const PRINT_HEADER_MM = 22;
@@ -394,7 +418,7 @@ export default function ReportWorkspacePage() {
   const [appliedParams, setAppliedParams] = useState(() => {
     const params = {};
     if (definition?.supportsDates) { params.start_date = initialFrom; params.end_date = initialTo; }
-    if (definition?.hasProfit) { params.cost_method = initialCostMethod; }
+    if (supportsCostMethod(definition)) { params.cost_method = initialCostMethod; }
     if (definition?.filters) {
       definition.filters.forEach((f) => {
         const v = searchParams.get(f.key);
@@ -433,7 +457,7 @@ export default function ReportWorkspacePage() {
     setFilters(init);
     const params = {};
     if (definition?.supportsDates) { params.start_date = initialFrom; params.end_date = initialTo; }
-    if (definition?.hasProfit) { params.cost_method = initialCostMethod; }
+    if (supportsCostMethod(definition)) { params.cost_method = initialCostMethod; }
     if (definition?.filters) {
       definition.filters.forEach((f) => {
         const v = searchParams.get(f.key);
@@ -703,6 +727,7 @@ export default function ReportWorkspacePage() {
   const CategoryIcon = categoryMeta?.icon || BarChart3;
   const exportFormats = definition?.exportFormats || ["pdf", "excel", "print"];
   const invalidRange = definition?.supportsDates && filters.from > filters.to;
+  const hasCostMethodSelector = supportsCostMethod(definition);
 
   // Debounce for search text
   function useDebounce(value, delay) {
@@ -723,7 +748,7 @@ export default function ReportWorkspacePage() {
     const pageSize = measuredPrintRowsPerPage || (visibleColumns.length > 0 ? calcPrintRowsPerPage(visibleColumns) : calcPrintRowsPerPage(6));
     const params = { page: 1, pageSize };
     if (definition?.supportsDates) { params.start_date = filters.from; params.end_date = filters.to; }
-    if (definition?.hasProfit) { params.cost_method = costMethod; setCostMethodAction(reportSlug, costMethod); }
+    if (hasCostMethodSelector) { params.cost_method = costMethod; setCostMethodAction(reportSlug, costMethod); }
     if (definition?.filters) {
       definition.filters.forEach((f) => { if (filters[f.key]) params[f.key] = filters[f.key]; });
     }
@@ -733,7 +758,7 @@ export default function ReportWorkspacePage() {
     } else if (scope.type === "supplier" && scope.values?.length) { params.supplier_id = scope.values[0]; }
     if (debouncedQ) params.q = debouncedQ;
     setAppliedParams(params);
-  }, [filterSignature, reportSlug]);
+  }, [filterSignature, reportSlug, hasCostMethodSelector]);
 
   function handleResetFilters() {
     const reset = { from: defaultFrom, to: defaultTo, q: "" };
@@ -1015,11 +1040,11 @@ export default function ReportWorkspacePage() {
                 </div>
 
                 {/* Cost Method */}
-                {definition.hasProfit && (
+                {hasCostMethodSelector && (
                   <div className="space-y-2">
                     <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">طريقة حساب التكلفة</label>
                     <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
-                      {COST_METHODS.map(m => (<option key={m.value} value={m.value}>{t(m.label_key)}</option>))}
+                      {COST_METHODS.map(m => (<option key={m.value} value={m.value}>{m.label}</option>))}
                     </select>
                   </div>
                 )}

@@ -4,6 +4,7 @@ const { adjustStock } = require("../services/stockService");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { recomputeWACCForItem } = require("../services/waccService");
+const { hasTable, recordMovement } = require("../services/costLedger");
 const { applyPurchaseLinePriceUpdates, revertPurchaseLinePriceUpdates } = require("../services/priceLockService");
 const { capturePurchaseReturnLineOverrides } = require("../services/overrideTrackingService");
 const { requirePagePermission } = require("../middleware/permission");
@@ -63,6 +64,23 @@ function getPurchaseWithLines(db, purchaseId) {
     debt_remaining,
     payments,
   };
+}
+
+function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
+  if (!hasTable(db, "cost_movements") || !line?.id) return;
+  const quantity = Number(line.quantity || 0) * (options.reversal ? -1 : 1);
+  if (!quantity) return;
+  recordMovement(db, {
+    item_id: line.item_id,
+    warehouse_id: line.warehouse_id || options.warehouse_id || null,
+    occurred_at: options.occurred_at || new Date().toISOString().replace("T", " ").slice(0, 19),
+    movement_type: options.movement_type || (line.is_opening_balance ? "opening_balance" : "purchase"),
+    quantity,
+    unit_cost: line.unit_cost,
+    source_table: "purchase_lines",
+    source_id: purchaseId,
+    source_line_id: options.reversal ? -Number(line.id) : Number(line.id),
+  });
 }
 
 router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
@@ -341,6 +359,8 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         newPurchaseLines.push({
           id: lineResult.lastInsertRowid,
           item_id: Number(line.item_id),
+          warehouse_id: warehouseId,
+          quantity: qty,
           unit_cost: cost,
           unit_price: Number(line.selling_price || line.unit_price || 0),
           wholesale_price: Number(line.wholesale_price || 0),
@@ -348,6 +368,13 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           update_master_sale_price:     lockSell,
           update_master_wholesale_price: lockWhole,
         });
+        recordPurchaseLineCost(db, purchaseId, {
+          id: lineResult.lastInsertRowid,
+          item_id: Number(line.item_id),
+          warehouse_id: warehouseId,
+          quantity: qty,
+          unit_cost: cost,
+        }, { occurred_at: `${createdDate} ${new Date().toTimeString().slice(0, 8)}` });
 
         adjustStock({
           item_id: line.item_id,
@@ -596,6 +623,7 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
 
       // 1. Reverse old stock
       for (const line of purchase.lines || []) {
+        recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_reversal" });
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id || 1,
@@ -627,12 +655,21 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         editInsertedLines.push({
           id: lr.lastInsertRowid,
           item_id: Number(line.item_id),
+          warehouse_id: line.warehouse_id || payload.warehouse_id || 1,
+          quantity: qty,
           unit_cost: cost,
           unit_price: Number(line.selling_price || line.unit_price || 0),
           wholesale_price: Number(line.wholesale_price || 0),
           update_master_purchase_price: lockBuy,
           update_master_sale_price:     lockSell,
           update_master_wholesale_price: lockWhole,
+        });
+        recordPurchaseLineCost(db, purchase.id, {
+          id: lr.lastInsertRowid,
+          item_id: Number(line.item_id),
+          warehouse_id: line.warehouse_id || payload.warehouse_id || 1,
+          quantity: qty,
+          unit_cost: cost,
         });
         adjustStock({
           item_id: line.item_id,
@@ -703,6 +740,7 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
 
   // Reverse stock
   for (const line of purchase.lines || []) {
+    recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_cancel", occurred_at: now });
     adjustStock({
       item_id: line.item_id,
       warehouse_id: line.warehouse_id || 1,
@@ -834,6 +872,8 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
         amendInsertedLines.push({
           id: lr.lastInsertRowid,
           item_id: Number(line.item_id),
+          warehouse_id: warehouseId,
+          quantity: qty,
           unit_cost: cost,
           unit_price: Number(line.selling_price || line.unit_price || 0),
           wholesale_price: Number(line.wholesale_price || 0),
@@ -841,6 +881,13 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
           update_master_sale_price:     lockSell,
           update_master_wholesale_price: lockWhole,
         });
+        recordPurchaseLineCost(db, newPurchaseId, {
+          id: lr.lastInsertRowid,
+          item_id: Number(line.item_id),
+          warehouse_id: warehouseId,
+          quantity: qty,
+          unit_cost: cost,
+        }, { occurred_at: `${createdDate} ${new Date().toTimeString().slice(0, 8)}` });
         adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: qty, movement_type: "purchase", reference_type: "purchase", reference_id: newPurchaseId });
       }
       // WACC replay after all lines inserted
@@ -900,7 +947,9 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       if (!purchase) { const e = new Error("Purchase not found"); e.status = 404; throw e; }
       if (purchase.status === "voided") { const e = new Error("Purchase already voided"); e.status = 400; throw e; }
 
+      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
       for (const line of purchase.lines || []) {
+        recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_void", occurred_at: now });
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id || 1,

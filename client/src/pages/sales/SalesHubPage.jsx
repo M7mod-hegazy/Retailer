@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  X, Eye, Pencil, SlidersHorizontal,
+  X, Eye, Pencil, SlidersHorizontal, ExternalLink,
   User, FileText, Loader2, CreditCard,
   Package, Layers, ChevronDown, ChevronUp,
   ShoppingBag, Search,
@@ -836,7 +836,14 @@ export default function SalesHubPage() {
                         <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
                         <td className="px-5 py-4 font-bold text-zinc-700">{r.customer_name || "عميل نقدي"}</td>
                         <td className="px-5 py-4 text-center font-mono text-[11px] font-black text-zinc-400">{r.item_code || r.barcode || "—"}</td>
-                        <td className="px-5 py-4 font-bold text-zinc-800">{r.item_name || "—"}</td>
+                        <td className="px-5 py-4 font-bold text-zinc-800">
+                          <div>{r.item_name || "—"}</div>
+                          {r.item_id && (
+                            <Link to={`/operations/items/${r.item_id}?types=sales`} className="mt-1 inline-flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-800">
+                              <ExternalLink className="w-3 h-3" /> عرض كامل
+                            </Link>
+                          )}
+                        </td>
                         <td className="px-5 py-4 text-center font-mono font-bold text-zinc-700">{r.quantity}</td>
                         <td className="px-5 py-4 text-center font-mono font-black text-zinc-700">{fmt(r.unit_price)}</td>
                         <td className="px-5 py-4 text-center font-mono font-black text-blue-700">{fmt(r.line_total || (r.quantity * r.unit_price))}</td>

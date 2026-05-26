@@ -1,5 +1,5 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumn } = require("../helpers");
+const { addDateFilter, getCostColumn, getReturnCostColumn } = require("../helpers");
 
 // Pre-aggregated cost subquery per invoice (avoids Cartesian product with returns join)
 function _costSubquery(costCol) {
@@ -11,9 +11,7 @@ function _costSubquery(costCol) {
 
 // Build returns subquery using the same cost method as the main query
 function _returnsSubquery(costMethod) {
-  const costCol = costMethod === "last_purchase"
-    ? "COALESCE(ref_il.cost_last_purchase, srl.cost_last_purchase, it.purchase_price, 0)"
-    : "COALESCE(ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
+  const costCol = getReturnCostColumn(costMethod);
   return `(
     SELECT sr.invoice_id,
       SUM(sr.total) AS return_revenue,
@@ -32,11 +30,17 @@ function profitByCategory(startDate, endDate, opts = {}) {
   const params = [];
   const { category_id } = opts;
   const costCol = getCostColumn(opts.cost_method);
+  const totalExpenses = db.prepare(`
+    SELECT COALESCE(SUM(e.amount), 0) AS total
+    FROM expenses e
+    WHERE 1=1 ${addDateFilter("e.created_at", startDate, endDate, params)}
+  `).get(...params).total;
+  params.length = 0;
 
   // Line-level proportional revenue: each line absorbs its share of the invoice total
   // (header discount + increase already reflected in i.total)
   // inv_sums.line_sum = sum of all line_totals for the invoice
-  return db.prepare(`
+  const stmt = db.prepare(`
     SELECT COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
       SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
@@ -50,10 +54,7 @@ function profitByCategory(startDate, endDate, opts = {}) {
         THEN ROUND(
           (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})) /
           SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) * 100, 1)
-        ELSE 0 END AS margin_percent,
-      (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e
-        WHERE DATE(e.created_at) >= ? AND DATE(e.created_at) <= ?
-      ) AS total_expenses
+        ELSE 0 END AS margin_percent
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
@@ -67,10 +68,12 @@ function profitByCategory(startDate, endDate, opts = {}) {
       ${category_id ? " AND c.id = ?" : ""}
     GROUP BY c.id
     ORDER BY gross_profit DESC
-  `).all(
-    ...params, startDate || "", endDate || "",
-    ...(category_id ? [category_id] : []),
-  );
+  `);
+  const rows = stmt.all(...params, ...(category_id ? [category_id] : []));
+  return {
+    rows,
+    summary: { total_expenses: totalExpenses },
+  };
 }
 
 function profitByCustomer(startDate, endDate, opts = {}) {

@@ -21,12 +21,15 @@ const FinanceWorkspacePage = lazy(() => import("./pages/workspaces/FinanceWorksp
 const PurchasesWorkspacePage = lazy(() => import("./pages/workspaces/PurchasesWorkspacePage"));
 const InventoryWorkspacePage = lazy(() => import("./pages/workspaces/InventoryWorkspacePage"));
 const OperationsWorkspacePage = lazy(() => import("./pages/workspaces/OperationsWorkspacePage"));
+const ItemOperationsPage = lazy(() => import("./pages/operations/ItemOperationsPage"));
+const OwnerStatementPage = lazy(() => import("./pages/owner/OwnerStatementPage"));
 const CatalogWorkspacePage = lazy(() => import("./pages/workspaces/CatalogWorkspacePage"));
 const PartiesWorkspacePage = lazy(() => import("./pages/workspaces/PartiesWorkspacePage"));
 const ResourcesWorkspacePage = lazy(() => import("./pages/workspaces/ResourcesWorkspacePage"));
 const TeamWorkspacePage = lazy(() => import("./pages/workspaces/TeamWorkspacePage"));
 const CategoriesPage = lazy(() => import("./pages/definitions/CategoriesPage"));
 const ItemsListPage = lazy(() => import("./pages/items/ItemsListPage"));
+const ItemDetailPage = lazy(() => import("./pages/items/ItemDetailPage"));
 const CustomersListPage = lazy(() => import("./pages/customers/CustomersListPage"));
 const SuppliersListPage = lazy(() => import("./pages/suppliers/SuppliersListPage"));
 const RevenueCategoriesPage = lazy(() => import("./pages/definitions/RevenueCategoriesPage"));
@@ -142,6 +145,7 @@ export default function App() {
                     <Route path="workspace/team" element={<TeamWorkspacePage />} />
                     <Route path="definitions/categories" element={<PermissionRoute page="categories"><CategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/items" element={<PermissionRoute page="items"><ItemsListPage /></PermissionRoute>} />
+                    <Route path="definitions/items/:id" element={<PermissionRoute page="items"><ItemDetailPage /></PermissionRoute>} />
                     <Route path="definitions/customers" element={<PermissionRoute page="customers"><CustomersListPage /></PermissionRoute>} />
                     <Route path="definitions/customers/:id" element={<PermissionRoute page="customers"><CustomerProfilePage /></PermissionRoute>} />
                     <Route path="definitions/suppliers" element={<PermissionRoute page="suppliers"><SuppliersListPage /></PermissionRoute>} />
@@ -159,6 +163,7 @@ export default function App() {
                     <Route path="pos" element={<PermissionRoute page="pos"><POSPage /></PermissionRoute>} />
                     <Route path="invoices/:id" element={<PermissionRoute page="pos"><InvoiceDetailPage /></PermissionRoute>} />
                     <Route path="daily-treasury" element={<PermissionRoute page="daily_treasury"><DailyTreasuryPage /></PermissionRoute>} />
+                    <Route path="owner-statement" element={<PermissionRoute page="owner_statement"><OwnerStatementPage /></PermissionRoute>} />
                     <Route path="operations/payment-methods" element={<PermissionRoute page="payment_methods"><PaymentMethodsPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<PermissionRoute page="payments"><PaymentTransactionsPage /></PermissionRoute>} />
                     <Route path="sales" element={<PermissionRoute page="pos"><SalesHubPage /></PermissionRoute>} />
@@ -187,6 +192,8 @@ export default function App() {
                     <Route path="operations/bank-operations" element={<PermissionRoute page="bank_operations"><BankOperationsPage /></PermissionRoute>} />
                     <Route path="operations/bulk-price-update" element={<PermissionRoute page="bulk_price_update"><BulkPriceUpdatePage /></PermissionRoute>} />
                     <Route path="operations/employee-adjustments" element={<PermissionRoute page="employee_adjustments"><EmployeeAdjustmentsPage /></PermissionRoute>} />
+                    <Route path="operations/items" element={<PermissionRoute page="items"><ItemOperationsPage /></PermissionRoute>} />
+                    <Route path="operations/items/:itemId" element={<PermissionRoute page="items"><ItemOperationsPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer" element={<PermissionRoute page="branch_transfer"><BranchTransferPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer/new" element={<PermissionRoute page="branch_transfer"><BranchTransferFormPage /></PermissionRoute>} />
                     <Route path="operations/branch-transfer/edit/:id" element={<PermissionRoute page="branch_transfer"><BranchTransferFormPage /></PermissionRoute>} />

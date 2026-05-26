@@ -119,25 +119,42 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
 function purchasesByItem(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
+  const returnParams = [];
   const { category_id, item_id, supplier_id } = opts;
   return db.prepare(`
     SELECT COALESCE(it.code, 'ITEM-' || it.id) AS item_code,
       it.name AS item_name,
       SUM(pl.quantity) AS quantity_purchased,
       SUM(pl.line_total) AS total_cost,
+      COALESCE(MAX(ret.quantity_returned), 0) AS quantity_returned,
+      COALESCE(MAX(ret.returns_cost), 0) AS returns_cost,
+      SUM(pl.quantity) - COALESCE(MAX(ret.quantity_returned), 0) AS net_quantity_purchased,
+      SUM(pl.line_total) - COALESCE(MAX(ret.returns_cost), 0) AS net_total_cost,
       ROUND(AVG(pl.unit_cost), 2) AS avg_unit_cost,
       COUNT(DISTINCT p.supplier_id) AS distinct_suppliers,
       MAX(DATE(p.created_at)) AS last_purchase_date
     FROM purchase_lines pl
     JOIN purchases p ON p.id = pl.purchase_id
     JOIN items it ON it.id = pl.item_id
+    LEFT JOIN (
+      SELECT prl.item_id,
+        COALESCE(SUM(prl.quantity), 0) AS quantity_returned,
+        COALESCE(SUM(prl.line_total), 0) AS returns_cost
+      FROM purchase_return_lines prl
+      JOIN purchase_returns pr ON pr.id = prl.purchase_return_id
+      WHERE pr.status = 'active' ${addDateFilter("pr.created_at", startDate, endDate, returnParams)}
+        ${supplier_id ? " AND pr.supplier_id = ?" : ""}
+      GROUP BY prl.item_id
+    ) ret ON ret.item_id = it.id
     WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
     GROUP BY it.id
-    ORDER BY total_cost DESC
+    ORDER BY net_total_cost DESC
   `).all(
+    ...returnParams,
+    ...(supplier_id ? [supplier_id] : []),
     ...params,
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
@@ -224,6 +241,80 @@ function purchaseReturnsBySupplier(startDate, endDate, opts = {}) {
   `).all(...params);
 }
 
+function supplierReliabilityReport(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const purchaseParams = [];
+  const returnParams = [];
+  const { supplier_id } = opts;
+  return db.prepare(`
+    SELECT s.id AS supplier_id,
+      s.name AS supplier_name,
+      s.phone,
+      COALESCE(pur.purchase_count, 0) AS purchase_count,
+      COALESCE(pur.total_purchases, 0) AS total_purchases,
+      COALESCE(ret.return_count, 0) AS return_count,
+      COALESCE(ret.total_returns, 0) AS total_returns,
+      CASE WHEN COALESCE(pur.total_purchases, 0) > 0
+        THEN ROUND(COALESCE(ret.total_returns, 0) / pur.total_purchases * 100, 1)
+        ELSE 0 END AS return_rate_percent,
+      COALESCE(pay.avg_payment_days, 0) AS avg_payment_days,
+      COALESCE(price.repeat_items, 0) AS repeat_items,
+      COALESCE(price.avg_price_spread_percent, 0) AS avg_price_spread_percent,
+      pur.last_purchase_date
+    FROM suppliers s
+    LEFT JOIN (
+      SELECT supplier_id,
+        COUNT(id) AS purchase_count,
+        SUM(total) AS total_purchases,
+        MAX(DATE(created_at)) AS last_purchase_date
+      FROM purchases
+      WHERE status != 'cancelled' ${addDateFilter("created_at", startDate, endDate, purchaseParams)}
+      GROUP BY supplier_id
+    ) pur ON pur.supplier_id = s.id
+    LEFT JOIN (
+      SELECT supplier_id,
+        COUNT(id) AS return_count,
+        SUM(total) AS total_returns
+      FROM purchase_returns
+      WHERE status = 'active' ${addDateFilter("created_at", startDate, endDate, returnParams)}
+      GROUP BY supplier_id
+    ) ret ON ret.supplier_id = s.id
+    LEFT JOIN (
+      SELECT p.supplier_id,
+        ROUND(AVG(julianday(pp.created_at) - julianday(p.created_at)), 1) AS avg_payment_days
+      FROM purchases p
+      JOIN purchase_payments pp ON pp.purchase_id = p.id
+      WHERE p.status != 'cancelled'
+      GROUP BY p.supplier_id
+    ) pay ON pay.supplier_id = s.id
+    LEFT JOIN (
+      SELECT supplier_id,
+        COUNT(*) AS repeat_items,
+        ROUND(AVG(CASE WHEN avg_cost > 0 THEN ((max_cost - min_cost) / avg_cost) * 100 ELSE 0 END), 1) AS avg_price_spread_percent
+      FROM (
+        SELECT p.supplier_id, pl.item_id,
+          MIN(pl.unit_cost) AS min_cost,
+          MAX(pl.unit_cost) AS max_cost,
+          AVG(pl.unit_cost) AS avg_cost,
+          COUNT(*) AS buys
+        FROM purchase_lines pl
+        JOIN purchases p ON p.id = pl.purchase_id
+        WHERE p.status != 'cancelled'
+        GROUP BY p.supplier_id, pl.item_id
+        HAVING buys > 1
+      ) item_prices
+      GROUP BY supplier_id
+    ) price ON price.supplier_id = s.id
+    WHERE (COALESCE(pur.purchase_count, 0) > 0 OR COALESCE(ret.return_count, 0) > 0)
+      ${supplier_id ? " AND s.id = ?" : ""}
+    ORDER BY total_purchases DESC
+  `).all(
+    ...purchaseParams,
+    ...returnParams,
+    ...(supplier_id ? [supplier_id] : []),
+  );
+}
+
 module.exports = {
   _detailPurchaseQuery,
   purchaseSummary,
@@ -234,4 +325,5 @@ module.exports = {
   supplierPricing,
   purchaseReturnsSummary,
   purchaseReturnsBySupplier,
+  supplierReliabilityReport,
 };

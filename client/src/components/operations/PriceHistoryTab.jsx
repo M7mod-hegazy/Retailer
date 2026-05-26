@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Activity, ArrowDownRight, ArrowUpRight, BarChart2,
-  Calendar, Filter, RefreshCcw, Search, TrendingDown,
-  TrendingUp, User, X, ChevronLeft, ChevronRight, AlertTriangle,
-  ShieldCheck, Loader2, CheckCircle2, XCircle, ExternalLink,
+  Activity, ArrowDownRight, ArrowUpRight,
+  Filter, RefreshCcw, Search,
+  X, ChevronLeft, ChevronRight,
+  ExternalLink,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import SearchDropdown from "../ui/SearchDropdown";
 
@@ -306,321 +306,6 @@ function FilterBar({ filters, onChange, onClear }) {
   );
 }
 
-// ── Integrity panel ───────────────────────────────────────────────────────────
-const ISSUE_TYPE_LABELS = {
-  wacc_drift:       "انحراف تكلفة المخزون",
-  orphan_reference: "بيانات معلقة",
-  price_coherence:  "سعر بيع أقل من التكلفة",
-  zero_cost_stock:  "مخزون بدون تكلفة",
-};
-
-function renderIssueDetails(issue) {
-  try {
-    const d = issue.details ? JSON.parse(issue.details) : {};
-    switch (issue.issue_type) {
-      case "wacc_drift":
-        return `التكلفة المسجلة: ${d.stored} ج.م | التكلفة المحسوبة: ${d.computed} ج.م | الفرق: ${Math.abs(d.diff)} ج.م`;
-      case "orphan_reference":
-        return `سجل غير مرتبط بصنف موجود (جدول: ${d.table})`;
-      case "price_coherence":
-        return `سعر البيع ${d.sale_price} ج.م أقل من سعر الشراء ${d.purchase_price} ج.م بفرق ${d.diff} ج.م`;
-      case "zero_cost_stock":
-        return `الكمية المتاحة: ${d.quantity} — لا يوجد سعر شراء مسجل لهذا الصنف`;
-      default:
-        return issue.details;
-    }
-  } catch {
-    return issue.details;
-  }
-}
-
-const ISSUE_COLOR = {
-  wacc_drift:       "bg-amber-50 border-amber-200 text-amber-700",
-  orphan_references:"bg-rose-50 border-rose-200 text-rose-700",
-  price_coherence:  "bg-orange-50 border-orange-200 text-orange-700",
-  zero_cost_stock:  "bg-slate-50 border-slate-200 text-slate-600",
-};
-
-function IntegrityPanel() {
-  const [lastRun, setLastRun]   = useState(null);
-  const [running, setRunning]   = useState(false);
-  const [resolving, setResolving] = useState(null);
-
-  const fetchLast = useCallback(async () => {
-    try {
-      const { data } = await api.get("/api/pricing/integrity/last");
-      if (data.success) setLastRun(data.data);
-    } catch (_) {}
-  }, []);
-
-  useEffect(() => { fetchLast(); }, [fetchLast]);
-
-  async function runCheck() {
-    setRunning(true);
-    try {
-      const { data } = await api.post("/api/pricing/integrity/run");
-      if (data.success) setLastRun(data.data);
-    } catch (_) {}
-    setRunning(false);
-  }
-
-  async function resolve(issueId, action) {
-    setResolving(issueId);
-    try {
-      const apiAction = action === "fix" ? "fixed" : "ignored";
-      await api.post(`/api/pricing/integrity/resolve/${issueId}`, { action: apiAction });
-      fetchLast();
-    } catch (_) {}
-    setResolving(null);
-  }
-
-  const issues = lastRun?.issues ?? [];
-  const unresolved = issues.filter(i => !i.resolved_at);
-
-  return (
-    <div className="p-5 space-y-4" dir="rtl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-slate-600" />
-          <span className="font-black text-slate-800 text-sm">فحص سلامة البيانات</span>
-          {lastRun && (
-            <span className="text-[10px] text-slate-400 font-mono">{lastRun.ran_at?.slice(0,16)}</span>
-          )}
-        </div>
-        <button onClick={runCheck} disabled={running}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition-all">
-          {running ? <Loader2 size={12} className="animate-spin" /> : <RefreshCcw size={12} />}
-          تش��يل الفحص
-        </button>
-      </div>
-
-      {/* Summary */}
-      {lastRun && (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-bold ${
-          lastRun.unresolved_issues === 0
-            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-            : "bg-amber-50 border-amber-200 text-amber-700"
-        }`}>
-          {lastRun.unresolved_issues === 0
-            ? <><CheckCircle2 size={14} /> لا توجد مشاكل — البيانات سليمة</>
-            : <><AlertTriangle size={14} /> {lastRun.unresolved_issues} مشكلة تحتاج مراجعة</>
-          }
-        </div>
-      )}
-
-      {/* Issues list */}
-      {unresolved.length > 0 && (
-        <div className="space-y-2">
-          {unresolved.map(issue => (
-            <div key={issue.id} className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${ISSUE_COLOR[issue.issue_type] ?? "bg-slate-50 border-slate-200 text-slate-600"}`}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[11px] font-black uppercase">{ISSUE_TYPE_LABELS[issue.issue_type] ?? issue.issue_type}</span>
-                  {issue.item_name && <span className="text-[11px] opacity-70">— {issue.item_name}</span>}
-                </div>
-                {issue.details && (
-                  <div className="text-[11px] opacity-80 leading-tight mt-0.5">{renderIssueDetails(issue)}</div>
-                )}
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                {issue.issue_type === "wacc_drift" && (
-                  <button onClick={() => resolve(issue.id, "fix")} disabled={resolving === issue.id}
-                    title="إعادة حساب متوسط تكلفة المخزون من سجل المشتريات"
-                    className="px-2 py-1 rounded text-[10px] font-bold bg-white border border-current hover:opacity-80 disabled:opacity-40">
-                    {resolving === issue.id ? <Loader2 size={10} className="animate-spin inline" /> : "إصلاح تلقائي"}
-                  </button>
-                )}
-                <button onClick={() => resolve(issue.id, "ignore")} disabled={resolving === issue.id}
-                  title="تجاهل هذه المشكلة وعدم إظهارها مرة أخرى"
-                  className="px-2 py-1 rounded text-[10px] font-bold bg-white/60 border border-current hover:opacity-80 disabled:opacity-40">
-                  تجاهل
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!lastRun && !running && (
-        <div className="py-6 text-center space-y-2">
-          <p className="text-slate-500 text-sm">يفحص هذا التقرير سلامة بيانات الأسعار والتكاليف ويكشف عن أي تناقضات.</p>
-          <p className="text-slate-400 text-xs">اضغط "تشغيل الفحص" للبدء.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Frequency panel ───────────────────────────────────────────────────────────
-function FrequencyPanel() {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [view, setView]       = useState("cashier"); // "cashier" | "item" | "trend"
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate]     = useState("");
-
-  const fetchFrequency = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = {};
-      if (fromDate) params.from_date = fromDate;
-      if (toDate)   params.to_date   = toDate;
-      const { data: res } = await api.get("/api/pricing/overrides/frequency", { params });
-      if (res.success) setData(res.data);
-    } catch (_) {}
-    setLoading(false);
-  }, [fromDate, toDate]);
-
-  useEffect(() => { fetchFrequency(); }, [fetchFrequency]);
-
-  if (loading) return <div className="py-16 text-center text-slate-400 text-sm animate-pulse">جارٍ التحميل…</div>;
-
-  const totals = data?.totals;
-
-  return (
-    <div className="flex flex-col h-full" dir="rtl">
-      {/* Summary cards */}
-      {totals && (
-        <div className="grid grid-cols-4 gap-3 p-4 border-b border-slate-100 bg-slate-50">
-          <div className="bg-white rounded-xl border border-slate-200 p-3">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block">إجمالي التجاوزات</span>
-            <span className="text-2xl font-black text-amber-600">{totals.total_overrides ?? 0}</span>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-3">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block">كاشير متورطون</span>
-            <span className="text-2xl font-black text-slate-800">{totals.unique_cashiers ?? 0}</span>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-3">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block">أصناف متأثرة</span>
-            <span className="text-2xl font-black text-slate-800">{totals.unique_items ?? 0}</span>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-3">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block">متوسط الفرق %</span>
-            <span className="text-2xl font-black text-rose-600">{totals.avg_diff_pct ?? 0}%</span>
-          </div>
-        </div>
-      )}
-
-      {/* Filters + view switcher */}
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-slate-100 bg-white">
-        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-          className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white" />
-        <span className="text-slate-400 text-xs">—</span>
-        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-          className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white" />
-        <button onClick={fetchFrequency}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50">
-          <RefreshCcw size={13} /> تحديث
-        </button>
-        <div className="mr-auto flex gap-1">
-          {[["cashier", "بالكاشير"], ["item", "بالصنف"], ["trend", "الاتجاه اليومي"]].map(([k, l]) => (
-            <button key={k} onClick={() => setView(k)}
-              className={`px-3 py-1 rounded-lg text-sm font-bold transition-all ${view === k ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        {view === "cashier" && (
-          <table className="w-full text-sm text-right border-collapse">
-            <thead className="sticky top-0 bg-slate-100 text-slate-500 text-[11px] uppercase font-bold">
-              <tr>
-                <th className="px-4 py-2">الكاشير</th>
-                <th className="px-4 py-2 text-center">عدد التجاوزات</th>
-                <th className="px-4 py-2 text-center">تخفيض سعر</th>
-                <th className="px-4 py-2 text-center">رفع سعر</th>
-                <th className="px-4 py-2 text-center">متوسط فرق %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(data?.by_cashier ?? []).length === 0 ? (
-                <tr><td colSpan={5} className="py-12 text-center text-slate-400">لا توجد بيانات</td></tr>
-              ) : (data?.by_cashier ?? []).map((r) => (
-                <tr key={r.cashier_id} className="hover:bg-amber-50 transition-colors">
-                  <td className="px-4 py-2 font-semibold text-slate-700 flex items-center gap-1.5">
-                    <User size={13} className="text-slate-400 shrink-0" /> {r.cashier_name}
-                  </td>
-                  <td className="px-4 py-2 text-center font-black text-amber-700">{r.override_count}</td>
-                  <td className="px-4 py-2 text-center text-rose-600 font-bold">{r.price_downs}</td>
-                  <td className="px-4 py-2 text-center text-emerald-600 font-bold">{r.price_ups}</td>
-                  <td className="px-4 py-2 text-center">
-                    <span className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${Number(r.avg_diff_pct) > 10 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
-                      {r.avg_diff_pct}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {view === "item" && (
-          <table className="w-full text-sm text-right border-collapse">
-            <thead className="sticky top-0 bg-slate-100 text-slate-500 text-[11px] uppercase font-bold">
-              <tr>
-                <th className="px-4 py-2">الكود</th>
-                <th className="px-4 py-2">الصنف</th>
-                <th className="px-4 py-2">القسم</th>
-                <th className="px-4 py-2 text-center">عدد التجاوزات</th>
-                <th className="px-4 py-2 text-center">متوسط سعر مستخدم</th>
-                <th className="px-4 py-2 text-center">متوسط سعر رئيسي</th>
-                <th className="px-4 py-2 text-center">متوسط فرق %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(data?.by_item ?? []).length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-slate-400">لا توجد بيانات</td></tr>
-              ) : (data?.by_item ?? []).map((r) => (
-                <tr key={r.item_id} className="hover:bg-amber-50 transition-colors">
-                  <td className="px-4 py-2 font-mono text-[11px] font-black text-indigo-700 whitespace-nowrap">{r.item_code || "—"}</td>
-                  <td className="px-4 py-2 font-semibold text-slate-700">{r.item_name}</td>
-                  <td className="px-4 py-2 text-slate-500 text-xs">{r.category_name || "—"}</td>
-                  <td className="px-4 py-2 text-center font-black text-amber-700">{r.override_count}</td>
-                  <td className="px-4 py-2 text-center font-mono font-bold text-slate-800">{fmt(r.avg_used_price)}</td>
-                  <td className="px-4 py-2 text-center font-mono text-slate-500">{fmt(r.avg_master_price)}</td>
-                  <td className="px-4 py-2 text-center">
-                    <span className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${Number(r.avg_diff_pct) > 10 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
-                      {r.avg_diff_pct}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {view === "trend" && (
-          <table className="w-full text-sm text-right border-collapse">
-            <thead className="sticky top-0 bg-slate-100 text-slate-500 text-[11px] uppercase font-bold">
-              <tr>
-                <th className="px-4 py-2">التاريخ</th>
-                <th className="px-4 py-2 text-center">عدد التجاوزات</th>
-                <th className="px-4 py-2 text-center">كاشير متورطون</th>
-                <th className="px-4 py-2 text-center">متوسط فرق %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(data?.daily_trend ?? []).length === 0 ? (
-                <tr><td colSpan={4} className="py-12 text-center text-slate-400">لا توجد بيانات</td></tr>
-              ) : (data?.daily_trend ?? []).map((r) => (
-                <tr key={r.date} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-2 font-mono text-slate-600">{r.date}</td>
-                  <td className="px-4 py-2 text-center font-black text-amber-700">{r.override_count}</td>
-                  <td className="px-4 py-2 text-center text-slate-600">{r.cashiers_involved}</td>
-                  <td className="px-4 py-2 text-center font-mono text-slate-500">{r.avg_diff_pct}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── Price sparkline ───────────────────────────────────────────────────────────
 function PriceSparkline({ label, points, currentVal }) {
@@ -683,7 +368,14 @@ function ProductDetail({ data }) {
           <h2 className="text-lg font-black text-slate-800 mt-0.5">{item.name}</h2>
           <span className="text-[11px] text-slate-400">{sorted.length} سجل</span>
         </div>
-        <div className="flex gap-5">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Link
+            to={`/operations/items/${item.id}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-black text-indigo-700 hover:bg-indigo-100"
+          >
+            <ExternalLink size={13} />
+            عرض كامل
+          </Link>
           {[["سعر البيع", item.sale_price], ["سعر الشراء", item.purchase_price], ["سعر الجملة", item.wholesale_price]].map(([label, val]) => (
             <div key={label} className="text-center">
               <p className="text-[10px] text-slate-400 font-bold">{label}</p>
@@ -887,7 +579,7 @@ function ProductView() {
 const EMPTY_FILTERS = { item_id: "", field: "", source: "", from_date: "", to_date: "" };
 
 export default function PriceHistoryTab() {
-  const [subTab, setSubTab]       = useState("product"); // "product" | "master" | "overrides" | "integrity" | "frequency"
+  const [subTab, setSubTab]       = useState("product"); // "product" | "master" | "overrides"
   const [analytics, setAnalytics] = useState(null);
   const [rows, setRows]           = useState([]);
   const [total, setTotal]         = useState(0);
@@ -903,7 +595,7 @@ export default function PriceHistoryTab() {
   }, []);
 
   const fetchRows = useCallback(async () => {
-    if (subTab === "integrity" || subTab === "frequency" || subTab === "product") return;
+    if (subTab === "product") return;
     setLoading(true);
     try {
       const endpoint = subTab === "master" ? "/api/pricing/history" : "/api/pricing/overrides";
@@ -959,23 +651,6 @@ export default function PriceHistoryTab() {
             }`}>
             تجاوزات الفواتير
           </button>
-          <button onClick={() => setSubTab("integrity")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-              subTab === "integrity"
-                ? "bg-slate-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-            }`}>
-            <ShieldCheck size={13} className="inline ml-1" />
-            سلامة البيانات
-          </button>
-          <button onClick={() => setSubTab("frequency")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-              subTab === "frequency"
-                ? "bg-rose-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-rose-50"
-            }`}>
-            تكرار التجاوزات
-          </button>
           {subTab === "master" || subTab === "overrides" ? (
             <button onClick={fetchRows}
               className="mr-auto p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-500">
@@ -987,14 +662,6 @@ export default function PriceHistoryTab() {
 
       {subTab === "product" ? (
         <ProductView />
-      ) : subTab === "integrity" ? (
-        <div className="flex-1 overflow-auto">
-          <IntegrityPanel />
-        </div>
-      ) : subTab === "frequency" ? (
-        <div className="flex-1 overflow-auto">
-          <FrequencyPanel />
-        </div>
       ) : (
         <>
           {/* Filter bar */}

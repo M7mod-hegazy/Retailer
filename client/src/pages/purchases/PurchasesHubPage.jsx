@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar,
+  Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar, ExternalLink,
   User, FileText, Loader2, CreditCard, Clock, Ban, ArrowUpRight,
   Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp
 } from "lucide-react";
@@ -955,7 +955,14 @@ export default function PurchasesHubPage() {
                         <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
                         <td className="px-5 py-4 font-bold text-zinc-700">{r.supplier_name || "—"}</td>
                         <td className="px-5 py-4 text-center font-mono text-[11px] font-black text-zinc-400">{r.item_code || r.barcode || "—"}</td>
-                        <td className="px-5 py-4 font-bold text-zinc-800">{r.item_name || "—"}</td>
+                        <td className="px-5 py-4 font-bold text-zinc-800">
+                          <div>{r.item_name || "—"}</div>
+                          {r.item_id && (
+                            <Link to={`/operations/items/${r.item_id}?types=purchases`} className="mt-1 inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 hover:text-emerald-800">
+                              <ExternalLink className="w-3 h-3" /> عرض كامل
+                            </Link>
+                          )}
+                        </td>
                         <td className="px-5 py-4 text-center font-mono font-bold text-zinc-700">{r.quantity}</td>
                         <td className="px-5 py-4 text-center font-mono font-black text-zinc-700">{formatMoney(r.unit_cost)}</td>
                         <td className="px-5 py-4 text-center font-mono font-bold text-blue-600">{r.selling_price ? formatMoney(r.selling_price) : "—"}</td>

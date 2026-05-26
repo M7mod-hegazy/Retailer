@@ -61,7 +61,7 @@ function createReturn(invoiceId, payload) {
 
       // Snapshot costs + names
       const itemRow = db.prepare("SELECT name, name_en FROM items WHERE id = ?").get(invoiceLine.item_id);
-      const snap = getSnapshotCosts(invoiceLine.item_id, db);
+      const snap = getSnapshotCosts(invoiceLine.item_id, db, requestedLine.quantity);
       preparedLines.push({
         invoice_line_id: invoiceLine.id,
         item_id: invoiceLine.item_id,
@@ -74,6 +74,8 @@ function createReturn(invoiceId, payload) {
         item_name_en: itemRow?.name_en || invoiceLine.item_name_en || null,
         cost_wacc:          snap.cost_wacc,
         cost_last_purchase: snap.cost_last_purchase,
+        cost_fifo:          snap.cost_fifo,
+        cost_lifo:          snap.cost_lifo,
       });
     }
 
@@ -111,11 +113,12 @@ function createReturn(invoiceId, payload) {
       const rlr = db.prepare(
         `INSERT INTO sales_return_lines
           (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total,
-           warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(returnId, line.invoice_line_id, line.item_id, line.quantity,
             line.unit_price, line.line_total, line.warehouse_id,
-            line.item_name_ar, line.item_name_en, line.cost_wacc, line.cost_last_purchase);
+            line.item_name_ar, line.item_name_en, line.cost_wacc, line.cost_last_purchase,
+            line.cost_fifo, line.cost_lifo);
       createdReturnLines.push({ id: rlr.lastInsertRowid });
 
       adjustStock({
@@ -188,17 +191,17 @@ function createGeneralReturn(payload) {
     for (const line of lines) {
       const lineTotal = Number(line.quantity) * Number(line.unit_price);
       const itemRow = db.prepare("SELECT name, name_en FROM items WHERE id = ?").get(line.item_id);
-      const snap = getSnapshotCosts(line.item_id, db);
+      const snap = getSnapshotCosts(line.item_id, db, Number(line.quantity));
       const warehouseId = Number(line.warehouse_id || 1);
 
       const grr = db.prepare(
         `INSERT INTO sales_return_lines
           (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total,
-           warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase)
-         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
+         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(returnId, line.item_id, line.quantity, line.unit_price, lineTotal,
             warehouseId, itemRow?.name || null, itemRow?.name_en || null,
-            snap.cost_wacc, snap.cost_last_purchase);
+            snap.cost_wacc, snap.cost_last_purchase, snap.cost_fifo, snap.cost_lifo);
       genReturnLines.push({ id: grr.lastInsertRowid });
 
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: Number(line.quantity), movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
@@ -389,10 +392,10 @@ function editSalesReturn(returnId, payload, userId) {
     for (const requestedLine of newLines) {
       if (!sr.invoice_id) {
         const itemRow = db.prepare("SELECT name, name_en FROM items WHERE id = ?").get(requestedLine.item_id);
-        const snap = getSnapshotCosts(requestedLine.item_id, db);
+        const snap = getSnapshotCosts(requestedLine.item_id, db, Number(requestedLine.quantity));
         const lineTotal = Number(requestedLine.quantity) * Number(requestedLine.unit_price);
         newTotal += lineTotal;
-        preparedLines.push({ invoice_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_price: Number(requestedLine.unit_price), line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1, item_name_ar: itemRow?.name || null, item_name_en: itemRow?.name_en || null, cost_wacc: snap.cost_wacc, cost_last_purchase: snap.cost_last_purchase });
+        preparedLines.push({ invoice_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_price: Number(requestedLine.unit_price), line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1, item_name_ar: itemRow?.name || null, item_name_en: itemRow?.name_en || null, cost_wacc: snap.cost_wacc, cost_last_purchase: snap.cost_last_purchase, cost_fifo: snap.cost_fifo, cost_lifo: snap.cost_lifo });
       } else {
         const invoiceLine = db.prepare("SELECT * FROM invoice_lines WHERE id = ? AND invoice_id = ?").get(requestedLine.invoice_line_id, sr.invoice_id);
         if (!invoiceLine) continue;
@@ -404,7 +407,7 @@ function editSalesReturn(returnId, payload, userId) {
         if (qty <= 0) continue;
         const lineTotal = invoiceLine.unit_price * qty;
         newTotal += lineTotal;
-        preparedLines.push({ invoice_line_id: invoiceLine.id, item_id: invoiceLine.item_id, quantity: qty, unit_price: invoiceLine.unit_price, line_total: lineTotal, warehouse_id: payload.warehouse_id || invoiceLine.warehouse_id || 1, item_name_ar: invoiceLine.item_name_ar, item_name_en: invoiceLine.item_name_en, cost_wacc: invoiceLine.cost_wacc, cost_last_purchase: invoiceLine.cost_last_purchase });
+        preparedLines.push({ invoice_line_id: invoiceLine.id, item_id: invoiceLine.item_id, quantity: qty, unit_price: invoiceLine.unit_price, line_total: lineTotal, warehouse_id: payload.warehouse_id || invoiceLine.warehouse_id || 1, item_name_ar: invoiceLine.item_name_ar, item_name_en: invoiceLine.item_name_en, cost_wacc: invoiceLine.cost_wacc, cost_last_purchase: invoiceLine.cost_last_purchase, cost_fifo: invoiceLine.cost_fifo, cost_lifo: invoiceLine.cost_lifo });
       }
     }
 
@@ -412,9 +415,9 @@ function editSalesReturn(returnId, payload, userId) {
     db.prepare("DELETE FROM sales_return_lines WHERE sales_return_id = ?").run(returnId);
     for (const line of preparedLines) {
       db.prepare(
-        `INSERT INTO sales_return_lines (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total, warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(returnId, line.invoice_line_id, line.item_id, line.quantity, line.unit_price, line.line_total, line.warehouse_id, line.item_name_ar, line.item_name_en, line.cost_wacc || 0, line.cost_last_purchase || 0);
+        `INSERT INTO sales_return_lines (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total, warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(returnId, line.invoice_line_id, line.item_id, line.quantity, line.unit_price, line.line_total, line.warehouse_id, line.item_name_ar, line.item_name_en, line.cost_wacc || 0, line.cost_last_purchase || 0, line.cost_fifo || 0, line.cost_lifo || 0);
       adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id, quantityDelta: line.quantity, movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
     }
 

@@ -24,6 +24,7 @@ const dispatcher = {
   "sales-by-payment": sales.salesByPayment,
   "sales-heatmap": sales.salesHeatmap,
   "period-comparison": sales.periodComparison,
+  "cashier-override-impact": sales.cashierOverrideImpactReport,
   "gross-net-sales": sales.grossNetSales,
   "sales-returns": sales.salesReturns,
   "sales-returns-summary": sales.salesReturnsSummary,
@@ -54,6 +55,12 @@ const dispatcher = {
   "expiry": inventory.expiryReport,
   "inventory-aging": inventory.inventoryAging,
   "dead-stock": inventory.deadStock,
+  "cost-movements": inventory.costMovementReport,
+  "cost-method-comparison": inventory.costMethodComparison,
+  "item-lifecycle": inventory.itemLifecycleReport,
+  "margin-drift": inventory.marginDriftReport,
+  "inventory-turnover": inventory.inventoryTurnoverReport,
+  "stock-adjustment-audit": inventory.stockAdjustmentAuditReport,
 
   // Accounts
   "ar-aging": accounts.arAging,
@@ -64,8 +71,11 @@ const dispatcher = {
   "collection-efficiency": accounts.collectionEfficiency,
   "supplier-statement": accounts.supplierStatement,
   "customer-loyalty": accounts.customerLoyalty,
+  "customer-profitability": accounts.customerProfitabilityReport,
+  "daily-owner-snapshot": accounts.dailyOwnerSnapshot,
   "supplier-purchases-history": accounts.supplierPurchasesHistory,
   "supplier-returns-history": accounts.supplierReturnsHistory,
+  "supplier-reliability": purchases.supplierReliabilityReport,
 
   // Treasury
   "cash-flow": treasury.cashFlow,

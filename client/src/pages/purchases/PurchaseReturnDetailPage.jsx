@@ -7,6 +7,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { SETTLEMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 
 function fmt(n) {
   return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -40,13 +41,6 @@ function CancelReasonModal({ onConfirm, onClose }) {
     </div>
   );
 }
-
-const STATUS_MAP = {
-  active:    { label: "نشط",  cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  cancelled: { label: "ملغي", cls: "bg-slate-100 text-slate-500 border-slate-200" },
-};
-
-const SETTLEMENT_LABELS = { cash: "استرداد نقدي", account: "خصم من الحساب" };
 
 export default function PurchaseReturnDetailPage() {
   const { id } = useParams();
@@ -129,7 +123,7 @@ export default function PurchaseReturnDetailPage() {
     );
   }
 
-  const statusInfo = STATUS_MAP[doc.status] || STATUS_MAP.active;
+  const statusInfo = statusBadge(doc.status, "active");
   const isCancelled = doc.status === "cancelled";
   const isAmended   = !!doc.amended_by;
   const isAmendment = !!doc.amendment_of;
@@ -244,23 +238,26 @@ export default function PurchaseReturnDetailPage() {
         {timeline.length > 1 && (
           <aside className="w-64 shrink-0 overflow-auto rounded-md border border-slate-300 bg-white p-4 shadow-sm flex flex-col gap-3">
             <h3 className="text-[12px] font-black text-slate-600 uppercase tracking-wider border-b border-slate-100 pb-2">سلسلة التعديلات</h3>
-            {timeline.map((t, i) => (
-              <div key={t.id}
-                onClick={() => navigate(`/purchases/returns/${t.id}`)}
-                className={`cursor-pointer rounded-lg border p-3 transition-all ${t.id === doc.id ? "border-indigo-300 bg-indigo-50" : "border-slate-200 hover:border-slate-300 bg-white"}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-black text-slate-700">{t.doc_no}</span>
-                  {i === 0 && timeline.length > 1 && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">الأصلي</span>}
-                  {i === timeline.length - 1 && i !== 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">الأحدث</span>}
+            {timeline.map((t, i) => {
+              const timelineStatus = statusBadge(t.status, "active");
+              return (
+                <div key={t.id}
+                  onClick={() => navigate(`/purchases/returns/${t.id}`)}
+                  className={`cursor-pointer rounded-lg border p-3 transition-all ${t.id === doc.id ? "border-indigo-300 bg-indigo-50" : "border-slate-200 hover:border-slate-300 bg-white"}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-black text-slate-700">{t.doc_no}</span>
+                    {i === 0 && timeline.length > 1 && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">الأصلي</span>}
+                    {i === timeline.length - 1 && i !== 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">الأحدث</span>}
+                  </div>
+                  <div className="text-[10px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
+                  <div className="text-[10px] font-bold text-slate-500">{fmt(t.total)} ج.م</div>
+                  <span className={`inline-flex mt-1 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-black ${timelineStatus.cls}`}>
+                    {timelineStatus.label}
+                  </span>
                 </div>
-                <div className="text-[10px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
-                <div className="text-[10px] font-bold text-slate-500">{fmt(t.total)} ج.م</div>
-                <span className={`inline-flex mt-1 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-black ${STATUS_MAP[t.status]?.cls || STATUS_MAP.active.cls}`}>
-                  {STATUS_MAP[t.status]?.label || "نشط"}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </aside>
         )}
       </main>

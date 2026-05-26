@@ -20,6 +20,11 @@ const { computePurchaseProfitAnalysis } = require("../services/costingService");
 const router = express.Router();
 router.use(authRequired);
 
+function requireSystemOwner(req, res, next) {
+  if (["system_owner", "admin", "dev"].includes(req.user?.role)) return next();
+  return res.status(403).json({ success: false, error: "permission_denied", role: "system_owner" });
+}
+
 // ── Product list (items with price history) ───────────────────────────────────
 router.get("/product-list", requirePagePermission("bulk_price_update", "view"), (req, res, next) => {
   try {
@@ -216,7 +221,7 @@ router.get("/analytics", requirePagePermission("bulk_price_update", "view"), (re
 });
 
 // ── Integrity check ───────────────────────────────────────────────────────────
-router.get("/integrity/last", (req, res, next) => {
+router.get("/integrity/last", requireSystemOwner, (req, res, next) => {
   try {
     const db = getDb();
     const result = getLastCheckRun(db);
@@ -224,7 +229,7 @@ router.get("/integrity/last", (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post("/integrity/run", (req, res, next) => {
+router.post("/integrity/run", requireSystemOwner, (req, res, next) => {
   try {
     const db = getDb();
     const userId = req.user?.id ? Number(req.user.id) : null;
@@ -234,7 +239,7 @@ router.post("/integrity/run", (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post("/integrity/resolve/:issueId", (req, res, next) => {
+router.post("/integrity/resolve/:issueId", requireSystemOwner, (req, res, next) => {
   try {
     const db = getDb();
     const { action } = req.body || {};

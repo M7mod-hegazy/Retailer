@@ -7,11 +7,29 @@ const NotificationModel = require("../models/notification.model");
 const { captureBranchTransferLineOverrides } = require("../services/overrideTrackingService");
 const { applyLinePriceUpdates, revertLinePriceUpdates } = require("../services/priceLockService");
 const { recomputeWACCForItem } = require("../services/waccService");
+const { hasTable, recordMovement } = require("../services/costLedger");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
+
+function recordBranchReceiveCost(db, transferId, line, options = {}) {
+  if (!hasTable(db, "cost_movements") || !line?.id || options.type === "send") return;
+  const quantity = Number(line.quantity || 0) * (options.reversal ? -1 : 1);
+  if (!quantity) return;
+  recordMovement(db, {
+    item_id: line.item_id,
+    warehouse_id: line.warehouse_id || null,
+    occurred_at: options.occurred_at || new Date().toISOString().replace("T", " ").slice(0, 19),
+    movement_type: options.movement_type || "branch_receive",
+    quantity,
+    unit_cost: line.unit_cost || 0,
+    source_table: "branch_transfer_lines",
+    source_id: transferId,
+    source_line_id: options.reversal ? -Number(line.id) : Number(line.id),
+  });
+}
 
 function buildRefNo(type, id, dateStr) {
   const tag = type === "receive" ? "R" : "S";
@@ -257,6 +275,15 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
           lockBuy, lockSell, lockWhole, unitId
         );
         transferSavedLines.push({ id: tlr.lastInsertRowid });
+        if (type === "receive") {
+          recordBranchReceiveCost(db, transferId, {
+            id: tlr.lastInsertRowid,
+            item_id: itemId,
+            warehouse_id: lineWhId,
+            quantity: qty,
+            unit_cost: unitCost,
+          });
+        }
 
         if (type === "receive") {
           priceLines.push({
@@ -338,6 +365,9 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
 
       // Reverse original stock movements
       for (const line of existingLines) {
+        if (existing.type === "receive") {
+          recordBranchReceiveCost(db, id, line, { reversal: true, movement_type: "branch_receive_reversal" });
+        }
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id,
@@ -407,8 +437,17 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
           notes: notes || null,
         });
 
-        insertLine.run(id, itemId, qty, lineWhId, unitCost, sellingPrice, wholesalePrice,
+        const tlr = insertLine.run(id, itemId, qty, lineWhId, unitCost, sellingPrice, wholesalePrice,
           lockBuy, lockSell, lockWhole, unitId);
+        if (existing.type === "receive") {
+          recordBranchReceiveCost(db, id, {
+            id: tlr.lastInsertRowid,
+            item_id: itemId,
+            warehouse_id: lineWhId,
+            quantity: qty,
+            unit_cost: unitCost,
+          });
+        }
 
         if (existing.type === "receive") {
           priceLines.push({
@@ -480,6 +519,9 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
       }
 
       for (const line of lines) {
+        if (transfer.type === "receive") {
+          recordBranchReceiveCost(db, id, line, { reversal: true, movement_type: "branch_receive_cancel" });
+        }
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id,
