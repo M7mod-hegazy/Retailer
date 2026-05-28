@@ -418,7 +418,7 @@ export default function PurchaseReturnsListPage() {
             <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">مرتجعات <span className="text-blue-600">الموردين</span></h1>
           </div>
           <PermissionGate page="purchase_returns" action="add">
-            <MagneticButton onClick={() => navigate("/purchases/returns/new")}
+            <MagneticButton data-help="add-button" onClick={() => navigate("/purchases/returns/new")}
               className="flex items-center gap-2 bg-zinc-950 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-zinc-950/20 hover:bg-zinc-900 transition-colors">
               <Plus className="w-5 h-5" /> إرجاع مشتريات
             </MagneticButton>
@@ -457,7 +457,7 @@ export default function PurchaseReturnsListPage() {
         {/* Search bar */}
         <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
           <div className="flex flex-col md:flex-row items-start gap-4">
-            <div className="relative flex-1 w-full">
+            <div data-help="search-bar" className="relative flex-1 w-full">
               {activeTab === "returns" ? (
                 <SearchInput value={searchTerm} onChange={setSearchTerm} onClear={() => setSearchTerm("")}
                   placeholder="ابحث برقم المرتجع أو اسم المورد..." size="lg" autoFocus className="w-full" />
@@ -521,7 +521,7 @@ export default function PurchaseReturnsListPage() {
         </motion.div>
 
         {/* Results */}
-        <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+        <motion.div data-help="main-table" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
           className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[400px]">
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4 opacity-50">

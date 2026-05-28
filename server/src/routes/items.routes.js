@@ -357,41 +357,143 @@ router.get("/:id/operations", requirePagePermission("items", "view"), (req, res,
       `).all(itemId));
     }
 
+    const MOVEMENT_LABELS_AR = {
+      purchase: "شراء",
+      purchase_reversal: "إلغاء شراء",
+      purchase_cancel: "إلغاء فاتورة شراء",
+      purchase_void: "إبطال فاتورة شراء",
+      purchase_return: "مرتجع مشتريات",
+      branch_receive: "استلام تحويل",
+      branch_receive_reversal: "إلغاء استلام تحويل",
+      branch_receive_cancel: "إلغاء استلام تحويل",
+      branch_send: "إرسال تحويل",
+      opening_balance: "رصيد افتتاحي",
+      sale: "بيع",
+      sale_return: "مرتجع مبيعات",
+      sale_cancel: "إلغاء فاتورة بيع",
+      cancel_sales_return: "إلغاء مرتجع مبيعات",
+      adjustment: "تعديل يدوي",
+      manual_adjustment: "تعديل يدوي",
+      import: "استيراد",
+      item_import: "استيراد صنف",
+      stock_adjustment: "تعديل مخزني",
+      physical_count: "جرد فعلي",
+      transfer: "تحويل",
+    };
+    const REFERENCE_LABELS_AR = {
+      invoice: "فاتورة بيع",
+      purchase: "فاتورة شراء",
+      sales_return: "مرتجع مبيعات",
+      purchase_return: "مرتجع مشتريات",
+      branch_transfer: "تحويل فرع",
+      stock_adjustment: "تعديل مخزني",
+      physical_count: "جرد فعلي",
+      item_import: "استيراد صنف",
+      stock: "حركة مخزون",
+    };
+    const SOURCE_TABLE_LABELS_AR = {
+      purchase_lines: "فاتورة شراء",
+      branch_transfer_lines: "تحويل فرع",
+      item_import: "استيراد صنف",
+    };
+    const PRICE_FIELD_LABELS_AR = {
+      sale_price: "سعر البيع",
+      purchase_price: "سعر الشراء",
+      wholesale_price: "سعر الجملة",
+    };
+    const PRICE_SOURCE_LABELS_AR = {
+      item_create: "إنشاء صنف",
+      bulk_update: "تحديث جماعي",
+      purchase_locked: "تحديث من فاتورة شراء",
+      branch_receive_locked: "تحديث من استلام تحويل",
+      manual_correction: "تصحيح يدوي",
+      revert: "استرجاع",
+    };
+
     if (types.has("cost_movements") && hasTable(db, "cost_movements")) {
-      pushRows(db.prepare(`
-        SELECT 'cost_movements' AS type, movement_type AS type_label, source_id, source_line_id,
-          source_table AS doc_no, occurred_at AS date, '' AS party_name,
-          quantity, unit_cost AS unit_price, quantity * unit_cost AS line_total, unit_cost, NULL AS profit
+      const rawRows = db.prepare(`
+        SELECT 'cost_movements' AS type, movement_type AS raw_movement_type,
+          source_id, source_line_id,
+          source_table AS raw_source_table, occurred_at AS date,
+          quantity, unit_cost AS unit_price, quantity * unit_cost AS line_total, unit_cost
         FROM cost_movements
         WHERE item_id = ?
-      `).all(itemId));
+      `).all(itemId);
+      const mapped = rawRows.map((row) => {
+        const movementLabel = MOVEMENT_LABELS_AR[row.raw_movement_type] || row.raw_movement_type;
+        const sourceLabel = SOURCE_TABLE_LABELS_AR[row.raw_source_table] || row.raw_source_table;
+        return {
+          ...row,
+          type_label: movementLabel,
+          doc_no: `${sourceLabel} #${row.source_id}`,
+          party_name: sourceLabel,
+          profit: null,
+          context_key: "حركة تكلفة",
+          context_source: movementLabel,
+        };
+      });
+      pushRows(mapped);
     }
 
     if (types.has("price_changes")) {
-      pushRows(db.prepare(`
-        SELECT 'price_changes' AS type, 'تغيير سعر' AS type_label, ph.id AS source_id, ph.id AS source_line_id,
-          COALESCE(ph.operation_id, ph.source, 'price_history') AS doc_no, ph.changed_at AS date,
+      const rawRows = db.prepare(`
+        SELECT 'price_changes' AS type, ph.id AS source_id, ph.id AS source_line_id,
+          ph.operation_id, ph.source AS raw_source, ph.field AS raw_field,
+          ph.changed_at AS date,
           COALESCE(u.username, u.full_name, ph.changed_by, '') AS party_name,
-          NULL AS quantity, ph.new_value AS unit_price, ph.new_value - ph.old_value AS line_total,
-          NULL AS unit_cost, NULL AS profit,
-          ph.field AS context_key, ph.old_value AS context_before, ph.new_value AS context_after, ph.source AS context_source
+          ph.new_value AS unit_price, ph.new_value - ph.old_value AS line_total,
+          ph.old_value AS context_before, ph.new_value AS context_after
         FROM price_history ph
         LEFT JOIN users u ON u.id = CAST(ph.changed_by AS INTEGER)
         WHERE ph.item_id = ?
-      `).all(itemId));
+      `).all(itemId);
+      const mapped = rawRows.map((row) => {
+        const fieldLabel = PRICE_FIELD_LABELS_AR[row.raw_field] || row.raw_field;
+        const sourceLabel = PRICE_SOURCE_LABELS_AR[row.raw_source] || row.raw_source;
+        return {
+          ...row,
+          type_label: `تغيير ${fieldLabel}`,
+          doc_no: `${fieldLabel} - ${sourceLabel}`,
+          quantity: null,
+          unit_cost: null,
+          profit: null,
+          context_key: fieldLabel,
+          context_source: sourceLabel,
+        };
+      });
+      pushRows(mapped);
     }
 
     if (types.has("stock_movements")) {
-      pushRows(db.prepare(`
-        SELECT 'stock_movements' AS type, sm.movement_type AS type_label, sm.id AS source_id, sm.id AS source_line_id,
-          COALESCE(sm.reference_type, 'stock') || CASE WHEN sm.reference_id IS NOT NULL THEN '#' || sm.reference_id ELSE '' END AS doc_no,
+      const rawRows = db.prepare(`
+        SELECT 'stock_movements' AS type, sm.movement_type AS raw_movement_type,
+          sm.reference_type AS raw_reference_type, sm.reference_id,
+          sm.id AS source_id, sm.id AS source_line_id,
           sm.created_at AS date, COALESCE(w.name, '') AS party_name,
-          sm.quantity, NULL AS unit_price, NULL AS line_total, NULL AS unit_cost, NULL AS profit,
-          'stock' AS context_key, sm.before_qty AS context_before, sm.after_qty AS context_after, sm.notes AS context_source
+          sm.quantity, sm.before_qty AS context_before, sm.after_qty AS context_after, sm.notes
         FROM stock_movements sm
         LEFT JOIN warehouses w ON w.id = sm.warehouse_id
         WHERE sm.item_id = ? AND sm.deleted_at IS NULL
-      `).all(itemId));
+      `).all(itemId);
+      const mapped = rawRows.map((row) => {
+        const movementLabel = MOVEMENT_LABELS_AR[row.raw_movement_type] || row.raw_movement_type;
+        const referenceLabel = REFERENCE_LABELS_AR[row.raw_reference_type] || row.raw_reference_type || "حركة مخزون";
+        const docNo = row.reference_id
+          ? `${referenceLabel} #${row.reference_id}`
+          : referenceLabel;
+        return {
+          ...row,
+          type_label: movementLabel,
+          doc_no: docNo,
+          unit_price: null,
+          line_total: null,
+          unit_cost: null,
+          profit: null,
+          context_key: "الرصيد",
+          context_source: row.notes || referenceLabel,
+        };
+      });
+      pushRows(mapped);
     }
 
     rows.sort((a, b) => {

@@ -943,7 +943,7 @@ export default function SupplierAccountsPage() {
               </button>
             </PermissionGate>
           </div>
-          <div className="relative">
+          <div data-help="search-bar" className="relative">
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-orange-655 transition-colors stroke-[2.3px]" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الهاتف، الكود..."
@@ -1002,7 +1002,7 @@ export default function SupplierAccountsPage() {
         </div>
 
         {/* ── Suppliers List Scroll ── */}
-        <div className="flex-1 overflow-y-auto px-1 pb-4">
+        <div data-help="main-table" className="flex-1 overflow-y-auto px-1 pb-4">
           {loading ? (
             <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
           ) : filtered.length === 0 ? (
@@ -1144,6 +1144,7 @@ export default function SupplierAccountsPage() {
                 <div className="lg:col-span-3 flex items-center justify-end gap-2.5 shrink-0">
                   <PermissionGate page="supplier_accounts" action="edit">
                     <motion.button
+                      data-help="pay-button"
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}

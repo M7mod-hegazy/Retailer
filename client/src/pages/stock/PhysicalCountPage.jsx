@@ -279,6 +279,7 @@ export default function PhysicalCountPage() {
                 
                 <PermissionGate page="physical_count" action="add">
                   <motion.button
+                    data-help="add-button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowForm(!showForm)}
@@ -380,7 +381,7 @@ export default function PhysicalCountPage() {
                     <p className="text-slate-400 font-black tracking-widest uppercase text-sm">لا توجد جلسات مسجلة</p>
                  </div>
               ) : (
-                <div className="grid gap-6">
+                <div data-help="main-table" className="grid gap-6">
                   {sessions.map((s, idx) => (
                     <motion.div
                       key={s.id}
@@ -476,9 +477,9 @@ export default function PhysicalCountPage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto pb-48">
         <div className="max-w-6xl mx-auto px-6 py-12">
-           <div className="relative mb-12">
+           <div data-help="search-bar" className="relative mb-12">
              <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300" />
-             <input 
+             <input
                className="w-full text-2xl font-black text-slate-900 outline-none border-b border-slate-200 focus:border-indigo-500 bg-transparent pb-4 pl-6 pr-16 transition-colors placeholder:text-slate-200"
                placeholder="ابحث عن صنف أو باركود..."
                value={sessionSearch}
@@ -560,9 +561,10 @@ export default function PhysicalCountPage() {
 
       {/* Dynamic Island Action Bar */}
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-full max-w-4xl px-6">
-        <motion.div 
-          initial={{ y: 50, opacity: 0 }} 
-          animate={{ y: 0, opacity: 1 }} 
+        <motion.div
+          data-help="differences-section"
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           className="bg-slate-950/90 backdrop-blur-xl border border-white/10 rounded-[2rem] p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto"
         >
           <div className="flex items-center gap-6 px-6">
@@ -587,7 +589,7 @@ export default function PhysicalCountPage() {
                 <button onClick={() => setCancelDialog(true)} className="px-6 h-14 rounded-full text-[13px] font-black uppercase tracking-widest text-rose-400 hover:bg-rose-500/10 transition-colors">إلغاء</button>
               </PermissionGate>
               <PermissionGate page="physical_count" action="edit">
-                <button onClick={() => setConfirmDialog(true)} className="px-8 h-14 rounded-full bg-emerald-500 text-slate-950 hover:bg-emerald-400 text-[14px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center gap-2">
+                <button data-help="apply-button" onClick={() => setConfirmDialog(true)} className="px-8 h-14 rounded-full bg-emerald-500 text-slate-950 hover:bg-emerald-400 text-[14px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5" />
                   اعتماد التسوية
                 </button>

@@ -336,12 +336,18 @@ function getReturnDetails(id) {
   const sr = db.prepare(`
     SELECT sr.*,
            c.name AS customer_name,
+           c.phone AS customer_phone,
            i.invoice_no AS original_invoice_no,
+           t.name AS treasury_name,
+           u.username AS created_by_username,
+           u.full_name AS created_by_name,
            (SELECT doc_no FROM sales_returns WHERE id = sr.amendment_of) AS amendment_of_no,
            (SELECT doc_no FROM sales_returns WHERE id = sr.amended_by)   AS amended_by_no
     FROM sales_returns sr
     LEFT JOIN customers c ON c.id = sr.customer_id
     LEFT JOIN invoices i ON i.id = sr.invoice_id
+    LEFT JOIN treasuries t ON t.id = sr.treasury_id
+    LEFT JOIN users u ON u.id = sr.created_by
     WHERE sr.id = ?
   `).get(id);
   if (!sr) return null;

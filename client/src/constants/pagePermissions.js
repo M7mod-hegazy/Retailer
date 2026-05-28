@@ -43,7 +43,7 @@ export const ACTION_DESCRIPTIONS = {
 };
 
 export const PAGE_PERMISSIONS = {
-  owner_statement: { label: 'لوحة صاحب المحل', actions: ['view', 'save', 'lock', 'print'] },
+  owner_statement: { label: 'تقرير صاحب المحل', actions: ['view', 'save', 'lock', 'print'] },
   pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print', 'profit'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export'] },

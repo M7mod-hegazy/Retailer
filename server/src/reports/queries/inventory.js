@@ -112,7 +112,7 @@ function stockValuation(startDate, endDate, opts = {}) {
       sl.warehouse_id,
       COALESCE(w.name, '') AS warehouse_name,
       COALESCE(sl.quantity, 0) AS total_quantity,
-      sl.wacc, sl.last_purchase_cost,
+      sl.wacc, sl.last_purchase_cost, it.purchase_price,
       COALESCE(sl.quantity, 0) * ${costCol} AS total_value
     FROM items it
     JOIN stock_levels sl ON sl.item_id = it.id
@@ -135,8 +135,8 @@ function stockValuation(startDate, endDate, opts = {}) {
     .map((row) => {
       const qty = Number(row.total_quantity || 0);
       const fallback = opts.cost_method === "last_purchase"
-        ? Number(row.last_purchase_cost || 0)
-        : Number(row.wacc || row.last_purchase_cost || 0);
+        ? Number(row.last_purchase_cost || row.wacc || row.purchase_price || 0)
+        : Number(row.wacc || row.last_purchase_cost || row.purchase_price || 0);
       const valuation = opts.cost_method === "fifo"
         ? deriveLIFO(db, row.item_id, qty)
         : deriveFIFO(db, row.item_id, qty);

@@ -880,7 +880,7 @@ export default function DailyTreasuryPage() {
                 {/* ═══════════════════════════════════════ */}
                 {/*  معادلة الخزينة  -  MAIN FOCUS         */}
                 {/* ═══════════════════════════════════════ */}
-                <motion.div ref={equationSectionRef} variants={fadeInUp} onClick={(e) => e.stopPropagation()}>
+                <motion.div data-help="stats-cards" ref={equationSectionRef} variants={fadeInUp} onClick={(e) => e.stopPropagation()}>
                   <div className="rounded-3xl bg-white border border-slate-200/80 shadow-lg overflow-hidden">
                     {/* Prominent Header */}
                     <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/80 flex items-center gap-4">

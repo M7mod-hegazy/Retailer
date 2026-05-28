@@ -7,6 +7,7 @@ const POPUP_W       = 320;
 const POPUP_H_EST   = 240;
 const GAP           = 12;
 const EDGE_PAD      = 16;
+const RETRY_DELAYS  = [200, 500, 1000]; // ms — for late-mounting async elements
 
 function resolvePlacement(rect, preferred, isRTL) {
   const vw = window.innerWidth;
@@ -83,6 +84,9 @@ function TopicPicker({ pageKey, onSelect, onClose }) {
   const pageConfig = helpContent[pageKey];
   if (!pageConfig) return null;
   const steps = pageConfig.steps ?? [];
+  const visibleSteps = steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => !step.target || document.querySelector(`[data-help="${step.target}"]`));
 
   return (
     <>
@@ -134,10 +138,10 @@ function TopicPicker({ pageKey, onSelect, onClose }) {
 
         {/* Step list */}
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 130px)' }}>
-          {steps.map((step, i) => (
+          {visibleSteps.map(({ step, index }, i) => (
             <button
               key={step.id}
-              onClick={() => onSelect(i)}
+              onClick={() => onSelect(index)}
               className="w-full flex items-center gap-3 px-5 py-3.5 text-right transition-all border-b"
               style={{ borderColor: 'var(--border-subtle)', background: 'transparent' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-overlay)'; }}
@@ -154,16 +158,23 @@ function TopicPicker({ pageKey, onSelect, onClose }) {
               </span>
             </button>
           ))}
+          {visibleSteps.length === 0 && (
+            <div className="px-5 py-8 text-center text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+              لا توجد أجزاء ظاهرة للمساعدة في هذه الشاشة حاليا
+            </div>
+          )}
         </div>
 
         {/* Full tour button */}
         <div className="p-4" style={{ borderTop: '1px solid var(--border-normal)' }}>
           <button
-            onClick={() => onSelect(0)}
+            onClick={() => onSelect(visibleSteps[0]?.index ?? 0)}
+            disabled={visibleSteps.length === 0}
             className="w-full h-10 rounded-xl text-xs font-black text-white transition-all"
             style={{
               background: 'linear-gradient(135deg, var(--primary), var(--primary-600))',
               boxShadow: 'var(--shadow-glow)',
+              opacity: visibleSteps.length === 0 ? 0.5 : 1,
             }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
@@ -197,7 +208,8 @@ export function PageTour() {
   const [spotlightStyle, setSpotlightStyle] = useState(null);
   const [resolvedDir,    setResolvedDir]    = useState('bottom');
   const [isCentered,     setIsCentered]     = useState(false);
-  const popupRef = useRef(null);
+  const popupRef    = useRef(null);
+  const retryRef    = useRef([]);
 
   const pageConfig  = helpContent[activeTourPageKey];
   const steps       = pageConfig?.steps ?? [];
@@ -219,30 +231,73 @@ export function PageTour() {
     setPopupStyle(buildPopupStyle(rect, dir));
   }, [isRTL]);
 
-  const recalculate = useCallback(() => {
-    if (!isTourVisible || !currentStep) return;
+  // Fallback: anchor popup to page root so it's never floating dead-center
+  const applyPageFallback = useCallback(() => {
+    if (import.meta.env.DEV && currentStep?.target) {
+      console.warn(`[PageTour] missing data-help="${currentStep.target}" on page "${activeTourPageKey}"`);
+    }
+    const root = document.querySelector('[data-help-root]') ?? document.querySelector('main') ?? document.body;
+    const rect = root.getBoundingClientRect();
+    // Spotlight covers the top portion of the page content area
+    setIsCentered(false);
+    setSpotlightStyle({
+      top:    rect.top    - SPOTLIGHT_PAD,
+      left:   rect.left   - SPOTLIGHT_PAD,
+      width:  rect.width  + SPOTLIGHT_PAD * 2,
+      height: Math.min(rect.height, 120) + SPOTLIGHT_PAD * 2,
+    });
+    setResolvedDir('bottom');
+    setPopupStyle(buildPopupStyle({
+      top: rect.top, bottom: rect.top + Math.min(rect.height, 120),
+      left: rect.left, right: rect.right, width: rect.width, height: Math.min(rect.height, 120),
+    }, 'bottom'));
+  }, [currentStep, activeTourPageKey]);
 
-    const el = currentStep.target
-      ? document.querySelector(`[data-help="${currentStep.target}"]`)
-      : null;
+  const findNextVisibleStepIndex = useCallback((fromIndex) => {
+    if (!steps.length) return -1;
+    for (let offset = 1; offset < steps.length; offset += 1) {
+      const index = (fromIndex + offset) % steps.length;
+      const step = steps[index];
+      if (!step?.target || document.querySelector(`[data-help="${step.target}"]`)) return index;
+    }
+    return -1;
+  }, [steps]);
 
+  const tryFind = useCallback((step, retriesLeft) => {
+    const el = step.target ? document.querySelector(`[data-help="${step.target}"]`) : null;
     if (!el) {
-      setSpotlightStyle(null);
-      setIsCentered(true);
-      setPopupStyle(buildCenteredStyle());
+      if (retriesLeft > 0) {
+        const delay = RETRY_DELAYS[RETRY_DELAYS.length - retriesLeft];
+        const t = setTimeout(() => tryFind(step, retriesLeft - 1), delay);
+        retryRef.current.push(t);
+      } else {
+        const nextIndex = findNextVisibleStepIndex(activeTourStepIndex);
+        if (nextIndex >= 0) {
+          useHelpStore.setState({ activeTourStepIndex: nextIndex });
+          return;
+        }
+        applyPageFallback();
+      }
       return;
     }
-
-    // Scroll first, then measure after scroll settles
     const rect = el.getBoundingClientRect();
     const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
     if (!inView) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      setTimeout(() => applyRect(el, currentStep), 350);
+      const t = setTimeout(() => applyRect(el, step), 350);
+      retryRef.current.push(t);
     } else {
-      applyRect(el, currentStep);
+      applyRect(el, step);
     }
-  }, [isTourVisible, currentStep, isRTL, applyRect]);
+  }, [activeTourStepIndex, applyRect, applyPageFallback, findNextVisibleStepIndex]);
+
+  const recalculate = useCallback(() => {
+    if (!isTourVisible || !currentStep) return;
+    // Cancel pending retries
+    retryRef.current.forEach(clearTimeout);
+    retryRef.current = [];
+    tryFind(currentStep, RETRY_DELAYS.length);
+  }, [isTourVisible, currentStep, tryFind]);
 
   useEffect(() => {
     recalculate();
@@ -251,6 +306,8 @@ export function PageTour() {
     return () => {
       window.removeEventListener('resize', recalculate);
       window.removeEventListener('scroll', recalculate, true);
+      retryRef.current.forEach(clearTimeout);
+      retryRef.current = [];
     };
   }, [recalculate]);
 
@@ -361,6 +418,25 @@ export function PageTour() {
         <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
           {currentStep.body_ar}
         </p>
+
+        {Array.isArray(currentStep.demo_ar) && currentStep.demo_ar.length > 0 && (
+          <div
+            className="mb-4 rounded-xl border p-3"
+            style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-overlay)' }}
+          >
+            <p className="mb-2 text-[10px] font-black" style={{ color: 'var(--text-muted)' }}>
+              مثال سريع
+            </p>
+            <ol className="space-y-1.5">
+              {currentStep.demo_ar.map((line, index) => (
+                <li key={index} className="flex gap-2 text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-black" style={{ color: 'var(--primary)' }}>{index + 1}</span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex items-center justify-between">

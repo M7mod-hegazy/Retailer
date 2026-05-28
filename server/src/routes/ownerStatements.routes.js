@@ -28,6 +28,7 @@ function requireOwnerStatement(action) {
     if (!user) return res.status(401).json({ error: "unauthorized" });
     if (["dev", "admin", "system_owner"].includes(user.role)) return next();
     const perms = parsePagePermissions(user);
+    if (action === "view" && perms.reports?.includes("view")) return next();
     if (perms.owner_statement?.includes(action)) return next();
     return res.status(403).json({ error: "permission_denied", page: "owner_statement", action });
   };
@@ -88,7 +89,7 @@ router.post("/", requireOwnerStatement("save"), requireDates, (req, res, next) =
       notes: req.body.notes || null,
       user_id: req.user?.id || null,
     });
-    req.audit("save", "owner_statement", { id: data.id }, `تم حفظ إقفال صاحب المحل #${data.id}`, `/owner-statement`);
+    req.audit("save", "owner_statement", { id: data.id }, `تم حفظ إقفال صاحب المحل #${data.id}`, `/reports/owner-statement`);
     res.status(201).json({ success: true, data });
   } catch (error) {
     next(error);
@@ -98,7 +99,7 @@ router.post("/", requireOwnerStatement("save"), requireDates, (req, res, next) =
 router.post("/:id/lock", requireOwnerStatement("lock"), (req, res, next) => {
   try {
     const data = lockOwnerStatement(Number(req.params.id), req.user?.id || null);
-    req.audit("lock", "owner_statement", { id: data.id }, `تم إقفال نسخة صاحب المحل #${data.id}`, `/owner-statement`);
+    req.audit("lock", "owner_statement", { id: data.id }, `تم إقفال نسخة صاحب المحل #${data.id}`, `/reports/owner-statement`);
     res.json({ success: true, data });
   } catch (error) {
     next(error);

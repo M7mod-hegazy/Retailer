@@ -157,8 +157,17 @@ router.get("/:id", requirePagePermission("branch_transfer", "view"), (req, res, 
     const db = getDb();
     const id = Number(req.params.id);
     const transfer = db.prepare(`
-      SELECT bt.*
+      SELECT bt.*,
+             u.username AS created_by_username,
+             u.full_name AS created_by_name,
+             w_main.name AS warehouse_name,
+             w_from.name AS from_warehouse_name,
+             w_to.name AS to_warehouse_name
       FROM branch_transfers bt
+      LEFT JOIN users u ON u.id = bt.created_by
+      LEFT JOIN warehouses w_main ON w_main.id = bt.warehouse_id
+      LEFT JOIN warehouses w_from ON w_from.id = bt.from_warehouse_id
+      LEFT JOIN warehouses w_to ON w_to.id = bt.to_warehouse_id
       WHERE bt.id = ?
     `).get(id);
 

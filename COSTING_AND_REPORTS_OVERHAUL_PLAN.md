@@ -495,9 +495,9 @@ After Phase 3:
 
 ---
 
-## 11. Owner's Period Statement (لوحة صاحب المحل) — dedicated worksheet page
+## 11. Owner's Period Statement (لوحة صاحب المحل) — special report worksheet
 
-**Not a report.** A top-level page that shows the owner's true financial picture for a chosen period. Lives outside `/reports` — its own navigation slot.
+**Special report.** A report-center entry that shows the owner's true financial picture for a chosen period. It lives at `/reports/owner-statement`, but renders a custom worksheet UI instead of the normal report table workspace.
 
 ### 11.1 Concept
 8 flat numbers on one screen. Owner picks a date range + cost-method, sees everything that matters. Click any number → modal with the breakdown. Save snapshots, lock, compare periods.
@@ -571,11 +571,11 @@ New tables:
 - `owner_statement_rows`
   - `statement_id, metric_key, row_json` — frozen breakdown rows for modal display after lock
 
-### 11.8 Navigation slot
-**Not under /reports.** Add new sidebar entry: **"الإقفال الشهري"** (or **"لوحة صاحب المحل"**) with its own icon, near الخزينة. Different page chrome from reports — emphasizes "tool, not a report".
+### 11.8 Reports slot
+Add it to **مركز التقارير** as **"لوحة صاحب المحل"**. It keeps different page chrome from the normal report workspace, but it is opened and permissioned as a report.
 
 ### 11.9 Permissions
-- Only roles with `system_owner` or explicit `owner_statement` permission can view/save/lock
+- Roles with `reports:view` can view it from the report center. Save/lock actions still require `system_owner` or explicit `owner_statement` permission.
 - Cashiers / regular users: page hidden from sidebar entirely
 
 ### 11.10 Print template

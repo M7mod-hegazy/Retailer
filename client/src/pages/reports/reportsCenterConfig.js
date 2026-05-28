@@ -1,4 +1,4 @@
-import { TrendingUp, Package, Wallet, Receipt, FileText, Shield, ClipboardList, FileImage, FileSpreadsheet, Printer, Layers, RotateCcw, Truck, Users, UserCheck, CalendarCheck, Percent, LineChart, Search } from "lucide-react";
+import { TrendingUp, Package, Wallet, Receipt, FileText, Shield, ClipboardList, FileImage, FileSpreadsheet, Printer, Layers, RotateCcw, Truck, Users, UserCheck, CalendarCheck, Percent, LineChart, Search, ClipboardCheck } from "lucide-react";
 
 export const CATEGORIES = [
   { id: "sales",     label: "المبيعات",   icon: TrendingUp, color: "var(--success-DEFAULT,#10b981)" },
@@ -29,6 +29,7 @@ export const SOURCES = [
   { id: "treasury",        label: "الخزينة",             icon: Wallet,        color: "#06b6d4" },
   { id: "profit-loader",   label: "محمل ربح المبيعات",  icon: Percent,       color: "#d946ef" },
   { id: "net-profit",      label: "صافي الربح",          icon: LineChart,     color: "#1e40af" },
+  { id: "owner-statement", label: "لوحة صاحب المحل",     icon: ClipboardCheck,color: "#0f172a" },
 ];
 
 export const FORMAT_ICONS = {
@@ -42,7 +43,7 @@ export const COST_METHODS = [
   { value: "wacc",           label: "متوسط التكلفة (WACC)" },
   { value: "last_purchase",  label: "آخر سعر شراء" },
   { value: "fifo",           label: "الوارد أولاً صادر أولاً (FIFO)" },
-  { value: "purchase_price", label: "سعر الشراء" },
+  { value: "lifo",           label: "الوارد أخيراً صادر أولاً (LIFO)" },
 ];
 
 export const SCOPE_OPTIONS = {
@@ -63,6 +64,7 @@ export const SCOPE_OPTIONS = {
   expenses:        [{ type:"all",label:"الكل"}],
   revenues:        [{ type:"all",label:"الكل"}],
   treasury:        [{ type:"all",label:"الكل"}],
+  "owner-statement": [{ type:"all",label:"الكل"}],
 };
 
 // Category-level preview columns (used by card previews in ReportsCenter)
@@ -86,6 +88,11 @@ export const CAT_PREVIEW_COLUMNS = {
     {k:"customer_name",l:"العميل",t:"text"},{k:"total_due",l:"المستحق",t:"cur"},
     {k:"aging_0_30",l:"0-30 يوم",t:"cur"},{k:"aging_31_60",l:"31-60 يوم",t:"cur"},
     {k:"aging_90_plus",l:"أكثر من 90",t:"cur"},{k:"last_invoice_date",l:"آخر فاتورة",t:"date"},
+  ],
+  "owner-statement": [
+    {k:"metric",l:"البند",t:"text"},{k:"value",l:"القيمة",t:"cur"},
+    {k:"period",l:"الفترة",t:"text"},{k:"cost_method",l:"طريقة التكلفة",t:"text"},
+    {k:"status",l:"الحالة",t:"text"},
   ],
   treasury: [
     {k:"date",l:"التاريخ",t:"date"},{k:"type",l:"النوع",t:"text"},
@@ -124,6 +131,11 @@ export const CAT_GHOST_ROWS = {
   accounts: [
     {customer_name:"أحمد البرقوقي",total_due:"١٢٬٤٠٠",aging_0_30:"٨٬٥٠٠",aging_31_60:"٣٬٩٠٠",aging_90_plus:"٠",last_invoice_date:"١٠/٠٤"},
     {customer_name:"شركة النور للتجارة",total_due:"٧٬٨٥٠",aging_0_30:"٢٬٠٠٠",aging_31_60:"٥٬٨٥٠",aging_90_plus:"٠",last_invoice_date:"٢٥/٠٣"},
+  ],
+  "owner-statement": [
+    {metric:"قيمة المخزون",value:"٤٤٬٦٥٠",period:"الشهر الحالي",cost_method:"WAC",status:"قابل للحفظ"},
+    {metric:"النقدية",value:"٣٧٬٤٠٠",period:"الشهر الحالي",cost_method:"غير مؤثر",status:"حي"},
+    {metric:"صافي الربح",value:"١٢٬٣٠٠",period:"الشهر الحالي",cost_method:"FIFO",status:"مسودة"},
   ],
   treasury: [
     {date:"٠١/٠٥",type:"تحصيل فاتورة",total:"٥٬٢٠٠",tx_count:"١",name:"الخزينة الرئيسية",balance:"٣٧٬٤٠٠"},
@@ -303,6 +315,7 @@ export const FILTER_DIMENSIONS = {
     { key: "item_id", type: "lookup", entity: "product", label: "المنتج" },
   ],
   "net-profit": [],
+  "owner-statement": [],
   treasury: [],
   installments: [],
   users: [
@@ -314,6 +327,9 @@ export const FILTER_DIMENSIONS = {
 export function fmtDate(d) { return d.toISOString().slice(0,10); }
 
 export const CLASSIFICATIONS = {
+  "owner-statement": [
+    { id: "worksheet", label_key: "cls_owner_statement", availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [] },
+  ],
   users: [
     { id: "user-list", label_key: "cls_users_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["role"] },
     { id: "performance", label_key: "cls_users_performance", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["user_id"] },

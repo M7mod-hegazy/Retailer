@@ -78,6 +78,7 @@ const routeLabelMatchers = [
   { match: ROUTES.EXPENSES, label: "المصروفات" },
   { match: ROUTES.REVENUES, label: "الإيرادات" },
   { match: "/stock", label: "المخزون" },
+  { match: "/operations/items", label: "سجل حركة الأصناف" },
   { match: "/operations", label: "العمليات" },
   { match: ROUTES.REPORTS, label: "التقارير" },
   { match: ROUTES.SETTINGS, label: "النظام" },

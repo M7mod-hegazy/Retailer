@@ -1,13 +1,30 @@
 const { getDb } = require("../config/database");
-const { stockValuation } = require("../reports/queries/inventory");
 const { arAging, apAging } = require("../reports/queries/accounts");
 const { addDateFilter, getCostColumn, getReturnCostColumn } = require("../reports/helpers");
+const { calculateDailySummary, localDate } = require("./dailySessionService");
 
 const COST_METHODS = new Set(["wacc", "fifo", "lifo", "last_purchase"]);
+const COST_METHOD_LABELS = {
+  wacc: "المتوسط المرجح",
+  fifo: "الوارد أولا صادر أولا",
+  lifo: "الوارد أخيرا صادر أولا",
+  last_purchase: "آخر سعر شراء",
+};
+const PROFIT_SOURCE_LABELS = {
+  sales: "المبيعات",
+  returns: "مرتجعات المبيعات",
+  net_sales: "صافي المبيعات",
+  cogs: "تكلفة البضاعة المباعة",
+  gross_profit: "مجمل الربح",
+  revenues: "الإيرادات الأخرى",
+  expenses: "المصروفات",
+  withdrawals: "المسحوبات",
+  net_profit: "صافي الربح",
+};
 
 const METRICS = [
   { key: "stock", label: "قيمة المخزون", full_report: "stock-valuation" },
-  { key: "cash", label: "النقدية في الخزائن والبنوك", full_report: "treasury" },
+  { key: "cash", label: "المتوقع في الخزنة", full_report: "treasury" },
   { key: "ar", label: "ذمم العملاء", full_report: "ar-aging" },
   { key: "ap", label: "ذمم الموردين", full_report: "ap-aging" },
   { key: "expenses", label: "المصروفات", full_report: "detailed-expenses" },
@@ -32,11 +49,91 @@ function dateWhere(column, startDate, endDate, params) {
   return addDateFilter(column, startDate, endDate, params);
 }
 
+function hasTable(db, table) {
+  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+}
+
+function getReceiptLayers(db, itemId, warehouseId, endDate) {
+  if (!hasTable(db, "cost_movements")) return [];
+  return db.prepare(`
+    SELECT quantity, unit_cost, occurred_at, id
+    FROM cost_movements
+    WHERE item_id = ?
+      AND COALESCE(warehouse_id, 1) = COALESCE(?, 1)
+      AND COALESCE(quantity, 0) > 0
+      AND COALESCE(unit_cost, 0) > 0
+      AND DATE(occurred_at) <= DATE(?)
+    ORDER BY occurred_at ASC, id ASC
+  `).all(itemId, warehouseId || 1, endDate);
+}
+
+function valueFromLayers(layers, quantity, newestFirst) {
+  let remaining = Number(quantity || 0);
+  let total = 0;
+  const ordered = newestFirst ? [...layers].reverse() : layers;
+  for (const layer of ordered) {
+    if (remaining <= 0) break;
+    const take = Math.min(remaining, Number(layer.quantity || 0));
+    total += take * Number(layer.unit_cost || 0);
+    remaining -= take;
+  }
+  return valueOf(total);
+}
+
+function selectStockCost(row, layers, quantity, costMethod) {
+  const fallback = Number(row.current_wacc || row.current_last_purchase_cost || row.purchase_price || 0);
+  if (!layers.length || quantity <= 0) {
+    return { unitCost: fallback, value: quantity * fallback, source: row.current_wacc ? COST_METHOD_LABELS.wacc : "سعر الشراء المسجل" };
+  }
+
+  if (costMethod === "last_purchase") {
+    const last = layers[layers.length - 1];
+    const unitCost = Number(last?.unit_cost || fallback || 0);
+    return { unitCost, value: quantity * unitCost, source: COST_METHOD_LABELS.last_purchase };
+  }
+
+  if (costMethod === "fifo" || costMethod === "lifo") {
+    const value = valueFromLayers(layers, quantity, costMethod === "fifo");
+    const unitCost = quantity ? value / quantity : 0;
+    return { unitCost, value, source: COST_METHOD_LABELS[costMethod] };
+  }
+
+  const totalQty = layers.reduce((sum, layer) => sum + Number(layer.quantity || 0), 0);
+  const totalValue = layers.reduce((sum, layer) => sum + Number(layer.quantity || 0) * Number(layer.unit_cost || 0), 0);
+  const unitCost = totalQty > 0 ? totalValue / totalQty : fallback;
+  return { unitCost, value: quantity * unitCost, source: COST_METHOD_LABELS.wacc };
+}
+
 function getStockRows(startDate, endDate, costMethod) {
-  return stockValuation(startDate, endDate, { cost_method: costMethod }).map((row) => {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT COALESCE(it.code, 'ITEM-' || it.id) AS item_code,
+      it.id AS item_id,
+      it.name,
+      c.name AS category_name,
+      sm.warehouse_id,
+      COALESCE(w.name, '') AS warehouse_name,
+      COALESCE(SUM(sm.quantity), 0) AS total_quantity,
+      COALESCE(MAX(sl.wacc), 0) AS current_wacc,
+      COALESCE(MAX(sl.last_purchase_cost), 0) AS current_last_purchase_cost,
+      COALESCE(it.purchase_price, 0) AS purchase_price
+    FROM stock_movements sm
+    JOIN items it ON it.id = sm.item_id
+    LEFT JOIN item_categories c ON c.id = it.category_id
+    LEFT JOIN warehouses w ON w.id = sm.warehouse_id
+    LEFT JOIN stock_levels sl ON sl.item_id = sm.item_id AND sl.warehouse_id = sm.warehouse_id
+    WHERE sm.deleted_at IS NULL
+      AND it.deleted_at IS NULL
+      AND DATE(sm.created_at) <= DATE(?)
+    GROUP BY it.id, sm.warehouse_id
+    HAVING total_quantity > 0
+    ORDER BY total_quantity DESC, it.name ASC
+  `).all(endDate);
+
+  return rows.map((row) => {
     const quantity = Number(row.total_quantity || 0);
-    const value = Number(row.total_value || 0);
-    const unitCost = quantity ? value / quantity : Number(row.selected_cost || row.wacc || row.last_purchase_cost || 0);
+    const layers = getReceiptLayers(db, row.item_id, row.warehouse_id, endDate);
+    const selected = selectStockCost(row, layers, quantity, costMethod);
     return {
       item_id: row.item_id,
       item_code: row.item_code,
@@ -45,24 +142,46 @@ function getStockRows(startDate, endDate, costMethod) {
       warehouse_id: row.warehouse_id,
       warehouse_name: row.warehouse_name || "",
       quantity,
-      unit_cost: valueOf(unitCost),
-      value: valueOf(value),
+      unit_cost: valueOf(selected.unitCost),
+      cost_source: selected.source,
+      value: valueOf(selected.value),
     };
   });
 }
 
-function getCashRows(db) {
-  const treasuries = db.prepare(`
-    SELECT id, name, 'treasury' AS type, COALESCE(balance, 0) AS balance
-    FROM treasuries
-    WHERE is_active = 1 OR is_active IS NULL
-  `).all();
-  const banks = db.prepare(`
-    SELECT id, name, 'bank' AS type, COALESCE(balance, 0) AS balance
-    FROM banks
-    WHERE is_active = 1 OR is_active IS NULL
-  `).all();
-  return [...treasuries, ...banks].map((row) => ({ ...row, balance: valueOf(row.balance) }));
+function getCashRows(db, endDate) {
+  const summary = calculateDailySummary(db, endDate, { createIfMissing: endDate === localDate() });
+  if (!summary) {
+    return [{
+      date: endDate,
+      group: "النتيجة",
+      label: "لا توجد يومية لهذا التاريخ",
+      source: "expected_cash",
+      count: 0,
+      amount: 0,
+      balance: 0,
+    }];
+  }
+  const expectedCash = valueOf(summary.expected_cash);
+  const customerCollections = Number(summary.customer_cash_collections ?? (Number(summary.customer_payments || 0) + Number(summary.ajal_payments || 0)));
+  const supplierPayments = Number(summary.supplier_cash_payments ?? (Number(summary.supplier_payments || 0) + Number(summary.supplier_ajal_payments || 0)));
+  const rows = [
+    { group: "رصيد البداية", label: "رصيد سابق", source: "opening_balance", count: 0, amount: summary.opening_balance },
+    { group: "داخل نقدي", label: "نقد من مبيعات POS", source: "pos_cash_sales", count: summary.pos_cash_sales_count, amount: summary.pos_cash_sales },
+    { group: "داخل نقدي", label: "نقد من أقساط", source: "pos_installment_cash", count: summary.pos_installment_count, amount: summary.pos_installment_cash },
+    { group: "داخل نقدي", label: "نقد من دفع متعدد", source: "pos_multi_cash", count: summary.pos_multi_count, amount: summary.pos_multi_cash },
+    { group: "داخل نقدي", label: "نقد تم تحصيله من العملاء", source: "customer_cash_collections", count: summary.customer_payments_count, amount: customerCollections },
+    { group: "داخل نقدي", label: "إيرادات نقدية", source: "revenues_cash", count: summary.revenues_count, amount: summary.revenues_cash },
+    { group: "داخل نقدي", label: "نقد مسترد من مرتجعات الشراء", source: "purchase_returns_cash", count: 0, amount: summary.purchase_returns_cash },
+    { group: "إجمالي", label: "إجمالي الداخل النقدي", source: "cash_in", count: 0, amount: summary.cash_in },
+    { group: "خارج نقدي", label: "نقد مدفوع للموردين", source: "supplier_cash_payments", count: summary.supplier_payments_count, amount: -supplierPayments },
+    { group: "خارج نقدي", label: "مصروفات نقدية", source: "expenses_cash", count: summary.expenses_count, amount: -Number(summary.expenses_cash || 0) },
+    { group: "خارج نقدي", label: "نقد مدفوع لمرتجعات المبيعات", source: "sales_returns_cash", count: 0, amount: -Number(summary.sales_returns_cash || 0) },
+    { group: "خارج نقدي", label: "مسحوبات من الخزنة", source: "withdrawals", count: 0, amount: -Number(summary.withdrawals || 0) },
+    { group: "إجمالي", label: "إجمالي الخارج النقدي", source: "cash_out", count: 0, amount: -Number(summary.cash_out || 0) },
+    { group: "النتيجة", label: "المتوقع في الخزنة", source: "expected_cash", count: 0, amount: expectedCash, balance: expectedCash },
+  ];
+  return rows.map((row) => ({ ...row, date: endDate, amount: valueOf(row.amount), count: Number(row.count || 0) }));
 }
 
 function getExpenseRows(db, startDate, endDate) {
@@ -72,10 +191,20 @@ function getExpenseRows(db, startDate, endDate) {
       COALESCE(e.payment_method, '') AS payment_method,
       COALESCE(e.description, e.notes, '') AS description,
       COALESCE(e.amount, 0) AS amount,
-      COALESCE(u.username, u.full_name, '') AS user_name
+      COALESCE(u.full_name, u.username, au.full_name, au.username, 'غير محدد') AS user_name
     FROM expenses e
     LEFT JOIN expense_categories ec ON ec.id = e.category_id
     LEFT JOIN users u ON u.id = e.created_by
+    LEFT JOIN audit_logs al ON al.id = (
+      SELECT al2.id
+      FROM audit_logs al2
+      WHERE al2.resource = 'expenses'
+        AND al2.action = 'create'
+        AND CAST(json_extract(al2.payload_json, '$.id') AS INTEGER) = e.id
+      ORDER BY al2.id DESC
+      LIMIT 1
+    )
+    LEFT JOIN users au ON au.id = al.user_id
     WHERE 1=1 ${dateWhere("e.created_at", startDate, endDate, params)}
     ORDER BY e.created_at DESC, e.id DESC
   `).all(...params).map((row) => ({ ...row, amount: valueOf(row.amount) }));
@@ -88,10 +217,20 @@ function getRevenueRows(db, startDate, endDate) {
       COALESCE(r.payment_method, '') AS payment_method,
       COALESCE(r.description, r.notes, '') AS description,
       COALESCE(r.amount, 0) AS amount,
-      COALESCE(u.username, u.full_name, '') AS user_name
+      COALESCE(u.full_name, u.username, au.full_name, au.username, 'غير محدد') AS user_name
     FROM revenues r
     LEFT JOIN revenue_categories ec ON ec.id = r.category_id
     LEFT JOIN users u ON u.id = r.created_by
+    LEFT JOIN audit_logs al ON al.id = (
+      SELECT al2.id
+      FROM audit_logs al2
+      WHERE al2.resource = 'revenues'
+        AND al2.action = 'create'
+        AND CAST(json_extract(al2.payload_json, '$.id') AS INTEGER) = r.id
+      ORDER BY al2.id DESC
+      LIMIT 1
+    )
+    LEFT JOIN users au ON au.id = al.user_id
     WHERE 1=1 ${dateWhere("r.created_at", startDate, endDate, params)}
     ORDER BY r.created_at DESC, r.id DESC
   `).all(...params).map((row) => ({ ...row, amount: valueOf(row.amount) }));
@@ -104,68 +243,91 @@ function getWithdrawalRows(db, startDate, endDate) {
       COALESCE(w.payment_method, '') AS payment_method,
       COALESCE(w.note, '') AS reason,
       COALESCE(w.amount, 0) AS amount,
-      COALESCE(u.username, u.full_name, '') AS user_name
+      COALESCE(u.full_name, u.username, au.full_name, au.username, 'غير محدد') AS user_name
     FROM withdrawals w
     LEFT JOIN withdrawal_categories wc ON wc.id = w.category_id
     LEFT JOIN users u ON u.id = w.created_by
+    LEFT JOIN audit_logs al ON al.id = (
+      SELECT al2.id
+      FROM audit_logs al2
+      WHERE al2.resource = 'withdrawals'
+        AND al2.action = 'create'
+        AND CAST(json_extract(al2.payload_json, '$.id') AS INTEGER) = w.id
+      ORDER BY al2.id DESC
+      LIMIT 1
+    )
+    LEFT JOIN users au ON au.id = al.user_id
     WHERE 1=1 ${dateWhere("w.created_at", startDate, endDate, params)}
     ORDER BY w.created_at DESC, w.id DESC
   `).all(...params).map((row) => ({ ...row, amount: valueOf(row.amount) }));
 }
 
-function getProfitRows(db, startDate, endDate, costMethod, expenses, revenues, withdrawals) {
-  const invoiceParams = [];
-  const returnParams = [];
+function moneySummary(db, sql, params) {
+  const row = db.prepare(sql).get(...params);
+  return {
+    amount: valueOf(row?.amount || 0),
+    count: Number(row?.count || 0),
+  };
+}
+
+function getProfitRows(db, startDate, endDate, costMethod) {
+  const salesParams = [];
+  const salesReturnsParams = [];
+  const cogsParams = [];
+  const returnCostParams = [];
   const costCol = getCostColumn(costMethod);
   const returnCostCol = getReturnCostColumn(costMethod);
-  const sales = db.prepare(`
-    SELECT COALESCE(SUM(i.total), 0) AS gross_sales,
-      COALESCE(SUM(cost_agg.cogs), 0) AS cogs,
-      COUNT(DISTINCT i.id) AS invoice_count
-    FROM invoices i
-    LEFT JOIN (
-      SELECT invoice_id, SUM(quantity * ${costCol}) AS cogs
-      FROM invoice_lines
-      GROUP BY invoice_id
-    ) cost_agg ON cost_agg.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${dateWhere("i.created_at", startDate, endDate, invoiceParams)}
-  `).get(...invoiceParams);
-  const returns = db.prepare(`
-    SELECT COALESCE(SUM(sr.total), 0) AS returns_amount,
-      COALESCE(SUM(srl.quantity * ${returnCostCol}), 0) AS return_cost
-    FROM sales_returns sr
-    LEFT JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+  const cogsCostCol = `COALESCE(NULLIF(${costCol}, 0), it.purchase_price, 0)`;
+  const returnCostValueCol = `COALESCE(NULLIF(${returnCostCol}, 0), it.purchase_price, 0)`;
+
+  const sales = moneySummary(db, `
+    SELECT COALESCE(SUM(total), 0) AS amount, COUNT(*) AS count
+    FROM invoices
+    WHERE COALESCE(status, '') != 'cancelled' ${dateWhere("created_at", startDate, endDate, salesParams)}
+  `, salesParams);
+
+  const salesReturns = moneySummary(db, `
+    SELECT COALESCE(SUM(total), 0) AS amount, COUNT(*) AS count
+    FROM sales_returns
+    WHERE COALESCE(status, 'active') != 'cancelled' ${dateWhere("created_at", startDate, endDate, salesReturnsParams)}
+  `, salesReturnsParams);
+
+  const cogs = moneySummary(db, `
+    SELECT COALESCE(SUM(il.quantity * ${cogsCostCol}), 0) AS amount, COUNT(*) AS count
+    FROM invoice_lines il
+    JOIN invoices i ON i.id = il.invoice_id
+    LEFT JOIN items it ON it.id = il.item_id
+    WHERE COALESCE(i.status, '') != 'cancelled' ${dateWhere("i.created_at", startDate, endDate, cogsParams)}
+  `, cogsParams);
+
+  const returnCost = moneySummary(db, `
+    SELECT COALESCE(SUM(srl.quantity * ${returnCostValueCol}), 0) AS amount, COUNT(*) AS count
+    FROM sales_return_lines srl
+    JOIN sales_returns sr ON sr.id = srl.sales_return_id
     LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
     LEFT JOIN items it ON it.id = srl.item_id
-    WHERE sr.status = 'active' ${dateWhere("sr.created_at", startDate, endDate, returnParams)}
-  `).get(...returnParams);
+    WHERE COALESCE(sr.status, 'active') != 'cancelled' ${dateWhere("sr.created_at", startDate, endDate, returnCostParams)}
+  `, returnCostParams);
 
-  const grossSales = Number(sales.gross_sales || 0);
-  const returnsAmount = Number(returns.returns_amount || 0);
-  const cogs = Number(sales.cogs || 0);
-  const returnCost = Number(returns.return_cost || 0);
-  const netSales = grossSales - returnsAmount;
-  const grossProfit = netSales - cogs + returnCost;
-  const netProfit = grossProfit + Number(revenues || 0) - Number(expenses || 0) - Number(withdrawals || 0);
+  const netSales = valueOf(sales.amount - salesReturns.amount);
+  const netProfit = valueOf(netSales - cogs.amount + returnCost.amount);
 
-  return [
-    { label: "المبيعات", amount: valueOf(grossSales), source: "sales", count: Number(sales.invoice_count || 0) },
-    { label: "مرتجعات المبيعات", amount: valueOf(-returnsAmount), source: "returns" },
-    { label: "صافي المبيعات", amount: valueOf(netSales), source: "net_sales" },
-    { label: "تكلفة البضاعة المباعة", amount: valueOf(-cogs + returnCost), source: "cogs", cost_method: costMethod },
-    { label: "مجمل الربح", amount: valueOf(grossProfit), source: "gross_profit" },
-    { label: "الإيرادات الأخرى", amount: valueOf(revenues), source: "revenues" },
-    { label: "المصروفات", amount: valueOf(-expenses), source: "expenses" },
-    { label: "المسحوبات", amount: valueOf(-withdrawals), source: "withdrawals" },
-    { label: "صافي الربح", amount: valueOf(netProfit), source: "net_profit" },
-  ];
+  const rows = [
+    { label: "إجمالي المبيعات", source: "sales", count: sales.count, amount: sales.amount },
+    { label: "مرتجعات المبيعات", source: "returns", count: salesReturns.count, amount: -salesReturns.amount },
+    { label: "صافي المبيعات", source: "net_sales", count: sales.count + salesReturns.count, amount: netSales },
+    { label: "تكلفة البضاعة المباعة", source: "cogs", count: cogs.count, amount: -cogs.amount },
+    { label: "تكلفة مرتجعات المبيعات", source: "return_cost", count: returnCost.count, amount: returnCost.amount },
+    { label: "صافي الربح", source: "net_profit", count: sales.count + salesReturns.count, amount: netProfit },
+  ].map((row) => ({ ...row, amount: valueOf(row.amount) }));
+  return rows;
 }
 
 function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
   const db = getDb();
   const method = normalizeCostMethod(costMethod);
   const stockRows = getStockRows(startDate, endDate, method);
-  const cashRows = getCashRows(db);
+  const cashRows = getCashRows(db, endDate);
   const arRows = arAging(startDate, endDate).map((row) => ({ ...row, total_due: valueOf(row.total_due) }));
   const apRows = apAging(startDate, endDate).map((row) => ({ ...row, total_due: valueOf(row.total_due) }));
   const expenseRows = getExpenseRows(db, startDate, endDate);
@@ -175,7 +337,7 @@ function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
   const expenses = rowsTotal(expenseRows, "amount");
   const revenues = rowsTotal(revenueRows, "amount");
   const withdrawals = rowsTotal(withdrawalRows, "amount");
-  const profitRows = getProfitRows(db, startDate, endDate, method, expenses, revenues, withdrawals);
+  const profitRows = getProfitRows(db, startDate, endDate, method);
 
   const values = {
     stock: rowsTotal(stockRows, "value"),
@@ -192,6 +354,7 @@ function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
     period_start: startDate,
     period_end: endDate,
     cost_method: method,
+    cost_method_label: COST_METHOD_LABELS[method] || method,
     metrics: METRICS.map((metric) => ({ ...metric, value: values[metric.key] || 0 })),
     values,
     rows: {

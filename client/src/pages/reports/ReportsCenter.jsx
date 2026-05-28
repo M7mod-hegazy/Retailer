@@ -23,6 +23,7 @@ const SOURCE_CAT_MAP = {
   expenses: "treasury",
   revenues: "treasury",
   treasury: "treasury",
+  "owner-statement": "accounts",
   cheques: "treasury",
   "profit-loader": "sales",
   "net-profit": "accounts",
@@ -99,6 +100,7 @@ const CLS_ARABIC = {
   "cls_net_by_category": "صافي الربح حسب الفئة",
   "cls_net_by_customer": "صافي الربح حسب العميل",
   "cls_net_by_period": "صافي الربح حسب الفترة",
+  "cls_owner_statement": "لوحة صاحب المحل",
   "cheques": "الشيكات",
   "bank-transactions": "الحركات البنكية",
   "bank-summary": "ملخص البنوك",
@@ -119,6 +121,10 @@ function clsLabel(cls) {
 
 function clsOptionLabel(opt) {
   return CLS_ARABIC[opt.label_key] || opt.label_key;
+}
+
+function previewKeyForSource(sourceId) {
+  return sourceId === "owner-statement" ? "owner-statement" : (SOURCE_CAT_MAP[sourceId] || "sales");
 }
 
 export default function ReportsCenter() {
@@ -198,6 +204,12 @@ export default function ReportsCenter() {
     const params = new URLSearchParams();
     if (dateRange.from) params.set("from", dateRange.from);
     if (dateRange.to) params.set("to", dateRange.to);
+    if (source.id === "owner-statement") {
+      params.set("cost_method", costMethod);
+      const qs = params.toString();
+      navigate(`/reports/owner-statement${qs ? `?${qs}` : ""}`);
+      return;
+    }
     if (scope.type !== "all" && scope.values?.[0]) {
       params.set("scope_type", scope.type);
       params.set("scope_value", scope.values[0]);
@@ -362,8 +374,8 @@ export default function ReportsCenter() {
                       {/* Embedded Preview */}
                       <div className="mt-auto pt-4 border-t border-zinc-100">
                         <div className="text-[10px] font-bold text-zinc-400 mb-2">أعمدة التقرير ومعاينة:</div>
-                        <ColumnPreviewStrip catId={SOURCE_CAT_MAP[source.id] || "sales"} colVisibility={colVisibility} report={null} />
-                        <GhostPreviewRows catId={SOURCE_CAT_MAP[source.id] || "sales"} colVisibility={colVisibility} report={null} dateRange={dateRange} scope={scope} />
+                        <ColumnPreviewStrip catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={null} />
+                        <GhostPreviewRows catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={null} dateRange={dateRange} scope={scope} />
                       </div>
 
                       {/* Export Hints */}
@@ -517,7 +529,7 @@ export default function ReportsCenter() {
                   <span className="h-5 w-1 rounded-full bg-emerald-500"></span> أعمدة التقرير
                 </h3>
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4">
-                  <ColumnToggleList catId={SOURCE_CAT_MAP[selectedSource.id] || "sales"} colVisibility={colVisibility} onChange={setColVisibility} report={null} />
+                  <ColumnToggleList catId={previewKeyForSource(selectedSource.id)} colVisibility={colVisibility} onChange={setColVisibility} report={null} />
                 </div>
               </div>
 
@@ -542,7 +554,7 @@ export default function ReportsCenter() {
 
             {/* Inspector Footer Action */}
             <div className="shrink-0 p-6 border-t border-zinc-200 bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
-              <PermissionGate page="reports" action="print">
+              <PermissionGate page="reports" action="view">
               <button
                 onClick={() => handleRunSource(selectedSource)}
                 disabled={!selectedClassification}

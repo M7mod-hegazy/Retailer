@@ -30,8 +30,11 @@ function ensureAjalDebtPurchaseSchema(db) {
 
 function getPurchaseWithLines(db, purchaseId) {
   const purchase = db.prepare(`
-    SELECT p.*, s.name AS supplier_name
-    FROM purchases p LEFT JOIN suppliers s ON s.id = p.supplier_id
+    SELECT p.*, s.name AS supplier_name, s.phone AS supplier_phone,
+           u.username AS created_by_username, u.full_name AS created_by_name
+    FROM purchases p
+    LEFT JOIN suppliers s ON s.id = p.supplier_id
+    LEFT JOIN users u ON u.id = p.created_by
     WHERE p.id = ?
   `).get(purchaseId);
   if (!purchase) return null;
@@ -210,7 +213,21 @@ router.get("/returns/:id", requirePagePermission("purchase_returns", "view"), (r
     try {
       const db = getDb();
       ensurePurchaseReturnSettlementSchema(db);
-      const pr = db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(req.params.id);
+      const pr = db.prepare(`
+        SELECT pr.*,
+               s.name AS supplier_name,
+               s.phone AS supplier_phone,
+               p.doc_no AS original_purchase_no,
+               t.name AS treasury_name,
+               u.username AS created_by_username,
+               u.full_name AS created_by_name
+        FROM purchase_returns pr
+        LEFT JOIN suppliers s ON s.id = pr.supplier_id
+        LEFT JOIN purchases p ON p.id = pr.purchase_id
+        LEFT JOIN treasuries t ON t.id = pr.treasury_id
+        LEFT JOIN users u ON u.id = pr.created_by
+        WHERE pr.id = ?
+      `).get(req.params.id);
       if (!pr) throw new Error("Return not found");
       const lines = db.prepare(`
         SELECT prl.*,

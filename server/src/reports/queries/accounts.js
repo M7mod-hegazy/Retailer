@@ -5,6 +5,9 @@ const { getProfitLoss } = require("../../services/reportService");
 function arAging(startDate, endDate, opts = {}) {
   const db = getDb();
   const { customer_id } = opts;
+  const params = [];
+  const asOfClause = endDate ? " AND DATE(COALESCE(i.created_at, d.created_at)) <= ?" : "";
+  if (endDate) params.push(endDate);
   return db.prepare(`
     WITH debt_rows AS (
       SELECT d.customer_id,
@@ -16,6 +19,7 @@ function arAging(startDate, endDate, opts = {}) {
       WHERE d.source_type = 'invoice'
         AND COALESCE(d.party_type, 'customer') = 'customer'
         AND d.status != 'voided'
+        ${asOfClause}
     ),
     debt_totals AS (
       SELECT customer_id,
@@ -45,12 +49,15 @@ function arAging(startDate, endDate, opts = {}) {
     WHERE 1=1 ${customer_id ? " AND c.id = ?" : ""}
       AND (COALESCE(c.opening_balance, 0) != 0 OR COALESCE(dt.debt_total, 0) > 0)
     ORDER BY total_due DESC
-  `).all(...(customer_id ? [customer_id] : []));
+  `).all(...params, ...(customer_id ? [customer_id] : []));
 }
 
 function apAging(startDate, endDate, opts = {}) {
   const db = getDb();
   const { supplier_id } = opts;
+  const params = [];
+  const asOfClause = endDate ? " AND DATE(COALESCE(p.created_at, d.created_at)) <= ?" : "";
+  if (endDate) params.push(endDate);
   return db.prepare(`
     WITH debt_rows AS (
       SELECT d.supplier_id,
@@ -62,6 +69,7 @@ function apAging(startDate, endDate, opts = {}) {
       WHERE d.source_type = 'purchase'
         AND COALESCE(d.party_type, 'supplier') = 'supplier'
         AND d.status != 'voided'
+        ${asOfClause}
     ),
     debt_totals AS (
       SELECT supplier_id,
@@ -91,7 +99,7 @@ function apAging(startDate, endDate, opts = {}) {
     WHERE 1=1 ${supplier_id ? " AND s.id = ?" : ""}
       AND (COALESCE(s.opening_balance, 0) != 0 OR COALESCE(dt.debt_total, 0) > 0)
     ORDER BY total_due DESC
-  `).all(...(supplier_id ? [supplier_id] : []));
+  `).all(...params, ...(supplier_id ? [supplier_id] : []));
 }
 
 function profitLoss(startDate, endDate, opts = {}) {

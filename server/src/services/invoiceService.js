@@ -47,10 +47,14 @@ function getInvoiceWithLines(invoiceId) {
   const db = getDb();
   const invoice = db.prepare(`
     SELECT i.*, c.name AS customer_name, c.phone AS customer_phone,
-           u.username AS created_by_username
+           u.username AS created_by_username, u.full_name AS created_by_name,
+           seller.username AS seller_username, seller.full_name AS seller_name,
+           sh.id AS shift_number
     FROM invoices i
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN users u ON u.id = i.user_id
+    LEFT JOIN users seller ON seller.id = i.seller_id
+    LEFT JOIN shifts sh ON sh.id = i.shift_id
     WHERE i.id = ?
   `).get(invoiceId);
   if (!invoice) return null;

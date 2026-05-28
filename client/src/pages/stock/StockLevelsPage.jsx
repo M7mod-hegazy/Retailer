@@ -53,9 +53,9 @@ const MOV_META = (t) => MOVEMENT_LABELS[t] || { label: t, color: "text-slate-600
 const PAGE = 50;
 
 // ─── Tab ─────────────────────────────────────────────────────────────────────
-function Tab({ active, onClick, children }) {
+function Tab({ active, onClick, children, ...rest }) {
   return (
-    <button type="button" onClick={onClick}
+    <button type="button" onClick={onClick} {...rest}
       className={`flex items-center justify-center gap-2 px-6 py-3 text-[13px] font-black uppercase tracking-widest border-b-2 transition-all ${
         active
           ? "border-slate-800 text-slate-900 bg-slate-50/50"
@@ -508,7 +508,7 @@ export default function StockLevelsPage() {
           <Tab active={tab === "levels"}   onClick={() => setTab("levels")}>
             <Package className="h-4 w-4" /> أرصدة المخزون
           </Tab>
-          <Tab active={tab === "transfer"} onClick={() => setTab("transfer")}>
+          <Tab data-help="add-button" active={tab === "transfer"} onClick={() => setTab("transfer")}>
             <ArrowLeftRight className="h-4 w-4" /> تحويل مخزون
           </Tab>
           <Tab active={tab === "history"}  onClick={() => setTab("history")}>

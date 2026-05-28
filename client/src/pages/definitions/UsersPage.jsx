@@ -69,7 +69,7 @@ const CATEGORIES = [
   {
     id: "finance",
     label: "المالية والحسابات",
-    pages: ["daily_treasury", "owner_statement", "customer_accounts", "supplier_accounts", "revenues", "expenses", "withdrawals", "payment_methods", "bank_operations", "cheques", "payments", "banks", "financial_categories"]
+    pages: ["daily_treasury", "customer_accounts", "supplier_accounts", "revenues", "expenses", "withdrawals", "payment_methods", "bank_operations", "cheques", "payments", "banks", "financial_categories"]
   },
   {
     id: "contacts",
@@ -84,7 +84,7 @@ const CATEGORIES = [
   {
     id: "system",
     label: "النظام والإعدادات",
-    pages: ["settings", "branches", "reports", "dashboard", "backup", "notifications", "updates", "history"]
+    pages: ["settings", "branches", "reports", "owner_statement", "dashboard", "backup", "notifications", "updates", "history"]
   }
 ];
 

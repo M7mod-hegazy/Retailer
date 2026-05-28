@@ -187,8 +187,8 @@ function getCostColumn(costMethod) {
 
 function getCostColumnForValuation(costMethod) {
   switch (costMethod) {
-    case "last_purchase": return "sl.last_purchase_cost";
-    default:              return "sl.wacc";
+    case "last_purchase": return "COALESCE(NULLIF(sl.last_purchase_cost, 0), NULLIF(sl.wacc, 0), NULLIF(it.purchase_price, 0), 0)";
+    default:              return "COALESCE(NULLIF(sl.wacc, 0), NULLIF(sl.last_purchase_cost, 0), NULLIF(it.purchase_price, 0), 0)";
   }
 }
 

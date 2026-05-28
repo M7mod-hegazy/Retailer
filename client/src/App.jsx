@@ -163,7 +163,7 @@ export default function App() {
                     <Route path="pos" element={<PermissionRoute page="pos"><POSPage /></PermissionRoute>} />
                     <Route path="invoices/:id" element={<PermissionRoute page="pos"><InvoiceDetailPage /></PermissionRoute>} />
                     <Route path="daily-treasury" element={<PermissionRoute page="daily_treasury"><DailyTreasuryPage /></PermissionRoute>} />
-                    <Route path="owner-statement" element={<PermissionRoute page="owner_statement"><OwnerStatementPage /></PermissionRoute>} />
+                    <Route path="owner-statement" element={<Navigate to="/reports/owner-statement" replace />} />
                     <Route path="operations/payment-methods" element={<PermissionRoute page="payment_methods"><PaymentMethodsPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<PermissionRoute page="payments"><PaymentTransactionsPage /></PermissionRoute>} />
                     <Route path="sales" element={<PermissionRoute page="pos"><SalesHubPage /></PermissionRoute>} />
@@ -201,6 +201,7 @@ export default function App() {
                     <Route path="operations/quotations/new" element={<PermissionRoute page="quotations"><QuotationFormPage /></PermissionRoute>} />
                     <Route path="reports/center" element={<PermissionRoute page="reports"><ReportsCenterPage /></PermissionRoute>} />
                     <Route path="reports/source/:sourceKey/:classificationId/:dataMode" element={<PermissionRoute page="reports"><SourceWorkspacePage /></PermissionRoute>} />
+                    <Route path="reports/owner-statement" element={<PermissionRoute page="reports"><OwnerStatementPage /></PermissionRoute>} />
                     <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><ReportWorkspacePage /></PermissionRoute>} />
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />

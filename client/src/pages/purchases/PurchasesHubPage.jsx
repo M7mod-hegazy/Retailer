@@ -665,6 +665,7 @@ export default function PurchasesHubPage() {
             </Link>
             <PermissionGate page="purchases" action="add">
               <MagneticButton
+                data-help="add-button"
                 onClick={() => navigate("/purchases/new")}
                 className="flex items-center gap-2 bg-zinc-950 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-zinc-950/20 hover:bg-zinc-900 transition-colors"
               >
@@ -722,7 +723,7 @@ export default function PurchasesHubPage() {
           className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4"
         >
           <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="relative flex-1 w-full">
+            <div data-help="search-bar" className="relative flex-1 w-full">
               {activeTab === "invoices" ? (
                 <SearchInput
                   value={searchTerm}
@@ -886,6 +887,7 @@ export default function PurchasesHubPage() {
           initial="hidden" 
           animate="visible" 
           variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+          data-help="main-table"
           className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
         >
           {loading ? (

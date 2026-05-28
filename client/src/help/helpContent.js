@@ -369,23 +369,16 @@ const helpContent = {
         id: 'ca-table',
         target: 'main-table',
         title_ar: 'أرصدة العملاء',
-        body_ar: 'قائمة بجميع العملاء وأرصدتهم الحالية. العملاء باللون الأحمر لديهم مبالغ متأخرة.',
+        body_ar: 'قائمة بجميع العملاء وأرصدتهم الحالية. اضغط على عميل لفتح حسابه التفصيلي وسجل حركاته.',
         placement: 'top',
       },
       {
         id: 'ca-collect',
         target: 'collect-button',
         title_ar: 'تحصيل دفعة',
-        body_ar: 'سجّل دفعة من العميل لتخفيض رصيده المتأخر.',
+        body_ar: 'بعد اختيار عميل، اضغط هنا لتسجيل دفعة منه وتخفيض رصيده المتأخر.',
         placement: 'bottom',
         highlight_type: 'glow',
-      },
-      {
-        id: 'ca-statement',
-        target: 'statement-button',
-        title_ar: 'كشف حساب',
-        body_ar: 'اطبع أو صدّر كشف حساب مفصّل للعميل لإرساله له.',
-        placement: 'bottom',
       },
     ],
   },
@@ -404,23 +397,16 @@ const helpContent = {
         id: 'sa-table',
         target: 'main-table',
         title_ar: 'أرصدة الموردين',
-        body_ar: 'قائمة بجميع الموردين وإجمالي المديونيات لكل مورد.',
+        body_ar: 'قائمة بجميع الموردين وإجمالي المديونيات لكل مورد. اضغط على مورد لفتح حسابه التفصيلي.',
         placement: 'top',
       },
       {
         id: 'sa-pay',
         target: 'pay-button',
-        title_ar: 'تسجيل دفعة',
-        body_ar: 'سجّل دفعة لمورد لتخفيض الرصيد المستحق عليك.',
+        title_ar: 'سداد دفعة',
+        body_ar: 'بعد اختيار مورد، اضغط هنا لتسجيل دفعة وتخفيض الرصيد المستحق عليك.',
         placement: 'bottom',
         highlight_type: 'glow',
-      },
-      {
-        id: 'sa-statement',
-        target: 'statement-button',
-        title_ar: 'كشف حساب',
-        body_ar: 'استعرض وصدّر كشف حساب مفصّل مع المورد.',
-        placement: 'bottom',
       },
     ],
   },
@@ -543,16 +529,9 @@ const helpContent = {
       {
         id: 'bo-table',
         target: 'main-table',
-        title_ar: 'الحركات البنكية',
-        body_ar: 'جميع العمليات البنكية المسجلة مع الرصيد بعد كل عملية.',
+        title_ar: 'الحسابات البنكية',
+        body_ar: 'جميع الحسابات البنكية مع أرصدتها الحالية. اضغط على حساب لعرض حركاته وتسجيل عمليات جديدة.',
         placement: 'top',
-      },
-      {
-        id: 'bo-search',
-        target: 'search-bar',
-        title_ar: 'التصفية',
-        body_ar: 'صفّ الحركات حسب الحساب البنكي أو نوع العملية أو الفترة.',
-        placement: 'bottom',
       },
     ],
   },
@@ -649,15 +628,8 @@ const helpContent = {
         id: 'cat-table',
         target: 'main-table',
         title_ar: 'الأقسام الموجودة',
-        body_ar: 'جميع الأقسام مع عدد الأصناف في كل قسم.',
+        body_ar: 'جميع الأقسام مع عدد الأصناف في كل قسم. اضغط على قسم لرؤية أصنافه وإحصائياته.',
         placement: 'top',
-      },
-      {
-        id: 'cat-search',
-        target: 'search-bar',
-        title_ar: 'البحث',
-        body_ar: 'ابحث عن قسم بالاسم.',
-        placement: 'bottom',
       },
     ],
   },
@@ -776,15 +748,8 @@ const helpContent = {
         id: 'promo-table',
         target: 'main-table',
         title_ar: 'العروض الحالية',
-        body_ar: 'جميع العروض مع تواريخ الصلاحية وحالة التفعيل.',
+        body_ar: 'جميع العروض مع تواريخ الصلاحية وحالة التفعيل. اضغط على بطاقة العرض لتعديله أو إيقافه.',
         placement: 'top',
-      },
-      {
-        id: 'promo-search',
-        target: 'search-bar',
-        title_ar: 'البحث',
-        body_ar: 'ابحث عن عرض باسمه أو الصنف المرتبط به.',
-        placement: 'bottom',
       },
     ],
   },
@@ -1161,5 +1126,351 @@ const helpContent = {
     ],
   },
 };
+
+function addHelpSteps(pageKey, additions) {
+  if (!helpContent[pageKey]) return;
+  const existing = new Set((helpContent[pageKey].steps || []).map((step) => step.id));
+  helpContent[pageKey].steps = [
+    ...(helpContent[pageKey].steps || []),
+    ...additions.filter((step) => !existing.has(step.id)),
+  ];
+}
+
+addHelpSteps('dashboard', [
+  {
+    id: 'dashboard-metric-reading',
+    target: 'stats-cards',
+    title_ar: 'قراءة أرقام اليوم',
+    body_ar: 'راجع هذه البطاقات كتنبيه سريع قبل الدخول للتفاصيل. أي رقم غير طبيعي هنا يستحق فتح التقرير أو السجل المرتبط به.',
+    placement: 'bottom',
+  },
+  {
+    id: 'dashboard-sales-context',
+    target: 'sales-chart',
+    title_ar: 'اتجاه الأداء',
+    body_ar: 'استخدم الرسم لمعرفة هل الحركة مستقرة أم متذبذبة. لا تعتمد على رقم يوم واحد فقط عند تقييم المبيعات.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('analytics', [
+  {
+    id: 'analytics-summary-cards',
+    target: 'stats-cards',
+    title_ar: 'ملخص قبل التحليل',
+    body_ar: 'ابدأ من هذه الأرقام لتحديد أين تنظر بعد ذلك: مبيعات، أرباح، عملاء، أو أصناف نشطة.',
+    placement: 'bottom',
+  },
+  {
+    id: 'analytics-period-impact',
+    target: 'period-filter',
+    title_ar: 'تأثير الفترة',
+    body_ar: 'تغيير الفترة يعيد حساب الرسوم والقوائم. اختر نفس الفترة عند مقارنة النتائج مع التقارير المطبوعة.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('daily_treasury', [
+  {
+    id: 'treasury-equation',
+    target: 'stats-cards',
+    title_ar: 'معادلة المتوقع في الخزنة',
+    body_ar: 'هذا الجزء يجمع رصيد البداية مع الداخل النقدي ويطرح الخارج النقدي للوصول إلى المتوقع في الخزنة.',
+    placement: 'bottom',
+    highlight_type: 'glow',
+  },
+  {
+    id: 'treasury-table-audit',
+    target: 'main-table',
+    title_ar: 'مراجعة مصدر الرقم',
+    body_ar: 'استخدم الجدول لتتبع البنود التي صنعت رقم الخزنة: مبيعات نقدية، تحصيلات، مصروفات، مسحوبات، ومدفوعات موردين.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('purchases', [
+  {
+    id: 'purchases-list-status',
+    target: 'main-table',
+    title_ar: 'حالة مستند الشراء',
+    body_ar: 'تابع حالة كل فاتورة أو أمر من هنا قبل فتحه. الحالة تساعدك تعرف هل المستند مكتمل، مدفوع، أو يحتاج مراجعة.',
+    placement: 'top',
+  },
+  {
+    id: 'purchases-list-action',
+    target: 'add-button',
+    title_ar: 'اختيار المستند الصحيح',
+    body_ar: 'ابدأ فاتورة مباشرة عند استلام البضاعة، واستخدم أمر الشراء عندما تحتاج تسجيل طلب قبل الاستلام.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('purchase_orders', [
+  {
+    id: 'po-search-status',
+    target: 'search-bar',
+    title_ar: 'تصفية أوامر الشراء',
+    body_ar: 'استخدم البحث مع الحالة للوصول إلى الأوامر المفتوحة أو المستلمة جزئيا قبل تحويلها لفاتورة.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('purchase_returns', [
+  {
+    id: 'pr-return-audit',
+    target: 'main-table',
+    title_ar: 'أثر المرتجع',
+    body_ar: 'راجع كل مرتجع لأنه يؤثر على المخزون وحساب المورد وطريقة الدفع المسجلة للرد.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('sales_returns', [
+  {
+    id: 'sr-return-audit',
+    target: 'main-table',
+    title_ar: 'أثر مرتجع البيع',
+    body_ar: 'كل مرتجع هنا يؤثر على المبيعات، المخزون، وحساب العميل. افتح السطر للتأكد من الفاتورة الأصلية والبنود.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('branch_transfer', [
+  {
+    id: 'bt-search',
+    target: 'search-bar',
+    title_ar: 'البحث في النقل',
+    body_ar: 'استخدم البحث للوصول إلى طلب نقل محدد برقم المستند أو الفرع أو حالة التنفيذ.',
+    placement: 'bottom',
+  },
+  {
+    id: 'bt-stock-effect',
+    target: 'main-table',
+    title_ar: 'تأثير النقل على المخزون',
+    body_ar: 'راجع الطلبات المكتملة والمعلقة لأن كل حركة نقل تغير رصيد المخزن المصدر والمخزن المستقبل.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('quotations', [
+  {
+    id: 'qt-search-status',
+    target: 'search-bar',
+    title_ar: 'متابعة عروض الأسعار',
+    body_ar: 'ابحث بالعميل أو الرقم ثم راجع الحالة لتعرف العروض المفتوحة أو التي يمكن تحويلها إلى فاتورة.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('customer_accounts', [
+  {
+    id: 'ca-collect',
+    target: 'collect-button',
+    title_ar: 'تحصيل من العميل',
+    body_ar: 'استخدم زر التحصيل عند تسجيل دفعة من العميل. سيظهر الأثر في حساب العميل والخزنة إذا كانت طريقة الدفع نقدية.',
+    placement: 'bottom',
+    highlight_type: 'glow',
+  },
+]);
+
+addHelpSteps('supplier_accounts', [
+  {
+    id: 'sa-pay',
+    target: 'pay-button',
+    title_ar: 'سداد للمورد',
+    body_ar: 'سجل السداد من هنا عند دفع جزء أو كل المستحق. تأكد من طريقة الدفع لأنها تؤثر على الخزنة أو البنك.',
+    placement: 'bottom',
+    highlight_type: 'glow',
+  },
+]);
+
+addHelpSteps('items', [
+  {
+    id: 'items-import',
+    target: 'import-button',
+    title_ar: 'استيراد الأصناف',
+    body_ar: 'استخدم الاستيراد لإدخال قائمة كبيرة من الأصناف. راجع الأعمدة والأسعار قبل الاعتماد حتى لا تدخل تكلفة أو كود خاطئ.',
+    placement: 'bottom',
+  },
+  {
+    id: 'items-category-filter',
+    target: 'category-filter',
+    title_ar: 'تصفية حسب القسم',
+    body_ar: 'اختيار قسم يضيق القائمة ويسهل مراجعة أسعار أو أرصدة مجموعة محددة من الأصناف.',
+    placement: 'bottom',
+  },
+  {
+    id: 'items-table-actions',
+    target: 'main-table',
+    title_ar: 'إدارة الصنف من الجدول',
+    body_ar: 'من هنا تراجع السعر، التكلفة، الرصيد، والحالة. افتح الصنف عند الحاجة لتعديل بياناته أو مراجعة حركته.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('stock_transfer', [
+  {
+    id: 'stock-transfer-tab',
+    target: 'add-button',
+    title_ar: 'تبويب النقل',
+    body_ar: 'هذا التبويب مخصص لتحريك كمية من مخزن إلى آخر. راجع المخزن المصدر والمستقبل قبل الحفظ.',
+    placement: 'bottom',
+  },
+  {
+    id: 'stock-levels-table',
+    target: 'main-table',
+    title_ar: 'أرصدة المخزون',
+    body_ar: 'يعرض الجدول رصيد كل صنف في المخازن. استخدمه قبل البيع أو النقل للتأكد من توفر الكمية.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('physical_count', [
+  {
+    id: 'pc-search-items',
+    target: 'search-bar',
+    title_ar: 'البحث داخل الجرد',
+    body_ar: 'استخدم البحث للوصول إلى صنف محدد أثناء الجرد بدلا من التمرير في قائمة طويلة.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('bulk_price_update', [
+  {
+    id: 'bpu-category',
+    target: 'category-filter',
+    title_ar: 'تحديد نطاق التحديث',
+    body_ar: 'اختر القسم قبل تطبيق أي تغيير جماعي حتى لا تتأثر أصناف خارج النطاق المقصود.',
+    placement: 'bottom',
+  },
+  {
+    id: 'bpu-method',
+    target: 'update-method',
+    title_ar: 'طريقة حساب السعر',
+    body_ar: 'حدد هل التغيير نسبة، قيمة ثابتة، أو سعر مباشر. راجع المعاينة قبل الضغط على تطبيق.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('bank_operations', [
+  {
+    id: 'bank-op-new',
+    target: 'add-button',
+    title_ar: 'إضافة حساب أو حركة',
+    body_ar: 'ابدأ من هنا عند تسجيل حساب بنكي أو حركة مالية مرتبطة بالبنوك. تحقق من الرصيد الافتتاحي قبل الحفظ.',
+    placement: 'bottom',
+  },
+  {
+    id: 'bank-op-overview',
+    target: 'main-table',
+    title_ar: 'ملخص الحسابات البنكية',
+    body_ar: 'هذا الجزء يعرض الحسابات والأرصدة والحركات المهمة. استخدمه لمراجعة الرصيد قبل التحويل أو التسوية.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('cheques', [
+  {
+    id: 'cheques-batch',
+    target: 'toggle-button',
+    title_ar: 'الوضع المجمع',
+    body_ar: 'فعله عند تحديث أكثر من شيك في نفس الوقت، مثل تغيير الحالة أو تجهيز مجموعة للمراجعة.',
+    placement: 'bottom',
+  },
+  {
+    id: 'cheques-due',
+    target: 'due-filter',
+    title_ar: 'فلتر الاستحقاق',
+    body_ar: 'استخدمه لعزل الشيكات المستحقة أو القريبة من الاستحقاق حتى لا تفوت مواعيد التحصيل أو السداد.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('payment_methods', [
+  {
+    id: 'pm-search',
+    target: 'search-bar',
+    title_ar: 'البحث في طرق الدفع',
+    body_ar: 'ابحث عن طريقة دفع قبل إضافة واحدة جديدة لتجنب التكرار في التقارير والحركات المالية.',
+    placement: 'bottom',
+  },
+  {
+    id: 'pm-card-use',
+    target: 'main-table',
+    title_ar: 'استخدامات طريقة الدفع',
+    body_ar: 'راجع الطرق المفعلة فقط التي تريد ظهورها في نقاط البيع والمشتريات والتحصيل.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('expenses', [
+  {
+    id: 'expenses-impact',
+    target: 'main-table',
+    title_ar: 'أثر المصروف',
+    body_ar: 'كل مصروف مسجل هنا يدخل في تقارير المصروفات ويؤثر على الخزنة إذا كان الدفع نقديا.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('revenues', [
+  {
+    id: 'revenues-impact',
+    target: 'main-table',
+    title_ar: 'أثر الإيراد',
+    body_ar: 'الإيرادات الأخرى تظهر منفصلة عن المبيعات. استخدمها للحركات غير المرتبطة بفواتير البيع.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('withdrawals', [
+  {
+    id: 'withdrawals-impact',
+    target: 'main-table',
+    title_ar: 'أثر المسحوبات',
+    body_ar: 'المسحوبات توضح ما خرج من الخزنة لصاحب العمل أو الإدارة. سجل السبب بدقة حتى تظهر المراجعة واضحة.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('reports', [
+  {
+    id: 'rep-open-card',
+    target: 'main-table',
+    title_ar: 'بطاقات التقارير',
+    body_ar: 'كل بطاقة تفتح تقريرا محددا مع فلاتره. اختر التقرير المناسب قبل التصدير حتى لا تراجع بيانات غير مطلوبة.',
+    placement: 'top',
+  },
+]);
+
+addHelpSteps('users', [
+  {
+    id: 'usr-search-focus',
+    target: 'search-bar',
+    title_ar: 'الوصول لمستخدم بسرعة',
+    body_ar: 'ابحث باسم المستخدم أو الاسم الظاهر قبل تعديل الصلاحيات، خصوصا في الأنظمة التي بها أكثر من موظف.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('settings', [
+  {
+    id: 'set-help',
+    target: 'settings-tabs',
+    title_ar: 'إعدادات المساعدة',
+    body_ar: 'من تبويب المساعدة يمكنك إعادة تشغيل الجولات أو إيقافها للمستخدمين الذين لا يحتاجونها.',
+    placement: 'bottom',
+  },
+]);
+
+addHelpSteps('updates', [
+  {
+    id: 'upd-release-read',
+    target: 'release-notes',
+    title_ar: 'مراجعة التغييرات قبل التحديث',
+    body_ar: 'اقرأ ملاحظات الإصدار لمعرفة ما تغير في التقارير، المخزون، أو الطباعة قبل اعتماد التحديث.',
+    placement: 'top',
+  },
+]);
 
 export default helpContent;

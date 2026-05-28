@@ -132,6 +132,7 @@ export default function PromotionsPage() {
           </div>
           <PermissionGate page="promotions" action="add">
             <button
+              data-help="add-button"
               onClick={() => { resetForm(); setOpenModal(true); }}
               className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-xl bg-indigo-600 px-6 text-[13px] font-black text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.3)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(79,70,229,0.4)] active:scale-[0.98]"
             >
@@ -160,7 +161,7 @@ export default function PromotionsPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div data-help="main-table" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {promotions.map(promo => {
                  const isActive = promo.is_active;
                  let rule = {};

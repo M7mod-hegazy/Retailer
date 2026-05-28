@@ -582,7 +582,7 @@ export default function SalesHubPage() {
       <div className="relative z-10 max-w-6xl mx-auto flex flex-col gap-8">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <motion.header data-help="sales-header" initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
@@ -594,6 +594,7 @@ export default function SalesHubPage() {
           </div>
           <PermissionGate page="pos" action="add">
             <button
+              data-help="add-button"
               onClick={() => navigate("/pos")}
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-colors"
             >
@@ -603,7 +604,7 @@ export default function SalesHubPage() {
         </motion.header>
 
         {/* Tab switcher */}
-        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col gap-2">
+        <motion.div data-help="sales-tabs" initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col gap-2">
           <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5 self-start">
             <button
               onClick={() => { setActiveTab("invoices"); setItemQuery(""); setSelectedItemFilter(null); setItemResults([]); }}
@@ -635,7 +636,7 @@ export default function SalesHubPage() {
         </motion.div>
 
         {/* Search & Filters bar */}
-        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
+        <motion.div data-help="search-bar" initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
           <div className="flex flex-col md:flex-row items-start gap-4">
 
             {/* Left search — changes per tab */}
@@ -774,6 +775,7 @@ export default function SalesHubPage() {
 
         {/* Results */}
         <motion.div
+          data-help="main-table"
           initial="hidden" animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
           className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"

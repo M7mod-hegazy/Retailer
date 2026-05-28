@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 export const PRIMARY_MENU = [
-  { path: "/owner-statement", label: "لوحة صاحب المحل", icon: ClipboardCheck, pageKey: "owner_statement" },
   { path: "/dashboard", label: "مساحة العمل", icon: LayoutDashboard, pageKey: "dashboard" },
   { path: "/pos", label: "نقطة البيع (POS)", icon: Store, highlight: true, pageKey: "pos" },
   { path: "/daily-treasury", label: "الخزينة اليومية", icon: Wallet, pageKey: "daily_treasury" },
@@ -21,7 +20,7 @@ export const NAV_MODULES = [
   {
     title: "المبيعات والمشتريات", id: "trade", icon: ShoppingCart,
     items: [
-      { path: "/sales", label: "سجل المبيعات", icon: ShoppingBag, pageKey: "pos" },
+      { path: "/sales", label: "سجل المبيعات", icon: ShoppingBag, pageKey: "sales" },
       { path: "/purchases", label: "فواتير المشتريات", icon: PackageSearch, pageKey: "purchases" },
       { path: "/purchases/orders", label: "أوامر الشراء", icon: ClipboardList, pageKey: "purchase_orders" },
       { path: "/purchases/returns", label: "مرتجع المشتريات", icon: ArrowRightLeft, pageKey: "purchase_returns" },
@@ -47,6 +46,7 @@ export const NAV_MODULES = [
     title: "المخازن والأصناف", id: "inventory", icon: Boxes,
     items: [
       { path: "/definitions/items", label: "قاعدة الأصناف", icon: Box, pageKey: "items" },
+      { path: "/operations/items", label: "سجل حركة الأصناف", icon: PackageSearch, pageKey: "item_operations" },
       { path: "/definitions/categories", label: "أقسام الأصناف", icon: Tags, pageKey: "categories" },
       { path: "/operations/bulk-price-update", label: "تحديث الأسعار", icon: TrendingUp, pageKey: "bulk_price_update" },
       { path: "/stock/transfer", label: "تحويل مخزني", icon: ArrowRightLeft, pageKey: "stock_transfer" },
