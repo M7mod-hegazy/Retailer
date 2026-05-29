@@ -1,5 +1,6 @@
 import LogoBlock from "./LogoBlock";
 import CompanyNameBlock from "./CompanyNameBlock";
+import DocTitleBlock from "./DocTitleBlock";
 import BranchBlock from "./BranchBlock";
 import AddressBlock from "./AddressBlock";
 import TaxIdBlock from "./TaxIdBlock";
@@ -29,6 +30,7 @@ export const BLOCK_REGISTRY = {
   address:             { component: AddressBlock,           label: "العنوان",        group: "brand",    families: ALL },
   tax_id:              { component: TaxIdBlock,             label: "الرقم الضريبي",  group: "brand",    families: ALL },
   receipt_header_text: { component: ReceiptHeaderTextBlock, label: "نص ترويسة",      group: "foot",     families: ALL },
+  doc_title:           { component: DocTitleBlock,          label: "عنوان المستند",  group: "dochead",  families: ["page"] },
   doc_number:          { component: DocNumberBlock,         label: "رقم المستند",    group: "dochead",  families: ALL },
   doc_date:            { component: DocDateBlock,           label: "التاريخ",        group: "dochead",  families: ALL },
   customer:            { component: CustomerBlock,          label: "العميل",         group: "dochead",  families: ALL },

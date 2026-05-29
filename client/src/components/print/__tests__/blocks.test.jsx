@@ -17,6 +17,13 @@ describe("block registry", () => {
     // 200 - 0 + 15% = 230.00
     expect(container.textContent).toContain("230.00");
   });
+  it("doc_title renders props.title on page, nothing on roll", () => {
+    const { component: Block } = BLOCK_REGISTRY.doc_title;
+    const page = render(<Block invoice={{}} settings={{ accent_color: "#0f172a" }} props={{ title: "فاتورة" }} family="page" />);
+    expect(page.container.textContent).toContain("فاتورة");
+    const roll = render(<Block invoice={{}} settings={{}} props={{ title: "فاتورة" }} family="roll" />);
+    expect(roll.container.textContent).toBe("");
+  });
   it("registry covers all v1 block types", () => {
     const expected = ["logo","company_name","branch","address","tax_id","receipt_header_text",
       "doc_number","doc_date","customer","cashier","items_table","subtotal","discount","tax",
