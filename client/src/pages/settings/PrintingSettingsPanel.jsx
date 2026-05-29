@@ -12,6 +12,9 @@ import AjalStatementTemplate from "../../components/print/templates/AjalStatemen
 import AjalScheduleTemplate from "../../components/print/templates/AjalScheduleTemplate";
 import ChequeRegisterTemplate from "../../components/print/templates/ChequeRegisterTemplate";
 import PaymentMethodsReportTemplate from "../../components/print/templates/PaymentMethodsReportTemplate";
+import PrintDesigner from "../../components/print/designer/PrintDesigner";
+import { familyForSize } from "../../components/print/layout/layoutModel";
+import { Maximize2 } from "lucide-react";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1084,6 +1087,7 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
 
   const [viewZoom, setViewZoom] = useState(0.55);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [designerOpen, setDesignerOpen] = useState(false);
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const viewportRef = useRef(null);
@@ -1170,11 +1174,29 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
             <input type="checkbox" checked={settings[key] !== undefined ? Boolean(settings[key]) : true} onChange={(e) => set(key, e.target.checked)} />
           </label>
         ))}
+        <button type="button" onClick={() => setDesignerOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-[12px] font-black text-slate-700 hover:border-slate-500 hover:bg-slate-50">
+          <Maximize2 size={14} /> المحرر المتقدم (ملء الشاشة)
+        </button>
         <button type="button" onClick={() => onSave(docType, settings)}
           className="w-full rounded-xl bg-violet-600 py-3 text-[13px] font-black text-white hover:bg-violet-700">
           حفظ إعدادات هذا المستند
         </button>
       </div>
+
+      {designerOpen && (
+        <PrintDesigner
+          open={designerOpen}
+          docType={docType}
+          label={label}
+          initialFamily={familyForSize(previewSize)}
+          globalSettings={globalSettings}
+          value={settings}
+          onChange={(next) => onChange({ ...docSettings, [docType]: next })}
+          onSave={(next) => { onChange({ ...docSettings, [docType]: next }); onSave(docType, next); }}
+          onClose={() => setDesignerOpen(false)}
+        />
+      )}
 
       {/* Preview with pan & zoom */}
       <div className="flex flex-1 min-w-0 flex-col rounded-sm border border-slate-200 overflow-hidden">
