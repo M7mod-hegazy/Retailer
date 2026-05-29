@@ -6,7 +6,7 @@ export default function DocDateBlock({ invoice = {}, settings: s, family }) {
   const d = invoice.created_at ? new Date(invoice.created_at) : new Date();
   const date = d.toLocaleDateString("ar-SA-u-nu-latn");
   if (family === "page") {
-    return <div style={{ fontSize: "10px", color: "#94a3b8" }}>التاريخ: {date}</div>;
+    return <div style={{ fontSize: "10px", color: "#94a3b8" }}>{date}</div>;
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>

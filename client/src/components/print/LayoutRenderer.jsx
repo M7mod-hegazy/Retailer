@@ -2,6 +2,7 @@ import React from "react";
 import { BLOCK_REGISTRY } from "./blocks/registry";
 import { DEFAULT_ORDER } from "./families/defaultOrder";
 import RollWrapper from "./families/RollWrapper";
+import RollZoneLayout from "./families/RollZoneLayout";
 import PageWrapper from "./families/PageWrapper";
 import PageZoneLayout from "./families/PageZoneLayout";
 import { customInserts } from "./customBlockBridge";
@@ -34,9 +35,13 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
   if (family === "page") {
     return (
       <PageWrapper settings={settings} size={size}>
-        <PageZoneLayout items={items} settings={settings} />
+        <PageZoneLayout items={items} invoice={invoice} settings={settings} />
       </PageWrapper>
     );
   }
-  return <RollWrapper settings={settings}>{items.map((it) => it.node)}</RollWrapper>;
+  return (
+    <RollWrapper settings={settings}>
+      <RollZoneLayout items={items} settings={settings} />
+    </RollWrapper>
+  );
 }
