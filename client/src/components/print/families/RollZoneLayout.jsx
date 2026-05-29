@@ -18,15 +18,17 @@ export default function RollZoneLayout({ items, settings: s }) {
   const accent = g(s, "accent_color");
   const itemFont = `${g(s, "item_font_size")}px`;
   const dashed = `1px dashed ${accent}66`;
-  const buckets = { brand: [], headtext: [], meta: [], items: [], totals: [], payments: [], footer: [], qr: [] };
+  const addressAtBottom = s.address_position === "bottom";
+  const buckets = { brand: [], headtext: [], meta: [], items: [], totals: [], payments: [], footer: [], qr: [], bottom: [] };
 
   // Order-preserving bucketing; inserted/custom blocks join the current section.
   let last = "brand";
   items.forEach((it) => {
-    const sec = SECTION[it.type] || last;
+    let sec = SECTION[it.type] || last;
+    if (addressAtBottom && (it.type === "address" || it.type === "tax_id")) sec = "bottom";
     if (buckets[sec]) {
       buckets[sec].push(it.node);
-      last = sec;
+      if (sec !== "bottom") last = sec;
     }
   });
   const has = (k) => buckets[k].length > 0;
@@ -55,6 +57,9 @@ export default function RollZoneLayout({ items, settings: s }) {
         </>
       )}
       {buckets.qr}
+      {has("bottom") && (
+        <div style={{ marginTop: "8px", borderTop: dashed, paddingTop: "6px", fontSize: "10px", textAlign: "center" }}>{buckets.bottom}</div>
+      )}
     </>
   );
 }

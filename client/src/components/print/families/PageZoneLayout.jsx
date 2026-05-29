@@ -3,14 +3,21 @@ import { g } from "../blocks/blockUtils";
 
 // Groups already-rendered, ordered block descriptors into the A4/A5 zones,
 // reproducing the legacy PrintA4Doc structure: a two-column header (brand +
-// doc-meta with a large doc title), a customer/cashier band, a full-width body,
-// a right-aligned 45% totals box, full-width payments, then footer + QR.
+// doc-meta with a large doc title), an optional receipt-header line, a
+// customer/cashier band, a full-width body, a right-aligned 45% totals box,
+// full-width payments, then footer + QR (and an optional bottom address block).
 // `items` is an array of { type, group, node } in layout order.
 export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
   const accent = g(s, "accent_color");
+  const addressAtBottom = s.address_position === "bottom";
   const byType = (...t) => items.filter((it) => t.includes(it.type)).map((it) => it.node);
 
-  const brand = items.filter((it) => it.group === "brand").map((it) => it.node);
+  const brandTypes = addressAtBottom
+    ? ["logo", "company_name", "branch"]
+    : ["logo", "company_name", "branch", "address", "tax_id"];
+  const brand = items.filter((it) => it.group === "brand" && brandTypes.includes(it.type)).map((it) => it.node);
+  const bottomAddr = addressAtBottom ? byType("address", "tax_id") : [];
+  const receiptHeader = byType("receipt_header_text");
   const meta = byType("doc_number", "doc_date");
   const body = items.filter((it) => it.group === "body" || it.group === "inserted").map((it) => it.node);
   const totals = byType("subtotal", "discount", "tax", "grand_total");
@@ -32,6 +39,8 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
           {meta}
         </div>
       </div>
+
+      {receiptHeader}
 
       {(showCustomer || showCashier) && (
         <div data-zone="parties" style={{ display: "flex", gap: "24px", marginBottom: "10px", fontSize: "11px", background: "#f8fafc", padding: "8px 10px", borderRadius: "4px" }}>
@@ -61,6 +70,10 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
         )}
         {qr}
       </div>
+
+      {bottomAddr.length > 0 && (
+        <div data-zone="address-bottom" style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#94a3b8", textAlign: "center" }}>{bottomAddr}</div>
+      )}
     </>
   );
 }
