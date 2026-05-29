@@ -54,6 +54,7 @@ const DOC_TYPES = [
   { key: "sales_invoice",         label: "فاتورة مبيعات",         icon: "INV" },
   { key: "purchase_order",        label: "أمر شراء",              icon: "PO"  },
   { key: "sales_return",          label: "مرتجع مبيعات",         icon: "RET" },
+  { key: "purchase_return",       label: "مرتجع مشتريات",        icon: "PRT" },
   { key: "quotation",             label: "عرض سعر",               icon: "Q"   },
   { key: "branch_transfer",       label: "تحويل فرع",             icon: "TR"  },
   { key: "bank_statement",        label: "كشف بنكي",              icon: "BNK" },
