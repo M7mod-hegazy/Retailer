@@ -24,6 +24,10 @@ export const g = (s, k) => {
   return raw;
 };
 
+export function parseJsonArray(v) {
+  try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+
 export function computeTotals(invoice = {}, s = {}) {
   const lines = invoice.lines || [];
   const taxRate = parseFloat(g(s, "tax_rate") || 0);

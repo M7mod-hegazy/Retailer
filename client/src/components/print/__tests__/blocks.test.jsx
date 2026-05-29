@@ -17,4 +17,10 @@ describe("block registry", () => {
     // 200 - 0 + 15% = 230.00
     expect(container.textContent).toContain("230.00");
   });
+  it("registry covers all v1 block types", () => {
+    const expected = ["logo","company_name","branch","address","tax_id","receipt_header_text",
+      "doc_number","doc_date","customer","cashier","items_table","subtotal","discount","tax",
+      "grand_total","payments","footer_text","qr","custom_text","divider","spacer"];
+    expected.forEach(t => expect(BLOCK_REGISTRY[t], `missing block: ${t}`).toBeTruthy());
+  });
 });
