@@ -41,7 +41,9 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const [zoom, setZoom] = useState(family === "roll" ? 1.1 : 0.7);
   const [dragIdx, setDragIdx] = useState(null);     // outline drag (by index)
   const [canvasDrag, setCanvasDrag] = useState(null); // canvas drag (by key)
+  const [dragOverKey, setDragOverKey] = useState(null);
   const printRef = useRef(null);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // reset when (re)opened
   useEffect(() => { setDraft(ensureLayout(value)); setPast([]); setFuture([]); setSelected(null); setHovered(null); }, [open]);
@@ -145,13 +147,46 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const MARGIN_KEY = { top: "margin_top", side: "margin_side" };
   const setMargin = (k, v) => setTopLevel(MARGIN_KEY[k], v);
 
-  // ── canvas designer context (selection + hover + drag) ───────────────────
-  const designer = {
-    selectedKey: selected, hoveredKey: hovered,
-    onSelect: setSelected, onHover: setHovered,
-    onDragStart: setCanvasDrag,
-    onDrop: (toKey) => { reorderByKey(canvasDrag, toKey); setCanvasDrag(null); },
+  // ── direct mouse resize (pointer drag on a handle) ───────────────────────
+  // One undo step per gesture: snapshot once on pointerdown, then live-apply
+  // absolute values computed from the start value + pointer delta (/zoom).
+  const onResizeStart = (key, axis, e) => {
+    const startX = e.clientX, startY = e.clientY, z = zoom;
+    const draftBase = draft, famBase = draft.layout[family];
+    const applyLive = (next) => { setDraft(next); onChange && onChange(next); };
+    const setTopLive = (k, v) => applyLive({ ...draftBase, [k]: v });
+    const setOvLive = (k, patch) => applyLive({ ...draftBase, layout: { ...draftBase.layout, [family]: { ...famBase, perBlock: { ...(famBase.perBlock || {}), [k]: { ...((famBase.perBlock || {})[k] || {}), ...patch } } } } });
+    let base, applyVal, horizontal = false;
+    if (axis === "width") { base = Number((famBase.perBlock || {})[key]?.width) || 100; horizontal = true; applyVal = (v) => setOvLive(key, { width: clamp(Math.round(v), 10, 100) }); }
+    else if (key === "logo") { base = Number(merged.logo_max_height) || 48; applyVal = (v) => setTopLive("logo_max_height", clamp(Math.round(v), 16, 400)); }
+    else if (key === "qr") { base = Number(merged.qr_size) || 44; applyVal = (v) => setTopLive("qr_size", clamp(Math.round(v), 24, 400)); }
+    else { base = Number((famBase.perBlock || {})[key]?.fontSize) || Number(merged.item_font_size) || 11; applyVal = (v) => setOvLive(key, { fontSize: clamp(Math.round(v), 6, 72) }); }
+    setPast((p) => [...p, draftBase]); setFuture([]);
+    const move = (ev) => {
+      if (horizontal) applyVal(base + ((startX - ev.clientX) / z) * 0.4);
+      else applyVal(base + ((ev.clientY - startY) / z) * (axis === "font" ? 0.3 : 1));
+    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
+
+  // ── canvas designer context (selection + hover + drag + resize) ──────────
+  const designer = {
+    selectedKey: selected, hoveredKey: hovered, dragOverKey,
+    onSelect: setSelected, onHover: setHovered,
+    onDragStart: setCanvasDrag, onDragOverKey: setDragOverKey,
+    onDrop: (toKey) => { reorderByKey(canvasDrag, toKey); setCanvasDrag(null); setDragOverKey(null); },
+    onDragEnd: () => { setCanvasDrag(null); setDragOverKey(null); },
+    onResizeStart,
+  };
+
+  // Registry blocks valid for this family that are not currently in the order
+  // (i.e. hidden by removal) — surfaced in a tray so hiding is reversible.
+  const hiddenBlocks = Object.keys(BLOCK_REGISTRY).filter((t) => {
+    const e = BLOCK_REGISTRY[t];
+    return e.families.includes(family) && e.group !== "inserted" && !fam.order.includes(t);
+  });
+  const addToOrder = (t) => { setFamLayout((c) => ({ order: [...c.order, t] })); setSelected(t); };
 
   // ── keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
@@ -315,6 +350,21 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
               })}
             </div>
           </div>
+
+          {/* Hidden blocks tray — re-add removed sections */}
+          {hiddenBlocks.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">عناصر مخفية — انقر للإرجاع</div>
+              <div className="flex flex-wrap gap-1.5">
+                {hiddenBlocks.map((t) => (
+                  <button key={t} type="button" onClick={() => addToOrder(t)}
+                    className="flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700">
+                    + {BLOCK_REGISTRY[t]?.label || t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Inserted elements */}
           {(fam.inserted || []).length > 0 && (
