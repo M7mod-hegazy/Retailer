@@ -4,7 +4,7 @@ import {
   X, RotateCcw, Printer, Save, GripVertical, Eye, EyeOff, Trash2,
   Bold, Italic, AlignRight, AlignCenter, AlignLeft, Type, Minus, Square, QrCode,
   Undo2, Redo2, ArrowUp, ArrowDown, Copy, ClipboardPaste, BookmarkPlus, Trash, ArrowLeftRight,
-  FlaskConical, Columns2,
+  FlaskConical, Columns2, Ruler,
 } from "lucide-react";
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
@@ -59,6 +59,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const [presets, setPresets] = useState(() => { try { return JSON.parse(localStorage.getItem(PKEY) || "[]"); } catch { return []; } });
   const [stress, setStress] = useState(false);
   const [compare, setCompare] = useState(false);
+  const [showRuler, setShowRuler] = useState(false);
   const [contentMm, setContentMm] = useState(0);
   const printRef = useRef(null);
   const sheetRef = useRef(null);
@@ -266,6 +267,23 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     editableOf, onStartEditText: startEditText, onCommitText: commitText,
   };
 
+  // ── draggable document-margin markers (ruler) ───────────────────────────
+  const startMarginDrag = (which, e) => {
+    e.preventDefault(); e.stopPropagation();
+    const start = which === "top" ? e.clientY : e.clientX;
+    const key = which === "top" ? "margin_top" : "margin_side";
+    const baseMm = Number(merged[key]) || 4;
+    const draftBase = draft, z = zoom;
+    setPast((p) => [...p, draftBase]); setFuture([]); setResizing(true);
+    const move = (ev) => {
+      const dPx = (which === "top" ? ev.clientY - start : start - ev.clientX) / z; // inline-start edge grows when dragged toward center
+      const v = clamp(Math.round(baseMm + dPx / PX_PER_MM), 0, which === "top" ? 60 : 30);
+      setDraft({ ...draftBase, [key]: v }); onChange && onChange({ ...draftBase, [key]: v });
+    };
+    const up = () => { setResizing(false); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
+
   // ── fit / overflow meter (page family) ───────────────────────────────────
   useLayoutEffect(() => {
     if (sheetRef.current) setContentMm(sheetRef.current.offsetHeight / PX_PER_MM);
@@ -361,6 +379,8 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${stress ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-500"}`}><FlaskConical size={12} /> اختبار</button>
           <button type="button" onClick={() => setCompare((v) => !v)} title="مقارنة المقاسات جنباً إلى جنب"
             className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${compare ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Columns2 size={12} /> مقارنة</button>
+          <button type="button" onClick={() => setShowRuler((v) => !v)} title="مسطرة وهوامش"
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${showRuler ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Ruler size={12} /> مسطرة</button>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
@@ -437,7 +457,8 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
               ))}
             </div>
           ) : (
-            <div ref={sheetRef} className="mx-auto" style={{ width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+            <div ref={sheetRef} className="mx-auto" style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+              {showRuler && renderRuler({ size, contentMm, pageH, merged, startMarginDrag })}
               <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={merged} layout={draftForRender.layout} editing designer={designer} />
             </div>
           )}
@@ -626,4 +647,39 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
       </div>
     </div>
   ), document.body);
+}
+
+// Rulers (mm) on the top/inline-start edges + draggable document-margin guides.
+function renderRuler({ size, contentMm, pageH, merged, startMarginDrag }) {
+  const widthMm = parseFloat(SHEET_W[size]) || 80;
+  const heightMm = pageH || Math.max(contentMm || 0, 80);
+  const wpx = widthMm * PX_PER_MM, hpx = heightMm * PX_PER_MM;
+  const mt = (Number(merged.margin_top) || 4) * PX_PER_MM;
+  const ms = (Number(merged.margin_side) || 4) * PX_PER_MM;
+  const ticks = (lenMm, axis) => {
+    const out = [];
+    for (let mm = 0; mm <= lenMm; mm += 5) {
+      const px = mm * PX_PER_MM, major = mm % 50 === 0, mid = mm % 10 === 0;
+      const len = major ? 9 : mid ? 6 : 3;
+      out.push(<div key={mm} style={{ position: "absolute", background: "#94a3b8", ...(axis === "x" ? { left: px, top: 16 - len, width: 1, height: len } : { top: px, left: 16 - len, height: 1, width: len }) }} />);
+      if (major) out.push(<span key={`l${mm}`} style={{ position: "absolute", fontSize: 6, color: "#64748b", ...(axis === "x" ? { left: px + 1, top: 1 } : { top: px + 1, left: 1 }) }}>{mm}</span>);
+    }
+    return out;
+  };
+  const grab = { position: "absolute", background: "#7c3aed", zIndex: 31 };
+  return (
+    <>
+      {/* top ruler */}
+      <div style={{ position: "absolute", top: -18, insetInlineStart: 0, width: wpx, height: 16, background: "#fff", border: "1px solid #e2e8f0", zIndex: 30, pointerEvents: "none" }}>{ticks(widthMm, "x")}</div>
+      {/* side ruler */}
+      <div style={{ position: "absolute", top: 0, insetInlineStart: -18, width: 16, height: hpx, background: "#fff", border: "1px solid #e2e8f0", zIndex: 30, pointerEvents: "none" }}>{ticks(heightMm, "y")}</div>
+      {/* margin guides */}
+      <div style={{ position: "absolute", top: mt, insetInlineStart: 0, insetInlineEnd: 0, height: 1, background: "#7c3aed66", zIndex: 28, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, bottom: 0, insetInlineStart: ms, width: 1, background: "#7c3aed66", zIndex: 28, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, bottom: 0, insetInlineEnd: ms, width: 1, background: "#7c3aed66", zIndex: 28, pointerEvents: "none" }} />
+      {/* draggable handles */}
+      <div title="هامش علوي" onPointerDown={(e) => startMarginDrag("top", e)} style={{ ...grab, top: mt - 4, insetInlineStart: -4, width: 9, height: 9, borderRadius: "50%", border: "2px solid #fff", cursor: "ns-resize" }} />
+      <div title="هامش جانبي" onPointerDown={(e) => startMarginDrag("side", e)} style={{ ...grab, top: -4, insetInlineStart: ms - 4, width: 9, height: 9, borderRadius: "50%", border: "2px solid #fff", cursor: "ew-resize" }} />
+    </>
+  );
 }
