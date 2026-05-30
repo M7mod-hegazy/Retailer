@@ -25,6 +25,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
   const footerText = byType("footer_text");
   const qr = byType("qr");
 
+  const metaAlign = (s.layout && s.layout.page && s.layout.page.headerMetaAlign) || "left";
   const docTitle = g(s, "receipt_footer") || "فاتورة";
   const showCustomer = g(s, "show_customer_name") !== false && invoice.customer_name;
   const cashierName = invoice.cashier_name || invoice.cashier;
@@ -34,7 +35,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
     <>
       <div data-zone="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: `3px solid ${accent}`, paddingBottom: "8px", marginBottom: "10px" }}>
         <div data-zone-col="brand">{brand}</div>
-        <div data-zone-col="meta" style={{ textAlign: "left" }}>
+        <div data-zone-col="meta" style={{ textAlign: metaAlign }}>
           <div style={{ fontSize: "18px", fontWeight: 900, color: accent }}>{docTitle}</div>
           {meta}
         </div>

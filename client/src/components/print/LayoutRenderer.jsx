@@ -6,7 +6,7 @@ import RollZoneLayout from "./families/RollZoneLayout";
 import PageWrapper from "./families/PageWrapper";
 import PageZoneLayout from "./families/PageZoneLayout";
 import { customInserts } from "./customBlockBridge";
-import { overrideCss, overrideWidth } from "./layout/layoutModel";
+import { overrideCss, overrideBox } from "./layout/layoutModel";
 
 // `designer` (optional) turns on in-canvas affordances: per-block selection,
 // hover highlight, label badge, and drag-to-reorder. It is ignored for the
@@ -32,10 +32,10 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     const props = { ...(entry.defaultProps || {}), ...ov, ...(extraProps || {}) };
     let node = <Block key={`${type}-${key++}`} invoice={invoice} settings={settings} props={props} family={family} editing={editing} />;
     const css = overrideCss(ov, `[data-ov="${selKey}"]`);
-    const widthVal = overrideWidth(ov);
-    if (css || widthVal) {
+    const box = overrideBox(ov);
+    if (css || box) {
       node = (
-        <div data-ov={selKey} style={widthVal ? { width: widthVal } : undefined}>
+        <div data-ov={selKey} style={box || undefined}>
           {css ? <style>{css}</style> : null}
           {node}
         </div>

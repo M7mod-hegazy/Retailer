@@ -26,6 +26,10 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   const cols = Array.isArray(props.columns) && props.columns.length
     ? props.columns.filter((c) => c.visible !== false && VALUE[c.key])
     : null;
+  // Optional table styling (Designer): zebra rows + border style.
+  const zebra = props.zebra !== false; // default on
+  const border = props.tableBorder || "none"; // 'none' | 'lines' | 'grid'
+  const cellBorder = border === "grid" ? { border: "1px solid #e2e8f0" } : border === "lines" ? { borderBottom: "1px solid #e2e8f0" } : {};
 
   if (family === "page") {
     const showCode = cols ? cols.some((c) => c.key === "code") : g(s, "show_item_code") !== false;
@@ -34,20 +38,20 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize, marginBottom: "8px" }}>
           <thead>
             <tr style={{ background: accent, color: "#fff" }}>
-              <th style={{ textAlign: "right", padding: "4px 6px" }}>#</th>
+              <th style={{ textAlign: "right", padding: "4px 6px", ...cellBorder }}>#</th>
               {cols.map((c) => (
-                <th key={c.key} style={{ textAlign: c.align || "right", padding: "4px 6px", ...(c.key === "code" ? { fontSize: "9px", opacity: 0.85 } : {}) }}>{c.label || HEADER[c.key]}</th>
+                <th key={c.key} style={{ textAlign: c.align || "right", padding: "4px 6px", ...cellBorder, ...(c.key === "code" ? { fontSize: "9px", opacity: 0.85 } : {}) }}>{c.label || HEADER[c.key]}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {lines.map((line, i) => (
-              <tr key={i} style={{ background: i % 2 === 0 ? "#f8fafc" : "#fff" }}>
-                <td style={{ padding: "3px 6px", color: "#94a3b8" }}>{i + 1}</td>
+              <tr key={i} style={{ background: zebra && i % 2 === 0 ? "#f8fafc" : "#fff" }}>
+                <td style={{ padding: "3px 6px", color: "#94a3b8", ...cellBorder }}>{i + 1}</td>
                 {cols.map((c) => (
                   <td key={c.key} style={{
                     textAlign: c.align || (c.key === "name" ? "right" : c.key === "total" ? "left" : "center"),
-                    padding: "3px 6px",
+                    padding: "3px 6px", ...cellBorder,
                     ...(c.key === "code" ? { fontSize: "9px", color: "#94a3b8", fontFamily: "monospace" } : {}),
                     ...(c.key === "name" ? { fontWeight: 600 } : {}),
                     ...(c.key === "total" ? { fontWeight: 700 } : {}),

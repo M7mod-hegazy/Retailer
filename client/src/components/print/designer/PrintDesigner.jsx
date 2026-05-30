@@ -176,6 +176,13 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
   const reset = () => commit({ ...draft, layout: { ...draft.layout, [family]: seedFamilyLayout(family) } });
 
+  const onLogoFile = (file) => {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => setTopLevel("logo_url", r.result);
+    r.readAsDataURL(file);
+  };
+
   const MARGIN_KEY = { top: "margin_top", side: "margin_side" };
   const setMargin = (k, v) => setTopLevel(MARGIN_KEY[k], v);
 
@@ -434,6 +441,36 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             </div>
           )}
 
+          {/* Block spacing (selected order block or insert) */}
+          {selected && (selInOrder || selInsert) && (
+            <div>
+              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">تباعد العنصر (px)</div>
+              <div className="flex gap-2">
+                {[["marginTop", "علوي"], ["marginBottom", "سفلي"]].map(([k, lbl]) => (
+                  <label key={k} className="flex flex-1 flex-col gap-1 text-[10px] font-bold text-slate-500">{lbl}
+                    <input type="number" value={selOv[k] ?? 0} onChange={(e) => setOverride(selected, { [k]: Number(e.target.value) })}
+                      className="h-8 w-full rounded-lg border border-slate-300 px-2 text-[12px] outline-none focus:border-violet-500" />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Logo controls */}
+          {selected === "logo" && (
+            <div>
+              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">الشعار</div>
+              <input type="file" accept="image/*" onChange={(e) => onLogoFile(e.target.files && e.target.files[0])} className="w-full text-[10px] font-bold text-slate-500" />
+              <div className="mt-2 flex gap-1">
+                {[["right", "يمين"], ["center", "وسط"], ["left", "يسار"]].map(([a, lbl]) => (
+                  <button key={a} type="button" onClick={() => setTopLevel("logo_alignment", a)}
+                    className={`flex-1 rounded-md border px-1 py-1 text-[10px] font-bold ${(merged.logo_alignment || "center") === a ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-500"}`}>{lbl}</button>
+                ))}
+              </div>
+              <div className="mt-1 text-[9px] font-bold text-slate-400">اسحب مقبض الزاوية لتغيير الارتفاع.</div>
+            </div>
+          )}
+
           {/* Column editor when items table selected */}
           {selected === "items_table" && (
             <div>
@@ -455,6 +492,14 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
                   </div>
                 ))}
               </div>
+              <div className="mt-2 flex items-center gap-2">
+                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                  <input type="checkbox" checked={ov("items_table").zebra !== false} onChange={(e) => setOverride("items_table", { zebra: e.target.checked })} /> تظليل الصفوف
+                </label>
+                <select value={ov("items_table").tableBorder || "none"} onChange={(e) => setOverride("items_table", { tableBorder: e.target.value })} className="rounded border border-slate-200 px-1 py-0.5 text-[10px]">
+                  <option value="none">بلا حدود</option><option value="lines">خطوط</option><option value="grid">شبكة</option>
+                </select>
+              </div>
             </div>
           )}
 
@@ -471,6 +516,13 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
               ))}
             </div>
             <div className="mt-1 text-[9px] font-bold text-slate-400">يُطبَّق على الهوامش العامة لهذا المستند.</div>
+            {family === "page" && (
+              <label className="mt-3 flex items-center justify-between text-[10px] font-bold text-slate-500">محاذاة بيانات الرأس
+                <select value={fam.headerMetaAlign || "left"} onChange={(e) => setFamLayout(() => ({ headerMetaAlign: e.target.value }))} className="rounded border border-slate-200 px-1 py-0.5 text-[10px]">
+                  <option value="left">يسار</option><option value="center">وسط</option><option value="right">يمين</option>
+                </select>
+              </label>
+            )}
           </div>
         </div>
       </div>

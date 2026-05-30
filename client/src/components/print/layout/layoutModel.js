@@ -68,10 +68,15 @@ export function overrideStyle(o = {}) {
   return Object.keys(style).length ? style : null;
 }
 
-// Width lives on the wrapper element itself (a value the block can't fight).
-export function overrideWidth(o = {}) {
-  if (o && o.width != null && o.width !== "") return typeof o.width === "number" ? `${o.width}%` : o.width;
-  return null;
+// Box styling (width + spacing) lives on the wrapper element — values the inner
+// block can't override. Returns a style object or null.
+export function overrideBox(o = {}) {
+  if (!o) return null;
+  const style = {};
+  if (o.width != null && o.width !== "") style.width = typeof o.width === "number" ? `${o.width}%` : o.width;
+  if (o.marginTop != null && o.marginTop !== "") style.marginTop = `${o.marginTop}px`;
+  if (o.marginBottom != null && o.marginBottom !== "") style.marginBottom = `${o.marginBottom}px`;
+  return Object.keys(style).length ? style : null;
 }
 
 // Font/color/weight/style/align must beat the block's own inline styles, so we
