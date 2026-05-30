@@ -4,7 +4,7 @@ import { g } from "./blockUtils";
 const lineTotalOf = (line) =>
   ((Number(line.unit_price) || Number(line.unit_cost) || 0) * Number(line.quantity)) - (Number(line.discount_amount) || 0);
 const priceOf = (line) => (Number(line.unit_price) || Number(line.unit_cost) || 0);
-const codeOf = (line) => line.sku || line.barcode || line.product_code || "";
+const codeOf = (line) => line.sku || line.code || line.item_code || line.barcode || line.product_code || "";
 const nameOf = (line) => line.product_name || line.item_name || line.name || "";
 
 const VALUE = {

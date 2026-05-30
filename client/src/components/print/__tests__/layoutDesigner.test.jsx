@@ -23,6 +23,12 @@ describe("LayoutRenderer designer integration", () => {
     expect(wrap.getAttribute("style")).toContain("width: 60%");
   });
 
+  it("shows the item code from line.code / line.item_code (real-print fields)", () => {
+    const inv = { lines: [{ code: "K-900", item_name: "صنف", quantity: 1, unit_price: 5 }] };
+    const { container } = render(<LayoutRenderer family="roll" invoice={inv} settings={{ show_item_code: true }} layout={{ roll: { order: ["items_table"] } }} />);
+    expect(container.textContent).toContain("K-900");
+  });
+
   it("renders layout.inserted custom text", () => {
     const layout = { roll: { order: ["company_name"], inserted: [{ id: "d1", type: "custom_text", after: "company_name", props: { text: "مُدرج بالمحرر" } }] } };
     const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} />);

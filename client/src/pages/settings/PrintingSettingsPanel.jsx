@@ -14,7 +14,33 @@ import ChequeRegisterTemplate from "../../components/print/templates/ChequeRegis
 import PaymentMethodsReportTemplate from "../../components/print/templates/PaymentMethodsReportTemplate";
 import PrintDesigner from "../../components/print/designer/PrintDesigner";
 import { familyForSize } from "../../components/print/layout/layoutModel";
+import { PrintThermalDoc, PrintA4Doc } from "../../components/print/PrintDoc";
 import { Maximize2 } from "lucide-react";
+
+// Mock invoice for the live preview of invoice-style docs — rendered through the
+// shared block library so the preview matches print AND the Designer layout.
+const PREVIEW_INVOICE = {
+  invoice_no: "INV-2025-0001",
+  created_at: new Date().toISOString(),
+  customer_name: "عميل تجريبي",
+  cashier_name: "الكاشير",
+  lines: [
+    { code: "K-100", item_name: "منتج تجريبي ١", quantity: 2, unit_price: 45 },
+    { code: "K-200", item_name: "منتج تجريبي ٢", quantity: 1, unit_price: 120, discount_amount: 10 },
+  ],
+  payments: [{ method_name: "نقدًا", amount: 200 }],
+};
+
+// Renders an invoice-style doc preview via the real print pipeline (LayoutRenderer).
+function BlockDocPreview({ merged, previewSize }) {
+  if (previewSize === "58mm" || previewSize === "80mm") {
+    return <PrintThermalDoc invoice={PREVIEW_INVOICE} settings={{ ...merged, receipt_width: previewSize }} />;
+  }
+  return <PrintA4Doc invoice={PREVIEW_INVOICE} settings={merged} size={previewSize === "A5" ? "A5" : "A4"} />;
+}
+
+// Doc types that print through the shared block library / Designer.
+const BLOCK_DOCS = new Set(["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1050,14 +1076,10 @@ const MOCK_DATA = {
 function DocPreviewContent({ docType, merged, previewSize }) {
   const mock = MOCK_DATA[docType] || {};
   const s = { ...merged, _previewSize: previewSize };
+  // Invoice-style docs render through the shared block library so the preview
+  // honors the Designer layout (order, per-block styles, columns, inserts).
+  if (BLOCK_DOCS.has(docType)) return <BlockDocPreview merged={merged} previewSize={previewSize} />;
   switch (docType) {
-    case "pos_receipt":      return <PosReceiptPreview s={s} />;
-    case "sales_invoice":    return <SalesInvoicePreview s={s} />;
-    case "purchase_order":   return <PurchaseOrderPreview s={s} />;
-    case "sales_return":     return <SalesReturnPreview s={s} />;
-    case "quotation":        return <QuotationPreview s={s} />;
-    case "branch_transfer":  return <BranchTransferPreview s={s} />;
-    case "payment_receipt":  return <PaymentReceiptPreview s={s} />;
     case "daily_treasury":   return <DailyTreasuryPreview s={s} />;
     case "bank_statement":   return <BankStatementTemplate bank={mock.bank} transactions={mock.transactions} from={mock.from} to={mock.to} settings={s} />;
     case "ajal_statement":   return <AjalStatementTemplate debt={mock.debt} settings={s} />;
