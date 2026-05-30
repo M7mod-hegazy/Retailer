@@ -1129,6 +1129,11 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
           <div className="text-[10px] font-bold text-slate-400">الإعدادات غير المحددة ترث من ⚙ الإعدادات العامة تلقائياً.</div>
         </div>
 
+        <button type="button" onClick={() => setDesignerOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-50 py-2.5 text-[12px] font-black text-violet-700 hover:border-violet-500 hover:bg-violet-100">
+          <Maximize2 size={14} /> المحرر المتقدم (ملء الشاشة)
+        </button>
+
         {/* Paper size selector — valid sizes only for this doc type */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -1206,7 +1211,13 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
             <Eye className="h-4 w-4 text-slate-400" />
             <span className="text-[11px] font-black uppercase tracking-widest">معاينة حية — {label}</span>
           </div>
-          <div className="text-[9px] font-bold text-slate-400">عجلة الفأرة للتكبير • اسحب للتنقل</div>
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] font-bold text-slate-400">عجلة الفأرة للتكبير • اسحب للتنقل</span>
+            <button type="button" onClick={() => setDesignerOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-black text-white hover:bg-violet-500">
+              <Maximize2 size={13} /> المحرر المتقدم
+            </button>
+          </div>
         </div>
 
         {/* Viewport */}
