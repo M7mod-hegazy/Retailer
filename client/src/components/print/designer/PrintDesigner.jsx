@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
   X, RotateCcw, Printer, Save, GripVertical, Eye, EyeOff, Trash2,
   Bold, Italic, AlignRight, AlignCenter, AlignLeft, Type, Minus, Square, QrCode,
-  Undo2, Redo2, ArrowUp, ArrowDown,
+  Undo2, Redo2, ArrowUp, ArrowDown, Copy, ClipboardPaste, BookmarkPlus, Trash, ArrowLeftRight,
 } from "lucide-react";
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
@@ -44,6 +44,9 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const [dragOverKey, setDragOverKey] = useState(null);
   const [resizing, setResizing] = useState(false);
   const [editingKey, setEditingKey] = useState(null);
+  const [copiedStyle, setCopiedStyle] = useState(null);
+  const PKEY = "print_designer_presets";
+  const [presets, setPresets] = useState(() => { try { return JSON.parse(localStorage.getItem(PKEY) || "[]"); } catch { return []; } });
   const printRef = useRef(null);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -183,6 +186,34 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     r.readAsDataURL(file);
   };
 
+  // ── format painter ───────────────────────────────────────────────────────
+  const copyStyle = () => { if (selected) setCopiedStyle({ ...ov(selected) }); };
+  const pasteStyle = () => { if (selected && copiedStyle) setOverride(selected, copiedStyle); };
+
+  // ── presets / themes (persisted in localStorage) ─────────────────────────
+  const persistPresets = (next) => { setPresets(next); try { localStorage.setItem(PKEY, JSON.stringify(next)); } catch { /* ignore quota */ } };
+  const savePreset = () => {
+    const name = (window.prompt("اسم القالب:") || "").trim();
+    if (!name) return;
+    const data = JSON.parse(JSON.stringify(draft.layout[family]));
+    persistPresets([...presets.filter((p) => !(p.name === name && p.family === family)), { name, family, data }]);
+  };
+  const applyPreset = (name) => {
+    const p = presets.find((x) => x.name === name && x.family === family);
+    if (!p) return;
+    const data = JSON.parse(JSON.stringify(p.data));
+    (data.inserted || []).forEach((b) => { b.id = newInsertId(); }); // fresh ids
+    commit({ ...draft, layout: { ...draft.layout, [family]: data } });
+    setSelected(null);
+  };
+  const deletePreset = (name) => persistPresets(presets.filter((p) => !(p.name === name && p.family === family)));
+  const copyFromOtherFamily = () => {
+    const other = family === "page" ? "roll" : "page";
+    commit({ ...draft, layout: { ...draft.layout, [family]: JSON.parse(JSON.stringify(draft.layout[other])) } });
+    setSelected(null);
+  };
+  const famPresets = presets.filter((p) => p.family === family);
+
   const MARGIN_KEY = { top: "margin_top", side: "margin_side" };
   const setMargin = (k, v) => setTopLevel(MARGIN_KEY[k], v);
 
@@ -308,6 +339,16 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             <button type="button" title="تراجع (Ctrl+Z)" disabled={!past.length} onClick={undo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Undo2 size={14} /></button>
             <button type="button" title="إعادة (Ctrl+Shift+Z)" disabled={!future.length} onClick={redo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Redo2 size={14} /></button>
           </div>
+          <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
+            <select value="" onChange={(e) => { if (e.target.value) applyPreset(e.target.value); }} title="تطبيق قالب"
+              className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-bold text-slate-600">
+              <option value="">قوالب…</option>
+              {famPresets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+            <button type="button" title="حفظ كقالب" onClick={savePreset} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><BookmarkPlus size={14} /></button>
+            <button type="button" title="حذف القالب المحدد" disabled={!famPresets.length} onClick={() => { const n = window.prompt("اسم القالب للحذف:"); if (n) deletePreset(n.trim()); }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Trash size={13} /></button>
+            <button type="button" title={`نسخ تخطيط ${family === "page" ? "الرول" : "الصفحة"} إلى هنا`} onClick={copyFromOtherFamily} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ArrowLeftRight size={13} /></button>
+          </div>
           <button type="button" onClick={reset} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"><RotateCcw size={13} /> إعادة ضبط</button>
           <button type="button" onClick={testPrint} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"><Printer size={13} /> طباعة تجريبية</button>
           <button type="button" onClick={() => { onSave && onSave(draft); onClose && onClose(); }} className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-emerald-700"><Save size={13} /> حفظ وإغلاق</button>
@@ -333,6 +374,9 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           <Btn title="تحريك لأسفل" disabled={!selInOrder} onClick={() => nudge(1)}><ArrowDown size={13} /></Btn>
           <Btn title="إخفاء/إظهار" disabled={!selInOrder} onClick={() => toggleVisible(selected)}>{isVisible(selected) ? <Eye size={13} /> : <EyeOff size={13} />}</Btn>
           <Btn title="حذف (Delete)" onClick={deleteSelected}><Trash2 size={13} /></Btn>
+          <span className="mx-1 h-5 w-px bg-slate-200" />
+          <Btn title="نسخ التنسيق" onClick={copyStyle}><Copy size={13} /></Btn>
+          <Btn title="لصق التنسيق" disabled={!copiedStyle} onClick={pasteStyle}><ClipboardPaste size={13} /></Btn>
         </div>
       </div>
 
