@@ -3,10 +3,11 @@ import { createPortal } from "react-dom";
 import {
   X, RotateCcw, Printer, Save, GripVertical, Eye, EyeOff, Trash2,
   Bold, Italic, AlignRight, AlignCenter, AlignLeft, Type, Minus, Square, QrCode,
+  Undo2, Redo2, ArrowUp, ArrowDown,
 } from "lucide-react";
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
-import { ensureLayout, seedFamilyLayout, familyForSize, SHOW_KEY, defaultColumns, newInsertId } from "../layout/layoutModel";
+import { ensureLayout, seedFamilyLayout, SHOW_KEY, defaultColumns, newInsertId } from "../layout/layoutModel";
 
 const MOCK = {
   invoice_no: "INV-2025-0001",
@@ -31,20 +32,36 @@ const INSERTABLE = [
 
 export default function PrintDesigner({ open = true, onClose, docType, label, initialFamily = "page", globalSettings = {}, value = {}, onChange, onSave }) {
   const [draft, setDraft] = useState(() => ensureLayout(value));
+  const [past, setPast] = useState([]);
+  const [future, setFuture] = useState([]);
   const [family, setFamily] = useState(initialFamily);
   const [size, setSize] = useState(() => (SIZES[initialFamily] ? SIZES[initialFamily][SIZES[initialFamily].length - 1] : "A4"));
   const [selected, setSelected] = useState(null); // block type or insert id
+  const [hovered, setHovered] = useState(null);
   const [zoom, setZoom] = useState(family === "roll" ? 1.1 : 0.7);
-  const [dragIdx, setDragIdx] = useState(null);
+  const [dragIdx, setDragIdx] = useState(null);     // outline drag (by index)
+  const [canvasDrag, setCanvasDrag] = useState(null); // canvas drag (by key)
   const printRef = useRef(null);
 
-  useEffect(() => { setDraft(ensureLayout(value)); }, [open]); // reset draft when (re)opened
+  // reset when (re)opened
+  useEffect(() => { setDraft(ensureLayout(value)); setPast([]); setFuture([]); setSelected(null); setHovered(null); }, [open]);
 
   const fam = draft.layout[family];
   const merged = useMemo(() => ({ ...globalSettings, ...draft }), [globalSettings, draft]);
 
-  // ── draft mutators (immutable) ───────────────────────────────────────────
-  const commit = (next) => { setDraft(next); onChange && onChange(next); };
+  // ── history-aware commit + undo/redo ─────────────────────────────────────
+  const commit = (next) => { setPast((p) => [...p, draft]); setFuture([]); setDraft(next); onChange && onChange(next); };
+  const undo = () => {
+    if (!past.length) return;
+    const prev = past[past.length - 1];
+    setFuture((f) => [draft, ...f]); setPast((p) => p.slice(0, -1)); setDraft(prev); onChange && onChange(prev);
+  };
+  const redo = () => {
+    if (!future.length) return;
+    const nxt = future[0];
+    setPast((p) => [...p, draft]); setFuture((f) => f.slice(1)); setDraft(nxt); onChange && onChange(nxt);
+  };
+
   const setFamLayout = (mut) => {
     const cur = draft.layout[family];
     const nextFam = { ...cur, ...mut(cur) };
@@ -53,13 +70,10 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const setTopLevel = (key, val) => commit({ ...draft, [key]: val });
 
   const switchFamily = (f) => {
-    setFamily(f);
-    setSize(SIZES[f][SIZES[f].length - 1]);
-    setZoom(f === "roll" ? 1.1 : 0.7);
-    setSelected(null);
+    setFamily(f); setSize(SIZES[f][SIZES[f].length - 1]); setZoom(f === "roll" ? 1.1 : 0.7); setSelected(null); setHovered(null);
   };
 
-  // ── visibility ─────────────────────────────────────────────────────────
+  // ── visibility ───────────────────────────────────────────────────────────
   const isVisible = (type) => {
     const sk = SHOW_KEY[type];
     if (sk) return merged[sk] !== false;
@@ -71,15 +85,24 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     setFamLayout((c) => ({ order: c.order.includes(type) ? c.order.filter((t) => t !== type) : [...c.order, type] }));
   };
 
-  // ── reorder (native DnD on outline) ──────────────────────────────────────
+  // ── reorder ────────────────────────────────────────────────────────────
   const moveOrder = (from, to) => {
     if (from == null || to == null || from === to) return;
+    setFamLayout((c) => { const order = [...c.order]; const [m] = order.splice(from, 1); order.splice(to, 0, m); return { order }; });
+  };
+  const reorderByKey = (fromKey, toKey) => {
+    if (!fromKey || fromKey === toKey) return;
     setFamLayout((c) => {
-      const order = [...c.order];
-      const [m] = order.splice(from, 1);
-      order.splice(to, 0, m);
+      if (!c.order.includes(fromKey)) return {};
+      const order = c.order.filter((t) => t !== fromKey);
+      const ti = order.indexOf(toKey);
+      if (ti < 0) order.push(fromKey); else order.splice(ti, 0, fromKey);
       return { order };
     });
+  };
+  const nudge = (dir) => {
+    if (!selected) return;
+    setFamLayout((c) => { const order = [...c.order]; const i = order.indexOf(selected); const j = i + dir; if (i < 0 || j < 0 || j >= order.length) return {}; [order[i], order[j]] = [order[j], order[i]]; return { order }; });
   };
 
   // ── per-block style overrides ────────────────────────────────────────────
@@ -95,15 +118,22 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     setFamLayout((c) => ({ inserted: [...(c.inserted || []), { id, type, after, props }] }));
     setSelected(id);
   };
-  const removeInsert = (id) =>
-    setFamLayout((c) => ({ inserted: (c.inserted || []).filter((b) => b.id !== id) }));
+  const removeInsert = (id) => setFamLayout((c) => ({ inserted: (c.inserted || []).filter((b) => b.id !== id) }));
   const setInsert = (id, patch) =>
     setFamLayout((c) => ({ inserted: (c.inserted || []).map((b) => (b.id === id ? { ...b, ...patch, props: { ...b.props, ...(patch.props || {}) } } : b)) }));
+
+  const deleteSelected = () => {
+    if (!selected) return;
+    if ((fam.inserted || []).some((b) => b.id === selected)) { removeInsert(selected); setSelected(null); return; }
+    const sk = SHOW_KEY[selected];
+    if (sk) setTopLevel(sk, false);
+    else setFamLayout((c) => ({ order: c.order.filter((t) => t !== selected) }));
+    setSelected(null);
+  };
 
   // ── columns (items_table) ────────────────────────────────────────────────
   const columns = (fam.columns && fam.columns.items_table) || defaultColumns(family);
   const setColumns = (cols) => setFamLayout((c) => ({ columns: { ...(c.columns || {}), items_table: cols } }));
-  // make sure LayoutRenderer sees the columns via perBlock.items_table.columns
   const draftForRender = useMemo(() => {
     const f = draft.layout[family];
     const pb = { ...(f.perBlock || {}), items_table: { ...((f.perBlock || {}).items_table || {}), columns } };
@@ -112,10 +142,33 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
   const reset = () => commit({ ...draft, layout: { ...draft.layout, [family]: seedFamilyLayout(family) } });
 
-  // Margins map to the shared top-level fields so they apply at render and sync
-  // with the simple panel (margin_top / margin_side).
   const MARGIN_KEY = { top: "margin_top", side: "margin_side" };
   const setMargin = (k, v) => setTopLevel(MARGIN_KEY[k], v);
+
+  // ── canvas designer context (selection + hover + drag) ───────────────────
+  const designer = {
+    selectedKey: selected, hoveredKey: hovered,
+    onSelect: setSelected, onHover: setHovered,
+    onDragStart: setCanvasDrag,
+    onDrop: (toKey) => { reorderByKey(canvasDrag, toKey); setCanvasDrag(null); },
+  };
+
+  // ── keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => {
+      const tag = (e.target.tagName || "").toUpperCase();
+      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+      if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+      if (typing) return;
+      if (e.key === "Escape") { setSelected(null); return; }
+      if ((e.key === "Delete" || e.key === "Backspace") && selected) { e.preventDefault(); deleteSelected(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open, selected, past, future, draft, family]);
 
   // ── test print ───────────────────────────────────────────────────────────
   const testPrint = () => {
@@ -129,20 +182,19 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     idoc.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>@page{size:${pageSize};margin:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Tajawal","Noto Sans Arabic",system-ui,sans-serif;direction:rtl;color:#0f172a;background:#fff}table{width:100%;border-collapse:collapse}</style></head><body>${html.replace(/@page\s*\{[^}]*\}/g, "")}</body></html>`);
     idoc.close();
     iframe.contentWindow.focus();
-    requestAnimationFrame(() => {
-      iframe.contentWindow.print();
-      setTimeout(() => iframe.parentNode && iframe.parentNode.removeChild(iframe), 2000);
-    });
+    requestAnimationFrame(() => { iframe.contentWindow.print(); setTimeout(() => iframe.parentNode && iframe.parentNode.removeChild(iframe), 2000); });
   };
 
   if (!open) return null;
 
-  // selected style override target key + current values
   const selOv = selected ? ov(selected) : {};
   const selInsert = selected ? (fam.inserted || []).find((b) => b.id === selected) : null;
-  const Btn = ({ active, onClick, title, children }) => (
-    <button type="button" title={title} onClick={onClick}
-      className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-[12px] font-bold transition-colors ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+  const selInOrder = selected && fam.order.includes(selected);
+  const selLabel = selected ? (BLOCK_REGISTRY[selected]?.label || (selInsert ? BLOCK_REGISTRY[selInsert.type]?.label : selected)) : null;
+
+  const Btn = ({ active, onClick, title, disabled, children }) => (
+    <button type="button" title={title} disabled={disabled} onClick={onClick}
+      className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-[12px] font-bold transition-colors disabled:opacity-30 ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
       {children}
     </button>
   );
@@ -174,6 +226,10 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
+            <button type="button" title="تراجع (Ctrl+Z)" disabled={!past.length} onClick={undo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Undo2 size={14} /></button>
+            <button type="button" title="إعادة (Ctrl+Shift+Z)" disabled={!future.length} onClick={redo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Redo2 size={14} /></button>
+          </div>
           <button type="button" onClick={reset} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"><RotateCcw size={13} /> إعادة ضبط</button>
           <button type="button" onClick={testPrint} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"><Printer size={13} /> طباعة تجريبية</button>
           <button type="button" onClick={() => { onSave && onSave(draft); onClose && onClose(); }} className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-emerald-700"><Save size={13} /> حفظ وإغلاق</button>
@@ -183,7 +239,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
       {/* Format toolbar (acts on the selected block) */}
       <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-1.5">
-        <span className="text-[10px] font-black text-slate-400">{selected ? `العنصر: ${BLOCK_REGISTRY[selected]?.label || selInsert?.type || selected}` : "اختر عنصراً للتنسيق"}</span>
+        <span className="min-w-[120px] text-[10px] font-black text-slate-400">{selected ? `العنصر: ${selLabel}` : "اختر عنصراً من المعاينة أو القائمة"}</span>
         <div className={`flex items-center gap-1 ${selected ? "" : "pointer-events-none opacity-40"}`}>
           <button type="button" onClick={() => setOverride(selected, { fontSize: Math.max(6, (Number(selOv.fontSize) || 11) - 1) })} className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50">−</button>
           <span className="min-w-9 text-center text-[11px] font-bold text-slate-600">{selOv.fontSize || "—"}</span>
@@ -194,6 +250,11 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           <Btn active={selOv.align === "center"} title="وسط" onClick={() => setOverride(selected, { align: "center" })}><AlignCenter size={13} /></Btn>
           <Btn active={selOv.align === "left"} title="يسار" onClick={() => setOverride(selected, { align: "left" })}><AlignLeft size={13} /></Btn>
           <input type="color" value={selOv.color || "#0f172a"} onChange={(e) => setOverride(selected, { color: e.target.value })} className="h-8 w-9 cursor-pointer rounded-md border border-slate-200" title="اللون" />
+          <span className="mx-1 h-5 w-px bg-slate-200" />
+          <Btn title="تحريك لأعلى" disabled={!selInOrder} onClick={() => nudge(-1)}><ArrowUp size={13} /></Btn>
+          <Btn title="تحريك لأسفل" disabled={!selInOrder} onClick={() => nudge(1)}><ArrowDown size={13} /></Btn>
+          <Btn title="إخفاء/إظهار" disabled={!selInOrder} onClick={() => toggleVisible(selected)}>{isVisible(selected) ? <Eye size={13} /> : <EyeOff size={13} />}</Btn>
+          <Btn title="حذف (Delete)" onClick={deleteSelected}><Trash2 size={13} /></Btn>
         </div>
       </div>
 
@@ -207,12 +268,15 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
               <Icon size={14} /> {lbl}
             </button>
           ))}
+          <div className="mt-2 rounded-lg bg-slate-50 p-2 text-[9px] font-bold leading-relaxed text-slate-400">
+            انقر عنصراً في المعاينة لتحديده • اسحبه لتغيير ترتيبه • Delete للإخفاء • Ctrl+Z للتراجع
+          </div>
         </div>
 
         {/* Center canvas */}
-        <div className="relative flex-1 overflow-auto bg-[#e8ecf0] p-6">
-          <div className="mx-auto" style={{ width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }}>
-            <LayoutRenderer family={family} size={size} invoice={MOCK} settings={merged} layout={draftForRender.layout} editing />
+        <div className="relative flex-1 overflow-auto bg-[#e8ecf0] p-6" onClick={() => setSelected(null)}>
+          <div className="mx-auto" style={{ width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+            <LayoutRenderer family={family} size={size} invoice={MOCK} settings={merged} layout={draftForRender.layout} editing designer={designer} />
           </div>
           <div className="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white/90 shadow">
             <button type="button" onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100">+</button>
@@ -231,13 +295,16 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
                 const entry = BLOCK_REGISTRY[type];
                 if (!entry || !entry.families.includes(family)) return null;
                 const vis = isVisible(type);
+                const isSel = selected === type;
+                const isHov = hovered === type;
                 return (
                   <div key={type} draggable
                     onDragStart={() => setDragIdx(idx)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => { moveOrder(dragIdx, idx); setDragIdx(null); }}
                     onClick={() => setSelected(type)}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors ${selected === type ? "border-slate-900 bg-slate-50" : "border-transparent hover:bg-slate-50"} ${vis ? "text-slate-700" : "text-slate-300"}`}>
+                    onMouseEnter={() => setHovered(type)} onMouseLeave={() => setHovered(null)}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors ${isSel ? "border-violet-500 bg-violet-50" : isHov ? "border-violet-200 bg-violet-50/40" : "border-transparent hover:bg-slate-50"} ${vis ? "text-slate-700" : "text-slate-300"}`}>
                     <GripVertical size={12} className="shrink-0 text-slate-300" />
                     <span className="flex-1 truncate">{entry.label}</span>
                     <button type="button" onClick={(e) => { e.stopPropagation(); toggleVisible(type); }} className="shrink-0 text-slate-400 hover:text-slate-700">
@@ -255,8 +322,8 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
               <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">العناصر المضافة</div>
               <div className="space-y-0.5">
                 {(fam.inserted || []).map((b) => (
-                  <div key={b.id} onClick={() => setSelected(b.id)}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold ${selected === b.id ? "border-slate-900 bg-slate-50" : "border-transparent hover:bg-slate-50"} text-slate-700`}>
+                  <div key={b.id} onClick={() => setSelected(b.id)} onMouseEnter={() => setHovered(b.id)} onMouseLeave={() => setHovered(null)}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold ${selected === b.id ? "border-violet-500 bg-violet-50" : "border-transparent hover:bg-slate-50"} text-slate-700`}>
                     <span className="flex-1 truncate">{BLOCK_REGISTRY[b.type]?.label || b.type}{b.type === "custom_text" ? `: ${b.props?.text || ""}` : ""}</span>
                     <button type="button" onClick={(e) => { e.stopPropagation(); removeInsert(b.id); if (selected === b.id) setSelected(null); }} className="shrink-0 text-slate-400 hover:text-red-600"><Trash2 size={13} /></button>
                   </div>

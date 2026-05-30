@@ -19,6 +19,24 @@ describe("LayoutRenderer designer integration", () => {
     expect(container.textContent).toContain("مُدرج بالمحرر");
   });
 
+  it("wraps blocks with selectable chrome when an editing designer is supplied", () => {
+    const onSelect = vi.fn();
+    const designer = { selectedKey: "company_name", hoveredKey: null, onSelect, onHover: () => {}, onDragStart: () => {}, onDrop: () => {} };
+    const layout = { roll: { order: ["company_name"] } };
+    const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} editing designer={designer} />);
+    const wrap = container.querySelector("[data-designer-key='company_name']");
+    expect(wrap).toBeTruthy();
+    expect(wrap.getAttribute("style")).toMatch(/7c3aed|124, 58, 237/i); // selected outline #7c3aed
+    fireEvent.click(wrap);
+    expect(onSelect).toHaveBeenCalledWith("company_name");
+  });
+
+  it("does not add selectable chrome on the print path (no designer)", () => {
+    const layout = { roll: { order: ["company_name"] } };
+    const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} />);
+    expect(container.querySelector("[data-designer-key]")).toBeNull();
+  });
+
   it("honors items_table column visibility/labels on page", () => {
     const layout = { page: { order: ["items_table"], perBlock: { items_table: { columns: [
       { key: "name", label: "البيان", visible: true, align: "right" },
@@ -47,6 +65,15 @@ describe("PrintDesigner", () => {
     const last = onChange.mock.calls.at(-1)[0];
     expect(last.layout.page.inserted.length).toBe(1);
     expect(last.layout.page.inserted[0].type).toBe("custom_text");
+  });
+
+  it("undo reverts the last change", () => {
+    const onChange = vi.fn();
+    const { getByText, getByTitle } = render(<PrintDesigner {...base} onChange={onChange} onSave={() => {}} onClose={() => {}} />);
+    fireEvent.click(getByText("نص")); // insert a custom_text
+    expect(onChange.mock.calls.at(-1)[0].layout.page.inserted.length).toBe(1);
+    fireEvent.click(getByTitle(/تراجع/)); // Undo
+    expect(onChange.mock.calls.at(-1)[0].layout.page.inserted.length).toBe(0);
   });
 
   it("Save & close persists the draft and closes", () => {
