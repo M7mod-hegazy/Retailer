@@ -6,7 +6,7 @@ import RollZoneLayout from "./families/RollZoneLayout";
 import PageWrapper from "./families/PageWrapper";
 import PageZoneLayout from "./families/PageZoneLayout";
 import { customInserts } from "./customBlockBridge";
-import { overrideStyle } from "./layout/layoutModel";
+import { overrideCss, overrideWidth } from "./layout/layoutModel";
 
 // `designer` (optional) turns on in-canvas affordances: per-block selection,
 // hover highlight, label badge, and drag-to-reorder. It is ignored for the
@@ -31,8 +31,16 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     const ov = perBlock[selKey] || {};
     const props = { ...(entry.defaultProps || {}), ...ov, ...(extraProps || {}) };
     let node = <Block key={`${type}-${key++}`} invoice={invoice} settings={settings} props={props} family={family} editing={editing} />;
-    const wrap = overrideStyle(ov);
-    if (wrap) node = <div style={wrap}>{node}</div>;
+    const css = overrideCss(ov, `[data-ov="${selKey}"]`);
+    const widthVal = overrideWidth(ov);
+    if (css || widthVal) {
+      node = (
+        <div data-ov={selKey} style={widthVal ? { width: widthVal } : undefined}>
+          {css ? <style>{css}</style> : null}
+          {node}
+        </div>
+      );
+    }
     if (editing && designer) node = wrapSelectable(node, selKey, type, entry.label, orderSet.has(selKey), designer);
     items.push({ type, group: entry.group, node: <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment> });
   };
@@ -62,34 +70,41 @@ function wrapSelectable(node, selKey, type, label, draggable, designer) {
   const selected = designer.selectedKey === selKey;
   const hovered = designer.hoveredKey === selKey;
   const dropping = designer.dragOverKey === selKey;
-  const outline = selected ? "2px solid #7c3aed" : hovered ? "1px dashed #a78bfa" : "1px solid transparent";
+  const editingText = designer.editingKey === selKey;
+  const editable = !!designer.editableOf && designer.editableOf(selKey);
+  const outline = editingText ? "2px solid #2563eb" : selected ? "2px solid #7c3aed" : hovered ? "1px dashed #a78bfa" : "1px solid transparent";
   const isDim = type === "logo" || type === "qr";
   const showWidth = !isDim;
+  const canDrag = draggable && !designer.resizing && !editingText;
   const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(e); };
   return (
     <div
       data-designer-key={selKey}
-      draggable={draggable}
-      onClick={(e) => { e.stopPropagation(); designer.onSelect(selKey); }}
+      draggable={canDrag}
+      contentEditable={editingText}
+      suppressContentEditableWarning
+      onClick={(e) => { if (!editingText) { e.stopPropagation(); designer.onSelect(selKey); } }}
+      onDoubleClick={(e) => { if (editable) { e.stopPropagation(); designer.onStartEditText && designer.onStartEditText(selKey); } }}
+      onBlur={(e) => { if (editingText) designer.onCommitText && designer.onCommitText(selKey, e.currentTarget.textContent); }}
       onMouseEnter={() => designer.onHover(selKey)}
       onMouseLeave={() => designer.onHover(null)}
       onDragStart={(e) => { e.stopPropagation(); designer.onDragStart(selKey); }}
-      onDragOver={(e) => { if (draggable) { e.preventDefault(); designer.onDragOverKey && designer.onDragOverKey(selKey); } }}
+      onDragOver={(e) => { if (canDrag) { e.preventDefault(); designer.onDragOverKey && designer.onDragOverKey(selKey); } }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); designer.onDrop(selKey); }}
       onDragEnd={() => designer.onDragEnd && designer.onDragEnd()}
-      style={{ position: "relative", cursor: draggable ? "move" : "pointer", outline, outlineOffset: "1px", borderRadius: "2px", transition: "outline-color 0.1s" }}
+      style={{ position: "relative", cursor: editingText ? "text" : canDrag ? "move" : "pointer", outline, outlineOffset: "1px", borderRadius: "2px", transition: "outline-color 0.1s" }}
     >
       {dropping && <div style={{ position: "absolute", insetInlineStart: 0, insetInlineEnd: 0, top: -2, height: 3, background: "#2563eb", zIndex: 25, borderRadius: 2 }} />}
-      {selected && (
-        <span style={{ position: "absolute", top: "-9px", insetInlineStart: "0", zIndex: 20, background: "#7c3aed", color: "#fff", fontSize: "8px", fontWeight: 900, padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap", pointerEvents: "none" }}>{label}</span>
+      {selected && !editingText && (
+        <span contentEditable={false} style={{ position: "absolute", top: "-9px", insetInlineStart: "0", zIndex: 20, background: "#7c3aed", color: "#fff", fontSize: "8px", fontWeight: 900, padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap", pointerEvents: "none" }}>{editable ? `${label} ✎` : label}</span>
       )}
       {node}
-      {selected && designer.onResizeStart && (
+      {selected && !editingText && designer.onResizeStart && (
         <>
-          <div title="تغيير الحجم" onPointerDown={stop((e) => designer.onResizeStart(selKey, isDim ? "size" : "font", e))} onDragStart={(e) => e.preventDefault()}
+          <div title="تغيير الحجم" contentEditable={false} onMouseDown={(e) => e.stopPropagation()} onPointerDown={stop((e) => designer.onResizeStart(selKey, isDim ? "size" : "font", e))} onDragStart={(e) => e.preventDefault()}
             style={{ ...HANDLE, bottom: -6, insetInlineStart: -6, cursor: "nwse-resize" }} />
           {showWidth && (
-            <div title="تغيير العرض" onPointerDown={stop((e) => designer.onResizeStart(selKey, "width", e))} onDragStart={(e) => e.preventDefault()}
+            <div title="تغيير العرض" contentEditable={false} onMouseDown={(e) => e.stopPropagation()} onPointerDown={stop((e) => designer.onResizeStart(selKey, "width", e))} onDragStart={(e) => e.preventDefault()}
               style={{ ...HANDLE, top: "50%", insetInlineStart: -6, transform: "translateY(-50%)", cursor: "ew-resize" }} />
           )}
         </>

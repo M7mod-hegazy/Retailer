@@ -6,11 +6,21 @@ import PrintDesigner from "../designer/PrintDesigner";
 const INV = { invoice_no: "INV-1", customer_name: "ز", lines: [{ product_name: "صنف", quantity: 2, unit_price: 50 }], payments: [] };
 
 describe("LayoutRenderer designer integration", () => {
-  it("applies a perBlock style override as a wrapper", () => {
-    const layout = { roll: { order: ["company_name"], perBlock: { company_name: { color: "#ff0000" } } } };
+  it("applies a perBlock style override via scoped !important CSS", () => {
+    const layout = { roll: { order: ["company_name"], perBlock: { company_name: { color: "#ff0000", fontSize: 22 } } } };
     const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} />);
     expect(container.textContent).toContain("ACME");
-    expect(container.innerHTML).toContain("color: rgb(255, 0, 0)");
+    const wrap = container.querySelector('[data-ov="company_name"]');
+    expect(wrap).toBeTruthy();
+    expect(wrap.querySelector("style").textContent).toContain("color:#ff0000 !important");
+    expect(wrap.querySelector("style").textContent).toContain("font-size:22px !important");
+  });
+
+  it("applies a width override on the wrapper element", () => {
+    const layout = { roll: { order: ["company_name"], perBlock: { company_name: { width: 60 } } } };
+    const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} />);
+    const wrap = container.querySelector('[data-ov="company_name"]');
+    expect(wrap.getAttribute("style")).toContain("width: 60%");
   });
 
   it("renders layout.inserted custom text", () => {
@@ -74,6 +84,16 @@ describe("PrintDesigner", () => {
     expect(onChange.mock.calls.at(-1)[0].layout.page.inserted.length).toBe(1);
     fireEvent.click(getByTitle(/تراجع/)); // Undo
     expect(onChange.mock.calls.at(-1)[0].layout.page.inserted.length).toBe(0);
+  });
+
+  it("double-click on the canvas edits the bound text field", () => {
+    const onChange = vi.fn();
+    render(<PrintDesigner {...base} value={{ company_name: "ACME" }} onChange={onChange} onSave={() => {}} onClose={() => {}} />);
+    fireEvent.doubleClick(document.querySelector('[data-designer-key="company_name"]'));
+    const ed = document.querySelector('[data-designer-key="company_name"]');
+    ed.textContent = "الحجازي";
+    fireEvent.blur(ed);
+    expect(onChange.mock.calls.at(-1)[0].company_name).toBe("الحجازي");
   });
 
   it("Save & close persists the draft and closes", () => {

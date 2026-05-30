@@ -42,8 +42,17 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const [dragIdx, setDragIdx] = useState(null);     // outline drag (by index)
   const [canvasDrag, setCanvasDrag] = useState(null); // canvas drag (by key)
   const [dragOverKey, setDragOverKey] = useState(null);
+  const [resizing, setResizing] = useState(false);
+  const [editingKey, setEditingKey] = useState(null);
   const printRef = useRef(null);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // Blocks whose visible text maps to an editable field (inline double-click).
+  const EDIT_TOP = { company_name: "company_name", branch: "branch_name", footer_text: "receipt_footer", receipt_header_text: "receipt_header" };
+  const editableOf = (key) => {
+    if ((draft.layout[family].inserted || []).some((b) => b.id === key && b.type === "custom_text")) return "insert";
+    return EDIT_TOP[key] || null;
+  };
 
   // reset when (re)opened
   useEffect(() => { setDraft(ensureLayout(value)); setPast([]); setFuture([]); setSelected(null); setHovered(null); }, [open]);
@@ -106,6 +115,12 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     if (!selected) return;
     setFamLayout((c) => { const order = [...c.order]; const i = order.indexOf(selected); const j = i + dir; if (i < 0 || j < 0 || j >= order.length) return {}; [order[i], order[j]] = [order[j], order[i]]; return { order }; });
   };
+  const bumpFont = (d) => {
+    if (!selected) return;
+    if (selected === "logo") setTopLevel("logo_max_height", clamp((Number(merged.logo_max_height) || 48) + d * 4, 16, 400));
+    else if (selected === "qr") setTopLevel("qr_size", clamp((Number(merged.qr_size) || 44) + d * 4, 24, 400));
+    else setOverride(selected, { fontSize: clamp((Number(ov(selected).fontSize) || Number(merged.item_font_size) || 11) + d, 6, 72) });
+  };
 
   // ── per-block style overrides ────────────────────────────────────────────
   const ov = (key) => (draft.layout[family].perBlock || {})[key] || {};
@@ -123,6 +138,23 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const removeInsert = (id) => setFamLayout((c) => ({ inserted: (c.inserted || []).filter((b) => b.id !== id) }));
   const setInsert = (id, patch) =>
     setFamLayout((c) => ({ inserted: (c.inserted || []).map((b) => (b.id === id ? { ...b, ...patch, props: { ...b.props, ...(patch.props || {}) } } : b)) }));
+  const duplicateSelected = () => {
+    const src = (fam.inserted || []).find((b) => b.id === selected);
+    if (!src) return; // only inserted elements can be duplicated
+    const id = newInsertId();
+    setFamLayout((c) => ({ inserted: [...(c.inserted || []), { ...src, id, props: { ...src.props } }] }));
+    setSelected(id);
+  };
+
+  // Inline text editing (double-click on canvas) → write the bound field.
+  const startEditText = (key) => setEditingKey(key);
+  const commitText = (key, text) => {
+    setEditingKey(null);
+    const t = (text || "").trim();
+    if (EDIT_TOP[key]) { if ((merged[EDIT_TOP[key]] || "") !== t) setTopLevel(EDIT_TOP[key], t); return; }
+    const ins = (fam.inserted || []).find((b) => b.id === key);
+    if (ins && (ins.props?.text || "") !== t) setInsert(key, { props: { text: t } });
+  };
 
   const deleteSelected = () => {
     if (!selected) return;
@@ -161,23 +193,24 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     else if (key === "logo") { base = Number(merged.logo_max_height) || 48; applyVal = (v) => setTopLive("logo_max_height", clamp(Math.round(v), 16, 400)); }
     else if (key === "qr") { base = Number(merged.qr_size) || 44; applyVal = (v) => setTopLive("qr_size", clamp(Math.round(v), 24, 400)); }
     else { base = Number((famBase.perBlock || {})[key]?.fontSize) || Number(merged.item_font_size) || 11; applyVal = (v) => setOvLive(key, { fontSize: clamp(Math.round(v), 6, 72) }); }
-    setPast((p) => [...p, draftBase]); setFuture([]);
+    setPast((p) => [...p, draftBase]); setFuture([]); setResizing(true);
     const move = (ev) => {
       if (horizontal) applyVal(base + ((startX - ev.clientX) / z) * 0.4);
       else applyVal(base + ((ev.clientY - startY) / z) * (axis === "font" ? 0.3 : 1));
     };
-    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    const up = () => { setResizing(false); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
-  // ── canvas designer context (selection + hover + drag + resize) ──────────
+  // ── canvas designer context (selection + hover + drag + resize + edit) ───
   const designer = {
-    selectedKey: selected, hoveredKey: hovered, dragOverKey,
+    selectedKey: selected, hoveredKey: hovered, dragOverKey, editingKey, resizing,
     onSelect: setSelected, onHover: setHovered,
     onDragStart: setCanvasDrag, onDragOverKey: setDragOverKey,
     onDrop: (toKey) => { reorderByKey(canvasDrag, toKey); setCanvasDrag(null); setDragOverKey(null); },
     onDragEnd: () => { setCanvasDrag(null); setDragOverKey(null); },
     onResizeStart,
+    editableOf, onStartEditText: startEditText, onCommitText: commitText,
   };
 
   // Registry blocks valid for this family that are not currently in the order
@@ -197,13 +230,16 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
       if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
-      if (typing) return;
+      if (typing || editingKey) return;
       if (e.key === "Escape") { setSelected(null); return; }
+      if (mod && e.key.toLowerCase() === "d" && selected) { e.preventDefault(); duplicateSelected(); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); mod ? bumpFont(1) : nudge(-1); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); mod ? bumpFont(-1) : nudge(1); return; }
       if ((e.key === "Delete" || e.key === "Backspace") && selected) { e.preventDefault(); deleteSelected(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [open, selected, past, future, draft, family]);
+  }, [open, selected, past, future, draft, family, editingKey]);
 
   // ── test print ───────────────────────────────────────────────────────────
   const testPrint = () => {
@@ -304,7 +340,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             </button>
           ))}
           <div className="mt-2 rounded-lg bg-slate-50 p-2 text-[9px] font-bold leading-relaxed text-slate-400">
-            انقر عنصراً في المعاينة لتحديده • اسحبه لتغيير ترتيبه • Delete للإخفاء • Ctrl+Z للتراجع
+            انقر عنصراً لتحديده • نقرة مزدوجة لتحرير النص • اسحب مقابض ⬤ لتغيير الحجم/العرض • اسحب لإعادة الترتيب • الأسهم للنقل و Ctrl+الأسهم للحجم • Ctrl+D تكرار • Delete إخفاء • Ctrl+Z تراجع
           </div>
         </div>
 

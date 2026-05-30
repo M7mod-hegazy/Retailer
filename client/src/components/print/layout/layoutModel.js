@@ -68,6 +68,26 @@ export function overrideStyle(o = {}) {
   return Object.keys(style).length ? style : null;
 }
 
+// Width lives on the wrapper element itself (a value the block can't fight).
+export function overrideWidth(o = {}) {
+  if (o && o.width != null && o.width !== "") return typeof o.width === "number" ? `${o.width}%` : o.width;
+  return null;
+}
+
+// Font/color/weight/style/align must beat the block's own inline styles, so we
+// emit scoped `!important` rules that target the wrapper and its descendants.
+export function overrideCss(o = {}, selector) {
+  if (!o) return "";
+  const d = [];
+  if (o.fontSize != null && o.fontSize !== "") d.push(`font-size:${o.fontSize}px !important`);
+  if (o.color) d.push(`color:${o.color} !important`);
+  if (o.bold != null) d.push(`font-weight:${o.bold ? 900 : 400} !important`);
+  if (o.italic) d.push("font-style:italic !important");
+  if (o.align) d.push(`text-align:${o.align} !important`);
+  if (!d.length) return "";
+  return `${selector},${selector} *{${d.join(";")}}`;
+}
+
 export function seedFamilyLayout(family) {
   return {
     order: [...DEFAULT_ORDER[family]],
