@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   X, RotateCcw, Printer, Save, GripVertical, Eye, EyeOff, Trash2,
   Bold, Italic, AlignRight, AlignCenter, AlignLeft, Type, Minus, Square, QrCode,
@@ -146,8 +147,8 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     </button>
   );
 
-  return (
-    <div dir="rtl" className="fixed inset-0 z-[100] flex flex-col bg-slate-100">
+  return createPortal((
+    <div dir="rtl" className="fixed inset-0 z-[9999] flex flex-col bg-slate-100">
       {/* hidden clean render for test print */}
       <div ref={printRef} style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none", width: SHEET_W[size] }}>
         <LayoutRenderer family={family} size={size} invoice={MOCK} settings={merged} layout={draftForRender.layout} />
@@ -321,5 +322,5 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }
