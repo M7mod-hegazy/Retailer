@@ -34,12 +34,10 @@ export default function Modal({ open, title, onClose, children, maxWidth = "max-
     if (sidebar) resizeObserver.observe(sidebar);
     if (main) resizeObserver.observe(main);
     window.addEventListener("resize", measure);
-    const timer = window.setInterval(measure, 250);
 
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener("resize", measure);
-      window.clearInterval(timer);
     };
   }, [open]);
 

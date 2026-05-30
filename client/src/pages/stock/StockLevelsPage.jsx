@@ -92,7 +92,7 @@ function StatusBadge({ qty, min }) {
 }
 
 export default function StockLevelsPage() {
-  usePageTour('stock_transfer');
+  usePageTour('stock');
   const location = useLocation();
   const [tab, setTab] = useState(() =>
     location.pathname.endsWith("/transfer") ? "transfer" : "levels"

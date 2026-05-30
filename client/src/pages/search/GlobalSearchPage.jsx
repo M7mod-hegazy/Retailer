@@ -107,31 +107,49 @@ export default function GlobalSearchPage() {
   // ── Suggestions (fast, 80ms, shows pages always) ─────────────────────────
   useEffect(() => {
     if (!isOpen) return;
+    const controller = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const r = await api.get("/api/search/suggestions", { params: { q: query.trim() || undefined } });
+        const r = await api.get("/api/search/suggestions", {
+          params: { q: query.trim() || undefined },
+          signal: controller.signal,
+        });
         setSuggestions(r.data?.data || []);
       } catch { setSuggestions([]); }
-    }, 80);
-    return () => clearTimeout(t);
+    }, 150);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [isOpen, query]);
 
   // ── Deep search (200ms, starts at 1 char) ────────────────────────────────
   useEffect(() => {
-    if (!isOpen || query.trim().length < 1) { setResults([]); return; }
+    if (!isOpen || query.trim().length < 2) { setResults([]); setLoading(false); return; }
+    const controller = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const r = await api.get("/api/search", { params: { q: query.trim() } });
+        const r = await api.get("/api/search", {
+          params: { q: query.trim() },
+          signal: controller.signal,
+        });
         setResults(r.data?.data || []);
-      } catch { setResults([]); } finally { setLoading(false); }
-    }, 200);
-    return () => clearTimeout(t);
+      } catch (err) {
+        if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") setResults([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 300);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [isOpen, query]);
 
   // Flat item list for keyboard nav
   const flatItems = useMemo(() => {
-    if (query.trim().length < 1) return suggestions;
+    if (query.trim().length < 2) return suggestions;
     return results;
   }, [query, results, suggestions]);
 
@@ -156,7 +174,7 @@ export default function GlobalSearchPage() {
 
   if (!isOpen) return null;
 
-  const showSearch  = query.trim().length >= 1;
+  const showSearch  = query.trim().length >= 2;
   const grouped     = buildGrouped(results);
 
   // Build flat→grouped index map for keyboard nav highlight

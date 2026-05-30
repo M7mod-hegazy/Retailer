@@ -1,0 +1,72 @@
+<h2>Column control + what happens to the old settings panel</h2>
+<p class="subtitle">Left: selecting the items table turns the inspector into a full column editor. Right: how today's Print Settings tab changes if we split layout vs. data.</p>
+
+<div class="split">
+
+  <!-- LEFT: column editor -->
+  <div class="mockup">
+    <div class="mockup-header">Items table selected → Inspector = column editor</div>
+    <div class="mockup-body" style="font-size:11px">
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+        <div class="label">Columns (drag ⠿ to reorder)</div>
+        <div style="margin-top:6px;line-height:2">
+          <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border-radius:4px;padding:2px 6px">⠿ ☑ كود <span style="flex:1"></span><span style="background:#eef;border-radius:3px;padding:0 5px">عرض: auto ▾</span><span>⇥</span></div>
+          <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border-radius:4px;padding:2px 6px">⠿ ☑ الصنف <span style="flex:1"></span><span style="background:#eef;border-radius:3px;padding:0 5px">عرض: 2.0 ▾</span><span>⇤</span></div>
+          <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border-radius:4px;padding:2px 6px">⠿ ☑ كمية <span style="flex:1"></span><span style="background:#eef;border-radius:3px;padding:0 5px">عرض: 0.5 ▾</span><span>⇥center⇤</span></div>
+          <div style="display:flex;align-items:center;gap:6px;background:#fee;border-radius:4px;padding:2px 6px;opacity:.7">⠿ ☐ سعر الوحدة <span style="flex:1"></span><span style="opacity:.5">(hidden)</span></div>
+          <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border-radius:4px;padding:2px 6px">⠿ ☑ إجمالي <span style="flex:1"></span><span style="background:#eef;border-radius:3px;padding:0 5px">عرض: 1.0 ▾</span><span>⇥</span></div>
+        </div>
+        <div style="margin-top:8px;border:1px dashed #cbd5e1;border-radius:4px;padding:4px;text-align:center;color:#6366f1">＋ add column (from item fields: باركود، وحدة، ضريبة…)</div>
+        <div style="margin-top:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:5px;font-size:9px">fit meter: ●●●○ مناسب — warns if columns overflow the paper width</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: old panel after split -->
+  <div class="mockup">
+    <div class="mockup-header">Print Settings tab — AFTER (data only + Open Designer)</div>
+    <div class="mockup-body" style="font-size:11px">
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+        <div class="label" style="color:#16a34a">KEEP — business data (shared by all docs)</div>
+        <div style="line-height:1.9;margin-top:4px">
+          • نسبة الضريبة · رمز العملة<br>
+          • بادئات الترقيم (INV / PO …)<br>
+          • اسم الشركة · الفرع · العنوان · الرقم الضريبي<br>
+          • رفع الشعار
+        </div>
+        <div class="label" style="color:#dc2626;margin-top:10px">MOVES INTO DESIGNER (removed here)</div>
+        <div style="line-height:1.9;margin-top:4px;text-decoration:line-through;opacity:.55">
+          • show_* toggles · أحجام الخطوط · المحاذاة<br>
+          • الهوامش · حجم الشعار/الـQR · النصوص المخصصة
+        </div>
+        <hr style="margin:10px 0;border:0;border-top:1px solid #e2e8f0">
+        <div class="label">Per document</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+          <span style="background:#0f172a;color:#fff;border-radius:4px;padding:3px 8px">إيصال POS ✏️ Designer</span>
+          <span style="background:#0f172a;color:#fff;border-radius:4px;padding:3px 8px">فاتورة ✏️ Designer</span>
+          <span style="background:#0f172a;color:#fff;border-radius:4px;padding:3px 8px">أمر شراء ✏️ Designer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="margin-top:20px">So: keep, split, or delete the current controls?</h3>
+<div class="options">
+  <div class="option" data-choice="split" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Split — Designer owns layout, settings tab keeps data <span style="color:#16a34a">(Recommended)</span></h3>
+      <p>Layout controls (toggles, fonts, margins, custom text) are <b>removed</b> from the old panel and live only in the Designer = one source of truth, no sync bugs. The settings tab keeps tax/currency/prefixes/company info/logo and gains an "Open Designer" button per doc type. Your existing settings auto-seed the first layout, so nothing is lost.</p></div>
+  </div>
+  <div class="option" data-choice="keepboth" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Keep both, kept in sync</h3>
+      <p>Old toggles AND the Designer both edit layout, mirrored two-way. Familiar for existing users, but two sources of truth → real risk of drift/bugs (the kind we already found in the audit).</p></div>
+  </div>
+  <div class="option" data-choice="deleteall" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content"><h3>Delete the panel entirely — everything in the Designer</h3>
+      <p>Even tax/currency/company info move into the Designer. Cleanest single screen, but those values are shared across all documents, so editing them inside a per-doc designer is awkward and easy to get inconsistent.</p></div>
+  </div>
+</div>

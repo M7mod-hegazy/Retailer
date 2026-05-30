@@ -450,6 +450,7 @@ export default function POSPage() {
   const [closeShiftModal, setCloseShiftModal] = useState(false);
   const [customers, setCustomers]         = useState([]);
   const [items, setItems]                 = useState([]);
+  const [itemCategories, setItemCategories] = useState([]);
   const [warehouses, setWarehouses]       = useState([]);
   const [banks, setBanks]                 = useState([]);
   const [treasuries, setTreasuries]       = useState([]);
@@ -616,34 +617,58 @@ export default function POSPage() {
 
   useEffect(() => { setCustomerQuery(customer?.name || ""); }, [customer]);
 
-  useEffect(() => {
-    api.get("/api/customers").then((r) => setCustomers(r.data.data || [])).catch(() => {});
-    api.get("/api/items").then((r) => setItems(r.data.data || [])).catch(() => {});
-    api.get("/api/warehouses").then((r) => setWarehouses(r.data.data || [])).catch(() => {});
-    api.get("/api/banks").then((r) => setBanks(r.data.data || [])).catch(() => {});
-    api.get("/api/treasuries").then((r) => setTreasuries(r.data.data || [])).catch(() => {});
-    api.get("/api/units").then((r) => setUnits(r.data.data || [])).catch(() => {});
-    api.get("/api/employees").then((r) => setEmployees(r.data.data || [])).catch(() => {});
-    api.get("/api/stock/levels").then((r) => {
-      const grouped = {};
-      (r.data.data || []).forEach(row => {
-        if (!grouped[row.item_id]) grouped[row.item_id] = {};
-        grouped[row.item_id][row.warehouse_id] = row.quantity;
+  const mergeStockRows = useCallback((rows = []) => {
+    setStockLevels((prev) => {
+      const next = { ...prev };
+      rows.forEach((row) => {
+        if (!row?.item_id) return;
+        const itemKey = row.item_id;
+        next[itemKey] = { ...(next[itemKey] || {}) };
+        next[itemKey][row.warehouse_id] = Number(row.quantity || 0);
       });
-      setStockLevels(grouped);
+      return next;
+    });
+  }, []);
+
+  const fetchStockForItems = useCallback(async (itemIds = []) => {
+    const ids = [...new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))];
+    if (!ids.length) return;
+    try {
+      const res = await api.get("/api/stock/levels", {
+        params: { item_ids: ids.join(","), limit: Math.max(ids.length * Math.max(warehouses.length, 1), 50) },
+      });
+      mergeStockRows(res.data?.data || []);
+    } catch {
+      // Stock is still checked again by the invoice save path.
+    }
+  }, [mergeStockRows, warehouses.length]);
+
+  useEffect(() => {
+    api.get("/api/pos/bootstrap").then((r) => {
+      const data = r.data?.data || {};
+      setCustomers(data.customers || []);
+      setItems(data.items || []);
+      setItemCategories(data.categories || []);
+      setWarehouses(data.warehouses || []);
+      setBanks(data.banks || []);
+      setTreasuries(data.treasuries || []);
+      setUnits(data.units || []);
+      setEmployees(data.employees || []);
+      mergeStockRows(data.stock_levels || []);
       setStockLoaded(true);
-    }).catch(() => { setStockLoaded(true); });
-    api.get("/api/settings").then((r) => {
-      const s = r.data.data || {};
+      const s = data.settings || {};
       setStoreSettings(s);
       if (s.default_pos_view) setViewMode(s.default_pos_view);
-    }).catch(() => {});
-    api.get("/api/payment-methods").then((r) => {
-      const all = r.data.data || [];
+      const all = data.payment_methods || [];
       setPaymentMethods(all);
       setCustomPayMethods(all.filter(m => !m.is_system));
-    }).catch(() => {});
-  }, []);
+    }).catch(() => { setStockLoaded(true); });
+  }, [mergeStockRows]);
+
+  useEffect(() => {
+    const ids = lines.map((line) => line.item_id);
+    fetchStockForItems(ids);
+  }, [lines, fetchStockForItems]);
 
   useEffect(() => {
     if (!warehouses.length) return;
@@ -914,10 +939,33 @@ export default function POSPage() {
   }, [customerLookupOpen, customerQuery, customers]);
 
   useEffect(() => {
+    if (!customerLookupOpen) return;
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      const q = customerQuery.trim();
+      api.get("/api/customers", {
+        params: { search: q || undefined, limit: 8 },
+        signal: controller.signal,
+      })
+        .then((r) => setCustomers(r.data?.data || []))
+        .catch((err) => {
+          if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
+            // Keep the bootstrap customers as a fallback.
+          }
+        });
+    }, 180);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [customerLookupOpen, customerQuery]);
+
+  useEffect(() => {
     const q = (itemNameQuery || itemCodeQuery).trim();
     if (!q) { setSearchedItemResults([]); setSearchedItemOffset(0); setSearchedItemHasMore(false); return; }
+    const controller = new AbortController();
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+      api.get("/api/items", { params: { search: q, limit: ITEM_PAGE, offset: 0 }, signal: controller.signal })
         .then(r => {
           const rows = (r.data.data || []).map(item => ({
             ...item,
@@ -926,17 +974,57 @@ export default function POSPage() {
           }));
           setSearchedItemResults(rows);
           setSearchedItemOffset(rows.length);
-          setSearchedItemHasMore(rows.length === ITEM_PAGE);
+          setSearchedItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === ITEM_PAGE));
         }).catch(() => {});
     }, 250);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [itemNameQuery, itemCodeQuery]);
+
+  useEffect(() => {
+    const q = detailedSearchQuery.trim();
+    if (!q) return;
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      api.get("/api/items", { params: { search: q, limit: 120, offset: 0 }, signal: controller.signal })
+        .then((r) => {
+          const rows = r.data?.data || [];
+          setItems(rows);
+          fetchStockForItems(rows.map((item) => item.id));
+        })
+        .catch(() => {});
+    }, 250);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [detailedSearchQuery, fetchStockForItems]);
+
+  useEffect(() => {
+    if (detailedCategoryFilter === "all" || detailedSearchQuery.trim()) return;
+    const category = itemCategories.find((entry) => String(entry.name || "غير مصنف") === detailedCategoryFilter);
+    if (!category?.id) return;
+    const controller = new AbortController();
+    api.get("/api/items", {
+      params: { category_id: category.id, limit: 120, offset: 0 },
+      signal: controller.signal,
+    })
+      .then((r) => {
+        const rows = r.data?.data || [];
+        setItems(rows);
+        fetchStockForItems(rows.map((item) => item.id));
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [detailedCategoryFilter, detailedSearchQuery, fetchStockForItems, itemCategories]);
 
   function loadMorePOSItems() {
     const q = (itemNameQuery || itemCodeQuery).trim();
     if (!searchedItemHasMore || !q || isLoadingMoreItems) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${searchedItemOffset}`)
+    api.get("/api/items", { params: { search: q, limit: ITEM_PAGE, offset: searchedItemOffset } })
       .then(r => {
         const rows = (r.data.data || []).map(item => ({
           ...item,
@@ -945,7 +1033,7 @@ export default function POSPage() {
         }));
         setSearchedItemResults(prev => [...prev, ...rows]);
         setSearchedItemOffset(prev => prev + rows.length);
-        setSearchedItemHasMore(rows.length === ITEM_PAGE);
+        setSearchedItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === ITEM_PAGE));
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
@@ -973,9 +1061,12 @@ export default function POSPage() {
   }, [detailedSearchQuery, itemNameQuery, itemCodeQuery, items, detailedCategoryFilter, detailedSortConfig]);
 
   const detailedCategories = useMemo(() => {
-    const names = Array.from(new Set(items.map((item) => String(item.category_name || "غير مصنف"))));
+    const names = Array.from(new Set([
+      ...itemCategories.map((category) => String(category.name || "غير مصنف")),
+      ...items.map((item) => String(item.category_name || "غير مصنف")),
+    ])).filter(Boolean);
     return ["all", ...names];
-  }, [items]);
+  }, [itemCategories, items]);
 
   const sortedLines = useMemo(() => {
     if (!cartSortConfig.key) return lines;
@@ -1047,6 +1138,10 @@ export default function POSPage() {
   function handleSelectItem(item) {
     activateInvoice();
     setSelectedItem(item);
+    if (item?.id && item.id !== -1) {
+      setItems((prev) => prev.some((entry) => entry.id === item.id) ? prev : [item, ...prev]);
+      fetchStockForItems([item.id]);
+    }
     setItemNameQuery(item.name || "");
     setItemCodeQuery(item.code || item.item_code || item.barcode || "");
     setSearchedItemResults([]);
@@ -1432,7 +1527,7 @@ export default function POSPage() {
     const itemStock = stockLevels[itemId] || stockLevels[Number(itemId)] || stockLevels[String(itemId)];
     let currentStock;
     if (!itemStock) {
-      currentStock = 0;
+      return Infinity;
     } else if (warehouseId != null) {
       const val = itemStock[warehouseId] ?? itemStock[Number(warehouseId)] ?? itemStock[String(warehouseId)];
       currentStock = val !== undefined ? Number(val) : Object.entries(itemStock).filter(([k]) => k !== "null").reduce((a, [, b]) => a + Number(b), 0);

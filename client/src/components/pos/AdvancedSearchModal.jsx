@@ -66,8 +66,6 @@ export default function AdvancedSearchModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    setError(false);
     setSearch("");
     setCategoryFilter("");
     setWarehouseFilter("");
@@ -76,11 +74,32 @@ export default function AdvancedSearchModal({ open, onClose }) {
     setQtyMin("");
     setQtyMax("");
     setHideZero(false);
-    api.get("/api/stock/levels")
-      .then((res) => setRows(res.data.data || []))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      setLoading(true);
+      setError(false);
+      api.get("/api/stock/levels", {
+        params: {
+          search: search.trim() || undefined,
+          limit: 300,
+        },
+        signal: controller.signal,
+      })
+        .then((res) => setRows(res.data.data || []))
+        .catch((err) => {
+          if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") setError(true);
+        })
+        .finally(() => setLoading(false));
+    }, search.trim() ? 220 : 0);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [open, search]);
 
   const categories = useMemo(() => [...new Set(rows.map((r) => r.category_name).filter(Boolean))].sort(), [rows]);
   const warehouses = useMemo(() => [...new Set(rows.map((r) => r.warehouse_name).filter(Boolean))].sort(), [rows]);

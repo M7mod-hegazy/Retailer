@@ -33,11 +33,31 @@ router.get("/balance-summary", requirePagePermission("suppliers", "view"), (req,
 
 router.get("/", requirePagePermission("suppliers", "view"), (req, res) => {
   const showArchived = req.query.archived === 'true';
-  const query = showArchived 
-    ? "SELECT * FROM suppliers WHERE is_active = 0 ORDER BY id DESC"
-    : "SELECT * FROM suppliers WHERE is_active = 1 OR is_active IS NULL ORDER BY id DESC";
-  const rows = getDb().prepare(query).all();
-  res.json({ success: true, data: rows });
+  const search = String(req.query.search || "").trim();
+  const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : null;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+  const params = [];
+  const clauses = [showArchived ? "is_active = 0" : "(is_active = 1 OR is_active IS NULL)"];
+
+  if (search) {
+    clauses.push("(name LIKE ? OR phone LIKE ? OR code LIKE ?)");
+    const like = `%${search}%`;
+    params.push(like, like, like);
+  }
+
+  const where = `WHERE ${clauses.join(" AND ")}`;
+  let query = `SELECT * FROM suppliers ${where} ORDER BY id DESC`;
+  const total = limit
+    ? getDb().prepare(`SELECT COUNT(*) AS total FROM suppliers ${where}`).get(...params).total
+    : null;
+
+  if (limit) {
+    query += " LIMIT ? OFFSET ?";
+    params.push(limit, offset);
+  }
+
+  const rows = getDb().prepare(query).all(...params);
+  res.json({ success: true, data: rows, meta: { offset, limit, count: rows.length, total: total ?? rows.length } });
 });
 
 router.post("/", requirePagePermission("suppliers", "add"), (req, res) => {

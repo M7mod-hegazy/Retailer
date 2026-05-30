@@ -35,7 +35,8 @@ function authRequired(req, _res, next) {
 
     req.user = user;
     return next();
-  } catch (_e) {
+  } catch (e) {
+    console.error("[AUTH] Token verification failed:", e.message);
     const err = new Error("رمز دخول غير صالح");
     err.status = 401;
     return next(err);

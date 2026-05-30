@@ -1,0 +1,43 @@
+<h2>The only question: what to do with the OLD look-buttons?</h2>
+<p class="subtitle">Today everything is mixed in one page. The new Designer handles the "look". So we just decide what to keep in the old page.</p>
+
+<div class="mockup" style="margin-bottom:18px">
+  <div class="mockup-header">TODAY — one page, two kinds mixed together</div>
+  <div class="mockup-body" style="display:flex;gap:10px;font-size:12px">
+    <div style="flex:1;background:#ecfdf5;border:1px solid #86efac;border-radius:6px;padding:10px">
+      <b style="color:#16a34a">FACTS / VALUES</b><br>
+      tax % · currency<br>company name · logo<br>numbering prefixes
+    </div>
+    <div style="flex:1;background:#eef2ff;border:1px solid #a5b4fc;border-radius:6px;padding:10px">
+      <b style="color:#4f46e5">LOOK / DESIGN</b><br>
+      show/hide logo · font size<br>order of blocks · margins<br>custom text
+    </div>
+  </div>
+</div>
+
+<h3>Two simple choices:</h3>
+<div class="options">
+
+  <div class="option" data-choice="split" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Move the "look" buttons into the Designer <span style="color:#16a34a">(Recommended)</span></h3>
+      <p>The old page keeps only the <b>FACTS</b> (tax, currency, company, logo). All the <b>LOOK</b> stuff is done in the Designer by dragging. → One clear place for design. No confusion.</p>
+      <div style="display:flex;gap:10px;margin-top:10px;font-size:11px">
+        <div style="flex:1;background:#ecfdf5;border:1px solid #86efac;border-radius:6px;padding:8px"><b>Old page</b><br>facts only ✅</div>
+        <div style="flex:1;background:#eef2ff;border:1px solid #a5b4fc;border-radius:6px;padding:8px"><b>New Designer</b><br>all the look 🎨</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="keepboth" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Keep the old look-buttons too (in both places)</h3>
+      <p>You could change the look from the old page OR the Designer. Sounds flexible, but two places controlling the same thing usually causes bugs and confusion (this is the same kind of problem I already found in your audit).</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:14px"><b>Nothing is lost either way</b> — when you first open the Designer, it automatically copies your current settings as the starting design.</p>

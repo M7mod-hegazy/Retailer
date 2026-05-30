@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import DesktopLayout from "./DesktopLayout";
 import MobileLayout from "./MobileLayout";
 import api from "../../services/api";
@@ -6,6 +7,8 @@ import { syncOfflineData } from "../../services/offlineSync";
 import { PageTour } from "../help/PageTour";
 import { useHelpStore } from "../../stores/helpStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { usePageTour } from "../../hooks/usePageTour";
+import { getHelpPageKey } from "../../help/routeHelp";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -15,6 +18,13 @@ function useIsMobile() {
     return () => window.removeEventListener("resize", handler);
   }, []);
   return isMobile;
+}
+
+function RouteHelpTrigger() {
+  const location = useLocation();
+  const pageKey = getHelpPageKey(location.pathname);
+  usePageTour(pageKey);
+  return null;
 }
 
 export default function AppShell({ children }) {
@@ -96,6 +106,7 @@ export default function AppShell({ children }) {
       <div className="shell-frame relative min-h-screen pointer-events-auto">
         {isMobile ? <MobileLayout branding={branding}>{children}</MobileLayout> : <DesktopLayout branding={branding}>{children}</DesktopLayout>}
       </div>
+      <RouteHelpTrigger />
       <PageTour />
     </>
   );

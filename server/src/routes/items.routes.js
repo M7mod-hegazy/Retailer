@@ -168,7 +168,34 @@ function computeCodeAndSequence({ categoryId, incomingCode, currentCode }) {
   return { code: `${prefix}.${next}`, skuSequence: next };
 }
 
+function buildItemsWhere({ search = "", categoryId = null, includeDeleted = false } = {}) {
+  let where = " WHERE 1 = 1";
+  const params = [];
+
+  if (!includeDeleted) {
+    where += " AND i.deleted_at IS NULL";
+  }
+  if (search) {
+    where += " AND (i.name LIKE ? OR i.name_en LIKE ? OR i.barcode LIKE ? OR i.code LIKE ?)";
+    const like = `%${search}%`;
+    params.push(like, like, like, like);
+  }
+  if (categoryId) {
+    where += " AND i.category_id = ?";
+    params.push(Number(categoryId));
+  }
+
+  return { where, params };
+}
+
+function getItemsTotal(search = "", categoryId = null, includeDeleted = false) {
+  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted });
+  const row = getDb().prepare(`SELECT COUNT(*) AS total FROM items i ${where}`).get(...params);
+  return Number(row?.total || 0);
+}
+
 function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0 } = {}) {
+  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted });
   let sql = `
     SELECT i.*, c.name AS category_name, c.sku_prefix, u.name AS unit_name,
            COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity,
@@ -177,23 +204,8 @@ function getItemsList(search = "", categoryId = null, includeDeleted = false, { 
     FROM items i
     LEFT JOIN item_categories c ON c.id = i.category_id
     LEFT JOIN units u ON u.id = i.unit_id
-    WHERE 1 = 1
+    ${where}
   `;
-  const params = [];
-  if (!includeDeleted) {
-    sql += " AND i.deleted_at IS NULL";
-  }
-  // In paginated mode (limit provided), skip WHERE filter so all items appear ordered by relevance.
-  // In non-paginated mode, filter to matching items only (backward compat for list pages).
-  if (search && !limit) {
-    sql += " AND (i.name LIKE ? OR i.name_en LIKE ? OR i.barcode LIKE ? OR i.code LIKE ?)";
-    const like = `%${search}%`;
-    params.push(like, like, like, like);
-  }
-  if (categoryId) {
-    sql += " AND i.category_id = ?";
-    params.push(Number(categoryId));
-  }
   if (search) {
     // Exact code → code prefix → code contains → name prefix → name contains → everything else
     sql += `
@@ -229,25 +241,25 @@ router.get("/", requirePagePermission("items", "view"), (req, res) => {
   const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 200) : null;
   const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
   const rows = getItemsList(search, categoryId, includeDeleted, { limit, offset });
-  res.json({ success: true, data: rows, meta: { offset, limit, count: rows.length } });
+  const total = limit ? getItemsTotal(search, categoryId, includeDeleted) : rows.length;
+  res.json({
+    success: true,
+    data: rows,
+    meta: {
+      offset,
+      limit,
+      count: rows.length,
+      total,
+      has_more: limit ? offset + rows.length < total : false,
+    },
+  });
 });
 
 router.get("/search/detailed", requirePagePermission("items", "view"), (req, res) => {
-  const query = String(req.query.q || "").trim().toLowerCase();
+  const query = String(req.query.q || "").trim();
   const limit = Math.min(Math.max(Number(req.query.limit || 30), 1), 200);
-  const allItems = getItemsList("");
-
-  const filtered = query
-    ? allItems.filter((item) => {
-        const name = String(item.name || "").toLowerCase();
-        const code = String(item.code || "").toLowerCase();
-        const barcode = String(item.barcode || "").toLowerCase();
-        const category = String(item.category_name || "").toLowerCase();
-        return name.includes(query) || code.includes(query) || barcode.includes(query) || category.includes(query);
-      })
-    : allItems;
-
-  res.json({ success: true, data: filtered.slice(0, limit) });
+  const rows = getItemsList(query, null, false, { limit, offset: 0 });
+  res.json({ success: true, data: rows });
 });
 
 router.get("/barcode/:barcode", requirePagePermission("items", "view"), (req, res) => {

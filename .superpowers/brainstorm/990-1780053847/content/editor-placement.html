@@ -1,0 +1,59 @@
+<h2>Where does the drag-editing happen?</h2>
+<p class="subtitle">You already have a live preview + a toggle/number sidebar in the Print Settings tab. The question is how the new "drag mode" relates to it. Click the one that fits how your users work.</p>
+
+<div class="options" style="gap:18px">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content" style="flex:1">
+      <h3>Edit-mode toggle on the existing preview <span style="color:#16a34a">(Recommended)</span></h3>
+      <p>The preview you already render becomes interactive when "تحرير التخطيط" is on. The toggle/number sidebar stays as an "advanced" panel. Lowest risk — reuses the hover-highlight wiring you already have.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Print Settings tab — [ معاينة | ✏️ تحرير التخطيط ]</div>
+        <div class="mockup-body" style="display:flex;gap:8px">
+          <div style="flex:1;border:2px dashed #6366f1;border-radius:6px;padding:8px;font-size:11px">
+            <div style="background:#eef;padding:4px;border-radius:3px">⠿ LOGO ▢ ↔</div>
+            <div style="background:#eef;padding:4px;border-radius:3px;margin-top:4px">⠿ HEADER ▢ ↔</div>
+            <div style="background:#eef;padding:4px;border-radius:3px;margin-top:4px">⠿ ITEMS ▢</div>
+            <div style="background:#dfd;padding:4px;border-radius:3px;margin-top:4px">⠿ TOTALS ▢ (selected)</div>
+          </div>
+          <div style="width:90px;border:1px solid #ddd;border-radius:6px;padding:6px;font-size:10px;color:#888">advanced<br>toggles<br>+ numbers</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content" style="flex:1">
+      <h3>Canvas-first — sidebar becomes a context panel</h3>
+      <p>Everything is done by clicking/dragging blocks. The sidebar only shows properties of the <em>selected</em> block (font, align, visibility). Cleaner, more "Word-like", but a bigger rebuild of the settings tab.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Layout editor</div>
+        <div class="mockup-body" style="display:flex;gap:8px">
+          <div style="flex:1;border:2px solid #6366f1;border-radius:6px;padding:8px;font-size:11px">
+            <div style="background:#eef;padding:4px;border-radius:3px">LOGO</div>
+            <div style="background:#dfd;padding:4px;border-radius:3px;margin-top:4px;outline:2px solid #16a34a">HEADER ← selected</div>
+            <div style="background:#eef;padding:4px;border-radius:3px;margin-top:4px">ITEMS</div>
+          </div>
+          <div style="width:110px;border:1px solid #6366f1;border-radius:6px;padding:6px;font-size:10px">
+            <b>HEADER</b><br>font: 16<br>align: center<br>☑ visible
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content" style="flex:1">
+      <h3>Separate full-screen "Layout Designer" route</h3>
+      <p>A dedicated page (its own menu item) for designing each document, separate from Settings. Most room to work, but it's a whole new screen to build and users have two places to think about printing.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">/print-designer · full screen</div>
+        <div class="mockup-body" style="font-size:11px;color:#555">toolbar ▸ doc picker ▸ big canvas ▸ block palette</div>
+      </div>
+    </div>
+  </div>
+
+</div>

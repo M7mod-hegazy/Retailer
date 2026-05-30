@@ -39,10 +39,11 @@ import Modal from "../../components/ui/Modal";
 import ImageUpload from "../../components/ui/ImageUpload";
 import { usePageTour } from "../../hooks/usePageTour";
 import Highlight from "../../components/ui/Highlight";
-import ItemExportModal from "./ItemExportModal";
-import ItemImportModal from "./ItemImportModal";
-import ItemSmartUpdateModal from "./ItemSmartUpdateModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+
+const ItemExportModal = React.lazy(() => import("./ItemExportModal"));
+const ItemImportModal = React.lazy(() => import("./ItemImportModal"));
+const ItemSmartUpdateModal = React.lazy(() => import("./ItemSmartUpdateModal"));
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ const EMPTY_DRAFT = {
 };
 
 const DENSITY_CLS = { compact: "py-1.5", normal: "py-2.5", spacious: "py-4" };
+const ITEM_PAGE_SIZE = 200;
 
 // ─── Cell input ───────────────────────────────────────────────────────────────
 const Cell = React.forwardRef(function Cell(
@@ -362,9 +364,11 @@ export default function ItemsListPage() {
   const [categories, setCategories]   = useState([]);
   const [units, setUnits]             = useState([]);
   const [items, setItems]             = useState([]);
+  const [itemsMeta, setItemsMeta]     = useState({ total: 0, offset: 0, hasMore: false });
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [search, setSearch]           = useState(deepLinkQuery);
   const [loading, setLoading]         = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [savingRowId, setSavingRowId] = useState(null);
   const [draftById, setDraftById]     = useState({});
   const [dirtyRows, setDirtyRows]     = useState(new Set());
@@ -455,16 +459,30 @@ export default function ItemsListPage() {
     } catch { return []; }
   }, []);
 
-  const loadItems = useCallback(async (categoryId, searchText = "", inclDeleted = false) => {
-    if (!categoryId) { setItems([]); return; }
-    const params = { category_id: categoryId };
-    if (searchText.trim()) params.search = searchText.trim();
+  const loadItems = useCallback(async (categoryId, searchText = "", inclDeleted = false, opts = {}) => {
+    const trimmedSearch = searchText.trim();
+    const offset = Number(opts.offset || 0);
+    const append = Boolean(opts.append);
+    if (!categoryId && !trimmedSearch) {
+      setItems([]);
+      setItemsMeta({ total: 0, offset: 0, hasMore: false });
+      return;
+    }
+    const params = { limit: ITEM_PAGE_SIZE, offset };
+    if (categoryId) params.category_id = categoryId;
+    if (trimmedSearch) params.search = trimmedSearch;
     if (inclDeleted) params.include_deleted = "1";
     const res = await api.get("/api/items", { params });
     const rows = Array.isArray(res.data?.data) ? res.data.data : [];
-    setItems(rows);
-    setDraftById(() => {
-      const next = {};
+    const meta = res.data?.meta || {};
+    setItems((prev) => append ? [...prev, ...rows.filter((row) => !prev.some((item) => item.id === row.id))] : rows);
+    setItemsMeta({
+      total: Number(meta.total ?? rows.length),
+      offset: offset + rows.length,
+      hasMore: Boolean(meta.has_more),
+    });
+    setDraftById((prev) => {
+      const next = append ? { ...prev } : {};
       rows.forEach((row) => {
         next[row.id] = {
           name: row.name || "",
@@ -480,9 +498,11 @@ export default function ItemsListPage() {
       });
       return next;
     });
-    setDirtyRows(new Set());
-    setSelectedIds(new Set());
-    setSortConfig({ key: null, dir: "asc" });
+    if (!append) {
+      setDirtyRows(new Set());
+      setSelectedIds(new Set());
+      setSortConfig({ key: null, dir: "asc" });
+    }
   }, []);
 
   useEffect(() => {
@@ -501,30 +521,8 @@ export default function ItemsListPage() {
         if (unitRows[0]?.id) setNewRow((prev) => ({ ...prev, unit_id: String(unitRows[0].id) }));
         // If arriving from global search with a ?q= param, search across ALL categories
         if (deepLinkQuery) {
-          return api.get("/api/items", { params: { search: deepLinkQuery } })
-            .then((r) => {
-              const rows = Array.isArray(r.data?.data) ? r.data.data : [];
-              setItems(rows);
-              setDraftById(() => {
-                const next = {};
-                rows.forEach((row) => {
-                  next[row.id] = {
-                    name: row.name || "", barcode: row.barcode || "",
-                    purchase_price: String(row.purchase_price ?? ""),
-                    sale_price: String(row.sale_price ?? ""),
-                    wholesale_price: String(row.wholesale_price ?? ""),
-                    unit_id: String(row.unit_id ?? ""),
-                    min_stock_qty: String(row.min_stock_qty ?? ""),
-                    image_urls_text: Array.isArray(row.image_urls) ? row.image_urls.join(", ") : "",
-                    is_active: row.is_active !== 0,
-                  };
-                });
-                return next;
-              });
-              setDirtyRows(new Set());
-              // Clean URL after reading
-              setSearchParams({}, { replace: true });
-            });
+          return loadItems(null, deepLinkQuery, showDeleted)
+            .then(() => setSearchParams({}, { replace: true }));
         }
         return loadItems(firstId);
       })
@@ -545,7 +543,6 @@ export default function ItemsListPage() {
   // ── sort ──────────────────────────────────────────────────────────────────
 
   const displayItems = useMemo(() => {
-    const ROW_LIMIT = 200;
     let list = [...items];
     if (sortConfig.key) {
       list.sort((a, b) => {
@@ -555,8 +552,8 @@ export default function ItemsListPage() {
         return sortConfig.dir === "asc" ? cmp : -cmp;
       });
     }
-    return { rows: list.slice(0, ROW_LIMIT), total: list.length };
-  }, [items, sortConfig]);
+    return { rows: list, total: itemsMeta.total || list.length, loaded: list.length };
+  }, [items, itemsMeta.total, sortConfig]);
 
   const skuGapRows = useMemo(() => {
     if (!selectedCategory?.sku_prefix) return [];
@@ -592,6 +589,16 @@ export default function ItemsListPage() {
     setSortConfig((prev) =>
       prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
+  }
+
+  async function loadMoreItems() {
+    if (!itemsMeta.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      await loadItems(selectedCatId, search, showDeleted, { offset: itemsMeta.offset, append: true });
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   const stats = useMemo(() => {
@@ -1076,11 +1083,21 @@ export default function ItemsListPage() {
             </div>
          </div>
 
-         {/* Warning for row limit */}
-         {displayItems.total > 200 && (
-           <div className="flex items-center gap-2 bg-amber-50 px-6 py-2 border-b border-amber-100">
+         {/* Bounded page notice */}
+         {displayItems.total > displayItems.loaded && (
+           <div className="flex flex-wrap items-center gap-3 bg-amber-50 px-6 py-2 border-b border-amber-100">
              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-             <span className="text-[11px] font-bold text-amber-800">محدودية العرض: يتم عرض {displayItems.rows.length} صنف فقط من إجمالي {displayItems.total} لضمان سرعة الأداء.</span>
+             <span className="text-[11px] font-bold text-amber-800">تم تحميل {displayItems.loaded} صنف من إجمالي {displayItems.total} للحفاظ على سرعة الصفحة.</span>
+             {itemsMeta.hasMore && (
+               <button
+                 type="button"
+                 onClick={loadMoreItems}
+                 disabled={loadingMore}
+                 className="rounded-sm border border-amber-200 bg-white px-3 py-1 text-[11px] font-black text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+               >
+                 {loadingMore ? "جاري التحميل..." : "تحميل المزيد"}
+               </button>
+             )}
            </div>
          )}
 
@@ -1409,38 +1426,42 @@ export default function ItemsListPage() {
            </div>
         </form>
       </Modal>
-      <ItemImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        items={items}
-        categories={categories}
-        units={units}
-        selectedCategoryId={selectedCatId}
-        onImported={async () => {
-          await Promise.all([loadCategories(), loadUnits()]);
-          await loadItems(selectedCatId, search, showDeleted);
-        }}
-      />
-      <ItemExportModal
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
-        items={items}
-        filteredItems={displayItems.rows}
-        selectedItems={selectedItemsForExport}
-        selectedCategoryName={selectedCategory?.name}
-      />
-      <ItemSmartUpdateModal
-        open={smartUpdateOpen}
-        onClose={() => setSmartUpdateOpen(false)}
-        items={items}
-        categories={categories}
-        units={units}
-        selectedCategoryId={selectedCatId}
-        onUpdated={async () => {
-          await Promise.all([loadCategories(), loadUnits()]);
-          await loadItems(selectedCatId, search, showDeleted);
-        }}
-      />
+      {(importOpen || exportOpen || smartUpdateOpen) && (
+        <React.Suspense fallback={null}>
+          <ItemImportModal
+            open={importOpen}
+            onClose={() => setImportOpen(false)}
+            items={items}
+            categories={categories}
+            units={units}
+            selectedCategoryId={selectedCatId}
+            onImported={async () => {
+              await Promise.all([loadCategories(), loadUnits()]);
+              await loadItems(selectedCatId, search, showDeleted);
+            }}
+          />
+          <ItemExportModal
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+            items={items}
+            filteredItems={displayItems.rows}
+            selectedItems={selectedItemsForExport}
+            selectedCategoryName={selectedCategory?.name}
+          />
+          <ItemSmartUpdateModal
+            open={smartUpdateOpen}
+            onClose={() => setSmartUpdateOpen(false)}
+            items={items}
+            categories={categories}
+            units={units}
+            selectedCategoryId={selectedCatId}
+            onUpdated={async () => {
+              await Promise.all([loadCategories(), loadUnits()]);
+              await loadItems(selectedCatId, search, showDeleted);
+            }}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

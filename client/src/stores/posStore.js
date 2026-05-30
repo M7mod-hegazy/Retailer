@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import api from "../services/api";
 
+let promotionEvaluateTimer = null;
+let promotionEvaluateSeq = 0;
+
 function computeTotals(lines, discount, increase) {
   const subtotal = lines.reduce(
     (sum, line) => sum + line.quantity * line.unit_price - Number(line.line_discount || 0),
@@ -27,19 +30,29 @@ export const usePosStore = create(
       _activeDraftDbId: null,
       evaluateCart: async () => {
         const { lines } = get();
+        const requestSeq = ++promotionEvaluateSeq;
         if (!lines.length) {
           set({ promotionDiscount: 0, appliedPromotions: [] });
           return;
         }
         try {
           const response = await api.post("/api/promotions/evaluate", { lines });
+          if (requestSeq !== promotionEvaluateSeq) return;
           set({
             promotionDiscount: Number(response.data?.data?.discount || 0),
             appliedPromotions: response.data?.data?.applied_promotions || [],
           });
         } catch {
+          if (requestSeq !== promotionEvaluateSeq) return;
           set({ promotionDiscount: 0, appliedPromotions: [] });
         }
+      },
+      scheduleEvaluateCart: () => {
+        if (promotionEvaluateTimer) clearTimeout(promotionEvaluateTimer);
+        promotionEvaluateTimer = setTimeout(() => {
+          promotionEvaluateTimer = null;
+          get().evaluateCart();
+        }, 250);
       },
       addLine: (item) => {
         set((state) => {
@@ -87,19 +100,19 @@ export const usePosStore = create(
               ];
           return { lines };
         });
-        get().evaluateCart();
+        get().scheduleEvaluateCart();
       },
       updateLine: (itemId, patch) => {
         set((state) => ({
           lines: state.lines.map((line) => (line.item_id === itemId ? { ...line, ...patch } : line)),
         }));
-        get().evaluateCart();
+        get().scheduleEvaluateCart();
       },
       removeLine: (itemId) => {
         set((state) => ({
           lines: state.lines.filter((line) => line.item_id !== itemId),
         }));
-        get().evaluateCart();
+        get().scheduleEvaluateCart();
       },
       setCustomer: (customer) => set({ customer }),
       setDiscount: (discount) => set({ discount: Number(discount || 0) }),
@@ -248,7 +261,12 @@ export const usePosStore = create(
           paymentType: held.paymentType,
         });
       },
-      clear: () => set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", search: "", activeCategory: "all" }),
+      clear: () => {
+        if (promotionEvaluateTimer) clearTimeout(promotionEvaluateTimer);
+        promotionEvaluateTimer = null;
+        promotionEvaluateSeq += 1;
+        set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", search: "", activeCategory: "all" });
+      },
       getTotals: () => computeTotals(
         get().lines,
         Number(get().discount || 0) + Number(get().promotionDiscount || 0),

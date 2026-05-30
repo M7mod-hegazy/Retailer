@@ -153,6 +153,9 @@ router.get("/", requirePagePermission("reports", "view"), (req, res, next) => {
     const query = normalizeQuery(req.query.q);
 
     if (!query) return res.json({ success: true, data: [] });
+    if (query.length < 2) {
+      return res.json({ success: true, data: PAGE_INDEX.filter((p) => pageMatches(p, query)).slice(0, 8) });
+    }
 
     const patterns = getFuzzyPatterns(query);
     const results = [];
@@ -197,7 +200,7 @@ router.get("/", requirePagePermission("reports", "view"), (req, res, next) => {
     {
       const rows = multiLikeQuery(
         db, 3,
-        `SELECT id, name, phone, COALESCE(email,'') as email, COALESCE(balance,0) as balance FROM customers WHERE COALESCE(is_active,1)=1 AND (name LIKE ? OR phone LIKE ? OR COALESCE(email,'') LIKE ?) ORDER BY id DESC LIMIT 12`,
+        `SELECT id, name, phone, '' as email, COALESCE(opening_balance,0) as balance FROM customers WHERE COALESCE(is_active,1)=1 AND (name LIKE ? OR phone LIKE ? OR code LIKE ?) ORDER BY id DESC LIMIT 12`,
         patterns, 10
       );
       push(rows, (r) => ({
@@ -217,7 +220,7 @@ router.get("/", requirePagePermission("reports", "view"), (req, res, next) => {
     {
       const rows = multiLikeQuery(
         db, 3,
-        `SELECT id, name, phone, COALESCE(email,'') as email FROM suppliers WHERE COALESCE(is_active,1)=1 AND (name LIKE ? OR phone LIKE ? OR COALESCE(email,'') LIKE ?) ORDER BY id DESC LIMIT 10`,
+        `SELECT id, name, phone, '' as email FROM suppliers WHERE COALESCE(is_active,1)=1 AND (name LIKE ? OR phone LIKE ? OR code LIKE ?) ORDER BY id DESC LIMIT 10`,
         patterns, 8
       );
       push(rows, (r) => ({

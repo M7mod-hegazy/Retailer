@@ -18,6 +18,7 @@ import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import SalesReturnTodayModal from "../../components/sales/SalesReturnTodayModal";
 import InvoicePickerTodayModal from "../../components/sales/InvoicePickerTodayModal";
+import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -176,6 +177,7 @@ export default function SalesReturnFormPage() {
   const [pendingBelowCostAdd, setPendingBelowCostAdd] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [saveSuccess, setSaveSuccess] = useState(null);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showEditWarnModal, setShowEditWarnModal] = useState(false);
   const [showSwitchInvoiceWarning, setShowSwitchInvoiceWarning] = useState(false);
@@ -528,25 +530,41 @@ export default function SalesReturnFormPage() {
     setIsSaving(true); setMessage({ text: "", type: "" });
     try {
       const savedDocNo = docNo;
+      const successData = {
+        docNo: savedDocNo,
+        total,
+        refundMethod,
+        cashAmount: refundMethod === 'split' ? Math.max(0, Number(splitCashAmount) || 0) : null,
+        creditAmount: returnCreditEffect,
+        entityName: customer?.name,
+        entityNewBalance: predictedBalance,
+        type: 'sales_return',
+      };
       if (isEditMode) {
         await api.put(`/api/invoices/returns/${editReturnId}`, payload);
         setIsLocked(true);
+        setSaveSuccess(successData);
         setMessage({ text: "تم تعديل المرتجع بنجاح", type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       } else if (mode === "invoice" && loadedInvoice) {
         await api.post(`/api/invoices/${loadedInvoice.id}/return`, payload);
-        resetToIdle();
+        setSaveSuccess(successData);
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
       } else {
         await api.post("/api/invoices/general-return", payload);
-        resetToIdle();
+        setSaveSuccess(successData);
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
       }
     } catch (e) {
       setMessage({ text: e.response?.data?.message || "فشل تسجيل المرتجع", type: "error" });
     } finally { setIsSaving(false); }
+  }
+
+  function handleSuccessDismiss() {
+    setSaveSuccess(null);
+    if (!isEditMode) navigate("/sales/returns", { replace: true });
   }
 
   async function handleDelete() {
@@ -628,7 +646,7 @@ export default function SalesReturnFormPage() {
 
   // ══ ACTIVE SCREEN ══
   return (
-    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in">
+    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in relative">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-emerald-200 bg-white px-6 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
@@ -1405,6 +1423,19 @@ export default function SalesReturnFormPage() {
             </div>
           </div>
         </div>
+      )}
+      {saveSuccess && (
+        <ReturnSaveSuccess
+          docNo={saveSuccess.docNo}
+          total={saveSuccess.total}
+          refundMethod={saveSuccess.refundMethod}
+          cashAmount={saveSuccess.cashAmount}
+          creditAmount={saveSuccess.creditAmount}
+          entityName={saveSuccess.entityName}
+          entityNewBalance={saveSuccess.entityNewBalance}
+          type={saveSuccess.type}
+          onDismiss={handleSuccessDismiss}
+        />
       )}
     </div>
   );

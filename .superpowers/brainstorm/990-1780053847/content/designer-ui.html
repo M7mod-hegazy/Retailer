@@ -1,0 +1,99 @@
+<h2>Full-screen Print Designer — proposed layout</h2>
+<p class="subtitle">Word-like: a format toolbar on top, a block palette on the left, the live document (with rulers + drag handles) in the center, and a context inspector on the right. Everything you see on the canvas is rendered by the exact block components the printer uses.</p>
+
+<div class="mockup">
+  <div class="mockup-header">/print-designer</div>
+  <div class="mockup-body" style="font-size:11px">
+
+    <!-- top: doc + family + actions -->
+    <div style="display:flex;gap:8px;align-items:center;background:#0f172a;color:#fff;padding:6px 10px;border-radius:6px 6px 0 0">
+      <select style="font-size:11px;padding:2px"><option>فاتورة مبيعات ▾</option></select>
+      <div style="display:flex;border:1px solid #334;border-radius:5px;overflow:hidden">
+        <span style="background:#6366f1;padding:3px 10px">Roll</span><span style="padding:3px 10px;opacity:.6">Page</span>
+      </div>
+      <span style="opacity:.6">preview:</span>
+      <span style="background:#1e293b;padding:3px 8px;border-radius:4px">80mm ▾</span>
+      <div style="flex:1"></div>
+      <span style="background:#1e293b;padding:3px 8px;border-radius:4px">↺ Reset</span>
+      <span style="background:#1e293b;padding:3px 8px;border-radius:4px">🖨 Test print</span>
+      <span style="background:#16a34a;padding:3px 10px;border-radius:4px">حفظ</span>
+    </div>
+
+    <!-- format toolbar (acts on selected block) -->
+    <div style="display:flex;gap:6px;align-items:center;background:#f1f5f9;border:1px solid #e2e8f0;border-top:0;padding:5px 10px">
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 6px;border-radius:4px">Courier ▾</span>
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 6px;border-radius:4px">16 ▾</span>
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 7px;border-radius:4px;font-weight:900">B</span>
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 7px;border-radius:4px;font-style:italic">I</span>
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 6px;border-radius:4px">🎨</span>
+      <span style="width:1px;height:16px;background:#cbd5e1"></span>
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 6px;border-radius:4px">⇤</span>
+      <span style="background:#e0e7ff;border:1px solid #6366f1;padding:2px 6px;border-radius:4px">⇥center⇤</span>
+      <span style="background:#fff;border:1px solid #ddd;padding:2px 6px;border-radius:4px">⇥</span>
+      <span style="opacity:.5;margin-inline-start:6px">selected: HEADER</span>
+    </div>
+
+    <!-- 3-pane body -->
+    <div style="display:flex;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 6px 6px;min-height:300px">
+
+      <!-- left: block palette -->
+      <div style="width:120px;border-inline-end:1px solid #e2e8f0;padding:8px;background:#fafafa">
+        <div class="label">drag to add</div>
+        <div style="background:#fff;border:1px dashed #cbd5e1;border-radius:4px;padding:4px;margin-top:4px">＋ text</div>
+        <div style="background:#fff;border:1px dashed #cbd5e1;border-radius:4px;padding:4px;margin-top:4px">＋ image</div>
+        <div style="background:#fff;border:1px dashed #cbd5e1;border-radius:4px;padding:4px;margin-top:4px">＋ divider</div>
+        <div style="background:#fff;border:1px dashed #cbd5e1;border-radius:4px;padding:4px;margin-top:4px">＋ spacer</div>
+        <div style="background:#fff;border:1px dashed #cbd5e1;border-radius:4px;padding:4px;margin-top:4px">＋ QR</div>
+        <div class="label" style="margin-top:8px">hidden blocks</div>
+        <div style="background:#fee;border:1px solid #fcc;border-radius:4px;padding:4px;margin-top:4px;opacity:.7">barcode (off)</div>
+      </div>
+
+      <!-- center: ruler + canvas -->
+      <div style="flex:1;background:#e8ecf0;padding:10px;position:relative">
+        <div style="height:14px;background:repeating-linear-gradient(90deg,#fff,#fff 18px,#cbd5e1 18px,#cbd5e1 19px);border:1px solid #cbd5e1;border-radius:3px;margin-bottom:6px;position:relative">
+          <span style="position:absolute;left:18px;top:-2px">▼</span><span style="position:absolute;right:18px;top:-2px">▼</span>
+        </div>
+        <div style="width:150px;margin:0 auto;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:8px;font-size:9px">
+          <div style="text-align:center;color:#94a3b8">[ logo ]</div>
+          <div style="text-align:center;outline:2px solid #6366f1;border-radius:3px;padding:2px;position:relative">
+            <span style="position:absolute;left:-14px;top:3px;cursor:grab">⠿</span>إلهيجازي للتجزئة
+            <span style="position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;background:#6366f1;border-radius:50%"></span>
+          </div>
+          <div style="border-top:1px dashed #cbd5e1;margin:4px 0"></div>
+          <div style="height:3px;background:#6366f1;opacity:.4;border-radius:2px"></div><!-- insertion line -->
+          <div>رقم الفاتورة: INV-0042</div>
+          <div style="background:#f1f5f9">الصنف · كمية · إجمالي</div>
+          <div style="border-top:1px dashed #cbd5e1;margin:4px 0"></div>
+          <div style="text-align:left">المستحق: 264.50</div>
+          <div style="text-align:center;color:#94a3b8;margin-top:4px">▢ QR</div>
+        </div>
+      </div>
+
+      <!-- right: inspector -->
+      <div style="width:150px;border-inline-start:1px solid #e2e8f0;padding:8px;background:#fafafa">
+        <div class="label">Inspector — HEADER</div>
+        <div style="margin-top:6px">☑ visible</div>
+        <div style="margin-top:6px">binds to:<br><code style="font-size:9px">settings.company_name</code></div>
+        <div style="margin-top:6px">align: <b>center</b></div>
+        <div style="margin-top:6px">font size: 16</div>
+        <hr style="margin:8px 0;border:0;border-top:1px solid #e2e8f0">
+        <div class="label">Outline (reorder)</div>
+        <div style="font-size:9px;line-height:1.6">⠿ logo<br>⠿ <b>header ◂</b><br>⠿ meta<br>⠿ items<br>⠿ totals<br>⠿ qr</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px">Interactions: <b>drag the ⠿ handle</b> to reorder (blue insertion line shows the drop spot) · <b>double-click text</b> to edit it inline (header/footer/labels) · <b>drag the corner dot</b> to resize (logo/QR/font) · <b>drag ruler markers</b> for margins · the <b>format toolbar</b> + <b>inspector</b> act on the selected block.</p>
+
+<div class="options" style="margin-top:10px">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>This layout works</h3><p>Toolbar + palette + canvas/ruler + inspector/outline. Proceed.</p></div>
+  </div>
+  <div class="option" data-choice="changes" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>I'd change something</h3><p>Tell me in the terminal what to move/add/remove.</p></div>
+  </div>
+</div>

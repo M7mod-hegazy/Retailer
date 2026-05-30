@@ -44,6 +44,12 @@ function getSessionWithLines(db, sessionId) {
 router.get("/levels", requirePagePermission("stock_transfer", "view"), (req, res) => {
   const warehouseId = req.query.warehouse_id ? Number(req.query.warehouse_id) : null;
   const search = String(req.query.search || "").trim();
+  const itemIds = String(req.query.item_ids || "")
+    .split(",")
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : null;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
   const params = [];
 
   let sql;
@@ -70,6 +76,10 @@ router.get("/levels", requirePagePermission("stock_transfer", "view"), (req, res
       sql += " AND (i.name LIKE ? OR i.barcode LIKE ? OR i.code LIKE ?)";
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
+    if (itemIds.length) {
+      sql += ` AND i.id IN (${itemIds.map(() => "?").join(",")})`;
+      params.push(...itemIds);
+    }
     sql += " ORDER BY i.name ASC";
   } else {
     sql = `
@@ -90,7 +100,16 @@ router.get("/levels", requirePagePermission("stock_transfer", "view"), (req, res
       sql += " AND (i.name LIKE ? OR i.barcode LIKE ? OR i.code LIKE ?)";
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
+    if (itemIds.length) {
+      sql += ` AND i.id IN (${itemIds.map(() => "?").join(",")})`;
+      params.push(...itemIds);
+    }
     sql += " ORDER BY i.name ASC, w.name ASC";
+  }
+
+  if (limit) {
+    sql += " LIMIT ? OFFSET ?";
+    params.push(limit, offset);
   }
 
   const raw = db.prepare(sql).all(...params);
@@ -101,7 +120,16 @@ router.get("/levels", requirePagePermission("stock_transfer", "view"), (req, res
     const threshold = r.item_min_margin != null ? r.item_min_margin : globalMinMargin;
     return { ...r, margin_pct: margin_pct != null ? Math.round(margin_pct * 10) / 10 : null, margin_threshold: threshold, below_margin: margin_pct != null && margin_pct < threshold };
   });
-  res.json({ success: true, data });
+  res.json({
+    success: true,
+    data,
+    meta: {
+      offset,
+      limit,
+      count: data.length,
+      has_more: limit ? data.length === limit : false,
+    },
+  });
 });
 
 router.get("/movements", requirePagePermission("stock_transfer", "view"), (req, res) => {

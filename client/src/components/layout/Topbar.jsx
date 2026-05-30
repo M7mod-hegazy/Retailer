@@ -9,12 +9,8 @@ import { useHelpStore } from "../../stores/helpStore";
 import { ROUTES } from "../../constants/routes";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import helpContent from "../../help/helpContent";
+import { getHelpPageKey } from "../../help/routeHelp";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Build a flat path → pageKey map from navigation constants
-const PATH_TO_PAGE_KEY = {};
-PRIMARY_MENU.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; });
-NAV_MODULES.forEach((mod) => mod.items.forEach((item) => { if (item.pageKey) PATH_TO_PAGE_KEY[item.path] = item.pageKey; }));
 
 const EXTRA_BREADCRUMB_PARENTS = [
   { match: /^\/pos$/, parents: [{ label: "سجل المبيعات", path: "/sales" }], current: "نقطة البيع (POS)" },
@@ -102,19 +98,7 @@ export default function Topbar() {
   const [hoveredCrumb, setHoveredCrumb] = useState(null);
   const bellRef = useRef(null);
 
-  // Determine current page key from pathname
-  const currentPageKey = useMemo(() => {
-    const exact = PATH_TO_PAGE_KEY[location.pathname];
-    if (exact) return exact;
-    // Try prefix match (longest wins)
-    let best = null;
-    for (const [path, key] of Object.entries(PATH_TO_PAGE_KEY)) {
-      if (location.pathname.startsWith(path + '/') || location.pathname === path) {
-        if (!best || path.length > best.path.length) best = { path, key };
-      }
-    }
-    return best?.key ?? null;
-  }, [location.pathname]);
+  const currentPageKey = useMemo(() => getHelpPageKey(location.pathname), [location.pathname]);
 
   const hasHelpContent = currentPageKey && Boolean(helpContent[currentPageKey]);
 

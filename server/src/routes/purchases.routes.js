@@ -89,6 +89,8 @@ function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
 router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   const db = getDb();
   const { search = "", supplier_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
+  const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 200) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
   const allowedSort = ["created_at", "total", "doc_no", "payment_method", "supplier_name"];
   const safeSort = allowedSort.includes(sort) ? sort : "created_at";
   const safeDir = dir === "asc" ? "ASC" : "DESC";
@@ -103,6 +105,12 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   if (date_from) { conditions.push("date(p.created_at) >= date(?)"); params.push(date_from); }
   if (date_to) { conditions.push("date(p.created_at) <= date(?)"); params.push(date_to); }
   const orderBy = safeSort === "supplier_name" ? `s.name ${safeDir}` : `p.${safeSort} ${safeDir}`;
+  const summary = db.prepare(`
+    SELECT COUNT(*) AS count, COALESCE(SUM(p.total), 0) AS total
+    FROM purchases p
+    LEFT JOIN suppliers s ON s.id = p.supplier_id
+    WHERE ${conditions.join(" AND ")}
+  `).get(...params);
   const purchases = db.prepare(`
     SELECT p.*, s.name AS supplier_name, u.username AS created_by_username,
            (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count,
@@ -134,9 +142,14 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
     LEFT JOIN users u ON u.id = p.created_by
     WHERE ${conditions.join(" AND ")}
     ORDER BY ${orderBy}
-  `).all(...params);
-  const total = purchases.reduce((s, x) => s + Number(x.total || 0), 0);
-  res.json({ success: true, data: purchases, summary: { count: purchases.length, total } });
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset);
+  res.json({
+    success: true,
+    data: purchases,
+    summary: { count: Number(summary?.count || 0), total: Number(summary?.total || 0), page_count: purchases.length },
+    meta: { limit, offset, count: purchases.length, total: Number(summary?.count || 0), has_more: offset + purchases.length < Number(summary?.count || 0) },
+  });
 });
 
 router.get("/returns/items-search", requirePagePermission("purchase_returns", "view"), (req, res, next) => {

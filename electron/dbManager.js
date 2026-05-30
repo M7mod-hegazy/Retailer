@@ -24,6 +24,10 @@ function applyPragmas(db) {
   db.pragma("journal_mode = WAL");
   db.pragma("synchronous = NORMAL");
   db.pragma("foreign_keys = ON");
+  db.pragma("busy_timeout = 5000");
+  db.pragma("temp_store = MEMORY");
+  db.pragma("cache_size = -20000");
+  db.pragma("mmap_size = 134217728");
 }
 
 function runMigrations(db) {
@@ -61,6 +65,7 @@ function openDatabase(dbPath = path.join(process.cwd(), "data", "retailer.db")) 
   const db = new Database(dbPath);
   applyPragmas(db);
   runMigrations(db);
+  try { db.pragma("optimize"); } catch (_) {}
   return db;
 }
 

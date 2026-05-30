@@ -47,6 +47,7 @@ const ajalDebtsRoutes = require("./routes/ajalDebts.routes");
 const auditRoutes = require("./routes/audit.routes");
 const installmentsRoutes = require("./routes/installments.routes");
 const posDraftsRoutes = require("./routes/posDrafts");
+const posRoutes = require("./routes/pos.routes");
 const pricingRoutes = require("./routes/pricing.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 
@@ -73,7 +74,7 @@ function createApp() {
   app.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
   app.use(express.json({ limit: "10mb" }));
 
-  app.get("/health", (_req, res) => res.json({ ok: true }));
+  app.get(["/health", "/api/health"], (_req, res) => res.json({ ok: true }));
   app.use("/api/auth", authRoutes);
   app.use("/api/settings", settingsRoutes);
   app.use("/api/dashboard", dashboardRoutes);
@@ -118,6 +119,7 @@ function createApp() {
   app.use("/api/audit-logs", auditRoutes);
   app.use("/api/documents", documentsRoutes);
   app.use("/api/pos-drafts", posDraftsRoutes);
+  app.use("/api/pos", posRoutes);
   app.use("/api/pricing", pricingRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
@@ -125,9 +127,21 @@ function createApp() {
   const fs = require("fs");
   const clientDist = path.join(__dirname, "../../client/dist");
   if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist, { maxAge: "1h" }));
+    app.use("/assets", express.static(path.join(clientDist, "assets"), {
+      maxAge: "1y",
+      immutable: true,
+    }));
+    app.use(express.static(clientDist, {
+      maxAge: "1h",
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".html")) {
+          res.setHeader("Cache-Control", "no-cache");
+        }
+      },
+    }));
     app.get("*", (req, res, next) => {
       if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/")) return next();
+      res.setHeader("Cache-Control", "no-cache");
       res.sendFile(path.join(clientDist, "index.html"));
     });
   }
