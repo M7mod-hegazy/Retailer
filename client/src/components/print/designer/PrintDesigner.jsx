@@ -261,25 +261,32 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
-  // ── direct mouse move (grab body, reorder via element under pointer) ─────
+  // ── direct mouse move (grab body, live reorder so content follows) ───────
   const onMoveStart = (key, e) => {
-    const startX = e.clientX, startY = e.clientY; let moved = false;
+    const startX = e.clientX, startY = e.clientY;
+    const draftBase = draft, fam0 = draftBase.layout[family];
+    if (!fam0.order.includes(key)) return;
+    let moved = false, snapped = false, order = [...fam0.order];
+    const apply = (ord) => { const next = { ...draftBase, layout: { ...draftBase.layout, [family]: { ...fam0, order: ord } } }; setDraft(next); onChange && onChange(next); };
     const overAt = (ev) => {
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
       const w = el && el.closest("[data-designer-key]");
       const k = w && w.getAttribute("data-designer-key");
-      return k && k !== key && fam.order.includes(k) ? k : null;
+      return k && k !== key && order.includes(k) ? k : null;
     };
     const move = (ev) => {
       if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
       moved = true;
-      setDragOverKey(overAt(ev));
+      const to = overAt(ev);
+      if (!to) { setDragOverKey(null); return; }
+      const ord = order.filter((t) => t !== key);
+      ord.splice(ord.indexOf(to), 0, key);
+      if (ord.join() === order.join()) { setDragOverKey(to); return; }
+      order = ord;
+      if (!snapped) { setPast((p) => [...p, draftBase]); setFuture([]); snapped = true; }
+      apply(order); setDragOverKey(to);
     };
-    const up = (ev) => {
-      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
-      if (moved) { const to = overAt(ev); if (to) reorderByKey(key, to); }
-      setDragOverKey(null);
-    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); setDragOverKey(null); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
@@ -441,6 +448,12 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           <Btn active={selOv.align === "center"} title="وسط" onClick={() => setOverride(selected, { align: "center" })}><AlignCenter size={13} /></Btn>
           <Btn active={selOv.align === "left"} title="يسار" onClick={() => setOverride(selected, { align: "left" })}><AlignLeft size={13} /></Btn>
           <input type="color" value={selOv.color || "#0f172a"} onChange={(e) => setOverride(selected, { color: e.target.value })} className="h-8 w-9 cursor-pointer rounded-md border border-slate-200" title="اللون" />
+          <span className="mx-1 h-5 w-px bg-slate-200" />
+          <span className="text-[9px] font-bold text-slate-400">عرض</span>
+          <button type="button" title="تقليل العرض" onClick={() => setOverride(selected, { width: clamp((Number(selOv.width) || 100) - 5, 10, 100) })} className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50">−</button>
+          <span className="min-w-10 text-center text-[11px] font-bold text-slate-600">{selOv.width ? `${selOv.width}%` : "—"}</span>
+          <button type="button" title="زيادة العرض" onClick={() => setOverride(selected, { width: clamp((Number(selOv.width) || 100) + 5, 10, 100) })} className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50">+</button>
+          <button type="button" title="عرض كامل" onClick={() => setOverride(selected, { width: "" })} className="flex h-8 items-center justify-center rounded-md border border-slate-200 px-2 text-[9px] font-bold text-slate-500 hover:bg-slate-50">كامل</button>
           <span className="mx-1 h-5 w-px bg-slate-200" />
           <Btn title="تحريك لأعلى" disabled={!selInOrder} onClick={() => nudge(-1)}><ArrowUp size={13} /></Btn>
           <Btn title="تحريك لأسفل" disabled={!selInOrder} onClick={() => nudge(1)}><ArrowDown size={13} /></Btn>
