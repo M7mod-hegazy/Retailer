@@ -3,10 +3,12 @@ import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, FileSpreadsheet,
-  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2,
+  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2,
 } from "lucide-react";
 import api from "../../services/api";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
+import PrintDesigner from "./designer/PrintDesigner";
+import { familyForSize } from "./layout/layoutModel";
 
 const ALL_TEMPLATES = [
   { id: "58mm", label: "58mm", sub: "رول صغير",   icon: Receipt       },
@@ -42,6 +44,12 @@ export default function PrintPreviewModal({
   const [printPage, setPrintPage] = useState(1);
   const [totalPrintPages, setTotalPrintPages] = useState(1);
   const [columnWeights, setColumnWeights] = useState({});
+  const [designerOpen, setDesignerOpen] = useState(false);
+
+  const saveDesigner = async (next) => {
+    setDocSettings(next);
+    try { await api.put(`/api/print-settings-per-doc/${docType}`, next); } catch { /* keep local edits */ }
+  };
 
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -446,6 +454,14 @@ export default function PrintPreviewModal({
                 </div>
               </div>
 
+              {/* Advanced designer launcher (invoice-style docs only) */}
+              {docType && !isReportDoc && (
+                <button type="button" onClick={() => setDesignerOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-slate-300 bg-white px-3 py-2.5 text-[11px] font-black text-slate-700 hover:border-slate-500 hover:bg-slate-50 transition-all">
+                  <Maximize2 size={13} /> المحرر المتقدم
+                </button>
+              )}
+
               {/* Column controls for report docs */}
               {isReportDoc && reportColumns.length > 0 && (
                 <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
@@ -634,6 +650,20 @@ export default function PrintPreviewModal({
           )}
         </div>
       </Modal>
+
+      {designerOpen && docType && !isReportDoc && (
+        <PrintDesigner
+          open={designerOpen}
+          docType={docType}
+          label={operationLabel || docType}
+          initialFamily={familyForSize(activeTemplate)}
+          globalSettings={{ ...(fetchedGlobalSettings || {}), ...(globalSettings || {}) }}
+          value={docSettings}
+          onChange={setDocSettings}
+          onSave={saveDesigner}
+          onClose={() => setDesignerOpen(false)}
+        />
+      )}
     </>
   );
 }
