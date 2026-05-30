@@ -41,6 +41,18 @@ describe("LayoutRenderer designer integration", () => {
     expect(onSelect).toHaveBeenCalledWith("company_name");
   });
 
+  it("renders 8 resize handles on the selected block and fires onResizeStart", () => {
+    const onResizeStart = vi.fn();
+    const designer = { selectedKey: "company_name", hoveredKey: null, onSelect: () => {}, onHover: () => {}, onMoveStart: () => {}, onResizeStart };
+    const layout = { roll: { order: ["company_name"] } };
+    const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} editing designer={designer} />);
+    const handles = container.querySelectorAll('[title="تغيير الحجم"]');
+    expect(handles.length).toBe(8);
+    fireEvent.pointerDown(handles[4]); // a corner
+    expect(onResizeStart).toHaveBeenCalledTimes(1);
+    expect(onResizeStart.mock.calls[0][1]).toHaveProperty("w"); // dir object
+  });
+
   it("does not add selectable chrome on the print path (no designer)", () => {
     const layout = { roll: { order: ["company_name"] } };
     const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME" }} layout={layout} />);

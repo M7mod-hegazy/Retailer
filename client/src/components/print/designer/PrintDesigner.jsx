@@ -50,7 +50,6 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const [hovered, setHovered] = useState(null);
   const [zoom, setZoom] = useState(family === "roll" ? 1.1 : 0.7);
   const [dragIdx, setDragIdx] = useState(null);     // outline drag (by index)
-  const [canvasDrag, setCanvasDrag] = useState(null); // canvas drag (by key)
   const [dragOverKey, setDragOverKey] = useState(null);
   const [resizing, setResizing] = useState(false);
   const [editingKey, setEditingKey] = useState(null);
@@ -233,37 +232,62 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const MARGIN_KEY = { top: "margin_top", side: "margin_side" };
   const setMargin = (k, v) => setTopLevel(MARGIN_KEY[k], v);
 
-  // ── direct mouse resize (pointer drag on a handle) ───────────────────────
-  // One undo step per gesture: snapshot once on pointerdown, then live-apply
-  // absolute values computed from the start value + pointer delta (/zoom).
-  const onResizeStart = (key, axis, e) => {
+  // ── direct mouse resize (8 handles, PowerPoint-style) ────────────────────
+  // `dir` = { w, s } growth signs for width / size. One undo step per gesture.
+  const onResizeStart = (key, dir, e) => {
     const startX = e.clientX, startY = e.clientY, z = zoom;
     const draftBase = draft, famBase = draft.layout[family];
-    const applyLive = (next) => { setDraft(next); onChange && onChange(next); };
-    const setTopLive = (k, v) => applyLive({ ...draftBase, [k]: v });
-    const setOvLive = (k, patch) => applyLive({ ...draftBase, layout: { ...draftBase.layout, [family]: { ...famBase, perBlock: { ...(famBase.perBlock || {}), [k]: { ...((famBase.perBlock || {})[k] || {}), ...patch } } } } });
-    let base, applyVal, horizontal = false;
-    if (axis === "width") { base = Number((famBase.perBlock || {})[key]?.width) || 100; horizontal = true; applyVal = (v) => setOvLive(key, { width: clamp(Math.round(v), 10, 100) }); }
-    else if (key === "logo") { base = Number(merged.logo_max_height) || 48; applyVal = (v) => setTopLive("logo_max_height", clamp(Math.round(v), 16, 400)); }
-    else if (key === "qr") { base = Number(merged.qr_size) || 44; applyVal = (v) => setTopLive("qr_size", clamp(Math.round(v), 24, 400)); }
-    else { base = Number((famBase.perBlock || {})[key]?.fontSize) || Number(merged.item_font_size) || 11; applyVal = (v) => setOvLive(key, { fontSize: clamp(Math.round(v), 6, 72) }); }
+    const isDim = key === "logo" || key === "qr";
+    const dimKey = key === "logo" ? "logo_max_height" : "qr_size";
+    const baseWidth = Number((famBase.perBlock || {})[key]?.width) || 100;
+    const baseFont = Number((famBase.perBlock || {})[key]?.fontSize) || Number(merged.item_font_size) || 11;
+    const baseDim = Number(merged[dimKey]) || (key === "logo" ? 48 : 44);
+    const setOvLive = (patch) => { const next = { ...draftBase, layout: { ...draftBase.layout, [family]: { ...famBase, perBlock: { ...(famBase.perBlock || {}), [key]: { ...((famBase.perBlock || {})[key] || {}), ...patch } } } } }; setDraft(next); onChange && onChange(next); };
+    const setTopLive = (k, v) => { const next = { ...draftBase, [k]: v }; setDraft(next); onChange && onChange(next); };
     setPast((p) => [...p, draftBase]); setFuture([]); setResizing(true);
     const move = (ev) => {
-      if (horizontal) applyVal(base + ((startX - ev.clientX) / z) * 0.4);
-      else applyVal(base + ((ev.clientY - startY) / z) * (axis === "font" ? 0.3 : 1));
+      const dx = (ev.clientX - startX) / z, dy = (ev.clientY - startY) / z;
+      if (isDim) {
+        const d = dir.s ? dir.s * dy : dir.w * dx;
+        setTopLive(dimKey, clamp(Math.round(baseDim + d), 16, 500));
+      } else {
+        const patch = {};
+        if (dir.w) patch.width = clamp(Math.round(baseWidth + dir.w * dx * 0.3), 10, 100);
+        if (dir.s) patch.fontSize = clamp(Math.round(baseFont + dir.s * dy * 0.3), 6, 80);
+        if (Object.keys(patch).length) setOvLive(patch);
+      }
     };
     const up = () => { setResizing(false); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
-  // ── canvas designer context (selection + hover + drag + resize + edit) ───
+  // ── direct mouse move (grab body, reorder via element under pointer) ─────
+  const onMoveStart = (key, e) => {
+    const startX = e.clientX, startY = e.clientY; let moved = false;
+    const overAt = (ev) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const w = el && el.closest("[data-designer-key]");
+      const k = w && w.getAttribute("data-designer-key");
+      return k && k !== key && fam.order.includes(k) ? k : null;
+    };
+    const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+      moved = true;
+      setDragOverKey(overAt(ev));
+    };
+    const up = (ev) => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+      if (moved) { const to = overAt(ev); if (to) reorderByKey(key, to); }
+      setDragOverKey(null);
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
+
+  // ── canvas designer context (selection + hover + move + resize + edit) ───
   const designer = {
     selectedKey: selected, hoveredKey: hovered, dragOverKey, editingKey, resizing,
     onSelect: setSelected, onHover: setHovered,
-    onDragStart: setCanvasDrag, onDragOverKey: setDragOverKey,
-    onDrop: (toKey) => { reorderByKey(canvasDrag, toKey); setCanvasDrag(null); setDragOverKey(null); },
-    onDragEnd: () => { setCanvasDrag(null); setDragOverKey(null); },
-    onResizeStart,
+    onMoveStart, onResizeStart,
     editableOf, onStartEditText: startEditText, onCommitText: commitText,
   };
 

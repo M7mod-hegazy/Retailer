@@ -64,51 +64,54 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
   );
 }
 
-const HANDLE = { position: "absolute", width: 12, height: 12, background: "#7c3aed", border: "2px solid #fff", borderRadius: "50%", zIndex: 30, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" };
+const HANDLE = { position: "absolute", width: 10, height: 10, background: "#fff", border: "2px solid #7c3aed", borderRadius: 2, zIndex: 30, boxShadow: "0 1px 2px rgba(0,0,0,0.25)" };
+// 8 PowerPoint-style handles. w/s = which direction (width / size) the handle
+// grows: -1, 0 or +1. Positions are physical (work the same in RTL).
+const HANDLES = [
+  ["nw", { top: -6, left: -6, cursor: "nwse-resize" }, { w: -1, s: -1 }],
+  ["n", { top: -6, left: "calc(50% - 5px)", cursor: "ns-resize" }, { w: 0, s: -1 }],
+  ["ne", { top: -6, right: -6, cursor: "nesw-resize" }, { w: 1, s: -1 }],
+  ["e", { top: "calc(50% - 5px)", right: -6, cursor: "ew-resize" }, { w: 1, s: 0 }],
+  ["se", { bottom: -6, right: -6, cursor: "nwse-resize" }, { w: 1, s: 1 }],
+  ["s", { bottom: -6, left: "calc(50% - 5px)", cursor: "ns-resize" }, { w: 0, s: 1 }],
+  ["sw", { bottom: -6, left: -6, cursor: "nesw-resize" }, { w: -1, s: 1 }],
+  ["w", { top: "calc(50% - 5px)", left: -6, cursor: "ew-resize" }, { w: -1, s: 0 }],
+];
 
-function wrapSelectable(node, selKey, type, label, draggable, designer) {
+function wrapSelectable(node, selKey, type, label, inOrder, designer) {
   const selected = designer.selectedKey === selKey;
   const hovered = designer.hoveredKey === selKey;
   const dropping = designer.dragOverKey === selKey;
   const editingText = designer.editingKey === selKey;
   const editable = !!designer.editableOf && designer.editableOf(selKey);
+  const showBox = selected && !editingText;
   const outline = editingText ? "2px solid #2563eb" : selected ? "2px solid #7c3aed" : hovered ? "1px dashed #a78bfa" : "1px solid transparent";
-  const isDim = type === "logo" || type === "qr";
-  const showWidth = !isDim;
-  const canDrag = draggable && !designer.resizing && !editingText;
+  const canMove = inOrder && !editingText;
   const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(e); };
   return (
     <div
       data-designer-key={selKey}
-      draggable={canDrag}
       contentEditable={editingText}
       suppressContentEditableWarning
+      onPointerDown={(e) => { if (canMove && e.button === 0) designer.onMoveStart(selKey, e); }}
       onClick={(e) => { if (!editingText) { e.stopPropagation(); designer.onSelect(selKey); } }}
       onDoubleClick={(e) => { if (editable) { e.stopPropagation(); designer.onStartEditText && designer.onStartEditText(selKey); } }}
       onBlur={(e) => { if (editingText) designer.onCommitText && designer.onCommitText(selKey, e.currentTarget.textContent); }}
       onMouseEnter={() => designer.onHover(selKey)}
       onMouseLeave={() => designer.onHover(null)}
-      onDragStart={(e) => { e.stopPropagation(); designer.onDragStart(selKey); }}
-      onDragOver={(e) => { if (canDrag) { e.preventDefault(); designer.onDragOverKey && designer.onDragOverKey(selKey); } }}
-      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); designer.onDrop(selKey); }}
-      onDragEnd={() => designer.onDragEnd && designer.onDragEnd()}
-      style={{ position: "relative", cursor: editingText ? "text" : canDrag ? "move" : "pointer", outline, outlineOffset: "1px", borderRadius: "2px", transition: "outline-color 0.1s" }}
+      style={{ position: "relative", cursor: editingText ? "text" : canMove ? "move" : "pointer", outline, outlineOffset: "1px", borderRadius: "2px", transition: "outline-color 0.1s" }}
     >
-      {dropping && <div style={{ position: "absolute", insetInlineStart: 0, insetInlineEnd: 0, top: -2, height: 3, background: "#2563eb", zIndex: 25, borderRadius: 2 }} />}
-      {selected && !editingText && (
-        <span contentEditable={false} style={{ position: "absolute", top: "-9px", insetInlineStart: "0", zIndex: 20, background: "#7c3aed", color: "#fff", fontSize: "8px", fontWeight: 900, padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap", pointerEvents: "none" }}>{editable ? `${label} ✎` : label}</span>
+      {dropping && <div style={{ position: "absolute", insetInlineStart: 0, insetInlineEnd: 0, top: -2, height: 3, background: "#2563eb", zIndex: 28, borderRadius: 2 }} />}
+      {showBox && (
+        <span contentEditable={false} style={{ position: "absolute", top: "-9px", insetInlineStart: "0", zIndex: 31, background: "#7c3aed", color: "#fff", fontSize: "8px", fontWeight: 900, padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap", pointerEvents: "none" }}>{editable ? `${label} ✎` : label}</span>
       )}
       {node}
-      {selected && !editingText && designer.onResizeStart && (
-        <>
-          <div title="تغيير الحجم" contentEditable={false} onMouseDown={(e) => e.stopPropagation()} onPointerDown={stop((e) => designer.onResizeStart(selKey, isDim ? "size" : "font", e))} onDragStart={(e) => e.preventDefault()}
-            style={{ ...HANDLE, bottom: -6, insetInlineStart: -6, cursor: "nwse-resize" }} />
-          {showWidth && (
-            <div title="تغيير العرض" contentEditable={false} onMouseDown={(e) => e.stopPropagation()} onPointerDown={stop((e) => designer.onResizeStart(selKey, "width", e))} onDragStart={(e) => e.preventDefault()}
-              style={{ ...HANDLE, top: "50%", insetInlineStart: -6, transform: "translateY(-50%)", cursor: "ew-resize" }} />
-          )}
-        </>
-      )}
+      {showBox && designer.onResizeStart && HANDLES.map(([id, pos, dir]) => (
+        <div key={id} contentEditable={false} title="تغيير الحجم"
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={stop((e) => designer.onResizeStart(selKey, dir, e))}
+          style={{ ...HANDLE, ...pos }} />
+      ))}
     </div>
   );
 }
