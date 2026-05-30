@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   X, RotateCcw, Printer, Save, GripVertical, Eye, EyeOff, Trash2,
   Bold, Italic, AlignRight, AlignCenter, AlignLeft, Type, Minus, Square, QrCode,
   Undo2, Redo2, ArrowUp, ArrowDown, Copy, ClipboardPaste, BookmarkPlus, Trash, ArrowLeftRight,
+  FlaskConical, Columns2,
 } from "lucide-react";
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
@@ -21,8 +22,17 @@ const MOCK = {
   payments: [{ method_name: "نقدًا", amount: 200 }],
 };
 
+const STRESS = {
+  ...MOCK,
+  customer_name: "عميل باسم طويل جداً لاختبار تجاوز العرض",
+  lines: Array.from({ length: 16 }, (_, i) => ({ sku: `K-${100 + i}`, product_name: `منتج تجريبي رقم ${i + 1} باسم طويل نسبياً`, quantity: (i % 3) + 1, unit_price: 10 + i * 5, discount_amount: i % 4 === 0 ? 5 : 0 })),
+  payments: [{ method_name: "نقدًا", amount: 300 }, { method_name: "بطاقة", amount: 200 }],
+};
+
 const SIZES = { roll: ["58mm", "80mm"], page: ["A5", "A4"] };
 const SHEET_W = { "58mm": "58mm", "80mm": "80mm", A5: "148mm", A4: "210mm" };
+const PAGE_H_MM = { A4: 297, A5: 210 };
+const PX_PER_MM = 3.7795;
 const INSERTABLE = [
   { type: "custom_text", label: "نص", icon: Type },
   { type: "divider", label: "فاصل", icon: Minus },
@@ -47,8 +57,13 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const [copiedStyle, setCopiedStyle] = useState(null);
   const PKEY = "print_designer_presets";
   const [presets, setPresets] = useState(() => { try { return JSON.parse(localStorage.getItem(PKEY) || "[]"); } catch { return []; } });
+  const [stress, setStress] = useState(false);
+  const [compare, setCompare] = useState(false);
+  const [contentMm, setContentMm] = useState(0);
   const printRef = useRef(null);
+  const sheetRef = useRef(null);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const invoiceData = stress ? STRESS : MOCK;
 
   // Blocks whose visible text maps to an editable field (inline double-click).
   const EDIT_TOP = { company_name: "company_name", branch: "branch_name", footer_text: "receipt_footer", receipt_header_text: "receipt_header" };
@@ -251,6 +266,15 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     editableOf, onStartEditText: startEditText, onCommitText: commitText,
   };
 
+  // ── fit / overflow meter (page family) ───────────────────────────────────
+  useLayoutEffect(() => {
+    if (sheetRef.current) setContentMm(sheetRef.current.offsetHeight / PX_PER_MM);
+  }, [draft, family, size, stress, compare]);
+  const pageH = PAGE_H_MM[size];
+  const fillRatio = pageH && contentMm ? contentMm / pageH : 0;
+  const pages = Math.max(1, Math.ceil(fillRatio - 0.005));
+  const fitTone = fillRatio <= 0.92 ? "green" : fillRatio <= 1.0 ? "amber" : "red";
+
   // Registry blocks valid for this family that are not currently in the order
   // (i.e. hidden by removal) — surfaced in a tray so hiding is reversible.
   const hiddenBlocks = Object.keys(BLOCK_REGISTRY).filter((t) => {
@@ -333,6 +357,10 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
                 className={`rounded-md border px-2 py-1 text-[10px] font-bold ${size === sz ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}>{sz}</button>
             ))}
           </div>
+          <button type="button" onClick={() => setStress((v) => !v)} title="بيانات اختبار مزدحمة"
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${stress ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-500"}`}><FlaskConical size={12} /> اختبار</button>
+          <button type="button" onClick={() => setCompare((v) => !v)} title="مقارنة المقاسات جنباً إلى جنب"
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${compare ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Columns2 size={12} /> مقارنة</button>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
@@ -397,9 +425,35 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
         {/* Center canvas */}
         <div className="relative flex-1 overflow-auto bg-[#e8ecf0] p-6" onClick={() => setSelected(null)}>
-          <div className="mx-auto" style={{ width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
-            <LayoutRenderer family={family} size={size} invoice={MOCK} settings={merged} layout={draftForRender.layout} editing designer={designer} />
-          </div>
+          {compare ? (
+            <div className="flex items-start justify-center gap-6" onClick={(e) => e.stopPropagation()}>
+              {SIZES[family].map((sz) => (
+                <div key={sz} className="flex flex-col items-center gap-1">
+                  <span className="text-[10px] font-black text-slate-500">{sz}</span>
+                  <div style={{ width: SHEET_W[sz], transform: `scale(${family === "roll" ? 0.9 : 0.42})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }}>
+                    <LayoutRenderer family={family} size={sz} invoice={invoiceData} settings={merged} layout={draftForRender.layout} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div ref={sheetRef} className="mx-auto" style={{ width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+              <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={merged} layout={draftForRender.layout} editing designer={designer} />
+            </div>
+          )}
+
+          {/* Fit / overflow meter (page family only) */}
+          {family === "page" && !compare && pageH > 0 && (
+            <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg bg-white/90 px-2.5 py-1.5 shadow border border-slate-200">
+              <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
+                <div className={`h-full rounded-full ${fitTone === "green" ? "bg-emerald-500" : fitTone === "amber" ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%` }} />
+              </div>
+              <span className={`text-[9px] font-black ${fitTone === "green" ? "text-emerald-700" : fitTone === "amber" ? "text-amber-700" : "text-red-700"}`}>
+                {Math.round(fillRatio * 100)}% · {pages} {pages > 1 ? "صفحات" : "صفحة"}
+              </span>
+            </div>
+          )}
+
           <div className="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white/90 shadow">
             <button type="button" onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100">+</button>
             <span className="min-w-[42px] px-1 text-center text-[10px] font-black text-slate-600">{Math.round(zoom * 100)}%</span>
