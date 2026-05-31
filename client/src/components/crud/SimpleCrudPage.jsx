@@ -397,18 +397,28 @@ export default function SimpleCrudPage({
                       {field.required && <span className={`text-[9px] font-bold ${editingRow ? 'text-amber-600' : 'text-zinc-400'}`}>مطلوب</span>}
                     </label>
                     <div className="relative">
-                      <input
-                        type={field.type || "text"}
-                        required={field.required}
-                        value={form[field.name]}
-                        onChange={(e) => setForm(prev => ({ ...prev, [field.name]: e.target.value }))}
-                        className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
-                          editingRow 
-                            ? 'text-amber-950 border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-amber-300' 
-                            : 'text-zinc-900 border-slate-200 focus:border-zinc-400 placeholder:text-slate-300'
-                        }`}
-                        placeholder={`إدخال ${field.label}...`}
-                      />
+                      {field.type === "toggle" ? (
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, [field.name]: prev[field.name] ? 0 : 1 }))}
+                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 ${form[field.name] ? "bg-emerald-500" : "bg-slate-300"}`}
+                        >
+                          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${form[field.name] ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                      ) : (
+                        <input
+                          type={field.type || "text"}
+                          required={field.required}
+                          value={form[field.name]}
+                          onChange={(e) => setForm(prev => ({ ...prev, [field.name]: e.target.value }))}
+                          className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
+                            editingRow
+                              ? 'text-amber-950 border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-amber-300'
+                              : 'text-zinc-900 border-slate-200 focus:border-zinc-400 placeholder:text-slate-300'
+                          }`}
+                          placeholder={`إدخال ${field.label}...`}
+                        />
+                      )}
                     </div>
                     {/* Live balance preview for opening_balance field */}
                     {field.name === "opening_balance" && form[field.name] !== "" && (() => {

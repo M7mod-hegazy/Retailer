@@ -581,30 +581,49 @@ export default function PurchaseFormPage() {
     if (!selectedItem.name?.trim()) { toast.error("اختر صنفاً من القائمة أولاً"); return; }
     if (Number(staging.unitCost || 0) === 0) { toast.error("يجب إدخال تكلفة الصنف"); return; }
     activateInvoice();
-    const qty = Number(staging.quantity || 1);
+    const selectedUnit = units.find(u => String(u.id) === String(staging.unitId));
+    const allowDecimal = selectedUnit?.allow_decimal !== 0;
+    const rawQty = Number(staging.quantity || 1);
+    const qty = allowDecimal ? Math.max(0.001, rawQty) : Math.max(1, Math.round(rawQty));
     const cost = Number(staging.unitCost || 0);
     const sellingPrice = Number(staging.sellingPrice || 0);
     const wholesalePrice = Number(staging.wholesalePrice || 0);
     const wid = staging.warehouseId || defaultWarehouseId;
-    setLines(prev => [...prev, {
-      item_id: selectedItem.id,
-      name: selectedItem.name,
-      code: selectedItem.code || selectedItem.barcode,
-      quantity: qty,
-      unit_cost: cost,
-      original_unit_cost: Number(selectedItem.purchase_price || 0),
-      selling_price: sellingPrice,
-      original_sale_price: Number(selectedItem.sale_price || 0),
-      wholesale_price: wholesalePrice,
-      original_wholesale_price: Number(selectedItem.wholesale_price || 0),
-      last_purchase_cost: Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0),
-      warehouse_id: wid,
-      unit_id: staging.unitId || null,
-      total: qty * cost,
-      update_master_purchase_price: stagingLocks.purchase,
-      update_master_sale_price:     stagingLocks.sale,
-      update_master_wholesale_price: stagingLocks.wholesale,
-    }]);
+    setLines(prev => {
+      const existingIdx = prev.findIndex(l => l.item_id === selectedItem.id && String(l.warehouse_id) === String(wid));
+      if (existingIdx !== -1) {
+        return prev.map((l, i) => i !== existingIdx ? l : {
+          ...l,
+          quantity: allowDecimal ? l.quantity + qty : Math.round(l.quantity) + qty,
+          unit_cost: cost,
+          selling_price: sellingPrice || l.selling_price,
+          wholesale_price: wholesalePrice || l.wholesale_price,
+          total: (allowDecimal ? l.quantity + qty : Math.round(l.quantity) + qty) * cost,
+          update_master_purchase_price: stagingLocks.purchase,
+          update_master_sale_price:     stagingLocks.sale,
+          update_master_wholesale_price: stagingLocks.wholesale,
+        });
+      }
+      return [...prev, {
+        item_id: selectedItem.id,
+        name: selectedItem.name,
+        code: selectedItem.code || selectedItem.barcode,
+        quantity: qty,
+        unit_cost: cost,
+        original_unit_cost: Number(selectedItem.purchase_price || 0),
+        selling_price: sellingPrice,
+        original_sale_price: Number(selectedItem.sale_price || 0),
+        wholesale_price: wholesalePrice,
+        original_wholesale_price: Number(selectedItem.wholesale_price || 0),
+        last_purchase_cost: Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0),
+        warehouse_id: wid,
+        unit_id: staging.unitId || null,
+        total: qty * cost,
+        update_master_purchase_price: stagingLocks.purchase,
+        update_master_sale_price:     stagingLocks.sale,
+        update_master_wholesale_price: stagingLocks.wholesale,
+      }];
+    });
     setSelectedItem(null);
     setItemQuery("");
     setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: s.warehouseId, unitId: "" }));
@@ -1064,8 +1083,15 @@ export default function PurchaseFormPage() {
                 {/* Qty */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الكمية</label>
-                  <input ref={qtyInputRef} type="number" min="0.001" step="any" value={staging.quantity}
-                    onChange={(e) => setStaging(s => ({ ...s, quantity: e.target.value }))}
+                  <input ref={qtyInputRef} type="number"
+                    min={units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
+                    step={units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
+                    value={staging.quantity}
+                    onChange={(e) => {
+                      const u = units.find(u => String(u.id) === String(staging.unitId));
+                      const v = u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value;
+                      setStaging(s => ({ ...s, quantity: v }));
+                    }}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, itemInputRef)}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
@@ -1228,7 +1254,9 @@ export default function PurchaseFormPage() {
                     <table className="w-full text-[10px] border-collapse">
                       <tbody>
                         {(selectedItem ? getFilteredWarehouses(selectedItem.id, staging.warehouseId) : warehouses).map(w => {
-                          const qty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
+                          const dbQty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
+                          const inLines = selectedItem ? lines.filter(l => l.item_id === selectedItem.id && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
+                          const qty = dbQty + inLines;
                           const isSelected = String(staging.warehouseId) === String(w.id);
                           const hasStock = qty > 0;
                           return (
@@ -1281,7 +1309,21 @@ export default function PurchaseFormPage() {
                 )
               },
               { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-                render: (l, i) => <input type="number" min="0.001" step="any" value={l.quantity} disabled={isLocked} onChange={(e) => updateLineField(i, "quantity", Number(e.target.value))} className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed" /> },
+                render: (l, i) => {
+                  const u = units.find(u => String(u.id) === String(l.unit_id));
+                  const isInt = u?.allow_decimal === 0;
+                  return (
+                    <input
+                      type="number" min="1" step={isInt ? "1" : "any"}
+                      value={l.quantity} disabled={isLocked}
+                      onChange={(e) => {
+                        const v = isInt ? Math.max(1, Math.round(Number(e.target.value) || 1)) : Math.max(0.001, Number(e.target.value) || 0.001);
+                        updateLineField(i, "quantity", v);
+                      }}
+                      className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed"
+                    />
+                  );
+                } },
               { id: "unit_id", header: "الوحدة", width: 85, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
                 render: (l, i) => {
                   const unitName = l.unit_id ? (units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية") : "أساسية";

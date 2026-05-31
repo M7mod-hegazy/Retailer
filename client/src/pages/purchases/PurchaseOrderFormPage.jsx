@@ -192,22 +192,33 @@ export default function PurchaseOrderFormPage() {
 
   function addLine() {
     if (!selectedItem) return;
-    const qty = Number(staging.quantity || 1);
+    const selectedUnit = units.find(u => String(u.id) === String(staging.unitId));
+    const allowDecimal = selectedUnit?.allow_decimal !== 0;
+    const rawQty = Number(staging.quantity || 1);
+    const qty = allowDecimal ? Math.max(0.001, rawQty) : Math.max(1, Math.round(rawQty));
     const cost = Number(staging.unitCost || 0);
-    
-    setLines(prev => [
-      ...prev,
-      {
+
+    setLines(prev => {
+      const existingIdx = prev.findIndex(l => l.item_id === selectedItem.id);
+      if (existingIdx !== -1) {
+        return prev.map((l, i) => i !== existingIdx ? l : {
+          ...l,
+          quantity: allowDecimal ? l.quantity + qty : Math.round(l.quantity) + qty,
+          unit_cost: cost || l.unit_cost,
+          total: (allowDecimal ? l.quantity + qty : Math.round(l.quantity) + qty) * (cost || l.unit_cost),
+        });
+      }
+      return [...prev, {
         item_id: selectedItem.id,
         name: selectedItem.name,
         code: selectedItem.code || selectedItem.barcode,
         quantity: qty,
         unit_cost: cost,
         unit_id: staging.unitId || null,
-        total: qty * cost
-      }
-    ]);
-    
+        total: qty * cost,
+      }];
+    });
+
     setSelectedItem(null);
     setItemQuery("");
     setStaging({ quantity: "1", unitCost: "", unitId: "" });
@@ -373,13 +384,17 @@ export default function PurchaseOrderFormPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الكمية المطلوبة</label>
-                  <input 
+                  <input
                     ref={qtyInputRef}
                     type="number"
-                    min="0.001"
-                    step="any"
+                    min={units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
+                    step={units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
                     value={staging.quantity}
-                    onChange={(e) => setStaging(s => ({ ...s, quantity: e.target.value }))}
+                    onChange={(e) => {
+                      const u = units.find(u => String(u.id) === String(staging.unitId));
+                      const v = u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value;
+                      setStaging(s => ({ ...s, quantity: v }));
+                    }}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, unitSelectRef, itemInputRef)}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center"

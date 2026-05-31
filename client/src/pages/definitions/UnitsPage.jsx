@@ -12,11 +12,13 @@ export default function UnitsPage() {
       fields={[
         { name: "name", label: "اسم الوحدة", required: true },
         { name: "symbol", label: "الرمز" },
+        { name: "allow_decimal", label: "السماح بالكسور العشرية", type: "toggle", initialValue: 1 },
       ]}
       columns={[
         { key: "id", label: "#" },
         { key: "name", label: "الوحدة" },
         { key: "symbol", label: "الرمز" },
+        { key: "allow_decimal", label: "كسور", render: (val) => val === 0 ? "✗" : "✓" },
       ]}
     />
   );

@@ -2300,10 +2300,14 @@ export default function POSPage() {
                   <input
                     ref={listQtyRef}
                     type="number"
-                    min="0.001"
-                    step="any"
+                    min={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
+                    step={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
                     value={staging.quantity}
-                    onChange={(e) => setStaging(s => ({ ...s, quantity: e.target.value }))}
+                    onChange={(e) => {
+                      const u = selectedItem ? units.find(u => String(u.id) === String(staging.unitId)) : null;
+                      const v = u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value;
+                      setStaging(s => ({ ...s, quantity: v }));
+                    }}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleListFieldKeyDown(e, listPriceRef, listWhRef)}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center"

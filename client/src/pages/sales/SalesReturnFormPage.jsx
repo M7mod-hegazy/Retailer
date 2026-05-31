@@ -437,19 +437,32 @@ export default function SalesReturnFormPage() {
       setPendingBelowCostAdd(false);
     }
     if (!invoiceIsActive) activateInvoice();
-    setCart(prev => [...prev, {
-      key: `direct-${stagingItem.id}-${Date.now()}`,
-      item_id: stagingItem.id,
-      item_name: stagingItem.name_ar || stagingItem.name,
-      item_code: stagingItem.code || stagingItem.item_code || "",
-      unit_price: price,
-      purchase_price: purchasePrice,
-      quantity: qty,
-      warehouse_id: stagingWarehouseId,
-      warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
-      unit_id: stagingUnitId,
-      unit_name: units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية",
-    }]);
+    const selectedUnit = units.find(u => String(u.id) === String(stagingUnitId));
+    const allowDecimal = selectedUnit?.allow_decimal !== 0;
+    const finalQty = allowDecimal ? qty : Math.max(1, Math.round(qty));
+    setCart(prev => {
+      const existingIdx = prev.findIndex(l => l.item_id === stagingItem.id && l.key?.startsWith("direct-"));
+      if (existingIdx !== -1) {
+        return prev.map((l, i) => i !== existingIdx ? l : {
+          ...l,
+          quantity: allowDecimal ? l.quantity + finalQty : Math.round(l.quantity) + finalQty,
+          unit_price: price || l.unit_price,
+        });
+      }
+      return [...prev, {
+        key: `direct-${stagingItem.id}-${Date.now()}`,
+        item_id: stagingItem.id,
+        item_name: stagingItem.name_ar || stagingItem.name,
+        item_code: stagingItem.code || stagingItem.item_code || "",
+        unit_price: price,
+        purchase_price: purchasePrice,
+        quantity: finalQty,
+        warehouse_id: stagingWarehouseId,
+        warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
+        unit_id: stagingUnitId,
+        unit_name: selectedUnit?.name || "أساسية",
+      }];
+    });
     setStagingItem(null); setStagingQty("1"); setStagingPrice(""); setStagingPurchasePrice("");
     setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); setActiveIndex(-1);
     setTimeout(() => itemInputRef.current?.focus(), 30);
@@ -1094,7 +1107,15 @@ export default function SalesReturnFormPage() {
                     {/* Qty input */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">الكمية</label>
-                      <input ref={stagingQtyRef} type="number" min="0.001" step="any" value={stagingQty} onChange={e => setStagingQty(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingPriceRef, stagingWHRef)}
+                      <input ref={stagingQtyRef} type="number"
+                        min={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "0.001"}
+                        step={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "any"}
+                        value={stagingQty}
+                        onChange={e => {
+                          const u = units.find(u => String(u.id) === String(stagingUnitId));
+                          setStagingQty(u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value);
+                        }}
+                        onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingPriceRef, stagingWHRef)}
                         className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                     </div>
 
