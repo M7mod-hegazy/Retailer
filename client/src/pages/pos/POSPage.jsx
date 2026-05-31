@@ -2405,7 +2405,8 @@ export default function POSPage() {
                         return stocked.map((w) => {
                           const rawQty = stockLevels[selectedItem.id]?.[w.id] || 0;
                           const origQty = amendContext ? (amendOriginalQty[`${selectedItem.id}_${w.id}`] || 0) : 0;
-                          const qty = rawQty + origQty;
+                          const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(w.id))?.quantity || 0;
+                          const qty = Math.max(0, rawQty + origQty - inCart);
                           const isSelected = String(staging.warehouseId) === String(w.id);
                           const isLow = qty > 0 && qty < 5;
                           const isInsuff = Number(staging.quantity) > qty;
