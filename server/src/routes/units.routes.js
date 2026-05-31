@@ -19,10 +19,13 @@ router.get("/", requirePagePermission("units", "view"), (req, res) => {
 
 router.post("/", requirePagePermission("units", "add"), (req, res) => {
   const payload = req.body || {};
-  const info = getDb().prepare("INSERT INTO units (name, symbol, is_active) VALUES (?, ?, ?)").run(
+  const info = getDb().prepare(
+    "INSERT INTO units (name, symbol, is_active, allow_decimal) VALUES (?, ?, ?, ?)"
+  ).run(
     payload.name,
     payload.symbol || null,
     payload.is_active === false ? 0 : 1,
+    payload.allow_decimal === false || payload.allow_decimal === 0 ? 0 : 1,
   );
   req.audit("create", "units", { id: info.lastInsertRowid }, `⚙️ تم إضافة وحدة: ${payload.name || ''}`);
   res.status(201).json({ success: true, data: getDb().prepare("SELECT * FROM units WHERE id = ?").get(info.lastInsertRowid) });
@@ -31,8 +34,14 @@ router.post("/", requirePagePermission("units", "add"), (req, res) => {
 router.put("/:id", requirePagePermission("units", "edit"), (req, res) => {
   const payload = req.body || {};
   getDb()
-    .prepare("UPDATE units SET name = ?, symbol = ?, is_active = ? WHERE id = ?")
-    .run(payload.name, payload.symbol || null, payload.is_active === false ? 0 : 1, req.params.id);
+    .prepare("UPDATE units SET name = ?, symbol = ?, is_active = ?, allow_decimal = ? WHERE id = ?")
+    .run(
+      payload.name,
+      payload.symbol || null,
+      payload.is_active === false ? 0 : 1,
+      payload.allow_decimal === false || payload.allow_decimal === 0 ? 0 : 1,
+      req.params.id,
+    );
   req.audit("update", "units", { id: req.params.id }, `⚙️ تم تعديل وحدة: ${payload.name || ''}`);
   res.json({ success: true, data: getDb().prepare("SELECT * FROM units WHERE id = ?").get(req.params.id) });
 });
