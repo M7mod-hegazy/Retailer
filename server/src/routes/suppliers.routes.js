@@ -65,8 +65,8 @@ router.post("/", requirePagePermission("suppliers", "add"), (req, res) => {
   const info = getDb()
     .prepare(
       `INSERT INTO suppliers
-       (name, phone, additional_phones, addresses, code, opening_balance, payment_terms, bank_details, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, phone, additional_phones, addresses, code, opening_balance, base_opening_balance, payment_terms, bank_details, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       payload.name,
@@ -74,6 +74,7 @@ router.post("/", requirePagePermission("suppliers", "add"), (req, res) => {
       payload.additional_phones || null,
       payload.addresses || null,
       payload.code || null,
+      Number(payload.opening_balance || 0),
       Number(payload.opening_balance || 0),
       payload.payment_terms || null,
       payload.bank_details || null,

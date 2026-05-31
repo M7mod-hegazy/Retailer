@@ -178,6 +178,23 @@ router.get("/supplier/:supplierId", requirePagePermission("installments", "view"
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// GET /api/ajal-debts/supplier/:supplierId/payments — all ajal payments for a supplier's debts
+router.get("/supplier/:supplierId/payments", requirePagePermission("installments", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT ap.id, ap.debt_id, ap.amount, ap.payment_date, ap.created_at,
+             pm.name AS method_name
+      FROM ajal_payments ap
+      JOIN ajal_debts d ON d.id = ap.debt_id
+      LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id
+      WHERE d.supplier_id = ? AND COALESCE(d.party_type, 'customer') = 'supplier'
+      ORDER BY ap.created_at DESC
+    `).all(req.params.supplierId);
+    res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // GET /api/ajal-debts/:id
 router.get("/:id", requirePagePermission("installments", "view"), (req, res) => {
   try {

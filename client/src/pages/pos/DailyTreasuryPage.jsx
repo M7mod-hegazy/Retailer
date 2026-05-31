@@ -4,7 +4,7 @@ import {
   AlertCircle, CheckCircle2, X, ArrowDownRight, Calculator,
   Calendar, ChevronRight, Flag, ExternalLink, TrendingUp,
   TrendingDown, Search, Clock, ArrowUpDown, Filter,
-  FileText, Coins, Banknote, History,
+  FileText, Coins, Banknote, History, Info,
   Edit3, RotateCcw, Eye, Sparkles,
 } from "lucide-react";
 
@@ -135,6 +135,149 @@ function getEquationRowAffects(tx) {
     default: break;
   }
   return affects;
+}
+
+function AmountCell({ t }) {
+  const ce = Number(t.cash_effect ?? t.amount ?? 0);
+  const total = Number(t.amount ?? 0);
+  const creditAmt = Number(t.credit_amount || 0);
+  const isReturn = ["sales_return", "purchase_return"].includes(t.doc_type);
+  const isSalesReturn = t.doc_type === "sales_return";
+  const isZeroCash = ce === 0 && total > 0.005;
+  const totalDiffers = Math.abs(total - Math.abs(ce)) > 0.01 && Math.abs(ce) > 0.005;
+  const isCashIn = ce > 0;
+
+  const splits = t.payment_splits
+    ? t.payment_splits.split("|||").map(s => {
+        const idx = s.lastIndexOf(":");
+        return { key: s.slice(0, idx), amt: Number(s.slice(idx + 1)) };
+      })
+    : [];
+  const splitsTotal = splits.reduce((s, x) => s + x.amt, 0);
+
+  /* ── ZERO CASH ──────────────────────────────────────────── */
+  if (isZeroCash) {
+    return (
+      <div className="w-full rounded-xl border border-slate-200 overflow-hidden bg-white">
+        {/* Striped header — signals "no flow" */}
+        <div className="relative h-1.5 overflow-hidden bg-slate-100">
+          <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg,#cbd5e1 0px,#cbd5e1 4px,#f1f5f9 4px,#f1f5f9 10px)" }} />
+        </div>
+        <div className="px-3 pt-2 pb-2.5 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">الإجمالي</span>
+            {/* ∅ badge */}
+            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-full px-1.5 py-0.5">
+              <span className="w-1 h-1 rounded-full bg-slate-400" />
+              <span className="text-[7px] font-black text-slate-500 tracking-wide">لا يؤثر</span>
+            </span>
+          </div>
+          <span className="font-mono text-[16px] font-black text-slate-500 tabular-nums leading-none">{fmt(total)}</span>
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1">
+            <span className="text-[8px] font-black text-slate-400">صفر نقدي — لا يؤثر على الخزنة</span>
+          </div>
+          {/* Credit portion for zero-cash returns */}
+          {isReturn && creditAmt > 0.005 && (
+            <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>
+              <span className={`text-[8px] font-black ${isSalesReturn ? "text-blue-500" : "text-amber-600"}`}>{isSalesReturn ? "رصيد حساب" : "ذمة مورد"}</span>
+              <span className={`text-[10px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
+            </div>
+          )}
+          {isSalesReturn && t.original_invoice_no && (
+            <div className="flex items-center gap-1 opacity-60">
+              <FileText className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+              <span className="text-[8px] font-black text-indigo-600 font-mono">{t.original_invoice_no}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── CASH IN / OUT ──────────────────────────────────────── */
+  if (ce !== 0) {
+    return (
+      <div className="w-full rounded-xl overflow-hidden border" style={{ borderColor: isCashIn ? "#bbf7d0" : "#fecaca" }}>
+        {/* Solid accent bar — full width, thick, unmistakable */}
+        <div className="h-1 w-full" style={{ background: isCashIn ? "linear-gradient(90deg,#10b981,#34d399)" : "linear-gradient(90deg,#ef4444,#f87171)" }} />
+
+        <div className={`px-3 pt-2 pb-2.5 flex flex-col gap-1.5 ${isCashIn ? "bg-emerald-50/50" : "bg-rose-50/50"}`}>
+          {/* Direction label row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <span className={`text-[11px] font-black ${isCashIn ? "text-emerald-500" : "text-rose-500"}`}>{isCashIn ? "↑" : "↓"}</span>
+              <span className={`text-[8px] font-black uppercase tracking-wider ${isCashIn ? "text-emerald-600" : "text-rose-600"}`}>{isCashIn ? "داخل الخزنة" : "خارج الخزنة"}</span>
+            </div>
+            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full border ${isCashIn ? "bg-emerald-100 border-emerald-200 text-emerald-700" : "bg-rose-100 border-rose-200 text-rose-700"}`}>نقداً</span>
+          </div>
+
+          {/* Hero number */}
+          <span className={`font-mono text-[18px] font-black tabular-nums leading-none tracking-tight ${isCashIn ? "text-emerald-700" : "text-rose-700"}`}>
+            {isCashIn ? "+" : "−"}{fmt(Math.abs(ce))}
+          </span>
+
+          {/* Total when partial */}
+          {totalDiffers && (
+            <div className="flex items-center justify-between border-t pt-1.5 mt-0.5" style={{ borderColor: isCashIn ? "#d1fae5" : "#fee2e2" }}>
+              <span className="text-[8px] font-black text-slate-400">إجمالي الحركة</span>
+              <span className="text-[11px] font-black font-mono text-slate-600">{fmt(total)}</span>
+            </div>
+          )}
+
+          {/* Proportional split bar + chips */}
+          {splits.length > 0 && (
+            <div className="flex flex-col gap-1 border-t pt-1.5 mt-0.5" style={{ borderColor: isCashIn ? "#d1fae5" : "#fee2e2" }}>
+              {/* Bar */}
+              <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100">
+                {splits.map((s, i) => {
+                  const pct = splitsTotal > 0 ? (s.amt / splitsTotal) * 100 : 0;
+                  const isCashSplit = s.key === "cash";
+                  const isCreditSplit = s.key === "credit";
+                  return (
+                    <div key={i} style={{ width: `${pct}%`, transition: "width 0.3s" }}
+                      className={`${isCashSplit ? "bg-emerald-400" : isCreditSplit ? "bg-amber-400" : "bg-blue-400"} ${i > 0 ? "border-r border-white" : ""}`}
+                    />
+                  );
+                })}
+              </div>
+              {/* Chips */}
+              <div className="flex flex-wrap gap-1">
+                {splits.map((s, i) => {
+                  const isCashSplit = s.key === "cash";
+                  const isCreditSplit = s.key === "credit";
+                  const label = isCashSplit ? "نقداً" : isCreditSplit ? "آجل" : (PAYMENT_METHOD_AR[s.key] || s.key);
+                  return (
+                    <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${isCashSplit ? "bg-emerald-100 text-emerald-700" : isCreditSplit ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                      {label}: {fmt(s.amt)}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Return credit portion */}
+          {isReturn && creditAmt > 0.005 && (
+            <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>
+              <span className={`text-[8px] font-black ${isSalesReturn ? "text-blue-500" : "text-amber-600"}`}>{isSalesReturn ? "رصيد حساب" : "ذمة مورد"}</span>
+              <span className={`text-[10px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
+            </div>
+          )}
+
+          {/* Invoice reference */}
+          {isSalesReturn && t.original_invoice_no && (
+            <div className="flex items-center gap-1 opacity-60">
+              <FileText className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+              <span className="text-[8px] font-black text-indigo-600 font-mono">{t.original_invoice_no}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── TRULY EMPTY ─────────────────────────────────────────── */
+  return <span className="text-slate-300 text-[13px] font-black block text-center">—</span>;
 }
 
 const TABS = [
@@ -420,26 +563,26 @@ export default function DailyTreasuryPage() {
   const cashIn = Number(summary?.cash_in || 0);
   const cashOut = Number(summary?.cash_out || 0);
   const cashInRows = [
-    { id: "pos_cash_sales", label: "نقد من مبيعات POS", value: summary?.pos_cash_sales, tab: "pos", matchTx: (t) => t.doc_type === "pos_invoice" && t.payment_type === "cash" },
-    { id: "pos_installments", label: "نقد من أقساط (دفعة أولى أو لاحقة)", value: summary?.pos_installment_cash, tab: "pos", matchTx: (t) => t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && t.payment_type === "installments") },
-    { id: "pos_multi_cash", label: "نقد من دفع متعدد", value: summary?.pos_multi_cash, tab: "pos", matchTx: (t) => t.doc_type === "pos_invoice" && t.payment_type === "multi" },
-    { id: "customer_collections", label: "نقد تم تحصيله من العملاء", value: summary?.customer_cash_collections ?? (Number(summary?.customer_payments || 0) + Number(summary?.ajal_payments || 0)), tab: "customer_cash_collections", matchTx: (t) => ["customer_payment", "ajal_payment"].includes(t.doc_type) },
-    { id: "revenues_cash", label: "إيرادات نقدية", value: summary?.revenues_cash, tab: "revenues", matchTx: (t) => t.doc_type === "revenue" },
-    { id: "purchase_returns_cash", label: "نقد مسترد من مرتجعات الشراء", value: summary?.purchase_returns_cash, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && Number(t.cash_effect ?? 0) !== 0 },
+    { id: "pos_cash_sales", label: "نقد من مبيعات POS", tooltip: "فواتير POS استُلم ثمنها كاملاً نقداً.\n\nلزيادة هذا الرقم: أتمم المزيد من فواتير POS بطريقة دفع «نقدي».", value: summary?.pos_cash_sales, tab: "pos", matchTx: (t) => t.doc_type === "pos_invoice" && t.payment_type === "cash" },
+    { id: "pos_installments", label: "نقد من أقساط (دفعة أولى أو لاحقة)", tooltip: "الجزء النقدي من فواتير التقسيط فقط — الدفعة المقدمة وأي أقساط دخلت الصندوق اليوم.\n\nلزيادته: سجّل دفعات أقساط نقدية من شاشة تحصيلات العملاء.", value: summary?.pos_installment_cash, tab: "pos", matchTx: (t) => t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && t.payment_type === "installments") },
+    { id: "pos_multi_cash", label: "نقد من دفع متعدد", tooltip: "الجزء النقدي من فواتير الدفع المتعدد — باقي المبلغ ذهب لبنك أو محفظة.\n\nلزيادته: في فواتير الدفع المتعدد اجعل الجزء النقدي أكبر.", value: summary?.pos_multi_cash, tab: "pos", matchTx: (t) => t.doc_type === "pos_invoice" && t.payment_type === "multi" },
+    { id: "customer_collections", label: "نقد تم تحصيله من العملاء", tooltip: "مدفوعات نقدية من العملاء لتسوية ذمم أو آجل مسجل مسبقاً.\n\nلزيادته: سجّل تحصيلات نقدية من شاشة حسابات العملاء أو حركات الآجل.", value: summary?.customer_cash_collections ?? (Number(summary?.customer_payments || 0) + Number(summary?.ajal_payments || 0)), tab: "customer_cash_collections", matchTx: (t) => ["customer_payment", "ajal_payment"].includes(t.doc_type) },
+    { id: "revenues_cash", label: "إيرادات نقدية", tooltip: "إيرادات متنوعة خارج المبيعات قُبضت نقداً (إيجار، خدمة، غيرها).\n\nلزيادته: سجّل إيراداً سريعاً من زر «تسجيل إيراد سريع» أعلى الصفحة.", value: summary?.revenues_cash, tab: "revenues", matchTx: (t) => t.doc_type === "revenue" },
+    { id: "purchase_returns_cash", label: "نقد مسترد من مرتجعات الشراء", tooltip: "نقد استُرد فعلياً من المورد عند إرجاع بضاعة كانت مدفوعة نقداً.\n\nيرتفع تلقائياً عند تسجيل مرتجع شراء بطريقة تسوية «نقدي».", value: summary?.purchase_returns_cash, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && Number(t.cash_effect ?? 0) !== 0 },
   ];
   const cashOutRows = [
-    { id: "supplier_cash_payments", label: "نقد مدفوع للموردين", value: summary?.supplier_cash_payments ?? (Number(summary?.supplier_payments || 0) + Number(summary?.supplier_ajal_payments || 0)), tab: "supplier_cash_payments", matchTx: (t) => t.doc_type === "supplier_payment" },
-    { id: "expenses_cash", label: "مصروفات نقدية", value: summary?.expenses_cash, tab: "expenses", matchTx: (t) => t.doc_type === "expense" },
-    { id: "sales_returns_cash", label: "نقد مدفوع لمرتجعات المبيعات", value: summary?.sales_returns_cash, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && Number(t.cash_effect ?? 0) !== 0 },
-    { id: "withdrawals", label: "مسحوبات من الخزنة", value: summary?.withdrawals, tab: "withdrawals", matchTx: (t) => t.doc_type === "withdrawal" },
+    { id: "supplier_cash_payments", label: "نقد مدفوع للموردين", tooltip: "نقد خرج من الصندوق لسداد ذمم الموردين أو مشتريات نقدية مباشرة.\n\nلتقليله: فضّل طرق الدفع الآجلة أو البنكية عند الشراء.", value: summary?.supplier_cash_payments ?? (Number(summary?.supplier_payments || 0) + Number(summary?.supplier_ajal_payments || 0)), tab: "supplier_cash_payments", matchTx: (t) => t.doc_type === "supplier_payment" },
+    { id: "expenses_cash", label: "مصروفات نقدية", tooltip: "مصروفات تشغيلية متنوعة دُفعت نقداً من الصندوق.\n\nلمراجعتها: انقر على هذا الصف لتصفية قائمة الحركات وعرضها.", value: summary?.expenses_cash, tab: "expenses", matchTx: (t) => t.doc_type === "expense" },
+    { id: "sales_returns_cash", label: "نقد مدفوع لمرتجعات المبيعات", tooltip: "نقد أُعيد للعملاء من الصندوق عند قبول مرتجعات مبيعات.\n\nيرتفع عند تسجيل مرتجع بطريقة «استرداد نقدي» — راجع أسباب المرتجعات لو ارتفع كثيراً.", value: summary?.sales_returns_cash, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && Number(t.cash_effect ?? 0) !== 0 },
+    { id: "withdrawals", label: "مسحوبات من الخزنة", tooltip: "نقد أُخرج من الصندوق لأغراض خارج المبيعات والمصروفات اليومية.\n\nسجّل المسحوبات دائماً بزر «تسجيل مسحوبات» حتى لا يظهر عجز وهمي.", value: summary?.withdrawals, tab: "withdrawals", matchTx: (t) => t.doc_type === "withdrawal" },
   ];
   const netCreditSales = (summary?.pos_credit_sales || 0) - (summary?.pos_installment_cash || 0) + (summary?.multi_credit_portion || 0);
   const nonCashRows = [
-    { id: "pos_credit_sales", label: "مبيعات آجلة زادت دين العملاء (صافي)", value: netCreditSales, tab: "pos", matchTx: (t) => t.doc_type === "credit_invoice" || t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && (t.payment_type === "credit" || t.payment_type === "installments" || (t.payment_type === "multi" && (t.payment_splits || "").includes("credit:")))) },
-    { id: "sales_returns_account", label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
-    { id: "purchases_payable", label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases", matchTx: (t) => t.doc_type === "purchase" && t.payment_type !== "cash" && t.payment_type !== "bank_transfer" },
-    { id: "purchase_returns_payable", label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
-    { id: "non_cash_movements", label: "مبيعات POS بطرق دفع إلكترونية وبنكية", value: summary?.non_cash_movements_total ?? summary?.pos_bank_sales, tab: "all", matchTx: (t) => t.doc_type === "pos_invoice" && !["cash", "installments", "credit"].includes(t.payment_type) },
+    { id: "pos_credit_sales", label: "مبيعات آجلة زادت دين العملاء (صافي)", tooltip: "مبيعات لم يُدفع ثمنها نقداً — سُجّلت في ذمة العميل.\n\nلا تؤثر على الصندوق. لتحصيلها: اذهب لحسابات العملاء وسجّل تحصيلاً.", value: netCreditSales, tab: "pos", matchTx: (t) => t.doc_type === "credit_invoice" || t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && (t.payment_type === "credit" || t.payment_type === "installments" || (t.payment_type === "multi" && (t.payment_splits || "").includes("credit:")))) },
+    { id: "sales_returns_account", label: "مرتجعات مبيعات زادت دين العملاء", tooltip: "مرتجعات رُدّت كرصيد في حساب العميل بدلاً من نقد.\n\nلا تؤثر على الصندوق — الرصيد يُستخدم في فاتورة مستقبلية للعميل.", value: summary?.sales_returns_account, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
+    { id: "purchases_payable", label: "مشتريات آجلة زادت دين الموردين", tooltip: "مشتريات سُجّلت على الذمة ولم يُدفع ثمنها نقداً بعد.\n\nلا تؤثر على الصندوق الآن — ستؤثر لاحقاً عند سداد الدين نقداً.", value: summary?.purchases_payable_total, tab: "purchases", matchTx: (t) => t.doc_type === "purchase" && t.payment_type !== "cash" && t.payment_type !== "bank_transfer" },
+    { id: "purchase_returns_payable", label: "مرتجعات شراء خصمت من دين الموردين", tooltip: "مرتجعات شراء خُصمت من ذمة المورد مباشرة بدلاً من استرداد نقدي.\n\nلا تؤثر على الصندوق — تقلل فقط ما تدين به للمورد.", value: summary?.purchase_returns_payable_total, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
+    { id: "non_cash_movements", label: "مبيعات POS بطرق دفع إلكترونية وبنكية", tooltip: "مبيعات دُفعت بطاقة أو بنك أو محفظة إلكترونية.\n\nلا تدخل الصندوق النقدي — راجع حساباتها في شاشة البنوك والمحافظ.", value: summary?.non_cash_movements_total ?? summary?.pos_bank_sales, tab: "all", matchTx: (t) => t.doc_type === "pos_invoice" && !["cash", "installments", "credit"].includes(t.payment_type) },
   ];
   const allEquationRows = [...cashInRows, ...cashOutRows, ...nonCashRows];
   const activeEquationRow = activeEquationRowId ? allEquationRows.find(r => r.id === activeEquationRowId) : null;
@@ -933,30 +1076,32 @@ export default function DailyTreasuryPage() {
                                 const isActiveRev = !!affect;
                                 const isActive = isActiveFwd || isActiveRev;
                                 return (
-                                  <button
-                                    type="button"
-                                    key={row.id}
-                                    ref={el => { equationRowRefs.current[row.id] = el; }}
-                                    onClick={() => handleEquationRowClick(row)}
-                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${isActive
-                                        ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.01]"
-                                        : txAffects ? "bg-white/40 border-emerald-100/30 opacity-40" : "bg-white/60 border-emerald-100/50 hover:bg-emerald-100/60"
-                                      }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                                      <span className="text-[13px] text-slate-700 font-bold">{row.label}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-0.5">
-                                      <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
-                                        }`}>{fmt(row.value)}</span>
-                                      {affect && (
-                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
-                                          ← هذه الحركة: {fmt(affect.amount)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
+                                  <SmartTooltip key={row.id} content={row.tooltip} side="left" fill wide>
+                                    <button
+                                      type="button"
+                                      ref={el => { equationRowRefs.current[row.id] = el; }}
+                                      onClick={() => handleEquationRowClick(row)}
+                                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right transition-all border ${isActive
+                                          ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.01]"
+                                          : txAffects ? "bg-white/40 border-emerald-100/30 opacity-40" : "bg-white/60 border-emerald-100/50 hover:bg-emerald-100/60"
+                                        }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <div className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
+                                        <span className="text-[12px] text-slate-700 font-bold text-right leading-snug">{row.label}</span>
+                                        <Info className="h-3 w-3 text-slate-300 shrink-0" />
+                                      </div>
+                                      <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
+                                        <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
+                                          }`}>{fmt(row.value)}</span>
+                                        {affect && (
+                                          <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                            ← هذه الحركة: {fmt(affect.amount)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  </SmartTooltip>
                                 );
                               })}
                             </div>
@@ -977,30 +1122,32 @@ export default function DailyTreasuryPage() {
                                 const isActiveFwd = activeEquationRowId === row.id;
                                 const isActive = isActiveFwd || !!affect;
                                 return (
-                                  <button
-                                    type="button"
-                                    key={row.id}
-                                    ref={el => { equationRowRefs.current[row.id] = el; }}
-                                    onClick={() => handleEquationRowClick(row)}
-                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-right transition-all border ${isActive
-                                        ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.01]"
-                                        : txAffects ? "bg-white/40 border-rose-100/30 opacity-40" : "bg-white/60 border-rose-100/50 hover:bg-rose-100/60"
-                                      }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className="h-2 w-2 rounded-full bg-rose-400" />
-                                      <span className="text-[13px] text-slate-700 font-bold">{row.label}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-0.5">
-                                      <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
-                                        }`}>{fmt(row.value)}</span>
-                                      {affect && (
-                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
-                                          ← هذه الحركة: {fmt(affect.amount)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
+                                  <SmartTooltip key={row.id} content={row.tooltip} side="left" fill wide>
+                                    <button
+                                      type="button"
+                                      ref={el => { equationRowRefs.current[row.id] = el; }}
+                                      onClick={() => handleEquationRowClick(row)}
+                                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right transition-all border ${isActive
+                                          ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.01]"
+                                          : txAffects ? "bg-white/40 border-rose-100/30 opacity-40" : "bg-white/60 border-rose-100/50 hover:bg-rose-100/60"
+                                        }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <div className="h-2 w-2 rounded-full bg-rose-400 shrink-0" />
+                                        <span className="text-[12px] text-slate-700 font-bold text-right leading-snug">{row.label}</span>
+                                        <Info className="h-3 w-3 text-slate-300 shrink-0" />
+                                      </div>
+                                      <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
+                                        <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
+                                          }`}>{fmt(row.value)}</span>
+                                        {affect && (
+                                          <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                            ← هذه الحركة: {fmt(affect.amount)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  </SmartTooltip>
                                 );
                               })}
                             </div>
@@ -1015,30 +1162,32 @@ export default function DailyTreasuryPage() {
                                 const isActiveFwd = activeEquationRowId === row.id;
                                 const isActive = isActiveFwd || !!affect;
                                 return (
-                                  <button
-                                    type="button"
-                                    key={row.id}
-                                    ref={el => { equationRowRefs.current[row.id] = el; }}
-                                    onClick={() => handleEquationRowClick(row)}
-                                    className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-right transition-all ${isActive
-                                        ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
-                                        : txAffects ? "opacity-40" : "hover:bg-white"
-                                      }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Lock className="h-3.5 w-3.5 text-slate-300" />
-                                      <span className="text-[12px] font-bold text-slate-500">{row.label}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-0.5">
-                                      <span className={`font-black text-[13px] font-mono transition-all ${isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
-                                        }`}>{fmt(row.value)}</span>
-                                      {affect && (
-                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
-                                          ← هذه الحركة: {fmt(affect.amount)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </button>
+                                  <SmartTooltip key={row.id} content={row.tooltip} side="left" fill wide>
+                                    <button
+                                      type="button"
+                                      ref={el => { equationRowRefs.current[row.id] = el; }}
+                                      onClick={() => handleEquationRowClick(row)}
+                                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-right transition-all ${isActive
+                                          ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
+                                          : txAffects ? "opacity-40" : "hover:bg-white"
+                                        }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <Lock className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                                        <span className="text-[11px] font-bold text-slate-500 text-right leading-snug">{row.label}</span>
+                                        <Info className="h-3 w-3 text-slate-300 shrink-0" />
+                                      </div>
+                                      <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
+                                        <span className={`font-black text-[13px] font-mono transition-all ${isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
+                                          }`}>{fmt(row.value)}</span>
+                                        {affect && (
+                                          <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                            ← هذه الحركة: {fmt(affect.amount)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  </SmartTooltip>
                                 );
                               })}
                             </div>
@@ -1204,17 +1353,17 @@ export default function DailyTreasuryPage() {
                           <span className="text-[13px] font-black">لا توجد حركات مسجلة في هذا التبويب</span>
                         </div>
                       ) : (
-                        <table className="w-full text-right border-collapse">
+                        <table className="w-full text-center border-collapse [&_td]:align-middle">
                           <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
-                            <tr>
+                            <tr className="border-b border-slate-200">
                               {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
-                                <th key={h} className={`px-3 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest select-none ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
+                                <th key={h} className={`px-3 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
                                   {h}
                                 </th>
                               ))}
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-50">
+                          <tbody className="divide-y divide-slate-200/70">
                             <AnimatePresence>
                               {sortedTransactions.map((t) => (
                                 <motion.tr
@@ -1236,9 +1385,9 @@ export default function DailyTreasuryPage() {
                                           : ""
                                     }`}
                                 >
-                                  <td className={`px-3 py-3 font-black text-[11px] tracking-wider ${t.is_cancelled ? "text-slate-300 line-through" : "text-slate-500"}`}>{t.doc_no || `#${t.id}`}</td>
-                                  <td className="px-3 py-3">
-                                    <div className="flex items-center gap-1 flex-wrap">
+                                  <td className={`px-3 py-3.5 font-black text-[11px] tracking-wider text-center border-r border-slate-200/70 ${t.is_cancelled ? "text-slate-300 line-through" : "text-slate-500"}`}>{t.doc_no || `#${t.id}`}</td>
+                                  <td className="px-3 py-3.5 border-r border-slate-200/70">
+                                    <div className="flex items-center justify-center gap-1 flex-wrap">
                                       <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${
                                         (t.is_cancelled || t.doc_type === 'cancelled_invoice')
                                           ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60"
@@ -1271,177 +1420,26 @@ export default function DailyTreasuryPage() {
                                       )}
                                     </div>
                                   </td>
-                                  <td className="px-3 py-3">
-                                    <div className="flex flex-col gap-0.5">
-                                      {/* Payment Cockpit for sales/purchase returns */}
-                                      {["sales_return", "purchase_return"].includes(t.doc_type) && (() => {
-                                        const cashAmt   = Number(t.cash_amount   || 0);
-                                        const creditAmt = Number(t.credit_amount || 0);
-                                        const total     = Number(t.amount        || 0);
-                                        const isSalesReturn = t.doc_type === "sales_return";
-                                        const isFromInvoice = isSalesReturn && !!t.invoice_id;
-                                        return (
-                                          <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-xl overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] w-full">
-                                            {/* Source badge */}
-                                            {isSalesReturn && (
-                                              <>
-                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 flex-1 min-w-0">
-                                                  {isFromInvoice ? (
-                                                    <>
-                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[8px] font-black bg-indigo-50 text-indigo-700 border-indigo-200 mb-0.5 whitespace-nowrap">
-                                                        <FileText className="w-2.5 h-2.5" /> من فاتورة سابقة
-                                                      </span>
-                                                      <span className="text-[10px] font-black text-indigo-600 font-mono">{t.original_invoice_no}</span>
-                                                    </>
-                                                  ) : (
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[8px] font-black bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap">
-                                                      <RotateCcw className="w-2.5 h-2.5" /> مرتجع مباشر
-                                                    </span>
-                                                  )}
-                                                </div>
-                                                <div className="w-px self-stretch bg-slate-200/80" />
-                                              </>
-                                            )}
-                                            {/* Total */}
-                                            <div className="flex flex-col items-end justify-center px-2.5 py-1.5 min-w-[80px]">
-                                              <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي</span>
-                                              <div className="text-[13px] font-black text-slate-800 font-mono leading-none">{fmt(total)}</div>
-                                            </div>
-                                            {cashAmt > 0.005 && (
-                                              <>
-                                                <div className="w-px self-stretch bg-slate-200/80" />
-                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 bg-emerald-50/80 min-w-[80px]">
-                                                  <span className="text-[7px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
-                                                    <span className="w-1 h-1 rounded-full bg-emerald-500 inline-block" />
-                                                    {isSalesReturn ? "نقداً — صندوق" : "نقداً"}
-                                                  </span>
-                                                  <div className="text-[12px] font-black text-emerald-700 font-mono leading-none">{fmt(cashAmt)}</div>
-                                                </div>
-                                              </>
-                                            )}
-                                            {creditAmt > 0.005 && (
-                                              <>
-                                                <div className="w-px self-stretch bg-slate-200/80" />
-                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 bg-blue-50/80 min-w-[80px]">
-                                                  <span className="text-[7px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
-                                                    <span className="w-1 h-1 rounded-full bg-blue-500 inline-block" />
-                                                    {isSalesReturn ? "رصيد حساب" : "ذمة مورد"}
-                                                  </span>
-                                                  <div className="text-[12px] font-black text-blue-700 font-mono leading-none">{fmt(creditAmt)}</div>
-                                                </div>
-                                              </>
-                                            )}
-                                            {cashAmt < 0.005 && creditAmt < 0.005 && (
-                                              <>
-                                                <div className="w-px self-stretch bg-slate-200/80" />
-                                                <div className="flex flex-col items-end justify-center px-2.5 py-1.5 bg-slate-100/80 min-w-[80px]">
-                                                  <span className="text-[7px] font-black text-slate-400 tracking-wider mb-0.5">صفر نقدي</span>
-                                                  <span className="text-[8px] font-black text-slate-500">لا يؤثر على الحساب</span>
-                                                </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        );
-                                      })()}
-                                      {!["sales_return", "purchase_return"].includes(t.doc_type) && t.payment_type === "installments" && (
-                                        <div className="flex flex-col gap-1 rounded-lg bg-violet-50 border border-violet-200 p-2">
-                                          {t.payment_splits && t.payment_splits.split("|||").map((split, i) => {
-                                            const colonIdx = split.lastIndexOf(":");
-                                            const methodKey = split.slice(0, colonIdx);
-                                            const amt = split.slice(colonIdx + 1);
-                                            const isCash = methodKey === "cash";
-                                            const isCredit = methodKey === "credit";
-                                            return (
-                                              <div key={i} className="flex items-center justify-between gap-2">
-                                                <span className={`text-[9px] font-black ${isCash ? "text-emerald-700" : "text-amber-700"}`}>
-                                                  {isCash ? "💰 نقداً (دفعة مقدم)" : "📋 آجل (قسط)"}
-                                                </span>
-                                                <span className={`text-[11px] font-black font-mono ${isCash ? "text-emerald-700" : "text-amber-700"}`}>
-                                                  {fmt(Number(amt))}
-                                                  {isCash && <span className="text-[8px] mr-1">← الخزنة</span>}
-                                                  {isCredit && <span className="text-[8px] mr-1">← ذمة العميل</span>}
-                                                </span>
-                                              </div>
-                                            );
-                                          })}
-                                          <div className="flex items-center justify-between border-t border-violet-200 pt-1 mt-0.5">
-                                            <span className="text-[9px] font-black text-violet-700">إجمالي الفاتورة</span>
-                                            <span className="text-[11px] font-black font-mono text-violet-700">{fmt(t.amount)}</span>
-                                          </div>
-                                        </div>
-                                      )}
-                                      {!["sales_return", "purchase_return"].includes(t.doc_type) && t.payment_type !== "installments" && (
-                                        <>
-                                          {(() => {
-                                            const ce = Number(t.cash_effect ?? t.amount);
-                                            const total = Number(t.amount ?? 0);
-                                            const isZeroCash = ce === 0 && total > 0;
-                                            return isZeroCash ? (
-                                              <div className="flex flex-col gap-0.5">
-                                                <span className="font-black font-mono text-[13px] text-slate-600">{fmt(total)}</span>
-                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded border bg-slate-100 text-slate-400 border-slate-200 whitespace-nowrap self-start">
-                                                  صفر نقدي — لا يؤثر على الحساب
-                                                </span>
-                                              </div>
-                                            ) : (
-                                              <span className={`font-black font-mono text-[12px] ${ce < 0 ? "text-rose-700" : "text-emerald-700"}`}>
-                                                {ce > 0 ? "+" : ""}{fmt(ce)}
-                                              </span>
-                                            );
-                                          })()}
-                                          {t.payment_type === "multi" && t.amount !== t.cash_effect && Number(t.cash_effect ?? 0) !== 0 && (
-                                            <span className="text-[9px] font-bold text-slate-400">إجمالي الفاتورة: {fmt(t.amount)}</span>
-                                          )}
-                                          {t.payment_splits && (
-                                            <div className="flex flex-wrap gap-1 mt-0.5">
-                                              {t.payment_splits.split("|||").map((split, i) => {
-                                                const colonIdx = split.lastIndexOf(":");
-                                                const methodKey = split.slice(0, colonIdx);
-                                                const amt = split.slice(colonIdx + 1);
-                                                const isCash = methodKey === "cash";
-                                                const isCredit = methodKey === "credit";
-                                                const label = isCash ? "نقداً" : isCredit ? "آجل" : (PAYMENT_METHOD_AR[methodKey] || methodKey);
-                                                return (
-                                                  <span key={i} className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${isCash ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isCredit ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                                                    {label}: {fmt(Number(amt))}
-                                                    {isCash && <span className="text-[7px] opacity-70 mr-0.5">← خزنة</span>}
-                                                    {isCredit && <span className="text-[7px] opacity-70 mr-0.5">← آجل</span>}
-                                                  </span>
-                                                );
-                                              })}
-                                            </div>
-                                          )}
-                                          {t.payment_method === "split" && (Number(t.cash_amount) > 0 || Number(t.credit_amount) > 0) && (
-                                            <div className="flex flex-wrap gap-1 mt-0.5">
-                                              {Number(t.cash_amount) > 0 && (
-                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded border bg-rose-50 text-rose-700 border-rose-200">
-                                                  نقداً: {fmt(t.cash_amount)} <span className="text-[7px] opacity-70">← خزنة</span>
-                                                </span>
-                                              )}
-                                              {Number(t.credit_amount) > 0 && (
-                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
-                                                  رصيد حساب: {fmt(t.credit_amount)} <span className="text-[7px] opacity-70">← حساب</span>
-                                                </span>
-                                              )}
-                                            </div>
-                                          )}
-                                        </>
-                                      )}
+                                  <td className="px-2 py-2 min-w-[260px] w-[280px] border-r border-slate-200/70">
+                                    <div className="flex justify-center">
+                                      <div className="w-full max-w-[270px]">
+                                        <AmountCell t={t} />
+                                      </div>
                                     </div>
                                   </td>
-                                  <td className="px-3 py-3 text-slate-600 text-[11px] font-bold max-w-[180px] truncate">
+                                  <td className="px-3 py-3.5 text-slate-600 text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
                                     {t.party || t.description || "—"}
                                   </td>
-                                  <td className="px-3 py-3 text-slate-500 text-[10px] whitespace-nowrap font-bold">
+                                  <td className="px-3 py-3.5 text-slate-500 text-[10px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
                                     {t.seller_name || t.cancelled_by_name || "—"}
                                   </td>
-                                  <td className="px-3 py-3 text-slate-400 text-[10px] whitespace-nowrap font-medium">
+                                  <td className="px-3 py-3.5 text-slate-400 text-[10px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
                                     {t.created_at
                                       ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
                                       : "—"}
                                   </td>
-                                  <td className="px-3 py-3">
-                                    <div className="flex items-center gap-1.5 opacity-100 transition-opacity">
+                                  <td className="px-3 py-3.5 text-center">
+                                    <div className="flex items-center justify-center gap-1.5 opacity-100 transition-opacity">
                                       <button
                                         onClick={() => setSlideOver(t)}
                                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-zinc-900 hover:bg-slate-50 shadow-sm transition-all"

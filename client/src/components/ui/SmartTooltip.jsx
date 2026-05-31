@@ -1,6 +1,6 @@
 import { useRef, useState, useLayoutEffect } from "react";
 
-export default function SmartTooltip({ children, content, side = "top", fill = false }) {
+export default function SmartTooltip({ children, content, side = "top", fill = false, wide = false }) {
   const [show, setShow] = useState(false);
   const triggerRef = useRef(null);
   const tipRef = useRef(null);
@@ -33,9 +33,13 @@ export default function SmartTooltip({ children, content, side = "top", fill = f
         <div
           ref={tipRef}
           style={{ position: "fixed", zIndex: 9999, pointerEvents: "none" }}
-          className="rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-xl px-4 py-2.5 text-xs font-bold text-white shadow-2xl shadow-slate-900/40 max-w-[200px] text-center whitespace-normal leading-relaxed ring-1 ring-inset ring-white/10"
+          className={`rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-xl px-4 py-3 text-xs font-bold text-white shadow-2xl shadow-slate-900/40 whitespace-normal leading-relaxed ring-1 ring-inset ring-white/10 text-right ${wide ? "max-w-[320px]" : "max-w-[220px] text-center"}`}
         >
-          {content}
+          {wide && typeof content === "string"
+            ? content.split("\n\n").map((para, i) => (
+                <p key={i} className={i > 0 ? "mt-2 pt-2 border-t border-white/10 text-slate-300" : ""}>{para}</p>
+              ))
+            : content}
         </div>
       )}
     </div>

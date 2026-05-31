@@ -114,8 +114,8 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       const paymentResult = db
         .prepare(
           `INSERT INTO payments
-           (party_type, party_id, amount, method, reference_number, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (party_type, party_id, amount, method, reference_number, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, created_at, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           partyType,
@@ -129,6 +129,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
           requestedAllocated,
           amount - requestedAllocated,
           `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+          req.user?.id || null,
         );
 
       if (method === "cash") {

@@ -262,9 +262,10 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 NULL AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM payments py
           LEFT JOIN customers c ON c.id = py.party_id
+          LEFT JOIN users u ON u.id = py.created_by
           WHERE date(py.created_at) = ? AND py.party_type = 'customer' AND py.invoice_id IS NULL
             AND (? = '' OR c.name LIKE ? OR py.notes LIKE ? OR CAST(py.amount AS TEXT) LIKE ?)
         `,
@@ -280,9 +281,10 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 NULL AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM payments py
           LEFT JOIN suppliers s ON s.id = py.party_id
+          LEFT JOIN users u ON u.id = py.created_by
           WHERE date(py.created_at) = ? AND py.party_type = 'supplier'
             AND (? = '' OR s.name LIKE ? OR py.notes LIKE ? OR CAST(py.amount AS TEXT) LIKE ?)
         `,

@@ -261,11 +261,12 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
     if (!party?.id) return;
     setLoading(true);
     try {
-      const [docsR, paysR, retsR, adjR] = await Promise.allSettled([
+      const [docsR, paysR, retsR, adjR, ajalPaysR] = await Promise.allSettled([
         api.get(`/api/purchases?supplier_id=${party.id}&limit=200`),
         api.get(`/api/payments?party_type=supplier&party_id=${party.id}&limit=200`),
         api.get(`/api/purchases/returns?supplier_id=${party.id}&limit=200`),
         api.get(`/api/suppliers/${party.id}/notes?type=adjustment`),
+        api.get(`/api/ajal-debts/supplier/${party.id}/payments`),
       ]);
 
       const items = [];
@@ -358,10 +359,26 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
         });
       });
 
+      (ajalPaysR.value?.data?.data || []).forEach(ap => {
+        const amount = Number(ap.amount || 0);
+        if (amount <= 0) return;
+        items.push({
+          id: `ajalpay-${ap.id}`,
+          type: "payment",
+          date: new Date(ap.created_at || ap.payment_date),
+          ref: `AJAL-${ap.debt_id}`,
+          methodLabel: ap.method_name || "آجل",
+          description: "سداد دين آجل",
+          impactAmount: amount,
+          impactDir: "subtract",
+          raw: ap,
+        });
+      });
+
       items.sort((a, b) => b.date - a.date);
 
       // ── Compute running balance (newest→oldest, display order) ──
-      // party.opening_balance = current balance AFTER all transactions
+      // party.opening_balance = current live balance AFTER all transactions
       const currentBal = Number(party.opening_balance || 0);
       let runBal = currentBal;
       for (let i = 0; i < items.length; i++) {
@@ -371,16 +388,22 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
         else if (item.impactDir === "subtract") runBal += (item.impactAmount || 0);
         item.balanceBefore = runBal;
       }
-      // runBal = balance before any of these transactions (the "opening")
-      if (Math.abs(runBal) > 0.005) {
+
+      // Use the frozen base opening balance (set once at supplier creation / migration).
+      // Fall back to the computed runBal only if the column isn't populated yet.
+      const baseBalance = party.base_opening_balance !== null && party.base_opening_balance !== undefined
+        ? Number(party.base_opening_balance)
+        : runBal;
+
+      if (Math.abs(baseBalance) > 0.005) {
         items.push({
           id: "opening",
           type: "opening",
           date: null,
-          impactAmount: Math.abs(runBal),
-          impactDir: runBal > 0 ? "add" : "subtract",
+          impactAmount: Math.abs(baseBalance),
+          impactDir: baseBalance > 0 ? "add" : "subtract",
           balanceBefore: 0,
-          balanceAfter: runBal,
+          balanceAfter: baseBalance,
         });
       }
 
