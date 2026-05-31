@@ -3,126 +3,337 @@
 <head>
 <meta charset="utf-8">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
   body {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, sans-serif;
-    background-color: #09090b;
-    color: #ffffff;
-    border-radius: 12px;
+    width: 100vw;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: transparent;
     overflow: hidden;
+    padding: 16px; /* Space for drop shadows */
+  }
+
+  .splash-container {
     position: relative;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-
-  /* Very subtle animated radial glow behind everything */
-  body::before {
-    content: '';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 150%; height: 150%;
-    background: radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, transparent 50%);
-    pointer-events: none;
-    animation: breathe 8s infinite ease-in-out;
-  }
-
-  /* The main container for content */
-  .content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 10;
-  }
-
-  .logo {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 24px;
+    width: 100%;
+    height: 100%;
+    background: #050505;
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  .logo svg {
-    width: 100%;
-    height: 100%;
-    color: #ffffff;
-    stroke-width: 1.5;
-  }
-
-  h1 {
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: #ffffff;
-    margin-bottom: 32px;
-    animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  /* Ultra-minimal 1px progress line */
-  .progress-track {
-    width: 160px;
-    height: 1px;
-    background: rgba(255,255,255,0.1);
-    position: relative;
     overflow: hidden;
-    animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
-    opacity: 0;
-    transform: translateY(10px);
+    direction: rtl;
+    box-shadow: 
+      0 30px 90px rgba(0, 0, 0, 0.95),
+      0 4px 20px rgba(0, 0, 0, 0.5);
   }
 
-  .progress-bar {
+  .splash-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Logo and Orbit Path */
+  .logo-orbit-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+
+  .orbit-path {
     position: absolute;
-    top: 0; left: 0; bottom: 0;
-    width: 40%;
+    width: 90px;
+    height: 90px;
+    border: 1px dashed rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .orbit-dot {
+    position: absolute;
+    width: 3.5px;
+    height: 3.5px;
     background: #ffffff;
-    animation: slide 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
+    will-change: transform;
   }
 
-  @keyframes slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
+  .splash-svg-logo {
+    width: 48px;
+    height: 48px;
   }
 
-  @keyframes fadeUp {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  /* Symmetrical Morphing Blueprint Groups */
+  .blueprint-group {
+    opacity: 0;
+    transform: scale(0.85);
+    transform-origin: center center;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
   }
 
-  @keyframes breathe {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
+  .blueprint-group.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .draw-path {
+    stroke: #ffffff;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    will-change: stroke-dashoffset;
+  }
+
+  /* Typography */
+  .splash-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 6px 0;
+    letter-spacing: 0.05em;
+    text-align: center;
+    opacity: 0.95;
+  }
+
+  .splash-subtitle-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .splash-subtitle {
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .splash-dot-divider {
+    font-size: 7px;
+    color: rgba(255, 255, 255, 0.15);
+  }
+
+  .splash-percentage {
+    font-size: 10px;
+    font-family: monospace;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 0.05em;
+  }
+
+  .splash-status {
+    font-size: 10.5px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    min-height: 20px;
+    transition: opacity 0.25s ease;
   }
 </style>
 </head>
 <body>
-  <div class="content">
-    <div class="logo">
-      <!-- Clean geometric logo -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-        <line x1="3" y1="9" x2="21" y2="9"/>
-        <line x1="9" y1="21" x2="9" y2="9"/>
-      </svg>
-    </div>
-    <h1>ElHegazi Retailer</h1>
-    <div class="progress-track">
-      <div class="progress-bar"></div>
+  <div class="splash-container">
+    <div class="splash-center">
+      <div class="logo-orbit-container">
+        <div class="orbit-path"></div>
+        <div class="orbit-dot" id="orbit-dot"></div>
+        
+        <!-- Symmetrical Central Schematic HUD -->
+        <svg class="splash-svg-logo" viewBox="0 0 32 32" fill="none" stroke="#ffffff">
+          <!-- Group 0: Files (Folder/Document) -->
+          <g id="g-files" class="blueprint-group active">
+            <path class="draw-path" d="M6,4 L18,4 L26,12 L26,28 L6,28 Z" stroke-width="1.2" stroke-linejoin="round"/>
+            <path class="draw-path" d="M18,4 L18,12 L26,12" stroke-width="1.2" stroke-linejoin="round"/>
+            <line class="draw-path" x1="11" y1="17" x2="21" y2="17" stroke-width="1.2"/>
+            <line class="draw-path" x1="11" y1="22" x2="21" y2="22" stroke-width="1.2"/>
+          </g>
+          
+          <!-- Group 1: Database Cylinder -->
+          <g id="g-db" class="blueprint-group">
+            <ellipse class="draw-path" cx="16" cy="8" rx="8" ry="3" stroke-width="1.2"/>
+            <path class="draw-path" d="M8,8 L8,17 A8,3 0 0,0 24,17 L24,8" stroke-width="1.2"/>
+            <path class="draw-path" d="M8,17 L8,26 A8,3 0 0,0 24,26 L24,17" stroke-width="1.2"/>
+            <line class="draw-path" x1="11" y1="13" x2="21" y2="13" stroke-dasharray="2 2" stroke-width="0.8"/>
+            <line class="draw-path" x1="11" y1="21" x2="21" y2="21" stroke-dasharray="2 2" stroke-width="0.8"/>
+          </g>
+          
+          <!-- Group 2: Security Key -->
+          <g id="g-sec" class="blueprint-group">
+            <circle class="draw-path" cx="16" cy="10" r="5" stroke-width="1.2"/>
+            <line class="draw-path" x1="16" y1="15" x2="16" y2="27" stroke-width="1.2"/>
+            <line class="draw-path" x1="16" y1="19" x2="21" y2="19" stroke-width="1.2"/>
+            <line class="draw-path" x1="16" y1="23" x2="21" y2="23" stroke-width="1.2"/>
+          </g>
+          
+          <!-- Group 3: App Grid Logo -->
+          <g id="g-logo" class="blueprint-group">
+            <rect class="draw-path" x="4" y="4" width="24" height="24" rx="4" ry="4" stroke-width="1.2"/>
+            <line class="draw-path" x1="4" y1="12" x2="28" y2="12" stroke-width="1.2"/>
+            <line class="draw-path" x1="12" y1="28" x2="12" y2="12" stroke-width="1.2"/>
+          </g>
+        </svg>
+      </div>
+      
+      <h1 class="splash-title">إلـهـيـجـازي للتجزئة</h1>
+      <div class="splash-subtitle-row">
+        <span class="splash-subtitle">ELHEGAZI RETAILER</span>
+        <span class="splash-dot-divider">•</span>
+        <span class="splash-percentage" id="splash-percentage">0%</span>
+      </div>
+      
+      <div class="splash-status" id="splash-status">جاري تهيئة ملفات النظام...</div>
     </div>
   </div>
+
+  <script>
+    (function() {
+      const percentTxt = document.getElementById('splash-percentage');
+      const statusTxt = document.getElementById('splash-status');
+      
+      // Steps milestones
+      const steps = [
+        { target: 25, ar: "الخطوة ٠١ // جاري تهيئة ملفات النظام...", groupId: "g-files" },
+        { target: 60, ar: "الخطوة ٠٢ // الاتصال بقاعدة البيانات المحلية...", groupId: "g-db" },
+        { target: 85, ar: "الخطوة ٠٣ // التحقق من ترخيص التشغيل والأمان...", groupId: "g-sec" },
+        { target: 100, ar: "الخطوة ٠٤ // جاري تشغيل واجهة المعاملات...", groupId: "g-logo" }
+      ];
+
+      let currentPercent = 0;
+      let currentStepIdx = 0;
+      let isPaused = false;
+      
+      // 1. Math-based Kinetic Orbit Dot Animation (60FPS)
+      let angle = 0;
+      let orbitSpeed = 0.035;
+      
+      function animateOrbit() {
+        angle -= orbitSpeed;
+        
+        // Radius of dashed orbit is 45px
+        const x = Math.cos(angle) * 45;
+        const y = Math.sin(angle) * 45;
+        
+        const dot = document.getElementById('orbit-dot');
+        if (dot) {
+          dot.style.transform = `translate(${x}px, ${y}px)`;
+        }
+        requestAnimationFrame(animateOrbit);
+      }
+      animateOrbit();
+
+      // 2. High-performance dynamic SVG blueprint drawing engine
+      function drawGroupSVG(groupId) {
+        const group = document.getElementById(groupId);
+        if (!group) return;
+        
+        const paths = group.querySelectorAll('.draw-path');
+        paths.forEach(p => {
+          // Measure or fallback
+          let length = 80;
+          if (p.getTotalLength) {
+            length = p.getTotalLength();
+          } else {
+            const tag = p.tagName.toLowerCase();
+            if (tag === 'rect') length = 96;
+            if (tag === 'ellipse') length = 38;
+            if (tag === 'circle') length = 32;
+          }
+          
+          p.style.strokeDasharray = length;
+          p.style.strokeDashoffset = length;
+          
+          p.getBoundingClientRect(); // force layout reflow
+          
+          p.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.1, 0.8, 0.2, 1)';
+          p.style.strokeDashoffset = '0';
+        });
+      }
+
+      // Initialize first group SVG laser drawing
+      drawGroupSVG('g-files');
+
+      function changeStatusText(newText) {
+        if (!statusTxt) return;
+        statusTxt.style.opacity = 0;
+        setTimeout(() => {
+          statusTxt.textContent = newText;
+          statusTxt.style.opacity = 1;
+        }, 200);
+      }
+
+      function switchBlueprintGroup(oldIdx, newIdx) {
+        const oldGroup = document.getElementById(steps[oldIdx].groupId);
+        const newGroup = document.getElementById(steps[newIdx].groupId);
+        
+        if (oldGroup) oldGroup.classList.remove('active');
+        
+        setTimeout(() => {
+          if (newGroup) {
+            newGroup.classList.add('active');
+            drawGroupSVG(steps[newIdx].groupId);
+          }
+        }, 300); // smooth crossfade scale stagger
+      }
+
+      function update() {
+        if (currentPercent >= 100) {
+          orbitSpeed = 0.08;
+          return;
+        }
+
+        if (isPaused) return;
+
+        const currentStep = steps[currentStepIdx];
+        if (currentPercent >= currentStep.target && currentStepIdx < steps.length - 1) {
+          isPaused = true;
+          orbitSpeed = 0.01; // slow down orbit while processing milestone
+
+          const oldIdx = currentStepIdx;
+          currentStepIdx++;
+          const nextStep = steps[currentStepIdx];
+          
+          setTimeout(() => {
+            isPaused = false;
+            orbitSpeed = 0.045; // recover speed
+            changeStatusText(nextStep.ar);
+            switchBlueprintGroup(oldIdx, currentStepIdx);
+            tick();
+          }, 600); // database sync pause
+          
+          return;
+        }
+
+        const increment = Math.floor(Math.random() * 2) + 1;
+        currentPercent = Math.min(100, currentPercent + increment);
+        
+        if (percentTxt) percentTxt.textContent = currentPercent + '%';
+
+        const tickTime = Math.floor(Math.random() * 25) + 30; // variable tick
+        setTimeout(update, tickTime);
+      }
+
+      function tick() {
+        update();
+      }
+
+      setTimeout(tick, 300);
+    })();
+  </script>
 </body>
 </html>

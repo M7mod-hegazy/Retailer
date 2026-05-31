@@ -8,7 +8,7 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT p.id, p.purchase_no,
       DATE(p.created_at) AS date,
-      s.name AS supplier_name, p.total, p.status, p.payment_type,
+      s.name AS supplier_name, p.total, p.status, p.payment_method AS payment_type,
       p.supplier_id,
       u.full_name AS created_by,
       COUNT(pl.id) AS item_count
@@ -21,7 +21,7 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
       ${status ? " AND p.status = ?" : ""}
-      ${payment_type ? " AND p.payment_type = ?" : ""}
+      ${payment_type ? " AND p.payment_method = ?" : ""}
     GROUP BY p.id
     ORDER BY p.created_at DESC
   `).all(
@@ -62,7 +62,7 @@ function detailedPurchases(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT p.id, p.purchase_no,
       DATE(p.created_at) AS date,
-      s.name AS supplier_name, p.total, p.status, p.payment_type,
+      s.name AS supplier_name, p.total, p.status, p.payment_method AS payment_type,
       p.supplier_id,
       u.full_name AS created_by,
       COUNT(pl.id) AS item_count
@@ -75,7 +75,7 @@ function detailedPurchases(startDate, endDate, opts = {}) {
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
       ${status ? " AND p.status = ?" : ""}
-      ${payment_type ? " AND p.payment_type = ?" : ""}
+      ${payment_type ? " AND p.payment_method = ?" : ""}
     GROUP BY p.id
     ORDER BY p.created_at DESC
   `).all(

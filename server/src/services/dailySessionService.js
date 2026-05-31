@@ -146,16 +146,41 @@ function cashBreakdown(db, dateText, session) {
   // Cash from all POS sales (cash + installment payments + multi-payment cash portion)
   const posTotalCashReceived = posCashSales + posInstallmentCash + posMultiCash;
 
+  // Payable (supplier-debt-increasing) purchases only: credit/future_due totals +
+  // the credit-method portion of multi purchases. Cash purchases are NOT payable.
   const purchasesTotal = scalar(db, `
-    SELECT COALESCE(SUM(total), 0) AS total
-    FROM purchases
-    WHERE date(created_at) = ? AND COALESCE(status, '') != 'voided'
-  `, [date]);
+    SELECT COALESCE((
+      SELECT SUM(total) FROM purchases
+      WHERE date(created_at) = ? AND payment_method IN ('credit','future_due')
+        AND COALESCE(status,'') NOT IN ('voided','cancelled')
+    ),0) + COALESCE((
+      SELECT SUM(pp.amount)
+      FROM purchase_payments pp
+      JOIN purchases p ON p.id = pp.purchase_id
+      JOIN payment_methods pm ON pm.id = pp.method_id
+      WHERE date(p.created_at) = ? AND p.payment_method = 'multi'
+        AND (pm.type = 'credit' OR pm.category = 'credit')
+        AND COALESCE(p.status,'') NOT IN ('voided','cancelled')
+    ),0) AS total
+  `, [date, date]);
 
-  // Note: All purchases are treated as credit (payable) in the current system.
-  // They create ajal_debts for suppliers, so cash_out for purchases is via supplier_payments.
-  // purchases_cash remains 0 unless a cash purchase feature is added.
-  const purchasesCash = 0;
+  // Cash leaving the drawer for purchases: full total of cash purchases + the
+  // cash-method portion of multi purchases. (credit/future_due hit supplier debt, not cash.)
+  const purchasesCash = scalar(db, `
+    SELECT COALESCE((
+      SELECT SUM(total) FROM purchases
+      WHERE date(created_at) = ? AND payment_method = 'cash'
+        AND COALESCE(status, '') NOT IN ('voided', 'cancelled')
+    ), 0) + COALESCE((
+      SELECT SUM(pp.amount)
+      FROM purchase_payments pp
+      JOIN purchases p ON p.id = pp.purchase_id
+      JOIN payment_methods pm ON pm.id = pp.method_id
+      WHERE date(p.created_at) = ? AND p.payment_method = 'multi'
+        AND pm.type = 'cash' AND COALESCE(pm.category, '') != 'credit'
+        AND COALESCE(p.status, '') NOT IN ('voided', 'cancelled')
+    ), 0) AS total
+  `, [date, date]);
 
   // Credit sales (installments/multi with non-cash portion) - reduces customer debt
   const posCreditSales = scalar(db, `
@@ -303,7 +328,7 @@ function cashBreakdown(db, dateText, session) {
   const supplierCashPayments = supplierPayments + supplierAjalPayments;
   // Cash in = all cash received from sales (including installment/multi cash portions) + collections + revenues + purchase returns
   const cashIn = posTotalCashReceived + customerCashCollections + revenuesCash + purchaseReturnsCash;
-  const cashOut = expensesCash + supplierCashPayments + salesReturnsCash + withdrawals;
+  const cashOut = expensesCash + supplierCashPayments + salesReturnsCash + withdrawals + purchasesCash;
 
   return {
     pos_cash_sales: posCashSales,
@@ -448,8 +473,25 @@ function liveOpeningBalance(db, dateText) {
     WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(payment_method,'cash') = 'cash'
   `, [since, date]);
 
+  // Cash paid out for purchases (cash purchases + multi cash portion) in the carry window
+  const purchasesCash = scalar(db, `
+    SELECT COALESCE((
+      SELECT SUM(total) FROM purchases
+      WHERE date(created_at) > ? AND date(created_at) < ? AND payment_method = 'cash'
+        AND COALESCE(status,'') NOT IN ('voided','cancelled')
+    ),0) + COALESCE((
+      SELECT SUM(pp.amount)
+      FROM purchase_payments pp
+      JOIN purchases p ON p.id = pp.purchase_id
+      JOIN payment_methods pm ON pm.id = pp.method_id
+      WHERE date(p.created_at) > ? AND date(p.created_at) < ? AND p.payment_method = 'multi'
+        AND pm.type = 'cash' AND COALESCE(pm.category,'') != 'credit'
+        AND COALESCE(p.status,'') NOT IN ('voided','cancelled')
+    ),0) AS total
+  `, [since, date, since, date]);
+
   const deltaCashIn = posCash + posInstallmentCash + posMultiCash + customerPayments + customerAjalPayments + revenuesCash + purchaseReturnsCash;
-  const deltaCashOut = expensesCash + supplierPayments + supplierAjalPayments + salesReturnsCash + withdrawals;
+  const deltaCashOut = expensesCash + supplierPayments + supplierAjalPayments + salesReturnsCash + withdrawals + purchasesCash;
   return anchorBalance + deltaCashIn - deltaCashOut;
 }
 

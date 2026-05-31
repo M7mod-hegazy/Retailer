@@ -209,13 +209,41 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
       },
       purchases: {
         sql: `
-          SELECT p.id, p.doc_no, p.total AS amount, 'cash' AS payment_method,
+          SELECT p.id, p.doc_no, p.total AS amount, COALESCE(p.payment_method, 'cash') AS payment_method,
                  p.created_at, s.name AS party, p.status, NULL AS description,
-                 'purchase' AS doc_type, 'account' AS cash_direction, 0 AS cash_effect,
+                 'purchase' AS doc_type,
+                 CASE
+                   WHEN p.payment_method = 'cash' THEN 'out'
+                   WHEN p.payment_method = 'bank_transfer' THEN 'bank'
+                   WHEN p.payment_method = 'multi' THEN 'out'
+                   ELSE 'account'
+                 END AS cash_direction,
+                 CASE
+                   WHEN p.payment_method = 'cash' THEN -p.total
+                   WHEN p.payment_method = 'multi' THEN -(
+                     SELECT COALESCE(SUM(pp.amount), 0)
+                     FROM purchase_payments pp
+                     LEFT JOIN payment_methods pm ON pm.id = pp.method_id
+                     WHERE pp.purchase_id = p.id
+                       AND pm.type = 'cash' AND COALESCE(pm.category, '') != 'credit'
+                   )
+                   ELSE 0
+                 END AS cash_effect,
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 u.username AS seller_name, NULL AS cancelled_by_name,
+                 CASE
+                   WHEN p.payment_method = 'multi' THEN (
+                     SELECT GROUP_CONCAT(
+                       (CASE WHEN pm.type = 'credit' OR pm.category = 'credit' THEN 'credit' ELSE pm.type END)
+                       || ':' || CAST(ROUND(pp.amount, 2) AS TEXT), '|||')
+                     FROM purchase_payments pp
+                     LEFT JOIN payment_methods pm ON pm.id = pp.method_id
+                     WHERE pp.purchase_id = p.id
+                   )
+                   ELSE NULL
+                 END AS payment_splits
           FROM purchases p
           LEFT JOIN suppliers s ON s.id = p.supplier_id
           LEFT JOIN users u ON u.id = p.created_by

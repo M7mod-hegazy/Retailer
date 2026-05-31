@@ -520,6 +520,7 @@ export default function POSPage() {
 
   // Modals
   const [profitModalOpen, setProfitModalOpen]           = useState(false);
+  const [profitDisplayMode, setProfitDisplayMode]        = useState("pct");
   const [advancedSearchOpen, setAdvancedSearchOpen]     = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen]     = useState(false);
   const [customerInfoOpen, setCustomerInfoOpen]         = useState(false);
@@ -553,8 +554,10 @@ export default function POSPage() {
   const [pendingPrint, setPendingPrint] = useState(false);
   const [successNavigateTo, setSuccessNavigateTo] = useState(null);
 
-  // Offline
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  // Offline — reflects reachability of the LOCAL backend, not OS connectivity.
+  // The app is local-first (Express + SQLite on this machine), so navigator.onLine
+  // is irrelevant; what actually breaks the POS is the local server being down.
+  const [isOffline, setIsOffline] = useState(false);
 
   // Refs
   const codeInputRef     = useRef(null);
@@ -574,12 +577,21 @@ export default function POSPage() {
 
   // ── Effects ─────────────────────────────────────────────────────────────────
 
+  // Poll the local backend health endpoint instead of the OS network flag.
+  // The banner only appears when the local server is genuinely unreachable.
   useEffect(() => {
-    const on = () => setIsOffline(false);
-    const off = () => setIsOffline(true);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+    let alive = true;
+    const check = async () => {
+      try {
+        await api.get("/api/health", { timeout: 2000 });
+        if (alive) setIsOffline(false);
+      } catch {
+        if (alive) setIsOffline(true);
+      }
+    };
+    check();
+    const id = setInterval(check, 5000);
+    return () => { alive = false; clearInterval(id); };
   }, []);
 
   // Restore active cart and held invoices from DB on mount.
@@ -869,6 +881,18 @@ export default function POSPage() {
 
   const toggleDetailedSort = (key) => setDetailedSortConfig(p => p.key === key ? { key, dir: p.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
   const toggleCartSort     = (key) => setCartSortConfig(p => p.key === key ? { key, dir: p.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
+
+  function getFilteredWarehouses(itemId, currentId) {
+    if (!itemId) return warehouses;
+    const whStock = stockLevels[itemId] || stockLevels[Number(itemId)] || stockLevels[String(itemId)] || {};
+    const filtered = warehouses.filter(w => (whStock[w.id] || 0) > 0);
+    if (!filtered.length) return warehouses;
+    if (currentId && !filtered.some(w => String(w.id) === String(currentId))) {
+      const current = warehouses.find(w => String(w.id) === String(currentId));
+      if (current) filtered.push(current);
+    }
+    return filtered;
+  }
 
   // ── Derived ──────────────────────────────────────────────────────────────────
 
@@ -1554,7 +1578,6 @@ export default function POSPage() {
   const listPriceRef     = useRef(null);
   const listDiscRef      = useRef(null);
   const listWhRef        = useRef(null);
-  const listUnitRef      = useRef(null);
   const listAddBtnRef    = useRef(null);
 
   function handleListFieldKeyDown(e, nextRef, prevRef) {
@@ -1584,7 +1607,7 @@ export default function POSPage() {
         {isOffline && (
           <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-[12px] font-black tracking-wide text-white shrink-0 z-50">
             <AlertTriangle className="h-3.5 w-3.5" />
-            لا يوجد اتصال بالشبكة — سيتم التزامن تلقائياً عند الاتصال
+            تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
           </div>
         )}
 
@@ -2418,16 +2441,13 @@ export default function POSPage() {
                 {/* Unit */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                  <select
-                    ref={listUnitRef}
-                    value={staging.unitId || ""}
-                    onChange={(e) => setStaging(s => ({ ...s, unitId: e.target.value }))}
-                    onKeyDown={(e) => handleListFieldKeyDown(e, listPriceRef, listWhRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-1 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
-                  >
-                    <option value="">أساسية</option>
-                    {(units || []).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  <div className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-50 px-2">
+                    <span className="text-[12px] font-bold text-slate-600 truncate">
+                      {selectedItem && staging.unitId
+                        ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية")
+                        : "أساسية"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Add */}
@@ -2637,15 +2657,32 @@ export default function POSPage() {
                   }
                 },
                 {
-                  id: "warehouseId", header: "المخزن", width: 120, sortable: false,
-                  headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-                  render: (l, i) => (
-                    <select value={l.warehouse_id || staging.warehouseId}
-                      onChange={(e) => updateLine(l.item_id, { warehouse_id: e.target.value })}
-                      className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate">
-                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                    </select>
-                  )
+                  id: "warehouseId", header: "المخزن", width: 130, sortable: false,
+                  headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                  render: (l) => {
+                    const whStock = stockLevels[l.item_id] || stockLevels[Number(l.item_id)] || stockLevels[String(l.item_id)] || {};
+                    const hasStockInSelected = l.warehouse_id ? (whStock[l.warehouse_id] || 0) > 0 : false;
+                    return (
+                      <div className="relative w-full">
+                        <select value={l.warehouse_id || staging.warehouseId}
+                          onChange={(e) => updateLine(l.item_id, { warehouse_id: e.target.value })}
+                          className={`w-full h-[40px] text-[11px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${
+                            !hasStockInSelected && l.warehouse_id ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"
+                          }`}>
+                          {getFilteredWarehouses(l.item_id, l.warehouse_id).map(w => {
+                            const sqty = whStock[w.id] || 0;
+                            return <option key={w.id} value={w.id}>{w.name} ({sqty})</option>;
+                          })}
+                        </select>
+                        <ChevronDown className="absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-slate-400" />
+                        {!hasStockInSelected && l.warehouse_id && (
+                          <div className="absolute bottom-0 left-0 right-0 text-[8px] font-black text-rose-500 text-center leading-none pb-0.5">
+                            المخزن فارغ
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                 },
                 {
                   id: "unit",
@@ -2655,6 +2692,37 @@ export default function POSPage() {
                   headerClass: "text-center",
                   cellClass: "text-center text-[11px] font-bold text-slate-600 border-l border-slate-100 px-1",
                   render: (l) => l.unit_name || "أساسية"
+                },
+                {
+                  id: "profit_pct", header: "الربح", width: 90, sortable: false,
+                  headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                  render: (l) => {
+                    const item = items.find(i => String(i.id) === String(l.item_id));
+                    const cost = Number(item?.purchase_price || item?.current_cost || 0);
+                    const price = Number(l.unit_price || 0);
+                    const profitFlat = price - cost;
+                    const pct = cost > 0 ? (profitFlat / cost) * 100 : 0;
+                    const isProfit = profitFlat >= 0;
+                    return (
+                      <div className="relative w-full h-full flex items-center justify-center gap-1">
+                        <span className={`text-[12px] font-mono font-black ${isProfit ? "text-emerald-700" : "text-rose-600"}`}>
+                          {profitDisplayMode === "pct"
+                            ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`
+                            : `${profitFlat >= 0 ? "+" : ""}${profitFlat.toFixed(2)}`}
+                        </span>
+                        <button
+                          onClick={() => setProfitDisplayMode(m => m === "pct" ? "flat" : "pct")}
+                          title={profitDisplayMode === "pct" ? "نسبة مئوية — اضغط للتبديل إلى القيمة الثابتة" : "قيمة ثابتة — اضغط للتبديل إلى النسبة المئوية"}
+                          className={`shrink-0 h-5 px-1.5 flex items-center justify-center rounded-sm text-[9px] font-black border transition-all ${
+                            profitDisplayMode === "pct"
+                              ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+                              : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+                          }`}>
+                          {profitDisplayMode === "pct" ? "%" : "قيمة"}
+                        </button>
+                      </div>
+                    );
+                  }
                 },
                 {
                   id: "total", header: "الإجمالي", width: 110, sortable: true,
@@ -2984,7 +3052,7 @@ export default function POSPage() {
       {isOffline && (
         <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-[12px] font-black tracking-wide text-white shrink-0 z-50">
           <AlertTriangle className="h-3.5 w-3.5" />
-          لا يوجد اتصال بالشبكة — سيتم التزامن تلقائياً عند الاتصال
+          تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
         </div>
       )}
 

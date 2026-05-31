@@ -358,7 +358,7 @@ router.get("/payment-type-options", requirePagePermission("reports", "view"), (_
     // 2. Overlay with distinct values actually present in transactions
     const txTables = [
       { table: "invoices",  col: "payment_type" },
-      { table: "purchases", col: "payment_type" },
+      { table: "purchases", col: "payment_method" },
       { table: "expenses",  col: "payment_method" },
       { table: "revenues",  col: "payment_method" },
     ];

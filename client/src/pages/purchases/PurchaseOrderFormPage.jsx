@@ -76,6 +76,8 @@ export default function PurchaseOrderFormPage() {
   const unitSelectRef = useRef(null);
   const costInputRef = useRef(null);
   const addBtnRef = useRef(null);
+  const pendingPickRef    = useRef(false);
+  const itemSearchActiveRef = useRef(false);
 
   // --- Keyboard Navigation Hook ---
   const handleFieldKeyDown = (e, nextRef, prevRef, isEnterSubmit = false) => {
@@ -113,7 +115,9 @@ export default function PurchaseOrderFormPage() {
   // --- Item search ---
   useEffect(() => {
     const q = itemQuery.trim();
-    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    pendingPickRef.current = false;
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
+    itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
       api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
         .then(r => {
@@ -125,9 +129,16 @@ export default function PurchaseOrderFormPage() {
           setFilteredItems(rows);
           setItemOffset(rows.length);
           setItemHasMore(rows.length === ITEM_PAGE);
-        }).catch(() => {});
+          if (pendingPickRef.current && rows.length > 0) {
+            pendingPickRef.current = false;
+            handlePickItem(rows[0]);
+          } else {
+            pendingPickRef.current = false;
+          }
+        }).catch(() => { pendingPickRef.current = false; })
+        .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery, stockLevels]);
 
   function loadMoreItems() {
@@ -332,7 +343,8 @@ export default function PurchaseOrderFormPage() {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           const q = itemQuery.trim();
-                          if (filteredItems.length > 0) handlePickItem(filteredItems[activeIndex]);
+                          if (filteredItems.length > 0) { handlePickItem(filteredItems[activeIndex] || filteredItems[0]); }
+                          else if (itemSearchActiveRef.current) { pendingPickRef.current = true; }
                           else if (q) handlePickItem({ id: -1, name: q, code: q, barcode: q, purchase_price: 0, sale_price: 0 });
                         } else if (e.key === "ArrowDown") {
                           e.preventDefault();

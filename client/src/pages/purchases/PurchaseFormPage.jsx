@@ -54,6 +54,14 @@ function toDateInput(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+function UnitCell({ unitName }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      <span className="text-[11px] font-bold text-slate-600 truncate">{unitName}</span>
+    </div>
+  );
+}
+
 const PAYMENT_METHOD_LABELS = {
   cash: "نقدي", bank_transfer: "حوالة بنكية", credit: "آجل",
   future_due: "استحقاق لاحق", multi: "متعدد",
@@ -85,15 +93,16 @@ function PurchasePreviewModal({ purchase, onClose }) {
         <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
-          <div className="flex items-center justify-between rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3">
-            <div className="flex items-center gap-4 text-[13px] flex-wrap">
-              <span className="font-black text-emerald-800">فاتورة #{detail?.doc_no || purchase.doc_no}</span>
-              <span className="text-slate-600">المورد: <strong>{(detail || purchase).supplier_name || "—"}</strong></span>
-              <span className="text-slate-500">{(detail || purchase).created_at ? formatArabicDateTime(new Date((detail || purchase).created_at)) : "—"}</span>
-              <span className="font-bold text-emerald-700">الإجمالي: {formatMoney((detail || purchase).total)} ج.م</span>
-            </div>
+          <div className="rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px]">
+            <span className="font-black text-emerald-800">فاتورة #{detail?.doc_no || purchase.doc_no}</span>
+            <span className="text-slate-600">المورد: <strong>{(detail || purchase).supplier_name || "—"}</strong></span>
+            <span className="text-slate-500">{(detail || purchase).created_at ? formatArabicDateTime(new Date((detail || purchase).created_at)) : "—"}</span>
+            {(detail || purchase).created_by_username && (
+              <span className="text-slate-500">بواسطة: <strong>{(detail || purchase).created_by_username}</strong></span>
+            )}
+            <span className="font-bold text-emerald-700">الإجمالي: {formatMoney((detail || purchase).total)} ج.م</span>
           </div>
-          <div className="max-h-[320px] overflow-auto rounded-sm border border-slate-200">
+          <div className="max-h-[260px] overflow-auto rounded-sm border border-slate-200">
             <table className="w-full text-[12px] border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
@@ -102,20 +111,62 @@ function PurchasePreviewModal({ purchase, onClose }) {
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">التكلفة</th>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
+                  <th className="px-3 py-2.5 text-center font-black text-slate-500">مُرتجع</th>
                 </tr>
               </thead>
               <tbody>
-                {((detail || purchase).lines || []).map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || l.code || l.barcode || "—"}</td>
-                    <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
-                    <td className="px-3 py-2.5 text-center font-mono font-black text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
-                  </tr>
-                ))}
+                {((detail || purchase).lines || []).map((l, i) => {
+                  const returned = Number(l.returned_quantity || 0);
+                  return (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || l.code || l.barcode || "—"}</td>
+                      <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
+                      <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
+                      <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
+                      <td className="px-3 py-2.5 text-center font-mono font-black text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        {returned > 0 ? <span className="text-amber-600 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+          </div>
+          {/* Totals + Payments */}
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+              {Number((detail || purchase).discount) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">خصم</span>
+                  <span className="font-black font-mono text-rose-600">- {formatMoney((detail || purchase).discount)}</span>
+                </div>
+              )}
+              {Number((detail || purchase).increase) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">إضافة</span>
+                  <span className="font-black font-mono text-emerald-600">+ {formatMoney((detail || purchase).increase)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                <span className="font-black text-slate-800">الإجمالي</span>
+                <span className="font-black font-mono text-slate-900">{formatMoney((detail || purchase).total)} ج.م</span>
+              </div>
+            </div>
+            {detail?.payments?.length > 0 && (
+              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل الدفع</p>
+                {detail.payments.map((p, i) => {
+                  const PSTYLE = { cash: "text-emerald-700", bank_transfer: "text-sky-700", credit: "text-amber-700", future_due: "text-orange-700" };
+                  return (
+                    <div key={i} className="flex justify-between items-center">
+                      <span className="text-slate-600">{p.method_name || p.method_type || "—"}</span>
+                      <span className={`font-black font-mono ${PSTYLE[p.method_type] || "text-slate-800"}`}>{formatMoney(p.amount)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -135,8 +186,6 @@ function PurchasePreviewModal({ purchase, onClose }) {
 
 const SUPPLIER_METHODS = [
   { id: "credit",       label: "آجل",              sub: "يُضاف لرصيد المورد",          icon: Wallet,   color: "amber",  requiresSupplier: true },
-  { id: "future_due",   label: "استحقاق لاحق",     sub: "مع تحديد تاريخ الاستحقاق",    icon: Clock,    color: "rose",   requiresSupplier: true },
-  { id: "bank_transfer",label: "حوالة بنكية",      sub: "خصم من حساب البنك",           icon: CreditCard, color: "blue", requiresSupplier: false },
 ];
 
 const COLOR_MAP = {
@@ -193,6 +242,7 @@ export default function PurchaseFormPage() {
   // Lock toggles: true = update master price on save (🔒), false = this invoice only (🔓)
   const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
   const [profitModalOpen, setProfitModalOpen] = useState(false);
+  const [profitDisplayMode, setProfitDisplayMode] = useState("pct");
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -204,6 +254,11 @@ export default function PurchaseFormPage() {
   const [bankRef, setBankRef] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [multiAmounts, setMultiAmounts] = useState({});
+
+  const [discount, setDiscount] = useState(0);
+  const [increase, setIncrease] = useState(0);
+  const [invoiceDiscountMode, setInvoiceDiscountMode] = useState("flat");
+  const [invoiceIncreaseMode, setInvoiceIncreaseMode] = useState("flat");
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(null);
@@ -235,6 +290,8 @@ export default function PurchaseFormPage() {
   const whSelectRef       = useRef(null);
   const unitSelectRef     = useRef(null);
   const addBtnRef         = useRef(null);
+  const pendingPickRef    = useRef(false);
+  const itemSearchActiveRef = useRef(false);
 
   // Today's Purchases modal states
   const [todayPurchOpen, setTodayPurchOpen] = useState(false);
@@ -400,6 +457,8 @@ export default function PurchaseFormPage() {
       }
       setEditDebtRemaining(p.debt_remaining || 0);
       setEditOriginalSupplierId(p.supplier_id || null);
+      setDiscount(Math.max(0, Number(p.discount || 0)));
+      setIncrease(Math.max(0, Number(p.increase || 0)));
       if (p.supplier_id) {
         api.get(`/api/suppliers/${p.supplier_id}`).then(sr => {
           const s = sr.data.data;
@@ -413,6 +472,7 @@ export default function PurchaseFormPage() {
         code: l.code || l.barcode || "",
         quantity: l.quantity,
         unit_cost: l.unit_cost,
+        original_unit_cost: l.unit_cost,
         selling_price: l.selling_price || 0,
         original_sale_price: l.selling_price || 0,
         wholesale_price: l.wholesale_price || 0,
@@ -425,6 +485,8 @@ export default function PurchaseFormPage() {
       originalSnap.current = {
         supplier_id: p.supplier_id || null,
         payment_method: p.payment_method || "cash",
+        discount: Number(p.discount || 0),
+        increase: Number(p.increase || 0),
         lines: loadedLines.map(l => ({
           item_id: l.item_id, quantity: l.quantity, unit_cost: l.unit_cost,
           selling_price: l.selling_price, wholesale_price: l.wholesale_price,
@@ -443,7 +505,9 @@ export default function PurchaseFormPage() {
 
   useEffect(() => {
     const q = itemQuery.trim();
-    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    pendingPickRef.current = false;
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
+    itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
       api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
         .then(r => {
@@ -454,9 +518,16 @@ export default function PurchaseFormPage() {
           setFilteredItems(rows);
           setItemOffset(rows.length);
           setItemHasMore(rows.length === ITEM_PAGE);
-        }).catch(() => {});
+          if (pendingPickRef.current && rows.length > 0) {
+            pendingPickRef.current = false;
+            handlePickItem(rows[0]);
+          } else {
+            pendingPickRef.current = false;
+          }
+        }).catch(() => { pendingPickRef.current = false; })
+        .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery]);
 
   function loadMoreItems() {
@@ -521,6 +592,7 @@ export default function PurchaseFormPage() {
       code: selectedItem.code || selectedItem.barcode,
       quantity: qty,
       unit_cost: cost,
+      original_unit_cost: Number(selectedItem.purchase_price || 0),
       selling_price: sellingPrice,
       original_sale_price: Number(selectedItem.sale_price || 0),
       wholesale_price: wholesalePrice,
@@ -552,25 +624,55 @@ export default function PurchaseFormPage() {
 
   const totals = useMemo(() => {
     const sub = lines.reduce((acc, l) => acc + l.total, 0);
-    return { sub, total: sub };
-  }, [lines]);
+    return { sub, total: Math.max(0, sub - discount + increase) };
+  }, [lines, discount, increase]);
 
   const priceChangedLines = useMemo(
     () => lines.filter(l =>
       (Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0) ||
-      (Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0)
+      (Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0) ||
+      (Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0)
     ),
     [lines]);
+
+  const priceReportWholesaleUsed = useMemo(
+    () => priceChangedLines.some(l =>
+      Number(l.wholesale_price) > 0 || Number(l.original_wholesale_price) > 0
+    ),
+    [priceChangedLines]);
+
+  function getFilteredWarehouses(itemId, currentId) {
+    if (!itemId) return warehouses;
+    const whStock = stockLevels[itemId] || {};
+    const filtered = warehouses.filter(w => (whStock[w.id] || 0) > 0);
+    if (!filtered.length) return warehouses;
+    if (currentId && !filtered.some(w => String(w.id) === String(currentId))) {
+      const current = warehouses.find(w => String(w.id) === String(currentId));
+      if (current) filtered.push(current);
+    }
+    return filtered;
+  }
 
   const multiTotal = useMemo(() =>
     Object.values(multiAmounts).reduce((s, v) => s + Number(v || 0), 0),
     [multiAmounts]);
+
+  const multiCreditAmount = useMemo(() =>
+    Object.entries(multiAmounts).reduce((sum, [method_id, v]) => {
+      const m = paymentMethods.find(pm => Number(pm.id) === Number(method_id));
+      // credit/آجل method may be stored as type='cash' with category='credit'
+      const isCredit = m && (m.type === "credit" || m.category === "credit");
+      return isCredit ? sum + Number(v || 0) : sum;
+    }, 0),
+    [multiAmounts, paymentMethods]);
 
   const isEditDirty = useMemo(() => {
     if (!isEditMode || !originalSnap.current) return false;
     const snap = originalSnap.current;
     if ((supplier?.id ?? null) !== snap.supplier_id) return true;
     if (paymentMode !== snap.payment_method) return true;
+    if (Number(discount) !== Number(snap.discount || 0)) return true;
+    if (Number(increase) !== Number(snap.increase || 0)) return true;
     if (lines.length !== snap.lines.length) return true;
     for (let i = 0; i < lines.length; i++) {
       const cur = lines[i]; const orig = snap.lines[i];
@@ -582,13 +684,24 @@ export default function PurchaseFormPage() {
       if (String(cur.warehouse_id) !== String(orig.warehouse_id)) return true;
     }
     return false;
-  }, [isEditMode, supplier, paymentMode, lines]);
+  }, [isEditMode, supplier, paymentMode, lines, discount, increase]);
 
   const multiBalanced = Math.abs(multiTotal - totals.total) < 0.005;
+
+  // ── Live supplier-balance preview (POS parity) ───────────────────────────
+  // Amount this invoice adds to the supplier's debt under the chosen method.
+  const creditEffect = (paymentMode === "credit" || paymentMode === "future_due")
+    ? totals.total
+    : paymentMode === "multi" ? multiCreditAmount : 0;
+  // On edit, the supplier balance already contains THIS invoice's existing debt,
+  // so strip it to show the true "before" balance, then re-add the new effect.
+  const baseSupplierBalance = Number(supplier?.opening_balance || 0) - (isEditMode ? Number(editDebtRemaining || 0) : 0);
+  const supplierBalanceAfter = baseSupplierBalance + creditEffect;
 
   function handleSelectPayment(mode) {
     if ((mode === "credit" || mode === "future_due") && !supplier) return;
     setPaymentMode(mode);
+    if (mode === "multi") setMultiAmounts({});
   }
 
   function buildPayload() {
@@ -603,9 +716,9 @@ export default function PurchaseFormPage() {
       doc_no: docNo || refNo,
       ref_no: docNo || refNo,
       date: docDate,
+      discount,
+      increase,
       payment_method: paymentMode,
-      bank_ref: paymentMode === "bank_transfer" ? bankRef : undefined,
-      due_date: paymentMode === "future_due" ? dueDate : undefined,
       payments,
       lines: lines.map(l => ({
         item_id: l.item_id,
@@ -627,7 +740,6 @@ export default function PurchaseFormPage() {
     if ((paymentMode === "credit" || paymentMode === "future_due") && !supplier) {
       toast.error("طريقة الدفع الآجلة تتطلب تحديد المورد"); return false;
     }
-    if (paymentMode === "future_due" && !dueDate) { toast.error("يرجى تحديد تاريخ الاستحقاق"); return false; }
     if (paymentMode === "multi" && !multiBalanced) {
       toast.error(`المبلغ الموزع ${multiTotal.toFixed(2)} لا يساوي الإجمالي ${totals.total.toFixed(2)}`); return false;
     }
@@ -647,6 +759,10 @@ export default function PurchaseFormPage() {
     setBankRef("");
     setDueDate("");
     setMultiAmounts({});
+    setDiscount(0);
+    setIncrease(0);
+    setInvoiceDiscountMode("flat");
+    setInvoiceIncreaseMode("flat");
     resetActivation();
     setTimeout(() => itemInputRef.current?.focus(), 50);
   }
@@ -656,7 +772,7 @@ export default function PurchaseFormPage() {
     setIsSaving(true);
     try {
       const paymentMethodLabel = {
-        cash: "نقدي", bank_transfer: "حوالة بنكية",
+        cash: "نقدي — الخزينة اليومية", bank_transfer: "حوالة بنكية",
         credit: "آجل", future_due: "استحقاق لاحق", multi: "متعدد",
       }[paymentMode] || paymentMode;
       const paymentsForDisplay = paymentMode === "multi"
@@ -668,28 +784,32 @@ export default function PurchaseFormPage() {
             })
         : [{ method: paymentMode, method_name: paymentMethodLabel, amount: totals.total }];
 
+      // Correct on new AND edit: baseSupplierBalance already strips this invoice's
+      // existing debt in edit mode, so adding creditEffect yields the true new balance.
+      const newBalance = (creditEffect > 0 && supplier?.id) ? supplierBalanceAfter : null;
+
       if (isEditMode) {
         await api.put(`/api/purchases/${id}`, buildPayload());
-        if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار بيع ${priceChangedLines.length} صنف`);
+        if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار ${priceChangedLines.length} صنف`);
         wasSaved.current = true;
         setSaveSuccess({
           invoiceNumber: docNo || refNo,
           total: `${formatMoney(totals.total)} ج.م`,
           payments: paymentsForDisplay,
-          customerName: supplier?.name || null,
-          customerNewBalance: null,
+          customerName: paymentMode === "cash" ? null : (supplier?.name || null),
+          customerNewBalance: newBalance,
         });
       } else {
         const res = await api.post("/api/purchases", buildPayload());
         const savedDocNo = res.data?.data?.doc_no || docNo || refNo;
-        if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار بيع ${priceChangedLines.length} صنف`);
+        if (priceChangedLines.length > 0) toast.success(`تم تحديث أسعار ${priceChangedLines.length} صنف`);
         wasSaved.current = true;
         setSaveSuccess({
           invoiceNumber: savedDocNo,
           total: `${formatMoney(totals.total)} ج.م`,
           payments: paymentsForDisplay,
-          customerName: supplier?.name || null,
-          customerNewBalance: null,
+          customerName: paymentMode === "cash" ? null : (supplier?.name || null),
+          customerNewBalance: newBalance,
         });
       }
     } catch (e) {
@@ -733,6 +853,10 @@ export default function PurchaseFormPage() {
     setBankRef("");
     setDueDate("");
     setMultiAmounts({});
+    setDiscount(0);
+    setIncrease(0);
+    setInvoiceDiscountMode("flat");
+    setInvoiceIncreaseMode("flat");
     resetActivation();
   }
 
@@ -804,7 +928,7 @@ export default function PurchaseFormPage() {
           {priceChangedLines.length > 0 && !isLocked && (
             <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700">
               <TrendingUp className="h-3.5 w-3.5" />
-              {priceChangedLines.length} أسعار بيع ستتغير
+              {priceChangedLines.length} أسعار ستتغير
             </div>
           )}
           {/* Profit analysis button */}
@@ -899,7 +1023,9 @@ export default function PurchaseFormPage() {
               <div className="grid grid-cols-[3fr_80px_100px_100px_100px_100px_160px_80px] gap-2 items-end">
                 {/* Item search */}
                 <div data-help="search-bar" className="relative flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">الصنف</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-600">الصنف</label>
+                  </div>
                   <div className="flex items-center gap-1">
                     <div className="relative flex-1">
                       <SearchInput
@@ -909,12 +1035,19 @@ export default function PurchaseFormPage() {
                         onFocus={(e) => { setLookupOpen(true); e.target.select(); }}
                         onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
                         placeholder="ابحث بالاسم، الباركود، أو الكود..."
+                        inputClassName={selectedItem ? "!pr-[76px]" : ""}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) handlePickItem(filteredItems[activeIndex]); else handlePickItem({ id: -1, name: itemQuery, code: itemQuery, barcode: itemQuery, purchase_price: 0, sale_price: 0 }); }
+                          if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) { handlePickItem(filteredItems[activeIndex] || filteredItems[0]); } else if (itemSearchActiveRef.current) { pendingPickRef.current = true; } else { const q = itemQuery.trim(); if (q) handlePickItem({ id: -1, name: q, code: q, barcode: q, purchase_price: 0, sale_price: 0 }); } }
                           else if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
                           else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
                         }}
                       />
+                      {/* SKU code chip — sits inside the input, just before the product name */}
+                      {selectedItem && (
+                        <span className="pointer-events-none absolute right-9 top-1/2 -translate-y-1/2 z-10 text-[9px] font-mono font-black text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-sm px-1.5 py-0.5 leading-none whitespace-nowrap">
+                          {selectedItem.code || selectedItem.barcode || "—"}
+                        </span>
+                      )}
                       {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} onLoadMore={loadMoreItems} hasMoreFromServer={itemHasMore} isLoadingMore={isLoadingMoreItems} />}
                     </div>
                     <button
@@ -934,22 +1067,19 @@ export default function PurchaseFormPage() {
                   <input ref={qtyInputRef} type="number" min="0.001" step="any" value={staging.quantity}
                     onChange={(e) => setStaging(s => ({ ...s, quantity: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, unitSelectRef, itemInputRef)}
+                    onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, itemInputRef)}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                 </div>
 
                 {/* Unit */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                  <div className="relative">
-                    <select ref={unitSelectRef} value={staging.unitId}
-                      onChange={(e) => setStaging(s => ({ ...s, unitId: e.target.value }))}
-                      onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, qtyInputRef)}
-                      className="w-full h-[37px] appearance-none border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800">
-                      <option value="">أساسية</option>
-                      {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
-                    <ChevronDown className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-slate-400" />
+                  <div className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-50 px-2">
+                    <span className="text-[12px] font-bold text-slate-600 truncate">
+                      {selectedItem && staging.unitId
+                        ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية")
+                        : "أساسية"}
+                    </span>
                   </div>
                 </div>
 
@@ -972,7 +1102,7 @@ export default function PurchaseFormPage() {
                   <input ref={costInputRef} type="number" step="any" value={staging.unitCost}
                     onChange={(e) => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, sellInputRef, unitSelectRef)}
+                    onKeyDown={(e) => handleFieldKeyDown(e, sellInputRef, qtyInputRef)}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
                       !stagingLocks.purchase ? "border-amber-300 bg-amber-50/60"
                       : selectedItem && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && Number(staging.unitCost) > 0
@@ -1097,14 +1227,15 @@ export default function PurchaseFormPage() {
                     }}>
                     <table className="w-full text-[10px] border-collapse">
                       <tbody>
-                        {warehouses.map(w => {
+                        {(selectedItem ? getFilteredWarehouses(selectedItem.id, staging.warehouseId) : warehouses).map(w => {
                           const qty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
                           const isSelected = String(staging.warehouseId) === String(w.id);
+                          const hasStock = qty > 0;
                           return (
                             <tr key={w.id} onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
-                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${isSelected ? "bg-indigo-50" : "hover:bg-slate-100"}`}>
+                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${isSelected ? "bg-indigo-50" : "hover:bg-slate-100"} ${!hasStock && !isSelected ? "opacity-40" : ""}`}>
                               <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{w.name}</td>
-                              <td className={`px-2 py-1 font-mono text-center tabular-nums ${qty > 0 ? "text-emerald-600 font-black" : "text-slate-400"}`}>{qty}</td>
+                              <td className={`px-2 py-1 font-mono text-center tabular-nums ${hasStock ? "text-emerald-600 font-black" : "text-slate-400"}`}>{qty}</td>
                             </tr>
                           );
                         })}
@@ -1152,15 +1283,29 @@ export default function PurchaseFormPage() {
               { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => <input type="number" min="0.001" step="any" value={l.quantity} disabled={isLocked} onChange={(e) => updateLineField(i, "quantity", Number(e.target.value))} className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed" /> },
               { id: "unit_id", header: "الوحدة", width: 85, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
-                render: (l, i) => (
-                  <select value={l.unit_id || ""} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_id", e.target.value || null)}
-                    className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate disabled:cursor-not-allowed">
-                    <option value="">أساسية</option>
-                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                ) },
+                render: (l, i) => {
+                  const unitName = l.unit_id ? (units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية") : "أساسية";
+                  return <UnitCell unitName={unitName} />;
+                } },
               { id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-                render: (l, i) => <input type="number" step="any" value={l.unit_cost} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))} className="w-full h-[40px] text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 text-slate-700 transition-colors disabled:cursor-not-allowed" /> },
+                render: (l, i) => {
+                  const costChanged = Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0 && Number(l.original_unit_cost) > 0;
+                  return (
+                    <div className="relative w-full h-full flex flex-col">
+                      <input type="number" step="any" value={l.unit_cost} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
+                        className={`w-full h-[32px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                      {costChanged && (
+                        <span className="text-[9px] text-center leading-none pb-0.5">
+                          <span className="text-slate-400 font-mono">{Number(l.original_unit_cost).toFixed(2)}</span>
+                          <span className="text-slate-300 mx-0.5">→</span>
+                          <span className={`font-mono font-black ${Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-500" : "text-emerald-600"}`}>
+                            {Number(l.unit_cost).toFixed(2)}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  );
+                } },
               {
                 id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => {
@@ -1181,19 +1326,31 @@ export default function PurchaseFormPage() {
                 }
               },
               {
-                id: "profit_pct", header: "نسبة الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                id: "profit_pct", header: "الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
                 render: (l, i) => {
                   const cost = Number(l.unit_cost) || 0;
                   const price = Number(l.selling_price) || 0;
-                  const pct = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+                  const profitFlat = price - cost;
+                  const pct = cost > 0 ? (profitFlat / cost) * 100 : 0;
+                  const isProfit = profitFlat >= 0;
                   return (
-                    <input type="number" step="0.1" value={Number(pct.toFixed(2))} disabled={isLocked}
-                      onChange={(e) => {
-                        const newPct = Number(e.target.value);
-                        const newPrice = cost * (1 + newPct / 100);
-                        updateLineField(i, "selling_price", Math.round(newPrice * 1000) / 1000);
-                      }}
-                      className="w-full h-[40px] text-center text-[12px] font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50/50 text-blue-700 transition-colors disabled:cursor-not-allowed" />
+                    <div className="relative w-full h-full flex items-center justify-center gap-1">
+                      <span className={`text-[12px] font-mono font-black ${isProfit ? "text-emerald-700" : "text-rose-600"}`}>
+                        {profitDisplayMode === "pct"
+                          ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`
+                          : `${profitFlat >= 0 ? "+" : ""}${profitFlat.toFixed(2)}`}
+                      </span>
+                      <button
+                        onClick={() => setProfitDisplayMode(m => m === "pct" ? "flat" : "pct")}
+                        title={profitDisplayMode === "pct" ? "نسبة مئوية — اضغط للتبديل إلى القيمة الثابتة" : "قيمة ثابتة — اضغط للتبديل إلى النسبة المئوية"}
+                        className={`shrink-0 h-5 px-1.5 flex items-center justify-center rounded-sm text-[9px] font-black border transition-all ${
+                          profitDisplayMode === "pct"
+                            ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+                            : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+                        }`}>
+                        {profitDisplayMode === "pct" ? "%" : "قيمة"}
+                      </button>
+                    </div>
                   );
                 }
               },
@@ -1238,8 +1395,33 @@ export default function PurchaseFormPage() {
                   );
                 }
               },
-              { id: "warehouse_id", header: "المخزن", width: 120, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
-                render: (l, i) => <select value={l.warehouse_id} disabled={isLocked} onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)} className="w-full h-[40px] text-[11px] font-bold bg-transparent outline-none border-0 ring-0 text-slate-600 appearance-none text-center focus:bg-slate-50 truncate disabled:cursor-not-allowed">{warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select> },
+              { id: "warehouse_id", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                render: (l, i) => {
+                  const whStock = stockLevels[l.item_id] || {};
+                  const hasStockInSelected = l.warehouse_id ? (whStock[l.warehouse_id] || 0) > 0 : false;
+                  return (
+                    <div className="relative w-full">
+                      <select value={l.warehouse_id} disabled={isLocked} onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
+                        className={`w-full h-[40px] text-[11px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${
+                          isLocked ? "bg-transparent text-slate-500 cursor-not-allowed" :
+                          !hasStockInSelected && l.warehouse_id ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"
+                        }`}>
+                        {getFilteredWarehouses(l.item_id, l.warehouse_id).map(w => {
+                          const sqty = whStock[w.id] || 0;
+                          return <option key={w.id} value={w.id}>{w.name} ({sqty})</option>;
+                        })}
+                      </select>
+                      {!isLocked && (
+                        <ChevronDown className="absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-slate-400" />
+                      )}
+                      {!hasStockInSelected && l.warehouse_id && !isLocked && (
+                        <div className="absolute bottom-0 left-0 right-0 text-[8px] font-black text-rose-500 text-center leading-none pb-0.5">
+                          المخزن فارغ
+                        </div>
+                      )}
+                    </div>
+                  );
+                } },
               { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 font-black font-mono text-[14px] text-slate-900 bg-slate-50/50 border-l border-slate-100",
                 render: (l) => Number(l.total).toLocaleString("en-US", { minimumFractionDigits: 2 }) },
               { id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",
@@ -1250,7 +1432,7 @@ export default function PurchaseFormPage() {
           {priceChangedLines.length > 0 && !isLocked && (
             <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 text-[11px] text-amber-700 font-bold shrink-0 mt-2 border border-amber-200 rounded-md">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              سيتم تحديث أسعار البيع لـ {priceChangedLines.map(l => l.name).join("، ")}
+              سيتم تحديث الأسعار لـ {priceChangedLines.map(l => l.name).join("، ")}
               <Link to="/operations/bulk-price-update" className="mr-auto flex items-center gap-1 text-amber-600 hover:underline">
                 <ExternalLink className="h-3 w-3" /> سجل الأسعار
               </Link>
@@ -1278,17 +1460,36 @@ export default function PurchaseFormPage() {
                   {(() => {
                     const isSameEditSupplier = isEditMode && supplier?.id === editOriginalSupplierId;
                     const dispBal = Number(supplier.opening_balance || 0) - (isSameEditSupplier ? editDebtRemaining : 0);
+                    const isCreditMode = paymentMode === "credit" || paymentMode === "future_due";
+                    const isMultiMode = paymentMode === "multi";
+                    const balanceDelta = isCreditMode ? totals.total : (isMultiMode ? multiCreditAmount : 0);
+                    const newBal = dispBal + balanceDelta;
+                    const hasLines = lines.length > 0;
+                    const balChange = balanceDelta;
                     return (
                       <>
                         <div className="mt-2 flex items-center justify-between rounded-sm bg-slate-50 border border-slate-200 px-3 py-1.5">
                           <span className="text-[10px] font-bold text-slate-500">{isEditMode ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
                           <span className={`text-[13px] font-black font-mono ${dispBal > 0 ? "text-rose-600" : "text-slate-800"}`}>{dispBal.toFixed(2)}</span>
                         </div>
-                        {(paymentMode === "credit" || paymentMode === "future_due") && lines.length > 0 && (
+                        {hasLines && balChange !== 0 && (
+                          <div className="mt-1 flex items-center justify-between rounded-sm bg-indigo-50 border border-indigo-200 px-3 py-1.5">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] font-bold text-indigo-600">التغير</span>
+                              <span className={`text-[9px] font-black font-mono px-1 py-0.5 rounded-sm ${balChange > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                {balChange > 0 ? `↑` : `↓`}
+                              </span>
+                            </div>
+                            <span className={`text-[12px] font-black font-mono ${balChange > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                              {balChange > 0 ? "+" : ""}{balChange.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {hasLines && (
                           <div className="mt-1.5 flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5">
                             <span className="text-[10px] font-bold text-amber-600">الرصيد بعد الفاتورة</span>
-                            <span className={`text-[13px] font-black font-mono ${dispBal + totals.total > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                              {(dispBal + totals.total).toFixed(2)}
+                            <span className={`text-[13px] font-black font-mono ${newBal > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                              {newBal.toFixed(2)}
                             </span>
                           </div>
                         )}
@@ -1318,6 +1519,22 @@ export default function PurchaseFormPage() {
                 <span className="text-[12px] font-black text-slate-800">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
               </div>
               <div className="h-px bg-slate-100" />
+              {/* Subtotal */}
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-bold text-slate-500">الإجمالي الفرعي</span>
+                <span className="text-[13px] font-black text-slate-800 font-mono">{totals.sub.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+              </div>
+              {/* Discount */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-rose-600">خصم الفاتورة</span>
+                <span className="text-[12px] font-black font-mono text-rose-600">{discount > 0 ? `-${discount.toFixed(2)}` : "0"}</span>
+              </div>
+              {/* Increase */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-blue-600">إضافة / رسوم</span>
+                <span className="text-[12px] font-black font-mono text-blue-600">{increase > 0 ? `+${increase.toFixed(2)}` : "0"}</span>
+              </div>
+              <div className="h-px bg-slate-100" />
               <div className="mt-3 rounded-sm bg-emerald-800 p-4 text-center text-white">
                 <div className="text-[10px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                 <div className="text-[26px] font-black tracking-tighter font-mono">
@@ -1327,6 +1544,72 @@ export default function PurchaseFormPage() {
               </div>
             </div>
           </div>
+
+          {/* Discounts & Additions Section */}
+          {!isLocked && (
+            <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 border-slate-100">خصومات و إضافات</h3>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> خصم الفاتورة
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input type="number" min="0"
+                      value={invoiceDiscountMode === "pct"
+                        ? (totals.sub > 0 ? parseFloat(((discount / totals.sub) * 100).toFixed(2)) : 0)
+                        : discount}
+                      onChange={(e) => {
+                        const v = Math.max(0, Number(e.target.value || 0));
+                        if (invoiceDiscountMode === "pct") {
+                          setDiscount(Math.min(parseFloat(((v / 100) * totals.sub).toFixed(4)), totals.sub));
+                        } else {
+                          setDiscount(Math.min(v, totals.sub));
+                        }
+                      }}
+                      className="flex-1 min-w-0 rounded-sm border border-rose-200 bg-rose-50/50 px-3 py-2 text-[13px] font-black text-rose-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 text-center transition-all"
+                    />
+                    <button type="button"
+                      onClick={() => setInvoiceDiscountMode((m) => m === "pct" ? "flat" : "pct")}
+                      title={invoiceDiscountMode === "pct" ? "تغيير إلى قيمة ثابتة" : "تغيير إلى نسبة مئوية"}
+                      className={`h-[38px] px-3 rounded-sm text-[12px] font-black border transition-all shrink-0 ${invoiceDiscountMode === "pct" ? "bg-rose-100 border-rose-300 text-rose-700 shadow-sm" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}>
+                      {invoiceDiscountMode === "pct" ? "%" : "ج"}
+                    </button>
+                  </div>
+                  {discount > 0 && invoiceDiscountMode === "flat" && totals.sub > 0 && (
+                    <span className="text-[10px] font-mono text-rose-400 px-1">{((discount / totals.sub) * 100).toFixed(1)}% من الإجمالي</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> إضافة / رسوم
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input type="number" min="0"
+                      value={invoiceIncreaseMode === "pct"
+                        ? (totals.sub > 0 ? parseFloat(((increase / totals.sub) * 100).toFixed(2)) : 0)
+                        : increase}
+                      onChange={(e) => {
+                        const v = Math.max(0, Number(e.target.value || 0));
+                        if (invoiceIncreaseMode === "pct") {
+                          setIncrease(parseFloat(((v / 100) * totals.sub).toFixed(4)));
+                        } else {
+                          setIncrease(v);
+                        }
+                      }}
+                      className="flex-1 min-w-0 rounded-sm border border-blue-200 bg-blue-50/50 px-3 py-2 text-[13px] font-black text-blue-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-center transition-all"
+                    />
+                    <button type="button"
+                      onClick={() => setInvoiceIncreaseMode((m) => m === "pct" ? "flat" : "pct")}
+                      title={invoiceIncreaseMode === "pct" ? "تغيير إلى قيمة ثابتة" : "تغيير إلى نسبة مئوية"}
+                      className={`h-[38px] px-3 rounded-sm text-[12px] font-black border transition-all shrink-0 ${invoiceIncreaseMode === "pct" ? "bg-blue-100 border-blue-300 text-blue-700 shadow-sm" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}>
+                      {invoiceIncreaseMode === "pct" ? "%" : "ج"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Payment Method */}
           <div data-help="payment-section" className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
@@ -1373,26 +1656,6 @@ export default function PurchaseFormPage() {
               );
             })}
 
-            {paymentMode === "bank_transfer" && (
-              <div className="mt-3 flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-600">رقم الحوالة / المرجع</label>
-                <input type="text" value={bankRef} onChange={(e) => setBankRef(e.target.value)} placeholder="مثلاً: TXN-98765" disabled={isLocked}
-                  className="w-full border border-blue-300 rounded-sm bg-blue-50 px-3 py-2 text-[12px] font-bold outline-none focus:border-blue-500 font-mono disabled:cursor-not-allowed" />
-              </div>
-            )}
-            {paymentMode === "future_due" && (
-              <div className="mt-3 flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-600">تاريخ الاستحقاق *</label>
-                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} min={docDate} disabled={isLocked}
-                  className="w-full border border-rose-300 rounded-sm bg-rose-50 px-3 py-2 text-[12px] font-bold outline-none focus:border-rose-500 disabled:cursor-not-allowed" />
-              </div>
-            )}
-            {paymentMode === "credit" && supplier && (
-              <div className="mt-3 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 font-bold">
-                سيتم إضافة {totals.total.toFixed(2)} ج.م لرصيد {supplier.name}
-              </div>
-            )}
-
             {paymentMode === "multi" && (
               <div className="mt-3 flex flex-col gap-2">
                 <div className="rounded-sm bg-slate-950 px-3 py-2 text-center">
@@ -1430,7 +1693,55 @@ export default function PurchaseFormPage() {
                 )}
               </div>
             )}
+
+            {/* Live supplier-balance preview (credit + multi credit portion) — POS parity */}
+            {supplier && creditEffect > 0 && lines.length > 0 && (
+              <div className="mt-3 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2.5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-amber-700">
+                    {paymentMode === "multi" ? "الإضافة للآجل" : `الإضافة لرصيد ${supplier.name}`}
+                  </span>
+                  <span className="font-mono font-black text-amber-700">+{formatMoney(creditEffect)}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
+                  <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
+                  <span className={`font-mono font-black ${supplierBalanceAfter > 0.005 ? "text-rose-600" : "text-emerald-600"}`}>
+                    {formatMoney(supplierBalanceAfter)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Bottom Action Buttons */}
+          {!isLocked && (
+            <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm flex flex-col gap-2">
+              <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
+                <button onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
+                  className="w-full flex items-center justify-center gap-2 rounded-sm bg-emerald-600 px-3 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
+                  {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isAmendMode ? <><Save className="h-4 w-4" /> إصدار تعديل</> : isEditMode ? <><Save className="h-4 w-4" /> حفظ التعديلات</> : <><Save className="h-4 w-4" /> حفظ الفاتورة</>}
+                </button>
+              </PermissionGate>
+              <div className="grid grid-cols-3 gap-2">
+                <PermissionGate page="purchases" action="print">
+                  <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
+                    className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-slate-50 transition-all disabled:opacity-40">
+                    <Printer className="h-3.5 w-3.5" /> طباعة
+                  </button>
+                </PermissionGate>
+                <PermissionGate page="purchases" action="delete">
+                  <button onClick={() => setDeleteConfirmOpen(true)}
+                    className="flex items-center justify-center gap-1.5 rounded-sm border border-rose-200 bg-white px-2 py-2 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-all">
+                    <Trash2 className="h-3.5 w-3.5" /> {isEditMode ? "حذف" : "مسح"}
+                  </button>
+                </PermissionGate>
+                <button onClick={() => setNewInvoiceModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
+                  <FilePlus className="h-3.5 w-3.5" /> جديدة
+                </button>
+              </div>
+            </div>
+          )}
         </aside>
       </main>
 
@@ -1467,45 +1778,63 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* Price Update Report Modal */}
-      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار">
+      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار" maxWidth={priceReportWholesaleUsed ? "max-w-4xl" : "max-w-3xl"}>
         <div className="p-4 space-y-4 animate-modal-enter">
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-[12px] font-bold text-amber-700 leading-relaxed">
-              سيتم تحديث أسعار البيع التالية عند حفظ الفاتورة. راجع التغييرات قبل المتابعة.
+              سيتم تحديث الأسعار التالية عند حفظ الفاتورة. راجع التغييرات قبل المتابعة.
             </p>
           </div>
-          <div className="rounded-md border border-slate-200 overflow-hidden">
+          <div className="rounded-md border border-slate-200 overflow-x-auto">
             <table className="w-full text-[12px] border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (بعد)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (بعد)</th>
+                  <th className="px-3 py-2 text-right font-black text-slate-500 min-w-[180px]">الصنف</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">التكلفة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">التكلفة (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">سعر البيع (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">سعر البيع (بعد)</th>
+                  {priceReportWholesaleUsed && (
+                    <>
+                      <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">جملة (قبل)</th>
+                      <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">جملة (بعد)</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {priceChangedLines.map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2 font-bold text-slate-800 max-w-[160px] truncate">{l.name}</td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 align-top">
+                    <td className="px-3 py-2 font-bold text-slate-800 whitespace-normal break-words">{l.name}</td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400 whitespace-nowrap">{Number(l.original_unit_cost) > 0 ? Number(l.original_unit_cost).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black whitespace-nowrap">
+                      {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_unit_cost) ? (
+                        <span className={Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-600" : "text-emerald-600"}>
+                          {Number(l.unit_cost).toFixed(2)}
+                        </span>
+                      ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center font-mono text-slate-400 whitespace-nowrap">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono font-black whitespace-nowrap">
                       {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
                         <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
                           {Number(l.selling_price).toFixed(2)}
                         </span>
                       ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black">
-                      {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
-                        <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
-                          {Number(l.wholesale_price).toFixed(2)}
-                        </span>
-                      ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
-                    </td>
+                    {priceReportWholesaleUsed && (
+                      <>
+                        <td className="px-3 py-2 text-center font-mono text-slate-400 whitespace-nowrap">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                        <td className="px-3 py-2 text-center font-mono font-black whitespace-nowrap">
+                          {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
+                            <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
+                              {Number(l.wholesale_price).toFixed(2)}
+                            </span>
+                          ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -1838,10 +2167,28 @@ export default function PurchaseFormPage() {
                 { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
                 { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (inv) => inv.items_count },
                 { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (inv) => formatMoney(inv.total) },
-                { id: "payment_method", header: "طريقة الدفع", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-600", render: (inv) => PAYMENT_METHOD_LABELS[inv.payment_method] || inv.payment_method || "—" },
-                { id: "status", header: "الحالة", width: 100, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
-                  const info = PURCHASE_STATUS_STYLES[inv.status] || PURCHASE_STATUS_STYLES.active;
-                  return <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>;
+                { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
+                  const PSTYLE = { cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" }, bank_transfer: { label: "حوالة بنكية", cls: "bg-sky-50 text-sky-700 border-sky-200" }, credit: { label: "آجل", cls: "bg-amber-50 text-amber-700 border-amber-200" }, future_due: { label: "استحقاق لاحق", cls: "bg-orange-50 text-orange-700 border-orange-200" }, multi: { label: "متعدد", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" } };
+                  if (inv.payment_splits) {
+                    const splits = inv.payment_splits.split("|||").filter(Boolean).map(s => { const [m, a] = s.split(":"); return { method: (m || "").trim(), amount: Number(a || 0) }; }).filter(s => s.amount > 0);
+                    if (splits.length) return (
+                      <div className="flex flex-col gap-0.5">
+                        {splits.map((s, i) => { const info = PSTYLE[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
+                          <div key={i} className="flex items-center gap-1">
+                            <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>
+                            <span className="text-[10px] font-mono font-bold text-slate-500">{formatMoney(s.amount)}</span>
+                          </div>
+                        ); })}
+                      </div>
+                    );
+                  }
+                  const info = PSTYLE[inv.payment_method] || { label: inv.payment_method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" };
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>
+                      <span className="text-[10px] font-mono font-bold text-slate-500">{formatMoney(inv.total)}</span>
+                    </div>
+                  );
                 }},
                 { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
                 { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },

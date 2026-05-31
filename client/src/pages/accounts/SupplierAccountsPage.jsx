@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building, Search, Plus, X, Phone, SlidersHorizontal,
@@ -272,18 +272,20 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
 
       (docsR.value?.data?.data || []).forEach(d => {
         const total = Number(d.total || 0);
-        const received = Number(d.amount_received || 0);
+        // API returns amount_paid + payment_method (older callers used *_received/payment_type)
+        const method = d.payment_method || d.payment_type;
+        const received = Number(d.amount_paid ?? d.amount_received ?? 0);
         const ajalAmount = Math.max(0, total - received);
         let chips = parsePaymentSplits(d.payment_splits);
-        if (chips.length === 0 && d.payment_type !== "credit" && received > 0) {
-          chips = [{ method: d.payment_type, amount: received }];
+        if (chips.length === 0 && method !== "credit" && received > 0) {
+          chips = [{ method, amount: received }];
         }
         // For متعدد: parse ALL splits (incl. credit) so آجل is never lost
-        const allChips = d.payment_type === "multi"
+        const allChips = method === "multi"
           ? parseAllPaymentSplits(d.payment_splits)
           : chips;
         // Original آجل amount from splits (permanent, even if debt later paid off)
-        const ajalChipAmount = d.payment_type === "multi"
+        const ajalChipAmount = method === "multi"
           ? (allChips.find(c => c.method === "credit")?.amount || 0)
           : 0;
         items.push({
@@ -441,10 +443,10 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
         };
         const Icon = cfg.icon;
 
-        // Document flags
-        const ptype = ev.raw?.payment_type;
+        // Document flags — purchases expose payment_method (older docs used payment_type)
+        const ptype = ev.raw?.payment_method || ev.raw?.payment_type;
         const isMulti = ptype === "multi";
-        const isCredit = ptype === "credit";
+        const isCredit = ptype === "credit" || ptype === "future_due";
         const isInstallments = ptype === "installments";
         const isDocRow = ev.type === "purchase";
 
@@ -496,6 +498,10 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
             label: "رصيد افتتاحي"
           }
         }[ev.type];
+
+        // Purchase pill reflects the actual payment method (نقدي / آجل / متعدد)
+        const PM_LABEL = { cash: "نقدي", credit: "آجل", future_due: "آجل", multi: "متعدد", bank_transfer: "تحويل بنكي" };
+        const badgeLabel = ev.type === "purchase" ? (PM_LABEL[ptype] || theme.label) : theme.label;
 
         return (
           <div key={ev.id} className="flex gap-3 items-stretch relative py-5 select-none">
@@ -599,7 +605,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
                               {isOpening ? "رصيد افتتاحي سابق" : cfg.label}
                             </span>
                             <span className={`inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full border shadow-sm ${theme.badge}`}>
-                              {theme.label}
+                              {badgeLabel}
                             </span>
                           </div>
                           
@@ -766,6 +772,7 @@ export default function SupplierAccountsPage() {
   const [netBalance, setNetBalance] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
+  const navigate = useNavigate();
   const [detailPurchase, setDetailPurchase] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -1210,23 +1217,59 @@ export default function SupplierAccountsPage() {
                 <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
               </div>
             ) : detailData ? (
+              (() => {
+                const PM = { cash: "نقدي", credit: "آجل", future_due: "آجل", multi: "متعدد", bank_transfer: "تحويل بنكي" };
+                const paid = Math.max(0, Number(detailData.total || 0) - Number(detailData.debt_remaining || 0));
+                return (
               <>
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
                   <div className="grid grid-cols-2 gap-3 text-[12px]">
                     <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{detailData.supplier_name || "—"}</span></div>
                     <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(detailData.created_at)}</span></div>
+                    <div><span className="font-black text-slate-400">طريقة الدفع:</span> <span className="font-bold text-slate-800">{PM[detailData.payment_method] || detailData.payment_method || "—"}</span></div>
                     <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="font-black font-mono text-slate-900">{fmt(detailData.total)} ج.م</span></div>
-                    <div><span className="font-black text-slate-400">الحالة:</span> <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${detailData.status === "received" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{detailData.status || "—"}</span></div>
+                    <div><span className="font-black text-slate-400">المدفوع:</span> <span className="font-bold font-mono text-emerald-700">{fmt(paid)} ج.م</span></div>
+                    {Number(detailData.debt_remaining) > 0.005 && (
+                      <div><span className="font-black text-slate-400">المتبقي (آجل):</span> <span className="font-bold font-mono text-rose-600">{fmt(detailData.debt_remaining)} ج.م</span></div>
+                    )}
                   </div>
                 </div>
+
+                {Array.isArray(detailData.lines) && detailData.lines.length > 0 && (
+                  <div className="rounded-xl border border-slate-200 overflow-hidden mb-4 max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-[11.5px] border-collapse">
+                      <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
+                          <th className="px-2 py-2 text-center font-black text-slate-500">الكمية</th>
+                          <th className="px-2 py-2 text-center font-black text-slate-500">التكلفة</th>
+                          <th className="px-3 py-2 text-center font-black text-slate-500">الإجمالي</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detailData.lines.map((l, i) => (
+                          <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="px-3 py-2 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name || "—"}</td>
+                            <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
+                            <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_cost)}</td>
+                            <td className="px-3 py-2 text-center font-mono font-black text-orange-700">{fmt(l.line_total || (l.quantity * l.unit_cost))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
                 <div className="flex gap-2 mt-4">
-                  <button onClick={() => window.open(`/purchases/${detailPurchase.id}`, "_blank")}
+                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); navigate(`/purchases/${detailPurchase.id}`); }}
                     className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-[12px] font-black text-white hover:bg-orange-700">
-                    <ExternalLink className="h-3.5 w-3.5" /> فتح فاتورة الشراء
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
                   </button>
-                  <button onClick={() => setDetailPurchase(null)} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                 </div>
               </>
+                );
+              })()
             ) : (
               <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
                 <FileText className="h-8 w-8 opacity-40" />

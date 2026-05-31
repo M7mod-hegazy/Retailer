@@ -14,8 +14,8 @@ let mainWindow = null;
 
 function createSplashWindow() {
   splashWindow = new BrowserWindow({
-    width: 420,
-    height: 280,
+    width: 480,
+    height: 340,
     frame: false,
     transparent: true,
     alwaysOnTop: true,

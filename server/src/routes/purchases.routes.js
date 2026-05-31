@@ -54,7 +54,7 @@ function getPurchaseWithLines(db, purchaseId) {
     : 0;
 
   const payments = db.prepare(`
-    SELECT pp.amount, pp.method_id, pm.name AS method_name, pm.type AS method_type
+    SELECT pp.amount, pp.method_id, pm.name AS method_name, pm.type AS method_type, pm.category AS method_category
     FROM purchase_payments pp
     LEFT JOIN payment_methods pm ON pm.id = pp.method_id
     WHERE pp.purchase_id = ?
@@ -84,6 +84,106 @@ function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
     source_id: purchaseId,
     source_line_id: options.reversal ? -Number(line.id) : Number(line.id),
   });
+}
+
+// A payment method counts as "credit/آجل" when EITHER its type or its category is
+// 'credit'. The seeded "أجل" method is type='cash', category='credit', so checking
+// only `type` silently treats it as cash — the root cause of multi/credit bugs.
+function isCreditMethod(pm) {
+  return !!pm && (pm.type === "credit" || pm.category === "credit");
+}
+
+// ── Shared purchase financial effects (used by create-equivalent re-apply on edit) ──
+// Reverse ALL financial effects of an existing purchase: treasury / bank / supplier
+// balance / ajal debt / purchase_payments. Mirrors the void handler exactly.
+function reversePurchaseFinancials(db, purchase) {
+  const paymentMethod = purchase.payment_method || "cash";
+  if (paymentMethod === "cash") {
+    const tid = purchase.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1;
+    db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(purchase.total, tid);
+  } else if (paymentMethod === "bank_transfer") {
+    if (purchase.bank_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(purchase.total, purchase.bank_id);
+  } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && purchase.supplier_id) {
+    const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
+    if (debt) {
+      const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+      if (remaining > 0) db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+      db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+    } else {
+      db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(purchase.total, purchase.supplier_id);
+    }
+  } else if (paymentMethod === "multi") {
+    const storedPayments = db.prepare("SELECT * FROM purchase_payments WHERE purchase_id = ?").all(purchase.id);
+    for (const pmt of storedPayments) {
+      const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(pmt.method_id);
+      if (!pm || isCreditMethod(pm)) continue; // credit portion reversed via ajal below
+      if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
+      else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
+    }
+    if (purchase.supplier_id) {
+      const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
+      if (debt) {
+        const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
+        if (remaining > 0) db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+        db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
+      }
+    }
+    db.prepare("DELETE FROM purchase_payments WHERE purchase_id = ?").run(purchase.id);
+  }
+}
+
+// Apply financial effects for a purchase under a given payment method. Mirrors the
+// create handler. Safe to call after reversePurchaseFinancials for clean re-apply.
+function applyPurchaseFinancials(db, opts) {
+  const { purchaseId, paymentMethod, total, supplierId } = opts;
+  const payments = Array.isArray(opts.payments) ? opts.payments : [];
+  const bankId = opts.bankId || null;
+  const treasuryId = opts.treasuryId || null;
+  const dueDate = opts.dueDate || null;
+  const notes = opts.notes || null;
+  const defaultTreasuryId = () => db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1;
+
+  if (paymentMethod === "cash") {
+    const tid = treasuryId ? Number(treasuryId) : defaultTreasuryId();
+    db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(total, tid);
+    try { db.prepare("UPDATE purchases SET treasury_id = ? WHERE id = ?").run(tid, purchaseId); } catch (_) {}
+  } else if (paymentMethod === "bank_transfer") {
+    if (bankId) {
+      db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(total, Number(bankId));
+      try { db.prepare("UPDATE purchases SET bank_id = ? WHERE id = ?").run(Number(bankId), purchaseId); } catch (_) {}
+    }
+  } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && supplierId) {
+    db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(total, supplierId);
+    db.prepare(`
+      INSERT INTO ajal_debts (invoice_id, supplier_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+      VALUES (?, ?, 'supplier', 'purchase', ?, 0, ?, 'open', ?)
+    `).run(purchaseId, supplierId, total, paymentMethod === "future_due" ? dueDate : (dueDate || null), notes);
+  } else if (paymentMethod === "multi") {
+    for (const pmt of payments) {
+      const amount = Number(pmt.amount || 0);
+      if (amount <= 0) continue;
+      const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
+      if (!pm) continue;
+      if (isCreditMethod(pm)) { /* credit portion handled below — no cash/bank movement */ }
+      else if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+      else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+      try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount) VALUES (?, ?, ?)").run(purchaseId, Number(pmt.method_id), amount); } catch (_) {}
+    }
+    let creditSum = 0;
+    for (const pmt of payments) {
+      const amt = Number(pmt.amount || 0);
+      if (amt <= 0) continue;
+      const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
+      if (isCreditMethod(pm)) creditSum += amt;
+    }
+    if (creditSum > 0 && supplierId) {
+      db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(creditSum, supplierId);
+      db.prepare(`
+        INSERT INTO ajal_debts (invoice_id, supplier_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+        VALUES (?, ?, 'supplier', 'purchase', ?, 0, ?, 'open', ?)
+      `).run(purchaseId, supplierId, creditSum, dueDate, notes);
+    }
+  }
 }
 
 router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
@@ -116,7 +216,9 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
            (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count,
            CASE
              WHEN p.payment_method = 'multi' THEN (
-               SELECT GROUP_CONCAT(pm.type || ':' || CAST(ROUND(pp.amount, 2) AS TEXT), '|||')
+               SELECT GROUP_CONCAT(
+                 (CASE WHEN pm.type = 'credit' OR pm.category = 'credit' THEN 'credit' ELSE pm.type END)
+                 || ':' || CAST(ROUND(pp.amount, 2) AS TEXT), '|||')
                FROM purchase_payments pp
                LEFT JOIN payment_methods pm ON pm.id = pp.method_id
                WHERE pp.purchase_id = p.id
@@ -128,7 +230,9 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
               WHEN p.payment_method = 'multi' THEN COALESCE((
                 SELECT SUM(pp.amount) FROM purchase_payments pp
                 LEFT JOIN payment_methods pm ON pm.id = pp.method_id
-                WHERE pp.purchase_id = p.id AND (pm.type IS NULL OR pm.type != 'credit')
+                WHERE pp.purchase_id = p.id
+                  AND pm.type IS NOT NULL AND pm.type != 'credit'
+                  AND COALESCE(pm.category, '') != 'credit'
               ), 0)
               WHEN p.payment_method IN ('credit', 'future_due') THEN COALESCE((
                 SELECT paid_amount FROM ajal_debts
@@ -348,16 +452,19 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
 
       let total = 0;
       for (const line of payload.lines || []) total += Number(line.quantity) * Number(line.unit_cost);
+      const discount = Math.max(0, Number(payload.discount || 0));
+      const increase = Math.max(0, Number(payload.increase || 0));
+      total = Math.max(0, total - discount + increase);
 
       const docNo = generateDocNumber("purchase_receipt");
       const supplier = payload.supplier_id
         ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(payload.supplier_id)
         : null;
       const result = db
-        .prepare("INSERT INTO purchases (doc_no, supplier_id, total, payment_method, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(docNo, payload.supplier_id || null, total, paymentMethod,
+        .prepare("INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(docNo, payload.supplier_id || null, total, discount, increase, paymentMethod,
              `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
-             payload.user_id || null);
+             payload.user_id || req.user?.id || null);
 
       const purchaseId = result.lastInsertRowid;
 
@@ -437,7 +544,9 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           if (amount <= 0) continue;
           const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
           if (!pm) continue;
-          if (pm.type === "cash" && pm.target_id) {
+          if (isCreditMethod(pm)) {
+            /* credit portion handled below — no cash/bank movement */
+          } else if (pm.type === "cash" && pm.target_id) {
             db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
           } else if (pm.type === "bank" && pm.target_id) {
             db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
@@ -453,7 +562,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           const amt = Number(pmt.amount || 0);
           if (amt <= 0) continue;
           const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
-          if (pm && pm.type === "credit") creditSum += amt;
+          if (isCreditMethod(pm)) creditSum += amt;
         }
         if (creditSum > 0 && payload.supplier_id) {
           db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(creditSum, payload.supplier_id);
@@ -485,7 +594,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       }
 
       // ── Apply lock-controlled master price updates ────────────────────────────
-      applyPurchaseLinePriceUpdates(newPurchaseLines, purchaseId, payload.user_id || null, db);
+      applyPurchaseLinePriceUpdates(newPurchaseLines, purchaseId, payload.user_id || req.user?.id || null, db);
 
       return getPurchaseWithLines(db, purchaseId);
     })();
@@ -584,7 +693,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       const purchaseReturnResult = db
         .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, cash_amount, credit_amount, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
         .run(returnDocNo, purchase.id, purchase.supplier_id || null, total, settlementType, prCashAmt, prCreditAmt, treasuryId,
-             payload.user_id || null, `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
+             payload.user_id || req.user?.id || null, `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
 
       const prId = purchaseReturnResult.lastInsertRowid;
 
@@ -648,8 +757,13 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       if (hasReturn) { const e = new Error("لا يمكن تعديل الفاتورة لوجود مرتجعات مرتبطة بها"); e.status = 400; throw e; }
 
       const payload = req.body || {};
-      const oldTotal = Number(purchase.total);
       const oldPaymentMethod = purchase.payment_method || "cash";
+      const newPaymentMethod = payload.payment_method || oldPaymentMethod;
+      const newSupplierId = payload.supplier_id || purchase.supplier_id || null;
+
+      if ((newPaymentMethod === "credit" || newPaymentMethod === "future_due") && !newSupplierId) {
+        const e = new Error("طريقة الدفع الآجلة تتطلب تحديد المورد"); e.status = 400; throw e;
+      }
 
       // 1. Reverse old stock
       for (const line of purchase.lines || []) {
@@ -664,16 +778,21 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         });
       }
 
-      // 2. Delete old lines and insert new
+      // 2. Fully reverse old financial effects (treasury / bank / supplier / ajal / purchase_payments)
+      reversePurchaseFinancials(db, purchase);
+
+      // 3. Delete old lines and insert new
       db.prepare("DELETE FROM purchase_lines WHERE purchase_id = ?").run(purchase.id);
       const newLines = payload.lines || [];
-      let newTotal = 0;
+      let lineSum = 0;
+      const editDiscount = Math.max(0, Number(payload.discount ?? purchase.discount ?? 0));
+      const editIncrease = Math.max(0, Number(payload.increase ?? purchase.increase ?? 0));
       const editInsertedLines = [];
       for (const line of newLines) {
         const qty       = Number(line.quantity);
         const cost      = Number(line.unit_cost);
         const lineTotal = qty * cost;
-        newTotal += lineTotal;
+        lineSum += lineTotal;
         const lockBuy   = line.update_master_purchase_price  !== false ? 1 : 0;
         const lockSell  = line.update_master_sale_price       !== false ? 1 : 0;
         const lockWhole = line.update_master_wholesale_price  !== false ? 1 : 0;
@@ -711,33 +830,33 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         });
       }
 
-      // 3. Apply financial delta (new - old) on original date
-      const delta = newTotal - oldTotal;
-      if (delta !== 0) {
-        if (oldPaymentMethod === "cash") {
-          const tid = purchase.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1;
-          db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(delta, tid);
-        } else if (oldPaymentMethod === "bank_transfer" && purchase.bank_id) {
-          db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(delta, purchase.bank_id);
-        } else if ((oldPaymentMethod === "credit" || oldPaymentMethod === "future_due") && purchase.supplier_id) {
-          db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, purchase.supplier_id);
-          db.prepare("UPDATE ajal_debts SET original_amount = original_amount + ? WHERE invoice_id = ? AND source_type = 'purchase' AND status = 'open'")
-            .run(delta, purchase.id);
-        }
-      }
+      const newTotal = Math.max(0, lineSum - editDiscount + editIncrease);
 
-      // 4. Update purchase header
-      db.prepare("UPDATE purchases SET total = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?")
-        .run(newTotal, payload.supplier_id || purchase.supplier_id, userId, purchase.id);
+      // 4. Update purchase header (incl. payment_method + supplier) BEFORE applying financials
+      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?")
+        .run(newTotal, editDiscount, editIncrease, newPaymentMethod, newSupplierId, userId, purchase.id);
 
-      // 5. Recompute WACC from surviving history for all affected items (old + new)
+      // 5. Apply the new payment method's financial effects (handles method switches + multi)
+      applyPurchaseFinancials(db, {
+        purchaseId: purchase.id,
+        paymentMethod: newPaymentMethod,
+        total: newTotal,
+        supplierId: newSupplierId,
+        payments: Array.isArray(payload.payments) ? payload.payments : [],
+        bankId: payload.bank_id || null,
+        treasuryId: payload.treasury_id || null,
+        dueDate: payload.due_date || null,
+        notes: payload.notes || null,
+      });
+
+      // 6. Recompute WACC from surviving history for all affected items (old + new)
       const editItemIds = [...new Set([
         ...(purchase.lines || []).map(l => l.item_id),
         ...newLines.map(l => Number(l.item_id)),
       ])];
       for (const itemId of editItemIds) recomputeWACCForItem(itemId, db);
 
-      // 6. Apply lock-controlled master price updates
+      // 7. Apply lock-controlled master price updates
       applyPurchaseLinePriceUpdates(editInsertedLines, purchase.id, userId, db);
 
       return getPurchaseWithLines(db, purchase.id);
@@ -839,7 +958,7 @@ router.post("/:id/cancel", requirePagePermission("purchases", "add"), (req, res,
     const { reason } = req.body || {};
     if (!reason || !reason.trim()) { const e = new Error("سبب الإلغاء مطلوب"); e.status = 400; throw e; }
     const result = db.transaction(() =>
-      cancelPurchaseFn(db, Number(req.params.id), reason.trim(), req.body.user_id || null)
+      cancelPurchaseFn(db, Number(req.params.id), reason.trim(), req.body.user_id || req.user?.id || null)
     )();
     req.audit("cancel", "purchase", { id: Number(req.params.id), reason }, `📦 تم إلغاء مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     res.json({ success: true, data: result });
@@ -873,13 +992,16 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
       const newLines = payload.lines || [];
       let newTotal = 0;
       for (const line of newLines) newTotal += Number(line.quantity) * Number(line.unit_cost);
+      const amendDiscount = Math.max(0, Number(payload.discount || 0));
+      const amendIncrease = Math.max(0, Number(payload.increase || 0));
+      newTotal = Math.max(0, newTotal - amendDiscount + amendIncrease);
 
       const createdDate = normalizeDate(payload.created_at || new Date().toISOString().slice(0, 10));
       const newResult = db.prepare(
-        "INSERT INTO purchases (doc_no, supplier_id, total, payment_method, created_at, created_by, amendment_of) VALUES (?, ?, ?, ?, ?, ?, ?)"
-      ).run(newDocNo, payload.supplier_id || original.supplier_id || null, newTotal, paymentMethod,
+        "INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, amendment_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).run(newDocNo, payload.supplier_id || original.supplier_id || null, newTotal, amendDiscount, amendIncrease, paymentMethod,
             `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
-            payload.user_id || null, original.id);
+            payload.user_id || req.user?.id || null, original.id);
 
       const newPurchaseId = newResult.lastInsertRowid;
 

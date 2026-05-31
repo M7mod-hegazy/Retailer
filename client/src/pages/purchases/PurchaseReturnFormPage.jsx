@@ -165,6 +165,8 @@ export default function PurchaseReturnFormPage() {
   const stagingQtyRef = useRef(null);
   const stagingCostRef = useRef(null);
   const addBtnRef = useRef(null);
+  const pendingPickRef    = useRef(false);
+  const itemSearchActiveRef = useRef(false);
 
   // isDirty must be after all state declarations to avoid TDZ on `supplier`
   const isDirty = isEditMode ? !isLocked : (cart.length > 0 || !!supplier);
@@ -309,7 +311,9 @@ export default function PurchaseReturnFormPage() {
 
   const ITEM_PAGE = 20;
   useEffect(() => {
-    if (!itemQuery.trim() || stagingItem) { setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); return; }
+    pendingPickRef.current = false;
+    if (!itemQuery.trim() || stagingItem) { setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); itemSearchActiveRef.current = false; return; }
+    itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
       api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=${ITEM_PAGE}&offset=0`)
         .then(r => {
@@ -319,10 +323,17 @@ export default function PurchaseReturnFormPage() {
           setItemHasMore(rows.length === ITEM_PAGE);
           setLookupOpen(true);
           setActiveIndex(-1);
+          if (pendingPickRef.current && rows.length > 0) {
+            pendingPickRef.current = false;
+            selectItemForStaging(rows[0]);
+          } else {
+            pendingPickRef.current = false;
+          }
         })
-        .catch(() => {});
+        .catch(() => { pendingPickRef.current = false; })
+        .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery, stagingItem]);
 
   function loadMoreItems() {
@@ -983,10 +994,9 @@ export default function PurchaseReturnFormPage() {
                               if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
                               else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
                               else if (e.key === "Enter") {
-                                if (!lookupOpen || !itemResults.length) return;
                                 e.preventDefault();
-                                const idx = activeIndex >= 0 ? activeIndex : 0;
-                                if (itemResults[idx]) selectItemForStaging(itemResults[idx]);
+                                if (itemResults.length > 0) { selectItemForStaging(itemResults[activeIndex >= 0 ? activeIndex : 0]); }
+                                else if (itemSearchActiveRef.current) { pendingPickRef.current = true; }
                               }
                               else if (e.key === "Escape") { setLookupOpen(false); setActiveIndex(-1); }
                             }} />

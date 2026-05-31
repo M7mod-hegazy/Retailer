@@ -118,6 +118,8 @@ export default function BranchTransferFormPage() {
   const sellInputRef      = useRef(null);
   const wholesaleInputRef = useRef(null);
   const addBtnRef         = useRef(null);
+  const pendingPickRef    = useRef(false);
+  const itemSearchActiveRef = useRef(false);
 
   const handleFieldKeyDown = (e, nextRef, prevRef, isEnterSubmit = false) => {
     if (e.key === "Enter") {
@@ -198,7 +200,9 @@ export default function BranchTransferFormPage() {
 
   useEffect(() => {
     const q = itemQuery.trim();
-    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
+    pendingPickRef.current = false;
+    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
+    itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
       api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
         .then(r => {
@@ -206,9 +210,16 @@ export default function BranchTransferFormPage() {
           setFilteredItems(rows);
           setItemOffset(rows.length);
           setItemHasMore(rows.length === ITEM_PAGE);
-        }).catch(() => {});
+          if (pendingPickRef.current && rows.length > 0) {
+            pendingPickRef.current = false;
+            handlePickItem(rows[0]);
+          } else {
+            pendingPickRef.current = false;
+          }
+        }).catch(() => { pendingPickRef.current = false; })
+        .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery]);
 
   function loadMoreItems() {
@@ -257,7 +268,7 @@ export default function BranchTransferFormPage() {
     }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, filteredItems.length - 1)); }
     if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
-    if (e.key === "Enter" && filteredItems[activeIndex]) { handlePickItem(filteredItems[activeIndex]); }
+    if (e.key === "Enter") { if (filteredItems[activeIndex]) { handlePickItem(filteredItems[activeIndex]); } else if (filteredItems.length > 0) { handlePickItem(filteredItems[0]); } else if (itemSearchActiveRef.current) { pendingPickRef.current = true; } }
     if (e.key === "Escape") setLookupOpen(false);
   }
 

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import api from "../../services/api";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -152,6 +153,7 @@ const TABS = [
 
 export default function DailyTreasuryPage() {
   usePageTour('daily_treasury');
+  const navigate = useNavigate();
   const [date, setDate] = useState(todayStr());
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -317,6 +319,13 @@ export default function DailyTreasuryPage() {
         .then(r => setSlideOverDetails(r.data.data))
         .catch(() => setSlideOverDetails(null))
         .finally(() => setSlideOverLoading(false));
+    } else if (slideOver.doc_type === "purchase") {
+      setSlideOverLoading(true);
+      setSlideOverDetails(null);
+      api.get("/api/purchases/" + slideOver.id)
+        .then(r => setSlideOverDetails(r.data.data))
+        .catch(() => setSlideOverDetails(null))
+        .finally(() => setSlideOverLoading(false));
     } else {
       setSlideOverDetails(null);
     }
@@ -428,7 +437,7 @@ export default function DailyTreasuryPage() {
   const nonCashRows = [
     { id: "pos_credit_sales", label: "مبيعات آجلة زادت دين العملاء (صافي)", value: netCreditSales, tab: "pos", matchTx: (t) => t.doc_type === "credit_invoice" || t.doc_type === "installment_invoice" || (t.doc_type === "pos_invoice" && (t.payment_type === "credit" || t.payment_type === "installments" || (t.payment_type === "multi" && (t.payment_splits || "").includes("credit:")))) },
     { id: "sales_returns_account", label: "مرتجعات مبيعات زادت دين العملاء", value: summary?.sales_returns_account, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
-    { id: "purchases_payable", label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases", matchTx: (t) => t.doc_type === "purchase" },
+    { id: "purchases_payable", label: "مشتريات آجلة زادت دين الموردين", value: summary?.purchases_payable_total, tab: "purchases", matchTx: (t) => t.doc_type === "purchase" && t.payment_type !== "cash" && t.payment_type !== "bank_transfer" },
     { id: "purchase_returns_payable", label: "مرتجعات شراء خصمت من دين الموردين", value: summary?.purchase_returns_payable_total, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && (Number(t.cash_effect ?? 0) === 0 || Number(t.credit_amount ?? 0) > 0) },
     { id: "non_cash_movements", label: "مبيعات POS بطرق دفع إلكترونية وبنكية", value: summary?.non_cash_movements_total ?? summary?.pos_bank_sales, tab: "all", matchTx: (t) => t.doc_type === "pos_invoice" && !["cash", "installments", "credit"].includes(t.payment_type) },
   ];
@@ -1230,8 +1239,16 @@ export default function DailyTreasuryPage() {
                                   <td className={`px-3 py-3 font-black text-[11px] tracking-wider ${t.is_cancelled ? "text-slate-300 line-through" : "text-slate-500"}`}>{t.doc_no || `#${t.id}`}</td>
                                   <td className="px-3 py-3">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${(t.is_cancelled || t.doc_type === 'cancelled_invoice') ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60" : (DOC_TYPE_COLOR[t.doc_type] || "text-slate-600 bg-slate-100 border-slate-200")}`}>
-                                        {DOC_TYPE_LABEL[t.doc_type] || t.doc_type}
+                                      <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${
+                                        (t.is_cancelled || t.doc_type === 'cancelled_invoice')
+                                          ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60"
+                                          : t.doc_type === "purchase"
+                                            ? ({ cash: "text-emerald-700 bg-emerald-50 border-emerald-200", credit: "text-amber-700 bg-amber-50 border-amber-200", future_due: "text-amber-700 bg-amber-50 border-amber-200", multi: "text-indigo-700 bg-indigo-50 border-indigo-200", bank_transfer: "text-blue-700 bg-blue-50 border-blue-200" }[t.payment_type] || "text-orange-700 bg-orange-50 border-orange-200")
+                                            : (DOC_TYPE_COLOR[t.doc_type] || "text-slate-600 bg-slate-100 border-slate-200")
+                                      }`}>
+                                        {t.doc_type === "purchase"
+                                          ? ({ cash: "مشتريات نقدية", credit: "مشتريات آجلة", future_due: "مشتريات آجلة", multi: "مشتريات متعددة", bank_transfer: "مشتريات تحويل" }[t.payment_type] || "مشتريات")
+                                          : (DOC_TYPE_LABEL[t.doc_type] || t.doc_type)}
                                       </span>
                                       {(t.is_cancelled || t.doc_type === 'cancelled_invoice') && (
                                         <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-200">ملغي</span>
@@ -1783,8 +1800,86 @@ export default function DailyTreasuryPage() {
                     )}
                   </div>
                 )}
+
+                {/* Purchase invoice detail */}
+                {slideOver.doc_type === "purchase" && (
+                  <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-slate-400" />
+                      <span className="text-[12px] font-black text-slate-700">تفاصيل فاتورة الشراء</span>
+                    </div>
+                    {slideOverLoading ? (
+                      <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                    ) : slideOverDetails?.lines?.length ? (
+                      <div className="divide-y divide-slate-100">
+                        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                          <div className="col-span-6">الصنف</div>
+                          <div className="col-span-2 text-center">الكمية</div>
+                          <div className="col-span-2 text-center">التكلفة</div>
+                          <div className="col-span-2 text-left">الإجمالي</div>
+                        </div>
+                        {slideOverDetails.lines.map((line, idx) => (
+                          <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50">
+                            <div className="col-span-6 flex flex-col min-w-0">
+                              <span className="text-[11px] font-black text-slate-800 truncate">{line.item_name_ar || line.item_name || line.name}</span>
+                              <span className="text-[9px] font-mono text-slate-400 truncate">{line.item_code || line.code || line.barcode || "#" + line.item_id}</span>
+                            </div>
+                            <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{line.quantity}</div>
+                            <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{fmt(line.unit_cost)}</div>
+                            <div className="col-span-2 text-left font-mono text-[11px] font-black text-orange-700">{fmt(line.line_total || (line.unit_cost * line.quantity))}</div>
+                          </div>
+                        ))}
+                        <div className="bg-slate-900 text-white px-3 py-3">
+                          {Number(slideOverDetails.discount) > 0 && (
+                            <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span></div>
+                          )}
+                          {Number(slideOverDetails.increase) > 0 && (
+                            <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-slate-400">الإضافة</span><span className="font-mono text-emerald-300">+ {fmt(slideOverDetails.increase)}</span></div>
+                          )}
+                          <div className="flex justify-between text-[12px] font-black border-t border-slate-700 pt-2 mt-1">
+                            <span>الإجمالي</span><span className="font-mono">{fmt(slideOverDetails.total)} ج.م</span>
+                          </div>
+                          {slideOverDetails.payment_method === "multi" && slideOverDetails.payments?.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-slate-700 flex flex-col gap-1.5">
+                              <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">توزيع طرق الدفع</div>
+                              {slideOverDetails.payments.map((p, i) => {
+                                const isCredit = p.method_type === "credit" || p.method_category === "credit";
+                                return (
+                                  <div key={i} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${isCredit ? "bg-amber-900/40 border border-amber-700/40" : "bg-emerald-900/40 border border-emerald-700/40"}`}>
+                                    <span className="text-[10px] font-black text-white">{p.method_name || arMethod(p.method)} {isCredit && <span className="text-[8px] text-amber-300">(آجل — ذمة المورد)</span>}</span>
+                                    <span className={`font-mono text-[11px] font-black ${isCredit ? "text-amber-300" : "text-emerald-300"}`}>{fmt(p.amount)} ج.م</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {(slideOverDetails.payment_method === "credit" || slideOverDetails.payment_method === "future_due") && (
+                            <div className="mt-3 pt-3 border-t border-slate-700">
+                              <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-amber-900/40 border border-amber-700/40">
+                                <span className="text-[10px] font-black text-white">📋 آجل (كامل المبلغ — ذمة المورد)</span>
+                                <span className="font-mono text-[11px] font-black text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center text-[12px] text-slate-400">لا توجد تفاصيل متاحة</div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="border-t border-slate-100 p-3 bg-white flex gap-2">
+                {slideOver.doc_type === "purchase" && (
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/purchases/" + slideOver.id); }}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-[12px] font-black text-white hover:bg-orange-700 shadow-lg shadow-orange-600/20"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
+                  </motion.button>
+                )}
                 {["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver.doc_type) && (
                   <motion.button
                     whileHover={{ y: -2 }}
