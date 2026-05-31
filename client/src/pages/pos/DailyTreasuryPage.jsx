@@ -1894,10 +1894,20 @@ export default function DailyTreasuryPage() {
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => window.open("/pos/sales-returns/" + slideOver.id, "_blank")}
+                    onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/pos/sales-returns/" + slideOver.id); }}
                     className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-pink-600 py-2.5 text-[12px] font-black text-white hover:bg-pink-700 shadow-lg shadow-pink-600/20"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" /> فتح المرتجع الكامل
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
+                  </motion.button>
+                )}
+                {slideOver.doc_type === "purchase_return" && (
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/purchases/returns/" + slideOver.id); }}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 text-[12px] font-black text-white hover:bg-amber-700 shadow-lg shadow-amber-600/20"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                   </motion.button>
                 )}
                 <motion.button

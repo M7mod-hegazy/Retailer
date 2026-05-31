@@ -558,15 +558,17 @@ export default function SalesReturnFormPage() {
         setMessage({ text: "تم تعديل المرتجع بنجاح", type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       } else if (mode === "invoice" && loadedInvoice) {
-        await api.post(`/api/invoices/${loadedInvoice.id}/return`, payload);
-        setSaveSuccess(successData);
+        const res = await api.post(`/api/invoices/${loadedInvoice.id}/return`, payload);
+        setSaveSuccess({ ...successData, returnId: res.data.data?.id });
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
+        setCart([]); setCustomer(null);
       } else {
-        await api.post("/api/invoices/general-return", payload);
-        setSaveSuccess(successData);
+        const res = await api.post("/api/invoices/general-return", payload);
+        setSaveSuccess({ ...successData, returnId: res.data.data?.id });
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
+        setCart([]); setCustomer(null);
       }
     } catch (e) {
       setMessage({ text: e.response?.data?.message || "فشل تسجيل المرتجع", type: "error" });
@@ -574,8 +576,9 @@ export default function SalesReturnFormPage() {
   }
 
   function handleSuccessDismiss() {
+    const id = saveSuccess?.returnId;
     setSaveSuccess(null);
-    if (!isEditMode) navigate("/sales/returns", { replace: true });
+    if (!isEditMode) navigate(id ? `/pos/sales-returns/${id}` : "/sales/returns", { replace: true });
   }
 
   async function handleDelete() {

@@ -198,7 +198,7 @@ function createGeneralReturn(payload) {
         `INSERT INTO sales_return_lines
           (sales_return_id, invoice_line_id, item_id, quantity, unit_price, line_total,
            warehouse_id, item_name_ar, item_name_en, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
-         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(returnId, line.item_id, line.quantity, line.unit_price, lineTotal,
             warehouseId, itemRow?.name || null, itemRow?.name_en || null,
             snap.cost_wacc, snap.cost_last_purchase, snap.cost_fifo, snap.cost_lifo);

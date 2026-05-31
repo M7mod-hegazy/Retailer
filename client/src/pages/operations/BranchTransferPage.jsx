@@ -4,6 +4,7 @@ import {
   Eye, Warehouse, Pencil,
   ArrowDownToLine, ArrowUpFromLine, RotateCcw,
   Search, ArrowLeftRight, Package, X, Loader2,
+  SlidersHorizontal, ChevronDown, ChevronUp,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -32,13 +33,19 @@ const ROW_ANIMATION = {
 };
 
 function formatDate(d) {
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "medium" }).format(new Date(d));
+  if (!d) return "—";
+  const raw = d.split(".")[0].replace("T", " ");
+  const [ymd] = raw.split(" ");
+  const [y, m, day] = ymd.split("-");
+  return `${day}/${m}/${y}`;
 }
 function formatDateTime(d) {
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  }).format(new Date(d));
+  if (!d) return "—";
+  const raw = d.split(".")[0].replace("T", " ");
+  const [ymd, hms = "00:00"] = raw.split(" ");
+  const [y, m, day] = ymd.split("-");
+  const [hh, min] = hms.split(":");
+  return `${day}/${m}/${y}, ${hh}:${min}`;
 }
 function formatQty(v) {
   return Number(v || 0).toLocaleString("en-US");
@@ -161,8 +168,13 @@ export default function BranchTransferPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [users, setUsers] = useState([]);
+  const [userId, setUserId] = useState("");
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const debouncedSearch = useDebounce(searchTerm, 300);
 
+  const hasFilters = dateFrom || dateTo || userId;
 
   // Items tab state
   const [itemQuery, setItemQuery] = useState("");
@@ -191,6 +203,7 @@ export default function BranchTransferPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       if (typeFilter !== "all") params.set("type", typeFilter);
+      if (userId) params.set("user_id", userId);
       const res = await api.get(`/api/branch-transfers?${params}`);
       setRows(res.data.data || []);
     } catch {
@@ -199,7 +212,11 @@ export default function BranchTransferPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, [debouncedSearch, dateFrom, dateTo, typeFilter]);
+  useEffect(() => { loadData(); }, [debouncedSearch, dateFrom, dateTo, typeFilter, userId]);
+
+  useEffect(() => {
+    api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+  }, []);
 
   function handleShowDetail(row) {
     setActiveTransfer(row);
@@ -340,7 +357,7 @@ export default function BranchTransferPage() {
         >
           {activeTab === "transfers" ? (
             <>
-              <div className="flex flex-col md:flex-row items-center gap-3">
+              <div className="flex flex-col md:flex-row items-start gap-4">
                 <div data-help="search-bar" className="relative flex-1 w-full">
                   <Search className="absolute top-1/2 -translate-y-1/2 right-4 h-4 w-4 text-zinc-400" />
                   <input
@@ -360,20 +377,45 @@ export default function BranchTransferPage() {
                     </button>
                   ))}
                 </div>
+                <button onClick={() => setFiltersOpen(v => !v)}
+                  className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all w-full md:w-auto shrink-0 ${
+                    hasFilters ? "border-emerald-300 bg-emerald-50/50 text-emerald-700" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                  }`}>
+                  <SlidersHorizontal className="w-4 h-4" /> تصفية
+                  {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  {filtersOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
-              <div className="flex items-center gap-3 self-start bg-zinc-50 rounded-2xl p-2 border border-zinc-200/50">
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
-                <ArrowLeftRight className="h-4 w-4 text-zinc-300 shrink-0" />
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
-                {(dateFrom || dateTo) && (
-                  <button onClick={() => { setDateFrom(""); setDateTo(""); }}
-                    className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
+              {filtersOpen && (
+                <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                    <select value={userId} onChange={e => setUserId(e.target.value)}
+                      className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
+                      <option value="">كل المستخدمين</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
+                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                      className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
+                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                      className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
+                  </div>
+                  {hasFilters && (
+                    <button onClick={() => { setDateFrom(""); setDateTo(""); setUserId(""); }}
+                      className="h-10 flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
+                      <X className="w-3.5 h-3.5" /> مسح التصفية
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>

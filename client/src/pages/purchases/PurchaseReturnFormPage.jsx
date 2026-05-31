@@ -116,7 +116,7 @@ export default function PurchaseReturnFormPage() {
   const [supplierQuery, setSupplierQuery] = useState("");
   const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
 
-  const [settlementType, setSettlementType] = useState("account");
+  const [settlementType, setSettlementType] = useState("cash");
   const [splitCashAmount, setSplitCashAmount] = useState("");
   const [reason, setReason] = useState("other");
   const [reasonOther, setReasonOther] = useState("");
@@ -437,6 +437,10 @@ export default function PurchaseReturnFormPage() {
     setStagingCost(""); setPurchasePickerOpen(false); resetActivation();
   }
 
+  useEffect(() => {
+    if (!supplier) setSettlementType(prev => prev === "account" ? "cash" : prev);
+  }, [supplier]);
+
   function handleBack() {
     if (mode === null || isEditMode) { navigate("/purchases/returns"); return; }
     setShowWarningModal(true);
@@ -520,15 +524,17 @@ export default function PurchaseReturnFormPage() {
         setMessage({ text: "تم تعديل المرتجع بنجاح", type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       } else if (mode === "purchase" && loadedPurchase) {
-        await api.post(`/api/purchases/${loadedPurchase.id}/return`, payload);
-        setSaveSuccess(successData);
+        const res = await api.post(`/api/purchases/${loadedPurchase.id}/return`, payload);
+        setSaveSuccess({ ...successData, returnId: res.data.data?.id });
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
+        setCart([]); setSupplier(null);
       } else {
-        await api.post("/api/invoices/general-purchase-return", payload);
-        setSaveSuccess(successData);
+        const res = await api.post("/api/invoices/general-purchase-return", payload);
+        setSaveSuccess({ ...successData, returnId: res.data.data?.id });
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
+        setCart([]); setSupplier(null);
       }
     } catch (e) {
       setMessage({ text: e.response?.data?.message || "فشل تسجيل المرتجع", type: "error" });
@@ -536,8 +542,9 @@ export default function PurchaseReturnFormPage() {
   }
 
   function handleSuccessDismiss() {
+    const id = saveSuccess?.returnId;
     setSaveSuccess(null);
-    if (!isEditMode) navigate("/purchases/returns", { replace: true });
+    if (!isEditMode) navigate(id ? `/purchases/returns/${id}` : "/purchases/returns", { replace: true });
   }
 
   async function handleDelete() {
@@ -823,13 +830,14 @@ export default function PurchaseReturnFormPage() {
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">طريقة التسوية</label>
               <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60 shadow-inner">
                 {[
-                  { value: "account", label: "حساب المورد", desc: "يُخصم من رصيد المورد" },
-                  { value: "cash", label: "نقداً", desc: "المورد يرد نقداً للصندوق" },
-                  { value: "split", label: "مختلط", desc: "جزء نقداً والباقي من الحساب" },
+                  { value: "cash", label: "نقداً", desc: "المورد يرد نقداً للصندوق", requiresSupplier: false },
+                  { value: "account", label: "حساب المورد", desc: "يُخصم من رصيد المورد", requiresSupplier: true },
+                  { value: "split", label: "مختلط", desc: "جزء نقداً والباقي من الحساب", requiresSupplier: true },
                 ].map(opt => {
+                  const disabled = isLocked || (opt.requiresSupplier && !supplier);
                   const active = settlementType === opt.value;
                   return (
-                    <button key={opt.value} onClick={() => !isLocked && setSettlementType(opt.value)} disabled={isLocked}
+                    <button key={opt.value} onClick={() => !disabled && setSettlementType(opt.value)} disabled={disabled}
                       className={`flex-1 rounded-lg py-2 px-1 text-center transition-all disabled:cursor-not-allowed ${active ? "bg-white text-amber-700 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
                       <div className="text-[12px] font-bold">{opt.label}</div>
                       <div className="text-[9px] font-medium opacity-70 leading-tight mt-0.5 hidden sm:block">{opt.desc}</div>

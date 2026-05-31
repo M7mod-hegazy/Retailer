@@ -149,7 +149,7 @@ function InstallmentsBadge({ debtId }) {
   );
 }
 
-function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
+function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenReturn }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("all");
@@ -329,7 +329,11 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
           type: "return",
           date: new Date(r.created_at),
           ref: r.doc_no || `RET-${r.id}`,
-          description: r.purchase_id ? `مرتجع فاتورة #${r.purchase_id}` : "مرتجع شراء",
+          description: r.purchase_id
+            ? `مرتجع فاتورة ${r.original_purchase_no || '#' + r.purchase_id}`
+            : "مرتجع شراء",
+          originalPurchaseId: r.purchase_id || null,
+          originalPurchaseDocNo: r.original_purchase_no || null,
           impactAmount: creditAmt,
           impactDir: creditAmt > 0.005 ? "subtract" : null,
           totalAmount: Number(r.total || 0),
@@ -594,10 +598,10 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
               <div className={`bg-white rounded-[24px] p-5 md:p-6 relative overflow-hidden border border-slate-100/80 ${theme.borderRight} flex flex-col gap-4 shadow-[inset_0_2px_4px_rgba(255,255,255,1)]`}>
                 <div className="flex flex-col gap-4">
                   {/* ── Main Asymmetric Ledger Row ── */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-                    
-                    {/* Column 1: Stylized Card Type Header & Reference (spans 3 cols) */}
-                    <div className="lg:col-span-3 flex flex-col justify-center min-w-0 pr-1 select-none">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 min-w-0 w-full">
+
+                    {/* Column 1: Stylized Card Type Header & Reference */}
+                    <div className="shrink-0 flex flex-col justify-center pr-1 select-none">
                       <div className="flex items-center gap-2.5">
                         <div>
                           <div className="flex items-center gap-2">
@@ -619,8 +623,8 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
                       </div>
                     </div>
 
-                    {/* Column 2: Payment splits / method tags / notes (spans 4 cols) */}
-                    <div className="lg:col-span-4 flex flex-wrap items-center gap-2 min-w-0">
+                    {/* Column 2: Payment splits / method tags / notes */}
+                    <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
                       {isDocRow && renderChips.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {renderChips.map((chip, i) => {
@@ -652,15 +656,32 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
                         </span>
                       )}
                       {ev.description && (
-                        <span className="text-[11.5px] text-slate-450 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
-                          {ev.description}
-                        </span>
+                        ev.type === "return" && ev.originalPurchaseId ? (
+                          <button
+                            onClick={() => onOpenOriginalPurchase({ id: ev.originalPurchaseId, doc_no: ev.originalPurchaseDocNo })}
+                            className="text-[11.5px] text-blue-600 font-bold border-r-2 border-blue-200 pr-2 hover:text-blue-700 hover:underline transition-colors cursor-pointer flex items-center gap-1 truncate max-w-[240px]"
+                            title="عرض تفاصيل الفاتورة الأصلية"
+                          >
+                            {ev.description}
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </button>
+                        ) : ev.type === "return" ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
+                            <RotateCcw className="h-3 w-3 shrink-0" />
+                            مرتجع مباشر
+                            <span className="text-[8.5px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded-lg leading-none">بدون فاتورة</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11.5px] text-slate-450 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
+                            {ev.description}
+                          </span>
+                        )
                       )}
                     </div>
 
-                    {/* Column 3: Unified Ledger Cockpit Widget (spans 4 cols) */}
-                    <div className="lg:col-span-4 flex flex-row items-center justify-end gap-3 shrink-0 ml-auto lg:ml-0">
-                      <div className="flex items-center gap-4 shrink-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-2.5 hover:bg-slate-50/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)] min-w-[315px] ml-auto lg:ml-0">
+                    {/* Column 3: Unified Ledger Cockpit Widget */}
+                    <div className="shrink-0 flex flex-row items-center gap-3">
+                      <div className="flex items-center gap-3 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-2.5 hover:bg-slate-50/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)]">
                         {/* Metric 1: Total Transaction Value */}
                         <div className="flex flex-col items-end px-3 py-0.5 flex-1 min-w-0">
                           <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
@@ -715,8 +736,8 @@ function MovementsTab({ party, onOpenPurchase, onOpenReturn }) {
                       )}
                     </div>
 
-                    {/* Column 4: Detail Action Button (spans 1 col) */}
-                    <div className="lg:col-span-1 flex items-center justify-end shrink-0">
+                    {/* Column 4: Detail Action Button */}
+                    <div className="shrink-0 flex items-center justify-end">
                       {ev.type === "purchase" && (
                         <button
                           onClick={() => onOpenPurchase(ev.raw)}
@@ -774,9 +795,12 @@ export default function SupplierAccountsPage() {
 
   const navigate = useNavigate();
   const [detailPurchase, setDetailPurchase] = useState(null);
+  const [detailPurchaseIsOriginal, setDetailPurchaseIsOriginal] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailReturn, setDetailReturn] = useState(null);
+  const [detailReturnData, setDetailReturnData] = useState(null);
+  const [detailReturnLoading, setDetailReturnLoading] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -871,6 +895,15 @@ export default function SupplierAccountsPage() {
       .catch(() => setDetailData(null))
       .finally(() => setDetailLoading(false));
   }, [detailPurchase]);
+
+  useEffect(() => {
+    if (!detailReturn) { setDetailReturnData(null); return; }
+    setDetailReturnLoading(true);
+    api.get(`/api/purchases/returns/${detailReturn.id}`)
+      .then(r => setDetailReturnData(r.data.data))
+      .catch(() => setDetailReturnData(null))
+      .finally(() => setDetailReturnLoading(false));
+  }, [detailReturn]);
 
   const handleSupplierCreated = (supplier) => {
     toast.success("تم إضافة المورد");
@@ -1190,7 +1223,8 @@ export default function SupplierAccountsPage() {
               {activeTab === "movements" ? (
                 <MovementsTab
                   party={selected}
-                  onOpenPurchase={setDetailPurchase}
+                  onOpenPurchase={(p) => { setDetailPurchaseIsOriginal(false); setDetailPurchase(p); }}
+                  onOpenOriginalPurchase={(p) => { setDetailPurchaseIsOriginal(true); setDetailPurchase(p); }}
                   onOpenReturn={setDetailReturn}
                 />
               ) : (
@@ -1203,14 +1237,22 @@ export default function SupplierAccountsPage() {
 
       {/* ══ Purchase Detail Modal ══════════════════════════════ */}
       {detailPurchase && (
-        <Modal onClose={() => { setDetailPurchase(null); setDetailData(null); }} width="640px">
+        <Modal onClose={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} width="640px">
           <div className="p-5">
+            {detailPurchaseIsOriginal && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
+                <RotateCcw className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                <span className="text-[11px] font-black text-amber-800">الفاتورة الأصلية للمرتجع — هذه الفاتورة مرتبطة بمرتجع مشتريات</span>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-[17px] font-black text-slate-900">تفاصيل فاتورة الشراء</h2>
+                <h2 className={`text-[17px] font-black ${detailPurchaseIsOriginal ? "text-amber-800" : "text-slate-900"}`}>
+                  {detailPurchaseIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة الشراء"}
+                </h2>
                 <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailPurchase.doc_no || `#${detailPurchase.id}`}</p>
               </div>
-              <button onClick={() => { setDetailPurchase(null); setDetailData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
+              <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
             </div>
             {detailLoading ? (
               <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
@@ -1261,11 +1303,11 @@ export default function SupplierAccountsPage() {
                 )}
 
                 <div className="flex gap-2 mt-4">
-                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); navigate(`/purchases/${detailPurchase.id}`); }}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-[12px] font-black text-white hover:bg-orange-700">
+                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); navigate(`/purchases/${detailPurchase.id}`); }}
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-[12px] font-black text-white ${detailPurchaseIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-orange-600 hover:bg-orange-700"}`}>
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
                   </button>
-                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                 </div>
               </>
                 );
@@ -1282,24 +1324,98 @@ export default function SupplierAccountsPage() {
 
       {/* ══ Return Detail Modal ══════════════════════════════ */}
       {detailReturn && (
-        <Modal onClose={() => setDetailReturn(null)} width="480px">
+        <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} width="640px">
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-[17px] font-black text-slate-900">تفاصيل المرتجع</h2>
+                <h2 className="text-[17px] font-black text-slate-900">تفاصيل مرتجع المشتريات</h2>
                 <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
               </div>
-              <button onClick={() => setDetailReturn(null)} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
+              <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
             </div>
-            <div className="space-y-3 text-[12px]">
-              {[["المبلغ", `${fmt(detailReturn.total)} ج.م`], ["طريقة التسوية", detailReturn.settlement_type || "—"], ["السبب", detailReturn.reason || "—"], ["التاريخ", fmtDate(detailReturn.created_at)]].map(([label, value]) => (
-                <div key={label} className="flex justify-between border-b border-slate-100 pb-2">
-                  <span className="font-black text-slate-500">{label}</span>
-                  <span className="font-bold text-slate-800">{value}</span>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setDetailReturn(null)} className="mt-4 w-full rounded-xl border border-slate-200 py-2 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+            {detailReturnLoading ? (
+              <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
+                <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
+              </div>
+            ) : detailReturnData ? (
+              (() => {
+                const STYPE = { cash: "نقدي", account: "رصيد آجل", split: "نقدي + آجل" };
+                const d = detailReturnData;
+                return (
+                  <>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
+                      <div className="grid grid-cols-2 gap-3 text-[12px]">
+                        <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{d.supplier_name || "—"}</span></div>
+                        <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(d.created_at)}</span></div>
+                        <div><span className="font-black text-slate-400">طريقة التسوية:</span> <span className="font-bold text-slate-800">{STYPE[d.settlement_type] || d.settlement_type || "—"}</span></div>
+                        <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="font-black font-mono text-slate-900">{fmt(d.total)} ج.م</span></div>
+                        {Number(d.cash_amount) > 0.005 && (
+                          <div><span className="font-black text-slate-400">نقداً:</span> <span className="font-bold font-mono text-emerald-700">{fmt(d.cash_amount)} ج.م</span></div>
+                        )}
+                        {Number(d.credit_amount) > 0.005 && (
+                          <div><span className="font-black text-slate-400">خصم من الآجل:</span> <span className="font-bold font-mono text-rose-600">{fmt(d.credit_amount)} ج.م</span></div>
+                        )}
+                        {d.original_purchase_no && (
+                          <div className="col-span-2">
+                            <span className="font-black text-slate-400">الفاتورة الأصلية: </span>
+                            <button
+                              onClick={() => { setDetailReturn(null); setDetailReturnData(null); setDetailPurchaseIsOriginal(true); setDetailPurchase({ id: d.purchase_id, doc_no: d.original_purchase_no }); }}
+                              className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-[12px] cursor-pointer"
+                            >
+                              {d.original_purchase_no}
+                            </button>
+                          </div>
+                        )}
+                        {d.reason && d.reason !== "other" && (
+                          <div className="col-span-2"><span className="font-black text-slate-400">السبب:</span> <span className="font-bold text-slate-800">{d.reason}</span></div>
+                        )}
+                        {d.notes && (
+                          <div className="col-span-2"><span className="font-black text-slate-400">ملاحظات:</span> <span className="font-bold text-slate-800">{d.notes}</span></div>
+                        )}
+                      </div>
+                    </div>
+
+                    {Array.isArray(d.lines) && d.lines.length > 0 && (
+                      <div className="rounded-xl border border-slate-200 overflow-hidden mb-4 max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-[11.5px] border-collapse">
+                          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
+                              <th className="px-2 py-2 text-center font-black text-slate-500">الكمية</th>
+                              <th className="px-2 py-2 text-center font-black text-slate-500">التكلفة</th>
+                              <th className="px-3 py-2 text-center font-black text-slate-500">الإجمالي</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {d.lines.map((l, i) => (
+                              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="px-3 py-2 font-bold text-slate-800">{l.item_name || "—"}</td>
+                                <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
+                                <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_cost)}</td>
+                                <td className="px-3 py-2 text-center font-mono font-black text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_cost))}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mt-4">
+                      <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); navigate(`/purchases/returns/${detailReturn.id}`); }}
+                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-[12px] font-black text-white hover:bg-rose-700">
+                        <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
+                      </button>
+                      <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                    </div>
+                  </>
+                );
+              })()
+            ) : (
+              <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
+                <FileText className="h-8 w-8 opacity-40" />
+                <span className="font-black text-[13px]">لا توجد تفاصيل</span>
+              </div>
+            )}
           </div>
         </Modal>
       )}

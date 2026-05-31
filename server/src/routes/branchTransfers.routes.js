@@ -64,18 +64,20 @@ router.get("/next-ref", requirePagePermission("branch_transfer", "view"), (req, 
 router.get("/", requirePagePermission("branch_transfer", "view"), (req, res, next) => {
   try {
     const db = getDb();
-    const { date_from, date_to, type, search, item_search } = req.query;
+    const { date_from, date_to, type, search, item_search, user_id = "" } = req.query;
     const params = [];
 
     let sql = `
-      SELECT bt.*,
+      SELECT bt.*, u.username AS created_by_username,
              COUNT(DISTINCT btl.id) AS line_count,
              SUM(btl.quantity) AS total_qty
       FROM branch_transfers bt
       LEFT JOIN branch_transfer_lines btl ON btl.transfer_id = bt.id
+      LEFT JOIN users u ON u.id = bt.created_by
       WHERE COALESCE(bt.status, 'active') != 'cancelled'
     `;
 
+    if (user_id) { sql += " AND bt.created_by = ?"; params.push(String(user_id)); }
     if (date_from) { sql += " AND date(bt.created_at) >= date(?)"; params.push(String(date_from)); }
     if (date_to)   { sql += " AND date(bt.created_at) <= date(?)"; params.push(String(date_to)); }
     if (type)      { sql += " AND bt.type = ?"; params.push(String(type)); }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar, ExternalLink,
@@ -41,10 +41,11 @@ function formatMoney(v) {
 
 function fmtDate(d) {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  }).format(new Date(d));
+  const raw = d.split(".")[0].replace("T", " ");
+  const [ymd, hms = "00:00"] = raw.split(" ");
+  const [y, m, day] = ymd.split("-");
+  const [hh, min] = hms.split(":");
+  return `${day}/${m}/${y}, ${hh}:${min}`;
 }
 
 function parseSplits(splitsStr) {
@@ -195,10 +196,12 @@ function PreviewDrawer({ purchaseId, onClose }) {
   // multi:              sum the payment split records
   const totalPaid = (() => {
     if (!d) return 0;
-    if (d.amount_paid != null) return Number(d.amount_paid);
     const method = d.payment_method;
+    if (method === "multi") return (d.payments || [])
+      .filter(p => p.method_type !== "credit" && p.method_category !== "credit")
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    if (d.amount_paid != null) return Number(d.amount_paid);
     if (method === "cash" || method === "bank_transfer") return Number(d.total || 0);
-    if (method === "multi") return (d.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
     // credit / future_due — any recorded partial payments
     return (d.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
   })();
@@ -207,7 +210,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
     : 0;
 
   return (
-    <div className="flex flex-col gap-5 min-w-[320px] md:min-w-[620px] max-h-[80vh] overflow-y-auto" dir="rtl">
+    <div className="flex flex-col gap-5 min-w-[320px] md:min-w-[620px]" dir="rtl">
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
@@ -281,35 +284,51 @@ function PreviewDrawer({ purchaseId, onClose }) {
                   <span className={`font-mono text-xs font-black ${remaining > 0.005 ? "text-amber-700" : "text-zinc-600"}`}>{formatMoney(remaining)}</span>
                 </div>
               </div>
+              {/* Discount & Increase row */}
+              {Number(d.discount) > 0 && Number(d.increase) > 0 && (
+                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    خصم الفاتورة
+                  </span>
+                  <span className="font-mono text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
+                  <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    إضافة / رسوم
+                  </span>
+                  <span className="font-mono text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
+                </div>
+              )}
+              {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
+                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    خصم الفاتورة
+                  </span>
+                  <span className="font-mono text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
+                </div>
+              )}
+              {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
+                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    إضافة / رسوم
+                  </span>
+                  <span className="font-mono text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
+                </div>
+              )}
+              {d.payment_method === "multi" && d.payments?.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-zinc-100 space-y-1.5">
+                  {d.payments.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-zinc-500">{p.method_name || p.method_type || "—"}</span>
+                      <span className="font-mono font-black text-zinc-700">{formatMoney(p.amount)} ج.م</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Payments detail breakdown */}
-          {d.payments?.length > 0 && (
-            <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-white">
-              <div className="px-5 py-4 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
-                <span className="text-xs font-black text-zinc-800">تفاصيل الدفعات المسجلة</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-right">
-                  <thead>
-                    <tr className="bg-zinc-50 border-b border-zinc-100">
-                      <th className="px-5 py-3 font-black text-zinc-500">طريقة الدفع</th>
-                      <th className="px-5 py-3 font-black text-zinc-500 text-center">المبلغ المدفوع</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.payments.map((p, i) => (
-                      <tr key={i} className="border-b border-zinc-50 hover:bg-zinc-50/50">
-                        <td className="px-5 py-3.5 font-bold text-zinc-700">{p.method_name || p.method_type || "—"}</td>
-                        <td className="px-5 py-3.5 font-mono font-black text-zinc-900 text-center">{formatMoney(p.amount)} ج.م</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* Items breakdown list */}
           <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-white">
@@ -413,12 +432,9 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
               <span>{row.supplier_name || "مورد نقدي"}</span>
             )}
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
-            <span dir="ltr">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+            <span dir="ltr">{fmtDate(row.created_at)}</span>
             {row.created_by_username && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                <span className="text-zinc-500">بواسطة: {row.created_by_username}</span>
-              </>
+              <span className="text-zinc-500">{row.created_by_username}</span>
             )}
           </div>
         </div>
@@ -520,6 +536,13 @@ export default function PurchasesHubPage() {
   const [dateTo, setDateTo] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [userId, setUserId] = useState("");
+
+  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const supplierInputRef = useRef(null);
 
   // Item autocomplete for the items tab
   const [itemQuery, setItemQuery] = useState("");
@@ -544,6 +567,11 @@ export default function PurchasesHubPage() {
       .catch(() => {});
   }, []);
 
+  // Load users filter dropdown
+  useEffect(() => {
+    api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+  }, []);
+
   // Fetch item autocomplete results
   useEffect(() => {
     if (!debouncedItemQuery.trim()) { setItemResults([]); return; }
@@ -553,6 +581,19 @@ export default function PurchasesHubPage() {
       .catch(() => setItemResults([]))
       .finally(() => setIsLoadingItems(false));
   }, [debouncedItemQuery]);
+
+  const filteredSuppliers = useMemo(() => {
+    const q = supplierQuery.trim().toLowerCase();
+    if (!q) return suppliers.slice(0, 8);
+    return suppliers.filter(s => s.name?.toLowerCase().includes(q)).slice(0, 8);
+  }, [supplierQuery, suppliers]);
+
+  const handlePickSupplier = (s) => {
+    setSelectedSupplier(s);
+    setSupplierId(s.id);
+    setSupplierQuery(s.name);
+    setSupplierLookupOpen(false);
+  };
 
   // Fetch Invoices ledger
   const loadInvoices = async () => {
@@ -564,6 +605,7 @@ export default function PurchasesHubPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       if (supplierId) params.set("supplier_id", supplierId);
+      if (userId) params.set("user_id", userId);
 
       const res = await api.get(`/api/purchases?${params}`);
       setInvoices(res.data?.data || []);
@@ -593,6 +635,7 @@ export default function PurchasesHubPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       if (supplierId) params.set("supplier_id", supplierId);
+      if (userId) params.set("user_id", userId);
 
       const res = await api.get(`/api/purchases/items-search?${params}`);
       setItemRows(res.data?.data || []);
@@ -610,7 +653,7 @@ export default function PurchasesHubPage() {
     } else {
       loadItemRows();
     }
-  }, [activeTab, debouncedSearch, selectedItemFilter, dateFrom, dateTo, supplierId]);
+  }, [activeTab, debouncedSearch, selectedItemFilter, dateFrom, dateTo, supplierId, userId]);
 
   // Handle invoice cancellation
   const handleConfirmCancel = async (reason) => {
@@ -628,7 +671,7 @@ export default function PurchasesHubPage() {
     }
   };
 
-  const hasFilters = dateFrom || dateTo || supplierId;
+  const hasFilters = dateFrom || dateTo || supplierId || userId;
 
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
@@ -657,12 +700,6 @@ export default function PurchasesHubPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link 
-              to="/purchases/returns" 
-              className="flex items-center gap-2 bg-white text-zinc-700 px-5 py-4 border border-zinc-200 rounded-2xl font-bold hover:bg-zinc-50 transition-colors"
-            >
-              مرتجعات الموردين
-            </Link>
             <PermissionGate page="purchases" action="add">
               <MagneticButton
                 data-help="add-button"
@@ -840,6 +877,16 @@ export default function PurchasesHubPage() {
           {filtersOpen && (
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
               <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                <select value={userId} onChange={e => setUserId(e.target.value)}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
+                  <option value="">كل المستخدمين</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                 <input 
                   type="date" 
@@ -859,20 +906,33 @@ export default function PurchasesHubPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المورد</span>
-                <select 
-                  value={supplierId} 
-                  onChange={e => setSupplierId(e.target.value)}
-                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]"
-                >
-                  <option value="">جميع الموردين</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    ref={supplierInputRef}
+                    type="text"
+                    value={supplierQuery}
+                    onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); setSelectedSupplier(null); setSupplierId(""); }}
+                    onFocus={() => setSupplierLookupOpen(true)}
+                    onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
+                    placeholder="جميع الموردين"
+                    className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]"
+                  />
+                  {supplierLookupOpen && (
+                    <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} emptyLabel="لا يوجد موردين" />
+                  )}
+                </div>
+                {selectedSupplier && (
+                  <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 mt-1">
+                    <span className="text-[11px] text-emerald-700 font-bold truncate">{selectedSupplier.name}</span>
+                    <button onClick={() => { setSelectedSupplier(null); setSupplierId(""); setSupplierQuery(""); }}>
+                      <X className="w-3 h-3 text-emerald-400 hover:text-rose-500" />
+                    </button>
+                  </div>
+                )}
               </div>
               {hasFilters && (
                 <button 
-                  onClick={() => { setDateFrom(""); setDateTo(""); setSupplierId(""); }}
+                  onClick={() => { setDateFrom(""); setDateTo(""); setSupplierId(""); setUserId(""); setSupplierQuery(""); setSelectedSupplier(null); }}
                   className="h-10 flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" /> مسح التصفية
@@ -1002,10 +1062,10 @@ export default function PurchasesHubPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl p-7"
+              className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl flex flex-col max-h-[85vh]"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-4 mb-5">
+              <div className="flex items-center justify-between border-b border-zinc-100 px-7 pt-7 pb-4 shrink-0">
                 <h2 className="text-[17px] font-black text-zinc-900">
                   تفاصيل الفاتورة — {previewTarget.doc_no}
                 </h2>
@@ -1016,10 +1076,12 @@ export default function PurchasesHubPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <PreviewDrawer 
-                purchaseId={previewTarget.id || previewTarget.purchase_id} 
-                onClose={() => setPreviewTarget(null)} 
-              />
+              <div className="overflow-y-auto px-7 pb-7">
+                <PreviewDrawer 
+                  purchaseId={previewTarget.id || previewTarget.purchase_id} 
+                  onClose={() => setPreviewTarget(null)} 
+                />
+              </div>
             </motion.div>
           </motion.div>
         )}

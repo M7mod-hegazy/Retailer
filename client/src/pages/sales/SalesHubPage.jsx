@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   X, Eye, Pencil, SlidersHorizontal, ExternalLink,
@@ -50,10 +50,11 @@ function fmt(v) {
 }
 function fmtDate(d) {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  }).format(new Date(d));
+  const raw = d.split(".")[0].replace("T", " ");
+  const [ymd, hms = "00:00"] = raw.split(" ");
+  const [y, m, day] = ymd.split("-");
+  const [hh, min] = hms.split(":");
+  return `${day}/${m}/${y}, ${hh}:${min}`;
 }
 
 // ── Parse payment_splits string from list API ─────────────────────────────────
@@ -261,6 +262,39 @@ function PreviewDrawer({ invoiceId, onClose }) {
               </div>
             </div>
 
+            {/* Discount & Increase row */}
+            {Number(d.discount) > 0 && Number(d.increase) > 0 && (
+              <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
+                <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  خصم الفاتورة
+                </span>
+                <span className="font-mono text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
+                <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  إضافة / رسوم
+                </span>
+                <span className="font-mono text-[11px] font-black text-emerald-600">{fmt(d.increase)} ج.م</span>
+              </div>
+            )}
+            {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
+              <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
+                <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  خصم الفاتورة
+                </span>
+                <span className="font-mono text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
+              </div>
+            )}
+            {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
+              <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
+                <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  إضافة / رسوم
+                </span>
+                <span className="font-mono text-[11px] font-black text-emerald-600">{fmt(d.increase)} ج.م</span>
+              </div>
+            )}
             {/* Payment chips */}
             {chips.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -402,9 +436,9 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
           <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
             <span className="text-zinc-600">{row.customer_name || "عميل نقدي"}</span>
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
-            <span dir="ltr">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+            <span dir="ltr">{fmtDate(row.created_at)}</span>
             {row.created_by_username && (
-              <><span className="w-1 h-1 rounded-full bg-zinc-300" /><span>بواسطة: {row.created_by_username}</span></>
+              <span className="text-zinc-500">{row.created_by_username}</span>
             )}
           </div>
         </div>
@@ -483,16 +517,17 @@ export default function SalesHubPage() {
   const [dateTo, setDateTo]         = useState("");
   const [customerId, setCustomerId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [previewTarget, setPreviewTarget] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [userId, setUserId] = useState("");
+  const [customers, setCustomers] = useState([]);
 
-  // Customer autocomplete (invoices tab filter)
-  const [customerQuery, setCustomerQuery]         = useState("");
+  // Customer autocomplete
+  const [customerQuery, setCustomerQuery] = useState("");
   const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
-  const [customerResults, setCustomerResults]     = useState([]);
-  const [selectedCustomer, setSelectedCustomer]   = useState(null);
-  const [activeCustomerIndex, setActiveCustomerIndex] = useState(-1);
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const [selectedCustomerFilter, setSelectedCustomerFilter] = useState(null);
   const customerInputRef = useRef(null);
+
+  const [previewTarget, setPreviewTarget] = useState(null);
 
   // Items tab search (autocomplete)
   const [itemQuery, setItemQuery]                 = useState("");
@@ -504,18 +539,7 @@ export default function SalesHubPage() {
   const itemInputRef = useRef(null);
 
   const debouncedSearch      = useDebounce(searchTerm, 300);
-  const debouncedCustomerQ   = useDebounce(customerQuery, 300);
   const debouncedItemQuery   = useDebounce(itemQuery, 300);
-
-  // Customer autocomplete fetch
-  useEffect(() => {
-    if (!debouncedCustomerQ.trim()) { setCustomerResults([]); return; }
-    setIsLoadingCustomers(true);
-    api.get(`/api/customers?search=${encodeURIComponent(debouncedCustomerQ)}&limit=20`)
-      .then(r => setCustomerResults(r.data?.data || r.data || []))
-      .catch(() => setCustomerResults([]))
-      .finally(() => setIsLoadingCustomers(false));
-  }, [debouncedCustomerQ]);
 
   // Item autocomplete fetch (items tab)
   useEffect(() => {
@@ -527,6 +551,12 @@ export default function SalesHubPage() {
       .finally(() => setIsLoadingItems(false));
   }, [debouncedItemQuery]);
 
+  // Fetch users & customers for filters
+  useEffect(() => {
+    api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+    api.get("/api/customers?limit=500").then(r => setCustomers(r.data.data || [])).catch(() => {});
+  }, []);
+
   // Load invoices list
   const loadInvoices = async () => {
     if (activeTab !== "invoices") return;
@@ -537,6 +567,7 @@ export default function SalesHubPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo)   params.set("date_to", dateTo);
       if (customerId) params.set("customer_id", customerId);
+      if (userId) params.set("user_id", userId);
       const res = await api.get(`/api/invoices?${params}`);
       setInvoices(res.data?.data || []);
     } catch { toast.error("فشل تحميل فواتير المبيعات"); }
@@ -567,7 +598,20 @@ export default function SalesHubPage() {
     else loadItemRows();
   }, [activeTab, debouncedSearch, customerId, selectedItemFilter, dateFrom, dateTo]);
 
-  const hasFilters = dateFrom || dateTo || customerId;
+  const hasFilters = dateFrom || dateTo || customerId || userId;
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+    return customers.filter(c => c.name?.toLowerCase().includes(q)).slice(0, 8);
+  }, [customerQuery, customers]);
+
+  function handlePickCustomer(c) {
+    setSelectedCustomerFilter(c);
+    setCustomerId(c.id);
+    setCustomerQuery(c.name);
+    setCustomerLookupOpen(false);
+  }
 
   const clearItemSelection = () => {
     setSelectedItemFilter(null); setItemQuery(""); setItemResults([]);
@@ -703,68 +747,82 @@ export default function SalesHubPage() {
               )}
             </div>
 
-            {/* Customer filter (invoices tab only) */}
-            {activeTab === "invoices" && (
-              <div className="relative w-full md:w-64 flex-shrink-0">
-                <SearchInput
-                  ref={customerInputRef}
-                  value={customerQuery}
-                  onChange={(val) => { setCustomerQuery(val); setSelectedCustomer(null); setCustomerId(""); setActiveCustomerIndex(-1); setCustomerLookupOpen(true); }}
-                  onClear={() => { setCustomerQuery(""); setSelectedCustomer(null); setCustomerId(""); setCustomerResults([]); }}
-                  onFocus={() => setCustomerLookupOpen(true)}
-                  onBlur={() => setTimeout(() => setCustomerLookupOpen(false), 200)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && customerResults.length > 0 && activeCustomerIndex >= 0) {
-                      const c = customerResults[activeCustomerIndex];
-                      setSelectedCustomer(c); setCustomerId(String(c.id)); setCustomerQuery(c.name); setCustomerLookupOpen(false);
-                    } else if (e.key === "ArrowDown") { e.preventDefault(); setActiveCustomerIndex(p => Math.min(p + 1, customerResults.length - 1)); }
-                    else if (e.key === "ArrowUp")     { e.preventDefault(); setActiveCustomerIndex(p => Math.max(p - 1, 0)); }
-                  }}
-                  placeholder="تصفية بالعميل..." size="lg" loading={isLoadingCustomers} className="w-full"
-                />
-                {customerLookupOpen && customerResults.length > 0 && (
-                  <SearchDropdown
-                    items={customerResults.map(c => ({ ...c, code: c.phone || "" }))}
-                    activeIndex={activeCustomerIndex} query={customerQuery} emptyLabel="لا يوجد عملاء"
-                    onPick={(c) => { setSelectedCustomer(c); setCustomerId(String(c.id)); setCustomerQuery(c.name); setCustomerLookupOpen(false); setActiveCustomerIndex(-1); }}
-                  />
-                )}
-                {selectedCustomer && (
-                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 mt-2">
-                    <span className="text-[12px] text-blue-700 font-bold truncate">{selectedCustomer.name}</span>
-                    <button type="button" onClick={() => { setSelectedCustomer(null); setCustomerId(""); setCustomerQuery(""); setCustomerResults([]); }} className="mr-auto text-blue-400 hover:text-rose-500 transition-colors">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
             <button
               onClick={() => setFiltersOpen(v => !v)}
-              className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all shrink-0 ${hasFilters ? "border-blue-300 bg-blue-50/50 text-blue-700" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}
+              className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all w-full md:w-auto shrink-0 ${
+                hasFilters 
+                  ? "border-emerald-300 bg-emerald-50/50 text-emerald-700" 
+                  : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+              }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
               تصفية
-              {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+              {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
               {filtersOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
 
+          {/* Collapsible Filter Compartment */}
           {filtersOpen && (
-            <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end">
+            <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
+              {activeTab === "invoices" && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">العميل</span>
+                  <div className="relative">
+                    <input
+                      ref={customerInputRef}
+                      type="text"
+                      value={customerQuery}
+                      onChange={(e) => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); setSelectedCustomerFilter(null); setCustomerId(""); }}
+                      onFocus={() => setCustomerLookupOpen(true)}
+                      onBlur={() => setTimeout(() => setCustomerLookupOpen(false), 200)}
+                      placeholder="جميع العملاء"
+                      className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]"
+                    />
+                    {customerLookupOpen && (
+                      <SearchDropdown items={filteredCustomers} onPick={handlePickCustomer} emptyLabel="لا يوجد عملاء" />
+                    )}
+                  </div>
+                  {selectedCustomerFilter && (
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 mt-1">
+                      <span className="text-[11px] text-emerald-700 font-bold truncate">{selectedCustomerFilter.name}</span>
+                      <button onClick={() => { setSelectedCustomerFilter(null); setCustomerId(""); setCustomerQuery(""); }}>
+                        <X className="w-3 h-3 text-emerald-400 hover:text-rose-500" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                <select value={userId} onChange={e => setUserId(e.target.value)}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
+                  <option value="">كل المستخدمين</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" />
+                <input 
+                  type="date" 
+                  value={dateFrom} 
+                  onChange={e => setDateFrom(e.target.value)} 
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" 
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" />
+                <input 
+                  type="date" 
+                  value={dateTo} 
+                  onChange={e => setDateTo(e.target.value)} 
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" 
+                />
               </div>
               {hasFilters && (
-                <button onClick={() => { setDateFrom(""); setDateTo(""); setCustomerId(""); setCustomerQuery(""); setSelectedCustomer(null); }}
+                <button onClick={() => { setDateFrom(""); setDateTo(""); setCustomerId(""); setUserId(""); setCustomerQuery(""); setSelectedCustomerFilter(null); }}
                   className="h-10 flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
                   <X className="w-3.5 h-3.5" /> مسح التصفية
                 </button>

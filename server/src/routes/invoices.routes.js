@@ -4,6 +4,7 @@ const { createReturn, createGeneralReturn, getReturns, getReturnDetails, cancelS
 const { adjustStock } = require("../services/stockService");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { generateDocNumber } = require("../utils/docNumber");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 
@@ -37,7 +38,7 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
     if (user_id) { conditions.push("i.user_id = ?"); params.push(user_id); }
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const rows = db.prepare(`
-      SELECT i.id, i.invoice_no, i.subtotal, i.discount, i.total,
+      SELECT i.id, i.invoice_no, i.subtotal, i.discount, i.increase, i.total,
              i.payment_type, i.status, i.created_at, i.amount_received,
              i.amended_by, i.amendment_of,
              (SELECT invoice_no FROM invoices WHERE id = i.amendment_of) AS amendment_of_no,
@@ -222,33 +223,41 @@ router.put("/returns/:id/amend", requirePagePermission("sales_returns", "edit"),
 router.post("/general-purchase-return", requirePagePermission("purchase_returns", "add"), (req, res, next) => {
   try {
     const db = getDb();
-    const { lines, supplier_id, refund_method, notes, reason } = req.body;
+    const { lines, supplier_id, settlement_type, notes, reason } = req.body;
     if (!lines || !lines.length) { const e = new Error("يجب إضافة أصناف"); e.status = 400; throw e; }
 
+    const sType = settlement_type || 'cash';
+    const userId = req.user?.id || req.body.user_id || null;
+
     const result = db.transaction(() => {
-      const docNo = "GPR-" + Date.now();
+      const docNo = generateDocNumber("general_purchase_return", "GPR");
       let total = 0;
       for (const line of lines) {
-        total += Number(line.quantity) * Number(line.unit_price);
+        total += Number(line.quantity) * Number(line.unit_cost || line.unit_price);
       }
 
+      const cashAmt = sType === 'cash' ? total : sType === 'split' ? Math.max(0, Number(req.body.cash_amount ?? 0)) : 0;
+      const creditAmt = sType === 'account' ? total : sType === 'split' ? Math.max(0, total - cashAmt) : 0;
+
       const ret = db.prepare(`
-        INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, refund_method, reason, notes, created_at)
-        VALUES (?, NULL, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
-      `).run(docNo, supplier_id || null, total, refund_method || 'cash_back', reason || 'other', notes || null);
+        INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, refund_method, cash_amount, credit_amount, reason, notes, created_by, created_at)
+        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+      `).run(docNo, supplier_id || null, total, sType, sType, cashAmt, creditAmt, reason || 'other', notes || null, userId);
 
       for (const line of lines) {
-        const lineTotal = Number(line.quantity) * Number(line.unit_price);
-        db.prepare("INSERT INTO purchase_return_lines (purchase_return_id, purchase_line_id, item_id, quantity, unit_cost, unit_price, line_total) VALUES (?, NULL, ?, ?, ?, ?, ?)").run(ret.lastInsertRowid, line.item_id, line.quantity, line.unit_price, line.unit_price, lineTotal);
+        const cost = Number(line.unit_cost || line.unit_price);
+        const lineTotal = Number(line.quantity) * cost;
+        db.prepare("INSERT INTO purchase_return_lines (purchase_return_id, purchase_line_id, item_id, quantity, unit_cost, unit_price, line_total) VALUES (?, NULL, ?, ?, ?, ?, ?)").run(ret.lastInsertRowid, line.item_id, line.quantity, cost, cost, lineTotal);
         // Stock goes out on purchase return
         adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id || 1, quantityDelta: -Number(line.quantity), movement_type: "purchase_return", reference_type: "purchase_return", reference_id: ret.lastInsertRowid });
       }
 
-      if (refund_method === 'cash_back' || !refund_method) {
+      if (cashAmt > 0) {
         const tId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-        if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(total, tId);
-      } else if (refund_method === 'credit_note' && supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(total, supplier_id);
+        if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(cashAmt, tId);
+      }
+      if (creditAmt > 0 && supplier_id) {
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(creditAmt, supplier_id);
       }
 
       return { id: ret.lastInsertRowid, doc_no: docNo, total };

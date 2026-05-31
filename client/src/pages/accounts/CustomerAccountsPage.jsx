@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Search, Plus, X, Phone, AlertTriangle, SlidersHorizontal,
@@ -197,7 +197,7 @@ function InstallmentsBadge({ debtId }) {
 }
 
 // ── Movements Tab Component ───────────────────────────────────────────
-function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
+function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, onOpenReturn }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("all");
@@ -379,7 +379,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
           type: "return",
           date: new Date(r.created_at),
           ref: r.doc_no || `RET-${r.id}`,
-          description: r.original_invoice_no ? `مرتجع فاتورة ${r.original_invoice_no}` : "مرتجع",
+          description: r.original_invoice_no ? `مرتجع فاتورة ${r.original_invoice_no}` : "مرتجع مباشر",
+          originalInvoiceId: r.invoice_id || null,
+          originalInvoiceDocNo: r.original_invoice_no || null,
           impactAmount: creditAmt,
           impactDir: creditAmt > 0.005 ? "subtract" : null,
           totalAmount: Number(r.total || 0),
@@ -640,10 +642,10 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
               <div className={`bg-white rounded-[24px] p-5 md:p-6 relative overflow-hidden border border-slate-100/80 ${theme.borderRight} flex flex-col gap-4 shadow-[inset_0_2px_4px_rgba(255,255,255,1)]`}>
                 <div className="flex flex-col gap-4">
                   {/* ── Main Asymmetric Ledger Row ── */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-                    
-                    {/* Column 1: Stylized Card Type Header & Reference (spans 3 cols) */}
-                    <div className="lg:col-span-3 flex flex-col justify-center min-w-0 pr-1 select-none">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 min-w-0 w-full">
+
+                    {/* Column 1: Stylized Card Type Header & Reference */}
+                    <div className="shrink-0 flex flex-col justify-center pr-1 select-none">
                       <div className="flex items-center gap-2.5">
                         <div>
                           <div className="flex items-center gap-2">
@@ -665,8 +667,8 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                       </div>
                     </div>
 
-                    {/* Column 2: Payment splits / method tags / notes (spans 4 cols) */}
-                    <div className="lg:col-span-4 flex flex-wrap items-center gap-2 min-w-0">
+                    {/* Column 2: Payment splits / method tags / notes */}
+                    <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
                       {isDocRow && renderChips.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {renderChips.map((chip, i) => {
@@ -698,15 +700,32 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                         </span>
                       )}
                       {ev.description && (
-                        <span className="text-[11.5px] text-slate-455 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
-                          {ev.description}
-                        </span>
+                        ev.type === "return" && ev.originalInvoiceId ? (
+                          <button
+                            onClick={() => onOpenOriginalInvoice({ id: ev.originalInvoiceId, invoice_no: ev.originalInvoiceDocNo })}
+                            className="text-[11.5px] text-blue-600 font-bold border-r-2 border-blue-200 pr-2 hover:text-blue-700 hover:underline transition-colors cursor-pointer flex items-center gap-1 truncate max-w-[240px]"
+                            title="عرض تفاصيل الفاتورة الأصلية"
+                          >
+                            {ev.description}
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </button>
+                        ) : ev.type === "return" ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
+                            <RotateCcw className="h-3 w-3 shrink-0" />
+                            مرتجع مباشر
+                            <span className="text-[8.5px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded-lg leading-none">بدون فاتورة</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11.5px] text-slate-455 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
+                            {ev.description}
+                          </span>
+                        )
                       )}
                     </div>
 
-                    {/* Column 3: Unified Ledger Cockpit Widget (spans 4 cols) */}
-                    <div className="lg:col-span-4 flex flex-row items-center justify-end gap-3 shrink-0 ml-auto lg:ml-0">
-                      <div className="flex items-center gap-4 shrink-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-2.5 hover:bg-slate-50/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)] min-w-[315px] ml-auto lg:ml-0">
+                    {/* Column 3: Unified Ledger Cockpit Widget */}
+                    <div className="shrink-0 flex flex-row items-center gap-3">
+                      <div className="flex items-center gap-3 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-2.5 hover:bg-slate-50/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)]">
                         {/* Metric 1: Total Transaction Value */}
                         <div className="flex flex-col items-end px-3 py-0.5 flex-1 min-w-0">
                           <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
@@ -761,8 +780,8 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenReturn }) {
                       )}
                     </div>
 
-                    {/* Column 4: Detail Action Button (spans 1 col) */}
-                    <div className="lg:col-span-1 flex items-center justify-end shrink-0">
+                    {/* Column 4: Detail Action Button */}
+                    <div className="shrink-0 flex items-center justify-end">
                       {ev.type === "invoice" && (
                         <button
                           onClick={() => onOpenInvoice(ev.raw)}
@@ -823,11 +842,14 @@ export default function CustomerAccountsPage() {
 
   // Invoice detail modal
   const [detailInvoice, setDetailInvoice] = useState(null);
+  const [detailInvoiceIsOriginal, setDetailInvoiceIsOriginal] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Return detail modal
   const [detailReturn, setDetailReturn] = useState(null);
+  const [detailReturnData, setDetailReturnData] = useState(null);
+  const [detailReturnLoading, setDetailReturnLoading] = useState(false);
 
   // Modal states
   const [showCreate, setShowCreate] = useState(false);
@@ -878,6 +900,8 @@ export default function CustomerAccountsPage() {
     finally { setNotesLoading(false); }
   }, [selected]);
 
+  const navigate = useNavigate();
+
   useEffect(() => { loadCustomers(); }, [loadCustomers]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { if (activeTab === "notes") loadNotes(); }, [activeTab, loadNotes]);
@@ -923,6 +947,15 @@ export default function CustomerAccountsPage() {
       .catch(() => setDetailData(null))
       .finally(() => setDetailLoading(false));
   }, [detailInvoice]);
+
+  useEffect(() => {
+    if (!detailReturn) { setDetailReturnData(null); return; }
+    setDetailReturnLoading(true);
+    api.get(`/api/invoices/returns/${detailReturn.id}`)
+      .then(r => setDetailReturnData(r.data.data))
+      .catch(() => setDetailReturnData(null))
+      .finally(() => setDetailReturnLoading(false));
+  }, [detailReturn]);
 
   // ── Handlers ──────────────────────────────────────────────
   const handleCustomerCreated = (customer) => {
@@ -1298,7 +1331,8 @@ export default function CustomerAccountsPage() {
                 <MovementsTab
                   party={selected}
                   partyType="customer"
-                  onOpenInvoice={setDetailInvoice}
+                  onOpenInvoice={(inv) => { setDetailInvoiceIsOriginal(false); setDetailInvoice(inv); }}
+                  onOpenOriginalInvoice={(inv) => { setDetailInvoiceIsOriginal(true); setDetailInvoice(inv); }}
                   onOpenReturn={setDetailReturn}
                 />
               ) : (
@@ -1316,14 +1350,22 @@ export default function CustomerAccountsPage() {
       {/* ── Invoice Detail Modal ══════════════════════════════ */}
       <AnimatePresence>
         {detailInvoice && (
-          <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); }} width="650px">
+          <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} width="650px">
             <div className="p-6">
+              {detailInvoiceIsOriginal && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
+                  <RotateCcw className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <span className="text-[11px] font-black text-amber-800">الفاتورة الأصلية للمرتجع — هذه الفاتورة مرتبطة بمرتجع مبيعات</span>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                 <div>
-                  <h2 className="text-[16px] font-black text-slate-800">تفاصيل فاتورة المبيعات</h2>
+                  <h2 className={`text-[16px] font-black ${detailInvoiceIsOriginal ? "text-amber-800" : "text-slate-800"}`}>
+                    {detailInvoiceIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة المبيعات"}
+                  </h2>
                   <p className="text-[11px] text-slate-400 font-bold font-mono mt-0.5">{detailInvoice.invoice_no || `#${detailInvoice.id}`}</p>
                 </div>
-                <button onClick={() => { setDetailInvoice(null); setDetailData(null); }} className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-zinc-900 transition-colors">
+                <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-zinc-900 transition-colors">
                   <X className="h-4.5 w-4.5" />
                 </button>
               </div>
@@ -1399,11 +1441,11 @@ export default function CustomerAccountsPage() {
                   )}
 
                   <div className="flex gap-3 mt-5">
-                    <button onClick={() => window.open(`/invoices/${detailInvoice.id}`, "_blank")}
-                      className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 py-3 text-[12px] font-bold text-white shadow-sm transition-all duration-200 active:scale-[0.98]">
+                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); navigate(`/invoices/${detailInvoice.id}`); }}
+                      className={`flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 text-[12px] font-bold text-white shadow-sm transition-all duration-200 active:scale-[0.98] ${detailInvoiceIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-600 hover:bg-blue-700"}`}>
                       <ExternalLink className="h-4 w-4" /> فتح الفاتورة بالكامل
                     </button>
-                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); }} className="px-6 rounded-2xl border border-slate-250 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">إغلاق</button>
+                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="px-6 rounded-2xl border border-slate-250 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">إغلاق</button>
                   </div>
                 </>
               ) : (
@@ -1412,6 +1454,7 @@ export default function CustomerAccountsPage() {
                   <span className="font-bold text-[13px]">تعذر عرض تفاصيل الفاتورة المطلوبة</span>
                 </div>
               )}
+
             </div>
           </Modal>
         )}
@@ -1420,30 +1463,99 @@ export default function CustomerAccountsPage() {
       {/* ── Return Detail Modal ══════════════════════════════ */}
       <AnimatePresence>
         {detailReturn && (
-          <Modal onClose={() => setDetailReturn(null)} width="480px">
+          <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} width="640px">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                 <div>
-                  <h2 className="text-[16px] font-black text-slate-800">تفاصيل سند المرتجع المالي</h2>
+                  <h2 className="text-[16px] font-black text-slate-800">تفاصيل مرتجع المبيعات</h2>
                   <p className="text-[11px] text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
                 </div>
-                <button onClick={() => setDetailReturn(null)} className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors"><X className="h-4.5 w-4.5" /></button>
+                <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors"><X className="h-4.5 w-4.5" /></button>
               </div>
-              <div className="space-y-4 text-[12px]">
-                {[
-                  ["سند الفاتورة الأصلية", detailReturn.original_invoice_no || "—", "font-mono"],
-                  ["قيمة المرتجع المالي", `${fmt(detailReturn.total)} ج.م`, "font-mono font-bold text-rose-600"],
-                  ["طريقة استرداد القيمة", arMethod(detailReturn.refund_method) || detailReturn.refund_method || "—", ""],
-                  ["سبب إرجاع البضاعة", detailReturn.reason || "لا يوجد سبب مسجل للحركة", ""],
-                  ["تاريخ قيد الحركة", fmtDate(detailReturn.created_at), "font-mono"]
-                ].map(([label, value, classes]) => (
-                  <div key={label} className="flex justify-between border-b border-slate-100 pb-3.5 items-center">
-                    <span className="font-bold text-slate-450">{label}</span>
-                    <span className={`text-slate-800 ${classes}`}>{value}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => setDetailReturn(null)} className="mt-5 w-full rounded-2xl border border-slate-250 py-3 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">إغلاق النافذة</button>
+
+              {detailReturnLoading ? (
+                <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
+                  <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
+                </div>
+              ) : detailReturnData ? (
+                (() => {
+                  const RMETHOD = { cash_back: "استرداد نقدي", account: "رصيد آجل", split: "نقدي + آجل" };
+                  const d = detailReturnData;
+                  return (
+                    <>
+                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
+                        <div className="grid grid-cols-2 gap-3 text-[12px]">
+                          <div><span className="font-black text-slate-400">العميل:</span> <span className="font-bold text-slate-800">{d.customer_name || "—"}</span></div>
+                          <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(d.created_at)}</span></div>
+                          <div><span className="font-black text-slate-400">طريقة الاسترداد:</span> <span className="font-bold text-slate-800">{RMETHOD[d.refund_method] || d.refund_method || "—"}</span></div>
+                          <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="font-black font-mono text-slate-900">{fmt(d.total)} ج.م</span></div>
+                          {Number(d.cash_amount) > 0.005 && (
+                            <div><span className="font-black text-slate-400">نقداً:</span> <span className="font-bold font-mono text-emerald-700">{fmt(d.cash_amount)} ج.م</span></div>
+                          )}
+                          {Number(d.credit_amount) > 0.005 && (
+                            <div><span className="font-black text-slate-400">خصم من الآجل:</span> <span className="font-bold font-mono text-rose-600">{fmt(d.credit_amount)} ج.م</span></div>
+                          )}
+                          {d.original_invoice_no && (
+                            <div className="col-span-2">
+                              <span className="font-black text-slate-400">الفاتورة الأصلية: </span>
+                              <button
+                                onClick={() => { setDetailReturn(null); setDetailReturnData(null); setDetailInvoiceIsOriginal(true); setDetailInvoice({ id: d.invoice_id, invoice_no: d.original_invoice_no }); }}
+                                className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-[12px] cursor-pointer"
+                              >
+                                {d.original_invoice_no}
+                              </button>
+                            </div>
+                          )}
+                          {d.reason && (
+                            <div className="col-span-2"><span className="font-black text-slate-400">السبب:</span> <span className="font-bold text-slate-800">{d.reason}</span></div>
+                          )}
+                          {d.notes && (
+                            <div className="col-span-2"><span className="font-black text-slate-400">ملاحظات:</span> <span className="font-bold text-slate-800">{d.notes}</span></div>
+                          )}
+                        </div>
+                      </div>
+
+                      {Array.isArray(d.lines) && d.lines.length > 0 && (
+                        <div className="rounded-xl border border-slate-200 overflow-hidden mb-4 max-h-[300px] overflow-y-auto">
+                          <table className="w-full text-[11.5px] border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
+                                <th className="px-2 py-2 text-center font-black text-slate-500">الكمية</th>
+                                <th className="px-2 py-2 text-center font-black text-slate-500">السعر</th>
+                                <th className="px-3 py-2 text-center font-black text-slate-500">الإجمالي</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {d.lines.map((l, i) => (
+                                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                                  <td className="px-3 py-2 font-bold text-slate-800">{l.item_name || "—"}</td>
+                                  <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
+                                  <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_price)}</td>
+                                  <td className="px-3 py-2 text-center font-mono font-black text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4">
+                        <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); navigate(`/pos/sales-returns/${detailReturn.id}`); }}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-[12px] font-black text-white hover:bg-rose-700">
+                          <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
+                        </button>
+                        <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                      </div>
+                    </>
+                  );
+                })()
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
+                  <FileText className="h-8 w-8 opacity-40" />
+                  <span className="font-black text-[13px]">لا توجد تفاصيل</span>
+                </div>
+              )}
             </div>
           </Modal>
         )}

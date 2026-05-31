@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, RotateCcw, X, Eye, Pencil, Trash2, AlertTriangle, ArrowUpRight, FileText, Search, Package, SlidersHorizontal, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import api from "../../services/api";
@@ -31,7 +31,11 @@ const FADE_UP = {
 function fmt(v) { return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 }); }
 function fmtDate(d) {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(d));
+  const raw = d.split(".")[0].replace("T", " ");
+  const [ymd, hms = "00:00"] = raw.split(" ");
+  const [y, m, day] = ymd.split("-");
+  const [hh, min] = hms.split(":");
+  return `${day}/${m}/${y}, ${hh}:${min}`;
 }
 
 function MagneticButton({ children, onClick, className, disabled }) {
@@ -53,6 +57,8 @@ function MagneticButton({ children, onClick, className, disabled }) {
 }
 
 function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
+  const [reason, setReason] = useState("");
+  const PRESETS = ["خطأ في البيانات", "خطأ في الكمية", "مرتجع مكرر", "تسوية مع المورد", "أخرى"];
   return (
     <AnimatePresence>
       {row && (
@@ -68,20 +74,25 @@ function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
                   <AlertTriangle className="w-6 h-6 text-rose-500" />
                 </div>
                 <div>
-                  <h2 className="text-[17px] font-black text-zinc-900 mb-1">تأكيد حذف المرتجع</h2>
+                  <h2 className="text-[17px] font-black text-zinc-900 mb-1">تأكيد إلغاء المرتجع</h2>
                   <p className="text-[13px] font-medium text-zinc-500 leading-relaxed">
-                    سيتم حذف مرتجع الشراء <span className="font-black text-zinc-800 font-mono">{row.doc_no || `PR-${String(row.id).padStart(5, "0")}`}</span> نهائياً.
+                    سيتم إلغاء مرتجع الشراء <span className="font-black text-zinc-800 font-mono">{row.doc_no || `PR-${String(row.id).padStart(5, "0")}`}</span>.
                   </p>
                 </div>
               </div>
-              <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 mb-6 text-[12px] font-bold text-rose-700 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>هذا الإجراء لا يمكن التراجع عنه.</span>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {PRESETS.map(p => (
+                  <button key={p} onClick={() => setReason(p)}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
+                  >{p}</button>
+                ))}
               </div>
+              <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="أو اكتب سبب الإلغاء..."
+                className="w-full border border-slate-200 rounded-xl p-3 text-[12px] resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300 mb-4" />
               <div className="flex gap-3">
-                <button onClick={onConfirm} disabled={deleting}
+                <button onClick={() => reason.trim() && onConfirm(reason)} disabled={deleting || !reason.trim()}
                   className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[13px] font-black hover:bg-rose-700 disabled:opacity-50 transition-all">
-                  {deleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
+                  {deleting ? "جاري الإلغاء..." : "تأكيد الإلغاء"}
                 </button>
                 <button onClick={onClose} className="h-11 px-6 rounded-2xl bg-zinc-100 text-zinc-700 text-[13px] font-black hover:bg-zinc-200 transition-colors">إلغاء</button>
               </div>
@@ -153,10 +164,27 @@ function PreviewModal({ returnId, onClose }) {
                     </div>
                   </div>
 
+                  {data.purchase_id && (
+                    <div className="rounded-2xl bg-indigo-50/60 border border-indigo-200/70 p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-indigo-500 tracking-wider uppercase">رقم مستند الشراء الأصلي</span>
+                          <Link to={`/purchases/${data.purchase_id}`} className="font-mono text-sm font-black text-indigo-700 hover:underline">
+                            {data.original_purchase_no || `#${data.purchase_id}`}
+                          </Link>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-indigo-100 border border-indigo-200 text-[10px] font-black text-indigo-700">أصلية</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="border border-zinc-100 rounded-2xl p-4 bg-white flex flex-col gap-2.5">
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">بيانات المورد والمرتجع</span>
                       <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">المورد</span><span className="font-black text-zinc-800">{data.supplier_name || "—"}</span></div>
+                      <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">بواسطة</span><span className="font-black text-zinc-700">{data.created_by_username || "—"}</span></div>
                       {data.reason && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">سبب الإرجاع</span><span className="font-black text-zinc-700">{REASON_MAP[data.reason] || data.reason}</span></div>}
                       {data.notes && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">ملاحظات</span><span className="font-black text-zinc-500 text-right max-w-[55%]">{data.notes}</span></div>}
                     </div>
@@ -259,7 +287,9 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
               : <span>{row.supplier_name || "—"}</span>
             }
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
-            <span dir="ltr">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+            <span className="text-zinc-500">{row.created_by_username || "—"}</span>
+            <span className="w-1 h-1 rounded-full bg-zinc-300" />
+            <span dir="ltr">{fmtDate(row.created_at)}</span>
           </div>
         </div>
       </div>
@@ -270,7 +300,7 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
         </p>
         {row.original_purchase_no && (
           <p className="text-xs font-bold text-zinc-500 flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-widest text-zinc-400">المصدر</span>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-400">المستند الأصلي</span>
             <Link to={`/purchases/${row.purchase_id}`} className="font-mono text-zinc-700 hover:text-blue-600">{row.original_purchase_no}</Link>
           </p>
         )}
@@ -327,6 +357,14 @@ export default function PurchaseReturnsListPage() {
   const [dateFrom, setDateFrom]   = useState("");
   const [dateTo, setDateTo]       = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [userId, setUserId] = useState("");
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplierId, setSupplierId] = useState("");
+  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const supplierInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting]   = useState(false);
   const [previewId, setPreviewId] = useState(null);
@@ -343,6 +381,11 @@ export default function PurchaseReturnsListPage() {
   const debouncedItemQuery = useDebounce(itemQuery, 300);
 
   useEffect(() => {
+    api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+    api.get("/api/suppliers?limit=500").then(r => setSuppliers(r.data.data || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!debouncedItemQuery.trim()) { setItemResults([]); return; }
     setIsLoadingItems(true);
     api.get(`/api/items?search=${encodeURIComponent(debouncedItemQuery)}&limit=20`)
@@ -351,6 +394,12 @@ export default function PurchaseReturnsListPage() {
       .finally(() => setIsLoadingItems(false));
   }, [debouncedItemQuery]);
 
+  const filteredSuppliers = useMemo(() => {
+    const q = supplierQuery.trim().toLowerCase();
+    if (!q) return suppliers.slice(0, 8);
+    return suppliers.filter(s => s.name?.toLowerCase().includes(q)).slice(0, 8);
+  }, [supplierQuery, suppliers]);
+
   async function loadReturns() {
     setLoading(true);
     try {
@@ -358,6 +407,8 @@ export default function PurchaseReturnsListPage() {
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo)   params.set("date_to", dateTo);
+      if (supplierId) params.set("supplier_id", supplierId);
+      if (userId) params.set("user_id", userId);
       if (purchaseIdFilter) params.set("purchase_id", purchaseIdFilter);
       const res = await api.get(`/api/purchases/returns?${params}`);
       setRows(res.data.data || []);
@@ -384,21 +435,28 @@ export default function PurchaseReturnsListPage() {
   useEffect(() => {
     if (activeTab === "returns") loadReturns();
     else loadItemRows();
-  }, [activeTab, debouncedSearch, selectedItem, dateFrom, dateTo, purchaseIdFilter]);
+  }, [activeTab, debouncedSearch, selectedItem, dateFrom, dateTo, userId, supplierId, purchaseIdFilter]);
 
-  async function handleConfirmDelete() {
+  async function handleConfirmDelete(reason) {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/purchases/returns/${deleteTarget.id}`);
-      toast.success(`تم حذف المرتجع ${deleteTarget.doc_no || `#${deleteTarget.id}`} بنجاح`);
+      await api.post(`/api/purchases/returns/${deleteTarget.id}/cancel`, { reason });
+      toast.success(`تم إلغاء المرتجع ${deleteTarget.doc_no || `#${deleteTarget.id}`} بنجاح`);
       setDeleteTarget(null);
       loadReturns();
-    } catch (e) { toast.error(e.response?.data?.message || "فشل حذف المرتجع"); }
+    } catch (e) { toast.error(e.response?.data?.message || "فشل إلغاء المرتجع"); }
     finally { setDeleting(false); }
   }
 
   const clearItemSelection = () => { setSelectedItem(null); setItemQuery(""); setItemResults([]); setItemRows([]); setSearched(false); };
+
+  const handlePickSupplier = (s) => {
+    setSelectedSupplier(s);
+    setSupplierId(s.id);
+    setSupplierQuery(s.name);
+    setSupplierLookupOpen(false);
+  };
 
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
@@ -494,14 +552,50 @@ export default function PurchaseReturnsListPage() {
               )}
             </div>
             <button onClick={() => setFiltersOpen(v => !v)}
-              className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all shrink-0 ${(dateFrom || dateTo) ? "border-blue-300 bg-blue-50/50 text-blue-700" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}>
+              className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all shrink-0 ${(supplierId || userId || dateFrom || dateTo) ? "border-blue-300 bg-blue-50/50 text-blue-700" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}>
               <SlidersHorizontal className="w-4 h-4" /> تصفية
-              {(dateFrom || dateTo) && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+              {(dateFrom || dateTo || supplierId || userId) && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
               {filtersOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
           {filtersOpen && (
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                <select value={userId} onChange={e => setUserId(e.target.value)}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500 min-w-[180px]">
+                  <option value="">كل المستخدمين</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المورد</span>
+                <div className="relative">
+                  <input
+                    ref={supplierInputRef}
+                    type="text"
+                    value={supplierQuery}
+                    onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); setSelectedSupplier(null); setSupplierId(""); }}
+                    onFocus={() => setSupplierLookupOpen(true)}
+                    onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
+                    placeholder="جميع الموردين"
+                    className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500 min-w-[180px]"
+                  />
+                  {supplierLookupOpen && (
+                    <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} emptyLabel="لا يوجد موردين" />
+                  )}
+                </div>
+                {selectedSupplier && (
+                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 mt-1">
+                    <span className="text-[11px] text-blue-700 font-bold truncate">{selectedSupplier.name}</span>
+                    <button onClick={() => { setSelectedSupplier(null); setSupplierId(""); setSupplierQuery(""); }}>
+                      <X className="w-3 h-3 text-blue-400 hover:text-rose-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" />
@@ -510,8 +604,8 @@ export default function PurchaseReturnsListPage() {
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" />
               </div>
-              {(dateFrom || dateTo) && (
-                <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+              {(dateFrom || dateTo || supplierId || userId) && (
+                <button onClick={() => { setDateFrom(""); setDateTo(""); setSupplierId(""); setSupplierQuery(""); setSelectedSupplier(null); setUserId(""); }}
                   className="h-10 flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
                   <X className="w-3.5 h-3.5" /> مسح التصفية
                 </button>

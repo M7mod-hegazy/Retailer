@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, RotateCcw, X, Printer, Eye, Pencil, Trash2, AlertTriangle, ArrowDownLeft, FileText, Search, Package, SlidersHorizontal, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import api from "../../services/api";
@@ -31,7 +31,11 @@ const FADE_UP = {
 function fmt(v) { return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 }); }
 function fmtDate(d) {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(d));
+  const raw = d.split(".")[0].replace("T", " ");
+  const [ymd, hms = "00:00"] = raw.split(" ");
+  const [y, m, day] = ymd.split("-");
+  const [hh, min] = hms.split(":");
+  return `${day}/${m}/${y}, ${hh}:${min}`;
 }
 
 function MagneticButton({ children, onClick, className, disabled }) {
@@ -151,12 +155,28 @@ function PreviewModal({ returnId, onClose }) {
                     </div>
                   </div>
 
+                  {data.invoice_id && (
+                    <div className="rounded-2xl bg-indigo-50/60 border border-indigo-200/70 p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-indigo-500 tracking-wider uppercase">رقم الفاتورة الأصلية</span>
+                          <Link to={`/pos/invoices/${data.invoice_id}`} className="font-mono text-sm font-black text-indigo-700 hover:underline">
+                            {data.original_invoice_no || `#${data.invoice_id}`}
+                          </Link>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-indigo-100 border border-indigo-200 text-[10px] font-black text-indigo-700">أصلية</span>
+                    </div>
+                  )}
                   {/* Details grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="border border-zinc-100 rounded-2xl p-4 bg-white flex flex-col gap-2.5">
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">بيانات العميل والمرتجع</span>
                       <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">العميل</span><span className="font-black text-zinc-800">{data.customer_name || "—"}</span></div>
-                      {data.original_invoice_no && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">الفاتورة الأصلية</span><span className="font-mono font-black text-zinc-700">{data.original_invoice_no}</span></div>}
+                      <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">بواسطة</span><span className="font-black text-zinc-700">{data.created_by_username || "—"}</span></div>
                       {data.reason && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">سبب الإرجاع</span><span className="font-black text-zinc-700">{REASON_MAP[data.reason] || data.reason}</span></div>}
                       {data.notes && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">ملاحظات</span><span className="font-black text-zinc-500 text-left max-w-[55%] text-right">{data.notes}</span></div>}
                     </div>
@@ -256,7 +276,9 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
               : <span>{row.customer_name || "—"}</span>
             }
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
-            <span dir="ltr">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+            <span className="text-zinc-500">{row.created_by_username || "—"}</span>
+            <span className="w-1 h-1 rounded-full bg-zinc-300" />
+            <span dir="ltr">{fmtDate(row.created_at)}</span>
           </div>
         </div>
       </div>
@@ -267,7 +289,7 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
         </p>
         {row.original_invoice_no && (
           <p className="text-xs font-bold text-zinc-500 flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-widest text-zinc-400">الفاتورة</span>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-400">الفاتورة الأصلية</span>
             <Link to={`/pos/invoices/${row.invoice_id}`} className="font-mono text-zinc-700 hover:text-emerald-600">{row.original_invoice_no}</Link>
           </p>
         )}
@@ -325,9 +347,23 @@ export default function SalesReturnsListPage() {
   const [dateFrom, setDateFrom]   = useState("");
   const [dateTo, setDateTo]       = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [userId, setUserId] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [customerId, setCustomerId] = useState("");
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const customerInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting]   = useState(false);
   const [previewId, setPreviewId] = useState(null);
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+    return customers.filter(c => c.name?.toLowerCase().includes(q)).slice(0, 8);
+  }, [customerQuery, customers]);
 
   // Item autocomplete
   const [itemQuery, setItemQuery]           = useState("");
@@ -350,6 +386,11 @@ export default function SalesReturnsListPage() {
       .finally(() => setIsLoadingItems(false));
   }, [debouncedItemQuery]);
 
+  useEffect(() => {
+    api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+    api.get("/api/customers?limit=500").then(r => setCustomers(r.data.data || [])).catch(() => {});
+  }, []);
+
   async function loadReturns() {
     setLoading(true);
     try {
@@ -358,6 +399,8 @@ export default function SalesReturnsListPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo)   params.set("date_to", dateTo);
       if (invoiceIdFilter) params.set("invoice_id", invoiceIdFilter);
+      if (customerId) params.set("customer_id", customerId);
+      if (userId) params.set("user_id", userId);
       const res = await api.get(`/api/invoices/returns?${params}`);
       setRows(res.data.data || []);
     } catch { toast.error("فشل تحميل بيانات المرتجعات"); }
@@ -398,6 +441,13 @@ export default function SalesReturnsListPage() {
   }
 
   const clearItemSelection = () => { setSelectedItem(null); setItemQuery(""); setItemResults([]); setItemRows([]); setSearched(false); };
+
+  const handlePickCustomer = (c) => {
+    setSelectedCustomer(c);
+    setCustomerId(c.id);
+    setCustomerQuery(c.name);
+    setCustomerLookupOpen(false);
+  };
 
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
@@ -493,14 +543,50 @@ export default function SalesReturnsListPage() {
               )}
             </div>
             <button onClick={() => setFiltersOpen(v => !v)}
-              className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all shrink-0 ${(dateFrom || dateTo) ? "border-emerald-300 bg-emerald-50/50 text-emerald-700" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}>
+              className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black transition-all shrink-0 ${(dateFrom || dateTo || customerId || userId) ? "border-emerald-300 bg-emerald-50/50 text-emerald-700" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}>
               <SlidersHorizontal className="w-4 h-4" /> تصفية
-              {(dateFrom || dateTo) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+              {(dateFrom || dateTo || customerId || userId) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
               {filtersOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
           {filtersOpen && (
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                <select value={userId} onChange={e => setUserId(e.target.value)}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
+                  <option value="">كل المستخدمين</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">العميل</span>
+                <div className="relative">
+                  <input
+                    ref={customerInputRef}
+                    type="text"
+                    value={customerQuery}
+                    onChange={(e) => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); setSelectedCustomer(null); setCustomerId(""); }}
+                    onFocus={() => setCustomerLookupOpen(true)}
+                    onBlur={() => setTimeout(() => setCustomerLookupOpen(false), 200)}
+                    placeholder="جميع العملاء"
+                    className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]"
+                  />
+                  {customerLookupOpen && (
+                    <SearchDropdown items={filteredCustomers} onPick={handlePickCustomer} emptyLabel="لا يوجد عملاء" />
+                  )}
+                </div>
+                {selectedCustomer && (
+                  <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 mt-1">
+                    <span className="text-[11px] text-emerald-700 font-bold truncate">{selectedCustomer.name}</span>
+                    <button onClick={() => { setSelectedCustomer(null); setCustomerId(""); setCustomerQuery(""); }}>
+                      <X className="w-3 h-3 text-emerald-400 hover:text-rose-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
@@ -509,8 +595,8 @@ export default function SalesReturnsListPage() {
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
               </div>
-              {(dateFrom || dateTo) && (
-                <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+              {(dateFrom || dateTo || customerId || userId) && (
+                <button onClick={() => { setDateFrom(""); setDateTo(""); setCustomerId(""); setCustomerQuery(""); setSelectedCustomer(null); setUserId(""); }}
                   className="h-10 flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
                   <X className="w-3.5 h-3.5" /> مسح التصفية
                 </button>
