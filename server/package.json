@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "cross-env ELECTRON_RUN_AS_NODE=1 nodemon --exec electron src/index.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:edge": "jest --runInBand tests/edge"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +31,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "fast-check": "^4.8.0",
     "jest": "^30.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
