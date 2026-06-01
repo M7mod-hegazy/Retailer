@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   X, Eye, Pencil, SlidersHorizontal, ExternalLink,
   User, FileText, Loader2, CreditCard,
-  Package, Layers, ChevronDown, ChevronUp,
+  Package, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   ShoppingBag, Search,
 } from "lucide-react";
 import api from "../../services/api";
@@ -44,6 +44,8 @@ const FADE_UP = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } },
 };
+
+const PAGE_SIZE = 20;
 
 function fmt(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -528,6 +530,8 @@ export default function SalesHubPage() {
   const customerInputRef = useRef(null);
 
   const [previewTarget, setPreviewTarget] = useState(null);
+  const [page, setPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
 
   // Items tab search (autocomplete)
   const [itemQuery, setItemQuery]                 = useState("");
@@ -598,6 +602,9 @@ export default function SalesHubPage() {
     else loadItemRows();
   }, [activeTab, debouncedSearch, customerId, selectedItemFilter, dateFrom, dateTo]);
 
+  useEffect(() => { setPage(1); }, [invoices]);
+  useEffect(() => { setItemPage(1); }, [itemRows]);
+
   const hasFilters = dateFrom || dateTo || customerId || userId;
 
   const filteredCustomers = useMemo(() => {
@@ -617,6 +624,11 @@ export default function SalesHubPage() {
     setSelectedItemFilter(null); setItemQuery(""); setItemResults([]);
     setItemRows([]); setSearched(false);
   };
+
+  const totalInvoicePages = Math.ceil(invoices.length / PAGE_SIZE);
+  const pagedInvoices = invoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalItemPages = Math.ceil(itemRows.length / PAGE_SIZE);
+  const pagedItemRows = itemRows.slice((itemPage - 1) * PAGE_SIZE, itemPage * PAGE_SIZE);
 
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
@@ -852,9 +864,26 @@ export default function SalesHubPage() {
                 <h3 className="text-xl font-black text-zinc-900 mb-2">لا توجد فواتير</h3>
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي فاتورة مبيعات مطابقة للمعايير المحددة.</p>
               </div>
-            ) : invoices.map(row => (
-              <InvoiceRow key={row.id} row={row} navigate={navigate} onPreviewRequest={setPreviewTarget} />
-            ))
+            ) : (
+              <>
+                {pagedInvoices.map(row => (
+                  <InvoiceRow key={row.id} row={row} navigate={navigate} onPreviewRequest={setPreviewTarget} />
+                ))}
+                {totalInvoicePages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      <ChevronRight className="h-4 w-4" /> السابق
+                    </button>
+                    <span className="text-[11px] font-black text-zinc-400">{page} / {totalInvoicePages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalInvoicePages, p + 1))} disabled={page >= totalInvoicePages}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      التالي <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </>
+            )
           ) : (
             !searched ? (
               <div className="flex-1 flex flex-col items-center justify-center p-20 text-center text-zinc-400">
@@ -873,6 +902,7 @@ export default function SalesHubPage() {
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي صنف يطابق بحثك الحالي عبر جميع الفواتير.</p>
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-right border-collapse">
                   <thead className="bg-zinc-50 border-b border-zinc-100">
@@ -890,7 +920,7 @@ export default function SalesHubPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itemRows.map((r, i) => (
+                    {pagedItemRows.map((r, i) => (
                       <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-blue-50/10 transition-colors">
                         <td className="px-5 py-4 font-mono font-black text-zinc-700">{r.invoice_no || "—"}</td>
                         <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
@@ -921,6 +951,20 @@ export default function SalesHubPage() {
                   </tbody>
                 </table>
               </div>
+              {totalItemPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                  <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ChevronRight className="h-4 w-4" /> السابق
+                  </button>
+                  <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
+                  <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    التالي <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              </>
             )
           )}
         </motion.div>

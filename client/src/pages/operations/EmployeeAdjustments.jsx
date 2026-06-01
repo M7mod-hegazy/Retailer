@@ -78,8 +78,8 @@ export default function EmployeeAdjustments() {
   };
 
   return (
-    <PageWrapper className={`mx-auto max-w-5xl px-4 py-8 ${isRTL ? "text-right" : "text-left"}`}>
-      <div className="flex items-center gap-3 mb-6">
+    <PageWrapper className={`mx-auto max-w-5xl px-4 py-8 ${isRTL ? "text-right" : "text-left"}`} data-help-root="employee_adjustments">
+      <div className="flex items-center gap-3 mb-6" data-help="page-header">
         <CircleDollarSign className="w-8 h-8 text-primary-300" />
         <div>
           <h1 className="text-2xl font-bold text-text-primary">الحوافز والجزاءات</h1>
@@ -87,7 +87,7 @@ export default function EmployeeAdjustments() {
         </div>
       </div>
 
-      <div className="page-surface mb-8">
+      <div className="page-surface mb-8" data-help="adjustment-form">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             
@@ -154,7 +154,7 @@ export default function EmployeeAdjustments() {
       </div>
 
       {formData.employee_id && (
-        <div className="page-surface p-0 overflow-hidden">
+        <div className="page-surface p-0 overflow-hidden" data-help="history-table">
           <div className="p-5 border-b border-border-subtle">
             <h2 className="section-title mb-0">السجل</h2>
           </div>

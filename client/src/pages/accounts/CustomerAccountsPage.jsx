@@ -1053,7 +1053,7 @@ export default function CustomerAccountsPage() {
               className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-[12px] font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
           </div>
 
-          <div className="flex bg-slate-250/50 p-1 rounded-xl relative">
+          <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
             {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className="flex-1 py-1.5 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
@@ -1073,7 +1073,7 @@ export default function CustomerAccountsPage() {
         </div>
 
         {/* ── Net Balance Typographic Summary ── */}
-        <div className="mx-4.5 mt-4 mb-2.5 bg-slate-100/65 border border-slate-200/50 rounded-2xl p-4.5 transition-all duration-300">
+        <div data-help="balance-card" className="mx-4.5 mt-4 mb-2.5 bg-slate-100/65 border border-slate-200/50 rounded-2xl p-4.5 transition-all duration-300">
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-[10.5px] font-bold text-slate-450 tracking-wide uppercase">صافي مديونية العملاء</span>
             {summaryLoading ? (

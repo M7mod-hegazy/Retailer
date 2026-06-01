@@ -25,10 +25,10 @@ export default function InventoryWorkspacePage() {
   };
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <div className="h-full flex flex-col p-4" data-help-root="inventory_workspace">
       <section className="space-y-4 h-full flex flex-col">
         <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
               <Boxes className="h-5 w-5" />
             </div>
@@ -39,7 +39,7 @@ export default function InventoryWorkspacePage() {
               </p>
             </div>
           </div>
-          <div className="mt-5">
+          <div className="mt-5" data-help="workspace-tabs">
             <Tabs
               tabs={tabs.map((tab) => ({ value: tab.value, label: tab.label }))}
               active={activeTab}
@@ -48,7 +48,7 @@ export default function InventoryWorkspacePage() {
           </div>
         </div>
 
-        <div key={activeTab} className="flex-1 min-h-0">
+        <div key={activeTab} className="flex-1 min-h-0" data-help="workspace-content">
           {activeTab === "levels" ? <StockLevelsPage /> : null}
           {activeTab === "movements" ? <StockMovementsPage /> : null}
           {activeTab === "transfer" ? <StockTransferPage /> : null}

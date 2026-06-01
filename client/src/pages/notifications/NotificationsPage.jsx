@@ -231,10 +231,10 @@ export default function NotificationsPage() {
         }
       `}</style>
 
-      <PageWrapper className={`mx-auto max-w-3xl px-4 py-6 ${isRTL ? "text-right" : "text-left"}`}>
+      <PageWrapper className={`mx-auto max-w-3xl px-4 py-6 ${isRTL ? "text-right" : "text-left"}`} data-help-root="notifications">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
+        <div className="flex items-start justify-between mb-6 gap-4 flex-wrap" data-help="page-header">
           <div className="flex items-center gap-3">
             <div
               className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
@@ -272,7 +272,7 @@ export default function NotificationsPage() {
 
         {/* Bulk action bar */}
         {(unreadCount > 0 || readCount > 0) && (
-          <div className="flex items-center gap-3 mb-4 px-1">
+          <div className="flex items-center gap-3 mb-4 px-1" data-help="bulk-actions">
             <PermissionGate page="notifications" action="edit">
               {unreadCount > 0 && (
                 <button
@@ -302,7 +302,7 @@ export default function NotificationsPage() {
 
         {/* Feed */}
         <div
-          className="rounded-2xl overflow-hidden"
+          className="rounded-2xl overflow-hidden" data-help="notification-feed"
           style={{
             background: "oklch(1 0 0)",
             border: "1px solid oklch(0.91 0.015 278)",

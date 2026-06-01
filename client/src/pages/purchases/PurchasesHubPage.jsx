@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar, ExternalLink,
   User, FileText, Loader2, CreditCard, Clock, Ban, ArrowUpRight,
-  Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp
+  Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
 } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -34,6 +34,8 @@ const FADE_UP = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } },
 };
+
+const PAGE_SIZE = 20;
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -556,6 +558,8 @@ export default function PurchasesHubPage() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [previewTarget, setPreviewTarget] = useState(null);
+  const [page, setPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
   const debouncedItemQuery = useDebounce(itemQuery, 300);
@@ -655,6 +659,9 @@ export default function PurchasesHubPage() {
     }
   }, [activeTab, debouncedSearch, selectedItemFilter, dateFrom, dateTo, supplierId, userId]);
 
+  useEffect(() => { setPage(1); }, [invoices]);
+  useEffect(() => { setItemPage(1); }, [itemRows]);
+
   // Handle invoice cancellation
   const handleConfirmCancel = async (reason) => {
     if (!cancelTarget) return;
@@ -673,9 +680,14 @@ export default function PurchasesHubPage() {
 
   const hasFilters = dateFrom || dateTo || supplierId || userId;
 
+  const totalInvoicePages = Math.ceil(invoices.length / PAGE_SIZE);
+  const pagedInvoices = invoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalItemPages = Math.ceil(itemRows.length / PAGE_SIZE);
+  const pagedItemRows = itemRows.slice((itemPage - 1) * PAGE_SIZE, itemPage * PAGE_SIZE);
+
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
-      
+
       {/* Background kinetic light emitters */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute top-1/3 left-0 w-[400px] h-[400px] bg-indigo-500/5 blur-[100px] rounded-full pointer-events-none" />
@@ -965,15 +977,30 @@ export default function PurchasesHubPage() {
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي فاتورة شراء مطابقة للمعايير المحددة.</p>
               </div>
             ) : (
-              invoices.map(row => (
-                <InvoiceRow 
-                  key={row.id} 
-                  row={row} 
-                  navigate={navigate} 
-                  onPreviewRequest={(r) => setPreviewTarget(r)}
-                  onCancelRequest={setCancelTarget} 
-                />
-              ))
+              <>
+                {pagedInvoices.map(row => (
+                  <InvoiceRow
+                    key={row.id}
+                    row={row}
+                    navigate={navigate}
+                    onPreviewRequest={(r) => setPreviewTarget(r)}
+                    onCancelRequest={setCancelTarget}
+                  />
+                ))}
+                {totalInvoicePages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      <ChevronRight className="h-4 w-4" /> السابق
+                    </button>
+                    <span className="text-[11px] font-black text-zinc-400">{page} / {totalInvoicePages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalInvoicePages, p + 1))} disabled={page >= totalInvoicePages}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      التالي <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </>
             )
           ) : (
             /* Item detail search result ledger */
@@ -994,6 +1021,7 @@ export default function PurchasesHubPage() {
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي صنف يطابق بحثك الحالي عبر جميع الفواتير.</p>
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-right border-collapse">
                   <thead className="bg-zinc-50 border-b border-zinc-100">
@@ -1011,7 +1039,7 @@ export default function PurchasesHubPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itemRows.map((r, i) => (
+                    {pagedItemRows.map((r, i) => (
                       <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-emerald-50/10 transition-colors">
                         <td className="px-5 py-4 font-mono font-black text-zinc-700">{r.doc_no || "—"}</td>
                         <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
@@ -1042,6 +1070,20 @@ export default function PurchasesHubPage() {
                   </tbody>
                 </table>
               </div>
+              {totalItemPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                  <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ChevronRight className="h-4 w-4" /> السابق
+                  </button>
+                  <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
+                  <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    التالي <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              </>
             )
           )}
         </motion.div>

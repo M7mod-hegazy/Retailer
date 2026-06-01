@@ -247,7 +247,7 @@ export default function BankOperationsPage() {
         <div className="flex items-center gap-2">
           <button onClick={load} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /></button>
           <PermissionGate page="bank_operations" action="edit">
-          <button onClick={() => setTransferOpen(true)}
+          <button data-help="transfer-btn" onClick={() => setTransferOpen(true)}
             className="flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[12px] font-black text-white hover:bg-blue-700">
             <ArrowLeftRight className="h-4 w-4" /> تحويل بين حسابات
           </button>
@@ -318,13 +318,13 @@ export default function BankOperationsPage() {
                 </div>
                 <div className="flex gap-2">
                   <PermissionGate page="bank_operations" action="edit">
-                  <button onClick={() => setModal({ bank, mode: "deposit" })}
+                  <button data-help="deposit-btn" onClick={() => setModal({ bank, mode: "deposit" })}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2 text-[12px] font-black text-white hover:bg-emerald-700 transition-colors">
                     <Plus className="h-4 w-4" /> إيداع
                   </button>
                   </PermissionGate>
                   <PermissionGate page="bank_operations" action="edit">
-                  <button onClick={() => setModal({ bank, mode: "withdraw" })}
+                  <button data-help="withdraw-btn" onClick={() => setModal({ bank, mode: "withdraw" })}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-600 py-2 text-[12px] font-black text-white hover:bg-rose-700 transition-colors">
                     <Minus className="h-4 w-4" /> سحب
                   </button>

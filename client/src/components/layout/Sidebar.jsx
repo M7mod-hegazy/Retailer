@@ -34,6 +34,35 @@ function useCategoryCount() {
   return count;
 }
 
+function SidebarItem({ item, location, updateAvailable, categoryCount }) {
+  const isItemActive = location.pathname === item.path || (location.pathname.startsWith(item.path) && item.path !== "/");
+  return (
+    <Link
+      to={item.path}
+      className={`relative flex items-center justify-between gap-2 rounded-md px-3 py-1.5 transition-all ${
+        isItemActive ? "text-zinc-900 font-black bg-zinc-50" : "text-zinc-500 hover:text-zinc-900 font-semibold"
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        {isItemActive && (
+          <div className="absolute right-[-14px] top-1/2 -translate-y-1/2 w-1 h-3.5 bg-emerald-500 rounded-full shadow-sm" />
+        )}
+        <span className="text-[11.5px] truncate">{item.label}</span>
+        {item.pageKey === "updates" && updateAvailable && (
+          <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+        )}
+      </div>
+      {item.path === "/definitions/items" && categoryCount !== null && (
+        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none ${
+          isItemActive ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-700"
+        }`}>
+          {categoryCount}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -208,37 +237,29 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                   <div className="overflow-hidden">
                     <div className="flex flex-col relative pr-6 pl-2 py-1">
                       <div className="absolute right-[18px] top-2 bottom-2 w-[2px] bg-zinc-100 rounded-full" />
-                      {module.items.map((item) => {
-                        const isItemActive = location.pathname === item.path || (location.pathname.startsWith(item.path) && item.path !== "/");
-                        return (
-                          <Link
-                            key={item.path}
-                            to={item.path}
-                            className={`relative flex items-center justify-between gap-2 rounded-md px-3 py-1.5 transition-all ${
-                              isItemActive
-                                ? "text-zinc-900 font-black bg-zinc-50"
-                                : "text-zinc-500 hover:text-zinc-900 font-semibold"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              {isItemActive && (
-                                <div className="absolute right-[-14px] top-1/2 -translate-y-1/2 w-1 h-3.5 bg-emerald-500 rounded-full shadow-sm" />
-                              )}
-                              <span className="text-[11.5px] truncate">{item.label}</span>
-                              {item.pageKey === "updates" && updateAvailable && (
-                                <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
-                              )}
-                            </div>
-                            {item.path === "/definitions/items" && categoryCount !== null && (
-                              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none ${
-                                isItemActive ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-700"
-                              }`}>
-                                {categoryCount}
-                              </span>
-                            )}
-                          </Link>
-                        );
-                      })}
+                      {(() => {
+                        const FAMILY_LABELS = { sales: "المبيعات", purchases: "المشتريات", other: "أخرى" };
+                        const hasFamilies = module.items.some((i) => i.family);
+                        if (!hasFamilies) {
+                          return module.items.map((item) => <SidebarItem key={item.path} item={item} location={location} updateAvailable={updateAvailable} categoryCount={categoryCount} />);
+                        }
+                        // Group items preserving order, emit a label at each family boundary
+                        const rows = [];
+                        let lastFamily = null;
+                        module.items.forEach((item) => {
+                          if (item.family && item.family !== lastFamily) {
+                            rows.push(
+                              <div key={`fam-${item.family}`} className="flex items-center gap-2 px-3 pt-2 pb-0.5">
+                                <span className="text-[9px] font-black tracking-widest uppercase text-zinc-400">{FAMILY_LABELS[item.family] ?? item.family}</span>
+                                <div className="flex-1 h-px bg-zinc-100" />
+                              </div>
+                            );
+                            lastFamily = item.family;
+                          }
+                          rows.push(<SidebarItem key={item.path} item={item} location={location} updateAvailable={updateAvailable} categoryCount={categoryCount} />);
+                        });
+                        return rows;
+                      })()}
                     </div>
                   </div>
                 </div>

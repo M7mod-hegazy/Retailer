@@ -19,7 +19,7 @@
     "windows:configure-users": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/configure-local-users.ps1",
     "windows:harden-acl": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/harden-windows-policy.ps1",
     "bootstrap": "npm install --workspaces",
-    "kill:retailer-processes": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/kill-retailer-processes.ps1",
+    "kill:retailer-processes": "node ./electron/scripts/kill-retailer-processes.js",
     "node:rebuild": "npm rebuild better-sqlite3",
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3"
   },

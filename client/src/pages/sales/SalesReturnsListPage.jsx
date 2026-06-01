@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, RotateCcw, X, Printer, Eye, Pencil, Trash2, AlertTriangle, ArrowDownLeft, FileText, Search, Package, SlidersHorizontal, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Plus, RotateCcw, X, Printer, Eye, Pencil, Trash2, AlertTriangle, ArrowDownLeft, FileText, Search, Package, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
@@ -27,6 +27,8 @@ const FADE_UP = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } },
 };
+
+const PAGE_SIZE = 20;
 
 function fmt(v) { return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 }); }
 function fmtDate(d) {
@@ -358,6 +360,8 @@ export default function SalesReturnsListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting]   = useState(false);
   const [previewId, setPreviewId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
 
   const filteredCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
@@ -428,6 +432,9 @@ export default function SalesReturnsListPage() {
     else loadItemRows();
   }, [activeTab, debouncedSearch, selectedItem, dateFrom, dateTo, invoiceIdFilter]);
 
+  useEffect(() => { setPage(1); }, [rows]);
+  useEffect(() => { setItemPage(1); }, [itemRows]);
+
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -448,6 +455,11 @@ export default function SalesReturnsListPage() {
     setCustomerQuery(c.name);
     setCustomerLookupOpen(false);
   };
+
+  const totalReturnsPages = Math.ceil(rows.length / PAGE_SIZE);
+  const pagedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalItemPages = Math.ceil(itemRows.length / PAGE_SIZE);
+  const pagedItemRows = itemRows.slice((itemPage - 1) * PAGE_SIZE, itemPage * PAGE_SIZE);
 
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
@@ -620,7 +632,24 @@ export default function SalesReturnsListPage() {
                 <h3 className="text-xl font-black text-zinc-900 mb-2">لا توجد مرتجعات</h3>
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي إشعارات مرتجع تطابق بحثك.</p>
               </div>
-            ) : rows.map(row => <ReturnRow key={row.id} row={row} navigate={navigate} onDeleteRequest={setDeleteTarget} onPreviewRequest={setPreviewId} />)
+            ) : (
+              <>
+                {pagedRows.map(row => <ReturnRow key={row.id} row={row} navigate={navigate} onDeleteRequest={setDeleteTarget} onPreviewRequest={setPreviewId} />)}
+                {totalReturnsPages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      <ChevronRight className="h-4 w-4" /> السابق
+                    </button>
+                    <span className="text-[11px] font-black text-zinc-400">{page} / {totalReturnsPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalReturnsPages, p + 1))} disabled={page >= totalReturnsPages}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      التالي <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </>
+            )
           ) : !searched ? (
             <div className="flex-1 flex flex-col items-center justify-center p-20 text-center text-zinc-400">
               <Search className="w-12 h-12 opacity-25 mb-4" />
@@ -634,6 +663,7 @@ export default function SalesReturnsListPage() {
               <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي مرتجع يحتوي على هذا الصنف.</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-right border-collapse">
                 <thead className="bg-zinc-50 border-b border-zinc-100">
@@ -650,7 +680,7 @@ export default function SalesReturnsListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {itemRows.map((r, i) => (
+                  {pagedItemRows.map((r, i) => (
                     <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-emerald-50/10 transition-colors">
                       <td className="px-5 py-4 font-mono font-black text-zinc-700">{r.doc_no || "—"}</td>
                       <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
@@ -670,6 +700,20 @@ export default function SalesReturnsListPage() {
                 </tbody>
               </table>
             </div>
+            {totalItemPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
+                  className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                  <ChevronRight className="h-4 w-4" /> السابق
+                </button>
+                <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
+                <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
+                  className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                  التالي <ChevronLeft className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            </>
           )}
         </motion.div>
       </div>

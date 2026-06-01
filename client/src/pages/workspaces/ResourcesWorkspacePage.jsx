@@ -24,10 +24,10 @@ export default function ResourcesWorkspacePage() {
   };
 
   return (
-    <PageWrapper className="mx-auto max-w-[1440px] px-4 py-4">
+    <PageWrapper className="mx-auto max-w-[1440px] px-4 py-4" data-help-root="resources_workspace">
       <section className="space-y-5">
         <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
               <Warehouse className="h-5 w-5" />
             </div>
@@ -38,7 +38,7 @@ export default function ResourcesWorkspacePage() {
               </p>
             </div>
           </div>
-          <div className="mt-5">
+          <div className="mt-5" data-help="workspace-tabs">
             <Tabs
               tabs={tabs.map((tab) => ({ value: tab.value, label: tab.label }))}
               active={activeTab}
@@ -47,7 +47,7 @@ export default function ResourcesWorkspacePage() {
           </div>
         </div>
 
-        <div key={activeTab}>
+        <div key={activeTab} data-help="workspace-content">
           {activeTab === "warehouses" ? <WarehousesPage /> : null}
           {activeTab === "treasuries" ? <TreasuriesPage /> : null}
           {activeTab === "banks" ? <BanksPage /> : null}

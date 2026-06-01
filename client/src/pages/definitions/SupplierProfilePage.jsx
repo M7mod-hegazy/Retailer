@@ -50,13 +50,13 @@ export default function SupplierProfilePage() {
   const balance = Number(supplier.opening_balance || 0);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50" dir="rtl">
-      <div className="flex items-center gap-2 px-6 py-3 bg-white border-b border-slate-100 text-[12px] font-bold text-slate-500 shrink-0">
+    <div className="flex flex-col h-full bg-slate-50" dir="rtl" data-help-root="supplier_profile">
+      <div className="flex items-center gap-2 px-6 py-3 bg-white border-b border-slate-100 text-[12px] font-bold text-slate-500 shrink-0" data-help="breadcrumb">
         <Link to="/definitions/suppliers" className="flex items-center gap-1 hover:text-slate-800"><ChevronLeft className="h-3.5 w-3.5" /> الموردين</Link>
         <span>/</span><span className="text-slate-800">{supplier.name}</span>
       </div>
 
-      <div className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 shrink-0">
+      <div className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 shrink-0" data-help="info-card">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-600 shadow-lg shadow-orange-200 text-white font-black text-[22px]">
@@ -84,7 +84,7 @@ export default function SupplierProfilePage() {
         </div>
       </div>
 
-      <div className="flex gap-1 px-4 mt-4 shrink-0">
+      <div className="flex gap-1 px-4 mt-4 shrink-0" data-help="profile-tabs">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={`px-4 py-2 rounded-xl text-[12px] font-black transition-colors ${activeTab === t.id ? "bg-orange-600 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
@@ -93,7 +93,7 @@ export default function SupplierProfilePage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4" data-help="tab-content">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {tabLoading ? (
             <div className="flex items-center justify-center h-40 text-slate-400 font-black animate-pulse">جاري التحميل...</div>

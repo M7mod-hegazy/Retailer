@@ -504,7 +504,7 @@ export default function StockLevelsPage() {
       <div className="flex flex-col rounded-sm border border-slate-200 bg-white shadow-sm min-h-[60vh]">
         
         {/* Tabs */}
-        <div className="flex items-center bg-slate-50 border-b border-slate-200">
+        <div data-help="stock-tabs" className="flex items-center bg-slate-50 border-b border-slate-200">
           <Tab active={tab === "levels"}   onClick={() => setTab("levels")}>
             <Package className="h-4 w-4" /> أرصدة المخزون
           </Tab>

@@ -4,7 +4,7 @@ import {
   Eye, Warehouse, Pencil,
   ArrowDownToLine, ArrowUpFromLine, RotateCcw,
   Search, ArrowLeftRight, Package, X, Loader2,
-  SlidersHorizontal, ChevronDown, ChevronUp,
+  SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -21,6 +21,8 @@ const FADE_UP = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } },
 };
+
+const PAGE_SIZE = 20;
 
 const STAGGER_CONTAINER = {
   hidden: { opacity: 0 },
@@ -194,6 +196,8 @@ export default function BranchTransferPage() {
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTransfer, setActiveTransfer] = useState(null);
+  const [page, setPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
 
   async function loadData() {
     setLoading(true);
@@ -213,6 +217,9 @@ export default function BranchTransferPage() {
   }
 
   useEffect(() => { loadData(); }, [debouncedSearch, dateFrom, dateTo, typeFilter, userId]);
+
+  useEffect(() => { setPage(1); }, [rows]);
+  useEffect(() => { setItemPage(1); }, [itemRows]);
 
   useEffect(() => {
     api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
@@ -269,6 +276,11 @@ export default function BranchTransferPage() {
     sendCount: rows.filter(r => r.type === "send").length,
     totalQty: rows.reduce((s, r) => s + Number(r.total_qty || 0), 0),
   }), [rows]);
+
+  const totalTransferPages = Math.ceil(rows.length / PAGE_SIZE);
+  const pagedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalItemPages = Math.ceil(itemRows.length / PAGE_SIZE);
+  const pagedItemRows = itemRows.slice((itemPage - 1) * PAGE_SIZE, itemPage * PAGE_SIZE);
 
   return (
     <div className="relative min-h-[100dvh] p-6 lg:p-10 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
@@ -517,7 +529,7 @@ export default function BranchTransferPage() {
               <div data-help="main-table" className="p-4 flex flex-col gap-4">
                 <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-4">
                   <AnimatePresence mode="popLayout">
-                    {rows.map(row => {
+                    {pagedRows.map(row => {
                       const isReceive = row.type === "receive";
                       return (
                         <motion.div key={row.id} layout layoutId={`transfer-${row.id}`} variants={ROW_ANIMATION}
@@ -584,6 +596,19 @@ export default function BranchTransferPage() {
                     })}
                   </AnimatePresence>
                 </motion.div>
+                {totalTransferPages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      <ChevronRight className="h-4 w-4" /> السابق
+                    </button>
+                    <span className="text-[11px] font-black text-zinc-400">{page} / {totalTransferPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalTransferPages, p + 1))} disabled={page >= totalTransferPages}
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      التالي <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             )
           ) : (
@@ -610,6 +635,7 @@ export default function BranchTransferPage() {
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على أي صنف يطابق بحثك عبر جميع حركات النقل.</p>
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-right border-collapse">
                   <thead className="bg-zinc-50 border-b border-zinc-100 sticky top-0 z-10">
@@ -628,7 +654,7 @@ export default function BranchTransferPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itemRows.map((r, i) => {
+                    {pagedItemRows.map((r, i) => {
                       const isReceive = r.type === "receive";
                       return (
                         <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-emerald-50/10 transition-colors">
@@ -662,6 +688,20 @@ export default function BranchTransferPage() {
                   </tbody>
                 </table>
               </div>
+              {totalItemPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
+                  <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ChevronRight className="h-4 w-4" /> السابق
+                  </button>
+                  <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
+                  <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    التالي <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              </>
             )
           )}
         </motion.div>

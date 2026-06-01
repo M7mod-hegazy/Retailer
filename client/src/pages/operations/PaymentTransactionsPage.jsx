@@ -37,8 +37,8 @@ export default function PaymentTransactionsPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50" dir="rtl">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+    <div className="flex flex-col h-full bg-slate-50" dir="rtl" data-help-root="payments">
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0" data-help="page-header">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-200">
             <BookOpen className="h-5 w-5 text-white" />
@@ -54,7 +54,7 @@ export default function PaymentTransactionsPage() {
       </header>
 
       {/* Filters */}
-      <div className="bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-3 shrink-0 flex-wrap">
+      <div className="bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-3 shrink-0 flex-wrap" data-help="filters-bar">
         <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
           placeholder="بحث بالكود أو المبلغ أو الوصف..."
           className="h-9 w-60 rounded-xl border border-slate-200 px-3 text-[12px] outline-none focus:border-blue-400" />
@@ -77,7 +77,7 @@ export default function PaymentTransactionsPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-6" data-help="main-table">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center h-40 text-slate-400 font-black">جاري التحميل...</div>

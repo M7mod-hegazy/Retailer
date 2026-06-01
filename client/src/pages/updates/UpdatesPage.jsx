@@ -257,6 +257,7 @@ export default function UpdatesPage() {
                   </MagneticButton>
                 ) : downloaded ? (
                   <MagneticButton
+                    data-help="download-button"
                     onClick={handleInstallNow}
                     className="px-8 py-4 bg-emerald-500 text-white rounded-2xl font-black hover:bg-emerald-600 transition-colors hover:shadow-xl shadow-emerald-500/20 text-sm"
                   >
@@ -287,6 +288,7 @@ export default function UpdatesPage() {
 
           {/* Technical Info Card (Col-span-4) */}
           <motion.div
+            data-help="tech-card"
             variants={FADE_UP}
             className="md:col-span-4 bg-zinc-950 rounded-[2.5rem] p-10 relative overflow-hidden flex flex-col justify-between shadow-2xl"
           >

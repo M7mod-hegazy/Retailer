@@ -109,8 +109,7 @@ function isElementVisible(el) {
   if (!el) return false;
   const rect = el.getBoundingClientRect();
   if (rect.width < 4 || rect.height < 4) return false;
-  const style = window.getComputedStyle(el);
-  return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+  return true;
 }
 
 function isStepVisible(step) {
@@ -485,6 +484,20 @@ function classifyElement(el) {
   return 'button';
 }
 
+function getStepElementPosition(step) {
+  const el = getStepElement(step);
+  if (!el) return -1;
+  return el.getBoundingClientRect().top + window.scrollY;
+}
+
+function hasDataValueLabel(label) {
+  const t = String(label).trim();
+  if (!t) return true;
+  if (/^[\d\s,.٪٬+\-()]+$/.test(t)) return true;
+  if (t.length <= 2) return true;
+  return false;
+}
+
 function collectHelpSteps(pageKey) {
   const pageConfig = helpContent[pageKey];
   const explicitSteps = pageConfig?.steps ?? [];
@@ -495,10 +508,11 @@ function collectHelpSteps(pageKey) {
   const explicitElements = new Set(explicitSteps.map(getStepElement).filter(Boolean));
   const autoSteps = [];
   const seenAutoLabels = new Set();
+  const autoTargetsCollected = new Set();
 
   root.querySelectorAll('[data-help]').forEach((el) => {
     const target = el.getAttribute('data-help');
-    if (!target || explicitTargets.has(target) || !isElementVisible(el)) return;
+    if (!target || explicitTargets.has(target)) return;
     const copy = targetStepCopy(pageKey, target);
     autoSteps.push({
       id: `auto-target-${pageKey}-${target}`,
@@ -507,6 +521,7 @@ function collectHelpSteps(pageKey) {
       auto: true,
       ...copy,
     });
+    autoTargetsCollected.add(target);
   });
 
   root.querySelectorAll(AUTO_CONTROL_SELECTOR).forEach((el, index) => {
@@ -514,8 +529,26 @@ function collectHelpSteps(pageKey) {
     if (explicitElements.has(el)) return;
     if (el.disabled || el.getAttribute('aria-disabled') === 'true') return;
 
+    // Skip elements inside an explicitly-explained [data-help] container
+    // (the parent step already covers the section concept; inner buttons are details)
+    const ancestorHelp = el.closest('[data-help]');
+    if (ancestorHelp) {
+      const ancestorTarget = ancestorHelp.getAttribute('data-help');
+      if (ancestorTarget && (explicitTargets.has(ancestorTarget) || autoTargetsCollected.has(ancestorTarget))) return;
+    }
+
+    // Skip elements inside data rows (table rows, grid rows) — these are
+    // row-level actions (edit, delete, view) or data links (customer names)
+    // that are meaningless as standalone tour steps
+    if (el.closest('[role="row"], [role="gridcell"], tr, .datagrid-row, [data-help="main-table"]')) return;
+
+    // Skip elements inside listboxes / option lists (dropdown selectors
+    // with customer/supplier names, item names, etc.)
+    if (el.closest('[role="listbox"], [role="option"], [role="menu"], [role="menuitem"]')) return;
+
     const label = getElementLabel(el);
     if (!label || label.length < 2) return;
+    if (hasDataValueLabel(label)) return;
 
     const kind = classifyElement(el);
     const copy = controlStepCopy(pageKey, kind, label);
@@ -535,7 +568,26 @@ function collectHelpSteps(pageKey) {
     });
   });
 
-  return [...explicitSteps, ...autoSteps];
+  // Interleave auto-steps between explicit steps by DOM position
+  // so the tour flows naturally top-to-bottom
+  const autoByPos = [...autoSteps].sort((a, b) => getStepElementPosition(a) - getStepElementPosition(b));
+  const merged = [];
+  let ai = 0;
+  for (let ei = 0; ei < explicitSteps.length; ei++) {
+    const expPos = getStepElementPosition(explicitSteps[ei]);
+    while (ai < autoByPos.length) {
+      const autoPos = getStepElementPosition(autoByPos[ai]);
+      if (autoPos < 0 || autoPos >= expPos) break;
+      merged.push(autoByPos[ai]);
+      ai++;
+    }
+    merged.push(explicitSteps[ei]);
+  }
+  while (ai < autoByPos.length) {
+    merged.push(autoByPos[ai]);
+    ai++;
+  }
+  return merged;
 }
 
 // ─── Topic Picker ─────────────────────────────────────────────────────────────
@@ -665,8 +717,9 @@ export function PageTour() {
   const [spotlightStyle, setSpotlightStyle] = useState(null);
   const [resolvedDir,    setResolvedDir]    = useState('bottom');
   const [isCentered,     setIsCentered]     = useState(false);
-  const popupRef    = useRef(null);
-  const retryRef    = useRef([]);
+  const popupRef         = useRef(null);
+  const retryRef         = useRef([]);
+  const isScrollingRef   = useRef(false);
 
   const pageConfig  = helpContent[activeTourPageKey];
   const steps       = useMemo(
@@ -674,33 +727,24 @@ export function PageTour() {
     [activeTourPageKey, isTourVisible, isPickerVisible],
   );
   const currentStep = steps[activeTourStepIndex];
-  const visibleStepIndexes = steps
-    .map((step, index) => ({ step, index }))
-    .filter(({ step }) => isStepVisible(step))
-    .map(({ index }) => index);
-  const currentVisiblePosition = visibleStepIndexes.indexOf(activeTourStepIndex);
-  const isLast = currentVisiblePosition >= visibleStepIndexes.length - 1;
+  const isLast = activeTourStepIndex >= steps.length - 1;
   const highlightType = currentStep?.highlight_type ?? 'spotlight';
-  const visibleStepNumber = Math.max(1, visibleStepIndexes.indexOf(activeTourStepIndex) + 1);
-  const visibleStepCount = visibleStepIndexes.length || steps.length;
+  const visibleStepNumber = activeTourStepIndex + 1;
+  const visibleStepCount = steps.length;
 
   const goNextStep = useCallback(() => {
-    const position = visibleStepIndexes.indexOf(activeTourStepIndex);
-    const nextIndex = visibleStepIndexes[position + 1] ?? visibleStepIndexes[0];
-    if (position >= 0 && position < visibleStepIndexes.length - 1 && typeof nextIndex === 'number') {
-      useHelpStore.setState({ activeTourStepIndex: nextIndex });
+    if (activeTourStepIndex < steps.length - 1) {
+      useHelpStore.setState({ activeTourStepIndex: activeTourStepIndex + 1 });
     } else {
       completeTour();
     }
-  }, [activeTourStepIndex, completeTour, visibleStepIndexes]);
+  }, [activeTourStepIndex, completeTour, steps.length]);
 
   const goPrevStep = useCallback(() => {
-    const position = visibleStepIndexes.indexOf(activeTourStepIndex);
-    const prevIndex = visibleStepIndexes[Math.max(0, position - 1)];
-    if (typeof prevIndex === 'number') {
-      useHelpStore.setState({ activeTourStepIndex: prevIndex });
+    if (activeTourStepIndex > 0) {
+      useHelpStore.setState({ activeTourStepIndex: activeTourStepIndex - 1 });
     }
-  }, [activeTourStepIndex, visibleStepIndexes]);
+  }, [activeTourStepIndex]);
 
   const applyRect = useCallback((el, step) => {
     const rect = el.getBoundingClientRect();
@@ -738,16 +782,6 @@ export function PageTour() {
     }, 'bottom'));
   }, [currentStep, activeTourPageKey]);
 
-  const findNextVisibleStepIndex = useCallback((fromIndex) => {
-    if (!steps.length) return -1;
-    for (let offset = 1; offset < steps.length; offset += 1) {
-      const index = (fromIndex + offset) % steps.length;
-      const step = steps[index];
-      if (isStepVisible(step)) return index;
-    }
-    return -1;
-  }, [steps]);
-
   const tryFind = useCallback((step, retriesLeft) => {
     if (!step?.target && !step?.selector) {
       applyPageFallback();
@@ -755,33 +789,60 @@ export function PageTour() {
     }
     const el = getStepElement(step);
     if (!el) {
+      // Try unveil trigger on the first attempt (before retries)
+      if (retriesLeft === RETRY_DELAYS.length && step.unveil) {
+        const trigger = document.querySelector(step.unveil);
+        if (trigger) {
+          trigger.click();
+          const t = setTimeout(() => tryFind(step, retriesLeft - 1), 400);
+          retryRef.current.push(t);
+          return;
+        }
+      }
       if (retriesLeft > 0) {
         const delay = RETRY_DELAYS[RETRY_DELAYS.length - retriesLeft];
         const t = setTimeout(() => tryFind(step, retriesLeft - 1), delay);
         retryRef.current.push(t);
       } else {
-        const nextIndex = findNextVisibleStepIndex(activeTourStepIndex);
-        if (nextIndex >= 0) {
-          useHelpStore.setState({ activeTourStepIndex: nextIndex });
-          return;
-        }
         applyPageFallback();
       }
       return;
     }
     const rect = el.getBoundingClientRect();
-    const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+    const margin = window.innerHeight * 0.15;
+    const inView = rect.bottom > margin && rect.top < window.innerHeight - margin;
     if (!inView) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      const t = setTimeout(() => applyRect(el, step), 350);
-      retryRef.current.push(t);
+      isScrollingRef.current = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Poll rAF until scroll stabilizes — then apply rect
+      const container = document.documentElement;
+      let lastScrollTop = container.scrollTop;
+      let stableFrames = 0;
+      const poll = () => {
+        const cur = container.scrollTop;
+        if (Math.abs(cur - lastScrollTop) < 2) {
+          stableFrames++;
+          if (stableFrames >= 3) {
+            isScrollingRef.current = false;
+            applyRect(el, step);
+            return;
+          }
+        } else {
+          stableFrames = 0;
+        }
+        lastScrollTop = cur;
+        requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
     } else {
       applyRect(el, step);
     }
-  }, [activeTourStepIndex, applyRect, applyPageFallback, findNextVisibleStepIndex]);
+  }, [applyRect, applyPageFallback, isRTL]);
 
   const recalculate = useCallback(() => {
     if (!isTourVisible || !currentStep) return;
+    if (isScrollingRef.current) return;
     // Cancel pending retries
     retryRef.current.forEach(clearTimeout);
     retryRef.current = [];
@@ -791,10 +852,16 @@ export function PageTour() {
   useEffect(() => {
     recalculate();
     window.addEventListener('resize', recalculate);
-    window.addEventListener('scroll', recalculate, true);
+    let scrollTimer;
+    const onScroll = () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(recalculate, 80);
+    };
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('resize', recalculate);
-      window.removeEventListener('scroll', recalculate, true);
+      window.removeEventListener('scroll', onScroll, true);
+      clearTimeout(scrollTimer);
       retryRef.current.forEach(clearTimeout);
       retryRef.current = [];
     };
@@ -887,20 +954,17 @@ export function PageTour() {
 
         {/* Step dots */}
         <div className="flex justify-center gap-1.5 mb-3">
-          {steps.map((step, i) => {
-            if (!isStepVisible(step)) return null;
-            return (
-              <button
-                key={i}
-                onClick={() => useHelpStore.setState({ activeTourStepIndex: i })}
-                className="h-1.5 rounded-full transition-all duration-200 cursor-pointer"
-                style={{
-                  width: i === activeTourStepIndex ? '16px' : '6px',
-                  background: i === activeTourStepIndex ? 'var(--primary)' : 'var(--border-strong)',
-                }}
-              />
-            );
-          })}
+          {steps.map((step, i) => (
+            <button
+              key={i}
+              onClick={() => useHelpStore.setState({ activeTourStepIndex: i })}
+              className="h-1.5 rounded-full transition-all duration-200 cursor-pointer"
+              style={{
+                width: i === activeTourStepIndex ? '16px' : '6px',
+                background: i === activeTourStepIndex ? 'var(--primary)' : 'var(--border-strong)',
+              }}
+            />
+          ))}
         </div>
 
         {/* Content */}
@@ -943,7 +1007,7 @@ export function PageTour() {
           </button>
 
           <div className="flex gap-2">
-            {currentVisiblePosition > 0 && (
+            {activeTourStepIndex > 0 && (
               <button
                 onClick={goPrevStep}
                 className="px-3 py-1.5 text-xs rounded-lg border transition-all duration-150"

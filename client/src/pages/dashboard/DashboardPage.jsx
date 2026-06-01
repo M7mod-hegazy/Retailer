@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag } from "lucide-react";
+import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
@@ -283,6 +283,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
   const handleMouseLeave = () => { x.set(0); y.set(0); };
 
   const qa = QUICK_ACTIONS[item.pageKey];
+  const isBranchTransfer = item.pageKey === 'branch_transfer';
 
   function handleQuickClick(e) {
     e.preventDefault();
@@ -294,6 +295,19 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
       navigate(qa.path);
     }
   }
+
+  function handleTransferAction(e, type) {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/operations/branch-transfer/new?type=${type}`);
+  }
+
+  const actionBtnClass = (active) =>
+    `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black border ${
+      active
+        ? "bg-white/10 border-white/20 text-white hover:bg-emerald-500 hover:border-emerald-400"
+        : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-500 hover:border-emerald-400 hover:text-white"
+    }`;
 
   return (
     <motion.div variants={FADE_UP} className="h-full">
@@ -324,9 +338,20 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
               <item.icon className="w-6 h-6" strokeWidth={1.5} />
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Quick action button — visible on hover */}
-              {qa && (
+            <div className="flex items-start gap-2">
+              {/* Branch-transfer: two stacked action buttons */}
+              {isBranchTransfer ? (
+                <div className="flex flex-col gap-1">
+                  <button onClick={(e) => handleTransferAction(e, 'send')} className={actionBtnClass(active)}>
+                    <Upload className="w-3 h-3" />
+                    إرسال
+                  </button>
+                  <button onClick={(e) => handleTransferAction(e, 'receive')} className={actionBtnClass(active)}>
+                    <Download className="w-3 h-3" />
+                    استلام
+                  </button>
+                </div>
+              ) : qa ? (
                 <button
                   onClick={handleQuickClick}
                   title={qa.label}
@@ -339,7 +364,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
                   <Zap className="w-3 h-3" />
                   {qa.label}
                 </button>
-              )}
+              ) : null}
 
               {/* Arrow icon */}
               <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${
@@ -494,7 +519,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Module tabs */}
-        <div className="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-zinc-200/60 shadow-lg shadow-zinc-200/20 overflow-x-auto hide-scrollbar mb-8">
+        <div data-help="module-tabs" className="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-zinc-200/60 shadow-lg shadow-zinc-200/20 overflow-x-auto hide-scrollbar mb-8">
           {visibleModules.map((module) => (
             <button
               key={module.id}
@@ -546,12 +571,19 @@ export default function DashboardPage() {
                   const purchasesItems = groups["purchases"];
                   return [
                     <div key="sec-sales-other" className="col-span-full">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-[11px] font-black text-zinc-500 tracking-wide">المبيعات</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-px h-3 bg-zinc-300" />
+                      {/* xl: header mirrors the 4-col cards grid so labels sit above their own columns */}
+                      <div className="hidden xl:grid xl:grid-cols-4 xl:gap-5 items-center mb-3">
+                        <div className="xl:col-span-3 flex items-center">
+                          <span className="text-[11px] font-black text-zinc-500 tracking-wide">المبيعات</span>
+                        </div>
+                        <div className="relative ltr:pl-5 rtl:pr-5 flex items-center">
+                          <div className="absolute ltr:left-0 rtl:right-0 inset-y-0 w-px bg-zinc-300" />
                           <span className="text-[11px] font-black text-zinc-500 tracking-wide">أخرى</span>
                         </div>
+                      </div>
+                      {/* <xl: simple header */}
+                      <div className="xl:hidden flex items-center mb-3">
+                        <span className="text-[11px] font-black text-zinc-500 tracking-wide">المبيعات</span>
                       </div>
                       <div className="h-px w-full bg-zinc-200/70" />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">

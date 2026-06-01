@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -316,6 +316,7 @@ function prepareChartData(rows, columns, chartType) {
 
 export default function SourceWorkspacePage() {
   const { sourceKey, classificationId, dataMode } = useParams();
+  const navigate = useNavigate();
   const setColumnOrderAction = useReportsStore((s) => s.setColumnOrder);
   const setColumnVisibilityAction = useReportsStore((s) => s.setColumnVisibility);
   const getStorePreference = useReportsStore((s) => s.getPreference);
@@ -369,6 +370,14 @@ export default function SourceWorkspacePage() {
     }).catch(() => {});
   }, []);
 
+  // Report identity changed (client-side nav between classifications/modes):
+  // reset column visibility/order so they re-derive for the new report's columns.
+  useEffect(() => {
+    setColumnVisibilityState({});
+    setColumnOrderState([]);
+    setShowAllColumns(false);
+  }, [sourceKey, classificationId, dataMode]);
+
   const [appliedParams, setAppliedParams] = useState(() => {
     const params = {};
     if (clsDef?.supportsDates) { params.start_date = defaultFrom; params.end_date = defaultTo; }
@@ -386,10 +395,16 @@ export default function SourceWorkspacePage() {
   }
   const debouncedQ = useDebounce(filters.q, 300);
 
-  // Live filters — auto-update params on any filter change
+  // Live filters — auto-update params on any filter change.
+  // NOTE: clsDef loads asynchronously from the registry. Its identity/flags MUST be part
+  // of the signature, otherwise the effect won't re-run once clsDef arrives and the date
+  // range is never applied for classifications with no extra `filters` (period ignored).
   const filterSignature = JSON.stringify({
+    cls: clsDef ? `${classificationId}:${dataMode}` : null,
+    sup: !!clsDef?.supportsDates, prof: !!clsDef?.hasProfit,
     from: filters.from, to: filters.to, q: debouncedQ, scope, costMethod,
     dims: (clsDef?.filters || []).map((f) => filters[f.key] || ""),
+    msf: (clsDef?.multiSelectFilters || []).map((f) => (filters[f.key] || []).join(",")),
   });
   useEffect(() => {
     if (invalidRange) return;
@@ -397,6 +412,10 @@ export default function SourceWorkspacePage() {
     if (clsDef?.supportsDates) { params.start_date = filters.from; params.end_date = filters.to; }
     if (clsDef?.hasProfit) { params.cost_method = costMethod; setCostMethodAction(prefKey, costMethod); }
     (clsDef?.filters || []).forEach((f) => { if (filters[f.key]) params[f.key] = filters[f.key]; });
+    (clsDef?.multiSelectFilters || []).forEach((f) => {
+      const vals = filters[f.key];
+      if (Array.isArray(vals) && vals.length) params[f.key] = vals.join(",");
+    });
     if (scope.type === "category" && scope.values?.length) params.category_id = scope.values[0];
     else if (scope.type === "product" && scope.values?.length) params.item_id = scope.values[0];
     else if (scope.type === "customer" && scope.values?.length) params.customer_id = scope.values[0];
@@ -729,7 +748,7 @@ export default function SourceWorkspacePage() {
               onChange={(e) => {
                 const cls = classifications.find((c) => c.id === e.target.value);
                 const mode = cls?.availableModes?.[0] || "detailed";
-                window.location.href = `/reports/source/${sourceKey}/${e.target.value}/${mode}`;
+                navigate(`/reports/source/${sourceKey}/${e.target.value}/${mode}`);
               }}
               className="h-9 px-4 rounded-lg border-none bg-transparent text-[13px] font-semibold text-slate-800 focus:outline-none focus:ring-0 transition-all cursor-pointer"
             >
@@ -742,7 +761,7 @@ export default function SourceWorkspacePage() {
               availableModes={clsDef?.availableModes || ["detailed"]}
               value={dataMode}
               onChange={(mode) => {
-                window.location.href = `/reports/source/${sourceKey}/${classificationId}/${mode}`;
+                navigate(`/reports/source/${sourceKey}/${classificationId}/${mode}`);
               }}
             />
           </div>
