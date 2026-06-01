@@ -6,7 +6,7 @@
     "start": "node src/index.js",
     "dev": "cross-env ELECTRON_RUN_AS_NODE=1 nodemon --exec electron src/index.js",
     "test": "jest --runInBand",
-    "test:edge": "jest --runInBand tests/edge"
+    "test:edge": "jest --runInBand --coverage=false tests/edge"
   },
   "keywords": [],
   "author": "",
