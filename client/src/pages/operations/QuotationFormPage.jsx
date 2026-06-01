@@ -195,8 +195,8 @@ export default function QuotationFormPage() {
               <ArrowLeft className="h-4 w-4" />
            </button>
            <div className="flex flex-col">
-              <h1 className="text-[14px] font-black uppercase text-slate-800 tracking-tight">{editId ? "تعديل عرض سعر" : "محرر عروض الأسعار"}</h1>
-              <span className="text-[10px] font-bold text-slate-400">إنشاء عروض أسعار احترافية موجهة للعملاء</span>
+              <h1 className="text-[14px] font-black uppercase text-slate-800 tracking-tight">{editId ? "تعديل عرض سعر" : "محرر عرض سعر"}</h1>
+              <span className="text-[10px] font-bold text-slate-400">إعداد عرض سعر احترافي للعميل قبل اعتماد الفاتورة</span>
            </div>
         </div>
 
@@ -455,7 +455,7 @@ export default function QuotationFormPage() {
                
                <div className="flex items-center gap-3 rounded-sm border border-amber-100 bg-amber-50 p-3">
                   <Info className="h-4 w-4 text-amber-600 shrink-0" />
-                  <p className="text-[10px] font-bold text-amber-900 leading-tight">عروض الأسعار لا تخصم من رصيد المخزن حتى يتم تحويلها لفاتورة بيع فعلية.</p>
+                  <p className="text-[10px] font-bold text-amber-900 leading-tight">عرض السعر لا يخصم من رصيد المخزن حتى يتم تحويله لفاتورة بيع فعلية.</p>
                </div>
             </div>
          </aside>

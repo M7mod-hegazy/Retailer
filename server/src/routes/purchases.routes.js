@@ -107,10 +107,10 @@ function reversePurchaseFinancials(db, purchase) {
     const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
     if (debt) {
       const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
-      if (remaining > 0) db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+      if (remaining > 0) db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, purchase.supplier_id);
       db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
     } else {
-      db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(purchase.total, purchase.supplier_id);
+      db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(purchase.total, purchase.supplier_id);
     }
   } else if (paymentMethod === "multi") {
     const storedPayments = db.prepare("SELECT * FROM purchase_payments WHERE purchase_id = ?").all(purchase.id);
@@ -124,7 +124,7 @@ function reversePurchaseFinancials(db, purchase) {
       const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
       if (debt) {
         const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
-        if (remaining > 0) db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+        if (remaining > 0) db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, purchase.supplier_id);
         db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
       }
     }
@@ -660,6 +660,15 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
           throw error;
         }
 
+        // Stock availability check
+        const stockRow = db.prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(purchaseLine.item_id, warehouseId);
+        const currentStock = Number(stockRow?.quantity || 0);
+        if (quantity > currentStock) {
+          const error = new Error(`المخزون غير كافٍ للصنف "${purchaseLine.item_name || purchaseLine.item_code || purchaseLine.item_id}" (المتاح ${currentStock})`);
+          error.status = 400;
+          throw error;
+        }
+
         const lineTotal = quantity * purchaseLine.unit_cost;
         total += lineTotal;
         const itemRow = db.prepare("SELECT name, name_en FROM items WHERE id = ?").get(purchaseLine.item_id);
@@ -726,7 +735,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
         db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(prCashAmt, treasuryId);
       }
       if (prCreditAmt > 0 && purchase.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(prCreditAmt, purchase.supplier_id);
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(prCreditAmt, purchase.supplier_id);
       }
 
       // Recompute WACC after return reduces stock
@@ -912,10 +921,10 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
     if (debt) {
       const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
       if (remaining > 0)
-        db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, purchase.supplier_id);
       db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
     } else {
-      db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(purchase.total, purchase.supplier_id);
+      db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(purchase.total, purchase.supplier_id);
     }
   } else if (paymentMethod === "multi") {
     const storedPayments = db.prepare("SELECT * FROM purchase_payments WHERE purchase_id = ?").all(purchase.id);
@@ -930,7 +939,7 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
       if (debt) {
         const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
         if (remaining > 0)
-          db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+          db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, purchase.supplier_id);
         db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
       }
     }
@@ -1122,7 +1131,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
           db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(purchase.total, purchase.bank_id);
         }
       } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && purchase.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?")
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?")
           .run(purchase.total, purchase.supplier_id);
         try { db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE invoice_id = ? AND source_type = 'purchase'").run(purchase.id); } catch (_) {}
       } else if (paymentMethod === "multi") {
@@ -1141,7 +1150,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
           if (debt) {
             const remaining = Number(debt.original_amount) - Number(debt.paid_amount || 0);
             if (remaining > 0)
-              db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(remaining, purchase.supplier_id);
+              db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(remaining, purchase.supplier_id);
             db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
           }
         }
@@ -1392,7 +1401,7 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
       if (settlementType === 'cash') {
         db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(newTotal, treasuryId);
       } else if (payload.supplier_id || original.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = MAX(0, opening_balance - ?) WHERE id = ?").run(newTotal, payload.supplier_id || original.supplier_id);
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(newTotal, payload.supplier_id || original.supplier_id);
       }
 
       // 3. Link original → new

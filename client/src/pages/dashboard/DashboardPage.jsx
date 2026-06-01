@@ -11,12 +11,13 @@ import { usePageTour } from "../../hooks/usePageTour";
 
 // ─── Tooltips ────────────────────────────────────────────────────────────────
 const TOOLTIPS = {
+  sales: "فواتير البيع المكتملة وسجل المعاملات",
   purchases: "إدارة الفواتير والموردين",
-  purchase_orders: "طلبات الشراء والاعتمادات",
+  purchase_orders: "طلب البضاعة من الموردين قبل الاستلام ومتابعة أوامر التوريد",
   purchase_returns: "إرجاع البضائع التالفة",
   sales_returns: "استلام المرتجعات وإشعارات الخصم",
   branch_transfer: "نقل المخزون بين الفروع",
-  quotations: "إصدار ومتابعة عروض الأسعار",
+  quotations: "إعداد عروض سعر للعملاء وتحويلها لفواتير بيع بعد الموافقة",
   customer_accounts: "الأرصدة والديون المستحقة",
   supplier_accounts: "المستحقات وحركة الحساب",
   installments: "متابعة الأقساط والديون",
@@ -53,12 +54,13 @@ const SHORTCUTS = { pos: "F2", analytics: "F3", daily_treasury: "F4" };
 // path   → navigate to create form
 // modal  → open inline quick-entry modal
 const QUICK_ACTIONS = {
+  sales:            { path: "/pos",                                label: "بيع جديد" },
   purchases:        { path: "/purchases/new",                      label: "فاتورة جديدة" },
-  purchase_orders:  { path: "/purchases/orders/new",               label: "أمر شراء جديد" },
+  purchase_orders:  { path: "/purchases/orders/new",               label: "طلب توريد جديد" },
   purchase_returns: { path: "/purchases/returns/new",              label: "مرتجع جديد" },
   sales_returns:    { path: "/sales/returns/new",                  label: "مرتجع مبيعات" },
   branch_transfer:  { path: "/operations/branch-transfer/new",     label: "نقل جديد" },
-  quotations:       { path: "/operations/quotations/new",          label: "عرض سعر" },
+  quotations:       { path: "/operations/quotations/new",          label: "عرض سعر جديد" },
   stock_transfer:   { path: "/stock/transfer",                     label: "تحويل" },
   revenues:         { modal: "revenue",                            label: "إيراد سريع" },
   expenses:         { modal: "expense",                            label: "مصروف سريع" },
@@ -522,15 +524,74 @@ export default function DashboardPage() {
               data-help="sales-chart"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
             >
-              {activeModule.items.map((item) => (
-                <MagneticCard
-                  key={item.path}
-                  item={item}
-                  active={isActive(item.path)}
-                  updateAvailable={updateAvailable}
-                  onQuickAction={setQuickModal}
-                />
-              ))}
+              {(() => {
+                const hasFamilies = activeModule.items.some(item => item.family);
+                if (!hasFamilies) {
+                  return activeModule.items.map((item) => (
+                    <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                  ));
+                }
+                const groups = {};
+                activeModule.items.forEach(item => {
+                  const f = item.family || "_";
+                  if (!groups[f]) groups[f] = [];
+                  groups[f].push(item);
+                });
+
+                const hasSalesOther = groups["sales"] && groups["other"];
+
+                if (hasSalesOther) {
+                  const salesItems = groups["sales"];
+                  const otherItems = groups["other"];
+                  const purchasesItems = groups["purchases"];
+                  return [
+                    <div key="sec-sales-other" className="col-span-full">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[11px] font-black text-zinc-500 tracking-wide">المبيعات</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-px h-3 bg-zinc-300" />
+                          <span className="text-[11px] font-black text-zinc-500 tracking-wide">أخرى</span>
+                        </div>
+                      </div>
+                      <div className="h-px w-full bg-zinc-200/70" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
+                        {salesItems.map(item => (
+                          <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                        ))}
+                        <div className="relative ltr:pl-5 rtl:pr-5">
+                          <div className="hidden xl:block absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-px bg-zinc-200/70" />
+                          {otherItems.map(item => (
+                            <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>,
+                    <div key="sec-purchases" className="col-span-full pt-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[11px] font-black text-zinc-500 tracking-wide">المشتريات</span>
+                      </div>
+                      <div className="h-px w-full bg-zinc-200/70" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
+                        {purchasesItems.map(item => (
+                          <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                        ))}
+                      </div>
+                    </div>,
+                  ];
+                }
+
+                return Object.entries(groups).flatMap(([family, items]) => [
+                  <div key={`hdr-${family}`} className="col-span-full pt-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-[11px] font-black text-zinc-500 tracking-wide">{family === "purchases" ? "المشتريات" : family}</span>
+                    </div>
+                    <div className="h-px w-full bg-zinc-200/70" />
+                  </div>,
+                  ...items.map(item => (
+                    <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                  )),
+                ]);
+              })()}
             </motion.div>
           )}
         </AnimatePresence>

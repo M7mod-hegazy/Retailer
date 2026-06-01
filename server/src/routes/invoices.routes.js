@@ -233,7 +233,21 @@ router.post("/general-purchase-return", requirePagePermission("purchase_returns"
       const docNo = generateDocNumber("general_purchase_return", "GPR");
       let total = 0;
       for (const line of lines) {
-        total += Number(line.quantity) * Number(line.unit_cost || line.unit_price);
+        const qty = Number(line.quantity);
+        total += qty * Number(line.unit_cost || line.unit_price);
+
+        // Stock availability check
+        if (line.item_id) {
+          const wId = line.warehouse_id || 1;
+          const stockRow = db.prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(line.item_id, wId);
+          const available = Number(stockRow?.quantity || 0);
+          if (qty > available) {
+            const item = db.prepare("SELECT name FROM items WHERE id = ?").get(line.item_id);
+            const err = new Error(`المخزون غير كافٍ للصنف "${item?.name || line.item_id}" (المتاح ${available})`);
+            err.status = 400;
+            throw err;
+          }
+        }
       }
 
       const cashAmt = sType === 'cash' ? total : sType === 'split' ? Math.max(0, Number(req.body.cash_amount ?? 0)) : 0;

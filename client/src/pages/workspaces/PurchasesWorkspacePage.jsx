@@ -9,7 +9,7 @@ import PurchaseReturnFormPage from "../purchases/PurchaseReturnFormPage";
 
 const tabs = [
   { value: "purchases", label: "المشتريات", icon: PackageSearch },
-  { value: "orders", label: "أوامر الشراء", icon: FileSpreadsheet },
+  { value: "orders", label: "طلبات التوريد", icon: FileSpreadsheet },
   { value: "returns", label: "مرتجع المشتريات", icon: ArrowLeftRight },
 ];
 

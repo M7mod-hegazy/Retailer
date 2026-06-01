@@ -186,8 +186,8 @@ export default function PurchaseOrdersPage() {
           <div className="flex items-center gap-5">
             <div className="bg-indigo-100 p-4 rounded-[1.5rem]"><Package className="h-8 w-8 text-indigo-600" /></div>
             <div>
-              <h1 className="text-[28px] font-black text-slate-900 tracking-tight">أوامر الشراء</h1>
-              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">إدارة وتتبع أوامر التوريد لبناء سلسلة إمداد متماسكة.</p>
+              <h1 className="text-[28px] font-black text-slate-900 tracking-tight">طلبات التوريد</h1>
+              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">تسجيل ومتابعة طلبات شراء البضاعة من الموردين قبل استلامها.</p>
             </div>
           </div>
 
@@ -341,7 +341,7 @@ export default function PurchaseOrdersPage() {
         </div>
 
       {/* Detail Modal (Liquid Core Design) */}
-      <Modal open={!!detailOrder} onClose={() => setDetailOrder(null)} title={`أمر الشراء PO-${String(detailOrder?.id || 0).padStart(5, "0")}`} maxWidth="max-w-4xl">
+      <Modal open={!!detailOrder} onClose={() => setDetailOrder(null)} title={`طلب التوريد PO-${String(detailOrder?.id || 0).padStart(5, "0")}`} maxWidth="max-w-4xl">
         {detailOrder && (
           <div className="space-y-8 p-2">
             <div className="flex flex-col md:flex-row gap-6 bg-slate-50/50 p-6 rounded-3xl border border-slate-200/50">
@@ -477,8 +477,8 @@ export default function PurchaseOrdersPage() {
       </Modal>
 
       {/* Confirmations */}
-      <ConfirmDialog open={!!confirmApprove} title="اعتماد أمر الشراء" message="هل أنت متأكد من اعتماد هذا الأمر للتوريد؟" onConfirm={handleApprove} onCancel={() => setConfirmApprove(null)} />
-      <ConfirmDialog open={!!confirmCancel} title="إلغاء أمر الشراء" message="سيتم إيقاف هذا الأمر نهائياً. هل تود الاستمرار؟" onConfirm={handleCancel} onCancel={() => setConfirmCancel(null)} />
+      <ConfirmDialog open={!!confirmApprove} title="اعتماد طلب التوريد" message="هل أنت متأكد من اعتماد طلب التوريد هذا؟" onConfirm={handleApprove} onCancel={() => setConfirmApprove(null)} />
+      <ConfirmDialog open={!!confirmCancel} title="إلغاء طلب التوريد" message="سيتم إيقاف طلب التوريد هذا نهائياً. هل تود الاستمرار؟" onConfirm={handleCancel} onCancel={() => setConfirmCancel(null)} />
     </div>
   );
 }

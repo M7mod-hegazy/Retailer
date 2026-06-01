@@ -1138,7 +1138,7 @@ export default function POSPage() {
     setPendingBelowCostAdd(false);
     setPriceType("retail");
     setLastSalePrice(null);
-    window.requestAnimationFrame(() => codeInputRef.current?.focus());
+    window.requestAnimationFrame(() => listItemInputRef.current?.focus());
   }
 
   function resetPaymentFields() {
@@ -2251,15 +2251,15 @@ export default function POSPage() {
                       onBlur={() => setTimeout(() => setItemLookupOpen(false), 200)}
                       placeholder="ابحث بالاسم، الباركود، أو الكود..."
                       onKeyDown={(e) => {
-                         if (e.key === "Enter") {
-                            e.preventDefault();
-                            const q = itemNameQuery.trim();
-                            if (itemResults.length > 0 && activeLookupIndex >= 0) {
-                              handleSelectItem(itemResults[activeLookupIndex]);
-                            } else if (q) {
-                              handleSelectItem({ id: -1, name: q, code: q, item_code: q, barcode: q, sale_price: 0, price: 0, purchase_price: 0, stock_quantity: 0 });
-                            }
-                            setTimeout(() => listWhRef.current?.focus(), 50);
+                          if (e.key === "Enter") {
+                             e.preventDefault();
+                             const q = itemNameQuery.trim();
+                             if (itemResults.length > 0) {
+                               const idx = activeLookupIndex >= 0 ? activeLookupIndex : 0;
+                               handleSelectItem(itemResults[idx]);
+                               setTimeout(() => listWhRef.current?.focus(), 50);
+                             }
+                             // no-op if empty or results not loaded yet — don't create phantom raw entries or move focus
                          } else if (e.key === "ArrowDown") {
                             e.preventDefault();
                             setActiveLookupIndex(prev => (prev < itemResults.length ? prev + 1 : prev));

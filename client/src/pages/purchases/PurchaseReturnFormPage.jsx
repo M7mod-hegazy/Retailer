@@ -276,6 +276,7 @@ export default function PurchaseReturnFormPage() {
           return {
             purchase_line_id: l.id,
             item_id: l.item_id,
+            warehouse_id: l.warehouse_id || 1,
             item_code: l.item_code || l.barcode || "",
             item_name: l.item_name_ar || l.item_name || l.name,
             unit_cost: Number(l.unit_cost || l.unit_price || 0),
@@ -432,7 +433,12 @@ export default function PurchaseReturnFormPage() {
 
   function removeCartLine(key) { setCart(prev => prev.filter(l => l.key !== key)); }
   function updateCartQty(key, delta) {
-    setCart(prev => prev.map(l => l.key !== key ? l : { ...l, quantity: Math.max(0, l.quantity + delta) }).filter(l => l.quantity > 0));
+    setCart(prev => prev.map(l => {
+      if (l.key !== key) return l;
+      const newQty = l.quantity + delta;
+      const stockAvailable = stockLevels[l.item_id]?.[l.warehouse_id] ?? Infinity;
+      return { ...l, quantity: Math.max(0, Math.min(newQty, stockAvailable)) };
+    }).filter(l => l.quantity > 0));
   }
   function updateCartPrice(key, val) {
     setCart(prev => prev.map(l => l.key !== key ? l : { ...l, unit_cost: Math.max(0, Number(val) || 0) }));
@@ -464,6 +470,7 @@ export default function PurchaseReturnFormPage() {
     setPurchaseLines((pur.lines || []).map(l => ({
       purchase_line_id: l.id,
       item_id: l.item_id,
+      warehouse_id: l.warehouse_id || 1,
       item_code: l.item_code || l.barcode || "",
       item_name: l.item_name_ar || l.item_name || l.name,
       unit_cost: Number(l.unit_cost || l.unit_price || 0),
@@ -496,7 +503,9 @@ export default function PurchaseReturnFormPage() {
   function setPurchaseLineQty(purchase_line_id, val) {
     setPurchaseLines(prev => prev.map(l => {
       if (l.purchase_line_id !== purchase_line_id) return l;
-      const max = l.original_qty - l.already_returned;
+      const maxFromQty = l.original_qty - l.already_returned;
+      const stockAvailable = stockLevels[l.item_id]?.[l.warehouse_id] ?? Infinity;
+      const max = Math.min(maxFromQty, stockAvailable);
       return { ...l, qty_to_return: Math.max(0, Math.min(max, Number(val) || 0)) };
     }));
   }
@@ -557,7 +566,7 @@ export default function PurchaseReturnFormPage() {
   function handleSuccessDismiss() {
     const id = saveSuccess?.returnId;
     setSaveSuccess(null);
-    if (!isEditMode) navigate(id ? `/purchases/returns/${id}` : "/purchases/returns", { replace: true });
+    if (!isEditMode) navigate("/purchases/returns", { replace: true });
   }
 
   async function handleDelete() {
@@ -728,7 +737,7 @@ export default function PurchaseReturnFormPage() {
         <aside className="flex w-[340px] lg:w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
           <div className="flex flex-col gap-5 p-5">
             <button onClick={handlePurchasesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-[13px] font-bold text-white hover:bg-amber-800 transition-all shadow-sm active:scale-[0.98]">
-              <Clock className="h-4 w-4" /> أوامر الشراء
+              <Clock className="h-4 w-4" /> طلبات التوريد
             </button>
 
             {/* Supplier */}

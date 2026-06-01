@@ -358,7 +358,7 @@ export default function PurchaseReturnTodayModal({ open, onClose }) {
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
             <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">سجل المرتجعات المسجلة</span>
-            <span className="text-[10px] text-amber-600 font-bold">— هذه قائمة بمرتجعات المشتريات التي تم إنشاؤها مسبقاً، وليست أوامر الشراء.</span>
+            <span className="text-[10px] text-amber-600 font-bold">— هذه قائمة بمرتجعات المشتريات التي تم إنشاؤها مسبقاً، وليست طلبات التوريد.</span>
           </div>
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-sm border border-amber-200">

@@ -297,7 +297,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="أوامر الشراء — اختيار للمرتجع" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="طلبات التوريد — اختيار للمرتجع" maxWidth="max-w-5xl">
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">

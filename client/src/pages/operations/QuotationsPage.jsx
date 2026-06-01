@@ -191,8 +191,8 @@ export default function QuotationsPage() {
           <div className="flex items-center gap-5">
             <div className="bg-violet-100 p-4 rounded-[1.5rem]"><FileText className="h-8 w-8 text-violet-600" /></div>
             <div>
-              <h1 className="text-[28px] font-black text-slate-900 tracking-tight">عروض الأسعار</h1>
-              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">إدارة ومتابعة عروض الأسعار المرسلة للعملاء لزيادة المبيعات.</p>
+              <h1 className="text-[28px] font-black text-slate-900 tracking-tight">عرض سعر</h1>
+              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">إعداد عروض سعر للعملاء وتحويلها لفواتير بيع بعد اعتمادها.</p>
             </div>
           </div>
 

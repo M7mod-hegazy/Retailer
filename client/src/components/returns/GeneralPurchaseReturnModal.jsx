@@ -30,6 +30,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [stockLevels, setStockLevels] = useState({});
 
   const ITEM_PAGE = 20;
 
@@ -45,6 +46,16 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
       setItemResults([]);
       setItemOffset(0);
       setItemHasMore(false);
+      setStockLevels({});
+    } else {
+      api.get("/api/stock/levels").then(r => {
+        const grouped = {};
+        (r.data.data || []).forEach(row => {
+          if (!grouped[row.item_id]) grouped[row.item_id] = {};
+          grouped[row.item_id][row.warehouse_id || 1] = row.quantity;
+        });
+        setStockLevels(grouped);
+      }).catch(() => {});
     }
   }, [open]);
 
@@ -91,9 +102,21 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
     if (item.id === -1) {
       setLines(ls => [...ls, { item_id: null, name: item.name, unit_price: 0, quantity: 1 }]);
     } else {
+      const maxStock = stockLevels[item.id]?.[1] ?? Infinity;
       setLines(ls => {
         const existing = ls.find(l => l.item_id === item.id);
-        if (existing) return ls.map(l => l.item_id === item.id ? { ...l, quantity: l.quantity + 1 } : l);
+        if (existing) {
+          const newQty = Math.min(existing.quantity + 1, maxStock);
+          if (newQty <= existing.quantity) {
+            toast.error(`المخزون غير كافٍ للصنف "${item.name}" (المتاح ${maxStock})`);
+            return ls;
+          }
+          return ls.map(l => l.item_id === item.id ? { ...l, quantity: newQty } : l);
+        }
+        if (maxStock < 1) {
+          toast.error(`المخزون غير كافٍ للصنف "${item.name}" (المتاح 0)`);
+          return ls;
+        }
         const price = Number(item.cost_price || item.cost || item.price || 0);
         return [...ls, { item_id: item.id, name: item.name, unit_price: price, quantity: 1 }];
       });
@@ -108,6 +131,14 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
 
   async function handleSave() {
     if (!lines.length) { toast.error("أضف أصنافاً للمرتجع"); return; }
+    for (const l of lines) {
+      if (!l.item_id) continue;
+      const available = stockLevels[l.item_id]?.[1] ?? 0;
+      if (l.quantity > available) {
+        toast.error(`المخزون غير كافٍ للصنف "${l.name}" (المتاح ${available}) — الكمية المطلوبة ${l.quantity}`);
+        return;
+      }
+    }
     setSaving(true);
     try {
       await api.post("/api/invoices/general-purchase-return", {
@@ -284,7 +315,12 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
                           min="0.001"
                           step="0.001"
                           value={line.quantity}
-                          onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, quantity: Number(e.target.value) } : l))}
+                          onChange={e => setLines(ls => ls.map((l, j) => {
+                            if (j !== i) return l;
+                            const qty = Number(e.target.value);
+                            const maxStock = l.item_id ? (stockLevels[l.item_id]?.[1] ?? Infinity) : Infinity;
+                            return { ...l, quantity: Math.max(0, Math.min(qty, maxStock)) };
+                          }))}
                           className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-[12px] font-black outline-none focus:border-amber-400"
                         />
                       </td>

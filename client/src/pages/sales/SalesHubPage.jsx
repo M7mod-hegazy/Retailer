@@ -632,7 +632,7 @@ export default function SalesHubPage() {
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
                 <Layers className="w-5 h-5 text-blue-500" />
               </div>
-              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">سجل المبيعات</span>
+              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">فواتير المبيعات</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">فواتير <span className="text-blue-600">المبيعات</span></h1>
           </div>

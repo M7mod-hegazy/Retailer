@@ -144,7 +144,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                   </Link>
                   <Link
                     to="/sales"
-                    title="سجل المبيعات"
+                    title="فواتير المبيعات"
                     className={`flex items-center justify-center w-9 shrink-0 border-r transition-colors ${
                       isActive
                         ? "border-zinc-800 text-emerald-400 hover:bg-zinc-800"

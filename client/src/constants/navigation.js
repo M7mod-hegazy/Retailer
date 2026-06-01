@@ -20,13 +20,13 @@ export const NAV_MODULES = [
   {
     title: "المبيعات والمشتريات", id: "trade", icon: ShoppingCart,
     items: [
-      { path: "/sales", label: "سجل المبيعات", icon: ShoppingBag, pageKey: "sales" },
-      { path: "/purchases", label: "فواتير المشتريات", icon: PackageSearch, pageKey: "purchases" },
-      { path: "/purchases/orders", label: "أوامر الشراء", icon: ClipboardList, pageKey: "purchase_orders" },
-      { path: "/purchases/returns", label: "مرتجع المشتريات", icon: ArrowRightLeft, pageKey: "purchase_returns" },
-      { path: "/sales/returns", label: "مرتجع المبيعات", icon: ReceiptText, pageKey: "sales_returns" },
-      { path: "/operations/branch-transfer", label: "نقل بين الفروع", icon: Truck, pageKey: "branch_transfer" },
-      { path: "/operations/quotations", label: "عروض الأسعار", icon: Receipt, pageKey: "quotations" },
+      { path: "/sales", label: "فواتير المبيعات", icon: ShoppingBag, pageKey: "sales", family: "sales" },
+      { path: "/sales/returns", label: "مرتجع المبيعات", icon: ReceiptText, pageKey: "sales_returns", family: "sales" },
+      { path: "/operations/quotations", label: "عرض سعر", icon: Receipt, pageKey: "quotations", family: "sales" },
+      { path: "/purchases", label: "فواتير المشتريات", icon: PackageSearch, pageKey: "purchases", family: "purchases" },
+      { path: "/purchases/returns", label: "مرتجع المشتريات", icon: ArrowRightLeft, pageKey: "purchase_returns", family: "purchases" },
+      { path: "/purchases/orders", label: "طلبات التوريد", icon: ClipboardList, pageKey: "purchase_orders", family: "purchases" },
+      { path: "/operations/branch-transfer", label: "نقل المخزون بين الفروع", icon: Truck, pageKey: "branch_transfer", family: "other" },
     ],
   },
   {

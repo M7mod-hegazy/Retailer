@@ -13,8 +13,8 @@ import { getHelpPageKey } from "../../help/routeHelp";
 import { motion, AnimatePresence } from "framer-motion";
 
 const EXTRA_BREADCRUMB_PARENTS = [
-  { match: /^\/pos$/, parents: [{ label: "سجل المبيعات", path: "/sales" }], current: "نقطة البيع (POS)" },
-  { match: /^\/invoices\//, parents: [{ label: "سجل المبيعات", path: "/sales" }, { label: "نقطة البيع (POS)", path: "/pos" }] },
+  { match: /^\/pos$/, parents: [{ label: "فواتير المبيعات", path: "/sales" }], current: "نقطة البيع (POS)" },
+  { match: /^\/invoices\//, parents: [{ label: "فواتير المبيعات", path: "/sales" }, { label: "نقطة البيع (POS)", path: "/pos" }] },
   { match: /^\/purchases\/new$/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة جديدة" },
   { match: /^\/purchases\/(?!new$|orders|returns)/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة مشتريات" },
 ];
@@ -68,7 +68,7 @@ const routeLabelMatchers = [
   { match: ROUTES.DASHBOARD, label: "مركز القيادة" },
   { match: ROUTES.POS, label: "نقطة البيع" },
   { match: "/definitions", label: "البيانات الأساسية" },
-  { match: "/sales", label: "سجل المبيعات" },
+  { match: "/sales", label: "فواتير المبيعات" },
   { match: ROUTES.PURCHASES, label: "المشتريات" },
   { match: ROUTES.PAYMENTS, label: "المدفوعات والتحصيل" },
   { match: ROUTES.EXPENSES, label: "المصروفات" },

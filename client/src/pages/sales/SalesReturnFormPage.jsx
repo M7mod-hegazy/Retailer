@@ -591,7 +591,7 @@ export default function SalesReturnFormPage() {
   function handleSuccessDismiss() {
     const id = saveSuccess?.returnId;
     setSaveSuccess(null);
-    if (!isEditMode) navigate(id ? `/pos/sales-returns/${id}` : "/sales/returns", { replace: true });
+    if (!isEditMode) navigate("/sales/returns", { replace: true });
   }
 
   async function handleDelete() {
