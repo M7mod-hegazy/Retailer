@@ -4,26 +4,12 @@ function round2(n) {
   return Math.round(Number(n) * 100) / 100;
 }
 
-// Real balance = opening + unpaid credit (sum of credit invoice totals) - payments received.
+// The app keeps a customer's running balance directly in customers.opening_balance:
+// credit sales do `opening_balance += total` (invoiceService) and payments do
+// `opening_balance -= amount` (payments route). So the real balance IS that column.
 function realCustomerBalance(db, customerId) {
-  const opening = Number(
-    db.prepare("SELECT opening_balance AS v FROM customers WHERE id = ?").get(customerId)?.v || 0,
-  );
-  const creditTotal = Number(
-    db
-      .prepare(
-        "SELECT COALESCE(SUM(total), 0) AS v FROM invoices WHERE customer_id = ? AND payment_type = 'credit'",
-      )
-      .get(customerId)?.v || 0,
-  );
-  const paid = Number(
-    db
-      .prepare(
-        "SELECT COALESCE(SUM(amount), 0) AS v FROM payments WHERE party_type = 'customer' AND party_id = ?",
-      )
-      .get(customerId)?.v || 0,
-  );
-  return round2(opening + creditTotal - paid);
+  const v = db.prepare("SELECT opening_balance AS v FROM customers WHERE id = ?").get(customerId)?.v;
+  return round2(Number(v || 0));
 }
 
 // Compare every modelled customer against the real DB.

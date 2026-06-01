@@ -24,10 +24,26 @@ function freshWorld() {
     "INSERT INTO stock_levels (item_id, warehouse_id, quantity) VALUES (1, 1, 1000000)",
   ).run();
 
-  const app = createApp();
-  const token = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
+  // Cash/payment flows need a treasury and a default-treasury setting.
+  db.prepare("INSERT INTO treasuries (name, code, balance) VALUES ('Main Treasury', 'T1', 0)").run();
+  db.prepare("UPDATE settings SET default_treasury_id = 1 WHERE id = 1").run();
 
-  return { app, db, token, dir, itemId: 1, warehouseId: 1 };
+  // Seed a real admin user. Routes write created_by = req.user.id into INTEGER
+  // columns with FK → users(id); the "__dev__" bypass id violates that FK, so we
+  // sign the token as a real admin (admin role bypasses permission checks).
+  const userId = db
+    .prepare(
+      "INSERT INTO users (username, password_hash, role, is_active) VALUES ('edge', 'x', 'admin', 1)",
+    )
+    .run().lastInsertRowid;
+
+  const app = createApp();
+  const token = jwt.sign(
+    { sub: userId, role: "admin" },
+    process.env.JWT_SECRET || "test-secret",
+  );
+
+  return { app, db, token, dir, itemId: 1, warehouseId: 1, userId };
 }
 
 module.exports = { freshWorld };
