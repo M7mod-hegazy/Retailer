@@ -548,116 +548,204 @@ const AR_LABELS = {
   transfer_in_qty: "الوارد (تحويل)",
   transfer_out_qty: "الصادر (تحويل)",
   transfer_tx_count: "عدد التحويلات",
+  // ── Reconciliation columns: gross selling price + additions/fees ──
+  selling_total: "إجمالي سعر البيع",
+  additions_amount: "إضافة / رسوم",
+  // ── Misc labels surfaced after the column-catalog re-sync ──
+  reference: "المرجع",
+  notes: "ملاحظات",
+  drawer_name: "الساحب",
+  min_stock: "الحد الأدنى للمخزون",
+  remaining: "المتبقي",
+  down_payment: "الدفعة المقدمة",
+  frequency: "التكرار",
+  installment_amount: "قيمة القسط",
+  paid_at: "تاريخ السداد",
+  net_purchases: "صافي المشتريات",
+  potential_profit: "ربح محتمل",
+  items_per_invoice: "أصناف لكل فاتورة",
+  pct_of_sales: "نسبة من المبيعات %",
+  pct_of_total: "النسبة من الإجمالي %",
+  value_share_pct: "نسبة من قيمة المخزون %",
+  avg_return_value: "متوسط قيمة المرتجع",
+  net_flow: "صافي التدفق",
 };
 
+// Column order per report. Re-synced to the actual SQL output keys of each query
+// (introspected against the live schema). Lists every column the query returns so the
+// order is deterministic; technical join/grouping keys (customer_id, item_id, …) are
+// placed last and hidden by default via INTERNAL_KEYS.
 const REPORT_COLUMN_KEYS = {
-  "daily-sales": ["date", "invoice_count", "gross_sales", "total_discount", "net_sales", "returns_amount", "returns_count", "total_cost", "gross_profit"],
-  "detailed-sales": ["invoice_no", "date", "customer_name", "cashier", "payment_type", "status", "subtotal", "discount", "total", "item_count"],
-  "sales-by-item": ["item_code", "item_name", "category_name", "quantity_sold", "revenue", "discount_total", "cost", "profit_margin", "margin_percent", "avg_unit_price"],
-  "sales-by-category": ["category_name", "item_count", "quantity_sold", "revenue", "discount_total", "cost", "profit_margin", "margin_percent"],
-  "sales-by-cashier": ["cashier", "invoice_count", "cancelled_count", "total_sales", "returns_handled", "net_sales", "total_cost", "gross_profit", "total_discount", "avg_invoice_value", "total_items_sold"],
-  "sales-by-payment": ["payment_type", "invoice_count", "total_sales", "total_discount", "avg_transaction", "returns_amount"],
-  "sales-heatmap": ["weekday_name", "hour_slot", "invoice_count", "total_sales", "avg_sale"],
+  // ── Sales ──
+  "daily-sales": ["date", "invoice_count", "selling_total", "total_discount", "additions_amount", "gross_sales", "total_cost", "returns_amount", "returns_count", "net_sales", "gross_profit", "avg_invoice_value", "margin_percent"],
+  "detailed-sales": ["invoice_no", "date", "customer_name", "cashier", "payment_type", "status", "subtotal", "discount", "additions_amount", "total", "item_count", "payment_breakdown", "customer_id"],
+  "sales-by-item": ["item_code", "item_name", "category_name", "quantity_sold", "revenue", "total_discount", "cost", "returns_amount", "returns_cost", "gross_profit", "margin_percent", "avg_unit_price", "selling_total", "avg_unit_cost", "wacc"],
+  "sales-by-category": ["category_name", "item_count", "quantity_sold", "revenue", "total_discount", "cost", "returns_amount", "returns_cost", "gross_profit", "margin_percent", "selling_total", "avg_unit_cost"],
+  "sales-by-cashier": ["cashier", "invoice_count", "cancelled_count", "total_sales", "total_discount", "avg_invoice_value", "total_items_sold", "total_cost", "returns_handled", "returns_cost", "net_sales", "gross_profit", "margin_percent", "items_per_invoice"],
+  "sales-by-payment": ["payment_type", "invoice_count", "total_sales", "total_discount", "returns_amount", "avg_transaction", "net_sales", "pct_of_sales"],
+  "sales-heatmap": ["weekday_name", "hour_slot", "invoice_count", "total_sales", "avg_sale", "weekday_num", "customer_id"],
   "exceptions": ["invoice_no", "date", "customer_name", "exception_type", "discount", "status", "total"],
-  "period-comparison": ["period", "date", "invoice_count", "total_sales", "returns_amount", "net_sales", "total_cost", "gross_profit", "total_discount"],
-  "gross-net-sales": ["date", "gross_sales", "total_discount", "net_sales", "invoice_count", "returns_amount", "total_cost", "gross_profit"],
-  "sales-returns": ["return_ref", "invoice_no", "date", "customer_name", "handled_by", "return_total", "reason", "refund_method", "items_returned"],
+  "period-comparison": ["period", "date", "invoice_count", "total_sales", "total_discount", "returns_amount", "net_sales", "total_cost", "gross_profit", "margin_percent", "avg_invoice_value"],
+  "gross-net-sales": ["date", "invoice_count", "selling_total", "total_discount", "additions_amount", "gross_sales", "total_cost", "returns_amount", "net_sales", "gross_profit", "avg_invoice_value", "margin_percent"],
+  "sales-returns": ["return_ref", "invoice_no", "date", "customer_name", "handled_by", "return_total", "reason", "refund_method", "items_returned", "id", "customer_id"],
   "discount-analysis": ["section", "payment_type", "discount_range", "invoice_count", "total_discount", "avg_discount", "avg_discount_percent", "total_sales"],
-  "margin-by-item": ["item_code", "item_name", "quantity_sold", "revenue", "cost", "profit_margin", "margin_percent"],
-  "margin-by-category": ["category_name", "quantity_sold", "revenue", "cost", "profit_margin", "margin_percent"],
-  "margin-health": ["item_code", "item_name", "wacc", "sale_price", "current_margin_percent", "min_margin_percent", "suggested_price", "below_threshold"],
+  "margin-by-item": ["item_code", "item_name", "category_name", "quantity_sold", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "selling_total", "avg_unit_price", "avg_unit_cost", "wacc"],
+  "margin-by-category": ["category_name", "quantity_sold", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "selling_total", "avg_unit_cost"],
+  "margin-health": ["item_name", "wacc", "sale_price", "current_margin_percent", "min_margin_percent", "suggested_price", "below_threshold", "item_id"],
   "shift-history": ["id", "cashier", "opened_date", "closed_at", "opening_cash", "closing_cash", "sales_total", "expected_cash", "cash_variance", "invoice_count", "status"],
-  "purchase-summary": ["date", "purchase_count", "distinct_suppliers", "total_purchases", "avg_order_value"],
-  "detailed-purchases": ["id", "purchase_no", "date", "supplier_name", "total", "status", "payment_type", "created_by", "item_count"],
-  "purchases-by-supplier": ["supplier_name", "purchase_count", "total_purchases", "avg_order_value", "returns_total", "last_purchase_date"],
+
+  // ── Purchases ──
+  "purchase-summary": ["date", "purchase_count", "distinct_suppliers", "total_discount", "additions_amount", "total_purchases", "avg_order_value"],
+  "detailed-purchases": ["purchase_no", "date", "supplier_name", "total", "total_discount", "additions_amount", "status", "payment_type", "item_count", "created_by", "id", "supplier_id"],
+  "purchases-by-supplier": ["supplier_name", "purchase_count", "total_purchases", "avg_order_value", "returns_total", "net_purchases", "last_purchase_date"],
   "purchases-by-item": ["item_code", "item_name", "quantity_purchased", "total_cost", "quantity_returned", "returns_cost", "net_quantity_purchased", "net_total_cost", "avg_unit_cost", "distinct_suppliers", "last_purchase_date"],
-  "purchase-returns": ["return_ref", "supplier_name", "date", "return_total", "reason", "refund_method", "items_returned"],
+  "purchase-returns": ["return_ref", "supplier_name", "date", "return_total", "reason", "refund_method", "items_returned", "id"],
   "supplier-pricing": ["supplier_name", "item_name", "unit_price", "quantity", "line_total", "purchase_date"],
-  "slow-moving": ["item_code", "item_name", "category_name", "stock_quantity", "cost_price", "total_value", "potential_revenue", "last_sale_date"],
-  "stock-levels": ["item_code", "item_name", "category_name", "warehouse_id", "quantity", "min_stock_qty", "unit_name", "total_value", "stock_status"],
-  "stock-movements": ["item_code", "item_name", "movement_type", "reference_type", "reference_id", "warehouse_id", "before_qty", "after_qty", "quantity", "created_by", "date"],
-  "stock-valuation": ["item_code", "name", "category_name", "warehouse_id", "total_quantity", "wacc", "last_purchase_cost", "total_value"],
-  "count-sheet": ["item_code", "item_name", "barcode", "category_name", "warehouse_id", "system_quantity", "unit_name"],
-  "reorder": ["item_code", "item_name", "stock_quantity", "min_stock_qty", "suggested_order_qty", "estimated_order_cost", "preferred_supplier"],
+
+  // ── Inventory ──
+  "slow-moving": ["item_code", "item_name", "category_name", "stock_quantity", "cost_price", "total_value", "potential_revenue", "potential_profit", "last_sale_date"],
+  "stock-levels": ["item_code", "item_name", "category_name", "warehouse_name", "quantity", "min_stock_qty", "unit_name", "total_value", "stock_status", "wacc", "last_purchase_cost", "sale_price", "potential_revenue", "warehouse_id"],
+  "stock-movements": ["item_code", "item_name", "warehouse_name", "movement_type", "reference_type", "reference_id", "before_qty", "after_qty", "quantity", "created_by", "date", "warehouse_id"],
+  "stock-valuation": ["item_code", "name", "category_name", "warehouse_name", "total_quantity", "wacc", "last_purchase_cost", "purchase_price", "total_value", "sale_price", "potential_revenue", "item_id", "warehouse_id"],
+  "count-sheet": ["item_code", "item_name", "barcode", "category_name", "warehouse_name", "system_quantity", "unit_name", "warehouse_id"],
+  "reorder": ["item_code", "name", "quantity", "min_stock", "unit_name", "id"],
   "expiry": ["batch_no", "item_code", "item_name", "quantity", "expiry_date", "cost_price", "days_until_expiry", "expiry_status"],
   "inventory-aging": ["item_code", "item_name", "quantity", "wacc", "total_value", "last_movement_date", "days_since_last_movement", "aging_bucket"],
   "dead-stock": ["item_code", "item_name", "category_name", "quantity", "wacc", "total_value", "last_sale_date", "days_since_last_sale", "aging_bucket"],
-  "ar-aging": ["customer_name", "phone", "invoice_count", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "last_invoice_date"],
-  "ap-aging": ["supplier_name", "phone", "purchase_count", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "last_purchase_date"],
-  "profit-loss": ["label", "amount", "pct", "section"],
+  "cost-movements": ["date", "item_code", "item_name", "warehouse_name", "movement_type", "quantity", "unit_cost", "running_quantity", "running_wacc", "created_by", "source_doc_no", "source_table", "id", "item_id", "source_id", "source_line_id", "occurred_at", "created_at"],
+  "cost-method-comparison": ["item_code", "item_name", "category_name", "quantity", "wacc", "last_cost", "value_wacc", "value_fifo", "value_lifo", "value_last", "spread_min_max", "item_id"],
+  "item-lifecycle": ["item_code", "item_name", "category_name", "stock_on_hand", "current_wacc", "sale_price", "current_margin_percent", "purchase_qty", "purchase_value", "sales_qty", "sales_revenue", "sales_cost", "sales_return_value", "purchase_return_value", "lifetime_gross_profit", "total_transactions", "distinct_suppliers", "first_purchase_date", "last_purchase_date", "distinct_customers", "first_sale_date", "last_sale_date", "sales_return_qty", "purchase_return_qty", "transfer_in_qty", "transfer_out_qty", "item_id"],
+  "margin-drift": ["item_code", "item_name", "category_name", "sale_price", "first_period_cost", "last_period_cost", "current_cost", "cost_change", "previous_margin_percent", "current_margin_percent", "margin_decline_percent", "item_id"],
+  "inventory-turnover": ["item_code", "item_name", "category_name", "stock_on_hand", "inventory_value", "quantity_sold", "cogs", "avg_daily_sales", "days_of_stock", "turnover_ratio", "stock_velocity_status", "item_id"],
+  "stock-adjustment-audit": ["date", "item_code", "item_name", "category_name", "warehouse_name", "qty_change", "before_qty", "after_qty", "cost_basis", "value_impact", "reason", "created_by", "id"],
+
+  // ── Accounts ──
+  "ar-aging": ["customer_name", "phone", "invoice_count", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_invoice_date", "customer_id"],
+  "ap-aging": ["supplier_name", "phone", "purchase_count", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_purchase_date", "supplier_id"],
+  "profit-loss": ["section", "label", "amount", "pct"],
   "customer-statement": ["ref_no", "date", "type", "amount", "status", "running_balance"],
-  "top-customers": ["customer_name", "phone", "invoice_count", "gross_spent", "returns_amount", "total_spent", "avg_order_value", "last_purchase_date", "loyalty_points", "loyalty_tier"],
-  "collection-efficiency": ["customer_name", "total_invoices", "total_billed", "collected", "outstanding", "collection_rate", "days_to_collect"],
+  "top-customers": ["customer_name", "phone", "invoice_count", "gross_spent", "returns_amount", "total_spent", "avg_order_value", "last_purchase_date", "loyalty_points", "loyalty_tier", "customer_id"],
+  "collection-efficiency": ["customer_name", "total_invoices", "total_billed", "collected", "outstanding", "collection_rate", "days_to_collect", "customer_id"],
   "supplier-statement": ["ref_no", "date", "type", "amount", "status", "running_balance"],
+  "customer-loyalty": ["customer_name", "phone", "loyalty_points", "loyalty_tier", "gross_spent", "returns_amount", "total_spent", "invoice_count", "last_purchase_date"],
+  "customer-profitability": ["customer_name", "phone", "invoice_count", "gross_revenue", "avg_invoice_value", "returns_amount", "net_revenue", "cost", "gross_profit", "margin_percent", "return_rate_percent", "days_since_last_purchase", "customer_id"],
+  "daily-owner-snapshot": ["period_start", "period_end", "invoice_count", "selling_total", "total_discount", "additions_amount", "gross_sales", "returns_amount", "net_sales", "cogs", "gross_profit", "expenses", "other_revenues", "withdrawals", "net_profit", "overdue_receivables_count", "low_stock_alerts_count"],
+  "supplier-purchases-history": ["purchase_no", "date", "supplier_name", "total", "status", "payment_type", "item_count", "created_by"],
+  "supplier-returns-history": ["return_ref", "date", "supplier_name", "return_total", "reason", "refund_method", "items_returned"],
+  "supplier-reliability": ["supplier_name", "phone", "purchase_count", "total_purchases", "return_count", "total_returns", "return_rate_percent", "avg_payment_days", "repeat_items", "avg_price_spread_percent", "last_purchase_date", "supplier_id"],
+
+  // ── Treasury ──
   "cash-flow": ["date", "type", "total"],
   "treasury": ["name", "code", "balance", "source", "tx_count"],
   "cash-consistency": ["date", "shift_id", "cashier", "opening_cash", "closing_cash", "sales_total", "expected_cash", "cash_variance", "invoice_count", "status"],
   "payment-method-flow": ["payment_type", "date", "transaction_count", "total_amount", "running_total"],
   "bank-cash-split": ["type", "name", "balance", "percentage"],
   "reconciliation-exceptions": ["date", "shift_id", "cashier", "opening_cash", "closing_cash", "sales_total", "expected_cash", "cash_variance", "invoice_count", "status"],
+  "daily-sessions": ["date", "cashier", "opening_cash", "closing_cash", "sales_total", "total_discount", "invoice_count", "cash_variance", "status"],
+  "withdrawals-report": ["reference_no", "date", "amount", "reason", "payment_method", "created_by", "id"],
+
+  // ── Tax ──
   "vat": ["tax_rate", "taxable_sales", "vat_amount", "invoice_count"],
   "output-vat": ["tax_rate", "taxable_amount", "vat_amount", "invoice_count", "customer_count"],
   "input-vat": ["tax_rate", "taxable_amount", "vat_amount", "purchase_count", "supplier_count"],
-  "vat-filing-summary": ["sales_total", "output_vat", "purchases_total", "input_vat"],
-  "returns-tax-effect": ["return_ref", "date", "return_amount", "vat_reversed", "items_returned"],
-  "audit-log": ["id", "user_id", "full_name", "action", "resource", "payload_json", "created_at"],
-  "user-activity": ["user_id", "full_name", "action", "resource", "action_count", "date"],
-  "sales-returns-summary": ["date", "return_count", "returns_total", "customer_count", "items_returned"],
-  "sales-returns-by-customer": ["customer_name", "return_count", "returns_total", "last_return_date"],
+  "vat-filing-summary": ["sales_total", "output_vat", "purchases_total", "input_vat", "net_vat"],
+  "returns-tax-effect": ["return_ref", "date", "return_amount", "vat_reversed", "items_returned", "customer_id"],
+
+  // ── Audit / Users ──
+  "audit-log": ["id", "full_name", "action", "resource", "payload_json", "created_at", "user_id"],
+  "user-activity": ["full_name", "action", "resource", "action_count", "date", "user_id"],
+  "user-list": ["id", "username", "full_name", "role", "status", "created_at", "last_login", "updated_at"],
+  "user-performance": ["full_name", "invoice_count", "total_sales", "total_discount", "avg_invoice_value", "returns_handled", "returns_amount", "shift_count", "user_id"],
+  "login-history": ["full_name", "action", "date", "details", "resource", "id", "user_id"],
+
+  // ── Sales / Purchase returns summaries ──
+  "sales-returns-summary": ["date", "return_count", "returns_total", "customer_count", "items_returned", "avg_return_value"],
+  "sales-returns-by-customer": ["customer_name", "return_count", "returns_total", "avg_return_value", "last_return_date"],
   "purchase-returns-summary": ["date", "return_count", "returns_total", "supplier_count", "items_returned"],
   "purchase-returns-by-supplier": ["supplier_name", "return_count", "returns_total", "last_return_date"],
-  "customer-loyalty": ["customer_name", "phone", "loyalty_points", "loyalty_tier", "gross_spent", "returns_amount", "total_spent", "invoice_count", "last_purchase_date"],
-  "supplier-purchases-history": ["purchase_no", "date", "supplier_name", "total", "status", "payment_type", "item_count", "created_by"],
-  "supplier-returns-history": ["return_ref", "date", "supplier_name", "return_total", "reason", "refund_method", "items_returned"],
-  "daily-sessions": ["date", "cashier", "opening_cash", "closing_cash", "sales_total", "total_discount", "invoice_count", "cash_variance", "status"],
-  "withdrawals-report": ["id", "reference_no", "date", "amount", "reason", "status", "treasury_name", "created_by"],
-  "expense-summary": ["date", "expense_count", "total_expenses", "category_count"],
-  "detailed-expenses": ["id", "date", "category_name", "amount", "payment_type", "description", "created_by"],
-  "expenses-by-category": ["category_name", "expense_count", "total_amount", "percentage"],
-  "expenses-by-payment": ["payment_type", "expense_count", "total_amount"],
-  "revenue-summary": ["date", "revenue_count", "total_revenue", "category_count"],
-  "detailed-revenues": ["id", "date", "category_name", "amount", "payment_type", "description", "created_by"],
-  "revenues-by-category": ["category_name", "revenue_count", "total_amount", "percentage"],
-  "revenues-by-payment": ["payment_type", "revenue_count", "total_amount"],
-  "cheque-listing": ["cheque_no", "date", "bank_name", "amount", "status", "due_date", "payee_name"],
-  "bank-transactions": ["date", "bank_name", "type", "amount", "reference_no", "description"],
-  "bank-summary": ["bank_name", "account_no", "balance", "available_balance", "tx_count"],
-  "installment-plans": ["customer_name", "total_amount", "paid_amount", "outstanding", "installment_count", "start_date", "status"],
-  "installment-collections": ["date", "customer_name", "installment_no", "amount", "payment_type", "status"],
-  "installments-by-customer": ["customer_name", "total_plans", "total_amount", "collected", "outstanding", "overdue"],
-  "installment-delinquent": ["customer_name", "plan_id", "overdue_amount", "due_date", "days_overdue"],
-  "branch-transfers": ["transfer_no", "date", "from_warehouse", "to_warehouse", "item_name", "quantity", "status", "created_by"],
-  "warehouse-levels": ["item_code", "item_name", "warehouse", "quantity", "min_stock_qty", "stock_status", "total_value"],
-  "warehouse-levels-summary": ["warehouse", "item_count", "total_quantity", "total_value"],
-  "employee-adjustments": ["date", "employee_name", "adjustment_type", "amount", "reason", "status"],
-  "user-list": ["id", "username", "full_name", "role", "status", "created_at", "last_login"],
-  "user-performance": ["full_name", "invoice_count", "total_sales", "total_discount", "avg_invoice_value", "returns_handled", "returns_amount", "shift_count"],
-  "login-history": ["id", "full_name", "action", "date", "details", "resource"],
-  "profit-by-category": ["category_name", "revenue", "cost", "profit_margin", "margin_percent", "quantity_sold"],
-  "profit-by-customer": ["customer_name", "revenue", "cost", "profit_margin", "margin_percent", "invoice_count"],
-  "profit-by-period": ["period", "revenue", "cost", "profit_margin", "margin_percent", "invoice_count"],
-  "cost-movements": ["date", "item_code", "item_name", "movement_type", "quantity", "unit_cost", "running_quantity", "running_wacc", "source_doc_no", "source_table", "created_by"],
-  "cost-method-comparison": ["item_code", "item_name", "category_name", "quantity", "value_wacc", "value_fifo", "value_lifo", "value_last", "spread_min_max"],
-  "item-lifecycle": ["item_code", "item_name", "category_name", "stock_on_hand", "current_wacc", "sale_price", "current_margin_percent", "purchase_qty", "purchase_value", "sales_qty", "sales_revenue", "sales_cost", "sales_return_value", "purchase_return_value", "lifetime_gross_profit", "total_transactions"],
-  "margin-drift": ["item_code", "item_name", "category_name", "sale_price", "first_period_cost", "last_period_cost", "current_cost", "cost_change", "previous_margin_percent", "current_margin_percent", "margin_decline_percent"],
-  "inventory-turnover": ["item_code", "item_name", "category_name", "stock_on_hand", "inventory_value", "qty_sold", "cogs", "avg_daily_sales", "days_of_stock", "turnover_ratio", "stock_velocity_status"],
-  "cashier-override-impact": ["cashier", "override_count", "price_downs", "price_ups", "estimated_revenue_impact", "avg_diff_pct", "discount_invoice_count", "total_header_discount", "avg_discount_pct"],
-  "customer-profitability": ["customer_name", "phone", "invoice_count", "gross_revenue", "returns_amount", "net_revenue", "cost", "gross_profit", "margin_percent", "return_rate_percent", "days_since_last_purchase"],
-  "supplier-reliability": ["supplier_name", "phone", "purchase_count", "total_purchases", "return_count", "total_returns", "return_rate_percent", "avg_payment_days", "repeat_items", "avg_price_spread_percent", "last_purchase_date"],
-  "stock-adjustment-audit": ["date", "item_code", "item_name", "category_name", "warehouse_name", "qty_change", "before_qty", "after_qty", "cost_basis", "value_impact", "reason", "created_by"],
-  "daily-owner-snapshot": ["period_start", "period_end", "invoice_count", "gross_sales", "returns_amount", "net_sales", "cogs", "gross_profit", "expenses", "other_revenues", "withdrawals", "net_profit", "overdue_receivables_count", "low_stock_alerts_count"],
+
+  // ── Expenses / Revenues ──
+  "expense-summary": ["date", "expense_count", "total_expenses", "avg_expense", "category_count"],
+  "detailed-expenses": ["date", "category_name", "amount", "payment_method", "description", "notes", "employee_id"],
+  "expenses-by-category": ["category_name", "expense_count", "total_expenses", "avg_expense", "pct_of_total", "last_expense_date"],
+  "expenses-by-payment": ["payment_method", "expense_count", "total_expenses", "avg_expense"],
+  "revenue-summary": ["date", "revenue_count", "total_revenues", "avg_revenue", "category_count"],
+  "detailed-revenues": ["date", "category_name", "amount", "payment_type", "description", "notes"],
+  "revenues-by-category": ["category_name", "revenue_count", "total_revenues", "avg_revenue", "pct_of_total"],
+  "revenues-by-payment": ["payment_method", "revenue_count", "total_revenues", "avg_revenue"],
+
+  // ── Cheques / Banks ──
+  "cheque-listing": ["cheque_no", "bank_name", "type", "amount", "due_date", "status", "drawer_name", "created_date", "notes", "id", "party_type", "party_id"],
+  "bank-transactions": ["date", "bank_name", "type", "amount", "reference", "notes", "id"],
+  "bank-summary": ["name", "balance", "transaction_count", "total_deposits", "total_withdrawals", "net_flow"],
+
+  // ── Installments ──
+  "installment-plans": ["id", "customer_name", "total", "paid_amount", "remaining", "down_payment", "frequency", "installment_count", "installment_amount", "due_date", "status", "remaining_pct", "created_date", "paid_at"],
+  "installment-collections": ["id", "customer_name", "installment_amount", "due_date", "paid_at", "status", "remaining", "total"],
+  "installments-by-customer": ["customer_name", "plan_count", "total_amount", "total_paid", "total_remaining", "last_due_date", "paid_count", "pending_count"],
+  "installment-delinquent": ["id", "customer_name", "total", "remaining", "installment_amount", "due_date", "days_overdue", "overdue_bucket"],
+
+  // ── Warehouses ──
+  "branch-transfers": ["reference_no", "date", "type", "warehouse_name", "item_count", "notes", "created_by", "id"],
+  "warehouse-levels": ["warehouse_name", "item_count", "total_quantity", "total_value", "low_stock_items", "value_share_pct"],
+  "warehouse-levels-summary": ["warehouse_name", "item_count", "total_quantity", "total_value", "low_stock_items", "value_share_pct"],
+  "employee-adjustments": ["date", "employee_name", "adjustment_type", "amount", "reason", "created_by", "id"],
+
+  // ── Profit ──
+  "profit-by-category": ["category_name", "quantity_sold", "selling_total", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "avg_unit_price", "avg_unit_cost"],
+  "profit-by-customer": ["customer_name", "invoice_count", "selling_total", "total_discount", "additions_amount", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "avg_invoice_value"],
+  "profit-by-period": ["date", "invoice_count", "selling_total", "total_discount", "additions_amount", "revenue", "cost_of_goods_sold", "returns_amount", "gross_profit", "expenses", "net_profit", "margin_percent", "avg_invoice_value"],
+
+  // ── Sales analytics ──
+  "cashier-override-impact": ["cashier", "override_count", "price_downs", "price_ups", "estimated_revenue_impact", "avg_diff_pct", "discount_invoice_count", "total_header_discount", "avg_discount_pct", "cashier_id"],
+};
+
+// Extra analytics columns per report: shipped with the data and toggleable from the
+// "الأعمدة" picker, but hidden by default so the default layout stays focused.
+const REPORT_EXTRA_KEYS = {
+  "daily-sales": new Set(["avg_invoice_value", "margin_percent"]),
+  "gross-net-sales": new Set(["avg_invoice_value", "margin_percent"]),
+  "sales-by-item": new Set(["selling_total", "avg_unit_cost", "wacc"]),
+  "margin-by-item": new Set(["selling_total", "avg_unit_price", "avg_unit_cost", "wacc"]),
+  "sales-by-category": new Set(["selling_total", "avg_unit_cost"]),
+  "margin-by-category": new Set(["selling_total", "avg_unit_cost"]),
+  "sales-by-cashier": new Set(["margin_percent", "items_per_invoice"]),
+  "sales-by-payment": new Set(["net_sales", "pct_of_sales"]),
+  "period-comparison": new Set(["margin_percent", "avg_invoice_value"]),
+  "sales-returns-summary": new Set(["avg_return_value"]),
+  "sales-returns-by-customer": new Set(["avg_return_value"]),
+  "purchases-by-supplier": new Set(["net_purchases"]),
+  "stock-levels": new Set(["wacc", "last_purchase_cost", "sale_price", "potential_revenue"]),
+  "stock-valuation": new Set(["sale_price", "potential_revenue"]),
+  "slow-moving": new Set(["potential_profit"]),
+  "warehouse-levels": new Set(["value_share_pct"]),
+  "warehouse-levels-summary": new Set(["value_share_pct"]),
+  "ar-aging": new Set(["overdue_amount"]),
+  "ap-aging": new Set(["overdue_amount"]),
+  "customer-profitability": new Set(["avg_invoice_value"]),
+  "vat-filing-summary": new Set(["net_vat"]),
+  "expenses-by-category": new Set(["pct_of_total"]),
+  "revenues-by-category": new Set(["pct_of_total"]),
+  "bank-summary": new Set(["net_flow"]),
+  "profit-by-customer": new Set(["avg_invoice_value"]),
+  "profit-by-period": new Set(["margin_percent", "avg_invoice_value"]),
+  "profit-by-category": new Set(["avg_unit_price", "avg_unit_cost"]),
 };
 
 const CODE_KEYS = new Set(["id", "item_code", "code", "sku", "barcode", "invoice_no", "purchase_no", "ref_no", "return_ref", "reference_id", "shift_id", "user_id", "warehouse_id", "batch_no", "section"]);
 const DATE_KEYS = new Set(["date", "created_at", "opened_date", "closed_at", "purchase_date", "last_purchase_date", "last_invoice_date", "last_sale_date", "last_movement_date", "expiry_date", "updated_at"]);
-const PERCENT_KEYS = new Set(["pct", "margin_percent", "current_margin_percent", "min_margin_percent", "avg_discount_percent", "collection_rate", "percentage", "tax_rate", "avg_discount_percent", "collection_rate"]);
-const NUMBER_KEYS = new Set(["quantity", "quantity_sold", "quantity_purchased", "stock_quantity", "system_quantity", "total_quantity", "before_qty", "after_qty", "min_stock_qty", "item_count", "invoice_count", "purchase_count", "returns_count", "return_count", "items_returned", "transaction_count", "action_count", "total_invoices", "total_items_sold", "distinct_suppliers", "supplier_count", "customer_count", "tx_count", "days_until_expiry", "days_since_last_movement", "days_since_last_sale", "days_to_collect", "weekday_num", "cancelled_count", "loyalty_points", "suggested_order_qty", "returns_handled", "weekday_num", "shift_count"]);
+const PERCENT_KEYS = new Set(["pct", "margin_percent", "current_margin_percent", "min_margin_percent", "avg_discount_percent", "collection_rate", "percentage", "tax_rate", "avg_discount_percent", "collection_rate", "pct_of_sales", "pct_of_total", "value_share_pct"]);
+const NUMBER_KEYS = new Set(["quantity", "quantity_sold", "quantity_purchased", "stock_quantity", "system_quantity", "total_quantity", "before_qty", "after_qty", "min_stock_qty", "item_count", "invoice_count", "purchase_count", "returns_count", "return_count", "items_returned", "transaction_count", "action_count", "total_invoices", "total_items_sold", "distinct_suppliers", "supplier_count", "customer_count", "tx_count", "days_until_expiry", "days_since_last_movement", "days_since_last_sale", "days_to_collect", "weekday_num", "cancelled_count", "loyalty_points", "suggested_order_qty", "returns_handled", "weekday_num", "shift_count", "items_per_invoice"]);
+
+// Money keys that lack an obvious substring match below (e.g. WACC).
+const MONEY_KEYS = new Set(["wacc", "current_wacc", "running_wacc", "net_purchases", "selling_total", "net_flow"]);
 
 function inferType(key) {
   if (CODE_KEYS.has(key)) return "code";
   if (DATE_KEYS.has(key) || key.endsWith("_date")) return "date";
   if (PERCENT_KEYS.has(key) || key.endsWith("_percent")) return "percent";
   if (NUMBER_KEYS.has(key) || key.endsWith("_count")) return "number";
+  if (MONEY_KEYS.has(key)) return "money";
   if (key.includes("price") || key.includes("cost") || key.includes("total") || key.includes("amount") || key.includes("balance") || key.includes("sales") || key.includes("profit") || key.includes("discount") || key.includes("vat") || key.includes("cash") || key.includes("revenue") || key.includes("value") || key.includes("collected") || key.includes("outstanding") || key.includes("due")) return "money";
   return "text";
 }
@@ -674,19 +762,28 @@ function inferPriority(key, index) {
 const INTERNAL_KEYS = new Set([
   "payload_json", "source_table", "source_doc_no", "weekday_num", "party_type",
   "party_id", "reference_id", "reference_type", "plan_id",
+  // Join/grouping keys that duplicate a human-readable column already shown
+  // (e.g. customer_id alongside customer_name). Kept available but hidden by default.
+  "customer_id", "supplier_id", "cashier_id", "item_id", "warehouse_id", "user_id",
+  "employee_id", "source_id", "source_line_id",
 ]);
 
 function labelForKey(key) {
   return AR_LABELS[key] || key;
 }
 
-function buildColumn(key, index = 0) {
+// How many *core* (non-extra, non-internal) columns are visible by default.
+const MAX_DEFAULT_VISIBLE = 12;
+
+function buildColumn(key, coreIndex = 0, hidden = false) {
   return {
     key,
     label: labelForKey(key),
     type: inferType(key),
-    printPriority: inferPriority(key, index),
-    defaultVisible: index < 10 && !INTERNAL_KEYS.has(key),
+    printPriority: hidden ? "optional" : inferPriority(key, coreIndex),
+    // Hidden (extra/internal) columns never take a visible slot, so appending extras
+    // can't bump a core column (e.g. gross_profit) out of the default view.
+    defaultVisible: !hidden && coreIndex < MAX_DEFAULT_VISIBLE,
   };
 }
 
@@ -710,7 +807,12 @@ function getReportColumns(slug, rows = []) {
   const rowKeys = Object.keys(rows?.[0] || {});
   const catalogKeys = REPORT_COLUMN_KEYS[slug] || [];
   const keys = rowKeys.length ? orderKeys(rowKeys, slug) : catalogKeys;
-  return keys.map(buildColumn);
+  const extras = REPORT_EXTRA_KEYS[slug];
+  let coreIndex = 0;
+  return keys.map((key) => {
+    const hidden = INTERNAL_KEYS.has(key) || (extras ? extras.has(key) : false);
+    return buildColumn(key, hidden ? Infinity : coreIndex++, hidden);
+  });
 }
 
 function getReportTitle(slug, fallback = "") {

@@ -29,7 +29,9 @@ function warehouseLevels(startDate, endDate, opts = {}) {
       COUNT(DISTINCT sl.item_id) AS item_count,
       COALESCE(SUM(sl.quantity), 0) AS total_quantity,
       COALESCE(SUM(sl.quantity * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price)), 0) AS total_value,
-      COUNT(DISTINCT CASE WHEN sl.quantity <= COALESCE(it.min_stock_qty, 0) THEN sl.item_id END) AS low_stock_items
+      COUNT(DISTINCT CASE WHEN sl.quantity <= COALESCE(it.min_stock_qty, 0) THEN sl.item_id END) AS low_stock_items,
+      ROUND(COALESCE(SUM(sl.quantity * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price)), 0) * 100.0
+        / NULLIF(SUM(SUM(sl.quantity * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price))) OVER (), 0), 1) AS value_share_pct
     FROM warehouses w
     LEFT JOIN stock_levels sl ON sl.warehouse_id = w.id
     LEFT JOIN items it ON it.id = sl.item_id

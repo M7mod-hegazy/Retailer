@@ -1,11 +1,16 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumn, getReturnCostColumn } = require("../helpers");
+const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
 
-// Pre-aggregated cost subquery per invoice (avoids Cartesian product with returns join)
+// Pre-aggregated cost subquery per invoice (avoids Cartesian product with returns join).
+// Joins items + per-item stock so getCostColumn can fall back to the item's current cost
+// when the frozen line snapshot is 0.
 function _costSubquery(costCol) {
   return `(
-    SELECT invoice_id, SUM(quantity * ${costCol}) AS total_cost
-    FROM invoice_lines GROUP BY invoice_id
+    SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS total_cost
+    FROM invoice_lines il
+    ${itemsCostJoin("il")}
+    ${stockCostJoin("il")}
+    GROUP BY il.invoice_id
   )`;
 }
 
@@ -43,6 +48,7 @@ function profitByCategory(startDate, endDate, opts = {}) {
   const stmt = db.prepare(`
     SELECT COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
+      SUM(il.line_total) AS selling_total,
       SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
       SUM(il.quantity * ${costCol}) AS cost,
       COALESCE(SUM(ret.return_revenue * il.line_total / NULLIF(inv_sums.line_sum, 0)), 0) AS returns_amount,
@@ -54,10 +60,13 @@ function profitByCategory(startDate, endDate, opts = {}) {
         THEN ROUND(
           (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})) /
           SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) * 100, 1)
-        ELSE 0 END AS margin_percent
+        ELSE 0 END AS margin_percent,
+      ROUND(SUM(il.line_total) * 1.0 / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_price,
+      ROUND(SUM(il.quantity * ${costCol}) / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_cost
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
     LEFT JOIN item_categories c ON c.id = it.category_id
     LEFT JOIN (
       SELECT invoice_id, SUM(line_total) AS line_sum
@@ -84,8 +93,10 @@ function profitByCustomer(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT COALESCE(c.name, 'نقدي') AS customer_name,
       COUNT(DISTINCT i.id) AS invoice_count,
-      SUM(i.total) AS revenue,
+      SUM(i.subtotal) AS selling_total,
       SUM(i.discount) AS total_discount,
+      SUM(i.increase) AS additions_amount,
+      SUM(i.total) AS revenue,
       COALESCE(SUM(il_agg.total_cost), 0) AS cost,
       COALESCE(SUM(ret.return_revenue), 0) AS returns_amount,
       SUM(i.total)
@@ -95,7 +106,8 @@ function profitByCustomer(startDate, endDate, opts = {}) {
       CASE WHEN SUM(i.total) > 0
         THEN ROUND(
           (SUM(i.total) - COALESCE(SUM(il_agg.total_cost), 0)) / SUM(i.total) * 100, 1)
-        ELSE 0 END AS margin_percent
+        ELSE 0 END AS margin_percent,
+      CASE WHEN COUNT(DISTINCT i.id) > 0 THEN ROUND(SUM(i.total) * 1.0 / COUNT(DISTINCT i.id), 2) ELSE 0 END AS avg_invoice_value
     FROM invoices i
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN ${_costSubquery(costCol)} il_agg ON il_agg.invoice_id = i.id
@@ -114,8 +126,10 @@ function profitByPeriod(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
       COUNT(DISTINCT i.id) AS invoice_count,
-      SUM(i.total) AS revenue,
+      SUM(i.subtotal) AS selling_total,
       SUM(i.discount) AS total_discount,
+      SUM(i.increase) AS additions_amount,
+      SUM(i.total) AS revenue,
       COALESCE(SUM(il_agg.total_cost), 0) AS cost_of_goods_sold,
       COALESCE(SUM(ret.return_revenue), 0) AS returns_amount,
       SUM(i.total)
@@ -129,7 +143,12 @@ function profitByPeriod(startDate, endDate, opts = {}) {
         - COALESCE(SUM(il_agg.total_cost), 0)
         - COALESCE(SUM(ret.return_revenue), 0)
         + COALESCE(SUM(ret.return_cost), 0)
-        - COALESCE((SELECT SUM(e2.amount) FROM expenses e2 WHERE DATE(e2.created_at) = DATE(i.created_at)), 0) AS net_profit
+        - COALESCE((SELECT SUM(e2.amount) FROM expenses e2 WHERE DATE(e2.created_at) = DATE(i.created_at)), 0) AS net_profit,
+      CASE WHEN SUM(i.total) > 0
+        THEN ROUND((SUM(i.total) - COALESCE(SUM(il_agg.total_cost), 0)
+          - COALESCE(SUM(ret.return_revenue), 0) + COALESCE(SUM(ret.return_cost), 0))
+          / SUM(i.total) * 100, 1) ELSE 0 END AS margin_percent,
+      CASE WHEN COUNT(DISTINCT i.id) > 0 THEN ROUND(SUM(i.total) * 1.0 / COUNT(DISTINCT i.id), 2) ELSE 0 END AS avg_invoice_value
     FROM invoices i
     LEFT JOIN ${_costSubquery(costCol)} il_agg ON il_agg.invoice_id = i.id
     LEFT JOIN ${_returnsSubquery(opts.cost_method)} ret ON ret.invoice_id = i.id

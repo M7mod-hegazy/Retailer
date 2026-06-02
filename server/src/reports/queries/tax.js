@@ -65,6 +65,7 @@ function vatFilingSummary(startDate, endDate, opts = {}) {
   const custVals = customer_id ? [customer_id] : [];
   const invParams1 = [], invParams2 = [], prchParams1 = [], prchParams2 = [];
   return db.prepare(`
+    SELECT *, (output_vat - input_vat) AS net_vat FROM (
     SELECT
       (SELECT COALESCE(SUM(il.line_total), 0)
        FROM invoice_lines il
@@ -86,7 +87,8 @@ function vatFilingSummary(startDate, endDate, opts = {}) {
        JOIN purchases p ON p.id = pl.purchase_id
        JOIN items it ON it.id = pl.item_id
        WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, prchParams2)}) AS input_vat
-  `).all(...invParams1, ...custVals, ...invParams2, ...custVals);
+    )
+  `).all(...invParams1, ...custVals, ...invParams2, ...custVals, ...prchParams1, ...prchParams2);
 }
 
 function returnsTaxEffect(startDate, endDate, opts = {}) {

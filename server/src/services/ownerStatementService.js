@@ -1,6 +1,6 @@
 const { getDb } = require("../config/database");
 const { arAging, apAging } = require("../reports/queries/accounts");
-const { addDateFilter, getCostColumn, getReturnCostColumn } = require("../reports/helpers");
+const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin } = require("../reports/helpers");
 const { calculateDailySummary, localDate } = require("./dailySessionService");
 
 const COST_METHODS = new Set(["wacc", "fifo", "lifo", "last_purchase"]);
@@ -297,6 +297,7 @@ function getProfitRows(db, startDate, endDate, costMethod) {
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     LEFT JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
     WHERE COALESCE(i.status, '') != 'cancelled' ${dateWhere("i.created_at", startDate, endDate, cogsParams)}
   `, cogsParams);
 

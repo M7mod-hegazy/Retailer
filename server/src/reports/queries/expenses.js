@@ -61,6 +61,7 @@ function expensesByCategory(startDate, endDate, opts = {}) {
       COUNT(*) AS expense_count,
       SUM(e.amount) AS total_expenses,
       ROUND(AVG(e.amount), 2) AS avg_expense,
+      ROUND(SUM(e.amount) * 100.0 / NULLIF(SUM(SUM(e.amount)) OVER (), 0), 1) AS pct_of_total,
       MAX(DATE(e.created_at)) AS last_expense_date
     FROM expenses e
     LEFT JOIN expense_categories c ON c.id = e.category_id

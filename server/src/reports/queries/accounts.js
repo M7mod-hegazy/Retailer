@@ -1,5 +1,5 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumn, getReturnCostColumn } = require("../helpers");
+const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
 const { getProfitLoss } = require("../../services/reportService");
 
 function arAging(startDate, endDate, opts = {}) {
@@ -43,6 +43,8 @@ function arAging(startDate, endDate, opts = {}) {
       COALESCE(dt.aging_31_60, 0) AS aging_31_60,
       COALESCE(dt.aging_61_90, 0) AS aging_61_90,
       COALESCE(dt.aging_90_plus, 0) + MAX(0, COALESCE(c.opening_balance, 0) - COALESCE(dt.debt_total, 0)) AS aging_90_plus,
+      COALESCE(dt.aging_31_60, 0) + COALESCE(dt.aging_61_90, 0)
+        + COALESCE(dt.aging_90_plus, 0) + MAX(0, COALESCE(c.opening_balance, 0) - COALESCE(dt.debt_total, 0)) AS overdue_amount,
       dt.last_invoice_date
     FROM customers c
     LEFT JOIN debt_totals dt ON dt.customer_id = c.id
@@ -93,6 +95,8 @@ function apAging(startDate, endDate, opts = {}) {
       COALESCE(dt.aging_31_60, 0) AS aging_31_60,
       COALESCE(dt.aging_61_90, 0) AS aging_61_90,
       COALESCE(dt.aging_90_plus, 0) + MAX(0, COALESCE(s.opening_balance, 0) - COALESCE(dt.debt_total, 0)) AS aging_90_plus,
+      COALESCE(dt.aging_31_60, 0) + COALESCE(dt.aging_61_90, 0)
+        + COALESCE(dt.aging_90_plus, 0) + MAX(0, COALESCE(s.opening_balance, 0) - COALESCE(dt.debt_total, 0)) AS overdue_amount,
       dt.last_purchase_date
     FROM suppliers s
     LEFT JOIN debt_totals dt ON dt.supplier_id = s.id
@@ -227,7 +231,7 @@ function supplierStatement(startDate, endDate, opts = {}) {
   if (!supplier) return [];
   const params = [];
   const txns = db.prepare(`
-    SELECT p.purchase_no AS ref_no, DATE(p.created_at) AS date,
+    SELECT p.doc_no AS ref_no, DATE(p.created_at) AS date,
       'مشتريات' AS type, p.total AS amount, p.status
     FROM purchases p
     WHERE p.supplier_id = ? AND p.status != 'cancelled'
@@ -268,9 +272,9 @@ function supplierPurchasesHistory(startDate, endDate, opts = {}) {
   const params = [];
   const { supplier_id } = opts;
   return db.prepare(`
-    SELECT p.purchase_no, DATE(p.created_at) AS date,
+    SELECT p.doc_no AS purchase_no, DATE(p.created_at) AS date,
       s.name AS supplier_name,
-      p.total, p.status, p.payment_type,
+      p.total, p.status, p.payment_method AS payment_type,
       COUNT(pl.id) AS item_count,
       u.full_name AS created_by
     FROM purchases p
@@ -477,6 +481,7 @@ function customerProfitabilityReport(startDate, endDate, opts = {}) {
       c.id AS customer_id,
       COALESCE(inv.invoice_count, 0) AS invoice_count,
       COALESCE(inv.revenue, 0) AS gross_revenue,
+      ROUND(COALESCE(inv.revenue, 0) * 1.0 / NULLIF(inv.invoice_count, 0), 2) AS avg_invoice_value,
       COALESCE(ret.returns_amount, 0) AS returns_amount,
       COALESCE(inv.revenue, 0) - COALESCE(ret.returns_amount, 0) AS net_revenue,
       COALESCE(inv.cost, 0) - COALESCE(ret.return_cost, 0) AS cost,
@@ -500,9 +505,11 @@ function customerProfitabilityReport(startDate, endDate, opts = {}) {
         MAX(DATE(i.created_at)) AS last_purchase_date
       FROM invoices i
       LEFT JOIN (
-        SELECT invoice_id, SUM(quantity * ${costCol}) AS cost
-        FROM invoice_lines
-        GROUP BY invoice_id
+        SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS cost
+        FROM invoice_lines il
+        ${itemsCostJoin("il")}
+        ${stockCostJoin("il")}
+        GROUP BY il.invoice_id
       ) cost_agg ON cost_agg.invoice_id = i.id
       WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
       GROUP BY i.customer_id
@@ -535,14 +542,18 @@ function dailyOwnerSnapshot(startDate, endDate, opts = {}) {
   const returnCostCol = getReturnCostColumn(opts.cost_method);
   const sales = db.prepare(`
     SELECT COALESCE(SUM(i.total), 0) AS revenue,
+      COALESCE(SUM(i.subtotal), 0) AS selling_total,
       COALESCE(SUM(i.discount), 0) AS discounts,
+      COALESCE(SUM(i.increase), 0) AS additions_amount,
       COALESCE(SUM(cost_agg.cogs), 0) AS cogs,
       COUNT(DISTINCT i.id) AS invoice_count
     FROM invoices i
     LEFT JOIN (
-      SELECT invoice_id, SUM(quantity * ${costCol}) AS cogs
-      FROM invoice_lines
-      GROUP BY invoice_id
+      SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS cogs
+      FROM invoice_lines il
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
+      GROUP BY il.invoice_id
     ) cost_agg ON cost_agg.invoice_id = i.id
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
   `).get(...invoiceParams);
@@ -587,6 +598,9 @@ function dailyOwnerSnapshot(startDate, endDate, opts = {}) {
     period_start: startDate || null,
     period_end: endDate || null,
     invoice_count: sales.invoice_count,
+    selling_total: sales.selling_total,
+    total_discount: sales.discounts,
+    additions_amount: sales.additions_amount,
     gross_sales: sales.revenue,
     returns_amount: returns.returns_amount,
     net_sales: netSales,

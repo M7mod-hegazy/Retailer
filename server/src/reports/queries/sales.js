@@ -1,5 +1,5 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumn, getReturnCostColumn, addPaymentTypeFilter } = require("../helpers");
+const { addDateFilter, getCostColumn, getReturnCostColumn, addPaymentTypeFilter, stockCostJoin, itemsCostJoin } = require("../helpers");
 const { getItemsBelowMargin } = require("../../services/waccService");
 
 function dailySales(startDate, endDate, opts = {}) {
@@ -11,18 +11,28 @@ function dailySales(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
       COUNT(i.id) AS invoice_count,
-      SUM(i.total) AS gross_sales,
+      SUM(i.subtotal) AS selling_total,
       SUM(i.discount) AS total_discount,
+      SUM(i.increase) AS additions_amount,
+      SUM(i.total) AS gross_sales,
       COALESCE(SUM(il_agg.total_cost), 0) AS total_cost,
       COALESCE(SUM(ret.return_total), 0) AS returns_amount,
       COALESCE(SUM(ret.return_count), 0) AS returns_count,
       SUM(i.total) - COALESCE(SUM(ret.return_total), 0) AS net_sales,
       SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
-        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit
+        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit,
+      CASE WHEN COUNT(i.id) > 0 THEN ROUND(SUM(i.total) * 1.0 / COUNT(i.id), 2) ELSE 0 END AS avg_invoice_value,
+      CASE WHEN (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) > 0
+        THEN ROUND((SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
+          - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0))
+          / (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) * 100, 1) ELSE 0 END AS margin_percent
     FROM invoices i
     LEFT JOIN (
-      SELECT invoice_id, SUM(quantity * ${costCol}) AS total_cost
-      FROM invoice_lines GROUP BY invoice_id
+      SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS total_cost
+      FROM invoice_lines il
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
+      GROUP BY il.invoice_id
     ) il_agg ON il_agg.invoice_id = i.id
     LEFT JOIN (
       SELECT sr.invoice_id,
@@ -57,7 +67,7 @@ function detailedSales(startDate, endDate, opts = {}) {
       u.full_name AS cashier,
       i.customer_id,
       i.payment_type, i.status,
-      i.subtotal, i.discount, i.total,
+      i.subtotal, i.discount, i.increase AS additions_amount, i.total,
       COUNT(il.id) AS item_count,
       CASE WHEN i.payment_type = 'multi' THEN (
         SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), ' / ')
@@ -99,7 +109,7 @@ function _detailSalesQuery(startDate, endDate, opts = {}) {
       u.full_name AS cashier,
       i.customer_id,
       i.payment_type, i.status,
-      i.subtotal, i.discount, i.total,
+      i.subtotal, i.discount, i.increase AS additions_amount, i.total,
       i.total AS net_sales,
       COUNT(il.id) AS item_count,
       CASE WHEN i.payment_type = 'multi' THEN (
@@ -149,6 +159,7 @@ function _detailItemSalesQuery(startDate, endDate, opts = {}) {
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
     LEFT JOIN item_categories cat ON cat.id = it.category_id
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
@@ -184,22 +195,26 @@ function salesByItem(startDate, endDate, opts = {}) {
       COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
       SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
-      SUM(il.discount) AS discount_total,
+      SUM(il.discount) AS total_discount,
       SUM(il.quantity * ${costCol}) AS cost,
       COALESCE(MAX(ret.return_revenue), 0) AS returns_amount,
       COALESCE(MAX(ret.return_cost), 0) AS returns_cost,
       SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
         - SUM(il.quantity * ${costCol})
-        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS profit_margin,
+        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS gross_profit,
       CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0) > 0
         THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})
           - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0)) /
           (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
         ELSE 0 END AS margin_percent,
-      ROUND(SUM(il.line_total) * 1.0 / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_price
+      ROUND(SUM(il.line_total) * 1.0 / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_price,
+      SUM(il.line_total) AS selling_total,
+      ROUND(SUM(il.quantity * ${costCol}) / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_cost,
+      MAX(sl.wacc) AS wacc
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
     LEFT JOIN item_categories c ON c.id = it.category_id
     LEFT JOIN (
       SELECT invoice_id, SUM(line_total) AS line_sum
@@ -236,20 +251,29 @@ function salesByCategory(startDate, endDate, opts = {}) {
     SELECT COALESCE(c.name, 'غير مصنف') AS category_name,
       COUNT(DISTINCT it.id) AS item_count,
       SUM(il.quantity) AS quantity_sold,
-      SUM(il.line_total) - COALESCE(MAX(ret.return_revenue), 0) AS revenue,
-      SUM(il.discount) AS discount_total,
-      SUM(il.quantity * ${costCol}) - COALESCE(MAX(ret.return_cost), 0) AS cost,
-      SUM(il.line_total) - SUM(il.quantity * ${costCol})
-        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS profit_margin,
-      CASE WHEN SUM(il.line_total) - COALESCE(MAX(ret.return_revenue), 0) > 0
-        THEN ROUND(((SUM(il.line_total) - SUM(il.quantity * ${costCol})
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
+      SUM(il.discount) AS total_discount,
+      SUM(il.quantity * ${costCol}) AS cost,
+      COALESCE(MAX(ret.return_revenue), 0) AS returns_amount,
+      COALESCE(MAX(ret.return_cost), 0) AS returns_cost,
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})
+        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS gross_profit,
+      CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0) > 0
+        THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})
           - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0)) /
-          (SUM(il.line_total) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
-        ELSE 0 END AS margin_percent
+          (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
+        ELSE 0 END AS margin_percent,
+      SUM(il.line_total) AS selling_total,
+      ROUND(SUM(il.quantity * ${costCol}) / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_cost
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
     LEFT JOIN item_categories c ON c.id = it.category_id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(line_total) AS line_sum
+      FROM invoice_lines GROUP BY invoice_id
+    ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT it.category_id,
         SUM(srl.line_total) AS return_revenue,
@@ -292,7 +316,19 @@ function salesByCashier(startDate, endDate, opts = {}) {
       COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END), 0)
         - COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_total ELSE 0 END), 0)
         - COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN cost_agg.total_cost ELSE 0 END), 0)
-        + COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_cost ELSE 0 END), 0) AS gross_profit
+        + COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_cost ELSE 0 END), 0) AS gross_profit,
+      CASE WHEN (COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_total ELSE 0 END), 0)) > 0
+        THEN ROUND((COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_total ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN cost_agg.total_cost ELSE 0 END), 0)
+          + COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_cost ELSE 0 END), 0))
+          / (COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END), 0)
+          - COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN ret.return_total ELSE 0 END), 0)) * 100, 1)
+        ELSE 0 END AS margin_percent,
+      CASE WHEN COUNT(CASE WHEN i.status != 'cancelled' THEN 1 END) > 0
+        THEN ROUND(COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN il_agg.item_count ELSE 0 END), 0) * 1.0
+          / COUNT(CASE WHEN i.status != 'cancelled' THEN 1 END), 1) ELSE 0 END AS items_per_invoice
     FROM invoices i
     JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
     LEFT JOIN (
@@ -300,8 +336,11 @@ function salesByCashier(startDate, endDate, opts = {}) {
       FROM invoice_lines GROUP BY invoice_id
     ) il_agg ON il_agg.invoice_id = i.id
     LEFT JOIN (
-      SELECT invoice_id, COALESCE(SUM(quantity * ${costCol}), 0) AS total_cost
-      FROM invoice_lines GROUP BY invoice_id
+      SELECT il.invoice_id, COALESCE(SUM(il.quantity * ${costCol}), 0) AS total_cost
+      FROM invoice_lines il
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
+      GROUP BY il.invoice_id
     ) cost_agg ON cost_agg.invoice_id = i.id
     LEFT JOIN (
       SELECT sr.invoice_id,
@@ -383,8 +422,15 @@ function salesByPayment(startDate, endDate, opts = {}) {
       e.returns_amount += Number(row.returns_amount || 0);
     }
   }
-  return Array.from(merged.values())
-    .map(r => ({ ...r, avg_transaction: r.invoice_count > 0 ? r.total_sales / r.invoice_count : 0 }))
+  const list = Array.from(merged.values());
+  const grandTotal = list.reduce((s, r) => s + Number(r.total_sales || 0), 0);
+  return list
+    .map(r => ({
+      ...r,
+      avg_transaction: r.invoice_count > 0 ? r.total_sales / r.invoice_count : 0,
+      net_sales: Number(r.total_sales || 0) - Number(r.returns_amount || 0),
+      pct_of_sales: grandTotal > 0 ? Math.round((r.total_sales / grandTotal) * 1000) / 10 : 0,
+    }))
     .sort((a, b) => b.total_sales - a.total_sales);
 }
 
@@ -441,11 +487,19 @@ function periodComparison(startDate, endDate, opts = {}) {
         COALESCE(SUM(i.total), 0) - COALESCE(SUM(ret.return_total), 0) AS net_sales,
         COALESCE(SUM(cost_agg.total_cost), 0) AS total_cost,
         COALESCE(SUM(i.total), 0) - COALESCE(SUM(ret.return_total), 0)
-          - COALESCE(SUM(cost_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit
+          - COALESCE(SUM(cost_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit,
+        CASE WHEN (COALESCE(SUM(i.total), 0) - COALESCE(SUM(ret.return_total), 0)) > 0
+          THEN ROUND((COALESCE(SUM(i.total), 0) - COALESCE(SUM(ret.return_total), 0)
+            - COALESCE(SUM(cost_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0))
+            / (COALESCE(SUM(i.total), 0) - COALESCE(SUM(ret.return_total), 0)) * 100, 1) ELSE 0 END AS margin_percent,
+        CASE WHEN COUNT(i.id) > 0 THEN ROUND(COALESCE(SUM(i.total), 0) * 1.0 / COUNT(i.id), 2) ELSE 0 END AS avg_invoice_value
       FROM invoices i
       LEFT JOIN (
-        SELECT invoice_id, COALESCE(SUM(quantity * ${costCol}), 0) AS total_cost
-        FROM invoice_lines GROUP BY invoice_id
+        SELECT il.invoice_id, COALESCE(SUM(il.quantity * ${costCol}), 0) AS total_cost
+        FROM invoice_lines il
+        ${itemsCostJoin("il")}
+        ${stockCostJoin("il")}
+        GROUP BY il.invoice_id
       ) cost_agg ON cost_agg.invoice_id = i.id
       LEFT JOIN (
         SELECT sr.invoice_id,
@@ -477,17 +531,27 @@ function grossNetSales(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
       COUNT(i.id) AS invoice_count,
-      SUM(i.total) AS gross_sales,
+      SUM(i.subtotal) AS selling_total,
       SUM(i.discount) AS total_discount,
+      SUM(i.increase) AS additions_amount,
+      SUM(i.total) AS gross_sales,
       COALESCE(SUM(il_agg.total_cost), 0) AS total_cost,
       COALESCE(SUM(ret.return_total), 0) AS returns_amount,
       SUM(i.total) - COALESCE(SUM(ret.return_total), 0) AS net_sales,
       SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
-        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit
+        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit,
+      CASE WHEN COUNT(i.id) > 0 THEN ROUND(SUM(i.total) * 1.0 / COUNT(i.id), 2) ELSE 0 END AS avg_invoice_value,
+      CASE WHEN (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) > 0
+        THEN ROUND((SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
+          - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0))
+          / (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) * 100, 1) ELSE 0 END AS margin_percent
     FROM invoices i
     LEFT JOIN (
-      SELECT invoice_id, SUM(quantity * ${costCol}) AS total_cost
-      FROM invoice_lines GROUP BY invoice_id
+      SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS total_cost
+      FROM invoice_lines il
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
+      GROUP BY il.invoice_id
     ) il_agg ON il_agg.invoice_id = i.id
     LEFT JOIN (
       SELECT sr.invoice_id,
@@ -635,22 +699,29 @@ function marginByItem(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT COALESCE(it.code, 'ITEM-' || it.id) AS item_code,
       it.name AS item_name,
+      COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
       SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
       SUM(il.quantity * ${costCol}) AS cost,
       COALESCE(MAX(ret.return_revenue), 0) AS returns_amount,
       SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
         - SUM(il.quantity * ${costCol})
-        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS profit_margin,
+        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS gross_profit,
       CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0) > 0
         THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
           - SUM(il.quantity * ${costCol})
           - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0)) /
           (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
-        ELSE 0 END AS margin_percent
+        ELSE 0 END AS margin_percent,
+      SUM(il.line_total) AS selling_total,
+      ROUND(SUM(il.line_total) * 1.0 / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_price,
+      ROUND(SUM(il.quantity * ${costCol}) / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_cost,
+      MAX(sl.wacc) AS wacc
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
+    LEFT JOIN item_categories c ON c.id = it.category_id
     LEFT JOIN (
       SELECT invoice_id, SUM(line_total) AS line_sum
       FROM invoice_lines GROUP BY invoice_id
@@ -670,7 +741,7 @@ function marginByItem(startDate, endDate, opts = {}) {
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
     GROUP BY it.id
-    ORDER BY profit_margin DESC
+    ORDER BY gross_profit DESC
   `).all(...returnParams, ...params, ...(category_id ? [category_id] : []), ...(item_id ? [item_id] : []));
 }
 
@@ -684,19 +755,27 @@ function marginByCategory(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
-      SUM(il.line_total) - COALESCE(MAX(ret.return_revenue), 0) AS revenue,
-      SUM(il.quantity * ${costCol}) - COALESCE(MAX(ret.return_cost), 0) AS cost,
-      SUM(il.line_total) - SUM(il.quantity * ${costCol})
-        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS profit_margin,
-      CASE WHEN SUM(il.line_total) - COALESCE(MAX(ret.return_revenue), 0) > 0
-        THEN ROUND(((SUM(il.line_total) - SUM(il.quantity * ${costCol})
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
+      SUM(il.quantity * ${costCol}) AS cost,
+      COALESCE(MAX(ret.return_revenue), 0) AS returns_amount,
+      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})
+        - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS gross_profit,
+      CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0) > 0
+        THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - SUM(il.quantity * ${costCol})
           - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0)) /
-          (SUM(il.line_total) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
-        ELSE 0 END AS margin_percent
+          (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
+        ELSE 0 END AS margin_percent,
+      SUM(il.line_total) AS selling_total,
+      ROUND(SUM(il.quantity * ${costCol}) / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_cost
     FROM invoice_lines il
     JOIN invoices i ON i.id = il.invoice_id
     JOIN items it ON it.id = il.item_id
+    ${stockCostJoin("il")}
     LEFT JOIN item_categories c ON c.id = it.category_id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(line_total) AS line_sum
+      FROM invoice_lines GROUP BY invoice_id
+    ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT it.category_id,
         SUM(srl.line_total) AS return_revenue,
@@ -711,7 +790,7 @@ function marginByCategory(startDate, endDate, opts = {}) {
     WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${category_id ? " AND c.id = ?" : ""}
     GROUP BY c.id
-    ORDER BY profit_margin DESC
+    ORDER BY gross_profit DESC
   `).all(...returnParams, ...params, ...(category_id ? [category_id] : []));
 }
 
@@ -749,7 +828,8 @@ function salesReturnsSummary(startDate, endDate, opts = {}) {
       COUNT(*) AS return_count,
       COALESCE(SUM(sr.total), 0) AS returns_total,
       COUNT(DISTINCT sr.customer_id) AS customer_count,
-      COALESCE(SUM(srl.quantity), 0) AS items_returned
+      COALESCE(SUM(srl.quantity), 0) AS items_returned,
+      ROUND(COALESCE(SUM(sr.total), 0) * 1.0 / NULLIF(COUNT(*), 0), 2) AS avg_return_value
     FROM sales_returns sr
     LEFT JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
     WHERE sr.status = 'active' ${addDateFilter("sr.created_at", startDate, endDate, params)}
@@ -766,6 +846,7 @@ function salesReturnsByCustomer(startDate, endDate, opts = {}) {
     SELECT COALESCE(c.name, 'نقدي') AS customer_name,
       COUNT(sr.id) AS return_count,
       COALESCE(SUM(sr.total), 0) AS returns_total,
+      ROUND(COALESCE(SUM(sr.total), 0) * 1.0 / NULLIF(COUNT(sr.id), 0), 2) AS avg_return_value,
       MAX(DATE(sr.created_at)) AS last_return_date
     FROM sales_returns sr
     LEFT JOIN customers c ON c.id = sr.customer_id

@@ -60,7 +60,8 @@ function revenuesByCategory(startDate, endDate, opts = {}) {
     SELECT COALESCE(c.name, 'غير مصنف') AS category_name,
       COUNT(*) AS revenue_count,
       SUM(r.amount) AS total_revenues,
-      ROUND(AVG(r.amount), 2) AS avg_revenue
+      ROUND(AVG(r.amount), 2) AS avg_revenue,
+      ROUND(SUM(r.amount) * 100.0 / NULLIF(SUM(SUM(r.amount)) OVER (), 0), 1) AS pct_of_total
     FROM revenues r
     LEFT JOIN revenue_categories c ON c.id = r.category_id
     WHERE 1=1 ${addDateFilter("r.created_at", startDate, endDate, params)}

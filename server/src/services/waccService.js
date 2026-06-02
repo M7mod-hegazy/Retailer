@@ -84,13 +84,21 @@ function getSnapshotCosts(item_id, db, quantity = 1) {
   const row = db.prepare(
     "SELECT wacc, last_purchase_cost FROM stock_levels WHERE item_id = ? LIMIT 1"
   ).get(item_id);
+  // Fall back to items.purchase_price when WACC hasn't been seeded yet (item sold before
+  // any purchase recorded its cost). Without this, the snapshot freezes 0 and the item
+  // shows cost = 0 / a fake 100% margin in every profit/margin report forever.
+  const purchasePrice = roundMoney(
+    db.prepare("SELECT purchase_price FROM items WHERE id = ?").get(item_id)?.purchase_price || 0
+  );
   const fifo = hasTable(db, "cost_movements") ? deriveFIFO(db, item_id, quantity) : null;
   const lifo = hasTable(db, "cost_movements") ? deriveLIFO(db, item_id, quantity) : null;
+  const wacc = roundMoney(row?.wacc || row?.last_purchase_cost || purchasePrice || 0);
+  const lastPurchase = roundMoney(row?.last_purchase_cost || row?.wacc || purchasePrice || 0);
   return {
-    cost_wacc:          roundMoney(row?.wacc               || 0),
-    cost_last_purchase: roundMoney(row?.last_purchase_cost || 0),
-    cost_fifo:          roundMoney(fifo?.unit_cost || row?.wacc || 0),
-    cost_lifo:          roundMoney(lifo?.unit_cost || row?.wacc || 0),
+    cost_wacc:          wacc,
+    cost_last_purchase: lastPurchase,
+    cost_fifo:          roundMoney(fifo?.unit_cost || wacc),
+    cost_lifo:          roundMoney(lifo?.unit_cost || wacc),
   };
 }
 

@@ -171,18 +171,48 @@ function buildColumnsFromRows(rows) {
   return ordered.map((k) => ({ key: k, label: labelForKey(k) }));
 }
 
+// Pre-aggregated per-item stock cost. One row per item, so it is safe to LEFT JOIN
+// inside aggregate (SUM/GROUP BY) queries without multiplying rows. WACC is written
+// identically across every warehouse row of an item (see waccService.persistStockCost),
+// so MAX() faithfully recovers the item-level cost basis.
+const STOCK_COST_AGG =
+  "(SELECT item_id, MAX(wacc) AS wacc, MAX(last_purchase_cost) AS last_purchase_cost " +
+  "FROM stock_levels GROUP BY item_id)";
+
+// LEFT JOIN clause exposing the `sl` alias used by getCostColumn's fallback chain.
+function stockCostJoin(lineAlias = "il", stockAlias = "sl") {
+  return `LEFT JOIN ${STOCK_COST_AGG} ${stockAlias} ON ${stockAlias}.item_id = ${lineAlias}.item_id`;
+}
+
+// LEFT JOIN clause exposing the `it` alias (items) used by getCostColumn's fallback chain.
+function itemsCostJoin(lineAlias = "il", itemAlias = "it") {
+  return `LEFT JOIN items ${itemAlias} ON ${itemAlias}.id = ${lineAlias}.item_id`;
+}
+
 // Returns a SQL expression that resolves a per-line cost using the selected method.
-// Callers may use it inside any context where invoice_lines (or sales_return_lines)
-// columns are in scope — with or without a table alias. Unqualified column references
-// are safe because cost_wacc/cost_fifo/cost_lifo/cost_last_purchase live only on
-// invoice_lines and sales_return_lines, and queries never join both.
+//
+// Every snapshot reference is wrapped in NULLIF(...,0) so a *frozen-zero* snapshot
+// (captured before the item had a cost basis) is treated as "missing" and falls
+// through to the item's current cost. Without this, COALESCE stops at the literal 0
+// and the report shows cost = 0 / a fake 100% margin.
+//
+// Fallback order: method snapshot → wacc snapshot → last-purchase snapshot →
+// current stock WACC → current last-purchase cost → item.purchase_price → 0.
+//
+// Requires the `sl` (stock, via stockCostJoin) and `it` (items, via itemsCostJoin or
+// an existing items join) aliases to be in scope. Snapshot columns stay unqualified —
+// cost_wacc/cost_fifo/cost_lifo/cost_last_purchase live only on invoice_lines, and
+// no cost query joins another table that carries them.
 function getCostColumn(costMethod) {
+  let primary;
   switch (costMethod) {
-    case "last_purchase": return "COALESCE(cost_last_purchase, cost_wacc, 0)";
-    case "fifo":          return "COALESCE(cost_fifo, cost_wacc, cost_last_purchase, 0)";
-    case "lifo":          return "COALESCE(cost_lifo, cost_wacc, cost_last_purchase, 0)";
-    default:              return "COALESCE(cost_wacc, cost_last_purchase, 0)";
+    case "last_purchase": primary = "NULLIF(cost_last_purchase, 0)"; break;
+    case "fifo":          primary = "NULLIF(cost_fifo, 0)"; break;
+    case "lifo":          primary = "NULLIF(cost_lifo, 0)"; break;
+    default:              primary = "NULLIF(cost_wacc, 0)"; break;
   }
+  return `COALESCE(${primary}, NULLIF(cost_wacc, 0), NULLIF(cost_last_purchase, 0), ` +
+    "NULLIF(sl.wacc, 0), NULLIF(sl.last_purchase_cost, 0), NULLIF(it.purchase_price, 0), 0)";
 }
 
 function getCostColumnForValuation(costMethod) {
@@ -192,14 +222,21 @@ function getCostColumnForValuation(costMethod) {
   }
 }
 
-// Returns cost column that matches selected cost method — for use in return-line subqueries
+// Returns cost column that matches selected cost method — for use in return-line subqueries.
+// Snapshot refs are NULLIF(...,0)-wrapped for the same reason as getCostColumn: a frozen
+// zero on the original invoice line / return line must fall through to the item's cost
+// rather than booking a 0-cost return (which would understate margin). All return-line
+// subqueries already LEFT JOIN items as `it`, so it.purchase_price is always in scope.
 function getReturnCostColumn(costMethod) {
+  let primary;
   switch (costMethod) {
-    case "last_purchase": return "COALESCE(ref_il.cost_last_purchase, srl.cost_last_purchase, it.purchase_price, 0)";
-    case "fifo":          return "COALESCE(ref_il.cost_fifo, srl.cost_fifo, ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
-    case "lifo":          return "COALESCE(ref_il.cost_lifo, srl.cost_lifo, ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
-    default:              return "COALESCE(ref_il.cost_wacc, srl.cost_wacc, it.purchase_price, 0)";
+    case "last_purchase": primary = "NULLIF(ref_il.cost_last_purchase, 0), NULLIF(srl.cost_last_purchase, 0)"; break;
+    case "fifo":          primary = "NULLIF(ref_il.cost_fifo, 0), NULLIF(srl.cost_fifo, 0)"; break;
+    case "lifo":          primary = "NULLIF(ref_il.cost_lifo, 0), NULLIF(srl.cost_lifo, 0)"; break;
+    default:              primary = "NULLIF(ref_il.cost_wacc, 0), NULLIF(srl.cost_wacc, 0)"; break;
   }
+  return `COALESCE(${primary}, NULLIF(ref_il.cost_wacc, 0), NULLIF(srl.cost_wacc, 0), ` +
+    "NULLIF(it.purchase_price, 0), 0)";
 }
 
 // Multi-payment filter: matches direct payment_type OR multi invoices with sub-payment
@@ -216,5 +253,7 @@ module.exports = {
   getCostColumn,
   getReturnCostColumn,
   getCostColumnForValuation,
+  stockCostJoin,
+  itemsCostJoin,
   addPaymentTypeFilter,
 };

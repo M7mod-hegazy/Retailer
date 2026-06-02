@@ -10,12 +10,12 @@ function chequeListing(startDate, endDate, opts = {}) {
       c.drawer_name, c.notes,
       COALESCE(p.party_type, '') AS party_type,
       COALESCE(p.party_id, 0) AS party_id,
-      DATE(c.created_at) AS created_date
+      DATE(COALESCE(p.created_at, c.due_date)) AS created_date
     FROM cheques c
     LEFT JOIN payments p ON p.id = c.payment_id
-    WHERE 1=1 ${addDateFilter("c.created_at", startDate, endDate, params)}
+    WHERE 1=1 ${addDateFilter("COALESCE(p.created_at, c.due_date)", startDate, endDate, params)}
       ${status ? " AND c.status = ?" : ""}
-    ORDER BY c.created_at DESC
+    ORDER BY COALESCE(p.created_at, c.due_date) DESC
   `).all(...params, ...(status ? [status] : []));
 }
 
@@ -39,7 +39,9 @@ function bankSummary(startDate, endDate, opts = {}) {
     SELECT b.name, b.balance,
       COUNT(bt.id) AS transaction_count,
       COALESCE(SUM(CASE WHEN bt.type = 'deposit' THEN bt.amount ELSE 0 END), 0) AS total_deposits,
-      COALESCE(SUM(CASE WHEN bt.type = 'withdrawal' THEN bt.amount ELSE 0 END), 0) AS total_withdrawals
+      COALESCE(SUM(CASE WHEN bt.type = 'withdrawal' THEN bt.amount ELSE 0 END), 0) AS total_withdrawals,
+      COALESCE(SUM(CASE WHEN bt.type = 'deposit' THEN bt.amount ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN bt.type = 'withdrawal' THEN bt.amount ELSE 0 END), 0) AS net_flow
     FROM banks b
     LEFT JOIN bank_transactions bt ON bt.bank_id = b.id
     WHERE b.is_active = 1

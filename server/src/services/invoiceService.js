@@ -183,12 +183,13 @@ function createInvoice(payload) {
       error.data = { errors: lineErrors };
       throw error;
     }
-    const discount = Number(payload.discount || 0);
+    const headerDiscount = Number(payload.discount || 0);
+    const promotionDiscount = Math.max(0, Number(payload.promotion_discount || 0));
 
-    // GAP-02: Discount Hard Limits (max 15%)
-    // Unless overridden by a supervisor
+    // GAP-02: Discount Hard Limits (max 15%) — checked on the manual header discount only
+    // (system promotions are not subject to the cashier cap). Unless supervisor-overridden.
     const maxDiscountAllowed = subtotal * 0.15;
-    if (discount > maxDiscountAllowed && !payload.supervisor_override) {
+    if (headerDiscount > maxDiscountAllowed && !payload.supervisor_override) {
       const error = new Error("Discount exceeds the maximum allowed limit of 15%. Supervisor override required.");
       error.status = 403;
       error.code = 'DISCOUNT_LIMIT_EXCEEDED';
@@ -196,7 +197,14 @@ function createInvoice(payload) {
     }
 
     const increaseAmount = Math.max(0, Number(payload.increase || 0));
-    const total = Math.max(0, subtotal - discount + increaseAmount);
+    // total must reflect per-line discounts AND promotions, exactly like the client
+    // (posStore.computeTotals): total = Σ(line_total) − header − promotion + increase.
+    // line_total already nets each line's discount, so summing it captures line discounts.
+    const lineNet = normalizedLines.reduce((sum, l) => sum + Number(l.line_total || 0), 0);
+    // Persist all invoice-level reductions in `discount` so subtotal − discount + increase
+    // reconciles against line-level discounts left on the lines themselves.
+    const discount = headerDiscount + promotionDiscount;
+    const total = Math.max(0, lineNet - headerDiscount - promotionDiscount + increaseAmount);
     const paymentType = payload.payment_type || "cash";
     const multiPaid = paymentType === "multi" && Array.isArray(payload.payments)
       ? payload.payments.reduce((sum, line) => sum + Number(line.amount || 0), 0)
@@ -654,6 +662,7 @@ function editInvoice(invoiceId, payload, userId) {
     const newLines = payload.lines || [];
     const editInvoiceLines = [];
     let subtotal = 0;
+    let lineNet = 0;
     for (const line of newLines) {
       const lineDiscount = Number(line.discount || 0);
       const lineSubtotal = Number(line.quantity) * Number(line.unit_price);
@@ -668,6 +677,7 @@ function editInvoice(invoiceId, payload, userId) {
         throw err;
       }
       subtotal += lineSubtotal;
+      lineNet += lineTotal;
       const itemRow = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
       const snap = getSnapshotCosts(line.item_id, db, Number(line.quantity));
       const elr = db.prepare(
@@ -685,9 +695,12 @@ function editInvoice(invoiceId, payload, userId) {
     // Capture master_price_at_time for override tracking
     captureInvoiceLineOverrides(editInvoiceLines, db);
 
-    const discount = Number(payload.discount ?? invoice.discount ?? 0);
+    const headerDiscount = Number(payload.discount ?? invoice.discount ?? 0);
+    const promotionDiscount = Math.max(0, Number(payload.promotion_discount ?? 0));
+    const discount = headerDiscount + promotionDiscount;
     const increase = Number(payload.increase ?? invoice.increase ?? 0);
-    const newTotal = Math.max(0, subtotal - discount + increase);
+    // Match create path / client: net of per-line discounts and promotions.
+    const newTotal = Math.max(0, lineNet - headerDiscount - promotionDiscount + increase);
     const newPaymentType = payload.payment_type || oldPaymentType;
     const newCustomerId = payload.customer_id ?? oldCustomerId;
     const amountPaid = Number(payload.amount_paid ?? invoice.amount_received ?? newTotal);

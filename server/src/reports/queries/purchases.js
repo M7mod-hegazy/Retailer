@@ -6,9 +6,10 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
   const params = [];
   const { supplier_id, status, payment_type, category_id, item_id } = opts;
   return db.prepare(`
-    SELECT p.id, p.purchase_no,
+    SELECT p.id, p.doc_no AS purchase_no,
       DATE(p.created_at) AS date,
-      s.name AS supplier_name, p.total, p.status, p.payment_method AS payment_type,
+      s.name AS supplier_name, p.total, p.discount AS total_discount,
+      p.increase AS additions_amount, p.status, p.payment_method AS payment_type,
       p.supplier_id,
       u.full_name AS created_by,
       COUNT(pl.id) AS item_count
@@ -43,6 +44,8 @@ function purchaseSummary(startDate, endDate, opts = {}) {
     SELECT DATE(p.created_at) AS date,
       COUNT(*) AS purchase_count,
       COUNT(DISTINCT p.supplier_id) AS distinct_suppliers,
+      SUM(p.discount) AS total_discount,
+      SUM(p.increase) AS additions_amount,
       SUM(p.total) AS total_purchases,
       ROUND(AVG(p.total), 2) AS avg_order_value
     FROM purchases p
@@ -60,9 +63,10 @@ function detailedPurchases(startDate, endDate, opts = {}) {
   const params = [];
   const { supplier_id, status, payment_type, category_id, item_id } = opts;
   return db.prepare(`
-    SELECT p.id, p.purchase_no,
+    SELECT p.id, p.doc_no AS purchase_no,
       DATE(p.created_at) AS date,
-      s.name AS supplier_name, p.total, p.status, p.payment_method AS payment_type,
+      s.name AS supplier_name, p.total, p.discount AS total_discount,
+      p.increase AS additions_amount, p.status, p.payment_method AS payment_type,
       p.supplier_id,
       u.full_name AS created_by,
       COUNT(pl.id) AS item_count
@@ -99,6 +103,7 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
       SUM(p.total) AS total_purchases,
       ROUND(AVG(p.total), 2) AS avg_order_value,
       COALESCE(pr.return_total, 0) AS returns_total,
+      SUM(p.total) - COALESCE(pr.return_total, 0) AS net_purchases,
       MAX(DATE(p.created_at)) AS last_purchase_date
     FROM purchases p
     JOIN suppliers s ON s.id = p.supplier_id
@@ -189,7 +194,7 @@ function supplierPricing(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT s.name AS supplier_name,
       it.name AS item_name,
-      pl.unit_price, pl.quantity, pl.line_total,
+      pl.unit_cost AS unit_price, pl.quantity, pl.line_total,
       DATE(p.created_at) AS purchase_date
     FROM purchase_lines pl
     JOIN purchases p ON p.id = pl.purchase_id

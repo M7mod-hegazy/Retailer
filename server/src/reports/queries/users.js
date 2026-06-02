@@ -24,29 +24,37 @@ function userList(startDate, endDate, opts = {}) {
 
 function userPerformance(startDate, endDate, opts = {}) {
   const db = getDb();
-  const params = [];
   const { user_id } = opts;
+  // sales_returns has no shift_id — attribute returns to the user who handled them
+  // (created_by) via fanout-free correlated subqueries. Joining sr/shifts directly
+  // alongside invoices would multiply rows and inflate total_sales.
+  const retParams = [];
+  const retFilter = addDateFilter("sr2.created_at", startDate, endDate, retParams);
+  const mainParams = [];
+  const mainFilter = addDateFilter("sh.opened_at", startDate, endDate, mainParams);
   return db.prepare(`
     SELECT u.id AS user_id, u.full_name,
       COUNT(DISTINCT i.id) AS invoice_count,
       COALESCE(SUM(i.total), 0) AS total_sales,
       COALESCE(SUM(i.discount), 0) AS total_discount,
       COALESCE(AVG(i.total), 0) AS avg_invoice_value,
-      COUNT(DISTINCT sr.id) AS returns_handled,
-      COALESCE(SUM(sr.total), 0) AS returns_amount,
-      COUNT(DISTINCT s.id) AS shift_count
+      (SELECT COUNT(*) FROM sales_returns sr2
+        WHERE sr2.created_by = u.id AND sr2.status = 'active' ${retFilter}) AS returns_handled,
+      (SELECT COALESCE(SUM(sr2.total), 0) FROM sales_returns sr2
+        WHERE sr2.created_by = u.id AND sr2.status = 'active' ${retFilter}) AS returns_amount,
+      COUNT(DISTINCT sh.id) AS shift_count
     FROM shifts sh
     LEFT JOIN users u ON u.id = sh.user_id
     LEFT JOIN invoices i ON i.shift_id = sh.id AND i.status = 'paid'
-    LEFT JOIN sales_returns sr ON sr.shift_id = sh.id
-    LEFT JOIN shifts s ON s.user_id = u.id
     WHERE 1=1
-      ${addDateFilter("sh.opened_at", startDate, endDate, params)}
+      ${mainFilter}
       ${user_id ? " AND sh.user_id = ?" : ""}
     GROUP BY u.id
     ORDER BY total_sales DESC
   `).all(
-    ...params,
+    ...retParams,
+    ...retParams,
+    ...mainParams,
     ...(user_id ? [user_id] : []),
   );
 }

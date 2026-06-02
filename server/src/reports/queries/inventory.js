@@ -1,5 +1,5 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumnForValuation } = require("../helpers");
+const { addDateFilter, getCostColumnForValuation, getCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
 const { getLowStock } = require("../../services/reportService");
 const { deriveFIFO, deriveLIFO, hasTable } = require("../../services/costLedger");
 
@@ -15,6 +15,7 @@ function slowMoving(startDate, endDate, opts = {}) {
       COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price) AS cost_price,
       COALESCE(SUM(sl.quantity), 0) * COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price) AS total_value,
       COALESCE(SUM(sl.quantity), 0) * it.sale_price AS potential_revenue,
+      COALESCE(SUM(sl.quantity), 0) * (COALESCE(it.sale_price, 0) - COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price, 0)) AS potential_profit,
       MAX(DATE(i.created_at)) AS last_sale_date
     FROM items it
     LEFT JOIN item_categories c ON c.id = it.category_id
@@ -50,7 +51,11 @@ function stockLevels(startDate, endDate, opts = {}) {
         WHEN COALESCE(sl.quantity, 0) <= 0 THEN 'نفذ'
         WHEN COALESCE(sl.quantity, 0) <= COALESCE(it.min_stock_qty, 0) THEN 'منخفض'
         ELSE 'متاح'
-      END AS stock_status
+      END AS stock_status,
+      COALESCE(sl.wacc, sl.last_purchase_cost, it.purchase_price, 0) AS wacc,
+      COALESCE(sl.last_purchase_cost, 0) AS last_purchase_cost,
+      COALESCE(it.sale_price, 0) AS sale_price,
+      COALESCE(sl.quantity, 0) * COALESCE(it.sale_price, 0) AS potential_revenue
     FROM items it
     LEFT JOIN stock_levels sl ON sl.item_id = it.id
     LEFT JOIN item_categories c ON c.id = it.category_id
@@ -113,7 +118,9 @@ function stockValuation(startDate, endDate, opts = {}) {
       COALESCE(w.name, '') AS warehouse_name,
       COALESCE(sl.quantity, 0) AS total_quantity,
       sl.wacc, sl.last_purchase_cost, it.purchase_price,
-      COALESCE(sl.quantity, 0) * ${costCol} AS total_value
+      COALESCE(sl.quantity, 0) * ${costCol} AS total_value,
+      COALESCE(it.sale_price, 0) AS sale_price,
+      COALESCE(sl.quantity, 0) * COALESCE(it.sale_price, 0) AS potential_revenue
     FROM items it
     JOIN stock_levels sl ON sl.item_id = it.id
     LEFT JOIN item_categories c ON c.id = it.category_id
@@ -430,13 +437,15 @@ function itemLifecycleReport(startDate, endDate, opts = {}) {
     ) pur ON pur.item_id = it.id
     LEFT JOIN (
       SELECT il.item_id, SUM(il.quantity) AS sales_qty, SUM(il.line_total) AS sales_revenue,
-        SUM(il.quantity * COALESCE(il.cost_wacc, il.cost_last_purchase, 0)) AS sales_cost,
+        SUM(il.quantity * ${getCostColumn(opts.cost_method)}) AS sales_cost,
         COUNT(DISTINCT i.id) AS sales_tx_count,
         COUNT(DISTINCT i.customer_id) AS distinct_customers,
         MIN(DATE(i.created_at)) AS first_sale_date,
         MAX(DATE(i.created_at)) AS last_sale_date
       FROM invoice_lines il
       JOIN invoices i ON i.id = il.invoice_id
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
       WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, salesParams)}
       GROUP BY il.item_id
     ) sales ON sales.item_id = it.id
@@ -545,7 +554,7 @@ function inventoryTurnoverReport(startDate, endDate, opts = {}) {
       COALESCE(c.name, '') AS category_name,
       COALESCE(stock.on_hand, 0) AS stock_on_hand,
       COALESCE(stock.inventory_value, 0) AS inventory_value,
-      COALESCE(sales.qty_sold, 0) AS qty_sold,
+      COALESCE(sales.qty_sold, 0) AS quantity_sold,
       COALESCE(sales.cogs, 0) AS cogs,
       ROUND(COALESCE(sales.qty_sold, 0) / ?, 2) AS avg_daily_sales,
       CASE WHEN COALESCE(sales.qty_sold, 0) > 0 THEN ROUND(COALESCE(stock.on_hand, 0) / (COALESCE(sales.qty_sold, 0) / ?), 1) ELSE NULL END AS days_of_stock,
@@ -570,9 +579,11 @@ function inventoryTurnoverReport(startDate, endDate, opts = {}) {
     LEFT JOIN (
       SELECT il.item_id,
         SUM(il.quantity) AS qty_sold,
-        SUM(il.quantity * COALESCE(il.cost_wacc, il.cost_last_purchase, 0)) AS cogs
+        SUM(il.quantity * ${getCostColumn(opts.cost_method)}) AS cogs
       FROM invoice_lines il
       JOIN invoices i ON i.id = il.invoice_id
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
       WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
       GROUP BY il.item_id
     ) sales ON sales.item_id = it.id

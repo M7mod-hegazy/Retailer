@@ -21,7 +21,8 @@
     "bootstrap": "npm install --workspaces",
     "kill:retailer-processes": "node ./electron/scripts/kill-retailer-processes.js",
     "node:rebuild": "npm rebuild better-sqlite3",
-    "electron:rebuild": "electron-rebuild -f -w better-sqlite3"
+    "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "repository": {
     "type": "git",

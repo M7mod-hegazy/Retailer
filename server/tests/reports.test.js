@@ -30,8 +30,10 @@ function seedReportsDb() {
     "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, total, payment_type, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ).run("INV-RPT-1", customerId, 400, 20, 380, "cash", "paid", "2026-04-01").lastInsertRowid);
 
+  // cost_wacc is the per-unit cost snapshot (sourced from stock_levels.wacc), so a line
+  // of qty 2 at unit cost 80 yields COGS = 2 × 80 = 160.
   db.prepare("INSERT INTO invoice_lines (invoice_id, item_id, quantity, unit_price, line_total, cost_wacc) VALUES (?, ?, ?, ?, ?, ?)").run(
-    invoiceId, itemId, 2, 200, 400, 160,
+    invoiceId, itemId, 2, 200, 400, 80,
   );
   db.prepare("INSERT INTO expenses (category_id, amount, notes, created_at) VALUES (?, ?, ?, ?)").run(expCatId, 50, "كهرباء", "2026-04-01");
 
@@ -54,12 +56,13 @@ describe("reports analytics", () => {
     expect(revenueRow.amount).toBe(380);
     const cogsRow = result.find(r => r.section === "cogs");
     expect(cogsRow.amount).toBe(160);
+    // revenue (380, already net of header discount) − COGS (160) = 220
     const grossProfitRow = result.find(r => r.section === "gross_profit");
-    expect(grossProfitRow.amount).toBe(200);
+    expect(grossProfitRow.amount).toBe(220);
     const expensesRow = result.find(r => r.section === "expenses");
     expect(expensesRow.amount).toBe(50);
     const netProfitRow = result.find(r => r.section === "net_profit");
-    expect(netProfitRow.amount).toBe(150);
+    expect(netProfitRow.amount).toBe(170);
   });
 
   test("legacy getProfitLoss still works for backward compat", () => {
@@ -67,9 +70,9 @@ describe("reports analytics", () => {
     expect(result.revenue).toBe(380);
     expect(result.discounts).toBe(20);
     expect(result.cost_of_goods_sold).toBe(160);
-    expect(result.gross_profit).toBe(200);
+    expect(result.gross_profit).toBe(220);
     expect(result.expenses).toBe(50);
-    expect(result.net_profit).toBe(150);
+    expect(result.net_profit).toBe(170);
   });
 
   test("getSalesSummary returns grouped daily sales", () => {

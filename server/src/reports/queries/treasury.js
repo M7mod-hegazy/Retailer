@@ -138,7 +138,7 @@ function reconciliationExceptions(startDate, endDate, opts = {}) {
     FROM shifts s
     JOIN users u ON u.id = s.user_id
     LEFT JOIN invoices i ON i.shift_id = s.id
-    WHERE ABS(COALESCE(s.closing_cash, 0) - s.opening_cash - COALESCE(SUM(i.total), 0)) > 0.01
+    WHERE 1=1
       ${addDateFilter("s.opened_at", startDate, endDate, params)}
     GROUP BY s.id
     HAVING ABS(cash_variance) > 0.01
@@ -171,15 +171,13 @@ function withdrawalsReport(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   return db.prepare(`
-    SELECT w.id, w.reference_no, DATE(w.date) AS date,
-      w.amount, w.reason, w.status,
-      t.name AS treasury_name,
+    SELECT w.id, w.doc_no AS reference_no, DATE(w.created_at) AS date,
+      w.amount, w.note AS reason, w.payment_method,
       u.full_name AS created_by
     FROM withdrawals w
-    LEFT JOIN treasuries t ON t.id = w.treasury_id
     LEFT JOIN users u ON u.id = w.created_by
-    WHERE 1=1 ${addDateFilter("w.date", startDate, endDate, params)}
-    ORDER BY w.date DESC
+    WHERE 1=1 ${addDateFilter("w.created_at", startDate, endDate, params)}
+    ORDER BY w.created_at DESC
   `).all(...params);
 }
 

@@ -41,4 +41,51 @@ describe("invoice service", () => {
     });
     expect(inv.total).toBe(500);
   });
+
+  test("per-line discount reduces the stored total", () => {
+    // line_total = 2*100 - 30 = 170, no header discount → total must be 170 (not 200)
+    const inv = createInvoice({
+      lines: [{ item_id: 1, quantity: 2, unit_price: 100, discount: 30 }],
+      discount: 0,
+      payment_type: "cash",
+    });
+    expect(inv.total).toBe(170);
+  });
+
+  test("promotion_discount reduces the stored total and is folded into discount", () => {
+    // line_total = 200, promotion 20 → total 180; stored discount = header(0) + promo(20)
+    const inv = createInvoice({
+      lines: [{ item_id: 1, quantity: 2, unit_price: 100 }],
+      discount: 0,
+      promotion_discount: 20,
+      payment_type: "cash",
+    });
+    const db = getDb();
+    const row = db.prepare("SELECT total, discount FROM invoices WHERE id = ?").get(inv.id);
+    expect(row.total).toBe(180);
+    expect(row.discount).toBe(20);
+  });
+
+  test("line discount + header discount + promotion all apply to total", () => {
+    // line_total = 2*100 - 30 = 170; total = 170 - header(10) - promo(20) = 140
+    const inv = createInvoice({
+      lines: [{ item_id: 1, quantity: 2, unit_price: 100, discount: 30 }],
+      discount: 10,
+      promotion_discount: 20,
+      payment_type: "cash",
+    });
+    expect(inv.total).toBe(140);
+  });
+
+  test("invoice total matches client computeTotals formula", () => {
+    // Mirror posStore.computeTotals: Σ(qty*price - line_discount) - (discount+promo) + increase
+    const lines = [
+      { item_id: 1, quantity: 3, unit_price: 100, discount: 25 },
+    ];
+    const discount = 15, promotion_discount = 10, increase = 5;
+    const inv = createInvoice({ lines, discount, promotion_discount, increase, payment_type: "cash" });
+    const clientSubtotal = lines.reduce((s, l) => s + l.quantity * l.unit_price - (l.discount || 0), 0);
+    const clientTotal = Math.max(0, clientSubtotal - (discount + promotion_discount) + increase);
+    expect(inv.total).toBe(clientTotal); // 275 - 25 + 5 = 255
+  });
 });
