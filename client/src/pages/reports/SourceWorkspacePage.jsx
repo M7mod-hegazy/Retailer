@@ -461,7 +461,7 @@ export default function SourceWorkspacePage() {
         const key = c?.key || c?.id || c;
         const label = c?.label || arColLabel(key);
         const isNote = NOTE_KEYS.has(key);
-        return { id: key, key, header: label, label, type: c?.type || "text", defaultVisible: c?.defaultVisible !== false && !isNote, isNote };
+        return { id: key, key, header: label, label, type: c?.type || "text", defaultVisible: c?.defaultVisible !== false && !isNote, printPriority: c?.printPriority, isNote };
       });
     } else {
       const sample = rows[0];
@@ -481,14 +481,20 @@ export default function SourceWorkspacePage() {
   }, [columnsDef, rows, columnOrder]);
 
   useEffect(() => {
-    if (allColumns.length > 0 && Object.keys(columnVisibility).length === 0) {
-      const initial = {};
-      allColumns.forEach((c) => { initial[c.id] = c.defaultVisible !== false; });
-      setColumnVisibilityState(initial);
-    }
-    if (allColumns.length > 0 && columnOrder.length === 0) {
-      const order = allColumns.map((c) => c.id);
-      setColumnOrderState(order);
+    if (allColumns.length === 0) return;
+    // Seed visibility from each column's server defaultVisible, and merge in any columns
+    // missing from a previously-saved preference (e.g. newly-added analytics columns) so
+    // they correctly default to hidden instead of appearing because their key is absent.
+    setColumnVisibilityState((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      allColumns.forEach((c) => {
+        if (!(c.id in next)) { next[c.id] = c.defaultVisible !== false; changed = true; }
+      });
+      return changed ? next : prev;
+    });
+    if (columnOrder.length === 0) {
+      setColumnOrderState(allColumns.map((c) => c.id));
     }
   }, [allColumns]);
 
@@ -547,10 +553,41 @@ export default function SourceWorkspacePage() {
   }, [visibleColumns, activeFilterIds]);
 
   const [showAllColumns, setShowAllColumns] = useState(false);
-  const displayColumns = useMemo(() => {
-    if (showAllColumns) return smartColumns;
-    return smartColumns.filter((c) => c.adjustedPriority !== "optional");
-  }, [smartColumns, showAllColumns]);
+  // The table renders exactly the columns the user has enabled (columnVisibility, seeded
+  // from the server's defaultVisible). Toggling a column's eye in the picker is the single
+  // source of truth for what shows.
+  const displayColumns = smartColumns;
+
+  // The picker lists EVERY available column (visible + hidden extras), so any column can be
+  // toggled on/off — including hidden-by-default analytics columns and ones the user hid.
+  const pickerColumns = useMemo(() => {
+    return [...allColumns]
+      .filter((c) => !c.isNote)
+      .map((c) => {
+        // Hidden-by-default analytics columns read as "optional" (collapsed behind "إظهار الكل");
+        // default-visible columns keep their essential/useful rank and never collapse.
+        let p;
+        if (c.defaultVisible === false) p = "optional";
+        else { p = c.printPriority && c.printPriority !== "optional" ? c.printPriority : "useful"; }
+        if (activeFilterIds.has(c.id)) p = "optional";
+        return { ...c, adjustedPriority: p };
+      })
+      .sort((a, b) => {
+        const order = { essential: 0, useful: 1, optional: 2 };
+        return (order[a.adjustedPriority] || 2) - (order[b.adjustedPriority] || 2);
+      });
+  }, [allColumns, activeFilterIds]);
+
+  // Collapsed view: show core columns plus any currently-enabled optional columns;
+  // "إظهار الكل" reveals the hidden-by-default optional columns so they can be turned on.
+  const pickerDisplay = useMemo(() => {
+    if (showAllColumns) return pickerColumns;
+    return pickerColumns.filter((c) => c.adjustedPriority !== "optional" || columnVisibility[c.id] !== false);
+  }, [pickerColumns, showAllColumns, columnVisibility]);
+  const hiddenOptionalCount = useMemo(
+    () => pickerColumns.filter((c) => c.adjustedPriority === "optional" && columnVisibility[c.id] === false).length,
+    [pickerColumns, columnVisibility],
+  );
 
   const PRIORITY_LABELS = { essential: "أساسي", useful: "مهم", optional: "اختياري" };
   const PRIORITY_COLORS = { essential: "text-emerald-600 bg-emerald-50 border-emerald-200", useful: "text-blue-600 bg-blue-50 border-blue-200", optional: "text-zinc-400 bg-zinc-50 border-zinc-200" };
@@ -940,29 +977,29 @@ export default function SourceWorkspacePage() {
                             {showAllColumns ? "إخفاء الاختياري" : "إظهار الكل"}
                           </button>
                         </div>
-                        {smartColumns.map((col, idx) => {
-                          const p = col.adjustedPriority;
+                        {pickerDisplay.map((col, idx) => {
+                          const isOptional = col.defaultVisible === false;
                           return (
                             <div key={col.id} className="flex items-center justify-between group px-2 py-1.5 rounded-xl hover:bg-zinc-50">
                               <button onClick={() => toggleColumnVisibility(col.id)} className="flex items-center gap-2 flex-1 text-right">
                                 {columnVisibility[col.id] !== false ? <Eye size={14} className="text-emerald-500 shrink-0" /> : <EyeOff size={14} className="text-zinc-300 shrink-0" />}
                                 <span className={`text-[12px] font-bold ${columnVisibility[col.id] !== false ? "text-zinc-800" : "text-zinc-400 line-through"}`}>{col.header}</span>
-                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border ${PRIORITY_COLORS[p] || PRIORITY_COLORS.useful} shrink-0`}>
-                                  {PRIORITY_LABELS[p] || "مهم"}
+                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border ${isOptional ? "text-zinc-400 bg-zinc-50 border-zinc-200" : "text-emerald-600 bg-emerald-50 border-emerald-200"} shrink-0`}>
+                                  {isOptional ? "اختياري" : "افتراضي"}
                                 </span>
                               </button>
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
                                 <button onClick={() => moveColumn(col.id, -1)} disabled={idx === 0} className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 disabled:opacity-30"><ArrowUp size={12} /></button>
-                                <button onClick={() => moveColumn(col.id, 1)} disabled={idx === smartColumns.length - 1} className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 disabled:opacity-30"><ArrowDown size={12} /></button>
+                                <button onClick={() => moveColumn(col.id, 1)} disabled={idx === pickerDisplay.length - 1} className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 disabled:opacity-30"><ArrowDown size={12} /></button>
                               </div>
                             </div>
                           );
                         })}
-                        {smartColumns.filter(c => c.adjustedPriority === 'optional').length > 0 && (
+                        {pickerColumns.some(c => c.adjustedPriority === 'optional') && (
                           <div className="mt-2 pt-2 border-t border-zinc-100">
                             <button onClick={() => setShowAllColumns(!showAllColumns)}
                               className="w-full text-center text-[10px] font-bold text-emerald-600 hover:text-emerald-700 py-1 rounded-lg hover:bg-emerald-50 transition-all">
-                              {showAllColumns ? "إخفاء الأعمدة الاختيارية" : `إظهار الأعمدة الاختيارية (${smartColumns.filter(c => c.adjustedPriority === 'optional').length})`}
+                              {showAllColumns ? "إخفاء الأعمدة الاختيارية" : `إظهار الأعمدة الإضافية${hiddenOptionalCount > 0 ? ` (${hiddenOptionalCount})` : ""}`}
                             </button>
                           </div>
                         )}
