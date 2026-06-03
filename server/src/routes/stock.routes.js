@@ -189,7 +189,7 @@ router.get("/movements/:id", requirePagePermission("stock_transfer", "view"), (r
     const db = getDb();
     const movement = db
       .prepare(
-        `SELECT sm.*, i.name AS item_name, i.barcode, w.name AS warehouse_name
+        `SELECT sm.*, i.name AS item_name, i.code AS item_code, i.barcode, w.name AS warehouse_name
          FROM stock_movements sm
          LEFT JOIN items i ON i.id = sm.item_id
          LEFT JOIN warehouses w ON w.id = sm.warehouse_id

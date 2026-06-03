@@ -1398,7 +1398,10 @@ export default function CustomerAccountsPage() {
                     <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
                       {detailData.lines?.map((line, i) => (
                         <div key={i} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/40 transition-colors">
-                          <div className="col-span-5 text-[12px] font-bold text-slate-800 truncate">{line.item_name || line.name}</div>
+                          <div className="col-span-5 flex flex-col min-w-0">
+                            {(line.item_code || line.code) && <span className="font-mono text-[10px] text-slate-400 truncate">{line.item_code || line.code}</span>}
+                            <span className="text-[12px] font-bold text-slate-800 truncate">{line.item_name || line.name}</span>
+                          </div>
                           <div className="col-span-2 text-center font-mono text-[11px] text-slate-650">{line.quantity}</div>
                           <div className="col-span-2 text-center font-mono text-[11px] text-slate-650">{fmt(line.unit_price)}</div>
                           <div className="col-span-1 text-center font-mono text-[10px] text-rose-500">{line.discount > 0 ? fmt(line.discount) : "—"}</div>
@@ -1529,7 +1532,12 @@ export default function CustomerAccountsPage() {
                             <tbody>
                               {d.lines.map((l, i) => (
                                 <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                                  <td className="px-3 py-2 font-bold text-slate-800">{l.item_name || "—"}</td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex flex-col">
+                                      {(l.item_code || l.code) && <span className="font-mono text-[10px] text-slate-400">{l.item_code || l.code}</span>}
+                                      <span className="font-bold text-slate-800">{l.item_name || "—"}</span>
+                                    </div>
+                                  </td>
                                   <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
                                   <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_price)}</td>
                                   <td className="px-3 py-2 text-center font-mono font-black text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>

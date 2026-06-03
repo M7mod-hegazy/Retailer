@@ -125,7 +125,7 @@ export default function ItemGrid() {
                 {item.name}
               </div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'Inter, monospace' }}>
-                {item.barcode || item.code || "بدون باركود"}
+                {item.item_code || item.code || item.barcode || "بدون كود"}
               </div>
             </div>
             

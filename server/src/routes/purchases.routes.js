@@ -1182,7 +1182,7 @@ function getPurchaseReturnWithLines(db, returnId) {
   `).get(returnId);
   if (!pr) return null;
   const lines = db.prepare(`
-    SELECT prl.*, COALESCE(prl.item_name_ar, i.name) AS item_name
+    SELECT prl.*, COALESCE(prl.item_name_ar, i.name) AS item_name, i.code AS item_code
     FROM purchase_return_lines prl
     LEFT JOIN items i ON i.id = prl.item_id
     WHERE prl.purchase_return_id = ?

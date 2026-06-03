@@ -1,11 +1,11 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
   AlertCircle, CheckCircle2, X, ArrowDownRight, Calculator,
   Calendar, ChevronRight, Flag, ExternalLink, TrendingUp,
   TrendingDown, Search, Clock, ArrowUpDown, Filter,
   FileText, Coins, Banknote, History, Info,
-  Edit3, RotateCcw, Eye, Sparkles,
+  Edit3, RotateCcw, Eye, Sparkles, CreditCard,
 } from "lucide-react";
 
 import api from "../../services/api";
@@ -300,6 +300,7 @@ export default function DailyTreasuryPage() {
   const [date, setDate] = useState(todayStr());
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [methodTotals, setMethodTotals] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [transactions, setTransactions] = useState([]);
   const [txLoading, setTxLoading] = useState(false);
@@ -412,6 +413,16 @@ export default function DailyTreasuryPage() {
     }
   }, [activeTab, txSearch, txSort, globalAmountSearch, date, isToday, showCancelled]);
 
+  const loadMethodTotals = useCallback(async () => {
+    try {
+      const dateParam = isToday ? "" : `?date=${date}`;
+      const r = await api.get(`/api/daily-sessions/today/payment-methods${dateParam}`);
+      setMethodTotals(r.data.data || []);
+    } catch {
+      setMethodTotals([]);
+    }
+  }, [date, isToday]);
+
   async function loadYesterdayAlert() {
     try {
       const r = await api.get("/api/daily-sessions/yesterday/alert");
@@ -435,6 +446,7 @@ export default function DailyTreasuryPage() {
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
+  useEffect(() => { loadMethodTotals(); }, [loadMethodTotals]);
   useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
 
@@ -618,6 +630,7 @@ export default function DailyTreasuryPage() {
   function refreshAfterFinanceModal() {
     loadSummary();
     loadTransactions();
+    loadMethodTotals();
     loadYesterdayAlert();
   }
 
@@ -1196,84 +1209,162 @@ export default function DailyTreasuryPage() {
 
                         {/* Right: Expected & Close (2 cols) */}
                         <div className="lg:col-span-2 flex flex-col gap-5">
-                          {/* Big Expected Amount */}
-                          <div className="flex-1 rounded-3xl bg-slate-900 text-white p-8 flex flex-col justify-center items-center text-center shadow-xl shadow-slate-900/20">
-                            <div className="text-[14px] font-bold text-slate-400 mb-3 uppercase tracking-widest">المتوقع في الخزنة</div>
-                            <div className="text-[40px] font-black font-mono tracking-tighter leading-none">{fmt(expected)}</div>
-                            <div className="text-[14px] font-bold text-slate-500 mt-3">جنيه مصري</div>
-
-                            {sess.actual_cash != null && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={"mt-6 w-full rounded-2xl p-4 border text-center " + (discrepancy >= 0 ? "bg-emerald-500/20 border-emerald-500/30" : "bg-rose-500/20 border-rose-500/30")}
-                              >
-                                <div className="text-[12px] font-bold text-slate-400 mb-1">الرصيد الفعلي المُغلق</div>
-                                <div className="text-[24px] font-black font-mono">{fmt(sess.actual_cash)}</div>
-                                <div className={"text-[13px] font-black mt-1 " + (discrepancy >= 0 ? "text-emerald-400" : "text-rose-400")}>
-                                  الفرق: {discrepancy >= 0 ? "+" : ""}{fmt(discrepancy)} ج.م
+                          {/* Top Half: Expected Safe & Actual Cash */}
+                          <div className="flex flex-col gap-5">
+                            {/* Compact Expected Amount */}
+                            <div className="rounded-3xl bg-slate-900 text-white p-5 shadow-xl shadow-slate-900/20">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                                    <Wallet className="h-5 w-5 text-slate-300" />
+                                  </div>
+                                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
                                 </div>
-                              </motion.div>
-                            )}
-                          </div>
-
-                          {/* الرصيد الفعلي — always visible, no close action */}
-                          <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
-                            <h4 className="text-[16px] font-black text-zinc-900 mb-4 flex items-center gap-2">
-                              <Lock className="h-5 w-5 text-slate-600" /> إدخال الرصيد الفعلي
-                            </h4>
-                            <div className="flex flex-col gap-4">
-                              <div className="flex flex-col gap-2">
-                                <label className="text-[13px] font-black text-slate-700">الرصيد الفعلي (ج.م)</label>
-                                <div className="flex gap-3">
-                                  <input
-                                    type="number"
-                                    value={actualCash}
-                                    onChange={(e) => setActualCash(e.target.value)}
-                                    className="flex-1 h-14 bg-slate-50 rounded-2xl px-5 text-[20px] font-black text-zinc-900 outline-none transition-all placeholder:text-slate-300 border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-center font-mono"
-                                    placeholder="0.00"
-                                  />
-                                  <SmartTooltip content="فتح آلة عد العملات">
-                                    <motion.button
-                                      whileHover={{ y: -1 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => setMoneyOpen(true)}
-                                      className="h-14 w-14 flex shrink-0 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors shadow-sm"
-                                    >
-                                      <Coins className="h-5 w-5" />
-                                    </motion.button>
-                                  </SmartTooltip>
+                                <div className="text-left">
+                                  <div className="text-[28px] font-black font-mono tracking-tighter leading-none">{fmt(expected)}</div>
+                                  <div className="text-[11px] font-bold text-slate-500 mt-1">جنيه مصري</div>
                                 </div>
                               </div>
-                              {actualCash && (
+
+                              {sess.actual_cash != null && (
                                 <motion.div
-                                  initial={{ opacity: 0, y: -10 }}
+                                  initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  className={"text-center rounded-2xl py-3 px-4 text-[14px] font-black border " + (Number(actualCash) - expected >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700")}
+                                  className={"mt-4 w-full rounded-2xl p-3 border flex items-center justify-between " + (discrepancy >= 0 ? "bg-emerald-500/20 border-emerald-500/30" : "bg-rose-500/20 border-rose-500/30")}
                                 >
-                                  الفرق: {Number(actualCash) - expected >= 0 ? "+" : ""}{fmt(Number(actualCash) - expected)} ج.م
+                                  <div>
+                                    <div className="text-[11px] font-bold text-slate-400">الرصيد الفعلي المُغلق</div>
+                                    <div className="text-[20px] font-black font-mono">{fmt(sess.actual_cash)}</div>
+                                  </div>
+                                  <div className={"text-[13px] font-black " + (discrepancy >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                                    الفرق: {discrepancy >= 0 ? "+" : ""}{fmt(discrepancy)} ج.م
+                                  </div>
                                 </motion.div>
                               )}
-                              {actualCash && (
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                  <div className="mb-2 flex items-center gap-2 text-[12px] font-black text-slate-700">
-                                    <Sparkles className="h-4 w-4 text-amber-500" /> مساعد العجز والزيادة
-                                  </div>
-                                  <div className="space-y-1">
-                                    {discrepancySuggestions.map((tip, idx) => (
-                                      <div key={idx} className="text-[12px] font-bold text-slate-500 leading-5">• {tip}</div>
-                                    ))}
+                            </div>
+
+                            {/* الرصيد الفعلي — always visible, no close action */}
+                            <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
+                              <h4 className="text-[16px] font-black text-zinc-900 mb-4 flex items-center gap-2">
+                                <Lock className="h-5 w-5 text-slate-600" /> إدخال الرصيد الفعلي
+                              </h4>
+                              <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-2">
+                                  <label className="text-[13px] font-black text-slate-700">الرصيد الفعلي (ج.م)</label>
+                                  <div className="flex gap-3">
+                                    <input
+                                      type="number"
+                                      value={actualCash}
+                                      onChange={(e) => setActualCash(e.target.value)}
+                                      className="flex-1 h-14 bg-slate-50 rounded-2xl px-5 text-[20px] font-black text-zinc-900 outline-none transition-all placeholder:text-slate-300 border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-center font-mono"
+                                      placeholder="0.00"
+                                    />
+                                    <SmartTooltip content="فتح آلة عد العملات">
+                                      <motion.button
+                                        whileHover={{ y: -1 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setMoneyOpen(true)}
+                                        className="h-14 w-14 flex shrink-0 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors shadow-sm"
+                                      >
+                                        <Coins className="h-5 w-5" />
+                                      </motion.button>
+                                    </SmartTooltip>
                                   </div>
                                 </div>
-                              )}
-                              <div className="flex flex-col gap-1.5">
-                                <label className="text-[12px] font-black uppercase tracking-widest text-slate-500">ملاحظات</label>
-                                <textarea
-                                  value={closeNotes}
-                                  onChange={(e) => setCloseNotes(e.target.value)}
-                                  className="w-full h-16 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-[13px] font-bold text-zinc-800 outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-slate-300 transition-all"
-                                  placeholder="ملاحظات حول الرصيد..."
-                                />
+                                {actualCash && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={"text-center rounded-2xl py-3 px-4 text-[14px] font-black border " + (Number(actualCash) - expected >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700")}
+                                  >
+                                    الفرق: {Number(actualCash) - expected >= 0 ? "+" : ""}{fmt(Number(actualCash) - expected)} ج.م
+                                  </motion.div>
+                                )}
+                                {actualCash && (
+                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <div className="mb-2 flex items-center gap-2 text-[12px] font-black text-slate-700">
+                                      <Sparkles className="h-4 w-4 text-amber-500" /> مساعد العجز والزيادة
+                                    </div>
+                                    <div className="space-y-1">
+                                      {discrepancySuggestions.map((tip, idx) => (
+                                        <div key={idx} className="text-[12px] font-bold text-slate-500 leading-5">• {tip}</div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[12px] font-black uppercase tracking-widest text-slate-500">ملاحظات</label>
+                                  <textarea
+                                    value={closeNotes}
+                                    onChange={(e) => setCloseNotes(e.target.value)}
+                                    className="w-full h-16 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-[13px] font-bold text-zinc-800 outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-slate-300 transition-all"
+                                    placeholder="ملاحظات حول الرصيد..."
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bottom Half: Payment Methods (The Rest) */}
+                          <div className="flex flex-col gap-5">
+                            {/* Daily movement per payment method (wallets / bank) */}
+                            <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                              <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2.5">
+                                <div className="h-9 w-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center ring-1 ring-inset ring-violet-200 shrink-0">
+                                  <CreditCard className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="text-[15px] font-black text-zinc-900 leading-tight">حركة الوسائل اليوم</h4>
+                                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">المحافظ والبنوك — خارج درج النقد</p>
+                                </div>
+                              </div>
+
+                              <div className="p-3 flex-1 space-y-2">
+                                {methodTotals.length === 0 ? (
+                                  <div className="h-full min-h-[120px] flex flex-col items-center justify-center text-center px-4 py-6">
+                                    <CreditCard className="h-8 w-8 text-slate-200 mb-2" />
+                                    <span className="text-[12px] font-black text-slate-400">لا توجد وسائل دفع إضافية</span>
+                                    <span className="text-[11px] font-bold text-slate-300 mt-1">أضف محفظة أو بنك من شاشة وسائل الدفع</span>
+                                  </div>
+                                ) : (
+                                  methodTotals.map((m) => {
+                                    const net = Number(m.net || 0);
+                                    const hasMovement = Number(m.in || 0) !== 0 || Number(m.out || 0) !== 0;
+                                    return (
+                                      <div
+                                        key={m.id}
+                                        className={`rounded-2xl border p-3 transition-all ${hasMovement ? "bg-white border-slate-200" : "bg-slate-50/60 border-slate-100"}`}
+                                      >
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-[18px] leading-none shrink-0">{m.icon || "💳"}</span>
+                                            <span className="text-[13px] font-black text-zinc-900 truncate">{m.name}</span>
+                                          </div>
+                                          <div className="flex flex-col items-end shrink-0">
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">الصافي</span>
+                                            <span className={`text-[15px] font-black font-mono tabular-nums leading-none ${net > 0 ? "text-emerald-600" : net < 0 ? "text-rose-600" : "text-slate-400"}`}>
+                                              {net > 0 ? "+" : net < 0 ? "−" : ""}{fmt(Math.abs(net))}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600">
+                                              <TrendingUp className="h-3 w-3" /> داخل
+                                            </span>
+                                            <span className="text-[12px] font-black font-mono text-emerald-700 tabular-nums">{fmt(m.in)}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-600">
+                                              <TrendingDown className="h-3 w-3" /> خارج
+                                            </span>
+                                            <span className="text-[12px] font-black font-mono text-rose-700 tabular-nums">{fmt(m.out)}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
                               </div>
                             </div>
                           </div>

@@ -389,6 +389,7 @@ export default function QuotationsPage() {
                   <div key={line.id} className="grid grid-cols-[1fr_100px_120px_100px_150px] items-center rounded-2xl hover:bg-slate-50 transition-colors p-4">
                     <div className="px-2 border-l border-slate-100">
                       <p className="text-[15px] font-black text-slate-900 truncate">{line.item_name}</p>
+                      {(line.item_code || line.code) && <p className="font-mono text-[11px] text-slate-400 truncate">{line.item_code || line.code}</p>}
                       {line.description && <p className="text-[13px] font-bold text-slate-400 mt-1 truncate">{line.description}</p>}
                     </div>
                     <div className="px-2 text-center border-l border-slate-100 font-black text-[16px]">{line.quantity}</div>

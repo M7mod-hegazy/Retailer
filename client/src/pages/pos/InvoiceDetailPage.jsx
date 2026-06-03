@@ -11,6 +11,8 @@ import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
+import DocumentActionButton from "../../components/document/DocumentActionButton";
 import toast from "react-hot-toast";
 import { PAYMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 
@@ -195,60 +197,39 @@ export default function InvoiceDetailPage() {
   return (
     <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6" dir="rtl">
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-300 bg-white px-6">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-[14px] font-black text-slate-800">فاتورة بيع #{invoice.invoice_no}</h1>
-            <span className="text-[10px] font-bold text-slate-400">محفوظة</span>
-          </div>
-          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black ${statusInfo.cls}`}>
-            {statusInfo.label}
-          </span>
-          {isAmended && (
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-700">
-              مُعدَّلة ← {invoice.amended_by_no || invoice.amended_by}
-            </span>
-          )}
-          {isAmendment && (
-            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[10px] font-black text-blue-700">
-              تعديل ↑ {invoice.amendment_of_no || invoice.amendment_of}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {!isCancelled && !isAmended && (
-            <PermissionGate page="pos" action="void">
-              <button
-                onClick={() => setCancelOpen(true)}
-                className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all"
-              >
-                <Trash2 className="h-4 w-4" /> إلغاء الفاتورة
-              </button>
+      <DocumentHeaderBar
+        onBack={() => navigate(-1)}
+        title={`فاتورة بيع #${invoice.invoice_no}`}
+        subtitle="محفوظة"
+        badges={[
+          { label: statusInfo.label, cls: statusInfo.cls },
+          ...(isAmended ? [{ label: `مُعدَّلة ← ${invoice.amended_by_no || invoice.amended_by}`, cls: "border-amber-200 bg-amber-100 text-amber-700" }] : []),
+          ...(isAmendment ? [{ label: `تعديل ↑ ${invoice.amendment_of_no || invoice.amendment_of}`, cls: "border-blue-200 bg-blue-100 text-blue-700" }] : []),
+        ]}
+        actions={
+          <>
+            {!isCancelled && !isAmended && (
+              <PermissionGate page="pos" action="void">
+                <DocumentActionButton variant="delete" icon={Trash2} onClick={() => setCancelOpen(true)}>
+                  إلغاء الفاتورة
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
+            <PermissionGate page="pos" action="print">
+              <DocumentActionButton variant="print" icon={Printer} onClick={() => setPrintOpen(true)}>
+                طباعة
+              </DocumentActionButton>
             </PermissionGate>
-          )}
-          <PermissionGate page="pos" action="print">
-            <button
-              onClick={() => setPrintOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all"
-            >
-              <Printer className="h-4 w-4" /> طباعة
-            </button>
-          </PermissionGate>
-          {!isCancelled && !isAmended && (
-            <PermissionGate page="pos" action="edit">
-              <button
-                onClick={handleEdit}
-                className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all"
-              >
-                <Pencil className="h-4 w-4" /> تعديل الفاتورة
-              </button>
-            </PermissionGate>
-          )}
-        </div>
-      </header>
+            {!isCancelled && !isAmended && (
+              <PermissionGate page="pos" action="edit">
+                <DocumentActionButton variant="edit" icon={Pencil} onClick={handleEdit}>
+                  تعديل الفاتورة
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
+          </>
+        }
+      />
 
       <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
         {/* Left */}

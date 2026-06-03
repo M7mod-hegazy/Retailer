@@ -1304,7 +1304,7 @@ router.get("/bulk-price-history/:operationId/items", requirePagePermission("item
   try {
     const rows = db.prepare(`
       SELECT ph.item_id, ph.field, ph.old_value, ph.new_value, ph.adjustment_type, ph.adjustment_value,
-             i.name AS item_name, i.barcode, c.name AS category_name
+             i.name AS item_name, i.code AS item_code, i.barcode, c.name AS category_name
       FROM price_history ph
       LEFT JOIN items i ON i.id = ph.item_id
       LEFT JOIN item_categories c ON c.id = i.category_id

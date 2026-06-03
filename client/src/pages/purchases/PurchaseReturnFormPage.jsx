@@ -11,6 +11,8 @@ import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
+import DocumentActionButton from "../../components/document/DocumentActionButton";
 import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
@@ -296,9 +298,11 @@ export default function PurchaseReturnFormPage() {
         item_code: l.item_code || "",
         unit_cost: Number(l.unit_cost || l.unit_price || 0),
         purchase_price: Number(l.purchase_price || 0),
+        sale_price: 0,
         quantity: Number(l.quantity),
         warehouse_id: l.warehouse_id || "",
         warehouse_name: warehouses.find(w => String(w.id) === String(l.warehouse_id))?.name || "—",
+        original_warehouse_id: l.warehouse_id || "",
         unit_id: String(l.unit_id || ""),
         unit_name: units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية",
       })));
@@ -419,9 +423,11 @@ export default function PurchaseReturnFormPage() {
         item_code: stagingItem.code || stagingItem.item_code || "",
         unit_cost: cost,
         purchase_price: purchasePrice,
+        sale_price: Number(stagingItem.sale_price || 0),
         quantity: finalQty,
         warehouse_id: stagingWarehouseId,
         warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
+        original_warehouse_id: stagingWarehouseId,
         unit_id: stagingUnitId,
         unit_name: selectedUnit?.name || "أساسية",
       }];
@@ -442,6 +448,13 @@ export default function PurchaseReturnFormPage() {
   }
   function updateCartPrice(key, val) {
     setCart(prev => prev.map(l => l.key !== key ? l : { ...l, unit_cost: Math.max(0, Number(val) || 0) }));
+  }
+  function updateCartWarehouse(key, warehouseId) {
+    setCart(prev => prev.map(l => l.key !== key ? l : {
+      ...l,
+      warehouse_id: warehouseId,
+      warehouse_name: warehouses.find(w => String(w.id) === String(warehouseId))?.name || "",
+    }));
   }
 
   function selectMode(m) {
@@ -649,88 +662,82 @@ export default function PurchaseReturnFormPage() {
   // ══ ACTIVE SCREEN ══
   return (
     <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in relative">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-amber-200 bg-white px-6 shadow-sm">
-        <div className="flex items-center gap-3 min-w-0">
-          <button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="flex flex-col shrink-0">
-            <h1 className="text-[14px] font-black text-slate-800">
-              {isEditMode ? "تعديل مرتجع مشتريات" : mode === "purchase" && loadedPurchase ? `مرتجع أمر شراء #${loadedPurchase.doc_no}` : "مرتجع مشتريات جديد"}
-            </h1>
-            <span className="text-[10px] font-bold text-slate-400">
-              {isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : mode === "direct" ? "مرتجع مباشر" : "مرتجع من أمر شراء"}
-            </span>
-          </div>
-          {isLocked && (
-            <div className="flex shrink-0 items-center gap-1.5 rounded-sm border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-              <Lock className="h-3 w-3" /> محفوظة
-            </div>
-          )}
-          {mode && (
-            <div className="flex gap-1.5">
-              <input readOnly value={invoiceIsActive ? (docNo || "") : "—"} className="h-7 w-28 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-400 cursor-not-allowed outline-none" />
-              <input readOnly value={invoiceIsActive && invoiceCreatedAt ? new Date(invoiceCreatedAt).toLocaleString("en-US") : "—"} className="h-7 w-44 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-400 cursor-not-allowed outline-none" />
-            </div>
-          )}
-          {mode === "purchase" && loadedPurchase && (
-            <Link to={`/purchases/returns?purchase_id=${loadedPurchase.id}`} className="flex items-center gap-1 text-[11px] font-bold text-amber-600 hover:underline shrink-0">
-              <ExternalLink className="h-3.5 w-3.5" /> عرض كل مرتجعات هذا الأمر
-            </Link>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {message.text && (
-            <div className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-[12px] font-bold ${message.type === "success" ? "bg-amber-50 text-amber-700 border border-amber-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
-              {message.type === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />} {message.text}
-            </div>
-          )}
-          <button onClick={() => setTodayReturnsOpen(true)}
-            className="flex h-9 items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all">
-            <Calendar className="h-4 w-4" /> سجل المرتجعات
-          </button>
-          <PermissionGate page="purchase_returns" action="print">
-            <button
-              onClick={() => setPrintPreview(true)}
-              disabled={!total}
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-200 bg-white px-4 text-[13px] font-black text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Printer className="h-4 w-4" /> طباعة
-            </button>
-          </PermissionGate>
-          {isEditMode && isLocked && (
-            <PermissionGate page="purchase_returns" action="edit">
-              <button onClick={() => setShowEditWarnModal(true)} className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-5 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
-                <Pencil className="h-4 w-4" /> تعديل
-              </button>
+      <DocumentHeaderBar
+        accent="amber"
+        className="shadow-sm"
+        onBack={handleBack}
+        title={isEditMode ? "تعديل مرتجع مشتريات" : mode === "purchase" && loadedPurchase ? `مرتجع أمر شراء #${loadedPurchase.doc_no}` : "مرتجع مشتريات جديد"}
+        subtitle={isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : mode === "direct" ? "مرتجع مباشر" : "مرتجع من أمر شراء"}
+        extras={
+          <>
+            {isLocked && (
+              <div className="flex shrink-0 items-center gap-1.5 rounded-sm border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                <Lock className="h-3 w-3" /> محفوظة
+              </div>
+            )}
+            {mode && (
+              <div className="flex gap-1.5">
+                <input readOnly value={invoiceIsActive ? (docNo || "") : "—"} className="h-7 w-28 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-400 cursor-not-allowed outline-none" />
+                <input readOnly value={invoiceIsActive && invoiceCreatedAt ? new Date(invoiceCreatedAt).toLocaleString("en-US") : "—"} className="h-7 w-44 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-400 cursor-not-allowed outline-none" />
+              </div>
+            )}
+            {mode === "purchase" && loadedPurchase && (
+              <Link to={`/purchases/returns?purchase_id=${loadedPurchase.id}`} className="flex items-center gap-1 text-[11px] font-bold text-amber-600 hover:underline shrink-0">
+                <ExternalLink className="h-3.5 w-3.5" /> عرض كل مرتجعات هذا الأمر
+              </Link>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {message.text && (
+              <div className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-[12px] font-bold ${message.type === "success" ? "bg-amber-50 text-amber-700 border border-amber-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+                {message.type === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />} {message.text}
+              </div>
+            )}
+            <DocumentActionButton variant="today" icon={Calendar} onClick={() => setTodayReturnsOpen(true)}>
+              سجل المرتجعات
+            </DocumentActionButton>
+            <PermissionGate page="purchase_returns" action="print">
+              <DocumentActionButton variant="print" icon={Printer} onClick={() => setPrintPreview(true)} disabled={!total}>
+                طباعة
+              </DocumentActionButton>
             </PermissionGate>
-          )}
-          {isEditMode && !isLocked && (
-            <PermissionGate page="purchase_returns" action="delete">
-              <button onClick={() => setShowDeleteModal(true)} className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
-                <Trash2 className="h-4 w-4" /> حذف
-              </button>
-            </PermissionGate>
-          )}
-          {!isEditMode && (
-            <button onClick={() => setShowWarningModal(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all">
-              <RotateCcw className="h-4 w-4" /> مرتجع جديد
-            </button>
-          )}
-          {mode && !isLocked && (
-            <PermissionGate page="purchase_returns" action={isEditMode ? "edit" : "add"}>
-              <button
-                onClick={() => setShowSaveConfirmModal(true)}
-                disabled={isSaving || !total}
-                className="flex h-9 items-center gap-2 rounded-sm bg-amber-700 px-6 text-[13px] font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-              >
-                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
-              </button>
-            </PermissionGate>
-          )}
-        </div>
-      </header>
+            {isEditMode && isLocked && (
+              <PermissionGate page="purchase_returns" action="edit">
+                <DocumentActionButton variant="edit" icon={Pencil} onClick={() => setShowEditWarnModal(true)}>
+                  تعديل
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
+            {isEditMode && !isLocked && (
+              <PermissionGate page="purchase_returns" action="delete">
+                <DocumentActionButton variant="delete" icon={Trash2} onClick={() => setShowDeleteModal(true)}>
+                  حذف
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
+            {!isEditMode && (
+              <DocumentActionButton variant="today" icon={RotateCcw} onClick={() => setShowWarningModal(true)}>
+                مرتجع جديد
+              </DocumentActionButton>
+            )}
+            {mode && !isLocked && (
+              <PermissionGate page="purchase_returns" action={isEditMode ? "edit" : "add"}>
+                <DocumentActionButton
+                  variant="primary"
+                  identity="amber"
+                  onClick={() => setShowSaveConfirmModal(true)}
+                  disabled={isSaving || !total}
+                  loading={isSaving}
+                >
+                  {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
+          </>
+        }
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel */}
@@ -1136,54 +1143,95 @@ export default function PurchaseReturnFormPage() {
               {cart.length > 0 ? (
                 <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                   <table className="w-full text-right">
-                    <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-400 text-center">الكود</th>
-                        <th className="px-4 py-3 text-[11px] font-bold text-slate-500">الصنف</th>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">المستودع</th>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">سعر المرتجع</th>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الكمية</th>
-                        <th className="px-3 py-3 text-[11px] font-bold text-slate-500 text-center">الإجمالي</th>
-                        {!isLocked && <th className="px-3 py-3 w-10"></th>}
+                    <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
+                      <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
+                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-400 text-center w-14">الكود</th>
+                        <th className="px-4 py-2.5 text-[12px] font-bold text-slate-700">الصنف</th>
+                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">المستودع</th>
+                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
+                        <th className="px-3 py-2.5 text-center">
+                          <div className="flex flex-col items-center gap-px">
+                            <span className="text-[11px] font-bold text-slate-400">سعر البيع</span>
+                            <span className="text-[9px] font-medium text-slate-300 leading-none">للمعاينة فقط</span>
+                          </div>
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                          <div className="flex flex-col items-center gap-px">
+                            <span className="text-[12px] font-black text-amber-700">سعر المرتجع</span>
+                            <span className="text-[9px] font-medium text-slate-400 leading-none">قابل للتعديل</span>
+                          </div>
+                        </th>
+                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">الكمية</th>
+                        <th className="px-3 py-2.5 text-[12px] font-black text-slate-700 text-center">الإجمالي</th>
+                        {!isLocked && <th className="px-3 py-2.5 w-10"></th>}
                       </tr>
                     </thead>
                     <tbody>
                       {cart.map((l, idx) => (
-                        <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50 animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                        <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50/80 animate-slide-up [&>*+*]:border-r [&>*+*]:border-slate-100" style={{ animationDelay: `${idx * 50}ms` }}>
                           <td className="px-3 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
                           <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
-                          <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.warehouse_name}</td>
-                          <td className="px-3 py-3 text-center text-[12px] text-slate-500 font-bold">{l.unit_name}</td>
-                          <td className="px-3 py-3 text-center">
+                          <td className="px-2 py-2 text-center">
                             {!isLocked ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <input type="number" step="any" min="0" value={l.unit_cost}
-                                  onChange={e => updateCartPrice(l.key, e.target.value)}
-                                  onFocus={e => e.target.select()}
-                                  className={`w-24 rounded-sm border px-2 py-1 text-center text-[13px] font-mono outline-none focus:ring-1 transition-colors
-                                    ${l.purchase_price > 0 && Number(l.unit_cost) > 0 && Number(l.unit_cost) < l.purchase_price
-                                      ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
-                                      : "border-slate-200 text-slate-800 focus:border-amber-400 focus:ring-amber-200"}`} />
-                                {l.purchase_price > 0 && (
-                                  <span className="text-[9px] font-mono text-slate-400">{Number(l.purchase_price).toFixed(2)}</span>
-                                )}
+                              <div className="flex flex-col items-center gap-1">
+                                <select
+                                  value={l.warehouse_id}
+                                  onChange={e => updateCartWarehouse(l.key, e.target.value)}
+                                  className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-amber-400 focus:bg-white focus:ring-1 focus:ring-amber-100 transition-colors cursor-pointer"
+                                >
+                                  {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </select>
+                                {(() => {
+                                  const wh = stockLevels[l.item_id] || {};
+                                  const current = wh[Number(l.warehouse_id)] ?? wh[l.warehouse_id];
+                                  if (current === undefined) return null;
+                                  const after = current - l.quantity;
+                                  return (
+                                    <div className="flex items-center gap-1 text-[11px] font-mono font-black">
+                                      <span className="text-slate-400">{current}</span>
+                                      <span className="text-slate-300">→</span>
+                                      <span className={after >= 0 ? "text-amber-600" : "text-rose-500"}>{after}</span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             ) : (
-                              <span className="text-[13px] text-slate-600 font-mono">{formatMoney(l.unit_cost)}</span>
+                              <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-[12px] font-bold text-slate-600">{l.warehouse_name}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-center text-[12px] font-bold text-slate-500">{l.unit_name}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <div
+                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-[13px] font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
+                              title="سعر البيع — للمعاينة فقط"
+                            >
+                              {l.sale_price > 0 ? formatMoney(l.sale_price) : "—"}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {!isLocked ? (
+                              <input type="number" step="any" min="0" value={l.unit_cost}
+                                onChange={e => updateCartPrice(l.key, e.target.value)}
+                                onFocus={e => e.target.select()}
+                                className={`w-24 rounded border px-2 py-1 text-center text-[13px] font-black font-mono outline-none focus:ring-1 transition-colors
+                                  ${l.purchase_price > 0 && Number(l.unit_cost) > 0 && Number(l.unit_cost) < l.purchase_price
+                                    ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
+                                    : "border-slate-200 bg-slate-50 text-slate-800 focus:border-amber-400 focus:bg-white focus:ring-amber-200"}`} />
+                            ) : (
+                              <span className="text-[13px] font-black text-slate-700 font-mono">{formatMoney(l.unit_cost)}</span>
                             )}
                           </td>
                           <td className="px-3 py-3 text-center">
                             {!isLocked ? (
                               <div className="flex items-center justify-center gap-1">
-                                <button onClick={() => updateCartQty(l.key, -1)} className="flex h-6 w-6 items-center justify-center rounded-sm border border-slate-200 text-slate-500 hover:bg-slate-100"><Minus className="h-3 w-3" /></button>
-                                <span className="w-8 text-center text-[13px] font-black text-slate-700">{l.quantity}</span>
-                                <button onClick={() => updateCartQty(l.key, 1)} className="flex h-6 w-6 items-center justify-center rounded-sm border border-slate-200 text-slate-500 hover:bg-slate-100"><Plus className="h-3 w-3" /></button>
+                                <button onClick={() => updateCartQty(l.key, -1)} className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-95 transition-all"><Minus className="h-3 w-3" /></button>
+                                <span className="w-8 text-center text-[13px] font-black text-slate-800">{l.quantity}</span>
+                                <button onClick={() => updateCartQty(l.key, 1)} className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-95 transition-all"><Plus className="h-3 w-3" /></button>
                               </div>
                             ) : <span className="text-[13px] font-black text-slate-700">{l.quantity}</span>}
                           </td>
-                          <td className="px-3 py-3 text-center text-[13px] font-bold text-amber-700 font-mono">{formatMoney(l.unit_cost * l.quantity)}</td>
-                          {!isLocked && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button></td>}
+                          <td className="px-3 py-3 text-center text-[14px] font-black text-amber-700 font-mono">{formatMoney(l.unit_cost * l.quantity)}</td>
+                          {!isLocked && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button></td>}
                         </tr>
                       ))}
                     </tbody>

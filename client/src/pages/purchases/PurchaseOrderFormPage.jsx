@@ -26,6 +26,8 @@ import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
+import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
+import DocumentActionButton from "../../components/document/DocumentActionButton";
 
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
@@ -260,37 +262,30 @@ export default function PurchaseOrderFormPage() {
   return (
     <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden px-4 lg:px-8 pb-6">
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-300 bg-white px-6">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => { if (lines.length > 0) setWarnModalOpen(true); else navigate("/purchases/orders"); }} 
-            className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-[14px] font-black text-slate-800 uppercase tracking-tight">طلب توريد جديد (Purchase Order)</h1>
-            <span className="text-[10px] font-bold text-slate-400">تخطيط المشتريات المستلمة لاحقاً</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {message.text && (
-            <div className={`rounded-sm px-3 py-1.5 text-[11px] font-bold ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}`}>
-              {message.text}
-            </div>
-          )}
-          <PermissionGate page="purchase_orders" action="add">
-            <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex h-9 items-center gap-2 rounded-sm bg-slate-800 px-6 text-[13px] font-black text-white hover:bg-slate-700 disabled:opacity-50 transition-all shadow-sm active:scale-95"
-            >
-              {isSaving ? "جاري الحفظ..." : "إرسال طلب التوريد"}
-            </button>
-          </PermissionGate>
-        </div>
-      </header>
+      <DocumentHeaderBar
+        onBack={() => { if (lines.length > 0) setWarnModalOpen(true); else navigate("/purchases/orders"); }}
+        title="طلب توريد جديد (Purchase Order)"
+        subtitle="تخطيط المشتريات المستلمة لاحقاً"
+        actions={
+          <>
+            {message.text && (
+              <div className={`rounded-sm px-3 py-1.5 text-[11px] font-bold ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}`}>
+                {message.text}
+              </div>
+            )}
+            <PermissionGate page="purchase_orders" action="add">
+              <DocumentActionButton
+                variant="primary"
+                identity="slate"
+                onClick={handleSave}
+                loading={isSaving}
+              >
+                {isSaving ? "جاري الحفظ..." : "إرسال طلب التوريد"}
+              </DocumentActionButton>
+            </PermissionGate>
+          </>
+        }
+      />
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
         <div className="flex gap-4 flex-1 min-h-0">

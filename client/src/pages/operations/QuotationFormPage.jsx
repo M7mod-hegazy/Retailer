@@ -28,6 +28,8 @@ import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 
 import PermissionGate from "../../components/ui/PermissionGate";
+import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
+import DocumentActionButton from "../../components/document/DocumentActionButton";
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 function resolveImageUrl(u) {
@@ -183,35 +185,27 @@ export default function QuotationFormPage() {
   return (
     <div className="flex h-full min-h-[600px] flex-col bg-[#F9FAFB] font-sans overflow-hidden px-4 lg:px-8 pb-6">
       {/* Workspace Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-300 bg-white px-6">
-        <div className="flex items-center gap-4">
-           <button 
-             onClick={() => {
-               if (cart.length > 0) setWarnModalOpen(true);
-               else navigate("/operations/quotations");
-             }} 
-             className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 text-slate-400 hover:text-slate-800 transition-colors"
-           >
-              <ArrowLeft className="h-4 w-4" />
-           </button>
-           <div className="flex flex-col">
-              <h1 className="text-[14px] font-black uppercase text-slate-800 tracking-tight">{editId ? "تعديل عرض سعر" : "محرر عرض سعر"}</h1>
-              <span className="text-[10px] font-bold text-slate-400">إعداد عرض سعر احترافي للعميل قبل اعتماد الفاتورة</span>
-           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-           <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
-             <button 
-               onClick={handleSave}
-               disabled={isSaving}
-               className="flex h-9 items-center gap-2 rounded-sm bg-slate-800 px-6 text-[13px] font-black text-white hover:bg-slate-700 transition-all shadow-sm"
-             >
-               <Save className="h-4 w-4" /> {isSaving ? "جاري الحفظ..." : "حفظ العرض"}
-             </button>
-           </PermissionGate>
-        </div>
-      </header>
+      <DocumentHeaderBar
+        onBack={() => {
+          if (cart.length > 0) setWarnModalOpen(true);
+          else navigate("/operations/quotations");
+        }}
+        title={editId ? "تعديل عرض سعر" : "محرر عرض سعر"}
+        subtitle="إعداد عرض سعر احترافي للعميل قبل اعتماد الفاتورة"
+        actions={
+          <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
+            <DocumentActionButton
+              variant="primary"
+              identity="slate"
+              icon={Save}
+              onClick={handleSave}
+              loading={isSaving}
+            >
+              {isSaving ? "جاري الحفظ..." : "حفظ العرض"}
+            </DocumentActionButton>
+          </PermissionGate>
+        }
+      />
 
       <div className="flex flex-1 min-h-0">
          {/* Main Workspace: Cart & Items */}

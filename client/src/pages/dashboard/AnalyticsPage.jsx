@@ -561,7 +561,10 @@ export default function AnalyticsPage() {
               <div className="space-y-3">
                 {belowMargin.map((item) => (
                   <div key={item.item_id || item.id} className="flex items-center justify-between rounded-[20px] border border-rose-100 bg-rose-50/40 p-4">
-                    <span className="font-bold text-slate-800 text-[13px]">{item.item_name || item.name}</span>
+                    <div className="flex flex-col min-w-0">
+                      {(item.item_code || item.code) && <span className="font-mono text-[10px] text-slate-400">{item.item_code || item.code}</span>}
+                      <span className="font-bold text-slate-800 text-[13px]">{item.item_name || item.name}</span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">هامش</span>
                       <span className="inline-flex items-center justify-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-[12px] font-black ring-1 ring-rose-200">

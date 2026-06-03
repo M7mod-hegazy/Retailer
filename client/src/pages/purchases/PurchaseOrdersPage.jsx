@@ -374,7 +374,7 @@ export default function PurchaseOrdersPage() {
                   <div key={l.id} className="grid grid-cols-[1fr_100px_100px_100px_120px] items-center rounded-2xl hover:bg-slate-50 transition-colors p-3">
                     <div className="px-3 border-l border-slate-100">
                       <p className="text-[14px] font-black text-slate-900 truncate">{l.item_name}</p>
-                      <p className="text-[12px] font-mono font-bold text-slate-400 mt-1">{l.barcode || l.code || "—"}</p>
+                      <p className="text-[12px] font-mono font-bold text-slate-400 mt-1">{l.item_code || l.code || l.barcode || "—"}</p>
                     </div>
                     <div className="px-3 text-center border-l border-slate-100 font-black text-[15px]">{l.quantity}</div>
                     <div className="px-3 text-center border-l border-slate-100 font-black text-[15px] text-emerald-600">{l.received_quantity || 0}</div>
@@ -410,7 +410,8 @@ export default function PurchaseOrdersPage() {
             {(activeOrder?.lines || []).map(line => (
               <div key={line.id} className="rounded-2xl border border-slate-200/60 bg-white p-5 flex items-center justify-between shadow-sm hover:border-indigo-300 transition-colors">
                 <div>
-                  <p className="text-[15px] font-black text-slate-900 mb-2">{line.item_name}</p>
+                  <p className="text-[15px] font-black text-slate-900 mb-1">{line.item_name}</p>
+                  {(line.item_code || line.code) && <p className="font-mono text-[11px] text-slate-400 mb-2">{line.item_code || line.code}</p>}
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider bg-slate-100 px-2.5 py-1 rounded-lg">مطلوب: {line.quantity}</span>
                     <span className="text-[11px] font-black text-indigo-700 uppercase tracking-wider bg-indigo-50 px-2.5 py-1 rounded-lg">متبقي: {line.remaining_quantity}</span>
@@ -452,7 +453,10 @@ export default function PurchaseOrdersPage() {
             <div className="space-y-4 relative z-10 mb-8">
               {receiveConfirmLines.map(line => (
                 <div key={line.id} className="flex items-center justify-between text-[14px] font-bold text-slate-300">
-                  <span className="truncate max-w-[150px]">{line.item_name}</span>
+                  <span className="flex flex-col max-w-[150px]">
+                    <span className="truncate">{line.item_name}</span>
+                    {(line.item_code || line.code) && <span className="font-mono text-[10px] text-slate-400 truncate">{line.item_code || line.code}</span>}
+                  </span>
                   <div className="flex items-center gap-4">
                     <span className="font-mono text-[12px] opacity-60">× {receiptLines[line.id]}</span>
                     <span className="font-black text-white font-mono">{formatMoney(Number(receiptLines[line.id]) * line.unit_cost)}</span>

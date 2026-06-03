@@ -43,7 +43,7 @@ export default function InvoiceLines() {
                 {line.item_name}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Inter, monospace', marginTop: '2px' }}>
-                كود: {line.barcode || line.code || line.item_id}
+                كود: {line.item_code || line.code || line.barcode || line.item_id}
               </div>
             </div>
             <button

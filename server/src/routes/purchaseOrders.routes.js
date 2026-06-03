@@ -62,7 +62,7 @@ router.get("/:id", requirePagePermission("purchase_orders", "view"), (req, res, 
     }
     const lines = db
       .prepare(
-        `SELECT pol.*, i.name AS item_name
+        `SELECT pol.*, i.name AS item_name, i.code AS item_code
          FROM purchase_order_lines pol
          LEFT JOIN items i ON i.id = pol.item_id
          WHERE pol.purchase_order_id = ?

@@ -152,7 +152,12 @@ function StepVariances({ items, counts, onApprove }) {
               const statusText = r.diff === 0 ? 'مطابق ✓' : `فرق ${r.diff > 0 ? '+' : ''}${r.diff}`;
               return (
                 <tr key={r.id} style={{ borderTop: idx > 0 ? '1px solid var(--border-subtle)' : undefined }}>
-                  <td style={{ padding: '10px 12px', fontWeight: 500 }}>{r.name}</td>
+                  <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span>{r.name}</span>
+                      {(r.code || r.item_code) && <span style={{ fontFamily: 'Inter, monospace', fontSize: '10px', color: 'var(--text-muted)' }}>{r.item_code || r.code}</span>}
+                    </div>
+                  </td>
                   <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace' }}>{r.system}</td>
                   <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace' }}>{r.counted}</td>
                   <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace', fontWeight: 700, color: diffColor }}>

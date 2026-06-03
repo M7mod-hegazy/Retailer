@@ -218,7 +218,12 @@ export default function PurchaseReturnDetailPage() {
               <tbody>
                 {(doc.lines || []).map((l, i) => (
                   <tr key={i} className="border-t border-slate-50 hover:bg-slate-50/50">
-                    <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.item_id}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-col">
+                        {(l.item_code || l.code) && <span className="font-mono text-[10px] text-slate-400">{l.item_code || l.code}</span>}
+                        <span className="font-bold text-slate-800">{l.item_name_ar || l.item_name || l.item_id}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-2.5 text-center text-slate-700">{l.quantity}</td>
                     <td className="px-4 py-2.5 text-center text-slate-700">{fmt(l.unit_cost)}</td>
                     <td className="px-4 py-2.5 text-left font-black text-slate-800">{fmt(l.line_total)}</td>

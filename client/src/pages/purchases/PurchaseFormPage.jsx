@@ -24,6 +24,8 @@ import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
+import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { usePageTour } from "../../hooks/usePageTour";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
@@ -906,97 +908,86 @@ export default function PurchaseFormPage() {
         <PurchaseProfitModal lines={lines} onClose={() => setProfitModalOpen(false)} />
       )}
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b-2 border-emerald-500 bg-white px-5">
-        <div className="flex items-center gap-3">
-          <Link to="/purchases"
-            className="flex items-center gap-1 text-slate-400 hover:text-emerald-700 transition-colors mr-1"
-            title="فواتير المشتريات">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="flex items-center gap-2.5">
-            <div className="flex flex-col">
-              <h1 className="text-[14px] font-black text-emerald-800">
-                {isEditMode ? "فاتورة مشتريات" : "فاتورة مشتريات جديدة"}
-              </h1>
-              <span className="text-[10px] font-bold text-slate-400">
-                {isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : "إدخال مخزون جديد"}
-              </span>
-            </div>
-            <div className="mx-2 h-8 w-px bg-slate-200" />
+      <DocumentHeaderBar
+        accent="emerald-strong"
+        onBack={() => navigate("/purchases")}
+        title={isEditMode ? "فاتورة مشتريات" : "فاتورة مشتريات جديدة"}
+        subtitle={isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : "إدخال مخزون جديد"}
+        extras={
+          <>
             {invoiceIsActive && (
               <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
                 {isLocked ? <Lock className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                 {isLocked ? "مقفلة" : "نشطة"}
               </div>
             )}
-          </div>
-          {!isLocked && isEditMode && user?.name && (
-            <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-              المحرر: {user.name}
+            {!isLocked && isEditMode && user?.name && (
+              <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                المحرر: {user.name}
+              </div>
+            )}
+            <div className="flex gap-1.5 items-center">
+              <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"}
+                className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
+              <input disabled
+                value={invoiceIsActive && invoiceCreatedAt ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt)) : "—"}
+                className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
             </div>
-          )}
-          <div className="flex gap-1.5 items-center">
-            <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"}
-              className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
-            <input disabled
-              value={invoiceIsActive && invoiceCreatedAt ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt)) : "—"}
-              className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {priceChangedLines.length > 0 && !isLocked && (
-            <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {priceChangedLines.length} أسعار ستتغير
-            </div>
-          )}
-          {/* Profit analysis button */}
-          {lines.length > 0 && (
-            <button onClick={() => setProfitModalOpen(true)}
-              className="flex h-7 items-center gap-1.5 rounded-sm border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-all">
-              <TrendingUp className="h-3.5 w-3.5" /> تحليل الربح
-            </button>
-          )}
-          {/* Today's Purchases button */}
-          <button onClick={() => setTodayPurchOpen(true)}
-            className="flex h-7 items-center gap-1.5 rounded-sm border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition-all">
-            <Receipt className="h-3.5 w-3.5" /> مشتريات اليوم
-          </button>
-          {/* Delete button — always visible */}
-          <PermissionGate page="purchases" action="delete">
-            <button onClick={() => setDeleteConfirmOpen(true)}
-              className="flex h-7 items-center gap-1.5 rounded-sm border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-bold text-rose-600 hover:bg-rose-100 transition-all">
-              <Trash2 className="h-3.5 w-3.5" />
-              {isEditMode ? "حذف" : "مسح"}
-            </button>
-          </PermissionGate>
-          {isEditMode && isLocked ? (
-            <button onClick={() => setEditWarnOpen(true)}
-              className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
-              <Pencil className="h-3 w-3" /> تعديل
-            </button>
-          ) : (
-            <>
-              <PermissionGate page="purchases" action="print">
-                <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
-                  className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-slate-50 transition-all disabled:opacity-40">
-                  <Printer className="h-3 w-3" /> معاينة وطباعة
-                </button>
-              </PermissionGate>
-              <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
-                <button onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
-                  className="flex h-7 items-center gap-1.5 rounded-sm bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
-                  {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري...</> : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
-                </button>
-              </PermissionGate>
-              <button onClick={() => setNewInvoiceModalOpen(true)}
-                className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
-                <FilePlus className="h-3 w-3" /> جديدة
+          </>
+        }
+        actions={
+          <>
+            {priceChangedLines.length > 0 && !isLocked && (
+              <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                <TrendingUp className="h-3.5 w-3.5" />
+                {priceChangedLines.length} أسعار ستتغير
+              </div>
+            )}
+            {/* Profit analysis — special to purchases (blue) */}
+            {lines.length > 0 && (
+              <button onClick={() => setProfitModalOpen(true)}
+                className="flex h-9 items-center gap-2 rounded-sm border border-blue-200 bg-blue-50 px-4 text-[13px] font-black text-blue-700 hover:bg-blue-100 transition-all">
+                <TrendingUp className="h-4 w-4" /> تحليل الربح
               </button>
-            </>
-          )}
-        </div>
-      </header>
+            )}
+            <DocumentActionButton variant="today" icon={Receipt} onClick={() => setTodayPurchOpen(true)}>
+              مشتريات اليوم
+            </DocumentActionButton>
+            <PermissionGate page="purchases" action="delete">
+              <DocumentActionButton variant="delete" icon={Trash2} onClick={() => setDeleteConfirmOpen(true)}>
+                {isEditMode ? "حذف" : "مسح"}
+              </DocumentActionButton>
+            </PermissionGate>
+            {isEditMode && isLocked ? (
+              <DocumentActionButton variant="edit" icon={Pencil} onClick={() => setEditWarnOpen(true)}>
+                تعديل
+              </DocumentActionButton>
+            ) : (
+              <>
+                <PermissionGate page="purchases" action="print">
+                  <DocumentActionButton variant="print" icon={Printer} onClick={() => setPrintPreview(true)} disabled={!lines.length}>
+                    معاينة وطباعة
+                  </DocumentActionButton>
+                </PermissionGate>
+                <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
+                  <DocumentActionButton
+                    variant="primary"
+                    identity="emerald"
+                    onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }}
+                    disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
+                    loading={isSaving}
+                  >
+                    {isSaving ? "جاري..." : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
+                  </DocumentActionButton>
+                </PermissionGate>
+                <DocumentActionButton variant="ghost" icon={FilePlus} onClick={() => setNewInvoiceModalOpen(true)}>
+                  جديدة
+                </DocumentActionButton>
+              </>
+            )}
+          </>
+        }
+      />
 
       <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
         {/* Left: Main Content */}

@@ -884,9 +884,11 @@ export default function BulkPriceUpdatePage() {
                                       const delta = oi.new_value - oi.old_value;
                                       return (
                                         <tr key={oi.item_id} className="hover:bg-indigo-50 transition-colors">
-                                          <td className="py-1.5 font-bold text-slate-800">
-                                            {oi.item_name}
-                                            {oi.barcode && <span className="font-mono text-[10px] text-slate-400 mr-2">{oi.barcode}</span>}
+                                          <td className="py-1.5">
+                                            <div className="flex flex-col">
+                                              {(oi.item_code || oi.code) && <span className="font-mono text-[10px] text-slate-400">{oi.item_code || oi.code}</span>}
+                                              <span className="font-bold text-slate-800">{oi.item_name}</span>
+                                            </div>
                                           </td>
                                           <td className="py-1.5 text-slate-500">{oi.category_name || "—"}</td>
                                           <td className="py-1.5 text-slate-500">{fieldLabelByKey(oi.field)}</td>

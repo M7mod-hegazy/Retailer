@@ -15,6 +15,8 @@ import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
+import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
+import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
@@ -667,90 +669,84 @@ export default function BranchTransferFormPage() {
       </Modal>
 
       {/* Header */}
-      <header className={`print:hidden relative mb-6 overflow-hidden rounded-[24px] bg-gradient-to-l ${theme.gradient} px-8 py-6 shadow-xl ${theme.shadow}`}>
-        <div className="absolute top-0 right-0 h-full w-full opacity-10 pointer-events-none">
-          <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0,0 L100,100 L100,0 Z" fill="white" />
-          </svg>
-        </div>
-        <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-5">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-white/20 shadow-[0_0_20px_rgba(255,255,255,0.2)] backdrop-blur-md border border-white/30">
-              {isReceive ? <ArrowDownToLine className="h-7 w-7 text-white" /> : <ArrowUpFromLine className="h-7 w-7 text-white" />}
-            </div>
-            <div>
-              <h1 className="text-[24px] font-black tracking-tight text-white drop-shadow-md">
-                {isEditMode ? "تعديل مستند" : (isReceive ? "أمر استلام بضاعة" : "أمر صرف وتحويل")}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-0.5 text-[12px] font-bold text-white shadow-inner backdrop-blur-sm border border-white/20">
-                  <CalendarClock className="h-3 w-3" />
-                  {new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </span>
-                {isEditMode && (
-                  <span className="text-white/80 text-[12px] font-bold bg-white/10 px-2 py-0.5 rounded-full border border-white/20">
-                    وضع التعديل
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Doc number + datetime + action buttons */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Price-change count badge — receive only */}
+      <DocumentHeaderBar
+        className="print:hidden mb-6"
+        accent={isReceive ? "emerald" : "indigo"}
+        onBack={() => navigate("/operations/branch-transfer")}
+        title={isEditMode ? "تعديل مستند" : (isReceive ? "أمر استلام بضاعة" : "أمر صرف وتحويل")}
+        subtitle={isEditMode ? "وضع التعديل" : (isReceive ? "استلام بضاعة من فرع" : "تسليم بضاعة لفرع")}
+        extras={
+          <>
             {priceChangedLines.length > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3 py-1 text-[12px] font-black text-amber-900 shadow-inner">
+              <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700">
                 <TrendingUp className="h-3.5 w-3.5" />
                 {priceChangedLines.length} أسعار ستتغير
               </div>
             )}
-            {/* Draft / locked ref & time */}
             {(displayRef || displayDate) && (
-              <div className="flex items-center gap-2">
+              <div className="flex gap-1.5 items-center">
                 {displayRef && (
-                  <div className="flex items-center gap-1.5 rounded-[10px] bg-white/15 border border-white/25 px-3 py-2 backdrop-blur-sm">
-                    <Hash className="h-3.5 w-3.5 text-white/70" />
-                    <span className="font-mono text-[13px] font-black text-white tracking-wider">{displayRef}</span>
-                    {isEditMode && <span className="text-white/50 text-[10px] mr-1">• مقفل</span>}
+                  <div className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-500">
+                    <Hash className="h-3.5 w-3.5 text-slate-400" />
+                    {displayRef}
+                    {isEditMode && <span className="text-slate-400 text-[10px]">• مقفل</span>}
                   </div>
                 )}
                 {displayDate && (
-                  <div className="flex items-center gap-1.5 rounded-[10px] bg-white/15 border border-white/25 px-3 py-2 backdrop-blur-sm">
-                    <Clock className="h-3.5 w-3.5 text-white/70" />
-                    <span className="text-[12px] font-bold text-white/90">{fmtDateTime(displayDate)}</span>
+                  <div className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-bold text-slate-400">
+                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    {fmtDateTime(displayDate)}
                   </div>
                 )}
               </div>
             )}
-
-            {/* Today's transfers button */}
-            <button
-              onClick={() => setTodayModalOpen(true)}
-              className="flex items-center gap-2 rounded-[12px] bg-white/15 border border-white/25 px-4 py-2.5 text-[13px] font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-all"
-              title="مستندات النقل"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">المستندات</span>
-            </button>
-
-            {/* Advanced stock search button */}
-            <button
-              onClick={() => setAdvancedSearchOpen(true)}
-              className="flex items-center gap-2 rounded-[12px] bg-white/15 border border-white/25 px-4 py-2.5 text-[13px] font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-all"
-              title="بحث متقدم في المخزون"
-            >
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">المخزون</span>
-            </button>
-
-            <button onClick={() => navigate("/operations/branch-transfer")} className="group flex items-center gap-2 rounded-[12px] bg-white/10 px-5 py-2.5 text-[13px] font-bold text-white border border-white/20 shadow-sm backdrop-blur-md hover:bg-white/20 hover:scale-[1.02] transition-all active:scale-95">
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              رجوع
-            </button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+        actions={
+          <>
+            <DocumentActionButton variant="ghost" icon={Search} onClick={() => setAdvancedSearchOpen(true)}>
+              المخزون
+            </DocumentActionButton>
+            <DocumentActionButton variant="today" icon={FileText} onClick={() => setTodayModalOpen(true)}>
+              المستندات
+            </DocumentActionButton>
+            <PermissionGate page="branch_transfer" action={isEditMode ? "edit" : "add"}>
+              <DocumentActionButton
+                variant="ghost"
+                icon={CheckCircle}
+                onClick={() => handleSaveClick()}
+                disabled={isSaving || !lines.length || !partnerBranch}
+                loading={isSaving}
+              >
+                {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
+              </DocumentActionButton>
+            </PermissionGate>
+            {isEditMode && (
+              <PermissionGate page="branch_transfer" action="delete">
+                <DocumentActionButton
+                  variant="delete"
+                  icon={Trash2}
+                  onClick={() => setCancelConfirmOpen(true)}
+                  disabled={isSaving || isCancelling}
+                >
+                  إلغاء المستند
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
+            <PermissionGate page="branch_transfer" action="print">
+              <DocumentActionButton
+                variant="primary"
+                identity={isReceive ? "emerald" : "indigo"}
+                icon={Printer}
+                onClick={() => setPreviewOpen(true)}
+                disabled={isSaving || !lines.length || !partnerBranch}
+              >
+                طباعة ومراجعة المستند
+              </DocumentActionButton>
+            </PermissionGate>
+          </>
+        }
+      />
 
       <div className="print:hidden grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr] items-start">
 
@@ -825,41 +821,6 @@ export default function BranchTransferFormPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <PermissionGate page="branch_transfer" action="print">
-                <button
-                  onClick={() => setPreviewOpen(true)}
-                  disabled={isSaving || !lines.length || !partnerBranch}
-                  className={`w-full h-[52px] flex items-center justify-center gap-2.5 rounded-[12px] text-[15px] font-black text-white transition-all shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.12)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 bg-gradient-to-l ${theme.gradient}`}
-                >
-                  <Printer className="h-5 w-5" />
-                  طباعة ومراجعة المستند
-                </button>
-              </PermissionGate>
-
-              <PermissionGate page="branch_transfer" action={isEditMode ? "edit" : "add"}>
-                <button
-                  onClick={() => handleSaveClick()}
-                  disabled={isSaving || !lines.length || !partnerBranch}
-                  className="w-full h-[46px] flex items-center justify-center gap-2 rounded-[12px] bg-slate-100 border border-slate-200 text-[14px] font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> جاري...</> : <><CheckCircle className="h-4 w-4" /> {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}</>}
-                </button>
-              </PermissionGate>
-
-              {isEditMode && (
-                <PermissionGate page="branch_transfer" action="delete">
-                  <button
-                    onClick={() => setCancelConfirmOpen(true)}
-                    disabled={isSaving || isCancelling}
-                    className="w-full h-[46px] flex items-center justify-center gap-2 rounded-[12px] bg-rose-50 border border-rose-200 text-[14px] font-bold text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    إلغاء المستند
-                  </button>
-                </PermissionGate>
-              )}
-            </div>
           </div>
         </div>
 

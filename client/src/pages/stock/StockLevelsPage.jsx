@@ -582,7 +582,7 @@ export default function StockLevelsPage() {
                     render: (r) => (
                       <div className="flex flex-col">
                         <span>{r.item_name}</span>
-                        {r.barcode && <span className="font-mono text-[11px] text-slate-400 font-bold">{r.barcode}</span>}
+                        {(r.item_code || r.code || r.barcode) && <span className="font-mono text-[11px] text-slate-400 font-bold">{r.item_code || r.code || r.barcode}</span>}
                       </div>
                     )
                   },
@@ -778,6 +778,7 @@ export default function StockLevelsPage() {
                        const v = itemValidation[it.item_id];
                        return (
                          <li key={it.item_id} className="text-[11px] font-bold text-rose-700 flex items-center gap-1.5 bg-rose-100/50 px-2 py-1 rounded-sm w-max break-inside-avoid">
+                           {(it.item_code || it.code) && <span className="font-mono text-[10px] font-black text-rose-500 bg-rose-200/60 px-1 rounded">{it.item_code || it.code}</span>}
                            <span className="font-black text-rose-900">{it.item_name}</span>
                            {v === "no_qty" && <span>لم تحدد كمية للتحويل.</span>}
                            {v === "over_qty" && <span>لا يكفي! المطلوب {qtys[it.item_id]} والمتاح {it.quantity}</span>}
@@ -1084,7 +1085,7 @@ export default function StockLevelsPage() {
                     render: (mv) => (
                        <div className="flex flex-col">
                           <span className="text-[13px] font-black text-slate-800">{mv.item_name}</span>
-                          {mv.barcode && <span className="font-mono text-[10px] text-slate-400">{mv.barcode}</span>}
+                          {(mv.item_code || mv.code || mv.barcode) && <span className="font-mono text-[10px] text-slate-400">{mv.item_code || mv.code || mv.barcode}</span>}
                        </div>
                     )
                   },
@@ -1174,7 +1175,7 @@ export default function StockLevelsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div><span className="font-black">رقم الحركة:</span> {movementDetails.id}</div>
             <div><span className="font-black">التاريخ:</span> {movementDetails.created_at}</div>
-            <div><span className="font-black">الصنف:</span> {movementDetails.item_name}</div>
+            <div><span className="font-black">الصنف:</span> {movementDetails.item_name}{(movementDetails.item_code || movementDetails.code) && <span className="font-mono text-[11px] text-slate-400 mr-2">{movementDetails.item_code || movementDetails.code}</span>}</div>
             <div><span className="font-black">الباركود:</span> {movementDetails.barcode || "—"}</div>
             <div><span className="font-black">المخزن:</span> {movementDetails.warehouse_name || "—"}</div>
             <div><span className="font-black">نوع الحركة:</span> {MOV_META(movementDetails.movement_type).label}</div>

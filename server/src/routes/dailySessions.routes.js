@@ -91,6 +91,120 @@ router.get("/today/summary", requirePagePermission("daily_treasury", "view"), (r
   }
 });
 
+/** Per–payment-method daily totals (user-created methods only, e.g. wallets/bank).
+ *  Aggregates every source that records a method movement:
+ *    IN  ← POS sales / customer collections (payments, non-supplier), آجل customer payments
+ *          (ajal_payments), revenues.
+ *    OUT ← supplier payments (payments, supplier-side), expenses, purchase payments
+ *          (purchase_payments), withdrawals, آجل supplier payments.
+ *  payments matches by method name; ajal_payments & purchase_payments match by FK id.
+ *  (purchase_payments and supplier-side payments do not overlap — supplier purchase
+ *   settlements are recorded in purchase_payments, not payments.)
+ *  Supports ?date= for historical days. */
+router.get("/today/payment-methods", requirePagePermission("daily_treasury", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const targetDate = normalizeDate(req.query.date || localDate());
+
+    const methods = db.prepare(`
+      SELECT id, name, icon, category, type
+      FROM payment_methods
+      WHERE is_system = 0 AND is_active = 1
+      ORDER BY id ASC
+    `).all();
+    if (!methods.length) return res.json({ success: true, data: [] });
+
+    const agg = {};                 // method id -> { in, out }
+    const byName = {};              // method name -> id (for string-matched sources)
+    methods.forEach((m) => { agg[m.id] = { in: 0, out: 0 }; byName[m.name] = m.id; });
+
+    // payments: matched by method name. Supplier-side = out, everything else = in.
+    db.prepare(`
+      SELECT method,
+        SUM(CASE WHEN party_type = 'supplier' THEN 0 ELSE amount END) AS in_amt,
+        SUM(CASE WHEN party_type = 'supplier' THEN amount ELSE 0 END) AS out_amt
+      FROM payments
+      WHERE method IS NOT NULL AND date(created_at) = ?
+      GROUP BY method
+    `).all(targetDate).forEach((r) => {
+      const id = byName[r.method];
+      if (id != null) { agg[id].in += Number(r.in_amt || 0); agg[id].out += Number(r.out_amt || 0); }
+    });
+
+    // ajal_payments: matched by FK. Supplier debt = out, customer debt = in.
+    db.prepare(`
+      SELECT ap.payment_method_id AS mid,
+        SUM(CASE WHEN COALESCE(d.party_type, 'customer') = 'supplier' THEN 0 ELSE ap.amount END) AS in_amt,
+        SUM(CASE WHEN COALESCE(d.party_type, 'customer') = 'supplier' THEN ap.amount ELSE 0 END) AS out_amt
+      FROM ajal_payments ap
+      LEFT JOIN ajal_debts d ON d.id = ap.debt_id
+      WHERE ap.payment_method_id IS NOT NULL
+        AND date(COALESCE(ap.payment_date, ap.created_at)) = ?
+      GROUP BY ap.payment_method_id
+    `).all(targetDate).forEach((r) => {
+      if (agg[r.mid]) { agg[r.mid].in += Number(r.in_amt || 0); agg[r.mid].out += Number(r.out_amt || 0); }
+    });
+
+    // expenses: matched by method name → always out.
+    db.prepare(`
+      SELECT payment_method AS method, SUM(amount) AS out_amt
+      FROM expenses
+      WHERE payment_method IS NOT NULL AND date(created_at) = ?
+      GROUP BY payment_method
+    `).all(targetDate).forEach((r) => {
+      const id = byName[r.method];
+      if (id != null) agg[id].out += Number(r.out_amt || 0);
+    });
+
+    // revenues: matched by method name → always in.
+    db.prepare(`
+      SELECT payment_method AS method, SUM(amount) AS in_amt
+      FROM revenues
+      WHERE payment_method IS NOT NULL AND date(created_at) = ?
+      GROUP BY payment_method
+    `).all(targetDate).forEach((r) => {
+      const id = byName[r.method];
+      if (id != null) agg[id].in += Number(r.in_amt || 0);
+    });
+
+    // purchase payments: matched by FK → always out (paying suppliers for goods).
+    db.prepare(`
+      SELECT method_id AS mid, SUM(amount) AS out_amt
+      FROM purchase_payments
+      WHERE method_id IS NOT NULL AND date(created_at) = ?
+      GROUP BY method_id
+    `).all(targetDate).forEach((r) => {
+      if (agg[r.mid]) agg[r.mid].out += Number(r.out_amt || 0);
+    });
+
+    // withdrawals: matched by method name → always out.
+    db.prepare(`
+      SELECT payment_method AS method, SUM(amount) AS out_amt
+      FROM withdrawals
+      WHERE payment_method IS NOT NULL AND date(created_at) = ?
+      GROUP BY payment_method
+    `).all(targetDate).forEach((r) => {
+      const id = byName[r.method];
+      if (id != null) agg[id].out += Number(r.out_amt || 0);
+    });
+
+    const data = methods.map((m) => ({
+      id: m.id,
+      name: m.name,
+      icon: m.icon,
+      category: m.category,
+      type: m.type,
+      in: agg[m.id].in,
+      out: agg[m.id].out,
+      net: agg[m.id].in - agg[m.id].out,
+    }));
+
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 /** Get transactions by type (supports date param for historical) */
 router.get("/today/transactions", requirePagePermission("daily_treasury", "view"), (req, res) => {
   try {

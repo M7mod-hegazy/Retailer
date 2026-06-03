@@ -1697,7 +1697,7 @@ export default function POSPage() {
               <button
                 onClick={() => setPrintPreview(true)}
                 disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-                className={`flex h-9 items-center gap-2 rounded-xl px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
+                className={`flex h-9 items-center gap-2 rounded-sm px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
                   ${hasBlockingErrors && !stockOnlyErrors && lines.length ? "bg-rose-600" : "bg-indigo-600 hover:bg-indigo-700"}`}
               >
                 <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
