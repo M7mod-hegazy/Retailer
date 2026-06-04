@@ -348,10 +348,8 @@ export default function PurchaseOrderFormPage() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          const q = itemQuery.trim();
                           if (filteredItems.length > 0) { handlePickItem(filteredItems[activeIndex] || filteredItems[0]); }
                           else if (itemSearchActiveRef.current) { pendingPickRef.current = true; }
-                          else if (q) handlePickItem({ id: -1, name: q, code: q, barcode: q, purchase_price: 0, sale_price: 0 });
                         } else if (e.key === "ArrowDown") {
                           e.preventDefault();
                           setActiveIndex(prev => (prev < filteredItems.length - 1 ? prev + 1 : prev));
@@ -368,8 +366,6 @@ export default function PurchaseOrderFormPage() {
                         activeIndex={activeIndex}
                         query={itemQuery}
                         emptyLabel="الصنف غير موجود"
-                        rawText={itemQuery}
-                        onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })}
                         onLoadMore={loadMoreItems}
                         hasMoreFromServer={itemHasMore}
                         isLoadingMore={isLoadingMoreItems}

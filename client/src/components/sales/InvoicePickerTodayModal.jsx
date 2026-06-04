@@ -324,7 +324,17 @@ export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice
     { id: "invoice_no", header: "رقم الفاتورة", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[12px] font-black text-slate-700", render: (inv) => inv.invoice_no || inv.doc_no },
     { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (inv) => inv.customer_name || "—" },
     { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (inv) => formatMoney(inv.total) },
+    { id: "total", header: "الإجمالي", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (inv) => (
+      <div className="flex flex-col gap-0.5">
+        <span>{formatMoney(inv.total)}</span>
+        {(Number(inv.discount) > 0 || Number(inv.increase) > 0) && (
+          <span className="text-[9px] font-black leading-none">
+            {Number(inv.discount) > 0 && <span className="text-rose-500">خصم −{formatMoney(inv.discount)} </span>}
+            {Number(inv.increase) > 0 && <span className="text-emerald-600">زيادة +{formatMoney(inv.increase)}</span>}
+          </span>
+        )}
+      </div>
+    ) },
     { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
       if (inv.payment_splits) {
         const splits = inv.payment_splits.split("|||").filter(Boolean).map(s => { const [m, a] = s.split(":"); return { method: (m || "").trim(), amount: Number(a || 0) }; }).filter(s => s.amount > 0);

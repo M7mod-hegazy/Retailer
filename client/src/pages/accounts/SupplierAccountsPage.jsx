@@ -1371,21 +1371,15 @@ export default function SupplierAccountsPage() {
                 const d = detailReturnData;
                 return (
                   <>
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
+                    {/* Meta info */}
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
                       <div className="grid grid-cols-2 gap-3 text-[12px]">
                         <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{d.supplier_name || "—"}</span></div>
                         <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(d.created_at)}</span></div>
                         <div><span className="font-black text-slate-400">طريقة التسوية:</span> <span className="font-bold text-slate-800">{STYPE[d.settlement_type] || d.settlement_type || "—"}</span></div>
-                        <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="font-black font-mono text-slate-900">{fmt(d.total)} ج.م</span></div>
-                        {Number(d.cash_amount) > 0.005 && (
-                          <div><span className="font-black text-slate-400">نقداً:</span> <span className="font-bold font-mono text-emerald-700">{fmt(d.cash_amount)} ج.م</span></div>
-                        )}
-                        {Number(d.credit_amount) > 0.005 && (
-                          <div><span className="font-black text-slate-400">خصم من الآجل:</span> <span className="font-bold font-mono text-rose-600">{fmt(d.credit_amount)} ج.م</span></div>
-                        )}
                         {d.original_purchase_no && (
-                          <div className="col-span-2">
-                            <span className="font-black text-slate-400">الفاتورة الأصلية: </span>
+                          <div>
+                            <span className="font-black text-slate-400">أمر الشراء الأصلي: </span>
                             <button
                               onClick={() => { setDetailReturn(null); setDetailReturnData(null); setDetailPurchaseIsOriginal(true); setDetailPurchase({ id: d.purchase_id, doc_no: d.original_purchase_no }); }}
                               className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-[12px] cursor-pointer"
@@ -1429,7 +1423,44 @@ export default function SupplierAccountsPage() {
                               </tr>
                             ))}
                           </tbody>
+                          <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                            {(Number(d.discount) > 0 || Number(d.increase) > 0) && (
+                              <tr>
+                                <td colSpan={3} className="px-3 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
+                                <td className="px-3 py-1.5 text-center font-mono font-bold text-slate-600">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
+                              </tr>
+                            )}
+                            {Number(d.discount) > 0 && (
+                              <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-rose-600">خصم المرتجع</td><td className="px-3 py-1.5 text-center font-mono font-bold text-rose-600">− {fmt(d.discount)}</td></tr>
+                            )}
+                            {Number(d.increase) > 0 && (
+                              <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-emerald-600">زيادة المرتجع</td><td className="px-3 py-1.5 text-center font-mono font-bold text-emerald-600">+ {fmt(d.increase)}</td></tr>
+                            )}
+                            <tr className="border-t border-slate-200">
+                              <td colSpan={3} className="px-3 py-2 text-right font-black text-slate-800">صافي المرتجع</td>
+                              <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-[13px]">{fmt(d.total)}</td>
+                            </tr>
+                          </tfoot>
                         </table>
+                      </div>
+                    )}
+
+                    {/* Settlement split */}
+                    {(Number(d.cash_amount) > 0.005 || Number(d.credit_amount) > 0.005) && (
+                      <div className="rounded-xl border border-slate-200 bg-white p-4 mb-4 flex flex-col gap-1.5 text-[12px]">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">تفاصيل التسوية</span>
+                        {Number(d.cash_amount) > 0.005 && (
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-slate-500">نقداً (صندوق)</span>
+                            <span className="font-mono font-bold text-emerald-700">{fmt(d.cash_amount)} ج.م</span>
+                          </div>
+                        )}
+                        {Number(d.credit_amount) > 0.005 && (
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-slate-500">خصم من الآجل (رصيد)</span>
+                            <span className="font-mono font-bold text-rose-600">{fmt(d.credit_amount)} ج.م</span>
+                          </div>
+                        )}
                       </div>
                     )}
 

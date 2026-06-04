@@ -231,8 +231,28 @@ export default function PurchaseReturnDetailPage() {
                 ))}
               </tbody>
               <tfoot className="border-t-2 border-slate-200 bg-slate-50">
+                {(Number(doc.discount) > 0 || Number(doc.increase) > 0) && (
+                  <>
+                    <tr>
+                      <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
+                      <td className="px-4 py-1.5 text-left font-bold text-slate-600">{fmt((doc.lines || []).reduce((a, l) => a + Number(l.line_total || 0), 0))} ج.م</td>
+                    </tr>
+                    {Number(doc.discount) > 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-rose-600">خصم على المرتجع</td>
+                        <td className="px-4 py-1.5 text-left font-bold text-rose-600">− {fmt(doc.discount)} ج.م</td>
+                      </tr>
+                    )}
+                    {Number(doc.increase) > 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-emerald-700">زيادة على المرتجع</td>
+                        <td className="px-4 py-1.5 text-left font-bold text-emerald-700">+ {fmt(doc.increase)} ج.م</td>
+                      </tr>
+                    )}
+                  </>
+                )}
                 <tr>
-                  <td colSpan={3} className="px-4 py-3 text-right font-black text-slate-700">الإجمالي</td>
+                  <td colSpan={3} className="px-4 py-3 text-right font-black text-slate-700">صافي المرتجع</td>
                   <td className="px-4 py-3 text-left font-black text-slate-900 text-[14px]">{fmt(doc.total)} ج.م</td>
                 </tr>
               </tfoot>

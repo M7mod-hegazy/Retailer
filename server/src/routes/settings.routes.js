@@ -77,12 +77,13 @@ function normalizeBoolean(value) {
 // Everything else is treated as a plain string.
 const BOOLEAN_PREFIXES = ["show_", "logo_on_"];
 const COLUMN_META = {
-  decimal_places: "int", tax_rate: "int",
+  decimal_places: "int", tax_rate: "int", max_discount_percent: "int",
   header_font_size: "int", body_font_size: "int", footer_font_size: "int",
   item_font_size: "int", logo_max_height: "int", margin_top: "int",
   margin_side: "int", qr_size: "int", address_font_size: "int",
   tax_id_font_size: "int",
   auto_backup_enabled: "bool",
+  discount_cap_enabled: "bool",
   logo_on_invoices: "bool", logo_on_receipts: "bool",
   logo_on_sidebar: "bool", logo_on_reports: "bool",
 };

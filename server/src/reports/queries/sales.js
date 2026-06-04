@@ -222,10 +222,11 @@ function salesByItem(startDate, endDate, opts = {}) {
     ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT srl.item_id,
-        SUM(srl.line_total) AS return_revenue,
+        SUM(srl.line_total * sr.total / NULLIF(srsum.line_sum, 0)) AS return_revenue,
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      JOIN (SELECT sales_return_id, SUM(line_total) AS line_sum FROM sales_return_lines GROUP BY sales_return_id) srsum ON srsum.sales_return_id = srl.sales_return_id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
       LEFT JOIN items it ON it.id = srl.item_id
       WHERE 1=1 ${returnDateFilter}
@@ -276,10 +277,11 @@ function salesByCategory(startDate, endDate, opts = {}) {
     ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT it.category_id,
-        SUM(srl.line_total) AS return_revenue,
+        SUM(srl.line_total * sr.total / NULLIF(srsum.line_sum, 0)) AS return_revenue,
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      JOIN (SELECT sales_return_id, SUM(line_total) AS line_sum FROM sales_return_lines GROUP BY sales_return_id) srsum ON srsum.sales_return_id = srl.sales_return_id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
       LEFT JOIN items it ON it.id = srl.item_id
       WHERE 1=1 ${returnDateFilter}
@@ -584,6 +586,7 @@ function salesReturns(startDate, endDate, opts = {}) {
       COALESCE(c.name, 'نقدي') AS customer_name,
       u.full_name AS handled_by,
       sr.customer_id,
+      sr.discount AS return_discount, sr.increase AS return_increase,
       sr.total AS return_total, sr.reason, sr.refund_method,
       COUNT(srl.id) AS items_returned
     FROM sales_returns sr
@@ -728,10 +731,11 @@ function marginByItem(startDate, endDate, opts = {}) {
     ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT srl.item_id,
-        SUM(srl.line_total) AS return_revenue,
+        SUM(srl.line_total * sr.total / NULLIF(srsum.line_sum, 0)) AS return_revenue,
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      JOIN (SELECT sales_return_id, SUM(line_total) AS line_sum FROM sales_return_lines GROUP BY sales_return_id) srsum ON srsum.sales_return_id = srl.sales_return_id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
       LEFT JOIN items it ON it.id = srl.item_id
       WHERE 1=1 ${returnDateFilter}
@@ -778,10 +782,11 @@ function marginByCategory(startDate, endDate, opts = {}) {
     ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT it.category_id,
-        SUM(srl.line_total) AS return_revenue,
+        SUM(srl.line_total * sr.total / NULLIF(srsum.line_sum, 0)) AS return_revenue,
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      JOIN (SELECT sales_return_id, SUM(line_total) AS line_sum FROM sales_return_lines GROUP BY sales_return_id) srsum ON srsum.sales_return_id = srl.sales_return_id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
       LEFT JOIN items it ON it.id = srl.item_id
       WHERE 1=1 ${returnDateFilter}

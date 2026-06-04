@@ -63,6 +63,17 @@ function money(value) {
   return Number(value || 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatItemDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const day = d.getDate();
+  const months = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${day} ${months[d.getMonth()]} · ${h}:${m}`;
+}
+
 function sourceRoute(row) {
   const id = row?.source_id;
   if (!id) return null;
@@ -280,6 +291,14 @@ export default function ItemOperationsPage() {
     return stock * salePrice;
   }, [selectedItem]);
 
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [items]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.05 } }
@@ -377,48 +396,58 @@ export default function ItemOperationsPage() {
                   animate="show"
                   className="space-y-1.5"
                 >
-                  {items.map((item) => {
+                  {sortedItems.map((item) => {
                     const isSelected = selectedId === item.id;
-                    const stock = item.current_stock || 0;
-                    let stockBorder = "border-transparent";
-                    if (stock <= 0) stockBorder = "hover:border-rose-200";
-                    else if (stock < 10) stockBorder = "hover:border-amber-200";
-                    else stockBorder = "hover:border-slate-200";
+                    const stock = item.current_stock ?? item.stock_quantity ?? 0;
 
                     return (
                       <motion.button
                         variants={itemVariants}
                         key={item.id}
                         onClick={() => { setSelectedId(item.id); setPage(1); }}
-                        className={`w-full rounded-2xl border px-4 py-3 text-right transition-all relative flex flex-col gap-1.5 overflow-hidden group ${
+                        className={`w-full rounded-2xl border px-4 py-3.5 text-right transition-all duration-200 relative overflow-hidden group ${
                           isSelected 
-                            ? "border-indigo-500/10 bg-indigo-50/40 shadow-sm" 
-                            : `bg-white ${stockBorder} shadow-[0_1px_2px_rgba(0,0,0,0.01)] hover:bg-slate-50/80`
+                            ? "border-indigo-400/30 bg-gradient-to-l from-indigo-50/80 to-white shadow-[0_2px_12px_rgba(79,70,229,0.06)]" 
+                            : "bg-white border-slate-200/50 hover:border-slate-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
                         }`}
                         whileTap={{ scale: 0.98 }}
                       >
                         {isSelected && (
                           <motion.div 
                             layoutId="activeItemIndicator"
-                            className="absolute right-0 top-0 bottom-0 w-1.5 bg-indigo-600 rounded-l-full"
+                            className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-l-full"
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                           />
                         )}
-                        <span className={`font-black text-sm tracking-tight transition-colors leading-normal ${isSelected ? "text-indigo-900" : "text-slate-700 group-hover:text-slate-900"}`}>
-                          {item.name}
-                        </span>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="font-mono text-[9px] font-bold text-slate-500 bg-slate-100/80 px-2 py-0.5 rounded-lg border border-slate-200/50" dir="ltr">
-                            {item.code || `ITEM-${item.id}`}
-                          </span>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
-                            stock <= 0 
-                              ? "text-rose-700 bg-rose-50 border-rose-100" 
-                              : stock < 10 
-                              ? "text-amber-700 bg-amber-50 border-amber-100" 
-                              : "text-emerald-700 bg-emerald-50 border-emerald-100"
-                          }`}>
-                            رصيد: {money(stock)}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <span className={`font-black text-[13px] leading-snug block truncate transition-colors ${isSelected ? "text-indigo-900" : "text-slate-800 group-hover:text-slate-900"}`}>
+                              {item.name}
+                            </span>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 ${
+                                stock <= 0 
+                                  ? "text-rose-600 bg-rose-50/80 border-rose-100" 
+                                  : stock < 10 
+                                  ? "text-amber-600 bg-amber-50/80 border-amber-100" 
+                                  : "text-emerald-600 bg-emerald-50/80 border-emerald-100"
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${stock <= 0 ? "bg-rose-500" : stock < 10 ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                رصيد: {money(stock)}
+                              </span>
+                              {(item.updated_at || item.created_at) && (
+                                <span className="text-[9px] font-semibold text-slate-400 truncate">
+                                  {formatItemDate(item.updated_at || item.created_at)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`font-mono text-xs font-black shrink-0 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                            isSelected
+                              ? "text-indigo-700 bg-indigo-100/80 border-indigo-200"
+                              : "text-slate-500 bg-slate-50 border-slate-200/70 group-hover:text-indigo-600 group-hover:bg-indigo-50/50 group-hover:border-indigo-100"
+                          }`} dir="ltr">
+                            {item.code || `#${item.id}`}
                           </span>
                         </div>
                       </motion.button>
@@ -726,13 +755,13 @@ export default function ItemOperationsPage() {
                 {/* Operations Timeline Wrapper */}
                 <div data-help="main-table" className="relative font-sans">
                   {rows.length > 0 && !loadingRows && (
-                    <div className="absolute right-[21px] top-8 bottom-8 w-[3px] bg-gradient-to-b from-indigo-500 via-emerald-400 to-rose-500 opacity-60 pointer-events-none rounded-full" />
+                    <div className="absolute right-[8.5rem] top-8 bottom-8 w-[2.5px] bg-gradient-to-b from-indigo-500 via-emerald-400 to-rose-500 opacity-50 pointer-events-none rounded-full" />
                   )}
 
                   {loadingRows ? (
                     <div className="space-y-4 mr-1">
                       {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white border border-slate-200/60 rounded-3xl p-6 space-y-4 animate-pulse mr-14">
+                        <div key={i} className="bg-white border border-slate-200/60 rounded-3xl p-6 space-y-4 animate-pulse mr-[11.5rem]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                               <div className="w-16 h-5 bg-slate-200 rounded-md" />
@@ -773,6 +802,17 @@ export default function ItemOperationsPage() {
                         const route = sourceRoute(row);
                         const docType = previewDocType(row);
                         
+                        const parsedDate = (() => {
+                          const d = new Date(row.date);
+                          if (!row.date || isNaN(d.getTime())) return null;
+                          const dd = String(d.getDate()).padStart(2, "0");
+                          const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+                          const monthName = months[d.getMonth()];
+                          const yyyy = d.getFullYear();
+                          const hh = String(d.getHours()).padStart(2, "0");
+                          const mi = String(d.getMinutes()).padStart(2, "0");
+                          return { day: dd, month: monthName, year: yyyy, time: `${hh}:${mi}` };
+                        })();
                         const beforeStock = row.context_before != null ? Number(row.context_before) : null;
                         const afterStock = row.context_after != null ? Number(row.context_after) : null;
                         const stockDelta = beforeStock != null && afterStock != null ? afterStock - beforeStock : null;
@@ -785,11 +825,33 @@ export default function ItemOperationsPage() {
                           <motion.article
                             variants={itemVariants}
                             key={`${row.type}-${row.source_line_id}-${row.date}`}
-                            className="relative pr-14 md:pr-16"
+                            className="relative pr-[11.5rem]"
                           >
-                            <div className={`absolute right-[21px] translate-x-1/2 top-8 w-4.5 h-4.5 rounded-full border-[3px] border-white ${option?.dot || "bg-indigo-600"} ${option?.glow || "shadow-md"} z-10 transition-all hover:scale-125 duration-300`}>
-                              <span className="absolute inset-0 rounded-full bg-white opacity-40 animate-ping" />
+                            <div className={`absolute right-[8.5rem] translate-x-1/2 top-8 w-3.5 h-3.5 rounded-full border-[2.5px] border-white ${option?.dot || "bg-indigo-600"} ${option?.glow || "shadow-md"} z-10 transition-all hover:scale-125 duration-300`}>
+                              <span className="absolute inset-0 rounded-full bg-white opacity-30 animate-ping" />
                             </div>
+                            {parsedDate && (
+                              <div className="absolute right-4 top-8 -translate-y-1/2 w-28 z-10 select-none group">
+                                <div className="py-2.5 px-3 rounded-2xl border border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.02)] group-hover:border-slate-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition-all duration-300 flex flex-col items-center justify-center">
+                                  {/* Time */}
+                                  <span className="text-[13px] font-black text-slate-800 font-mono tracking-tight leading-none" dir="ltr">
+                                    {parsedDate.time}
+                                  </span>
+                                  {/* Horizontal Divider */}
+                                  <div className="w-10 h-[1.5px] bg-slate-100 my-1.5 rounded-full" />
+                                  {/* Date Details */}
+                                  <div className="flex flex-col items-center leading-none">
+                                    <span className="text-[11px] font-black text-slate-700 leading-none">
+                                      {parsedDate.day} {parsedDate.month}
+                                    </span>
+                                    <span className="text-[8.5px] font-bold text-slate-400 mt-1 leading-none font-mono">
+                                      {parsedDate.year}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-[10px] h-[1.5px] bg-slate-200/70 group-hover:bg-slate-350 transition-colors pointer-events-none" />
+                              </div>
+                            )}
                             
                             {row.type === "sales" && (
                               <SpotlightCard 

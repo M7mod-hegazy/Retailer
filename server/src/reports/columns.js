@@ -150,7 +150,9 @@ const AR_LABELS = {
   avg_discount: "متوسط الخصم",
   avg_discount_percent: "متوسط الخصم %",
   discount_range: "نطاق الخصم",
-  return_total: "إجمالي المرتجع",
+  return_discount: "خصم المرتجع",
+  return_increase: "زيادة المرتجع",
+  return_total: "صافي المرتجع",
   returns_total: "إجمالي المرتجعات",
   returns_amount: "قيمة المرتجعات",
   return_amount: "قيمة المرتجع",
@@ -587,7 +589,7 @@ const REPORT_COLUMN_KEYS = {
   "exceptions": ["invoice_no", "date", "customer_name", "exception_type", "discount", "status", "total"],
   "period-comparison": ["period", "date", "invoice_count", "total_sales", "total_discount", "returns_amount", "net_sales", "total_cost", "gross_profit", "margin_percent", "avg_invoice_value"],
   "gross-net-sales": ["date", "invoice_count", "selling_total", "total_discount", "additions_amount", "gross_sales", "total_cost", "returns_amount", "net_sales", "gross_profit", "avg_invoice_value", "margin_percent"],
-  "sales-returns": ["return_ref", "invoice_no", "date", "customer_name", "handled_by", "return_total", "reason", "refund_method", "items_returned", "id", "customer_id"],
+  "sales-returns": ["return_ref", "invoice_no", "date", "customer_name", "handled_by", "return_discount", "return_increase", "return_total", "reason", "refund_method", "items_returned", "id", "customer_id"],
   "discount-analysis": ["section", "payment_type", "discount_range", "invoice_count", "total_discount", "avg_discount", "avg_discount_percent", "total_sales"],
   "margin-by-item": ["item_code", "item_name", "category_name", "quantity_sold", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "selling_total", "avg_unit_price", "avg_unit_cost", "wacc"],
   "margin-by-category": ["category_name", "quantity_sold", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "selling_total", "avg_unit_cost"],
@@ -599,7 +601,7 @@ const REPORT_COLUMN_KEYS = {
   "detailed-purchases": ["purchase_no", "date", "supplier_name", "total", "total_discount", "additions_amount", "status", "payment_type", "item_count", "created_by", "id", "supplier_id"],
   "purchases-by-supplier": ["supplier_name", "purchase_count", "total_purchases", "avg_order_value", "returns_total", "net_purchases", "last_purchase_date"],
   "purchases-by-item": ["item_code", "item_name", "quantity_purchased", "total_cost", "quantity_returned", "returns_cost", "net_quantity_purchased", "net_total_cost", "avg_unit_cost", "distinct_suppliers", "last_purchase_date"],
-  "purchase-returns": ["return_ref", "supplier_name", "date", "return_total", "reason", "refund_method", "items_returned", "id"],
+  "purchase-returns": ["return_ref", "supplier_name", "date", "return_discount", "return_increase", "return_total", "reason", "refund_method", "items_returned", "id"],
   "supplier-pricing": ["supplier_name", "item_name", "unit_price", "quantity", "line_total", "purchase_date"],
 
   // ── Inventory ──
@@ -631,7 +633,7 @@ const REPORT_COLUMN_KEYS = {
   "customer-profitability": ["customer_name", "phone", "invoice_count", "gross_revenue", "avg_invoice_value", "returns_amount", "net_revenue", "cost", "gross_profit", "margin_percent", "return_rate_percent", "days_since_last_purchase", "customer_id"],
   "daily-owner-snapshot": ["period_start", "period_end", "invoice_count", "selling_total", "total_discount", "additions_amount", "gross_sales", "returns_amount", "net_sales", "cogs", "gross_profit", "expenses", "other_revenues", "withdrawals", "net_profit", "overdue_receivables_count", "low_stock_alerts_count"],
   "supplier-purchases-history": ["purchase_no", "date", "supplier_name", "total", "status", "payment_type", "item_count", "created_by"],
-  "supplier-returns-history": ["return_ref", "date", "supplier_name", "return_total", "reason", "refund_method", "items_returned"],
+  "supplier-returns-history": ["return_ref", "date", "supplier_name", "return_discount", "return_increase", "return_total", "reason", "refund_method", "items_returned"],
   "supplier-reliability": ["supplier_name", "phone", "purchase_count", "total_purchases", "return_count", "total_returns", "return_rate_percent", "avg_payment_days", "repeat_items", "avg_price_spread_percent", "last_purchase_date", "supplier_id"],
 
   // ── Treasury ──
@@ -746,7 +748,7 @@ function inferType(key) {
   if (PERCENT_KEYS.has(key) || key.endsWith("_percent")) return "percent";
   if (NUMBER_KEYS.has(key) || key.endsWith("_count")) return "number";
   if (MONEY_KEYS.has(key)) return "money";
-  if (key.includes("price") || key.includes("cost") || key.includes("total") || key.includes("amount") || key.includes("balance") || key.includes("sales") || key.includes("profit") || key.includes("discount") || key.includes("vat") || key.includes("cash") || key.includes("revenue") || key.includes("value") || key.includes("collected") || key.includes("outstanding") || key.includes("due")) return "money";
+  if (key.includes("price") || key.includes("cost") || key.includes("total") || key.includes("amount") || key.includes("balance") || key.includes("sales") || key.includes("profit") || key.includes("discount") || key.includes("increase") || key.includes("vat") || key.includes("cash") || key.includes("revenue") || key.includes("value") || key.includes("collected") || key.includes("outstanding") || key.includes("due")) return "money";
   return "text";
 }
 

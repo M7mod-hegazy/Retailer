@@ -32,9 +32,12 @@ export function computeTotals(invoice = {}, s = {}) {
   const lines = invoice.lines || [];
   const taxRate = parseFloat(g(s, "tax_rate") || 0);
   const subtotal = lines.reduce((sum, l) => sum + ((Number(l.unit_price) || Number(l.unit_cost) || 0) * Number(l.quantity)), 0);
-  const totalDiscount = lines.reduce((sum, l) => sum + (Number(l.discount_amount) || 0), 0);
+  // Header-level خصم/زيادة (e.g. on returns) — 0 for documents that don't pass them.
+  const headerDiscount = Number(invoice.discount) || 0;
+  const headerIncrease = Number(invoice.increase) || 0;
+  const totalDiscount = lines.reduce((sum, l) => sum + (Number(l.discount_amount) || 0), 0) + headerDiscount;
   const taxAmount = g(s, "show_tax") !== false ? (subtotal - totalDiscount) * (taxRate / 100) : 0;
-  const grandTotal = subtotal - totalDiscount + taxAmount;
+  const grandTotal = subtotal - totalDiscount + taxAmount + headerIncrease;
   const paid = (invoice.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  return { subtotal, totalDiscount, taxAmount, grandTotal, paid, change: paid - grandTotal, taxRate };
+  return { subtotal, totalDiscount, totalIncrease: headerIncrease, taxAmount, grandTotal, paid, change: paid - grandTotal, taxRate };
 }

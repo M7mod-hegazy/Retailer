@@ -7,6 +7,7 @@ const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
 const { applyPurchaseLinePriceUpdates, revertPurchaseLinePriceUpdates } = require("../services/priceLockService");
 const { capturePurchaseReturnLineOverrides } = require("../services/overrideTrackingService");
+const { applyReturnAdjustment } = require("../services/returnService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
@@ -217,7 +218,7 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
            CASE
              WHEN p.payment_method = 'multi' THEN (
                SELECT GROUP_CONCAT(
-                 (CASE WHEN pm.type = 'credit' OR pm.category = 'credit' THEN 'credit' ELSE pm.type END)
+                  (CASE WHEN pm.type = 'credit' OR pm.category = 'credit' THEN 'credit' ELSE pm.name END)
                  || ':' || CAST(ROUND(pp.amount, 2) AS TEXT), '|||')
                FROM purchase_payments pp
                LEFT JOIN payment_methods pm ON pm.id = pp.method_id
@@ -298,13 +299,14 @@ router.get("/returns/items-search", requirePagePermission("purchase_returns", "v
 router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, res) => {
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);
-  const { search = "", supplier_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
+  const { search = "", supplier_id, purchase_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
   const conditions = ["pr.status != 'cancelled'"];
   const params = [];
   if (search) {
     conditions.push("(s.name LIKE ? OR CAST(pr.id AS TEXT) LIKE ? OR CAST(pr.purchase_id AS TEXT) LIKE ?)");
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
+  if (purchase_id) { conditions.push("pr.purchase_id = ?"); params.push(purchase_id); }
   if (supplier_id) { conditions.push("pr.supplier_id = ?"); params.push(supplier_id); }
   if (date_from) { conditions.push("date(pr.created_at) >= date(?)"); params.push(date_from); }
   if (date_to) { conditions.push("date(pr.created_at) <= date(?)"); params.push(date_to); }
@@ -687,11 +689,12 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       }
 
       const returnDocNo = generateDocNumber("purchase_return");
-      const prCashAmt = settlementType === "cash" ? total
+      const { discount, increase, total: adjTotal } = applyReturnAdjustment(total, payload);
+      const prCashAmt = settlementType === "cash" ? adjTotal
         : settlementType === "split" ? Math.max(0, Number(payload.cash_amount || 0))
         : 0;
-      const prCreditAmt = settlementType === "account" ? total
-        : settlementType === "split" ? Math.max(0, total - prCashAmt)
+      const prCreditAmt = settlementType === "account" ? adjTotal
+        : settlementType === "split" ? Math.max(0, adjTotal - prCashAmt)
         : 0;
       const treasuryId = (settlementType === "cash" || settlementType === "split")
         ? payload.treasury_id ||
@@ -700,8 +703,8 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
         : null;
 
       const purchaseReturnResult = db
-        .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, cash_amount, credit_amount, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
-        .run(returnDocNo, purchase.id, purchase.supplier_id || null, total, settlementType, prCashAmt, prCreditAmt, treasuryId,
+        .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, cash_amount, credit_amount, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
+        .run(returnDocNo, purchase.id, purchase.supplier_id || null, adjTotal, discount, increase, settlementType, prCashAmt, prCreditAmt, treasuryId,
              payload.user_id || req.user?.id || null, `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
 
       const prId = purchaseReturnResult.lastInsertRowid;
@@ -1368,8 +1371,13 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
       const newDocNo = generateAmendmentDocNo(original.doc_no, db, "purchase_returns");
       const settlementType = payload.settlement_type || original.settlement_type || "account";
       const newLines = payload.lines || [];
-      let newTotal = 0;
-      for (const l of newLines) newTotal += Number(l.quantity) * Number(l.unit_cost || l.unit_price || 0);
+      let newSubtotal = 0;
+      for (const l of newLines) newSubtotal += Number(l.quantity) * Number(l.unit_cost || l.unit_price || 0);
+      const { discount: newDiscount, increase: newIncrease, total: newTotal } = applyReturnAdjustment(newSubtotal, {
+        discount: payload.discount ?? original.discount,
+        increase: payload.increase ?? original.increase,
+        supervisor_override: payload.supervisor_override,
+      });
 
       const treasuryId = settlementType === "cash"
         ? (payload.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1)
@@ -1377,10 +1385,10 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
 
       const createdDate = normalizeDate(payload.created_at || new Date().toISOString().slice(0, 10));
       const newPr = db.prepare(
-        "INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, treasury_id, status, created_by, amendment_of, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)"
+        "INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, treasury_id, status, created_by, amendment_of, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)"
       ).run(newDocNo, payload.purchase_id || original.purchase_id || null,
             payload.supplier_id || original.supplier_id || null,
-            newTotal, settlementType, treasuryId, payload.user_id || null, original.id,
+            newTotal, newDiscount, newIncrease, settlementType, treasuryId, payload.user_id || null, original.id,
             `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
 
       const newPrId = newPr.lastInsertRowid;

@@ -222,9 +222,7 @@ export default function QuotationFormPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        const q = searchItem.trim();
                         if (filteredItems.length > 0) addToCart(filteredItems[activeIndex]);
-                        else if (q) addToCart({ id: -1, name: q, code: q, barcode: q, sale_price: 0, price: 0, stock_total: 0, stock_quantity: 0 });
                       } else if (e.key === "ArrowDown") {
                         e.preventDefault();
                         setActiveIndex(prev => (prev < filteredItems.length - 1 ? prev + 1 : prev));
@@ -241,8 +239,6 @@ export default function QuotationFormPage() {
                       activeIndex={activeIndex}
                       query={searchItem}
                       emptyLabel="الصنف غير موجود"
-                      rawText={searchItem}
-                      onPickRawText={(txt) => addToCart({ id: -1, name: txt, code: txt, barcode: txt, sale_price: 0, price: 0, stock_total: 0, stock_quantity: 0 })}
                       onLoadMore={loadMoreItems}
                       hasMoreFromServer={itemHasMore}
                       isLoadingMore={isLoadingMoreItems}

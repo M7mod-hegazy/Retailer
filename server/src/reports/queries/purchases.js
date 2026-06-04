@@ -144,9 +144,10 @@ function purchasesByItem(startDate, endDate, opts = {}) {
     LEFT JOIN (
       SELECT prl.item_id,
         COALESCE(SUM(prl.quantity), 0) AS quantity_returned,
-        COALESCE(SUM(prl.line_total), 0) AS returns_cost
+        COALESCE(SUM(prl.line_total * pr.total / NULLIF(prsum.line_sum, 0)), 0) AS returns_cost
       FROM purchase_return_lines prl
       JOIN purchase_returns pr ON pr.id = prl.purchase_return_id
+      JOIN (SELECT purchase_return_id, SUM(line_total) AS line_sum FROM purchase_return_lines GROUP BY purchase_return_id) prsum ON prsum.purchase_return_id = prl.purchase_return_id
       WHERE pr.status = 'active' ${addDateFilter("pr.created_at", startDate, endDate, returnParams)}
         ${supplier_id ? " AND pr.supplier_id = ?" : ""}
       GROUP BY prl.item_id
@@ -175,6 +176,7 @@ function purchaseReturns(startDate, endDate, opts = {}) {
     SELECT pr.id, pr.doc_no AS return_ref,
       s.name AS supplier_name,
       DATE(pr.created_at) AS date,
+      pr.discount AS return_discount, pr.increase AS return_increase,
       pr.total AS return_total, pr.reason, pr.refund_method,
       COUNT(prl.id) AS items_returned
     FROM purchase_returns pr

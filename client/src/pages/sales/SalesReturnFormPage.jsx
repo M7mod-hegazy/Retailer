@@ -21,6 +21,7 @@ import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import SalesReturnTodayModal from "../../components/sales/SalesReturnTodayModal";
 import InvoicePickerTodayModal from "../../components/sales/InvoicePickerTodayModal";
 import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -28,6 +29,22 @@ function formatMoney(v) {
 function formatDate(d) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("ar-EG-u-nu-latn");
+}
+
+// Live indicator of how far the entered return price is from the item's catalog price.
+function PriceDelta({ entered, baseline, baseLabel = "سعر البيع", className = "" }) {
+  const e = Number(entered) || 0;
+  const b = Number(baseline) || 0;
+  if (!b || !e) return <span className={`text-[10px] font-mono text-slate-400 ${className}`}>—</span>;
+  const diff = e - b;
+  const pct = (diff / b) * 100;
+  if (Math.abs(diff) < 0.005) return <span className={`text-[10px] font-bold text-slate-400 ${className}`}>مطابق {baseLabel}</span>;
+  const up = diff > 0;
+  return (
+    <span className={`text-[10px] font-bold font-mono ${up ? "text-emerald-600" : "text-rose-600"} ${className}`}>
+      {up ? "▲ أعلى بـ" : "▼ أقل بـ"} {formatMoney(Math.abs(diff))} ({up ? "+" : "−"}{Math.abs(pct).toFixed(1)}%)
+    </span>
+  );
 }
 
 
@@ -59,7 +76,9 @@ function paymentTypeLabel(t) {
 function OriginalInvoicePreview({ invoice }) {
   const subtotal = Number(invoice.subtotal || 0);
   const discount = Number(invoice.discount || 0);
+  const increase = Number(invoice.increase || 0);
   const total = Number(invoice.total || 0);
+  const lines = invoice.lines || [];
   return (
     <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-white overflow-hidden text-[12px] shadow-[0_2px_10px_rgba(251,191,36,0.1)] relative">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply" />
@@ -83,6 +102,32 @@ function OriginalInvoicePreview({ invoice }) {
           )}
         </div>
       </div>
+      {/* Line items — name + sku + qty × price */}
+      {lines.length > 0 && (
+        <div className="border-b border-amber-200/50 px-3 py-2 flex flex-col gap-1 relative z-10">
+          <span className="text-[9px] font-bold text-amber-700/70 uppercase tracking-widest mb-0.5">الأصناف ({lines.length})</span>
+          {lines.map((l, i) => {
+            const qty = Number(l.quantity || 0);
+            const price = Number(l.unit_price || 0);
+            const code = l.item_code || l.code || l.barcode;
+            return (
+              <div key={i} className="flex items-center justify-between gap-2 text-[10px] leading-tight">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-slate-700 truncate">{l.item_name_ar || l.item_name || l.name || `#${l.item_id}`}</span>
+                  {code && <span className="font-mono text-[8px] text-slate-400 leading-none">{code}</span>}
+                </div>
+                <div className="flex items-center gap-1 shrink-0 font-mono text-slate-500">
+                  <span className="font-black text-slate-700">{qty}</span>
+                  <span className="text-slate-300">×</span>
+                  <span>{formatMoney(price)}</span>
+                  <span className="text-slate-300">=</span>
+                  <span className="font-black text-slate-700">{formatMoney(l.line_total || qty * price)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {/* Financials */}
       <div className="px-4 py-3 flex flex-col gap-2 relative z-10">
         <div className="flex justify-between items-center text-slate-600 text-[11px]">
@@ -93,6 +138,12 @@ function OriginalInvoicePreview({ invoice }) {
           <div className="flex justify-between items-center text-rose-600 text-[11px]">
             <span>الخصم</span>
             <span className="font-bold">− {formatMoney(discount)} <span className="font-sans text-[9px]">ج.م</span></span>
+          </div>
+        )}
+        {increase > 0 && (
+          <div className="flex justify-between items-center text-emerald-600 text-[11px]">
+            <span>الزيادة</span>
+            <span className="font-bold">+ {formatMoney(increase)} <span className="font-sans text-[9px]">ج.م</span></span>
           </div>
         )}
         <div className="flex justify-between items-center border-t border-amber-200/50 pt-2 mt-1 text-slate-900 font-black text-[13px]">
@@ -151,6 +202,13 @@ export default function SalesReturnFormPage() {
   const [splitCashAmount, setSplitCashAmount] = useState("");
   const [reason, setReason] = useState("other");
   const [reasonOther, setReasonOther] = useState("");
+
+  // Header-level خصم/زيادة on the return document (mirrors invoice discount/increase).
+  // For from-invoice returns these are pro-rated from the original invoice until the user edits them.
+  const [headerDiscount, setHeaderDiscount] = useState(0);
+  const [headerIncrease, setHeaderIncrease] = useState(0);
+  const [adjustmentTouched, setAdjustmentTouched] = useState(false);
+  const [supervisorOverride, setSupervisorOverride] = useState(false);
 
   const [editActivation, setEditActivation] = useState(null);
   const [rawEditData, setRawEditData] = useState(null);
@@ -220,11 +278,22 @@ export default function SalesReturnFormPage() {
   const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } =
     useInvoiceActivation("sales_return", editActivation);
 
-  const total = useMemo(() => {
+  const subtotal = useMemo(() => {
     if (mode === "direct") return cart.reduce((acc, l) => acc + l.unit_price * l.quantity, 0);
     if (mode === "invoice") return invoiceLines.filter(l => l.checked).reduce((acc, l) => acc + l.unit_price * l.qty_to_return, 0);
     return 0;
   }, [mode, cart, invoiceLines]);
+
+  // Net refundable = lines subtotal − خصم + زيادة (mirrors invoice total). Everything
+  // downstream (refund, balance, treasury, payload) derives from this `total`.
+  const total = useMemo(
+    () => Math.max(0, subtotal - (Number(headerDiscount) || 0) + (Number(headerIncrease) || 0)),
+    [subtotal, headerDiscount, headerIncrease],
+  );
+
+  const maxDiscountPercent = useAppSettingsStore(s => Number(s.settings?.max_discount_percent ?? 15));
+  const discountCapEnabled = useAppSettingsStore(s => Number(s.settings?.discount_cap_enabled ?? 1) !== 0);
+  const discountExceedsCap = discountCapEnabled && (Number(headerDiscount) || 0) > subtotal * (maxDiscountPercent / 100);
 
   const returnCreditEffect = useMemo(() => {
     if (!total) return 0;
@@ -287,10 +356,26 @@ export default function SalesReturnFormPage() {
       setRefundMethod(sr.refund_method || "cash_back");
       if (sr.refund_method === "split") setSplitCashAmount(String(sr.cash_amount || ""));
       setReason(sr.reason || "other");
+      setHeaderDiscount(Number(sr.discount || 0));
+      setHeaderIncrease(Number(sr.increase || 0));
+      setAdjustmentTouched(true); // saved values — do not auto-recompute over the user's data
       if (sr.customer_id) { const name = sr.customer_name || String(sr.customer_id); setCustomer({ id: sr.customer_id, name }); setCustomerQuery(name); }
       setMode(sr.invoice_id ? "invoice" : "direct");
     }).catch(() => {});
   }, [isEditMode, editReturnId]);
+
+  // Pro-rate the original invoice's خصم/زيادة onto the return by returned-value fraction,
+  // recomputing as the returned quantities change — until the user manually edits the field.
+  useEffect(() => {
+    if (mode !== "invoice" || !loadedInvoice || adjustmentTouched) return;
+    const invSub = Number(loadedInvoice.subtotal || 0);
+    const invDisc = Number(loadedInvoice.discount || 0);
+    const invInc = Number(loadedInvoice.increase || 0);
+    if (invSub <= 0 || (invDisc === 0 && invInc === 0)) { setHeaderDiscount(0); setHeaderIncrease(0); return; }
+    const ratio = Math.min(1, subtotal / invSub);
+    setHeaderDiscount(Math.round(invDisc * ratio * 100) / 100);
+    setHeaderIncrease(Math.round(invInc * ratio * 100) / 100);
+  }, [mode, loadedInvoice, subtotal, adjustmentTouched]);
 
   // Effect 2: resolve warehouse/unit names once reference lists are loaded
   useEffect(() => {
@@ -459,6 +544,7 @@ export default function SalesReturnFormPage() {
         item_code: stagingItem.code || stagingItem.item_code || "",
         unit_price: price,
         purchase_price: purchasePrice,
+        sale_price: Number(stagingItem.sale_price || 0),
         quantity: finalQty,
         warehouse_id: stagingWarehouseId,
         warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
@@ -497,6 +583,7 @@ export default function SalesReturnFormPage() {
     setCustomer(null); setCustomerLockedFromInvoice(false); setReason("other"); setReasonOther("");
     setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setStagingItem(null); setStagingQty("1");
     setStagingPrice(""); setStagingPurchasePrice(""); setInvoicePickerOpen(false); resetActivation();
+    setHeaderDiscount(0); setHeaderIncrease(0); setAdjustmentTouched(false); setSupervisorOverride(false);
   }
 
   function handleBack() {
@@ -556,11 +643,18 @@ export default function SalesReturnFormPage() {
       ? cart.map(l => ({ item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price, warehouse_id: l.warehouse_id || null, unit_id: l.unit_id || null, invoice_line_id: null }))
       : invoiceLines.filter(l => l.checked && l.qty_to_return > 0).map(l => ({ invoice_line_id: l.invoice_line_id, item_id: l.item_id, quantity: l.qty_to_return, unit_price: l.unit_price }));
     if (!lines.length) { setMessage({ text: "أضف أصناف للمرتجع أولاً", type: "error" }); return; }
+    if (discountExceedsCap && !supervisorOverride) {
+      setMessage({ text: `الخصم يتجاوز ${maxDiscountPercent}% — فعّل موافقة المشرف للمتابعة`, type: "error" });
+      return;
+    }
     const payload = {
       doc_no: docNo || undefined, customer_id: customer?.id || null,
       refund_method: refundMethod, treasury_id: null,
       cash_amount: refundMethod === "split" ? Math.max(0, Number(splitCashAmount) || 0) : undefined,
       reason: reason === "other" ? (reasonOther || "other") : reason, lines,
+      discount: Number(headerDiscount) || 0,
+      increase: Number(headerIncrease) || 0,
+      supervisor_override: supervisorOverride,
     };
     setIsSaving(true); setMessage({ text: "", type: "" });
     try {
@@ -568,6 +662,8 @@ export default function SalesReturnFormPage() {
       const successData = {
         docNo: savedDocNo,
         total,
+        discount: Number(headerDiscount) || 0,
+        increase: Number(headerIncrease) || 0,
         refundMethod,
         cashAmount: refundMethod === 'split' ? Math.max(0, Number(splitCashAmount) || 0) : null,
         creditAmount: returnCreditEffect,
@@ -875,11 +971,93 @@ export default function SalesReturnFormPage() {
 
             <div className="w-full h-px bg-slate-100" />
 
-            {/* Return total — before refund method */}
-            {total > 0 && (
-              <div className="flex items-center justify-between rounded-xl border border-emerald-200/60 bg-emerald-50/50 px-4 py-3 shadow-sm">
-                <span className="text-[12px] font-bold text-emerald-700">إجمالي المرتجع</span>
-                <span className="text-[16px] font-black text-emerald-800">{formatMoney(total)} ج.م</span>
+            {/* Original-invoice خصم/زيادة preview (read-only) + this return's pro-rated share */}
+            {mode === "invoice" && loadedInvoice && (Number(loadedInvoice.discount) > 0 || Number(loadedInvoice.increase) > 0) && (() => {
+              const invSub = Number(loadedInvoice.subtotal || 0);
+              const pct = invSub > 0 ? Math.min(100, (subtotal / invSub) * 100) : 0;
+              return (
+                <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-1.5 text-[11px] font-black text-amber-700">
+                    <Clock className="h-3.5 w-3.5" /> تعديلات الفاتورة الأصلية #{loadedInvoice.invoice_no || loadedInvoice.doc_no}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-500">خصم الفاتورة الكامل</label>
+                      <input readOnly value={formatMoney(loadedInvoice.discount || 0)}
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-[12px] font-black font-mono text-rose-600 cursor-not-allowed" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-500">زيادة الفاتورة الكاملة</label>
+                      <input readOnly value={formatMoney(loadedInvoice.increase || 0)}
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-[12px] font-black font-mono text-emerald-600 cursor-not-allowed" />
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white/70 border border-amber-200/70 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 leading-relaxed">
+                    {subtotal > 0 ? (
+                      <>هذا المرتجع = <span className="font-black text-amber-700">{pct.toFixed(1)}%</span> من الفاتورة، فيُطبَّق نصيبه:
+                        {Number(headerDiscount) > 0 && <span className="text-rose-600 font-black"> خصم −{formatMoney(headerDiscount)}</span>}
+                        {Number(headerIncrease) > 0 && <span className="text-emerald-600 font-black"> زيادة +{formatMoney(headerIncrease)}</span>}
+                        {Number(headerDiscount) === 0 && Number(headerIncrease) === 0 && <span> لا شيء</span>}
+                        {adjustmentTouched && <span className="text-slate-400"> (معدّل يدوياً)</span>}
+                      </>
+                    ) : (
+                      <>اختر أصنافاً للإرجاع ليُحتسب نصيب هذا المرتجع من خصم/زيادة الفاتورة.</>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Return total breakdown — subtotal − خصم + زيادة = صافي */}
+            {subtotal > 0 && (
+              <div className="flex flex-col gap-2 rounded-xl border border-emerald-200/60 bg-emerald-50/50 px-4 py-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-bold text-slate-600">إجمالي الأصناف</span>
+                  <span className="text-[13px] font-black text-slate-700 font-mono">{formatMoney(subtotal)} ج.م</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[12px] font-bold text-rose-600 shrink-0">خصم على المرتجع</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="0" step="any" value={headerDiscount || ""}
+                      disabled={isLocked}
+                      onChange={e => { setAdjustmentTouched(true); setHeaderDiscount(Math.max(0, Number(e.target.value) || 0)); }}
+                      onFocus={e => e.target.select()}
+                      placeholder="0.00"
+                      className={`w-24 rounded-lg border px-2 py-1 text-center text-[13px] font-black font-mono outline-none focus:ring-1 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${discountExceedsCap ? "border-rose-400 bg-rose-50 text-rose-700 focus:ring-rose-200" : "border-rose-200 bg-white text-rose-700 focus:border-rose-400 focus:ring-rose-100"}`}
+                    />
+                    <span className="text-[10px] text-slate-400 shrink-0">ج.م</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[12px] font-bold text-emerald-700 shrink-0">زيادة على المرتجع</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="0" step="any" value={headerIncrease || ""}
+                      disabled={isLocked}
+                      onChange={e => { setAdjustmentTouched(true); setHeaderIncrease(Math.max(0, Number(e.target.value) || 0)); }}
+                      onFocus={e => e.target.select()}
+                      placeholder="0.00"
+                      className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-center text-[13px] font-black font-mono text-emerald-700 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    />
+                    <span className="text-[10px] text-slate-400 shrink-0">ج.م</span>
+                  </div>
+                </div>
+                {mode === "invoice" && (headerDiscount > 0 || headerIncrease > 0) && (
+                  <div className="text-[10px] font-bold text-slate-400 -mt-1">
+                    {adjustmentTouched ? "معدّل يدوياً" : "محسوب تلقائياً من الفاتورة الأصلية"}
+                  </div>
+                )}
+                {discountExceedsCap && !isLocked && (
+                  <label className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-300 px-2 py-1.5 text-[11px] font-bold text-amber-800 cursor-pointer">
+                    <input type="checkbox" checked={supervisorOverride} onChange={e => setSupervisorOverride(e.target.checked)} className="accent-amber-600" />
+                    الخصم يتجاوز {maxDiscountPercent}% — موافقة المشرف
+                  </label>
+                )}
+                <div className="flex items-center justify-between border-t border-emerald-200/60 pt-2 mt-0.5">
+                  <span className="text-[12px] font-black text-emerald-700">صافي المرتجع</span>
+                  <span className="text-[16px] font-black text-emerald-800">{formatMoney(total)} ج.م</span>
+                </div>
               </div>
             )}
 
@@ -1132,12 +1310,15 @@ export default function SalesReturnFormPage() {
                           ${stagingItem && Number(stagingPurchasePrice) > 0 && Number(stagingPrice) > 0 && Number(stagingPrice) < Number(stagingPurchasePrice)
                             ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
                             : "border-slate-300 bg-slate-50 text-slate-800 focus:border-slate-800"}`} />
-                      <div className="h-[18px] flex items-center justify-center rounded-sm bg-slate-100 border border-slate-200 px-1">
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {stagingItem && Number(stagingPurchasePrice) > 0
-                            ? `آخر شراء: ${Number(stagingPurchasePrice).toFixed(2)}`
-                            : stagingItem ? "لا يوجد سعر مرجعي" : "—"}
-                        </span>
+                      <div className="h-[18px] flex items-center justify-center gap-2 rounded-sm bg-slate-100 border border-slate-200 px-1 overflow-hidden">
+                        {stagingItem ? (
+                          <>
+                            <span className="text-[9px] font-mono text-slate-400 shrink-0">بيع {Number(stagingItem.sale_price || 0).toFixed(2)} · شراء {Number(stagingPurchasePrice || 0).toFixed(2)}</span>
+                            <PriceDelta entered={stagingPrice} baseline={stagingItem.sale_price} className="shrink-0" />
+                          </>
+                        ) : (
+                          <span className="text-[10px] font-mono text-slate-400">—</span>
+                        )}
                       </div>
                     </div>
 
@@ -1178,6 +1359,12 @@ export default function SalesReturnFormPage() {
                         <th className="px-4 py-2.5 text-[12px] font-bold text-slate-700">الصنف</th>
                         <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">المستودع</th>
                         <th className="px-3 py-2.5 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
+                        <th className="px-3 py-2.5 text-center">
+                          <div className="flex flex-col items-center gap-px">
+                            <span className="text-[11px] font-bold text-slate-400">سعر البيع</span>
+                            <span className="text-[9px] font-medium text-slate-300 leading-none">للمعاينة فقط</span>
+                          </div>
+                        </th>
                         <th className="px-3 py-2.5 text-center">
                           <div className="flex flex-col items-center gap-px">
                             <span className="text-[11px] font-bold text-slate-400">سعر الشراء</span>
@@ -1232,6 +1419,14 @@ export default function SalesReturnFormPage() {
                           <td className="px-3 py-2.5 text-center">
                             <div
                               className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-[13px] font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
+                              title="سعر البيع — للمعاينة فقط"
+                            >
+                              {l.sale_price > 0 ? formatMoney(l.sale_price) : "—"}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <div
+                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-[13px] font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر الشراء — للمعاينة فقط"
                             >
                               {l.purchase_price > 0 ? formatMoney(l.purchase_price) : "—"}
@@ -1239,13 +1434,16 @@ export default function SalesReturnFormPage() {
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             {!isLocked ? (
-                              <input type="number" step="any" min="0" value={l.unit_price}
-                                onChange={e => updateCartPrice(l.key, e.target.value)}
-                                onFocus={e => e.target.select()}
-                                className={`w-24 rounded border px-2 py-1 text-center text-[13px] font-black font-mono outline-none focus:ring-1 transition-colors
-                                  ${l.purchase_price > 0 && Number(l.unit_price) > 0 && Number(l.unit_price) < l.purchase_price
-                                    ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
-                                    : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-emerald-200"}`} />
+                              <div className="flex flex-col items-center gap-0.5">
+                                <input type="number" step="any" min="0" value={l.unit_price}
+                                  onChange={e => updateCartPrice(l.key, e.target.value)}
+                                  onFocus={e => e.target.select()}
+                                  className={`w-24 rounded border px-2 py-1 text-center text-[13px] font-black font-mono outline-none focus:ring-1 transition-colors
+                                    ${l.purchase_price > 0 && Number(l.unit_price) > 0 && Number(l.unit_price) < l.purchase_price
+                                      ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
+                                      : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-emerald-200"}`} />
+                                <PriceDelta entered={l.unit_price} baseline={l.sale_price} />
+                              </div>
                             ) : (
                               <span className="text-[13px] font-black text-slate-700 font-mono">{formatMoney(l.unit_price)}</span>
                             )}
@@ -1358,12 +1556,26 @@ export default function SalesReturnFormPage() {
                           })}
                         </tbody>
                       </table>
-                      {invoiceLines.length === 0 && (
-                        <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400">
-                          <AlertCircle className="h-8 w-8 opacity-30" />
-                          <div className="text-[13px]">لا توجد أصناف قابلة للإرجاع في هذه الفاتورة</div>
-                        </div>
-                      )}
+                      {invoiceLines.length === 0 && (() => {
+                        const fullyReturned = loadedInvoice?.status === "returned" || (loadedInvoice?.lines || []).length > 0;
+                        return fullyReturned ? (
+                          <div className="flex flex-col items-center justify-center gap-3 py-12">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                              <CheckCircle2 className="h-8 w-8" />
+                            </div>
+                            <div className="text-[14px] font-black text-emerald-700">تم إرجاع جميع أصناف هذه الفاتورة بالكامل</div>
+                            <div className="text-[12px] font-bold text-slate-400">لا توجد كميات متبقية قابلة للإرجاع</div>
+                            <Link to={`/sales/returns?invoice_id=${loadedInvoice?.id}`} className="flex items-center gap-1 text-[12px] font-bold text-emerald-600 hover:underline mt-1">
+                              <ExternalLink className="h-3.5 w-3.5" /> عرض مرتجعات هذه الفاتورة
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400">
+                            <AlertCircle className="h-8 w-8 opacity-30" />
+                            <div className="text-[13px]">لا توجد أصناف قابلة للإرجاع في هذه الفاتورة</div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -1435,6 +1647,8 @@ export default function SalesReturnFormPage() {
           invoice_no: docNo,
           created_at: invoiceCreatedAt || new Date().toISOString(),
           customer_name: customer?.name,
+          discount: Number(headerDiscount) || 0,
+          increase: Number(headerIncrease) || 0,
           lines: (mode === "direct" ? cart : invoiceLines.filter(l => l.checked)).map(l => ({
             item_name: l.item_name,
             quantity: mode === "direct" ? l.quantity : l.qty_to_return,
@@ -1508,6 +1722,8 @@ export default function SalesReturnFormPage() {
         <ReturnSaveSuccess
           docNo={saveSuccess.docNo}
           total={saveSuccess.total}
+          discount={saveSuccess.discount}
+          increase={saveSuccess.increase}
           refundMethod={saveSuccess.refundMethod}
           cashAmount={saveSuccess.cashAmount}
           creditAmount={saveSuccess.creditAmount}

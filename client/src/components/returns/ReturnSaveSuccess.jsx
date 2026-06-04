@@ -43,7 +43,7 @@ function RefundBadge({ label, amount, variant }) {
 }
 
 export function ReturnSaveSuccess({
-  docNo, total,
+  docNo, total, discount = 0, increase = 0,
   refundMethod, cashAmount, creditAmount,
   entityName, entityNewBalance,
   type = 'sales_return',
@@ -206,6 +206,12 @@ export function ReturnSaveSuccess({
           }}>
             {fmt(total)}
           </div>
+          {(Number(discount) > 0 || Number(increase) > 0) && (
+            <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: '#64748b' }}>
+              {Number(discount) > 0 && <span style={{ color: '#e11d48' }}>خصم −{fmt(discount)} </span>}
+              {Number(increase) > 0 && <span style={{ color: '#059669' }}>زيادة +{fmt(increase)}</span>}
+            </div>
+          )}
         </div>
 
         {/* Refund method badges */}

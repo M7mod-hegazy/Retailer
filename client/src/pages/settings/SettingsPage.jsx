@@ -434,6 +434,19 @@ export default function SettingsPage() {
                       {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
                     ]} />
                     <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
+                    <DenseSelect
+                      label="حد الخصم الأقصى"
+                      value={Number(settings.discount_cap_enabled ?? 1)}
+                      onChange={(e) => handleChange("discount_cap_enabled", Number(e.target.value))}
+                      options={[{ value: 1, label: "مفعّل" }, { value: 0, label: "بدون حد (غير مفعّل)" }]}
+                    />
+                    <DenseInput
+                      label="الحد الأقصى للخصم (%)"
+                      type="number" step="1" min="0" max="100"
+                      value={settings.max_discount_percent ?? 15}
+                      disabled={Number(settings.discount_cap_enabled ?? 1) === 0}
+                      onChange={(e) => handleChange("max_discount_percent", Number(e.target.value))}
+                    />
                   </div>
                 </FieldGroup>
 

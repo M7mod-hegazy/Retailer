@@ -90,21 +90,24 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
       .finally(() => setLoading(false));
   }, [purchase?.purchase_id, purchase?.id]);
   if (!purchase) return null;
+  const d = detail || purchase;
+  const statusInfo = PURCHASE_STATUS_STYLES[d.status] || null;
+  const subtotal = (d.lines || []).reduce((s, l) => s + Number(l.line_total || (l.quantity * l.unit_cost) || 0), 0);
   return (
     <div className="flex flex-col gap-4">
       {loading ? (
         <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
-          <div className="flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-4 py-3">
-            <div className="flex items-center gap-4 text-[13px] flex-wrap">
-              <span className="font-black text-amber-800">فاتورة #{detail?.doc_no || purchase.doc_no}</span>
-              <span className="text-slate-600">المورد: <strong>{(detail || purchase).supplier_name || "—"}</strong></span>
-              <span className="text-slate-500">{(detail || purchase).created_at ? formatArabicDateTime(new Date((detail || purchase).created_at)) : "—"}</span>
-              <span className="font-bold text-amber-700">الإجمالي: {formatMoney((detail || purchase).total)} ج.م</span>
-            </div>
+          <div className="rounded-sm bg-amber-50 border border-amber-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px]">
+            <span className="font-black text-amber-800">فاتورة #{d.doc_no}</span>
+            {statusInfo && <span className={`px-2 py-0.5 rounded text-[11px] font-black ${statusInfo.cls}`}>{statusInfo.label}</span>}
+            <span className="text-slate-600">المورد: <strong>{d.supplier_name || "—"}</strong></span>
+            <span className="text-slate-500">{d.created_at ? formatArabicDateTime(new Date(d.created_at)) : "—"}</span>
+            {d.created_by_username && <span className="text-slate-500">بواسطة: <strong>{d.created_by_username}</strong></span>}
+            <span className="font-bold text-slate-700">طريقة الدفع: {PAYMENT_METHOD_LABELS[d.payment_method] || d.payment_method || "—"}</span>
           </div>
-          <div className="max-h-[320px] overflow-auto rounded-sm border border-slate-200">
+          <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">
             <table className="w-full text-[12px] border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
@@ -117,7 +120,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
                 </tr>
               </thead>
               <tbody>
-                {((detail || purchase).lines || []).map((l, i) => {
+                {(d.lines || []).map((l, i) => {
                   const returned = Number(l.returned_quantity || 0);
                   return (
                     <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
@@ -135,6 +138,51 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
               </tbody>
             </table>
           </div>
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+              <div className="flex justify-between">
+                <span className="text-slate-500">المجموع الفرعي</span>
+                <span className="font-black font-mono text-slate-700">{formatMoney(subtotal)}</span>
+              </div>
+              {Number(d.discount) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">خصم</span>
+                  <span className="font-black font-mono text-rose-600">- {formatMoney(d.discount)}</span>
+                </div>
+              )}
+              {Number(d.increase) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">إضافة</span>
+                  <span className="font-black font-mono text-emerald-600">+ {formatMoney(d.increase)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1">
+                <span className="font-black text-slate-800">الإجمالي</span>
+                <span className="font-black font-mono text-slate-900">{formatMoney(d.total)} ج.م</span>
+              </div>
+            </div>
+            {d.payments?.length > 0 && (
+              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">المدفوعات</p>
+                {d.payments.map((p, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-slate-600">{p.method_name || "—"}</span>
+                    <span className="font-black font-mono text-slate-800">{formatMoney(p.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {d.notes && (
+            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-[12px] text-slate-600">
+              <span className="font-black text-slate-500 text-[10px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
+            </div>
+          )}
+          {d.status === "cancelled" && d.cancel_reason && (
+            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-2.5 text-[12px] text-rose-700">
+              <span className="font-black text-[10px] uppercase tracking-widest">سبب الإلغاء: </span>{d.cancel_reason}
+            </div>
+          )}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
@@ -143,7 +191,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
           <button onClick={() => navigate(`/purchases/${purchase.purchase_id || purchase.id}`)} className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-5 py-2 text-[13px] font-black text-amber-700 hover:bg-amber-50 transition-colors">
             <Pencil className="h-4 w-4" /> عرض
           </button>
-          <button onClick={() => onConfirm(detail || purchase)} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
+          <button onClick={() => onConfirm(d)} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
             <CheckCircle2 className="h-4 w-4" /> اختيار هذا الأمر
           </button>
         </div>
@@ -268,7 +316,17 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
     { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[12px] font-black text-slate-700", render: (inv) => inv.doc_no },
     { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
     { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-amber-700", render: (inv) => formatMoney(inv.total) },
+    { id: "total", header: "الإجمالي", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-amber-700", render: (inv) => (
+      <div className="flex flex-col gap-0.5">
+        <span>{formatMoney(inv.total)}</span>
+        {(Number(inv.discount) > 0 || Number(inv.increase) > 0) && (
+          <span className="text-[9px] font-black leading-none">
+            {Number(inv.discount) > 0 && <span className="text-rose-500">خصم −{formatMoney(inv.discount)} </span>}
+            {Number(inv.increase) > 0 && <span className="text-emerald-600">زيادة +{formatMoney(inv.increase)}</span>}
+          </span>
+        )}
+      </div>
+    ) },
     { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
       if (inv.payment_splits) {
         const splits = inv.payment_splits.split("|||").filter(Boolean).map(s => { const [m, a] = s.split(":"); return { method: (m || "").trim(), amount: Number(a || 0) }; }).filter(s => s.amount > 0);

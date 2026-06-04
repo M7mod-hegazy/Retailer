@@ -152,8 +152,15 @@ function PreviewModal({ returnId, onClose }) {
                       <span className="font-mono text-sm font-bold text-zinc-600">{fmtDate(data.created_at)}</span>
                     </div>
                     <div className="flex flex-col gap-1 items-end">
-                      <span className="text-[10px] font-black text-emerald-600 tracking-wider uppercase">إجمالي المرتجع</span>
+                      <span className="text-[10px] font-black text-emerald-600 tracking-wider uppercase">صافي المرتجع</span>
                       <span className="font-mono text-xl font-black text-emerald-700">{fmt(total)} ج.م</span>
+                      {(Number(data.discount) > 0 || Number(data.increase) > 0) && (
+                        <span className="text-[10px] font-bold text-slate-500">
+                          {fmt(Number(data.total) + Number(data.discount || 0) - Number(data.increase || 0))} أصناف
+                          {Number(data.discount) > 0 && <span className="text-rose-500"> · خصم −{fmt(data.discount)}</span>}
+                          {Number(data.increase) > 0 && <span className="text-emerald-600"> · زيادة +{fmt(data.increase)}</span>}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -299,10 +306,12 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
       <div className="flex items-center gap-4 flex-shrink-0 z-10">
         <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3 py-2 min-w-[90px]">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">صافي المرتجع</span>
             <div className="text-[15px] font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
               <span>{fmt(total)}</span><span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
             </div>
+            {Number(row.discount) > 0 && <span className="text-[8px] font-black text-rose-500 mt-0.5">خصم −{fmt(row.discount)}</span>}
+            {Number(row.increase) > 0 && <span className="text-[8px] font-black text-emerald-600 mt-0.5">زيادة +{fmt(row.increase)}</span>}
           </div>
           {cashAmt > 0.005 && (
             <><div className="w-px self-stretch bg-slate-200/80" />

@@ -1,6 +1,6 @@
 const express = require("express");
 const { createInvoice, getInvoiceWithLines, editInvoice, cancelInvoice, amendInvoice } = require("../services/invoiceService");
-const { createReturn, createGeneralReturn, getReturns, getReturnDetails, cancelSalesReturn, amendSalesReturn, editSalesReturn } = require("../services/returnService");
+const { applyReturnAdjustment, createReturn, createGeneralReturn, getReturns, getReturnDetails, cancelSalesReturn, amendSalesReturn, editSalesReturn } = require("../services/returnService");
 const { adjustStock } = require("../services/stockService");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
@@ -149,13 +149,14 @@ router.get("/returns/items-search", requirePagePermission("sales_returns", "view
 router.get("/returns", requirePagePermission("sales_returns", "view"), (req, res) => {
   try {
     const db = getDb();
-    const { search = "", customer_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
+    const { search = "", customer_id, invoice_id, date_from, date_to, sort = "created_at", dir = "desc", user_id = "" } = req.query;
     const conditions = ["sr.status != 'cancelled'"];
     const params = [];
     if (search) {
       conditions.push("(c.name LIKE ? OR CAST(sr.id AS TEXT) LIKE ? OR i.invoice_no LIKE ?)");
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
+    if (invoice_id) { conditions.push("sr.invoice_id = ?"); params.push(invoice_id); }
     if (customer_id) { conditions.push("sr.customer_id = ?"); params.push(customer_id); }
     if (date_from) { conditions.push("date(sr.created_at) >= date(?)"); params.push(date_from); }
     if (date_to) { conditions.push("date(sr.created_at) <= date(?)"); params.push(date_to); }
@@ -231,10 +232,10 @@ router.post("/general-purchase-return", requirePagePermission("purchase_returns"
 
     const result = db.transaction(() => {
       const docNo = generateDocNumber("general_purchase_return", "GPR");
-      let total = 0;
+      let subtotal = 0;
       for (const line of lines) {
         const qty = Number(line.quantity);
-        total += qty * Number(line.unit_cost || line.unit_price);
+        subtotal += qty * Number(line.unit_cost || line.unit_price);
 
         // Stock availability check
         if (line.item_id) {
@@ -250,13 +251,14 @@ router.post("/general-purchase-return", requirePagePermission("purchase_returns"
         }
       }
 
+      const { discount, increase, total } = applyReturnAdjustment(subtotal, req.body);
       const cashAmt = sType === 'cash' ? total : sType === 'split' ? Math.max(0, Number(req.body.cash_amount ?? 0)) : 0;
       const creditAmt = sType === 'account' ? total : sType === 'split' ? Math.max(0, total - cashAmt) : 0;
 
       const ret = db.prepare(`
-        INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, settlement_type, refund_method, cash_amount, credit_amount, reason, notes, created_by, created_at)
-        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
-      `).run(docNo, supplier_id || null, total, sType, sType, cashAmt, creditAmt, reason || 'other', notes || null, userId);
+        INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, refund_method, cash_amount, credit_amount, reason, notes, created_by, created_at)
+        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+      `).run(docNo, supplier_id || null, total, discount, increase, sType, sType, cashAmt, creditAmt, reason || 'other', notes || null, userId);
 
       for (const line of lines) {
         const cost = Number(line.unit_cost || line.unit_price);

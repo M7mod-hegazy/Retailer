@@ -2275,8 +2275,6 @@ export default function POSPage() {
                         onPick={(item) => { handleSelectItem(item); }}
                         activeIndex={activeLookupIndex}
                         query={itemNameQuery}
-                        rawText={itemNameQuery}
-                        onPickRawText={(txt) => handleSelectItem({ id: -1, name: txt, code: txt, item_code: txt, barcode: txt, sale_price: 0, price: 0, purchase_price: 0, stock_quantity: 0 })}
                         onLoadMore={loadMorePOSItems}
                         hasMoreFromServer={searchedItemHasMore}
                         isLoadingMore={isLoadingMoreItems}
@@ -2796,7 +2794,7 @@ export default function POSPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto">
               <ShieldCheck className="h-7 w-7 text-amber-600" />
             </div>
-            <p className="text-[13px] font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح (15% من الإجمالي).</p>
+            <p className="text-[13px] font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح ({Number(storeSettings?.max_discount_percent ?? 15)}% من الإجمالي).</p>
             <p className="text-[12px] text-slate-500">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
             <div className="flex justify-center gap-3 pt-2">
               <button type="button" onClick={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }}

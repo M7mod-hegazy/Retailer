@@ -295,6 +295,7 @@ function supplierReturnsHistory(startDate, endDate, opts = {}) {
   return db.prepare(`
     SELECT pr.doc_no AS return_ref, DATE(pr.created_at) AS date,
       s.name AS supplier_name,
+      pr.discount AS return_discount, pr.increase AS return_increase,
       pr.total AS return_total, pr.reason, pr.refund_method,
       COUNT(prl.id) AS items_returned
     FROM purchase_returns pr

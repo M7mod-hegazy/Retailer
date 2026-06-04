@@ -98,7 +98,9 @@ function ReturnPreviewModal({ ret, onClose }) {
               <span className="font-black text-emerald-800">مرتجع #{detail?.doc_no || ret.doc_no}</span>
               <span className="text-slate-600">العميل: <strong>{(detail || ret).customer_name || "—"}</strong></span>
               <span className="text-slate-500">{(detail || ret).created_at ? formatArabicDateTime(new Date((detail || ret).created_at)) : "—"}</span>
-              <span className="font-bold text-emerald-700">الإجمالي: {formatMoney((detail || ret).total)} ج.م</span>
+              {Number((detail || ret).discount) > 0 && <span className="font-bold text-rose-600">خصم: −{formatMoney((detail || ret).discount)}</span>}
+              {Number((detail || ret).increase) > 0 && <span className="font-bold text-emerald-600">زيادة: +{formatMoney((detail || ret).increase)}</span>}
+              <span className="font-bold text-emerald-700">صافي المرتجع: {formatMoney((detail || ret).total)} ج.م</span>
             </div>
           </div>
           <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">

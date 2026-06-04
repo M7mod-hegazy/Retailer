@@ -100,7 +100,7 @@ function returnsTaxEffect(startDate, endDate, opts = {}) {
       DATE(sr.created_at) AS date,
       sr.total AS return_amount,
       sr.customer_id,
-      SUM(srl.line_total * COALESCE(it.tax_rate, 0) / 100) AS vat_reversed,
+      ROUND(SUM(srl.line_total * COALESCE(it.tax_rate, 0) / 100) * sr.total / NULLIF(SUM(srl.line_total), 0), 2) AS vat_reversed,
       COUNT(srl.id) AS items_returned
     FROM sales_returns sr
     JOIN sales_return_lines srl ON srl.sales_return_id = sr.id

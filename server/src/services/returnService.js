@@ -4,6 +4,7 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("./dailySessionService");
 const { getSnapshotCosts } = require("./waccService");
 const { captureSalesReturnLineOverrides } = require("./overrideTrackingService");
+const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
 
 function generateAmendmentDocNo(originalDocNo, db, table) {
   const base = originalDocNo.replace(/-A\d+$/, "");
@@ -13,6 +14,23 @@ function generateAmendmentDocNo(originalDocNo, db, table) {
   if (!existing) return `${base}-A1`;
   const num = parseInt(existing.doc_no.match(/-A(\d+)$/)[1]) + 1;
   return `${base}-A${num}`;
+}
+
+// Header-level خصم/زيادة on a return. Mirrors the invoice discount cap
+// (invoiceService GAP-02), configurable via settings.max_discount_percent.
+// `total = subtotal − discount + increase`.
+function applyReturnAdjustment(subtotal, payload) {
+  const discount = Math.max(0, Number(payload.discount || 0));
+  const increase = Math.max(0, Number(payload.increase || 0));
+  const db = getDb();
+  if (discountExceedsCap(db, subtotal, discount) && !payload.supervisor_override) {
+    const err = new Error(`الخصم يتجاوز الحد الأقصى المسموح (${getMaxDiscountPercent(db)}%). يتطلب موافقة المشرف.`);
+    err.status = 400;
+    err.code = "DISCOUNT_LIMIT_EXCEEDED";
+    throw err;
+  }
+  const total = Math.max(0, subtotal - discount + increase);
+  return { discount, increase, total };
 }
 
 function createReturn(invoiceId, payload) {
@@ -79,24 +97,27 @@ function createReturn(invoiceId, payload) {
       });
     }
 
+    const { discount, increase, total: adjTotal } = applyReturnAdjustment(total, payload);
     const refundMethod = payload.refund_method || "cash_back";
-    const cashAmt = refundMethod === "cash_back" ? total
+    const cashAmt = refundMethod === "cash_back" ? adjTotal
       : refundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
       : 0;
-    const creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? total
-      : refundMethod === "split" ? Math.max(0, total - cashAmt)
+    const creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? adjTotal
+      : refundMethod === "split" ? Math.max(0, adjTotal - cashAmt)
       : 0;
 
     const docNo = generateDocNumber('sales_return');
     const result = db
       .prepare(
-        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, reason, refund_method, cash_amount, credit_amount, notes, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, reason, refund_method, cash_amount, credit_amount, notes, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
       )
       .run(
         docNo,
         invoiceId,
         invoice.customer_id || null,
-        total,
+        adjTotal,
+        discount,
+        increase,
         payload.reason || null,
         refundMethod,
         cashAmt,
@@ -170,8 +191,9 @@ function createGeneralReturn(payload) {
     if (!lines || !lines.length) { const e = new Error("يجب إضافة أصناف"); e.status = 400; throw e; }
 
     const docNo = generateDocNumber('sales_return');
-    let total = 0;
-    for (const line of lines) total += Number(line.quantity) * Number(line.unit_price);
+    let subtotal = 0;
+    for (const line of lines) subtotal += Number(line.quantity) * Number(line.unit_price);
+    const { discount, increase, total } = applyReturnAdjustment(subtotal, payload);
 
     const genRefundMethod = refund_method || 'cash_back';
     const genCashAmt = genRefundMethod === 'cash_back' ? total
@@ -182,8 +204,8 @@ function createGeneralReturn(payload) {
       : 0;
 
     const ret = db.prepare(
-      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'))"
-    ).run(docNo, customer_id || null, total, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null);
+      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'))"
+    ).run(docNo, customer_id || null, total, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null);
 
     const returnId = ret.lastInsertRowid;
 
@@ -427,15 +449,20 @@ function editSalesReturn(returnId, payload, userId) {
       adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id, quantityDelta: line.quantity, movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
     }
 
-    // 5. Apply new financials
+    // 5. Apply new financials — header خصم/زيادة fall back to existing values if not sent
+    const { discount: newDiscount, increase: newIncrease, total: newAdjTotal } = applyReturnAdjustment(newTotal, {
+      discount: payload.discount ?? sr.discount,
+      increase: payload.increase ?? sr.increase,
+      supervisor_override: payload.supervisor_override,
+    });
     const newRefundMethod = payload.refund_method || sr.refund_method;
     const newTreasuryId = payload.treasury_id || sr.treasury_id;
     const newCustomerId = payload.customer_id || sr.customer_id;
-    const newCashAmt = newRefundMethod === "cash_back" ? newTotal
+    const newCashAmt = newRefundMethod === "cash_back" ? newAdjTotal
       : newRefundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
       : 0;
-    const newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? newTotal
-      : newRefundMethod === "split" ? Math.max(0, newTotal - newCashAmt)
+    const newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? newAdjTotal
+      : newRefundMethod === "split" ? Math.max(0, newAdjTotal - newCashAmt)
       : 0;
     if (newCashAmt > 0) {
       const tId = newTreasuryId || editDefaultTId;
@@ -447,8 +474,8 @@ function editSalesReturn(returnId, payload, userId) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(newTotal, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, returnId);
+      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(newAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, returnId);
 
     // 7. Recalculate linked invoice status
     if (sr.invoice_id) {
@@ -464,4 +491,4 @@ function editSalesReturn(returnId, payload, userId) {
   })();
 }
 
-module.exports = { createReturn, createGeneralReturn, getReturns, getReturnDetails, cancelSalesReturn, amendSalesReturn, editSalesReturn };
+module.exports = { applyReturnAdjustment, createReturn, createGeneralReturn, getReturns, getReturnDetails, cancelSalesReturn, amendSalesReturn, editSalesReturn };

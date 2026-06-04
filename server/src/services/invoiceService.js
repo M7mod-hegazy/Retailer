@@ -5,6 +5,7 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("./dailySessionService");
 const { getSnapshotCosts } = require("./waccService");
 const { captureInvoiceLineOverrides } = require("./overrideTrackingService");
+const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -186,11 +187,11 @@ function createInvoice(payload) {
     const headerDiscount = Number(payload.discount || 0);
     const promotionDiscount = Math.max(0, Number(payload.promotion_discount || 0));
 
-    // GAP-02: Discount Hard Limits (max 15%) — checked on the manual header discount only
-    // (system promotions are not subject to the cashier cap). Unless supervisor-overridden.
-    const maxDiscountAllowed = subtotal * 0.15;
-    if (headerDiscount > maxDiscountAllowed && !payload.supervisor_override) {
-      const error = new Error("Discount exceeds the maximum allowed limit of 15%. Supervisor override required.");
+    // GAP-02: Discount Hard Limits (configurable, default 15%, can be disabled) —
+    // checked on the manual header discount only (system promotions are not subject
+    // to the cashier cap). Unless supervisor-overridden.
+    if (discountExceedsCap(db, subtotal, headerDiscount) && !payload.supervisor_override) {
+      const error = new Error(`Discount exceeds the maximum allowed limit of ${getMaxDiscountPercent(db)}%. Supervisor override required.`);
       error.status = 403;
       error.code = 'DISCOUNT_LIMIT_EXCEEDED';
       throw error;

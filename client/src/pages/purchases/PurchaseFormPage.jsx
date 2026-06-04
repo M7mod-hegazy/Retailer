@@ -819,6 +819,8 @@ export default function PurchaseFormPage() {
           payments: paymentsForDisplay,
           customerName: paymentMode === "cash" ? null : (supplier?.name || null),
           customerNewBalance: newBalance,
+          discount: Number(discount || 0),
+          increase: Number(increase || 0),
         });
       } else {
         const res = await api.post("/api/purchases", buildPayload());
@@ -831,6 +833,8 @@ export default function PurchaseFormPage() {
           payments: paymentsForDisplay,
           customerName: paymentMode === "cash" ? null : (supplier?.name || null),
           customerNewBalance: newBalance,
+          discount: Number(discount || 0),
+          increase: Number(increase || 0),
         });
       }
     } catch (e) {
@@ -901,6 +905,8 @@ export default function PurchaseFormPage() {
           payments={saveSuccess.payments}
           customerName={saveSuccess.customerName}
           customerNewBalance={saveSuccess.customerNewBalance}
+          discount={saveSuccess.discount}
+          increase={saveSuccess.increase}
           onDismiss={onDismissSaveSuccess}
         />
       )}
@@ -1047,7 +1053,7 @@ export default function PurchaseFormPage() {
                         placeholder="ابحث بالاسم، الباركود، أو الكود..."
                         inputClassName={selectedItem ? "!pr-[76px]" : ""}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) { handlePickItem(filteredItems[activeIndex] || filteredItems[0]); } else if (itemSearchActiveRef.current) { pendingPickRef.current = true; } else { const q = itemQuery.trim(); if (q) handlePickItem({ id: -1, name: q, code: q, barcode: q, purchase_price: 0, sale_price: 0 }); } }
+                          if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) { handlePickItem(filteredItems[activeIndex] || filteredItems[0]); } else if (itemSearchActiveRef.current) { pendingPickRef.current = true; } }
                           else if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
                           else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
                         }}
@@ -1058,7 +1064,7 @@ export default function PurchaseFormPage() {
                           {selectedItem.code || selectedItem.barcode || "—"}
                         </span>
                       )}
-                      {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} rawText={itemQuery} onPickRawText={(txt) => handlePickItem({ id: -1, name: txt, code: txt, barcode: txt, purchase_price: 0, sale_price: 0 })} onLoadMore={loadMoreItems} hasMoreFromServer={itemHasMore} isLoadingMore={isLoadingMoreItems} />}
+                      {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} onLoadMore={loadMoreItems} hasMoreFromServer={itemHasMore} isLoadingMore={isLoadingMoreItems} />}
                     </div>
                     <button
                       type="button"
