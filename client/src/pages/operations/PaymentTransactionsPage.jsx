@@ -57,23 +57,23 @@ export default function PaymentTransactionsPage() {
       <div className="bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-3 shrink-0 flex-wrap" data-help="filters-bar">
         <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
           placeholder="بحث بالكود أو المبلغ أو الوصف..."
-          className="h-9 w-60 rounded-xl border border-slate-200 px-3 text-[12px] outline-none focus:border-blue-400" />
+          className="h-9 w-60 rounded-xl border border-slate-200 px-3 text-2sm outline-none focus:border-blue-400" />
         <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))}
-          className="h-9 rounded-xl border border-slate-200 px-3 text-[12px] outline-none" />
-        <span className="text-slate-400 text-[12px]">إلى</span>
+          className="h-9 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
+        <span className="text-slate-400 text-2sm">إلى</span>
         <input type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))}
-          className="h-9 rounded-xl border border-slate-200 px-3 text-[12px] outline-none" />
+          className="h-9 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
         <select value={filters.method} onChange={e => setFilters(f => ({ ...f, method: e.target.value }))}
-          className="h-9 rounded-xl border border-slate-200 px-3 text-[12px] outline-none bg-white">
+          className="h-9 rounded-xl border border-slate-200 px-3 text-2sm outline-none bg-white">
           <option value="">كل وسائل الدفع</option>
           {methods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
-          className="h-9 rounded-xl border border-slate-200 px-3 text-[12px] outline-none bg-white">
+          className="h-9 rounded-xl border border-slate-200 px-3 text-2sm outline-none bg-white">
           <option value="">كل أنواع المستندات</option>
           {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <button onClick={load} className="h-9 rounded-xl bg-blue-600 px-4 text-[12px] font-black text-white hover:bg-blue-700">بحث</button>
+        <button onClick={load} className="h-9 rounded-xl bg-blue-600 px-4 text-2sm font-black text-white hover:bg-blue-700">بحث</button>
       </div>
 
       {/* Table */}
@@ -84,10 +84,10 @@ export default function PaymentTransactionsPage() {
           ) : rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-slate-300 gap-2">
               <BookOpen className="h-10 w-10" />
-              <span className="font-black text-[13px]">لا توجد حركات مطابقة</span>
+              <span className="font-black text-sm">لا توجد حركات مطابقة</span>
             </div>
           ) : (
-            <table className="w-full text-[12px]">
+            <table className="w-full text-2sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   {["الكود", "النوع", "المبلغ", "الاتجاه", "الطرف", "التاريخ"].map(h => (
@@ -100,13 +100,13 @@ export default function PaymentTransactionsPage() {
                   <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-black text-slate-700">{r.doc_no || `#${r.id}`}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-600">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-600">
                         {DOC_TYPES[r.doc_type] || r.doc_type}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-black font-mono text-slate-900">{fmt(r.amount)} ج.م</td>
                     <td className="px-4 py-3">
-                      <span className={`flex items-center gap-1 w-fit rounded-full px-2 py-0.5 text-[10px] font-black ${r.direction === "out" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
+                      <span className={`flex items-center gap-1 w-fit rounded-full px-2 py-0.5 text-[11px] font-black ${r.direction === "out" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
                         {r.direction === "out" ? <ArrowDownCircle className="h-3 w-3" /> : <ArrowUpCircle className="h-3 w-3" />}
                         {r.direction === "out" ? "خارج" : "داخل"}
                       </span>
@@ -120,7 +120,7 @@ export default function PaymentTransactionsPage() {
               </tbody>
               <tfoot className="bg-slate-50 border-t border-slate-200">
                 <tr>
-                  <td colSpan={2} className="px-4 py-3 font-black text-slate-700 text-[12px]">
+                  <td colSpan={2} className="px-4 py-3 font-black text-slate-700 text-2sm">
                     الإجمالي ({rows.length} حركة)
                   </td>
                   <td className="px-4 py-3 font-black font-mono text-slate-900">

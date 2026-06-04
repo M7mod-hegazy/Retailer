@@ -91,7 +91,7 @@ export default function ImageUpload({ url, onUpload, onRemove, size = "md", clas
         ) : (
           <div className="flex flex-col items-center gap-1 text-slate-400 group-hover:text-emerald-500">
             <Image className={iconCls} />
-            {size !== "sm" && <span className="text-[10px] font-bold">صورة</span>}
+            {size !== "sm" && <span className="text-[11px] font-bold">صورة</span>}
           </div>
         )}
       </button>
@@ -107,7 +107,7 @@ export default function ImageUpload({ url, onUpload, onRemove, size = "md", clas
         </button>
       )}
 
-      {error && <p className="mt-1 text-[10px] text-rose-600">{error}</p>}
+      {error && <p className="mt-1 text-[11px] text-rose-600">{error}</p>}
     </div>
   );
 }

@@ -55,7 +55,7 @@ function fieldLabelByKey(key) {
 function Tab({ active, onClick, children }) {
   return (
     <button type="button" onClick={onClick}
-      className={`px-6 py-3 text-[13px] font-black uppercase tracking-widest border-b-2 transition-all ${
+      className={`px-6 py-3 text-sm font-black uppercase tracking-widest border-b-2 transition-all ${
         active
           ? "border-slate-800 text-slate-900 bg-slate-50/50"
           : "border-transparent text-slate-400 hover:text-slate-800 hover:bg-slate-50/30"
@@ -69,7 +69,7 @@ function ResizableTh({ label, sortKey, sortConfig, onSort, colKey, colWidths, on
   const isSorted = sortConfig?.key === sortKey;
   return (
     <th
-      className={`relative select-none px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 hover:bg-slate-100 transition-colors group border-l border-slate-100 ${className}`}
+      className={`relative select-none px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 hover:bg-slate-100 transition-colors group border-l border-slate-100 ${className}`}
       style={colWidths[colKey] ? { width: colWidths[colKey], minWidth: colWidths[colKey] } : {}}
     >
       <div className={`flex items-center gap-1 ${sortKey ? "cursor-pointer" : ""}`}
@@ -422,21 +422,21 @@ export default function BulkPriceUpdatePage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-[24px] font-black text-slate-900">تحديث الأسعار المجمّع</h1>
-          <p className="text-[13px] font-bold text-slate-400">تعديل أسعار الشراء، البيع، أو الجملة دفعة واحدة</p>
+          <p className="text-sm font-bold text-slate-400">تعديل أسعار الشراء، البيع، أو الجملة دفعة واحدة</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 shadow-sm">
             <Activity className="h-4 w-4 text-emerald-500" />
             <div className="flex flex-col text-right">
-              <span className="text-[10px] font-black text-slate-400 uppercase leading-none">الأصناف المتاحة</span>
-              <span className="text-[13px] font-black text-slate-800 leading-none">{items.length}</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase leading-none">الأصناف المتاحة</span>
+              <span className="text-sm font-black text-slate-800 leading-none">{items.length}</span>
             </div>
           </div>
           <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 shadow-sm">
             <Tag className="h-4 w-4 text-blue-500" />
             <div className="flex flex-col text-right">
-              <span className="text-[10px] font-black text-slate-400 uppercase leading-none">مُختار للتعديل</span>
-              <span className="text-[13px] font-black text-slate-800 leading-none">{selected.size}</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase leading-none">مُختار للتعديل</span>
+              <span className="text-sm font-black text-slate-800 leading-none">{selected.size}</span>
             </div>
           </div>
         </div>
@@ -452,7 +452,7 @@ export default function BulkPriceUpdatePage() {
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
               <input value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث سريع بأسم أو كود الصنف..."
-                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-[13px] font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
               {search && (
                 <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400">
                   <X className="h-3 w-3" />
@@ -462,7 +462,7 @@ export default function BulkPriceUpdatePage() {
             <div className="relative w-72 group">
               <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <select data-help="category-filter" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+                className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
                 <option value="">كل الأقسام ({items.length})</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -473,7 +473,7 @@ export default function BulkPriceUpdatePage() {
             </div>
           </div>
           <button onClick={fetchItems}
-            className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[13px] font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+            className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
             <RefreshCcw className={fetchLoading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث الأصناف
           </button>
         </div>
@@ -482,7 +482,7 @@ export default function BulkPriceUpdatePage() {
         <div className="flex flex-wrap items-end gap-6 px-6 py-5 border-b border-slate-100 bg-white">
           <div className="space-y-1.5 flex-1 max-w-[200px]">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">الاتجاه</label>
-            <div className="flex overflow-hidden rounded-sm border border-slate-200 shadow-sm font-bold text-[13px]">
+            <div className="flex overflow-hidden rounded-sm border border-slate-200 shadow-sm font-bold text-sm">
               <button type="button" onClick={() => setDirection("up")}
                 className={`flex-1 flex justify-center items-center gap-1.5 py-2 transition-colors ${direction === "up" ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
                 <ArrowUp className="h-3.5 w-3.5" /> زيادة
@@ -497,7 +497,7 @@ export default function BulkPriceUpdatePage() {
 
           <div data-help="update-method" className="space-y-1.5 flex-1 max-w-[200px]">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">النوع</label>
-            <div className="flex overflow-hidden rounded-sm border border-slate-200 shadow-sm font-bold text-[13px]">
+            <div className="flex overflow-hidden rounded-sm border border-slate-200 shadow-sm font-bold text-sm">
               <button type="button" onClick={() => setAdjType("percentage")}
                 className={`flex-1 py-2 transition-colors ${adjType === "percentage" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
                 نسبة %
@@ -514,13 +514,13 @@ export default function BulkPriceUpdatePage() {
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">القيمة</label>
             <input type="number" step="0.01" min="0" value={adjValue} onChange={(e) => setAdjValue(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-[13px] font-black outline-none focus:border-slate-800 shadow-sm font-mono text-center" />
+              className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-black outline-none focus:border-slate-800 shadow-sm font-mono text-center" />
           </div>
 
           <div className="w-48 space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">حقل السعر</label>
             <select value={priceField} onChange={(e) => setPriceField(e.target.value)}
-              className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2 px-3 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+              className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2 px-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
               {PRICE_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
             </select>
           </div>
@@ -529,7 +529,7 @@ export default function BulkPriceUpdatePage() {
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">ملاحظات التغيير (اختياري)</label>
             <input type="text" value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="مثال: تحديثات أبريل"
-              className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-[13px] font-bold outline-none focus:border-slate-800 shadow-sm" />
+              className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 shadow-sm" />
           </div>
 
           <div className="space-y-1.5 shrink-0">
@@ -538,7 +538,7 @@ export default function BulkPriceUpdatePage() {
             </label>
             <button data-help="apply-button" onClick={handleApply}
               disabled={loading || selected.size === 0 || (!hasBulkFormula && !hasInlineOverrides)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-sm font-black text-[13px] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap">
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-sm font-black text-sm shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap">
               <CheckCircle2 className="h-4 w-4" />
               {loading ? "جاري التحديث..." : "تنفيذ التسعير"}
             </button>
@@ -549,7 +549,7 @@ export default function BulkPriceUpdatePage() {
         {lastOpId && (
           <div className="flex items-center gap-3 bg-amber-50 px-6 py-3 border-b border-amber-100">
             <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
-            <p className="flex-1 text-[12px] font-bold text-amber-800">
+            <p className="flex-1 text-2sm font-bold text-amber-800">
               يوجد سجل لتعديل أخير قيد الانتظار <span className="mx-1 font-mono">{lastOpId}</span>
             </p>
             <button onClick={() => handleRollback(lastOpId)} disabled={rollbackLoading}
@@ -574,8 +574,8 @@ export default function BulkPriceUpdatePage() {
           <div className="flex flex-col bg-slate-50/50">
             {(somePageSelected && !allFilteredSelected && filtered.length > pageSize) && (
               <div className="flex items-center justify-between bg-sky-50 px-6 py-2 border-b border-sky-100">
-                <span className="text-[12px] font-bold text-sky-800">تم تحديد {selected.size} صنف من هذه الصفحة.</span>
-                <button onClick={selectAllFiltered} className="text-[12px] font-black text-sky-600 underline underline-offset-4 hover:text-sky-800">
+                <span className="text-2sm font-bold text-sky-800">تم تحديد {selected.size} صنف من هذه الصفحة.</span>
+                <button onClick={selectAllFiltered} className="text-2sm font-black text-sky-600 underline underline-offset-4 hover:text-sky-800">
                   تحديد جميع الـ {filtered.length} صنف في النتائج
                 </button>
               </div>
@@ -614,9 +614,9 @@ export default function BulkPriceUpdatePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {fetchLoading ? (
-                    <tr><td colSpan={9} className="py-24 text-center text-[13px] font-black text-slate-300 uppercase tracking-widest animate-pulse">يتم استدعاء الأصناف...</td></tr>
+                    <tr><td colSpan={9} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">يتم استدعاء الأصناف...</td></tr>
                   ) : pageItems.length === 0 ? (
-                    <tr><td colSpan={9} className="py-24 text-center text-[13px] font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
+                    <tr><td colSpan={9} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
                   ) : pageItems.map((item) => {
                     const isSelected = selected.has(item.id);
                     const hasOverride = inlineOverrides[item.id] !== undefined;
@@ -644,23 +644,23 @@ export default function BulkPriceUpdatePage() {
                           <input type="checkbox" checked={isSelected} onChange={() => toggleRow(item.id)}
                             className="h-3.5 w-3.5 cursor-pointer rounded-sm accent-slate-800" />
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-center font-mono text-[12px] font-black text-slate-500">
+                        <td className="px-4 py-2 border-l border-slate-100 text-center font-mono text-2sm font-black text-slate-500">
                           {item.code || "—"}
                         </td>
                         <td className="px-4 py-2 border-l border-slate-100">
-                          <p className="font-black text-[13px] text-slate-800">{item.name}</p>
+                          <p className="font-black text-sm text-slate-800">{item.name}</p>
                           {item.barcode && <p className="font-mono text-[11px] text-slate-400">{item.barcode}</p>}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-[12px] font-bold text-slate-500">
+                        <td className="px-4 py-2 border-l border-slate-100 text-2sm font-bold text-slate-500">
                           {item.category_name || "—"}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-[13px] text-slate-600">
+                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-slate-600">
                           {Number(item.purchase_price || 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-[13px] text-emerald-700">
+                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-emerald-700">
                           {Number(item.sale_price || 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-[13px] text-blue-700">
+                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-blue-700">
                           {Number(item.wholesale_price || 0).toFixed(2)}
                         </td>
 
@@ -681,7 +681,7 @@ export default function BulkPriceUpdatePage() {
                                     if (e.key === "Enter") commitEdit(item.id, e.target.value);
                                     if (e.key === "Escape") { setEditingCell(null); }
                                   }}
-                                  className="w-20 rounded border border-amber-400 bg-white px-2 py-0.5 text-[13px] font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 text-center"
+                                  className="w-20 rounded border border-amber-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 text-center"
                                 />
                                 {hasOverride && (
                                   <button onClick={(e) => clearOverride(e, item.id)} title="إعادة ضبط"
@@ -693,7 +693,7 @@ export default function BulkPriceUpdatePage() {
                             ) : (
                               <div className="flex items-center justify-end gap-1.5 group/cell">
                                 {newPrice !== null ? (
-                                  <span className={`font-mono font-black text-[13px] px-2 py-0.5 rounded transition-colors ${
+                                  <span className={`font-mono font-black text-sm px-2 py-0.5 rounded transition-colors ${
                                     hasOverride
                                       ? "text-violet-700 bg-violet-100 ring-1 ring-violet-300"
                                       : isDown
@@ -703,7 +703,7 @@ export default function BulkPriceUpdatePage() {
                                     {newPrice.toFixed(2)}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-300 text-[13px] font-mono">—</span>
+                                  <span className="text-slate-300 text-sm font-mono">—</span>
                                 )}
                                 <button
                                   onClick={(e) => startEditing(e, item.id, newPrice)}
@@ -721,14 +721,14 @@ export default function BulkPriceUpdatePage() {
                             )
                           ) : (
                             newPrice !== null ? (
-                              <span className="px-2 py-0.5 rounded font-mono text-[13px] font-black text-slate-300 bg-slate-50">
+                              <span className="px-2 py-0.5 rounded font-mono text-sm font-black text-slate-300 bg-slate-50">
                                 {newPrice.toFixed(2)}
                               </span>
-                            ) : <span className="text-slate-200 text-[13px]">—</span>
+                            ) : <span className="text-slate-200 text-sm">—</span>
                           )}
                         </td>
 
-                        <td className="px-4 py-2 text-left font-mono font-bold text-[12px]">
+                        <td className="px-4 py-2 text-left font-mono font-bold text-2sm">
                           {diff !== null ? (
                             <span className={`px-2 py-0.5 rounded transition-colors ${
                               diff > 0 ? "text-emerald-500 bg-emerald-50" : diff < 0 ? "text-rose-500 bg-rose-50" : "text-slate-400 bg-slate-50"
@@ -753,7 +753,7 @@ export default function BulkPriceUpdatePage() {
                     value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
                     {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n} بالصفحة</option>)}
                   </select>
-                  <p className="text-[12px] font-bold text-slate-400">عرض صفحة <span className="text-slate-800">{safePage}</span> من <span className="text-slate-800">{totalPages}</span></p>
+                  <p className="text-2sm font-bold text-slate-400">عرض صفحة <span className="text-slate-800">{safePage}</span> من <span className="text-slate-800">{totalPages}</span></p>
                 </div>
                 <div className="flex items-center gap-1" dir="ltr">
                   <button disabled={safePage === 1} onClick={() => goPage(safePage - 1)}
@@ -768,7 +768,7 @@ export default function BulkPriceUpdatePage() {
                     else p = safePage - 2 + i;
                     return (
                       <button key={p} onClick={() => goPage(p)}
-                        className={`flex h-8 w-8 items-center justify-center rounded text-[12px] font-black transition-all shadow-sm ${
+                        className={`flex h-8 w-8 items-center justify-center rounded text-2sm font-black transition-all shadow-sm ${
                           p === safePage ? "bg-slate-900 border-slate-900 text-white" : "bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-800"
                         }`}>
                         {p}
@@ -791,19 +791,19 @@ export default function BulkPriceUpdatePage() {
             {history.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-24 text-slate-300">
                 <Clock className="h-10 w-10 animate-pulse" />
-                <p className="text-[13px] font-black uppercase tracking-widest">لا توجد سجلات أرشفة</p>
+                <p className="text-sm font-black uppercase tracking-widest">لا توجد سجلات أرشفة</p>
               </div>
             ) : (
               <table className="w-full border-collapse text-right min-w-full">
                 <thead className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
                   <tr>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 w-[160px] border-l border-slate-100">التوقيت</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-black uppercase text-slate-500 border-l border-slate-100 w-[90px]">المتأثر</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 border-l border-slate-100 w-[120px]">الحقل</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 border-l border-slate-100 w-[130px]">قيمة التطبيق</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 border-l border-slate-100 w-[120px]">بواسطة</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 border-l border-slate-100">ملاحظات</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-black uppercase text-slate-500 w-[130px]">إجراء</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 w-[160px] border-l border-slate-100">التوقيت</th>
+                    <th className="px-4 py-3 text-center text-[11px] font-black uppercase text-slate-500 border-l border-slate-100 w-[90px]">المتأثر</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 border-l border-slate-100 w-[120px]">الحقل</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 border-l border-slate-100 w-[130px]">قيمة التطبيق</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 border-l border-slate-100 w-[120px]">بواسطة</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 border-l border-slate-100">ملاحظات</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-black uppercase text-slate-500 w-[130px]">إجراء</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -813,27 +813,27 @@ export default function BulkPriceUpdatePage() {
                         className={`hover:bg-slate-50/50 transition-colors cursor-pointer ${expandedOp === op.operation_id ? "bg-slate-50 border-r-4 border-indigo-400" : ""}`}
                         onClick={() => loadOpItems(op.operation_id)}
                       >
-                        <td className="px-4 py-3 font-mono text-[12px] text-slate-500 font-bold border-l border-slate-100">
+                        <td className="px-4 py-3 font-mono text-2sm text-slate-500 font-bold border-l border-slate-100">
                           {op.changed_at?.slice(0, 16).replace("T", " ")}
                         </td>
                         <td className="px-4 py-3 text-center border-l border-slate-100">
                           <span className="inline-block bg-sky-50 text-sky-700 px-2 py-0.5 rounded text-[11px] font-black">{op.items_count} صنف</span>
                         </td>
-                        <td className="px-4 py-3 text-[12px] font-bold text-slate-600 border-l border-slate-100">
+                        <td className="px-4 py-3 text-2sm font-bold text-slate-600 border-l border-slate-100">
                           {fieldLabelByKey(op.field)}
                         </td>
                         <td className="px-4 py-3 border-l border-slate-100">
-                          <span className={`font-mono font-black text-[13px] px-2 py-0.5 rounded ${op.adjustment_value > 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"}`}>
+                          <span className={`font-mono font-black text-sm px-2 py-0.5 rounded ${op.adjustment_value > 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"}`}>
                             {op.adjustment_value > 0 ? "+" : ""}{op.adjustment_value} {op.adjustment_type === "percentage" ? "%" : "ج"}
                           </span>
                         </td>
                         <td className="px-4 py-3 border-l border-slate-100">
-                          <span className="flex items-center gap-1.5 text-[12px] font-bold text-slate-600">
+                          <span className="flex items-center gap-1.5 text-2sm font-bold text-slate-600">
                             <User className="h-3 w-3 text-slate-400 shrink-0" />
                             {op.changed_by || "—"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-[12px] font-bold text-slate-400 border-l border-slate-100">
+                        <td className="px-4 py-3 text-2sm font-bold text-slate-400 border-l border-slate-100">
                           {op.reason || "—"}
                         </td>
                         <td className="px-4 py-3 text-left">
@@ -864,13 +864,13 @@ export default function BulkPriceUpdatePage() {
                           <td colSpan={7} className="p-0 border-b border-indigo-100">
                             <div className="bg-indigo-50/50 px-6 py-3">
                               {opItemsLoading ? (
-                                <div className="py-4 text-center text-[12px] font-bold text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                                <div className="py-4 text-center text-2sm font-bold text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
                               ) : opItems.length === 0 ? (
-                                <div className="py-4 text-center text-[12px] font-bold text-slate-400">لا توجد تفاصيل</div>
+                                <div className="py-4 text-center text-2sm font-bold text-slate-400">لا توجد تفاصيل</div>
                               ) : (
-                                <table className="w-full border-collapse text-right text-[12px]">
+                                <table className="w-full border-collapse text-right text-2sm">
                                   <thead>
-                                    <tr className="text-[10px] font-black uppercase text-slate-500 border-b border-indigo-100">
+                                    <tr className="text-[11px] font-black uppercase text-slate-500 border-b border-indigo-100">
                                       <th className="pb-2 text-right">الصنف</th>
                                       <th className="pb-2 text-right">الفئة</th>
                                       <th className="pb-2 text-right">الحقل</th>
@@ -886,7 +886,7 @@ export default function BulkPriceUpdatePage() {
                                         <tr key={oi.item_id} className="hover:bg-indigo-50 transition-colors">
                                           <td className="py-1.5">
                                             <div className="flex flex-col">
-                                              {(oi.item_code || oi.code) && <span className="font-mono text-[10px] text-slate-400">{oi.item_code || oi.code}</span>}
+                                              {(oi.item_code || oi.code) && <span className="font-mono text-[11px] text-slate-400">{oi.item_code || oi.code}</span>}
                                               <span className="font-bold text-slate-800">{oi.item_name}</span>
                                             </div>
                                           </td>
@@ -933,7 +933,7 @@ export default function BulkPriceUpdatePage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <div>
                 <h2 className="text-[16px] font-black text-slate-900">معاينة التغييرات قبل التطبيق</h2>
-                <p className="text-[12px] font-bold text-slate-400 mt-0.5">
+                <p className="text-2sm font-bold text-slate-400 mt-0.5">
                   {previewItems.length} صنف · حقل: {fieldLabelOf(priceField)}
                 </p>
               </div>
@@ -949,7 +949,7 @@ export default function BulkPriceUpdatePage() {
               const unchanged = previewItems.filter((it) => it.diff === 0);
               const totalImpact = previewItems.reduce((s, it) => s + it.diff, 0);
               return (
-                <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[12px] font-bold flex-wrap">
+                <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-2sm font-bold flex-wrap">
                   {ups.length > 0 && (
                     <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
                       <ArrowUp className="h-3 w-3" /> {ups.length} زيادة
@@ -975,7 +975,7 @@ export default function BulkPriceUpdatePage() {
 
             {/* Items table */}
             <div className="overflow-auto flex-1 scrollbar-thin">
-              <table className="w-full border-collapse text-right text-[12px]">
+              <table className="w-full border-collapse text-right text-2sm">
                 <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-2 font-black text-slate-500 text-right">الصنف</th>
@@ -989,7 +989,7 @@ export default function BulkPriceUpdatePage() {
                     <tr key={it.id} className="hover:bg-slate-50/50">
                       <td className="px-4 py-2">
                         <p className="font-black text-slate-800">{it.name}</p>
-                        {it.code && <p className="font-mono text-[10px] text-slate-400">{it.code}</p>}
+                        {it.code && <p className="font-mono text-[11px] text-slate-400">{it.code}</p>}
                         {it.isOverride && <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded">مخصص</span>}
                       </td>
                       <td className="px-4 py-2 font-mono font-bold text-slate-500 text-right">{it.oldPrice.toFixed(2)}</td>
@@ -1008,12 +1008,12 @@ export default function BulkPriceUpdatePage() {
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
               <button onClick={() => setPendingSubmit(false)}
-                className="px-5 py-2 rounded-sm border border-slate-200 bg-white text-[13px] font-black text-slate-600 hover:bg-slate-50 transition-colors">
+                className="px-5 py-2 rounded-sm border border-slate-200 bg-white text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors">
                 إلغاء
               </button>
               <button onClick={() => { setPendingSubmit(false); confirmApply(); }}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2 rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-black shadow-sm transition-colors disabled:opacity-40">
+                className="flex items-center gap-2 px-5 py-2 rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black shadow-sm transition-colors disabled:opacity-40">
                 <CheckCircle2 className="h-4 w-4" />
                 {loading ? "جاري التطبيق..." : `تأكيد تطبيق التسعير (${previewItems.length} صنف)`}
               </button>

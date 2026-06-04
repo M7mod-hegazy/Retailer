@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, RotateCcw, Eye, Loader2 } from 'lucide-react';
+import { Upload, RotateCcw, Eye, Loader2, Building2, FileText, MapPin, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -38,99 +38,281 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
     if (fileRef.current) fileRef.current.value = '';
   }, [onChange, lang]);
 
+  function DenseInput({ label, required, ...props }) {
+    return (
+      <label className="block space-y-1 focus-within:text-slate-900 text-slate-500 transition-colors">
+        <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
+          {label}
+          {required && <span className="text-rose-500">*</span>}
+        </span>
+        <input
+          {...props}
+          className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
+        />
+      </label>
+    );
+  }
+
+  const addrs = (() => { try { return JSON.parse(settings.additional_addresses || "[]"); } catch { return []; } })();
+  const phones = (() => { try { return JSON.parse(settings.additional_phones || "[]"); } catch { return []; } })();
+
   return (
     <div className="space-y-8">
-      {/* Inputs */}
-      <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
-        <label className="block space-y-1.5 focus-within:text-slate-900 text-slate-500 transition-colors">
-          <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
-            {lang === 'ar' ? 'اسم التطبيق (رئيسي)' : 'App Name'}
-          </span>
-          <input
-            type="text"
+
+      {/* ═══ BRANDING ═══ */}
+      <section>
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-emerald-600 text-white">
+            <Building2 className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+              {lang === 'ar' ? 'العلامة التجارية' : 'Branding'}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+              {lang === 'ar' ? 'الشعار واسم التطبيق اللذان يظهران في الشريط العلوي وشاشة الدخول' : 'Logo and app name displayed in the top bar and login screen'}
+            </p>
+          </div>
+        </div>
+
+        {/* Upload & Preview */}
+        <div className="grid gap-6 md:grid-cols-[1fr_200px] mb-6">
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
+              {lang === 'ar' ? 'شعار التطبيق' : 'App Logo'}
+            </label>
+            <div
+              onClick={() => !uploading && fileRef.current?.click()}
+              className={`group relative flex h-[120px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed transition-all ${
+                uploading
+                  ? 'border-emerald-300 bg-emerald-50'
+                  : 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100/50'
+              }`}
+            >
+              {uploading ? (
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+              ) : (
+                <>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-105 transition-transform">
+                    <Upload className="h-4 w-4 text-slate-500 group-hover:text-slate-800" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2sm font-bold text-slate-600">
+                      {lang === 'ar' ? 'اضغط هنا لرفع الشعار' : 'Click to Upload Logo'}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                      PNG, JPG, SVG &bull; MAX 2MB
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
+              {lang === 'ar' ? 'معاينة حية' : 'Live Preview'}
+            </label>
+            <div className="relative flex h-[120px] w-full items-center justify-center rounded-sm border border-slate-200 bg-white p-4 shadow-sm">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+              ) : (
+                <span className="text-[11px] font-bold text-slate-400">
+                  {lang === 'ar' ? 'لا يوجد شعار' : 'No Logo Preview'}
+                </span>
+              )}
+              {logoPreview && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setLogoPreview(null); onChange?.('logo_url', null); }}
+                  className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-md hover:bg-rose-600 hover:scale-110 transition-all"
+                  title={lang === 'ar' ? 'حذف الشعار' : 'Remove Logo'}
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
+          <DenseInput
+            label={lang === 'ar' ? 'اسم التطبيق (رئيسي)' : 'App Name'}
             value={settings.app_name || ''}
             onChange={(e) => onChange?.('app_name', e.target.value)}
             placeholder={lang === 'ar' ? 'إلهيجازي للتجزئة' : 'ElHegazi Retailer'}
-            className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
           />
-        </label>
-        <label className="block space-y-1.5 focus-within:text-slate-900 text-slate-500 transition-colors">
-          <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
-            {lang === 'ar' ? 'الاسم الفرعي (يظهر تحته)' : 'Sub-title'}
-          </span>
-          <input
-            type="text"
+          <DenseInput
+            label={lang === 'ar' ? 'الاسم الفرعي (يظهر تحته)' : 'Sub-title'}
             value={settings.app_subtitle || ''}
             onChange={(e) => onChange?.('app_subtitle', e.target.value)}
             placeholder={lang === 'ar' ? 'نظام إدارة المبيعات' : 'Sales Management'}
-            className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
           />
-        </label>
-      </div>
+        </div>
+      </section>
 
-      {/* Upload & Preview */}
-      <div className="grid gap-6 md:grid-cols-[1fr_200px]">
-        {/* Upload Zone */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
-            {lang === 'ar' ? 'شعار التطبيق' : 'App Logo'}
-          </label>
-          <div
-            onClick={() => !uploading && fileRef.current?.click()}
-            className={`group relative flex h-[120px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed transition-all ${
-              uploading
-                ? 'border-emerald-300 bg-emerald-50'
-                : 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100/50'
-            }`}
+      {/* ═══ BRANCH INFO ═══ */}
+      <section>
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-slate-800 text-white">
+            <FileText className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+              {lang === 'ar' ? 'بيانات الفرع' : 'Branch Info'}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+              {lang === 'ar' ? 'تظهر هذه البيانات في رأس الفواتير والتقارير الرسمية' : 'Displayed in the header of invoices and official reports'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <DenseInput
+            label={lang === 'ar' ? 'اسم الشركة (عربي)' : 'Company Name (Arabic)'}
+            required
+            value={settings.company_name || ''}
+            onChange={(e) => onChange('company_name', e.target.value)}
+          />
+          <DenseInput
+            label={lang === 'ar' ? 'اسم الشركة (إنجليزي)' : 'Company Name (English)'}
+            value={settings.company_name_en || ''}
+            onChange={(e) => onChange('company_name_en', e.target.value)}
+          />
+          <DenseInput
+            label={lang === 'ar' ? 'اسم الفرع' : 'Branch Name'}
+            required
+            value={settings.branch_name || ''}
+            onChange={(e) => onChange('branch_name', e.target.value)}
+          />
+          <DenseInput
+            label={lang === 'ar' ? 'كود الفرع' : 'Branch Code'}
+            value={settings.branch_code || ''}
+            onChange={(e) => onChange('branch_code', e.target.value)}
+          />
+        </div>
+      </section>
+
+      {/* ═══ OFFICIAL DOCUMENTS ═══ */}
+      <section>
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-amber-600 text-white">
+            <FileText className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+              {lang === 'ar' ? 'المستندات الرسمية' : 'Official Documents'}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+              {lang === 'ar' ? 'أرقام السجل التجاري والضريبي للامتثال — تظهر في أسفل الفواتير' : 'CR and VAT numbers for compliance — shown at the bottom of invoices'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <DenseInput
+            label={lang === 'ar' ? 'السجل التجاري' : 'Commercial Register'}
+            value={settings.commercial_register || ''}
+            onChange={(e) => onChange('commercial_register', e.target.value)}
+          />
+          <DenseInput
+            label={lang === 'ar' ? 'الرقم الضريبي' : 'VAT Number'}
+            value={settings.vat_number || ''}
+            onChange={(e) => onChange('vat_number', e.target.value)}
+          />
+        </div>
+      </section>
+
+      {/* ═══ ADDRESSES & PHONES ═══ */}
+      <section>
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-blue-600 text-white">
+            <MapPin className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+              {lang === 'ar' ? 'العناوين والهواتف' : 'Addresses & Phones'}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+              {lang === 'ar' ? 'عنوان الفرع الرئيسي وفروعه الإضافية للتواصل — تظهر في الفواتير' : 'Main branch address and additional branches for contact — shown on invoices'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {(() => {
+            const primAddr = settings.address || "";
+            const primPhone = settings.phone || "";
+            const pairs = [{ address: primAddr, phone: primPhone }];
+            for (let i = 0; i < Math.max(addrs.length, phones.length); i++) {
+              pairs.push({ address: addrs[i] || "", phone: phones[i] || "" });
+            }
+            return pairs.map((pair, i) => (
+              <div key={i} className="flex gap-3 items-start">
+                <div className="flex-1">
+                  <textarea
+                    value={pair.address}
+                    onChange={(e) => {
+                      if (i === 0) {
+                        onChange("address", e.target.value);
+                      } else {
+                        const updated = [...addrs];
+                        updated[i - 1] = e.target.value;
+                        onChange("additional_addresses", JSON.stringify(updated));
+                      }
+                    }}
+                    placeholder={`${lang === 'ar' ? 'عنوان الفرع' : 'Branch Address'} ${i + 1}`}
+                    rows={2}
+                    className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all resize-none"
+                  />
+                </div>
+                <div className="flex-1 flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={pair.phone}
+                    onChange={(e) => {
+                      if (i === 0) {
+                        onChange("phone", e.target.value);
+                      } else {
+                        const updated = [...phones];
+                        updated[i - 1] = e.target.value;
+                        onChange("additional_phones", JSON.stringify(updated));
+                      }
+                    }}
+                    placeholder={`${lang === 'ar' ? 'هاتف الفرع' : 'Branch Phone'} ${i + 1}`}
+                    className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
+                  />
+                </div>
+                {i > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const aUpdated = addrs.filter((_, idx) => idx !== i - 1);
+                      const pUpdated = phones.filter((_, idx) => idx !== i - 1);
+                      onChange("additional_addresses", JSON.stringify(aUpdated));
+                      onChange("additional_phones", JSON.stringify(pUpdated));
+                    }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors mt-0.5"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ));
+          })()}
+          <button
+            type="button"
+            onClick={() => {
+              onChange("additional_addresses", JSON.stringify([...addrs, ""]));
+              onChange("additional_phones", JSON.stringify([...phones, ""]));
+            }}
+            className="flex items-center gap-2 text-2sm font-black text-emerald-600 hover:text-emerald-700 transition-colors"
           >
-            {uploading ? (
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-            ) : (
-              <>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-105 transition-transform">
-                  <Upload className="h-4 w-4 text-slate-500 group-hover:text-slate-800" />
-                </div>
-                <div className="text-center">
-                  <p className="text-[12px] font-bold text-slate-600">
-                    {lang === 'ar' ? 'اضغط هنا لرفع الشعار' : 'Click to Upload Logo'}
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    PNG, JPG, SVG &bull; MAX 2MB
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+            <Plus className="h-4 w-4" /> {lang === 'ar' ? 'إضافة فرع' : 'Add Branch'}
+          </button>
         </div>
-
-        {/* Live Preview Card */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
-            {lang === 'ar' ? 'معاينة حية' : 'Live Preview'}
-          </label>
-          <div className="relative flex h-[120px] w-full items-center justify-center rounded-sm border border-slate-200 bg-white p-4 shadow-sm">
-            {logoPreview ? (
-              <img src={logoPreview} alt="Logo preview" className="max-h-full max-w-full object-contain" />
-            ) : (
-              <span className="text-[11px] font-bold text-slate-400">
-                {lang === 'ar' ? 'لا يوجد شعار' : 'No Logo Preview'}
-              </span>
-            )}
-            
-            {logoPreview && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setLogoPreview(null); onChange?.('logo_url', null); }}
-                className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-md hover:bg-rose-600 hover:scale-110 transition-all"
-                title={lang === 'ar' ? 'حذف الشعار' : 'Remove Logo'}
-              >
-                <RotateCcw className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      </section>
 
     </div>
   );

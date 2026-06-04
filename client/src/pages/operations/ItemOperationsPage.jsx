@@ -360,7 +360,7 @@ export default function ItemOperationsPage() {
               </div>
               <div>
                 <h1 className="text-base font-black text-slate-800 tracking-tight leading-none">سجل الصنف</h1>
-                <span className="text-[10px] font-bold text-slate-400/90 block mt-1 tracking-wider">كل اللي حصل للصنف</span>
+                <span className="text-[11px] font-bold text-slate-400/90 block mt-1 tracking-wider">كل اللي حصل للصنف</span>
               </div>
             </div>
             <div className="relative font-sans">
@@ -387,7 +387,7 @@ export default function ItemOperationsPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 px-1 mb-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1 mb-1">
                   <span>تم العثور على {items.length} صنف</span>
                 </div>
                 <motion.div 
@@ -421,11 +421,11 @@ export default function ItemOperationsPage() {
                         )}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <span className={`font-black text-[13px] leading-snug block truncate transition-colors ${isSelected ? "text-indigo-900" : "text-slate-800 group-hover:text-slate-900"}`}>
+                            <span className={`font-black text-sm leading-snug block truncate transition-colors ${isSelected ? "text-indigo-900" : "text-slate-800 group-hover:text-slate-900"}`}>
                               {item.name}
                             </span>
                             <div className="flex items-center gap-2 mt-2">
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 ${
+                              <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 ${
                                 stock <= 0 
                                   ? "text-rose-600 bg-rose-50/80 border-rose-100" 
                                   : stock < 10 
@@ -481,10 +481,10 @@ export default function ItemOperationsPage() {
                     
                     <div className="flex flex-col gap-3 relative z-10">
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[10px] font-black text-indigo-600 uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[11px] font-black text-indigo-600 uppercase tracking-wider">
                           <Sparkles size={11} className="animate-pulse" /> بطاقة صنف
                         </span>
-                        <span className="inline-flex rounded-full bg-slate-100 border border-slate-200/70 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                        <span className="inline-flex rounded-full bg-slate-100 border border-slate-200/70 px-2.5 py-0.5 text-[11px] font-bold text-slate-500">
                           {selectedItem.category_name || "بدون قسم"}
                         </span>
                       </div>
@@ -499,7 +499,7 @@ export default function ItemOperationsPage() {
                         <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
                           <span className="text-[9px] text-slate-400 font-bold block mb-0.5">سعر البيع</span>
                           <span className="font-mono text-slate-800 text-sm font-black" dir="ltr">
-                            {money(selectedItem.sale_price)} <span className="text-[10px] font-sans font-bold text-slate-400">ج.م</span>
+                            {money(selectedItem.sale_price)} <span className="text-[11px] font-sans font-bold text-slate-400">ج.م</span>
                           </span>
                         </div>
                         {selectedItem.code && (
@@ -528,7 +528,7 @@ export default function ItemOperationsPage() {
                   <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col items-center justify-center text-center">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl translate-x-8 -translate-y-8 pointer-events-none" />
                     
-                    <span className="text-[10px] font-black text-slate-400 block mb-3 uppercase tracking-wider">سلامة المخزون المتوفر</span>
+                    <span className="text-[11px] font-black text-slate-400 block mb-3 uppercase tracking-wider">سلامة المخزون المتوفر</span>
                     
                     <div className="relative flex items-center justify-center my-1">
                       <svg className="w-24 h-24 transform -rotate-90">
@@ -554,7 +554,7 @@ export default function ItemOperationsPage() {
                       </div>
                     </div>
 
-                    <div className={`mt-3 px-3 py-1 rounded-xl border text-[10px] font-black ${stockGaugeDetails.bg} ${stockGaugeDetails.color} flex items-center gap-1.5 ${stockGaugeDetails.glow}`}>
+                    <div className={`mt-3 px-3 py-1 rounded-xl border text-[11px] font-black ${stockGaugeDetails.bg} ${stockGaugeDetails.color} flex items-center gap-1.5 ${stockGaugeDetails.glow}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${stockGaugeDetails.color.replace("text-", "bg-")} animate-ping`} />
                       {stockGaugeDetails.label}
                     </div>
@@ -566,7 +566,7 @@ export default function ItemOperationsPage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
                         <DollarSign size={13} className="text-emerald-500" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">القيمة الإجمالية للمخزون</span>
+                        <span className="text-[11px] font-black uppercase tracking-wider">القيمة الإجمالية للمخزون</span>
                       </div>
                       <span className="text-[8px] font-bold text-slate-400 block mb-1">محسوبة بسعر البيع الجاري</span>
                     </div>
@@ -587,7 +587,7 @@ export default function ItemOperationsPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5">
                           <TrendingUp size={14} className="text-indigo-600 animate-bounce" />
-                          <span className="text-[10px] font-black text-indigo-900 uppercase tracking-wider">مخطط حركة المخزون</span>
+                          <span className="text-[11px] font-black text-indigo-900 uppercase tracking-wider">مخطط حركة المخزون</span>
                         </div>
                         <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/50">تمثيل بياني تفاعلي</span>
                       </div>
@@ -648,7 +648,7 @@ export default function ItemOperationsPage() {
                     >
                       <SlidersHorizontal size={14} className="stroke-[2.2]" /> فلترة وتصفية البحث
                     </button>
-                    <div className="text-[10px] font-bold text-slate-400">
+                    <div className="text-[11px] font-bold text-slate-400">
                       حدد نطاق البحث لتخصيص النتائج المرجوة
                     </div>
                   </div>
@@ -834,7 +834,7 @@ export default function ItemOperationsPage() {
                               <div className="absolute right-4 top-8 -translate-y-1/2 w-28 z-10 select-none group">
                                 <div className="py-2.5 px-3 rounded-2xl border border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.02)] group-hover:border-slate-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition-all duration-300 flex flex-col items-center justify-center">
                                   {/* Time */}
-                                  <span className="text-[13px] font-black text-slate-800 font-mono tracking-tight leading-none" dir="ltr">
+                                  <span className="text-sm font-black text-slate-800 font-mono tracking-tight leading-none" dir="ltr">
                                     {parsedDate.time}
                                   </span>
                                   {/* Horizontal Divider */}
@@ -890,12 +890,12 @@ export default function ItemOperationsPage() {
                                         <span className="text-[8px] text-emerald-600 font-bold block mb-0.5">الكمية</span>
                                         <span className="font-mono text-emerald-700 font-black">{money(row.quantity)}</span>
                                       </div>
-                                      <span className="text-emerald-400 text-[10px] font-mono select-none">×</span>
+                                      <span className="text-emerald-400 text-[11px] font-mono select-none">×</span>
                                       <div className="flex flex-col text-right">
                                         <span className="text-[8px] text-emerald-600 font-bold block mb-0.5">سعر الوحدة</span>
                                         <span className="font-mono text-emerald-700 font-black">{money(row.unit_price)}</span>
                                       </div>
-                                      <span className="text-emerald-400 text-[10px] font-mono select-none">=</span>
+                                      <span className="text-emerald-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-emerald-500 font-bold block mb-0.5">الصافي</span>
                                         <span className="font-mono text-emerald-800 font-black" dir="ltr">{money(row.line_total)} ج.م</span>
@@ -921,7 +921,7 @@ export default function ItemOperationsPage() {
                                   )}
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[10px] font-bold text-slate-500">
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
                                       <span>الرصيد السابق: <strong className="font-mono text-slate-700">{money(beforeStock)}</strong></span>
                                       <span className="text-rose-500 flex items-center gap-0.5">خروج من المخزن <ArrowDownRight size={12} /> <strong className="font-mono font-black">-{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="font-mono text-indigo-600">{money(afterStock)}</strong></span>
@@ -979,12 +979,12 @@ export default function ItemOperationsPage() {
                                         <span className="text-[8px] text-blue-600 font-bold block mb-0.5">الكمية</span>
                                         <span className="font-mono text-blue-700 font-black">{money(row.quantity)}</span>
                                       </div>
-                                      <span className="text-blue-400 text-[10px] font-mono select-none">×</span>
+                                      <span className="text-blue-400 text-[11px] font-mono select-none">×</span>
                                       <div className="flex flex-col text-right">
                                         <span className="text-[8px] text-blue-600 font-bold block mb-0.5">سعر التكلفة</span>
                                         <span className="font-mono text-blue-700 font-black">{money(row.unit_price)}</span>
                                       </div>
-                                      <span className="text-blue-400 text-[10px] font-mono select-none">=</span>
+                                      <span className="text-blue-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-blue-500 font-bold block mb-0.5">تكلفة التوريد</span>
                                         <span className="font-mono text-slate-800 font-black" dir="ltr">{money(row.line_total)} ج.م</span>
@@ -993,7 +993,7 @@ export default function ItemOperationsPage() {
                                   </div>
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[10px] font-bold text-slate-500">
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
                                       <span>الرصيد السابق: <strong className="font-mono text-slate-700">{money(beforeStock)}</strong></span>
                                       <span className="text-emerald-500 flex items-center gap-0.5">دخول إلى المستودع <ArrowUpLeft size={12} /> <strong className="font-mono font-black">+{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="font-mono text-indigo-600">{money(afterStock)}</strong></span>
@@ -1052,12 +1052,12 @@ export default function ItemOperationsPage() {
                                         <span className="text-[8px] text-amber-600 font-bold block mb-0.5">الكمية</span>
                                         <span className="font-mono text-amber-700 font-black">{money(row.quantity)}</span>
                                       </div>
-                                      <span className="text-amber-400 text-[10px] font-mono select-none">×</span>
+                                      <span className="text-amber-400 text-[11px] font-mono select-none">×</span>
                                       <div className="flex flex-col text-right">
                                         <span className="text-[8px] text-amber-600 font-bold block mb-0.5">سعر الرد</span>
                                         <span className="font-mono text-amber-700 font-black">{money(row.unit_price)}</span>
                                       </div>
-                                      <span className="text-amber-400 text-[10px] font-mono select-none">=</span>
+                                      <span className="text-amber-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-amber-500 font-bold block mb-0.5">المرتجع</span>
                                         <span className="font-mono text-slate-800 font-black" dir="ltr">{money(row.line_total)} ج.م</span>
@@ -1066,7 +1066,7 @@ export default function ItemOperationsPage() {
                                   </div>
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[10px] font-bold text-slate-500">
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
                                       <span>الرصيد السابق: <strong className="font-mono text-slate-700">{money(beforeStock)}</strong></span>
                                       <span className="text-amber-600 flex items-center gap-0.5">إرجاع للمستودع <ArrowUpLeft size={12} /> <strong className="font-mono font-black">+{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="font-mono text-indigo-650">{money(afterStock)}</strong></span>
@@ -1125,12 +1125,12 @@ export default function ItemOperationsPage() {
                                         <span className="text-[8px] text-rose-600 font-bold block mb-0.5">الكمية</span>
                                         <span className="font-mono text-rose-700 font-black">{money(row.quantity)}</span>
                                       </div>
-                                      <span className="text-rose-400 text-[10px] font-mono select-none">×</span>
+                                      <span className="text-rose-400 text-[11px] font-mono select-none">×</span>
                                       <div className="flex flex-col text-right">
                                         <span className="text-[8px] text-rose-600 font-bold block mb-0.5">سعر الرد</span>
                                         <span className="font-mono text-rose-700 font-black">{money(row.unit_price)}</span>
                                       </div>
-                                      <span className="text-rose-400 text-[10px] font-mono select-none">=</span>
+                                      <span className="text-rose-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-rose-500 font-bold block mb-0.5">الإجمالي</span>
                                         <span className="font-mono text-slate-800 font-black" dir="ltr">{money(row.line_total)} ج.م</span>
@@ -1139,7 +1139,7 @@ export default function ItemOperationsPage() {
                                   </div>
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[10px] font-bold text-slate-500">
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
                                       <span>الرصيد السابق: <strong className="font-mono text-slate-700">{money(beforeStock)}</strong></span>
                                       <span className="text-rose-600 flex items-center gap-0.5">خروج من المستودع <ArrowDownRight size={12} /> <strong className="font-mono font-black">-{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="font-mono text-indigo-650">{money(afterStock)}</strong></span>
@@ -1247,8 +1247,8 @@ export default function ItemOperationsPage() {
                                         <Package size={16} />
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">حركة مخزون · {row.type_label}</div>
-                                        <h3 className="text-[13px] font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
+                                        <div className="text-[11px] font-black uppercase tracking-widest text-zinc-500">حركة مخزون · {row.type_label}</div>
+                                        <h3 className="text-sm font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
                                       </div>
                                     </div>
                                     <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0" dir="ltr">
@@ -1334,8 +1334,8 @@ export default function ItemOperationsPage() {
                                         <Tag size={16} />
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-cyan-700">{row.context_key || "تغيير سعر"}</div>
-                                        <h3 className="text-[13px] font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
+                                        <div className="text-[11px] font-black uppercase tracking-widest text-cyan-700">{row.context_key || "تغيير سعر"}</div>
+                                        <h3 className="text-sm font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
                                       </div>
                                     </div>
                                     <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0" dir="ltr">
@@ -1350,7 +1350,7 @@ export default function ItemOperationsPage() {
 
                                     <div className="flex items-baseline justify-center gap-4 flex-wrap">
                                       <div className="flex flex-col items-center">
-                                        <span className="text-[10px] font-black text-slate-400 mb-1">قديم</span>
+                                        <span className="text-[11px] font-black text-slate-400 mb-1">قديم</span>
                                         <span className="font-mono text-xl font-bold text-slate-400 line-through decoration-rose-400/70 decoration-2">
                                           {money(before)}
                                         </span>
@@ -1359,7 +1359,7 @@ export default function ItemOperationsPage() {
                                       <ArrowRight size={20} className="text-cyan-500 rtl:rotate-180 self-center mt-4" />
 
                                       <div className="flex flex-col items-center">
-                                        <span className="text-[10px] font-black text-cyan-700 mb-1">جديد</span>
+                                        <span className="text-[11px] font-black text-cyan-700 mb-1">جديد</span>
                                         <span className="font-mono text-[34px] leading-none font-black text-cyan-800 tracking-tight">
                                           {money(after)}
                                         </span>
@@ -1373,8 +1373,8 @@ export default function ItemOperationsPage() {
                                         <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 border ${isUp ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
                                           {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                                           <span className="font-mono font-black text-[11px]">{isUp ? "+" : ""}{pct}%</span>
-                                          <span className="text-[10px] font-bold opacity-75">·</span>
-                                          <span className="font-mono font-bold text-[10px]">{isUp ? "+" : ""}{money(delta)}</span>
+                                          <span className="text-[11px] font-bold opacity-75">·</span>
+                                          <span className="font-mono font-bold text-[11px]">{isUp ? "+" : ""}{money(delta)}</span>
                                         </div>
                                       </div>
                                     )}
@@ -1414,11 +1414,11 @@ export default function ItemOperationsPage() {
                                         <Activity size={16} />
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-violet-700">حركة تكلفة · {row.type_label}</div>
-                                        <h3 className="text-[13px] font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
+                                        <div className="text-[11px] font-black uppercase tracking-widest text-violet-700">حركة تكلفة · {row.type_label}</div>
+                                        <h3 className="text-sm font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
                                       </div>
                                     </div>
-                                    <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-black rounded-full px-2.5 py-1 border ${isOutflow ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-violet-50 border-violet-200 text-violet-700"}`}>
+                                    <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-black rounded-full px-2.5 py-1 border ${isOutflow ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-violet-50 border-violet-200 text-violet-700"}`}>
                                       {isOutflow ? "خروج" : "دخول"}
                                     </span>
                                   </div>
@@ -1427,11 +1427,11 @@ export default function ItemOperationsPage() {
                                   <div className="px-6 py-5 bg-gradient-to-br from-violet-50/40 via-white to-purple-50/30">
                                     {/* Equation lines */}
                                     <div className="font-mono space-y-1.5">
-                                      <div className="flex items-baseline justify-between text-[12px]">
+                                      <div className="flex items-baseline justify-between text-2sm">
                                         <span className="font-black text-slate-600">الكمية</span>
                                         <span className="font-black text-slate-800 tabular-nums">× {money(qty)}</span>
                                       </div>
-                                      <div className="flex items-baseline justify-between text-[12px]">
+                                      <div className="flex items-baseline justify-between text-2sm">
                                         <span className="font-black text-slate-600">تكلفة الوحدة</span>
                                         <span className="font-black text-slate-800 tabular-nums">× {money(unitCost)}</span>
                                       </div>
@@ -1457,7 +1457,7 @@ export default function ItemOperationsPage() {
                                     <span className="flex items-center gap-1">
                                       <Database size={11} /> دفتر التكلفة
                                     </span>
-                                    <span className="font-mono text-[10px] text-slate-400" dir="ltr">
+                                    <span className="font-mono text-[11px] text-slate-400" dir="ltr">
                                       {String(row.date || "").slice(0, 10)} {String(row.date || "").slice(11, 16)}
                                     </span>
                                   </div>
@@ -1507,10 +1507,10 @@ export default function ItemOperationsPage() {
                   دوس على أي صنف من القايمة على جنب وهتلاقي كل حاجة اتعملت عليه: مبيعات، مشتريات، مرتجعات، تحويلات، وتغيرات الأسعار والتكلفة.
                 </p>
                 <div className="flex gap-2.5">
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
                     <Sparkles size={11} className="text-indigo-500 animate-pulse" /> فلترة سهلة
                   </span>
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
                     <Box size={11} className="text-emerald-500" /> متابعة المخزون مباشرة
                   </span>
                 </div>

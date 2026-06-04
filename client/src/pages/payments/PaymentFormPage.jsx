@@ -177,13 +177,13 @@ export default function PaymentFormPage() {
                <div className="grid grid-cols-2 gap-2">
                  <button 
                   onClick={() => setForm(f => ({ ...f, party_type: 'customer', party_id: "" }))}
-                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-[12px] font-black transition-all ${form.party_type === 'customer' ? 'border-slate-800 bg-slate-800 text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-2sm font-black transition-all ${form.party_type === 'customer' ? 'border-slate-800 bg-slate-800 text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
                  >
                    <User className="h-4 w-4" /> عميل (تحصيل)
                  </button>
                  <button 
                   onClick={() => setForm(f => ({ ...f, party_type: 'supplier', party_id: "" }))}
-                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-[12px] font-black transition-all ${form.party_type === 'supplier' ? 'border-slate-800 bg-slate-800 text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-2sm font-black transition-all ${form.party_type === 'supplier' ? 'border-slate-800 bg-slate-800 text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
                  >
                    <Briefcase className="h-4 w-4" /> مورد (سداد)
                  </button>
@@ -196,12 +196,12 @@ export default function PaymentFormPage() {
                   placeholder={`البحث عن ${form.party_type === 'customer' ? 'عميل' : 'مورد'}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-[13px] font-bold outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                  className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                  />
                  {searchTerm && (
                    <div className="absolute left-0 top-full z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-xl scrollbar-thin">
                      {filteredParties.length === 0 ? (
-                       <div className="p-4 text-center text-[12px] font-bold text-slate-400">لا توجد نتائج</div>
+                       <div className="p-4 text-center text-2sm font-bold text-slate-400">لا توجد نتائج</div>
                      ) : (
                        filteredParties.map(p => (
                          <button 
@@ -209,8 +209,8 @@ export default function PaymentFormPage() {
                           onClick={() => { setForm(f => ({ ...f, party_id: String(p.id) })); setSearchTerm(""); }}
                           className="flex w-full items-center justify-between border-b border-slate-50 px-4 py-2.5 transition-colors hover:bg-slate-50"
                          >
-                           <span className="text-[13px] font-bold text-slate-700">{p.name}</span>
-                           <span className="text-[10px] font-mono text-slate-400">{p.phone}</span>
+                           <span className="text-sm font-bold text-slate-700">{p.name}</span>
+                           <span className="text-[11px] font-mono text-slate-400">{p.phone}</span>
                          </button>
                        ))
                      )}
@@ -222,8 +222,8 @@ export default function PaymentFormPage() {
                  <div className="flex items-center gap-3 rounded-md bg-slate-900 p-4 text-white">
                    <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-white/10"><User className="h-5 w-5" /></div>
                    <div className="flex flex-col">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-white/50">الطرف المحدد</span>
-                     <span className="text-[14px] font-black">{context.party?.name || parties.find(p => String(p.id) === form.party_id)?.name}</span>
+                     <span className="text-[11px] font-black uppercase tracking-widest text-white/50">الطرف المحدد</span>
+                     <span className="text-sm font-black">{context.party?.name || parties.find(p => String(p.id) === form.party_id)?.name}</span>
                    </div>
                  </div>
                )}
@@ -252,7 +252,7 @@ export default function PaymentFormPage() {
                  <select 
                   value={form.method_id}
                   onChange={(e) => setForm(f => ({ ...f, method_id: e.target.value }))}
-                  className="w-full rounded-sm border border-slate-200 py-2.5 px-3 text-[13px] font-bold outline-none focus:border-slate-800"
+                  className="w-full rounded-sm border border-slate-200 py-2.5 px-3 text-sm font-bold outline-none focus:border-slate-800"
                  >
                    {methods.map(m => (
                      <option key={m.id} value={m.id}>{m.name} ({m.type === 'cash' ? 'خزينة' : 'بنك'})</option>
@@ -268,7 +268,7 @@ export default function PaymentFormPage() {
                       type="date"
                       value={form.created_at}
                       onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
-                      className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-[13px] font-bold outline-none focus:border-slate-800"
+                      className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold outline-none focus:border-slate-800"
                     />
                  </div>
                </div>
@@ -283,7 +283,7 @@ export default function PaymentFormPage() {
                 placeholder="اكتب أي ملاحظات اختيارية هنا..."
                 value={form.notes}
                 onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-                className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-[13px] font-bold outline-none focus:bg-white focus:border-slate-800 resize-none min-h-[80px]"
+                className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-sm font-bold outline-none focus:bg-white focus:border-slate-800 resize-none min-h-[80px]"
                />
             </div>
 
@@ -292,7 +292,7 @@ export default function PaymentFormPage() {
               <button 
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-sm bg-slate-800 py-4 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-sm bg-slate-800 py-4 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50"
               >
                 <CheckCircle2 className="h-5 w-5" /> {loading ? 'جاري الحفظ...' : 'تأكيد وحفظ الحركة الماليّة'}
               </button>
@@ -306,21 +306,21 @@ export default function PaymentFormPage() {
               {/* Context Summary Cards */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                  <div className="flex flex-col rounded-md border border-blue-100 bg-white p-5 shadow-sm border-r-4 border-r-blue-500">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">إجمالي المديونية الحالية</span>
+                    <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">إجمالي المديونية الحالية</span>
                     <div className="flex items-baseline gap-1 mt-1">
                        <span className="text-[20px] font-black text-slate-800">{formatMoney(context.party?.balance_total || 0)}</span>
                        <span className="text-[11px] font-bold text-slate-400">ج.م</span>
                     </div>
                  </div>
                  <div className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm border-r-4 border-r-emerald-500">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المبلغ الجاري توزيعه</span>
+                    <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">المبلغ الجاري توزيعه</span>
                     <div className="flex items-baseline gap-1 mt-1">
                        <span className="text-[20px] font-black text-emerald-600">{formatMoney(form.amount)}</span>
                        <span className="text-[11px] font-bold text-slate-400">ج.m</span>
                     </div>
                  </div>
                  <div className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm border-r-4 border-r-slate-800">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">متبقي بدون تخصيص</span>
+                    <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">متبقي بدون تخصيص</span>
                     <div className="flex items-baseline gap-1 mt-1">
                        <span className="text-[20px] font-black text-slate-500">{formatMoney(remainingToAllocate)}</span>
                        <span className="text-[11px] font-bold text-slate-400">ج.م</span>
@@ -333,7 +333,7 @@ export default function PaymentFormPage() {
                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4">
                     <div className="flex items-center gap-3">
                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-white"><TableIcon className="h-4 w-4" /></div>
-                       <h3 className="text-[14px] font-black text-slate-800 uppercase tracking-widest">تخصيص السداد على الفواتير المفتوحة</h3>
+                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">تخصيص السداد على الفواتير المفتوحة</h3>
                     </div>
                     <button 
                       onClick={handleAutoAllocate}
@@ -347,13 +347,13 @@ export default function PaymentFormPage() {
                     {(!context.open_invoices || context.open_invoices.length === 0) ? (
                       <div className="flex h-full flex-col items-center justify-center text-center opacity-40">
                          <Info className="mb-3 h-12 w-12" />
-                         <p className="max-w-[280px] text-[13px] font-bold leading-relaxed">
+                         <p className="max-w-[280px] text-sm font-bold leading-relaxed">
                             {form.party_id ? "لا توجد فواتير مفتوحة (آجل) لهذا الطرف حالياً." : "يرجى اختيار العميل أو المورد أولاً لإظهار الفواتير المفتوحة."}
                          </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-[150px_1fr_120px_120px_150px] gap-4 px-4 pb-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                        <div className="grid grid-cols-[150px_1fr_120px_120px_150px] gap-4 px-4 pb-2 text-[11px] font-black uppercase text-slate-400 tracking-widest">
                            <div>رقم الفاتورة</div>
                            <div>التاريخ</div>
                            <div className="text-left">الإجمالي</div>
@@ -368,10 +368,10 @@ export default function PaymentFormPage() {
                               onClick={() => toggleInvoice(inv)}
                               className={`group cursor-pointer grid grid-cols-[150px_1fr_120px_120px_150px] items-center gap-4 rounded-md border p-4 transition-all ${isAllocated ? 'border-blue-500 bg-blue-50/20 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50/50'}`}
                             >
-                               <div className="font-mono text-[13px] font-black text-slate-800">{inv.invoice_no}</div>
-                               <div className="text-[12px] font-bold text-slate-500 line-clamp-1">{new Date(inv.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
-                               <div className="text-left text-[13px] font-bold text-slate-400">{formatMoney(inv.total)}</div>
-                               <div className="text-left text-[13px] font-black text-slate-800">{formatMoney(inv.outstanding)}</div>
+                               <div className="font-mono text-sm font-black text-slate-800">{inv.invoice_no}</div>
+                               <div className="text-2sm font-bold text-slate-500 line-clamp-1">{new Date(inv.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
+                               <div className="text-left text-sm font-bold text-slate-400">{formatMoney(inv.total)}</div>
+                               <div className="text-left text-sm font-black text-slate-800">{formatMoney(inv.outstanding)}</div>
                                <div className="flex items-center justify-center gap-3">
                                   <input 
                                     type="number"
@@ -379,7 +379,7 @@ export default function PaymentFormPage() {
                                     onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => setSelectedAllocations(prev => ({ ...prev, [inv.id]: e.target.value }))}
                                     placeholder="0.00"
-                                    className={`w-[110px] rounded-sm border bg-white px-3 py-1.5 text-center font-black text-[14px] outline-none transition-all ${isAllocated ? 'border-blue-500 text-blue-800 ring-2 ring-blue-100' : 'border-slate-200 text-slate-400 group-hover:border-slate-400'}`}
+                                    className={`w-[110px] rounded-sm border bg-white px-3 py-1.5 text-center font-black text-sm outline-none transition-all ${isAllocated ? 'border-blue-500 text-blue-800 ring-2 ring-blue-100' : 'border-slate-200 text-slate-400 group-hover:border-slate-400'}`}
                                   />
                                   <div className={`h-5 w-5 rounded-full border flex items-center justify-center transition-all ${isAllocated ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
                                      {isAllocated && <CheckCircle2 className="h-3 w-3 text-white" />}

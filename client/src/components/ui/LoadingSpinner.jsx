@@ -27,7 +27,7 @@ export default function LoadingSpinner({ text = "" }) {
         <motion.p 
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="text-[10px] font-bold tracking-[0.3em] uppercase text-zinc-500"
+          className="text-[11px] font-bold tracking-[0.3em] uppercase text-zinc-500"
         >
           {text}
         </motion.p>

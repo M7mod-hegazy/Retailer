@@ -41,7 +41,7 @@ function normalizeCol(c) {
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
   if (!items.length) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface p-4 text-center text-[12px] font-bold text-text-muted shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface p-4 text-center text-2sm font-bold text-text-muted shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {emptyLabel}
       </div>
     );
@@ -66,9 +66,9 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
                 </div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-primary-DEFAULT" : "text-text-primary"}`}><Highlight text={item.name} query={query} /></span>
+                <span className={`text-sm font-black ${activeIndex === i ? "text-primary-DEFAULT" : "text-text-primary"}`}><Highlight text={item.name} query={query} /></span>
                 {(item.item_code || item.code || item.barcode || item.phone) && (
-                  <span className="font-mono text-[10px] text-text-muted font-bold"><Highlight text={item.item_code || item.code || item.barcode || item.phone || `#${item.id}`} query={query} /></span>
+                  <span className="font-mono text-[11px] text-text-muted font-bold"><Highlight text={item.item_code || item.code || item.barcode || item.phone || `#${item.id}`} query={query} /></span>
                 )}
               </div>
             </div>
@@ -94,7 +94,7 @@ export function RSelect({ value, onChange, options, placeholder = "اختر..." 
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between rounded-[8px] border border-border-normal bg-bg-surface px-3 py-2 text-[12px] font-bold text-text-primary outline-none transition-all hover:border-border-strong focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+        className="flex w-full items-center justify-between rounded-[8px] border border-border-normal bg-bg-surface px-3 py-2 text-2sm font-bold text-text-primary outline-none transition-all hover:border-border-strong focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
       >
         <span className="truncate">{selected ? selected.label : placeholder}</span>
         <ChevronDown size={13} className={`text-text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -114,7 +114,7 @@ export function RSelect({ value, onChange, options, placeholder = "اختر..." 
                   key={opt.value}
                   type="button"
                   onClick={() => { onChange(opt.value); setOpen(false); }}
-                  className={`flex w-full items-center justify-between rounded-[5px] px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+                  className={`flex w-full items-center justify-between rounded-[5px] px-2.5 py-1.5 text-2sm font-bold transition-colors ${
                     value === opt.value ? "bg-emerald-500/10 text-emerald-600" : "text-text-secondary hover:bg-bg-overlay hover:text-text-primary"
                   }`}
                 >
@@ -143,7 +143,7 @@ export function RDate({ value, onChange }) {
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent text-[12px] font-bold text-text-primary outline-none appearance-none cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0"
+        className="w-full bg-transparent text-2sm font-bold text-text-primary outline-none appearance-none cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0"
       />
       <CalendarDays size={13} className="text-text-muted pointer-events-none shrink-0" />
     </div>
@@ -247,7 +247,7 @@ export function ScopeSelector({ scopeOptions, scope, onScopeChange }) {
                 >
                   {sel && <Check size={10} className="text-white" strokeWidth={3} />}
                 </div>
-                <span className="text-[12px] font-bold text-text-secondary group-hover:text-text-primary">{name}</span>
+                <span className="text-2sm font-bold text-text-secondary group-hover:text-text-primary">{name}</span>
               </label>
             );
           })}
@@ -274,7 +274,7 @@ export function ScopeSelector({ scopeOptions, scope, onScopeChange }) {
           />
           {scope.values?.[0] && (
             <div className="mt-2 flex items-center justify-between rounded-[6px] bg-emerald-500/10 border border-emerald-200/50 px-2.5 py-1.5">
-              <span className="text-[12px] font-bold text-emerald-700">{scope.valueLabels?.[0] || scope.values[0]}</span>
+              <span className="text-2sm font-bold text-emerald-700">{scope.valueLabels?.[0] || scope.values[0]}</span>
               <button onClick={() => onScopeChange({ ...scope, values: [], valueLabels: [] })} className="text-emerald-500 hover:text-emerald-700 transition-colors">
                 <X size={13} />
               </button>
@@ -383,7 +383,7 @@ export function ColumnPreviewStrip({ catId, colVisibility, report }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.15 }}
-            className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${COL_TYPE_STYLE[c.type] || COL_TYPE_STYLE.text}`}
+            className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${COL_TYPE_STYLE[c.type] || COL_TYPE_STYLE.text}`}
           >
             {c.label}
           </motion.span>
@@ -447,7 +447,7 @@ export function GhostPreviewRows({ catId, colVisibility, report, dateRange, scop
           className="flex gap-2 rounded-[4px] bg-bg-overlay px-1.5 py-1"
         >
           {visible.slice(0, 5).map((c, ci) => (
-            <span key={c.key} className={`flex-1 text-[10px] truncate font-bold ${c.type === "cur" || c.type === "num" ? "font-mono text-text-primary" : "text-text-secondary"}`}>
+            <span key={c.key} className={`flex-1 text-[11px] truncate font-bold ${c.type === "cur" || c.type === "num" ? "font-mono text-text-primary" : "text-text-secondary"}`}>
               {row[ci] ?? "—"}
             </span>
           ))}
@@ -468,7 +468,7 @@ export function ColumnToggleList({ catId, colVisibility, onChange, report }) {
         const on = colVisibility[c.key] !== false;
         return (
           <div key={c.key} className="flex items-center justify-between py-1 border-b border-border-subtle/50 last:border-0">
-            <span className={`text-[12px] font-bold ${on ? "text-text-primary" : "text-text-muted"}`}>{c.label}</span>
+            <span className={`text-2sm font-bold ${on ? "text-text-primary" : "text-text-muted"}`}>{c.label}</span>
             <button
               type="button"
               onClick={() => onChange({ ...colVisibility, [c.key]: !on })}
@@ -526,7 +526,7 @@ export function LookupEntityFilter({ entity, value, onChange, placeholder }) {
     <div className="relative" ref={ref}>
       {picked ? (
         <div className="flex items-center justify-between rounded-[8px] border border-emerald-200/50 bg-emerald-500/10 px-2.5 py-1.5">
-          <span className="text-[12px] font-bold text-emerald-700">{picked.name}</span>
+          <span className="text-2sm font-bold text-emerald-700">{picked.name}</span>
           <button onClick={() => { onChange(""); setSearch(""); }} className="text-emerald-500 hover:text-emerald-700">
             <X size={13} />
           </button>
@@ -577,7 +577,7 @@ export function ClassificationSelector({ classifications, value, onChange, forma
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between rounded-[10px] border border-zinc-200 bg-white px-3 py-2.5 text-[12px] font-bold text-zinc-900 outline-none transition-all hover:border-emerald-400 focus:border-emerald-500 shadow-sm"
+        className="flex w-full items-center justify-between rounded-[10px] border border-zinc-200 bg-white px-3 py-2.5 text-2sm font-bold text-zinc-900 outline-none transition-all hover:border-emerald-400 focus:border-emerald-500 shadow-sm"
       >
         <span className="truncate">{selected ? fmt(selected.label_key) : "اختر تصنيف..."}</span>
         <ChevronDown size={14} className={`text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -597,7 +597,7 @@ export function ClassificationSelector({ classifications, value, onChange, forma
                   key={cls.id}
                   type="button"
                   onClick={() => { onChange(cls.id); setOpen(false); }}
-                  className={`flex w-full items-center justify-between rounded-[6px] px-2.5 py-2 text-[12px] font-bold transition-colors ${
+                  className={`flex w-full items-center justify-between rounded-[6px] px-2.5 py-2 text-2sm font-bold transition-colors ${
                     value === cls.id ? "bg-emerald-500/10 text-emerald-600" : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                   }`}
                 >
@@ -657,7 +657,7 @@ export function MultiSelectCheckboxes({ options, value = [], onChange, label, fo
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between rounded-[10px] border border-zinc-200 bg-white px-3 py-2.5 text-[12px] font-bold text-zinc-900 outline-none transition-all hover:border-emerald-400 shadow-sm"
+        className="flex w-full items-center justify-between rounded-[10px] border border-zinc-200 bg-white px-3 py-2.5 text-2sm font-bold text-zinc-900 outline-none transition-all hover:border-emerald-400 shadow-sm"
       >
         <span className="truncate">
           {selectedCount > 0 ? `${label}: ${selectedCount} مختار` : label}
@@ -693,7 +693,7 @@ export function MultiSelectCheckboxes({ options, value = [], onChange, label, fo
                     >
                       {checked && <Check size={10} className="text-white" strokeWidth={3} />}
                     </div>
-                    <span className="text-[12px] font-bold text-zinc-700">{fmt(opt.label_key)}</span>
+                    <span className="text-2sm font-bold text-zinc-700">{fmt(opt.label_key)}</span>
                   </label>
                 );
               })}
@@ -717,7 +717,7 @@ export function SourceCard({ source, classifications, selectedClassification, se
           </div>
           <div>
             <h3 className="text-[15px] font-black text-zinc-900">{source.label}</h3>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{source.id}</p>
+            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">{source.id}</p>
           </div>
         </div>
       </div>
@@ -740,7 +740,7 @@ export function SourceCard({ source, classifications, selectedClassification, se
       <button
         onClick={onEnter}
         disabled={!selectedClassification}
-        className="mt-4 w-full flex items-center justify-center gap-2 rounded-[12px] bg-zinc-900 px-4 py-3 text-[13px] font-bold text-white transition-all hover:bg-emerald-600 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+        className="mt-4 w-full flex items-center justify-center gap-2 rounded-[12px] bg-zinc-900 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-emerald-600 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
       >
         <BarChart3 size={15} />
         عرض التقرير
@@ -785,7 +785,7 @@ export function DimensionFilter({ dimension, value, onChange, formatLabel }) {
       <div className="space-y-1.5">
         <label className="block text-[11px] font-bold text-zinc-500">{fmt(dimension.label)}</label>
         <select value={value || ""} onChange={(e) => onChange(dimension.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium">
+          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium">
           <option value="">الكل</option>
           {opts.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label || arLabel(opt.label_key) || fmt(opt.label_key)}</option>
@@ -843,7 +843,7 @@ export function FilterPanelTop({
           <Filter size={14} />
           {collapsed ? "إظهار الفلاتر" : "إخفاء الفلاتر"}
           {activeCount > 0 && (
-            <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-black">
+            <span className="bg-emerald-100 text-emerald-700 text-[11px] px-2 py-0.5 rounded-full font-black">
               {activeCount}
             </span>
           )}
@@ -886,7 +886,7 @@ export function FilterPanelTop({
                     <input type="text" value={filters.q || ""}
                       onChange={(e) => onFilterChange("q", e.target.value)}
                       placeholder="ابحث..."
-                      className="w-full h-10 pr-10 pl-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      className="w-full h-10 pr-10 pl-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
                   </div>
                 </div>
@@ -899,7 +899,7 @@ export function FilterPanelTop({
                       <div className="flex gap-1">
                         {datePresets.map((p) => (
                           <button key={p.label} onClick={() => onDatePreset?.(p)}
-                            className="text-[10px] text-zinc-400 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded-md transition-colors"
+                            className="text-[11px] text-zinc-400 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded-md transition-colors"
                           >
                             {p.label}
                           </button>
@@ -909,12 +909,12 @@ export function FilterPanelTop({
                     <div className="flex items-center gap-2">
                       <input type="date" value={dateRange?.from || ""}
                         onChange={(e) => onDateChange?.("from", e.target.value)}
-                        className="flex-1 h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900"
+                        className="flex-1 h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900"
                       />
                       <span className="text-zinc-400 shrink-0">–</span>
                       <input type="date" value={dateRange?.to || ""}
                         onChange={(e) => onDateChange?.("to", e.target.value)}
-                        className="flex-1 h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900"
+                        className="flex-1 h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900"
                       />
                     </div>
                   </div>
@@ -937,7 +937,7 @@ export function FilterPanelTop({
                           <label className="block text-[11px] font-bold text-zinc-500">{dim.label}</label>
                           <select value={filters[dim.key] || ""}
                             onChange={(e) => onFilterChange(dim.key, e.target.value)}
-                            className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+                            className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
                           >
                             <option value="">الكل</option>
                             {opts.map((opt) => (
@@ -963,7 +963,7 @@ export function FilterPanelTop({
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-bold text-zinc-500">طريقة التكلفة</label>
                     <select value={costMethod || "wacc"} onChange={(e) => onCostChange?.(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+                      className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
                     >
                       {[{ value: "wacc", label: "متوسط التكلفة (WACC)" }, { value: "last_purchase", label: "آخر سعر شراء" }].map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>

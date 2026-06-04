@@ -53,10 +53,10 @@ export default function DocumentHeaderBar({
         {(title || subtitle) && (
           <div className="flex flex-col">
             {title && (
-              <h1 className="text-[14px] font-black text-slate-800">{title}</h1>
+              <h1 className="text-sm font-black text-slate-800">{title}</h1>
             )}
             {subtitle && (
-              <span className="text-[10px] font-bold text-slate-400">
+              <span className="text-[11px] font-bold text-slate-400">
                 {subtitle}
               </span>
             )}
@@ -65,7 +65,7 @@ export default function DocumentHeaderBar({
         {badges.map((b, i) => (
           <span
             key={i}
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black ${b.cls || "border-slate-200 bg-slate-100 text-slate-600"}`}
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-black ${b.cls || "border-slate-200 bg-slate-100 text-slate-600"}`}
           >
             {b.label}
           </span>

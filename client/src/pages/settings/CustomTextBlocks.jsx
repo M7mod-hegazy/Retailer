@@ -102,7 +102,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
 
         {/* Position badge */}
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-800 truncate">
+          <div className="text-[11px] font-black uppercase tracking-widest text-slate-800 truncate">
             {block.text?.trim() ? `"${block.text.slice(0, 28).replace(/\n/g, " ↵ ")}${block.text.length > 28 ? "…" : ""}"` : "نص فارغ"}
           </div>
           <div className="text-[9px] font-bold text-slate-400 mt-0.5">{posLabel}</div>
@@ -141,7 +141,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
               rows={3}
               placeholder={"مثال:\nشركة إلهيجازي للتجزئة\nالسجل التجاري: 1234567"}
               style={{ fontFamily: "monospace" }}
-              className="w-full resize-y rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all placeholder:text-slate-300 leading-relaxed"
+              className="w-full resize-y rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all placeholder:text-slate-300 leading-relaxed"
             />
             <div className="mt-1 text-[9px] font-bold text-slate-400 text-left ltr">
               {block.text.length} حرف • {block.text.split("\n").length} سطر
@@ -161,7 +161,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
                   onClick={() => upd("position", pt.value)}
                   className={`flex flex-col items-start rounded-sm border px-2.5 py-2 text-right transition-all ${block.position === pt.value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
                 >
-                  <div className={`text-[10px] font-black ${block.position === pt.value ? "text-white" : "text-slate-800"}`}>{pt.label}</div>
+                  <div className={`text-[11px] font-black ${block.position === pt.value ? "text-white" : "text-slate-800"}`}>{pt.label}</div>
                   <div className={`text-[9px] font-bold mt-0.5 ${block.position === pt.value ? "text-slate-300" : "text-slate-400"}`}>{pt.hint}</div>
                 </button>
               ))}
@@ -188,7 +188,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
                         : [...cur, size]
                       );
                     }}
-                    className={`rounded-sm border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                    className={`rounded-sm border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest transition-all ${
                       active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"
                     }`}
                   >
@@ -227,10 +227,10 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
               <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">حجم الخط</div>
               <div className="flex items-center rounded-sm border border-slate-200 overflow-hidden">
                 <button type="button" onClick={() => upd("fontSize", Math.max(7, (block.fontSize || 10) - 1))}
-                  className="px-2 py-1.5 text-[12px] font-black text-slate-500 hover:bg-slate-100 border-l border-slate-200">−</button>
-                <div className="px-3 text-[12px] font-black text-slate-800">{block.fontSize || 10}px</div>
+                  className="px-2 py-1.5 text-2sm font-black text-slate-500 hover:bg-slate-100 border-l border-slate-200">−</button>
+                <div className="px-3 text-2sm font-black text-slate-800">{block.fontSize || 10}px</div>
                 <button type="button" onClick={() => upd("fontSize", Math.min(24, (block.fontSize || 10) + 1))}
-                  className="px-2 py-1.5 text-[12px] font-black text-slate-500 hover:bg-slate-100 border-r border-slate-200">+</button>
+                  className="px-2 py-1.5 text-2sm font-black text-slate-500 hover:bg-slate-100 border-r border-slate-200">+</button>
               </div>
             </div>
 
@@ -239,12 +239,12 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
               <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">التنسيق</div>
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => upd("bold", !block.bold)}
-                  className={`rounded-sm border px-3 py-1.5 text-[12px] font-black transition-all ${block.bold ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  className={`rounded-sm border px-3 py-1.5 text-2sm font-black transition-all ${block.bold ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
                   style={{ fontWeight: "900" }}>
                   B
                 </button>
                 <button type="button" onClick={() => upd("italic", !block.italic)}
-                  className={`rounded-sm border px-3 py-1.5 text-[12px] transition-all ${block.italic ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  className={`rounded-sm border px-3 py-1.5 text-2sm transition-all ${block.italic ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
                   style={{ fontStyle: "italic", fontFamily: "serif" }}>
                   I
                 </button>
@@ -313,7 +313,7 @@ export function CustomTextBlocksSection({ blocks, onUpdate }) {
       {blocks.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
           <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">لا توجد نصوص مضافة بعد</div>
-          <div className="text-[10px] font-bold text-slate-300 max-w-[240px] leading-relaxed">
+          <div className="text-[11px] font-bold text-slate-300 max-w-[240px] leading-relaxed">
             أضف نصوصاً مخصصة مثل بيانات الضمان، ملاحظات الدفع، أو رسائل ترويجية في أي موضع من المستند
           </div>
         </div>

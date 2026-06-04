@@ -161,7 +161,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                   <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 p-4">
                     <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-1">
-                      <div className="text-[12px] font-black uppercase tracking-widest text-blue-900">
+                      <div className="text-2sm font-black uppercase tracking-widest text-blue-900">
                         تنبيه مهم
                       </div>
                       <div className="text-[11px] font-bold text-blue-800">
@@ -172,7 +172,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
 
                   {/* Template selector */}
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-slate-200">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 whitespace-nowrap">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-600 whitespace-nowrap">
                       قالب مسبق
                     </label>
                     <select
@@ -213,13 +213,13 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                       <table className="w-full text-xs">
                         <thead className="bg-slate-50 sticky top-0 z-10">
                           <tr>
-                            <th className="text-right p-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                            <th className="text-right p-2 text-[11px] font-black uppercase tracking-widest text-slate-600">
                               الصفحة
                             </th>
                             {ALL_ACTIONS.map((a) => (
                               <th
                                 key={a}
-                                className="text-center p-2 text-[10px] font-black uppercase tracking-widest text-slate-600 w-14"
+                                className="text-center p-2 text-[11px] font-black uppercase tracking-widest text-slate-600 w-14"
                               >
                                 <SmartTooltip side="bottom" fill content={ACTION_DESCRIPTIONS[a] || ""}>
                                   <div className="w-full text-center cursor-help">{ACTION_LABELS[a]}</div>
@@ -235,7 +235,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                                 key={pageKey}
                                 className="border-t border-slate-100 hover:bg-slate-50/60"
                               >
-                                <td className="text-right p-2 text-[12px] font-bold text-slate-800">
+                                <td className="text-right p-2 text-2sm font-bold text-slate-800">
                                   {meta.label}
                                 </td>
                                 {ALL_ACTIONS.map((a) => {
@@ -279,7 +279,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                   type="button"
                   onClick={onClose}
                   disabled={saving}
-                  className="h-10 px-6 rounded-xl border border-slate-300 text-[12px] font-black text-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50"
+                  className="h-10 px-6 rounded-xl border border-slate-300 text-2sm font-black text-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50"
                 >
                   إلغاء
                 </motion.button>
@@ -288,7 +288,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                   type="button"
                   onClick={handleSave}
                   disabled={saving || loading}
-                  className="h-10 px-6 rounded-xl bg-zinc-950 text-white text-[12px] font-black flex items-center gap-2 hover:bg-zinc-800 transition-all disabled:opacity-50 shadow-lg"
+                  className="h-10 px-6 rounded-xl bg-zinc-950 text-white text-2sm font-black flex items-center gap-2 hover:bg-zinc-800 transition-all disabled:opacity-50 shadow-lg"
                 >
                   <Save className="h-4 w-4" />
                   {saving ? "جاري الحفظ..." : "حفظ الصلاحيات"}

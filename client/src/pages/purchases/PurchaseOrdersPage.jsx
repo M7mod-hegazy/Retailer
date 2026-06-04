@@ -187,7 +187,7 @@ export default function PurchaseOrdersPage() {
             <div className="bg-indigo-100 p-4 rounded-[1.5rem]"><Package className="h-8 w-8 text-indigo-600" /></div>
             <div>
               <h1 className="text-[28px] font-black text-slate-900 tracking-tight">طلبات التوريد</h1>
-              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">تسجيل ومتابعة طلبات شراء البضاعة من الموردين قبل استلامها.</p>
+              <p className="text-sm font-bold text-slate-500 mt-1 max-w-[45ch]">تسجيل ومتابعة طلبات شراء البضاعة من الموردين قبل استلامها.</p>
             </div>
           </div>
 
@@ -219,7 +219,7 @@ export default function PurchaseOrdersPage() {
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide w-full lg:w-auto px-2">
             {STATUS_TABS.map(tab => (
               <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
-                className={`whitespace-nowrap rounded-full px-6 py-3 text-[14px] font-black transition-all ${
+                className={`whitespace-nowrap rounded-full px-6 py-3 text-sm font-black transition-all ${
                   statusFilter === tab.value ? "bg-slate-900 text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                 }`}>
                 {tab.label}
@@ -230,7 +230,7 @@ export default function PurchaseOrdersPage() {
             <Search className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-slate-400" />
             <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
               placeholder="ابحث برقم الأمر أو المورد..."
-              className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3.5 text-[14px] font-black text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none" />
+              className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3.5 text-sm font-black text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none" />
           </div>
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function PurchaseOrdersPage() {
                             <span className="font-mono text-[18px] font-black text-slate-900 tracking-tight">PO-{String(row.id).padStart(5, "0")}</span>
                             <StatusBadge status={row.status} />
                           </div>
-                          <div className="flex items-center gap-2 text-[14px] font-bold text-slate-500">
+                          <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
                             <User className="h-4 w-4 opacity-50" />
                             <span className="truncate max-w-[200px]">{row.supplier_name || `مورد #${row.supplier_id}`}</span>
                           </div>
@@ -288,21 +288,21 @@ export default function PurchaseOrdersPage() {
                         
                         <div className="hidden xl:flex flex-col gap-1 border-r border-slate-100 pr-8">
                           <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">تاريخ الأمر</span>
-                          <span className="text-[14px] font-bold text-slate-700 font-mono tracking-tight">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+                          <span className="text-sm font-bold text-slate-700 font-mono tracking-tight">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3 lg:justify-end lg:w-[25%]">
                         {canApprove && (
                           <PermissionGate page="purchase_orders" action="edit">
-                            <button onClick={() => setConfirmApprove(row.id)} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-50 text-blue-700 text-[13px] font-black hover:bg-blue-600 hover:text-white transition-all">
+                            <button onClick={() => setConfirmApprove(row.id)} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-50 text-blue-700 text-sm font-black hover:bg-blue-600 hover:text-white transition-all">
                               اعتماد
                             </button>
                           </PermissionGate>
                         )}
                         {canReceive && (
                           <PermissionGate page="purchase_orders" action="edit">
-                            <button data-help="convert-button" onClick={() => openReceiveModal(row.id)} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-black hover:bg-emerald-600 hover:text-white transition-all">
+                            <button data-help="convert-button" onClick={() => openReceiveModal(row.id)} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-black hover:bg-emerald-600 hover:text-white transition-all">
                               استلام
                             </button>
                           </PermissionGate>
@@ -321,7 +321,7 @@ export default function PurchaseOrdersPage() {
                               <AnimatePresence>
                                 {openMenu === row.id && (
                                   <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-48 rounded-2xl border border-slate-200/60 bg-white p-2 shadow-2xl origin-bottom-left">
-                                    <button onClick={() => { setConfirmCancel(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
+                                    <button onClick={() => { setConfirmCancel(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
                                       <XCircle className="h-4.5 w-4.5" /> إلغاء الأمر
                                     </button>
                                   </motion.div>
@@ -373,8 +373,8 @@ export default function PurchaseOrdersPage() {
                 {(detailOrder.lines || []).map(l => (
                   <div key={l.id} className="grid grid-cols-[1fr_100px_100px_100px_120px] items-center rounded-2xl hover:bg-slate-50 transition-colors p-3">
                     <div className="px-3 border-l border-slate-100">
-                      <p className="text-[14px] font-black text-slate-900 truncate">{l.item_name}</p>
-                      <p className="text-[12px] font-mono font-bold text-slate-400 mt-1">{l.item_code || l.code || l.barcode || "—"}</p>
+                      <p className="text-sm font-black text-slate-900 truncate">{l.item_name}</p>
+                      <p className="text-2sm font-mono font-bold text-slate-400 mt-1">{l.item_code || l.code || l.barcode || "—"}</p>
                     </div>
                     <div className="px-3 text-center border-l border-slate-100 font-black text-[15px]">{l.quantity}</div>
                     <div className="px-3 text-center border-l border-slate-100 font-black text-[15px] text-emerald-600">{l.received_quantity || 0}</div>
@@ -395,7 +395,7 @@ export default function PurchaseOrdersPage() {
             <div className="flex-1 flex flex-col">
               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">المخزن المستلم الوجهة</span>
               <select value={selectedWarehouse} onChange={e => setSelectedWarehouse(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-[14px] font-black text-slate-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all shadow-sm">
+                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-black text-slate-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all shadow-sm">
                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </div>
@@ -418,7 +418,7 @@ export default function PurchaseOrdersPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">المستلم:</span>
+                  <span className="text-2sm font-black text-slate-400 uppercase tracking-widest">المستلم:</span>
                   <input type="number" min="0" max={line.remaining_quantity}
                     value={receiptLines[line.id] ?? ""}
                     onChange={e => setReceiptLines(prev => ({ ...prev, [line.id]: e.target.value }))}
@@ -429,10 +429,10 @@ export default function PurchaseOrdersPage() {
           </div>
 
           <div className="flex items-center justify-between pt-4">
-            <button onClick={() => setActiveOrder(null)} className="rounded-2xl px-8 py-4 text-[14px] font-black text-slate-500 hover:bg-slate-100 transition-colors">تراجع وإلغاء</button>
+            <button onClick={() => setActiveOrder(null)} className="rounded-2xl px-8 py-4 text-sm font-black text-slate-500 hover:bg-slate-100 transition-colors">تراجع وإلغاء</button>
             <button
               onClick={() => { if (receiveConfirmLines.length === 0) { toast.error("أدخل كمية لصنف واحد على الأقل"); return; } setReceiveStep("confirm"); }}
-              className="flex items-center gap-3 rounded-2xl bg-slate-950 px-10 py-4 text-[14px] font-black text-white hover:bg-slate-800 transition-all shadow-xl hover:shadow-slate-900/20 active:scale-95"
+              className="flex items-center gap-3 rounded-2xl bg-slate-950 px-10 py-4 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-xl hover:shadow-slate-900/20 active:scale-95"
             >
               مراجعة الاستلام النهائي <ChevronRight className="h-4 w-4" />
             </button>
@@ -446,19 +446,19 @@ export default function PurchaseOrdersPage() {
           <div className="rounded-3xl bg-slate-950 p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/40 via-transparent to-transparent pointer-events-none" />
             
-            <p className="text-[14px] font-bold text-slate-400 mb-6 leading-relaxed relative z-10">
+            <p className="text-sm font-bold text-slate-400 mb-6 leading-relaxed relative z-10">
               استلام الأصناف في <span className="font-black text-white">{warehouses.find(w => String(w.id) === selectedWarehouse)?.name || selectedWarehouse}</span> سيقوم بتوليد فاتورة شراء تلقائية وتحديث رصيد المخزون فوراً.
             </p>
             
             <div className="space-y-4 relative z-10 mb-8">
               {receiveConfirmLines.map(line => (
-                <div key={line.id} className="flex items-center justify-between text-[14px] font-bold text-slate-300">
+                <div key={line.id} className="flex items-center justify-between text-sm font-bold text-slate-300">
                   <span className="flex flex-col max-w-[150px]">
                     <span className="truncate">{line.item_name}</span>
-                    {(line.item_code || line.code) && <span className="font-mono text-[10px] text-slate-400 truncate">{line.item_code || line.code}</span>}
+                    {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 truncate">{line.item_code || line.code}</span>}
                   </span>
                   <div className="flex items-center gap-4">
-                    <span className="font-mono text-[12px] opacity-60">× {receiptLines[line.id]}</span>
+                    <span className="font-mono text-2sm opacity-60">× {receiptLines[line.id]}</span>
                     <span className="font-black text-white font-mono">{formatMoney(Number(receiptLines[line.id]) * line.unit_cost)}</span>
                   </div>
                 </div>
@@ -467,13 +467,13 @@ export default function PurchaseOrdersPage() {
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-between relative z-10">
               <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">إجمالي الفاتورة المتوقعة</span>
-              <span className="text-[24px] font-black text-white font-mono tracking-tight">{formatMoney(receiveTotal)} <span className="text-[12px] font-sans opacity-50">ج.م</span></span>
+              <span className="text-[24px] font-black text-white font-mono tracking-tight">{formatMoney(receiveTotal)} <span className="text-2sm font-sans opacity-50">ج.م</span></span>
             </div>
           </div>
 
           <div className="flex gap-4">
-            <button onClick={() => setReceiveStep("input")} className="flex-1 rounded-2xl border-2 border-slate-200 py-4 text-[14px] font-black text-slate-600 hover:bg-slate-50 transition-colors">تعديل الكميات</button>
-            <button onClick={handleReceive} className="flex-1 rounded-2xl bg-emerald-600 py-4 text-[14px] font-black text-white hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/20 active:scale-[0.98]">
+            <button onClick={() => setReceiveStep("input")} className="flex-1 rounded-2xl border-2 border-slate-200 py-4 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors">تعديل الكميات</button>
+            <button onClick={handleReceive} className="flex-1 rounded-2xl bg-emerald-600 py-4 text-sm font-black text-white hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/20 active:scale-[0.98]">
               تأكيد وإصدار الفاتورة
             </button>
           </div>

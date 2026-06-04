@@ -63,7 +63,7 @@ export default function Modal({ open, title, onClose, children, maxWidth = "max-
           >
             {title && (
               <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <h3 className="text-[14px] font-bold text-slate-800">{title}</h3>
+                <h3 className="text-sm font-bold text-slate-800">{title}</h3>
                 {onClose && (
                   <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700">
                     <X className="h-4 w-4" />

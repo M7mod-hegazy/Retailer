@@ -58,6 +58,11 @@ function ensurePrintColumns() {
   add("address_alignment",  "TEXT DEFAULT 'right'");
   add("tax_id_font_size",   "INTEGER DEFAULT 9");
   add("tax_id_alignment",   "TEXT DEFAULT 'right'");
+  add("font_family",         "TEXT DEFAULT 'Noto Sans Arabic'");
+  add("font_size",           "TEXT DEFAULT 'normal'");
+  add("number_font_family",  "TEXT DEFAULT 'Outfit'");
+  add("number_font_scale",   "TEXT DEFAULT 'normal'");
+  add("numeral_style",       "TEXT DEFAULT 'western'");
   // Log summary to help debug any persistence issues
   if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
 }

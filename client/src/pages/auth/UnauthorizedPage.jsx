@@ -13,12 +13,12 @@ export default function UnauthorizedPage() {
         <h1 className="text-[20px] font-black tracking-tight text-zinc-900">
           ليس لديك صلاحية للوصول لهذه الصفحة
         </h1>
-        <p className="mt-2 text-[13px] font-semibold text-zinc-500">
+        <p className="mt-2 text-sm font-semibold text-zinc-500">
           يرجى التواصل مع مدير النظام إذا كنت تحتاج لهذه الصلاحية.
         </p>
         <button
           onClick={() => navigate(-1)}
-          className="mt-7 inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-5 py-2.5 text-[13px] font-black text-white shadow-md shadow-zinc-900/10 transition-colors hover:bg-zinc-800"
+          className="mt-7 inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-zinc-900/10 transition-colors hover:bg-zinc-800"
         >
           <ArrowRight className="h-4 w-4" />
           رجوع

@@ -33,7 +33,7 @@ export default function WarehouseStockMatrix({
     <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2">
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-bold text-slate-500">سحب المخزون من المستودع</label>
-        <span className="text-[10px] font-black tracking-widest text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full" style={{ fontFamily: "Outfit" }}>MATRIX ACTIVE</span>
+        <span className="text-[11px] font-black tracking-widest text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full" style={{ fontFamily: "Outfit" }}>MATRIX ACTIVE</span>
       </div>
       
       {/* Scrollable Matrix Block */}
@@ -69,9 +69,9 @@ export default function WarehouseStockMatrix({
             >
               <div className="flex items-center">
                 {icon || <Package className="w-3.5 h-3.5 text-slate-400 mr-1.5" opacity={isSelected ? 0 : 1} />}
-                <span className="text-[12px] font-bold truncate max-w-[80px]" title={warehouse.name}>{warehouse.name}</span>
+                <span className="text-2sm font-bold truncate max-w-[80px]" title={warehouse.name}>{warehouse.name}</span>
               </div>
-              <span className={`text-[12px] font-black px-2 py-0.5 rounded-md min-w-[28px] text-center ${badgeStyle}`} style={{ fontFamily: "Outfit" }}>
+              <span className={`text-2sm font-black px-2 py-0.5 rounded-md min-w-[28px] text-center ${badgeStyle}`} style={{ fontFamily: "Outfit" }}>
                 {qty}
               </span>
             </button>

@@ -146,7 +146,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
             </label>
             {customer ? (
               <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <span className="flex-1 text-[13px] font-black text-slate-800">{customer.name}</span>
+                <span className="flex-1 text-sm font-black text-slate-800">{customer.name}</span>
                 <button
                   onClick={() => { setCustomer(null); setRefundMethod("cash_back"); }}
                   className="text-slate-400 hover:text-rose-600 transition-colors"
@@ -160,7 +160,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                   value={customerQuery}
                   onChange={e => setCustomerQuery(e.target.value)}
                   placeholder="ابحث عن عميل..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-[13px] font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
                 />
                 {customerResults.length > 0 && (
                   <div className="absolute top-full right-0 left-0 z-20 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-44 overflow-auto">
@@ -168,7 +168,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                       <button
                         key={c.id}
                         onClick={() => { setCustomer(c); setCustomerQuery(""); setCustomerResults([]); }}
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-[13px] font-bold hover:bg-rose-50 text-right transition-colors"
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-bold hover:bg-rose-50 text-right transition-colors"
                       >
                         {c.name}
                       </button>
@@ -185,7 +185,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
             <div className="flex gap-2">
               <button
                 onClick={() => setRefundMethod("cash_back")}
-                className={`flex-1 rounded-xl border py-2.5 text-[13px] font-black transition-colors ${
+                className={`flex-1 rounded-xl border py-2.5 text-sm font-black transition-colors ${
                   refundMethod === "cash_back"
                     ? "border-emerald-500 bg-emerald-50 text-emerald-800"
                     : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -198,7 +198,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                   if (!customer) { toast.error("اختر عميل أولاً لاستخدام الرصيد"); return; }
                   setRefundMethod("credit_note");
                 }}
-                className={`flex-1 rounded-xl border py-2.5 text-[13px] font-black transition-colors ${
+                className={`flex-1 rounded-xl border py-2.5 text-sm font-black transition-colors ${
                   refundMethod === "credit_note"
                     ? "border-amber-500 bg-amber-50 text-amber-800"
                     : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -215,7 +215,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
             <select
               value={reason}
               onChange={e => setReason(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-[13px] font-bold outline-none focus:border-rose-400 bg-white"
+              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 bg-white"
             >
               {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
@@ -238,7 +238,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                   }
                 }}
                 placeholder="ابحث عن صنف بالاسم أو الباركود..."
-                className="w-full rounded-xl border border-slate-300 pr-9 pl-4 py-2.5 text-[13px] font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                className="w-full rounded-xl border border-slate-300 pr-9 pl-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
               />
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               {itemQuery && (
@@ -261,7 +261,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           {/* Lines table */}
           {lines.length > 0 && (
             <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-[12px]">
+              <table className="w-full text-2sm">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     {["الصنف", "الكمية", "السعر", "الإجمالي", ""].map((h, i) => (
@@ -280,7 +280,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                           step="0.001"
                           value={line.quantity}
                           onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, quantity: Number(e.target.value) } : l))}
-                          className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-[12px] font-black outline-none focus:border-rose-400"
+                          className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-rose-400"
                         />
                       </td>
                       <td className="px-4 py-2.5">
@@ -290,7 +290,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                           step="0.01"
                           value={line.unit_price}
                           onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, unit_price: Number(e.target.value) } : l))}
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-[12px] font-black outline-none focus:border-rose-400"
+                          className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-rose-400"
                         />
                       </td>
                       <td className="px-4 py-2.5 font-black font-mono text-rose-700">
@@ -318,7 +318,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           {lines.length === 0 && (
             <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-center text-slate-400">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-[13px] font-bold">ابحث عن صنف وأضفه للمرتجع</p>
+              <p className="text-sm font-bold">ابحث عن صنف وأضفه للمرتجع</p>
             </div>
           )}
 
@@ -329,7 +329,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="ملاحظات اختيارية..."
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-[13px] outline-none focus:border-rose-400"
+              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-rose-400"
             />
           </div>
         </div>
@@ -338,14 +338,14 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
         <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-slate-300 py-3 text-[13px] font-black text-slate-700 hover:bg-slate-100 transition-colors"
+            className="flex-1 rounded-xl border border-slate-300 py-3 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors"
           >
             إلغاء
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !lines.length}
-            className="flex-1 rounded-xl bg-rose-600 py-3 text-[13px] font-black text-white hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? "جاري الحفظ..." : `حفظ المرتجع — ${fmt(total)} ج.م`}
           </button>

@@ -167,7 +167,7 @@ export default function Topbar() {
 
           <div className="hidden lg:flex flex-col">
             <h1 className="text-sm font-black tracking-tight text-zinc-900 leading-none mb-1.5">{currentLabel}</h1>
-            <span className="text-[10px] font-bold text-zinc-400 tracking-widest">{today}</span>
+            <span className="text-[11px] font-bold text-zinc-400 tracking-widest">{today}</span>
           </div>
 
           <div className="hidden lg:block w-px h-8 bg-zinc-200/60" />
@@ -274,7 +274,7 @@ export default function Topbar() {
                   <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 bg-zinc-50/30">
                     <span className="text-sm font-black text-zinc-900 tracking-tight">التنبيهات</span>
                     {unreadItems.length > 0 && (
-                      <button onClick={() => { markAllAsRead(); setOpenBell(false); }} className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-emerald-500 transition-colors bg-white px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
+                      <button onClick={() => { markAllAsRead(); setOpenBell(false); }} className="text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-emerald-500 transition-colors bg-white px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
                         تحديد الكل كمقروء
                       </button>
                     )}
@@ -307,7 +307,7 @@ export default function Topbar() {
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400 scale-y-0 group-hover:scale-y-100 origin-center transition-transform" />
                           <div className="flex-1 min-w-0 pt-0.5">
-                            <p className="truncate text-[13px] font-black text-zinc-900 leading-tight">
+                            <p className="truncate text-sm font-black text-zinc-900 leading-tight">
                               {notif.emoji ? `${notif.emoji} ` : ""}{notif.title}
                             </p>
                             {notif.body && <p className="mt-1 line-clamp-2 text-[11px] font-bold text-zinc-500 leading-relaxed">{notif.body}</p>}

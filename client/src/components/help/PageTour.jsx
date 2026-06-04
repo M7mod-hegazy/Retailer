@@ -659,7 +659,7 @@ function TopicPicker({ pageKey, onSelect, onClose }) {
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               <span
-                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black"
+                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black"
                 style={{ background: 'var(--primary)', color: '#fff' }}
               >
                 {i + 1}
@@ -980,7 +980,7 @@ export function PageTour() {
             className="mb-4 rounded-xl border p-3"
             style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-overlay)' }}
           >
-            <p className="mb-2 text-[10px] font-black" style={{ color: 'var(--text-muted)' }}>
+            <p className="mb-2 text-[11px] font-black" style={{ color: 'var(--text-muted)' }}>
               مثال سريع
             </p>
             <ol className="space-y-1.5">

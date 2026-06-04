@@ -113,7 +113,7 @@ function GalleryModal({ open, onClose, images, idx, setIdx, zoom, setZoom }) {
           <button
             type="button"
             onClick={() => setZoom(z => parseFloat(Math.max(0.5, z - 0.25).toFixed(2)))}
-            className="px-3 py-1.5 rounded-sm bg-slate-700 text-white text-[12px] font-bold hover:bg-slate-600 transition-colors"
+            className="px-3 py-1.5 rounded-sm bg-slate-700 text-white text-2sm font-bold hover:bg-slate-600 transition-colors"
           >
             -
           </button>
@@ -123,14 +123,14 @@ function GalleryModal({ open, onClose, images, idx, setIdx, zoom, setZoom }) {
           <button
             type="button"
             onClick={() => setZoom(z => parseFloat(Math.min(4, z + 0.25).toFixed(2)))}
-            className="px-3 py-1.5 rounded-sm bg-slate-700 text-white text-[12px] font-bold hover:bg-slate-600 transition-colors"
+            className="px-3 py-1.5 rounded-sm bg-slate-700 text-white text-2sm font-bold hover:bg-slate-600 transition-colors"
           >
             +
           </button>
           <button
             type="button"
             onClick={() => setZoom(1)}
-            className="px-3 py-1.5 rounded-sm bg-slate-600 text-slate-300 text-[10px] font-bold hover:bg-slate-500 transition-colors"
+            className="px-3 py-1.5 rounded-sm bg-slate-600 text-slate-300 text-[11px] font-bold hover:bg-slate-500 transition-colors"
           >
             100%
           </button>
@@ -159,7 +159,7 @@ function GalleryModal({ open, onClose, images, idx, setIdx, zoom, setZoom }) {
           </div>
         )}
         {images.length > 1 && (
-          <span className="text-slate-400 text-[10px] font-mono">{idx + 1} / {images.length}</span>
+          <span className="text-slate-400 text-[11px] font-mono">{idx + 1} / {images.length}</span>
         )}
       </div>
     </Modal>
@@ -207,12 +207,12 @@ function HeldDropdown({ heldInvoices, onResume, onDiscard, onClose }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[14px] font-black text-slate-800 truncate">{h.customer?.name || "زبون نقدي"}</span>
-                <span className="font-mono text-[13px] font-black text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
+                <span className="text-sm font-black text-slate-800 truncate">{h.customer?.name || "زبون نقدي"}</span>
+                <span className="font-mono text-sm font-black text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">{h.linesCount} أصناف</span>
-                <span className="text-[10px] text-slate-400 font-mono">{formatArabicDateTime(new Date(h.heldAt))}</span>
+                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">{h.linesCount} أصناف</span>
+                <span className="text-[11px] text-slate-400 font-mono">{formatArabicDateTime(new Date(h.heldAt))}</span>
               </div>
             </div>
             <div className="flex gap-1.5 shrink-0">
@@ -264,7 +264,7 @@ function FieldLabel({ step, children, isActive }) {
           {step}
         </span>
       )}
-      <span className={`text-[10px] font-black uppercase tracking-[0.12em] leading-none transition-colors ${isActive ? "text-emerald-400" : "text-zinc-500"}`}>{children}</span>
+      <span className={`text-[11px] font-black uppercase tracking-[0.12em] leading-none transition-colors ${isActive ? "text-emerald-400" : "text-zinc-500"}`}>{children}</span>
     </div>
   );
 }
@@ -275,7 +275,7 @@ function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resi
   const active = sortConfig.key === sortKey;
   return (
     <th
-      className={`relative select-none px-2 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors ${className}`}
+      className={`relative select-none px-2 py-2 text-right text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors ${className}`}
       style={{ width: width ? `${width}px` : undefined, minWidth: width ? `${width}px` : undefined, maxWidth: width ? `${width}px` : undefined }}
     >
       <div className="inline-flex items-center gap-1 cursor-pointer" onClick={() => onSort && onSort(sortKey)}>
@@ -361,22 +361,22 @@ function NavLockModal({ onProceed, onCancel }) {
               <AlertTriangle className="h-5 w-5 text-rose-400" />
             </div>
             <div>
-              <p className="text-[14px] font-black text-white">تحذير — فاتورة جارية</p>
+              <p className="text-sm font-black text-white">تحذير — فاتورة جارية</p>
               <p className="text-[11px] text-slate-400 font-bold">لديك أصناف في السلة لم تحفظ بعد</p>
             </div>
           </div>
         </div>
         <div className="px-6 py-5 space-y-4">
-          <p className="text-[13px] font-bold text-slate-600 leading-relaxed">
+          <p className="text-sm font-bold text-slate-600 leading-relaxed">
             إذا غادرت الصفحة الآن ستفقد الفاتورة الحالية. هل تريد المتابعة؟
           </p>
           <div className="flex gap-3">
             <button onClick={onCancel}
-              className="flex-1 rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-colors">
+              className="flex-1 rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50 transition-colors">
               البقاء في الصفحة
             </button>
             <button onClick={onProceed}
-              className="flex-1 rounded-sm border border-rose-600 bg-rose-600 px-4 py-2.5 text-[13px] font-black text-white hover:bg-rose-700 transition-colors">
+              className="flex-1 rounded-sm border border-rose-600 bg-rose-600 px-4 py-2.5 text-sm font-black text-white hover:bg-rose-700 transition-colors">
               <span className="flex items-center justify-center gap-2">
                 <LogOut className="h-4 w-4" /> المغادرة والتخلي
               </span>
@@ -1597,15 +1597,15 @@ export default function POSPage() {
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
               <div className="text-3xl mb-2">⚠️</div>
               <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
-              <p className="text-[13px] text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
-              <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-[13px] font-bold">
+              <p className="text-sm text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
+              <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold">
                 حسناً
               </button>
             </div>
           </div>
         )}
         {isOffline && (
-          <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-[12px] font-black tracking-wide text-white shrink-0 z-50">
+          <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-2sm font-black tracking-wide text-white shrink-0 z-50">
             <AlertTriangle className="h-3.5 w-3.5" />
             تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
           </div>
@@ -1615,8 +1615,8 @@ export default function POSPage() {
         <header className="flex h-14 shrink-0 items-center border-b border-slate-100 bg-white px-4 z-40 gap-4 shadow-[0_1px_8px_-4px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex flex-col">
-              <h1 className="text-[14px] font-black text-slate-800">فاتورة مبيعات جديدة</h1>
-              <span className="text-[10px] font-bold text-slate-400">نقطة البيع - القائمة</span>
+              <h1 className="text-sm font-black text-slate-800">فاتورة مبيعات جديدة</h1>
+              <span className="text-[11px] font-bold text-slate-400">نقطة البيع - القائمة</span>
             </div>
             <div className="flex shrink-0 bg-slate-100 rounded-xl p-1 border border-slate-100">
               <button 
@@ -1643,7 +1643,7 @@ export default function POSPage() {
                 readOnly
                 disabled
                 value={invoiceIsActive ? (docNo || invoiceNumber) : "—"}
-                className="w-[165px] rounded-sm border border-slate-200 bg-slate-100 px-2 py-1 text-[12px] font-mono font-black text-slate-600 cursor-default text-center select-none disabled:opacity-70"
+                className="w-[165px] rounded-sm border border-slate-200 bg-slate-100 px-2 py-1 text-2sm font-mono font-black text-slate-600 cursor-default text-center select-none disabled:opacity-70"
               />
               {invoiceIsActive && invoiceCreatedAt && (
                 <input readOnly disabled
@@ -1654,12 +1654,12 @@ export default function POSPage() {
             </div>
             <div className="flex items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-50 px-2.5 py-1 shrink-0">
               <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              <span className="text-[12px] font-bold text-slate-600 max-w-[100px] truncate">{user?.name || "-"}</span>
+              <span className="text-2sm font-bold text-slate-600 max-w-[100px] truncate">{user?.name || "-"}</span>
             </div>
             <select
               value={sellerId}
               onChange={(e) => setSellerId(e.target.value)}
-              className="rounded-sm border border-slate-300 bg-white px-2 py-1 text-[12px] font-bold text-slate-700 outline-none focus:border-slate-800 min-w-[130px]"
+              className="rounded-sm border border-slate-300 bg-white px-2 py-1 text-2sm font-bold text-slate-700 outline-none focus:border-slate-800 min-w-[130px]"
             >
               <option value="">البائع (اختياري)</option>
               {employees.filter((emp) => emp.is_active !== 0).map((emp) => (
@@ -1697,7 +1697,7 @@ export default function POSPage() {
               <button
                 onClick={() => setPrintPreview(true)}
                 disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-                className={`flex h-9 items-center gap-2 rounded-sm px-6 text-[13px] font-black text-white transition-all disabled:opacity-50
+                className={`flex h-9 items-center gap-2 rounded-sm px-6 text-sm font-black text-white transition-all disabled:opacity-50
                   ${hasBlockingErrors && !stockOnlyErrors && lines.length ? "bg-rose-600" : "bg-indigo-600 hover:bg-indigo-700"}`}
               >
                 <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
@@ -1745,7 +1745,7 @@ export default function POSPage() {
                   onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
                   onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
                   onKeyDown={handleCustomerKeyDown}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-[13px] font-bold text-slate-800 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
                 />
                 {customerLookupOpen && (
                   <SearchDropdown
@@ -1760,7 +1760,7 @@ export default function POSPage() {
               {customer?.id && (
                 <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-[12px] font-black text-emerald-800 truncate">{customer.name}</span>
+                  <span className="text-2sm font-black text-emerald-800 truncate">{customer.name}</span>
                   {customer.phone && <span className="text-[11px] text-emerald-600 mr-auto shrink-0 font-mono">{customer.phone}</span>}
                   <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full text-emerald-500 hover:bg-emerald-200 hover:text-emerald-700 transition-colors mr-auto">
                     <ExternalLink className="h-3 w-3" />
@@ -1769,7 +1769,7 @@ export default function POSPage() {
               )}
               {!customer?.id && customers.length > 0 && (
                 <div className="mt-2.5">
-                  <div className="text-[10px] font-bold text-slate-400 mb-1.5">اختيار سريع:</div>
+                  <div className="text-[11px] font-bold text-slate-400 mb-1.5">اختيار سريع:</div>
                   <div className="flex flex-wrap gap-1.5">
                     {customers.slice(0, 4).map(c => (
                       <button
@@ -1796,16 +1796,16 @@ export default function POSPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                  <span className="text-[12px] font-bold text-slate-500">إجمالي الأصناف</span>
-                  <span className="text-[13px] font-black text-slate-800 font-mono">{lines.length}</span>
+                  <span className="text-2sm font-bold text-slate-500">إجمالي الأصناف</span>
+                  <span className="text-sm font-black text-slate-800 font-mono">{lines.length}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                  <span className="text-[12px] font-bold text-slate-500">مجموع الكميات</span>
-                  <span className="text-[13px] font-black text-slate-800 font-mono">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
+                  <span className="text-2sm font-bold text-slate-500">مجموع الكميات</span>
+                  <span className="text-sm font-black text-slate-800 font-mono">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                  <span className="text-[12px] font-bold text-slate-500">الإجمالي الفرعي</span>
-                  <span className="text-[13px] font-black font-mono text-slate-800">{formatMoney(totals.subtotal)}</span>
+                  <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
+                  <span className="text-sm font-black font-mono text-slate-800">{formatMoney(totals.subtotal)}</span>
                 </div>
 
                 <div className="h-px bg-slate-100 my-1" />
@@ -1829,13 +1829,13 @@ export default function POSPage() {
                           setDiscount(Math.min(v, totals.subtotal));
                         }
                       }}
-                      className="flex-1 min-w-0 rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-2 text-[13px] font-black text-rose-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 text-center transition-all"
+                      className="flex-1 min-w-0 rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-2 text-sm font-black text-rose-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 text-center transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setInvoiceDiscountMode((m) => m === "pct" ? "flat" : "pct")}
                       title={invoiceDiscountMode === "pct" ? "تغيير إلى قيمة ثابتة" : "تغيير إلى نسبة مئوية"}
-                      className={`h-[40px] px-3 rounded-lg text-[12px] font-black border transition-all shrink-0
+                      className={`h-[40px] px-3 rounded-lg text-2sm font-black border transition-all shrink-0
                         ${invoiceDiscountMode === "pct"
                           ? "bg-rose-100 border-rose-300 text-rose-700 shadow-sm"
                           : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
@@ -1844,7 +1844,7 @@ export default function POSPage() {
                     </button>
                   </div>
                   {discount > 0 && invoiceDiscountMode === "flat" && totals.subtotal > 0 && (
-                    <span className="text-[10px] font-mono text-rose-400 px-1">{((discount / totals.subtotal) * 100).toFixed(1)}% من الإجمالي</span>
+                    <span className="text-[11px] font-mono text-rose-400 px-1">{((discount / totals.subtotal) * 100).toFixed(1)}% من الإجمالي</span>
                   )}
                 </div>
 
@@ -1867,13 +1867,13 @@ export default function POSPage() {
                           setIncrease(v);
                         }
                       }}
-                      className="flex-1 min-w-0 rounded-lg border border-blue-200 bg-blue-50/50 px-3 py-2 text-[13px] font-black text-blue-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-center transition-all"
+                      className="flex-1 min-w-0 rounded-lg border border-blue-200 bg-blue-50/50 px-3 py-2 text-sm font-black text-blue-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-center transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setInvoiceIncreaseMode((m) => m === "pct" ? "flat" : "pct")}
                       title={invoiceIncreaseMode === "pct" ? "تغيير إلى قيمة ثابتة" : "تغيير إلى نسبة مئوية"}
-                      className={`h-[40px] px-3 rounded-lg text-[12px] font-black border transition-all shrink-0
+                      className={`h-[40px] px-3 rounded-lg text-2sm font-black border transition-all shrink-0
                         ${invoiceIncreaseMode === "pct"
                           ? "bg-blue-100 border-blue-300 text-blue-700 shadow-sm"
                           : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
@@ -1886,11 +1886,11 @@ export default function POSPage() {
                 <div className="h-px bg-slate-100 my-1" />
 
                 <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
-                  <div className="text-[10px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
+                  <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                   <div className="text-[32px] font-black tracking-tighter font-mono leading-none mt-1.5">
                     {totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </div>
-                  <div className="text-[10px] opacity-40 mt-1">ج.م</div>
+                  <div className="text-[11px] opacity-40 mt-1">ج.م</div>
                 </div>
 
                 {hasBlockingErrors && (
@@ -1902,7 +1902,7 @@ export default function POSPage() {
                       ws.filter((w) => w.type === "error").map((w, i) => {
                         const l = lines.find((ln) => String(ln.item_id) === String(itemId));
                         return (
-                          <div key={`${itemId}-${i}`} className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                          <div key={`${itemId}-${i}`} className="text-[11px] text-rose-600 font-bold flex items-center gap-1">
                             <span className="h-1 w-1 rounded-full bg-rose-400 shrink-0" /> {l?.item_name || itemId}: {w.msg}
                           </div>
                         );
@@ -1917,7 +1917,7 @@ export default function POSPage() {
             {amendContext && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-[11px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1">
                     <Pencil className="h-3 w-3" /> الفاتورة الأصلية المُعدَّلة
                   </span>
                   <button onClick={() => setShowAmendSummary(false)} className="text-amber-400 hover:text-amber-700">
@@ -1988,7 +1988,7 @@ export default function POSPage() {
                       <div className={`flex h-7 w-7 items-center justify-center rounded-md ${isActive ? "bg-white/20" : c.bg}`}>
                         <Icon className={`h-3.5 w-3.5 ${isActive ? "text-white" : c.text}`} />
                       </div>
-                      <span className="text-[10px] font-black leading-tight whitespace-nowrap">{label}</span>
+                      <span className="text-[11px] font-black leading-tight whitespace-nowrap">{label}</span>
                       <span className={`text-[8.5px] font-medium leading-tight text-center mt-0.5 transition-colors duration-150 ${
                         isActive ? "text-white/80" : "text-slate-400"
                       }`}>{desc}</span>
@@ -2004,7 +2004,7 @@ export default function POSPage() {
                   <label className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5">
                     <CreditCard className="w-3 h-3" /> اختر البنك / البطاقة
                   </label>
-                  <select value={selectedBankId} onChange={(e) => setSelectedBankId(e.target.value)} className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                  <select value={selectedBankId} onChange={(e) => setSelectedBankId(e.target.value)} className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-2sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
                     <option value="">اختر البنك / البطاقة</option>
                     {banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
@@ -2023,12 +2023,12 @@ export default function POSPage() {
                   </div>
                   <div className="flex flex-col divide-y divide-violet-100/60">
                     <div className="flex items-center gap-3 py-2 first:pt-0">
-                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600">💰 دفعة مقدم</span>
-                      <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600">💰 دفعة مقدم</span>
+                      <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                     </div>
                     <div className="flex items-center gap-3 py-2 last:pb-0">
-                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600">📅 تاريخ استحقاق القسط</span>
-                      <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="w-36 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600">📅 تاريخ استحقاق القسط</span>
+                      <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="w-36 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                     </div>
                   </div>
                   {customer && (
@@ -2046,25 +2046,25 @@ export default function POSPage() {
                   <div className="flex flex-col divide-y divide-slate-100">
                     {/* Cash */}
                     <div className="flex items-center gap-3 py-2 first:pt-0">
-                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug">💵 نقدي</span>
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug">💵 نقدي</span>
                       <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
-                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     </div>
                     {/* Custom methods */}
                     {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
                       <div key={m.id} className="flex items-center gap-3 py-2">
-                        <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
+                        <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
                         <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
-                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                       </div>
                     ))}
                     {/* Credit */}
                     <div className="flex items-center gap-3 py-2 last:pb-0">
-                      <span className={`flex-1 min-w-0 text-[12px] font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                      <span className={`flex-1 min-w-0 text-2sm font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
                       <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
                         placeholder={customer?.id ? "0.00" : "اختر عميل..."}
                         disabled={!customer?.id}
-                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
                     </div>
                   </div>
                   {/* Total bar */}
@@ -2086,10 +2086,10 @@ export default function POSPage() {
             {customer && customer.id && (
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-[14px] font-black">{(customer.name || "?")[0]}</div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-sm font-black">{(customer.name || "?")[0]}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[13px] font-black text-slate-800 truncate">{customer.name}</p>
+                      <p className="text-sm font-black text-slate-800 truncate">{customer.name}</p>
                       <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </button>
@@ -2097,7 +2097,7 @@ export default function POSPage() {
                     {customer.phone && <p className="text-[11px] text-slate-500 mt-0.5 font-mono">{customer.phone}</p>}
                     <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                       <span className="text-[11px] font-bold text-slate-500">{amendContext ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
-                      <span className={`text-[13px] font-black font-mono ${displayBalance > 0 ? "text-rose-600" : "text-slate-800"}`}>{displayBalance.toFixed(3)}</span>
+                      <span className={`text-sm font-black font-mono ${displayBalance > 0 ? "text-rose-600" : "text-slate-800"}`}>{displayBalance.toFixed(3)}</span>
                     </div>
                     {creditEffect > 0 && lines.length > 0 && (
                       <div className="mt-1.5 space-y-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
@@ -2105,7 +2105,7 @@ export default function POSPage() {
                           <span className="text-[11px] font-bold text-amber-600">
                             {paymentType === "installments" ? "الإضافة للأقساط" : paymentType === "multi" ? "الإضافة للآجل" : "الإضافة للرصيد"}
                           </span>
-                          <span className="text-[13px] font-black font-mono text-amber-700">
+                          <span className="text-sm font-black font-mono text-amber-700">
                             +{creditEffect.toFixed(3)}
                           </span>
                         </div>
@@ -2113,7 +2113,7 @@ export default function POSPage() {
                           <span className="text-[11px] font-bold text-amber-600">
                             {paymentType === "installments" ? "الرصيد بعد الأقساط" : paymentType === "multi" ? "الرصيد بعد الآجل" : "الرصيد بعد الفاتورة"}
                           </span>
-                          <span className={`text-[13px] font-black font-mono ${displayBalance + creditEffect > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          <span className={`text-sm font-black font-mono ${displayBalance + creditEffect > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                             {(displayBalance + creditEffect).toFixed(3)}
                           </span>
                         </div>
@@ -2124,8 +2124,8 @@ export default function POSPage() {
 
                     {selectedTreasuryId && (paymentType === "cash" || paymentType === "multi") && lines.length > 0 && (
                       <div className="mt-1 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5">
-                        <span className="text-[10px] font-bold text-emerald-600">الخزينة بعد الفاتورة</span>
-                        <span className="text-[12px] font-black font-mono text-emerald-700">
+                        <span className="text-[11px] font-bold text-emerald-600">الخزينة بعد الفاتورة</span>
+                        <span className="text-2sm font-black font-mono text-emerald-700">
                           {(Number(treasuries.find(t => String(t.id) === String(selectedTreasuryId))?.balance || 0) + totals.total).toFixed(3)}
                         </span>
                       </div>
@@ -2143,7 +2143,7 @@ export default function POSPage() {
                     data-help="confirm-button"
                     onClick={() => setPrintPreview(true)}
                     disabled={!lines.length || isSaving || hasBlockingErrors}
-                    className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-4 text-[14px] font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}
                   >
                     <Printer className="h-5 w-5" /> طباعة ومراجعة المستند
                   </button>
@@ -2154,7 +2154,7 @@ export default function POSPage() {
                       type="button"
                       onClick={() => setSaveConfirmOpen(true)}
                       disabled={!lines.length || isSaving || hasBlockingErrors}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-2sm font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"}`}
                     >
                       حفظ فقط
                     </button>
@@ -2164,7 +2164,7 @@ export default function POSPage() {
                       type="button"
                       onClick={() => setCancelModalOpen(true)}
                       disabled={!lines.length}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-2sm font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       <Trash2 className="h-4 w-4" /> إلغاء
                     </button>
@@ -2172,7 +2172,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setNewInvoiceModalOpen(true)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all"
                   >
                     <FilePlus className="h-4 w-4" /> جديدة
                   </button>
@@ -2183,7 +2183,7 @@ export default function POSPage() {
                       data-help="hold-button"
                       type="button"
                       onClick={() => setHeldDropdownOpen((v) => !v)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-[13px] font-black transition-all ${(() => {
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-sm font-black transition-all ${(() => {
                         const yellowHours = Number(storeSettings?.held_yellow_hours || 2);
                         const redHours = Number(storeSettings?.held_red_hours || 8);
                         const now = Date.now();
@@ -2283,11 +2283,11 @@ export default function POSPage() {
                   </div>
                   {selectedItem && (
                     <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-sm px-2 py-0.5 mt-0.5">
-                      <span className="font-mono text-[10px] font-black text-indigo-700 shrink-0">
+                      <span className="font-mono text-[11px] font-black text-indigo-700 shrink-0">
                         {selectedItem.item_code || selectedItem.code || `#${selectedItem.id}`}
                       </span>
                       <div className="h-3 w-px bg-indigo-300 shrink-0" />
-                      <span className="text-[10px] text-indigo-600 font-bold truncate">{selectedItem.name}</span>
+                      <span className="text-[11px] text-indigo-600 font-bold truncate">{selectedItem.name}</span>
                     </div>
                   )}
                 </div>
@@ -2308,7 +2308,7 @@ export default function POSPage() {
                     }}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleListFieldKeyDown(e, listPriceRef, listWhRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center"
+                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
                   />
                 </div>
 
@@ -2327,7 +2327,7 @@ export default function POSPage() {
                         setStaging((s) => ({ ...s, unitPrice: String(Number(selectedItem.sale_price || selectedItem.price || 0)) }));
                       }
                     }}
-                    className="w-full h-[22px] border border-slate-300 rounded-sm bg-slate-50 px-1 text-[10px] font-bold text-slate-700 outline-none focus:border-slate-800"
+                    className="w-full h-[22px] border border-slate-300 rounded-sm bg-slate-50 px-1 text-[11px] font-bold text-slate-700 outline-none focus:border-slate-800"
                   >
                     <option value="retail">سعر المستهلك</option>
                     {selectedItem && Number(selectedItem.wholesale_price) > 0 && (
@@ -2344,7 +2344,7 @@ export default function POSPage() {
                     onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
                     readOnly={!canOverridePrice}
                     title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}
-                    className={`w-full h-[30px] border rounded-sm py-1 px-2 text-[12px] font-black outline-none text-center transition-colors
+                    className={`w-full h-[30px] border rounded-sm py-1 px-2 text-2sm font-black outline-none text-center transition-colors
                       ${!canOverridePrice
                         ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
                         : selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0)
@@ -2352,7 +2352,7 @@ export default function POSPage() {
                           : "bg-slate-50 border-slate-300 text-slate-800 focus:border-slate-800"}`}
                   />
                   <div className="h-[20px] flex items-center justify-center rounded-sm bg-slate-100 border border-slate-200 px-1">
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[11px] font-mono text-slate-400">
                       {lastSalePrice !== null
                         ? `آخر بيع: ${Number(lastSalePrice).toFixed(2)}`
                         : "لا يوجد سابق"}
@@ -2372,7 +2372,7 @@ export default function POSPage() {
                     onChange={(e) => setStaging(s => ({ ...s, lineDiscount: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleListFieldKeyDown(e, listAddBtnRef, listPriceRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center"
+                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
                   />
                 </div>
 
@@ -2386,7 +2386,7 @@ export default function POSPage() {
                     className="max-h-[96px] overflow-y-auto border border-slate-300 rounded-sm bg-slate-50 flex flex-col divide-y divide-slate-100 custom-scrollbar outline-none focus:border-slate-600"
                   >
                     {!selectedItem ? (
-                      <div className="px-2 py-3 text-[10px] text-slate-400 font-bold text-center">اختر صنفاً أولاً</div>
+                      <div className="px-2 py-3 text-[11px] text-slate-400 font-bold text-center">اختر صنفاً أولاً</div>
                     ) : (
                       (() => {
                         // In amend mode, show all warehouses (effective stock = current + original qty for this item/warehouse)
@@ -2395,7 +2395,7 @@ export default function POSPage() {
                           : warehouses.filter((w) => (stockLevels[selectedItem.id]?.[w.id] || 0) > 0);
                         if (stocked.length === 0) {
                           return (
-                            <div className="px-2 py-2.5 text-[10px] text-rose-600 font-bold text-center flex items-center justify-center gap-1.5">
+                            <div className="px-2 py-2.5 text-[11px] text-rose-600 font-bold text-center flex items-center justify-center gap-1.5">
                               <AlertTriangle className="w-3.5 h-3.5" />لا يوجد مخزون لهذا الصنف
                             </div>
                           );
@@ -2424,7 +2424,7 @@ export default function POSPage() {
                                 ${isSelected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"}`}
                               />
                               <span className="flex-1 truncate text-[11px] font-bold">{w.name}</span>
-                              <span className={`font-mono text-[10px] font-black rounded-sm px-1 shrink-0
+                              <span className={`font-mono text-[11px] font-black rounded-sm px-1 shrink-0
                                 ${isInsuff
                                   ? "text-rose-700 bg-rose-100"
                                   : isLow
@@ -2445,7 +2445,7 @@ export default function POSPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
                   <div className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-50 px-2">
-                    <span className="text-[12px] font-bold text-slate-600 truncate">
+                    <span className="text-2sm font-bold text-slate-600 truncate">
                       {selectedItem && staging.unitId
                         ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية")
                         : "أساسية"}
@@ -2459,7 +2459,7 @@ export default function POSPage() {
                   onClick={addCurrentLine}
                   disabled={!selectedItem}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); } }}
-                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-slate-800 px-4 text-[12px] font-bold text-white hover:bg-slate-700 disabled:opacity-40 self-end transition-all"
+                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-slate-800 px-4 text-2sm font-bold text-white hover:bg-slate-700 disabled:opacity-40 self-end transition-all"
                 >
                   <Plus className="h-4 w-4" /> إضافة
                 </button>
@@ -2540,7 +2540,7 @@ export default function POSPage() {
                           <div className="w-8 h-8 shrink-0 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-4 h-4 text-slate-300"/></div>
                         )}
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className={`truncate text-[12px] font-black ${hasError ? "text-rose-700" : "text-slate-800"}`}>
+                          <span className={`truncate text-2sm font-black ${hasError ? "text-rose-700" : "text-slate-800"}`}>
                             {l.item_name}
                           </span>
                           {warnings.map((w, i) => (
@@ -2582,7 +2582,7 @@ export default function POSPage() {
                           const v = Math.max(1, Math.floor(Number(e.target.value) || 1));
                           updateLine(l.item_id, { quantity: hasLimit ? Math.min(v, maxStock) : v });
                         }}
-                        className={`w-full text-center text-[13px] font-mono font-black bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
+                        className={`w-full text-center text-sm font-mono font-black bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
                       />
                       {hasLimit && (
                         <span className={`text-[9px] font-black leading-none ${atLimit ? 'text-rose-500' : 'text-slate-400'}`}>
@@ -2603,7 +2603,7 @@ export default function POSPage() {
                         <input type="number" step="any" value={l.unit_price}
                           onChange={(e) => canOverridePrice && updateLine(l.item_id, { unit_price: Number(e.target.value) || 0 })}
                           readOnly={!canOverridePrice}
-                          className={`w-full h-[40px] text-center text-[13px] font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${
+                          className={`w-full h-[40px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${
                             !canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" :
                             isOverride ? "bg-amber-50 text-amber-800 focus:bg-amber-100" : "bg-transparent focus:bg-indigo-50/50"
                           }`} />
@@ -2640,7 +2640,7 @@ export default function POSPage() {
                               updateLine(l.item_id, { line_discount: Math.min(v, lineMax) });
                             }
                           }}
-                          className={`w-full h-[28px] text-center text-[12px] font-mono font-black bg-transparent outline-none border rounded-sm transition-colors
+                          className={`w-full h-[28px] text-center text-2sm font-mono font-black bg-transparent outline-none border rounded-sm transition-colors
                             ${isOver
                               ? "border-rose-400 bg-rose-50/50 text-rose-700 focus:border-rose-600"
                               : "border-slate-200 focus:border-amber-400 focus:bg-amber-50/50"}`}
@@ -2648,7 +2648,7 @@ export default function POSPage() {
                         <button
                           type="button"
                           onClick={() => setDiscountModes((m) => ({ ...m, [l.item_id]: mode === "pct" ? "flat" : "pct" }))}
-                          className={`h-[28px] px-1.5 rounded-sm text-[10px] font-black border transition-colors shrink-0
+                          className={`h-[28px] px-1.5 rounded-sm text-[11px] font-black border transition-colors shrink-0
                             ${mode === "pct"
                               ? "bg-amber-100 border-amber-300 text-amber-700"
                               : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"}`}
@@ -2708,7 +2708,7 @@ export default function POSPage() {
                     const isProfit = profitFlat >= 0;
                     return (
                       <div className="relative w-full h-full flex items-center justify-center gap-1">
-                        <span className={`text-[12px] font-mono font-black ${isProfit ? "text-emerald-700" : "text-rose-600"}`}>
+                        <span className={`text-2sm font-mono font-black ${isProfit ? "text-emerald-700" : "text-rose-600"}`}>
                           {profitDisplayMode === "pct"
                             ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`
                             : `${profitFlat >= 0 ? "+" : ""}${profitFlat.toFixed(2)}`}
@@ -2729,7 +2729,7 @@ export default function POSPage() {
                 },
                 {
                   id: "total", header: "الإجمالي", width: 110, sortable: true,
-                  headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-[14px] text-slate-900 bg-slate-50/50 border-l border-slate-100",
+                  headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100",
                   render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0))
                 },
                 {
@@ -2794,14 +2794,14 @@ export default function POSPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto">
               <ShieldCheck className="h-7 w-7 text-amber-600" />
             </div>
-            <p className="text-[13px] font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح ({Number(storeSettings?.max_discount_percent ?? 15)}% من الإجمالي).</p>
-            <p className="text-[12px] text-slate-500">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
+            <p className="text-sm font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح ({Number(storeSettings?.max_discount_percent ?? 15)}% من الإجمالي).</p>
+            <p className="text-2sm text-slate-500">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
             <div className="flex justify-center gap-3 pt-2">
               <button type="button" onClick={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }}
-                className="rounded-sm border border-slate-200 px-5 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
+                className="rounded-sm border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
               <PermissionGate page="pos" action="discount">
                 <button type="button" onClick={confirmSupervisorOverride}
-                  className="rounded-sm bg-amber-600 px-5 py-2.5 text-[13px] font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
+                  className="rounded-sm bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
               </PermissionGate>
             </div>
           </div>
@@ -2809,9 +2809,9 @@ export default function POSPage() {
                       {/* Set Default View Modal */}
         <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
           <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
-            <p className="text-[13px] font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
+            <p className="text-sm font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
             <div className="flex gap-2">
-              <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
+              <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
               <button
                 onClick={() => {
                   api.put("/api/settings", { ...storeSettings, default_pos_view: pendingViewMode })
@@ -2826,7 +2826,7 @@ export default function POSPage() {
                     });
                   setShowSetDefaultModal(false);
                 }}
-                className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
+                className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
               >
                 نعم، احفظه كافتراضي
               </button>
@@ -2842,8 +2842,8 @@ export default function POSPage() {
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
                   <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[13px] font-black text-amber-800">يوجد أصناف في الفاتورة الحالية</p>
-                    <p className="text-[12px] font-bold text-amber-700 mt-1">اختر كيف تريد المتابعة:</p>
+                    <p className="text-sm font-black text-amber-800">يوجد أصناف في الفاتورة الحالية</p>
+                    <p className="text-2sm font-bold text-amber-700 mt-1">اختر كيف تريد المتابعة:</p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -2853,7 +2853,7 @@ export default function POSPage() {
                       saveInvoice(false);
                     }}
                     disabled={isSaving}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
                   >
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}
                   </button>
@@ -2869,7 +2869,7 @@ export default function POSPage() {
                       setInvoiceSeq((s) => s + 1);
                       toast.success("تم تعليق الفاتورة");
                     }}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
                   >
                     <PauseCircle className="h-4 w-4" />
                     تعليق الحالية وإنشاء جديدة
@@ -2884,14 +2884,14 @@ export default function POSPage() {
                       setPaymentType("cash");
                       setInvoiceSeq((s) => s + 1);
                     }}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
                   >
                     <Trash2 className="h-4 w-4" />
                     تجاهل وإنشاء جديدة
                   </button>
                   <button
                     onClick={() => setNewInvoiceModalOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                   >
                     إلغاء
                   </button>
@@ -2902,8 +2902,8 @@ export default function POSPage() {
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
                   <FilePlus className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[13px] font-black text-emerald-800">إنشاء فاتورة جديدة</p>
-                    <p className="text-[12px] font-bold text-emerald-700 mt-1">الفاتورة الحالية فارغة</p>
+                    <p className="text-sm font-black text-emerald-800">إنشاء فاتورة جديدة</p>
+                    <p className="text-2sm font-bold text-emerald-700 mt-1">الفاتورة الحالية فارغة</p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -2917,14 +2917,14 @@ export default function POSPage() {
                       setPaymentType("cash");
                       setInvoiceSeq((s) => s + 1);
                     }}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
                   >
                     <FilePlus className="h-4 w-4" />
                     إنشاء فاتورة جديدة
                   </button>
                   <button
                     onClick={() => setNewInvoiceModalOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                   >
                     إلغاء
                   </button>
@@ -2942,21 +2942,21 @@ export default function POSPage() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
               <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[13px] font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
-                <p className="text-[12px] font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
+                <p className="text-sm font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
+                <p className="text-2sm font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
                 disabled={isSaving}
-                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
               >
                 {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد الحفظ"}
               </button>
               <button
                 onClick={() => setSaveConfirmOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
               >
                 تراجع
               </button>
@@ -2968,8 +2968,8 @@ export default function POSPage() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
               <Trash2 className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[13px] font-black text-rose-800">هل تريد إلغاء الفاتورة الحالية؟</p>
-                <p className="text-[12px] font-bold text-rose-700 mt-1">سيتم حذف جميع الأصناف المضافة</p>
+                <p className="text-sm font-black text-rose-800">هل تريد إلغاء الفاتورة الحالية؟</p>
+                <p className="text-2sm font-bold text-rose-700 mt-1">سيتم حذف جميع الأصناف المضافة</p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
@@ -2983,14 +2983,14 @@ export default function POSPage() {
                   setPaymentType("cash");
                   setInvoiceSeq((s) => s + 1);
                 }}
-                className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-[13px] font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-sm font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
               >
                 <Trash2 className="h-4 w-4" />
                 نعم، إلغاء الفاتورة
               </button>
               <button
                 onClick={() => setCancelModalOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
               >
                 تراجع
               </button>
@@ -2999,7 +2999,7 @@ export default function POSPage() {
         </Modal>
 
         {saveMessage && (
-          <div className="absolute left-1/2 top-20 z-[150] -translate-x-1/2 rounded-sm border border-rose-200 bg-rose-50 px-5 py-2.5 font-bold text-[13px] text-rose-700 shadow-xl animate-fade-in">
+          <div className="absolute left-1/2 top-20 z-[150] -translate-x-1/2 rounded-sm border border-rose-200 bg-rose-50 px-5 py-2.5 font-bold text-sm text-rose-700 shadow-xl animate-fade-in">
             {saveMessage}
           </div>
         )}
@@ -3045,15 +3045,15 @@ export default function POSPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
             <div className="text-3xl mb-2">⚠️</div>
             <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
-            <p className="text-[13px] text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
-            <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-[13px] font-bold">
+            <p className="text-sm text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
+            <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold">
               حسناً
             </button>
           </div>
         </div>
       )}
       {isOffline && (
-        <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-[12px] font-black tracking-wide text-white shrink-0 z-50">
+        <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-2sm font-black tracking-wide text-white shrink-0 z-50">
           <AlertTriangle className="h-3.5 w-3.5" />
           تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
         </div>
@@ -3066,7 +3066,7 @@ export default function POSPage() {
           <div className="flex items-start gap-3">
             <div className="flex items-center gap-1.5 mt-0.5">
               <Pencil className="h-4 w-4 text-amber-600" />
-              <span className="text-[12px] font-black text-amber-800">وضع التعديل — الفاتورة الأصلية:</span>
+              <span className="text-2sm font-black text-amber-800">وضع التعديل — الفاتورة الأصلية:</span>
             </div>
             <div className="flex flex-wrap items-center gap-3 flex-1 text-[11px] font-bold text-amber-700">
               {amendContext.prefill?.customer_name && (
@@ -3112,12 +3112,12 @@ export default function POSPage() {
                 readOnly
                 disabled
                 value={invoiceIsActive ? (docNo || invoiceNumber) : "—"}
-                className="w-[165px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[12px] font-mono font-black text-slate-600 cursor-default text-center select-none disabled:opacity-70"
+                className="w-[165px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-2sm font-mono font-black text-slate-600 cursor-default text-center select-none disabled:opacity-70"
               />
               {invoiceIsActive && invoiceCreatedAt && (
                 <input readOnly disabled
                   value={new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
-                  className="w-[120px] rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-mono font-bold text-slate-400 cursor-default text-center select-none disabled:opacity-70"
+                  className="w-[120px] rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-mono font-bold text-slate-400 cursor-default text-center select-none disabled:opacity-70"
                 />
               )}
               <div className="flex items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-50 px-2 py-1">
@@ -3141,7 +3141,7 @@ export default function POSPage() {
                   value={detailedSearchQuery}
                   onChange={(val) => setDetailedSearchQuery(val)}
                   placeholder="ابحث بالاسم، الكود، الباركود (عربي/إنجليزي)..."
-                  className="w-full text-[13px] py-2"
+                  className="w-full text-sm py-2"
                 />
               </div>
               <div className="flex shrink-0 bg-slate-100 rounded-xl p-1 border border-slate-100">
@@ -3178,7 +3178,7 @@ export default function POSPage() {
                 <button
                   key={cat}
                   onClick={() => setDetailedCategoryFilter(cat)}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-[12px] font-black transition-all border ${detailedCategoryFilter === cat ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-2sm font-black transition-all border ${detailedCategoryFilter === cat ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
                 >
                   {cat === "all" ? "كل الفئات" : cat}
                 </button>
@@ -3194,7 +3194,7 @@ export default function POSPage() {
             {detailedItemResults.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-slate-400 opacity-60">
                 <Search className="h-16 w-16 mb-4 text-slate-300" />
-                <p className="text-[14px] font-black tracking-widest">لا توجد أصناف مطابقة</p>
+                <p className="text-sm font-black tracking-widest">لا توجد أصناف مطابقة</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -3212,12 +3212,12 @@ export default function POSPage() {
                       )}
                     </div>
                     <div className="flex flex-col w-full min-w-0">
-                      <span className="text-[12px] font-black text-slate-800 truncate block leading-tight">{item.name}</span>
-                      <span className="text-[10px] font-bold text-slate-400 font-mono truncate">{item.barcode || item.code || "—"}</span>
+                      <span className="text-2sm font-black text-slate-800 truncate block leading-tight">{item.name}</span>
+                      <span className="text-[11px] font-bold text-slate-400 font-mono truncate">{item.barcode || item.code || "—"}</span>
                     </div>
                     <div className="flex items-center justify-between w-full mt-auto pt-1.5 border-t border-slate-100">
-                      <span className="text-[14px] font-black text-indigo-600 font-mono">{formatMoney(item.sale_price || item.price || 0)}</span>
-                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${Number(item.stock_quantity || item.stock || 0) <= 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500"}`}>
+                      <span className="text-sm font-black text-indigo-600 font-mono">{formatMoney(item.sale_price || item.price || 0)}</span>
+                      <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-md ${Number(item.stock_quantity || item.stock || 0) <= 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500"}`}>
                         {Number(item.stock_quantity || item.stock || 0)}
                       </span>
                     </div>
@@ -3296,7 +3296,7 @@ export default function POSPage() {
                   onFocus={() => setCustomerLookupOpen(true)}
                   onBlur={() => setTimeout(() => { setCustomerLookupOpen(false); if (!customer) setCustomerQuery(""); }, 200)}
                   onKeyDown={handleCustomerKeyDown}
-                  className={`w-full border rounded-xl py-2.5 pl-2 pr-9 text-[13px] font-black outline-none transition-all ${
+                  className={`w-full border rounded-xl py-2.5 pl-2 pr-9 text-sm font-black outline-none transition-all ${
                     hasCustomerBalance
                       ? "border-amber-300 bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-200"
                       : "border-slate-200 bg-slate-50 text-slate-800 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
@@ -3339,7 +3339,7 @@ export default function POSPage() {
                   <button
                     key={c.id}
                     onClick={() => { setCustomer(c); setCustomerQuery(c.name); }}
-                    className="px-2 py-0.5 rounded-sm bg-slate-100 text-[10px] font-bold text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors"
+                    className="px-2 py-0.5 rounded-sm bg-slate-100 text-[11px] font-bold text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors"
                   >
                     {c.name}
                   </button>
@@ -3357,7 +3357,7 @@ export default function POSPage() {
                   <ShoppingCart className="h-10 w-10 text-slate-300" />
                 </div>
                 <span className="text-[15px] font-black tracking-widest text-slate-500">الفاتورة فارغة</span>
-                <span className="mt-1.5 text-[12px] font-bold text-slate-400">اضغط على الأصناف لإضافتها</span>
+                <span className="mt-1.5 text-2sm font-bold text-slate-400">اضغط على الأصناف لإضافتها</span>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
@@ -3384,10 +3384,10 @@ export default function POSPage() {
                       {/* Row 1: name + delete */}
                       <div className="flex items-center justify-between gap-2 pr-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500">{idx + 1}</span>
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-500">{idx + 1}</span>
                           <div className="flex flex-col min-w-0">
-                            <span className="text-[13px] font-black text-slate-800 truncate block leading-tight whitespace-nowrap" title={line.item_name || line.name}>{line.item_name || line.name}</span>
-                            <span className="text-[10px] font-mono text-slate-400 truncate whitespace-nowrap">{line.code || "—"}</span>
+                            <span className="text-sm font-black text-slate-800 truncate block leading-tight whitespace-nowrap" title={line.item_name || line.name}>{line.item_name || line.name}</span>
+                            <span className="text-[11px] font-mono text-slate-400 truncate whitespace-nowrap">{line.code || "—"}</span>
                           </div>
                         </div>
                         <button onClick={() => removeLine(line.item_id)} className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all">
@@ -3409,7 +3409,7 @@ export default function POSPage() {
                               <div className="w-px h-5 bg-slate-100" />
                               <input type="number" min="1" max={maxStock === Infinity ? undefined : maxStock} value={line.quantity}
                                 onChange={(e) => { const v = Number(e.target.value || 1); updateLine(line.item_id, { quantity: maxStock === Infinity ? v : Math.min(v, maxStock) }); }}
-                                className="w-11 h-8 text-center text-[12px] font-black bg-transparent outline-none ring-0 border-0 text-slate-800" />
+                                className="w-11 h-8 text-center text-2sm font-black bg-transparent outline-none ring-0 border-0 text-slate-800" />
                               <div className="w-px h-5 bg-slate-100" />
                               <button
                                 onClick={() => { const next = Number(line.quantity) + 1; if (next <= maxStock) updateLine(line.item_id, { quantity: next }); }}
@@ -3419,7 +3419,7 @@ export default function POSPage() {
                               ><Plus className="w-3.5 h-3.5" /></button>
                             </div>
                             {stockLoaded && maxStock !== Infinity && (
-                              <span className={`text-[10px] font-bold whitespace-nowrap ${Number(line.quantity) >= maxStock ? 'text-rose-500' : 'text-slate-400'}`}>
+                              <span className={`text-[11px] font-bold whitespace-nowrap ${Number(line.quantity) >= maxStock ? 'text-rose-500' : 'text-slate-400'}`}>
                                 {Number(line.quantity) >= maxStock ? 'نفد المخزون' : `متاح: ${maxStock - Number(line.quantity)}`}
                               </span>
                             )}
@@ -3429,7 +3429,7 @@ export default function POSPage() {
 
                           {/* Discount */}
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">خصم</span>
+                            <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">خصم</span>
                             <input
                               type="number"
                               min="0"
@@ -3456,7 +3456,7 @@ export default function POSPage() {
                                 ...m,
                                 [line.item_id]: m[line.item_id] === "pct" ? "flat" : "pct"
                               }))}
-                              className={`px-1.5 py-0.5 rounded-lg text-[10px] font-black border transition-all
+                              className={`px-1.5 py-0.5 rounded-lg text-[11px] font-black border transition-all
                                 ${discountModes[line.item_id] === "pct"
                                   ? "bg-amber-100 border-amber-300 text-amber-700 shadow-sm"
                                   : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"}`}
@@ -3469,33 +3469,33 @@ export default function POSPage() {
                         {/* Price */}
                         <div className="flex flex-col items-end gap-0.5 shrink-0">
                           <div className={`rounded-xl px-2.5 py-1 border whitespace-nowrap ${isPriceOverride ? "bg-amber-50 border-amber-200" : "bg-indigo-50 border-indigo-100"}`}>
-                            <span className={`font-mono text-[14px] font-black ${isPriceOverride ? "text-amber-700" : "text-indigo-700"}`}>{formatMoney(lineTotal)}</span>
+                            <span className={`font-mono text-sm font-black ${isPriceOverride ? "text-amber-700" : "text-indigo-700"}`}>{formatMoney(lineTotal)}</span>
                           </div>
                           {isPriceOverride ? (
-                            <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">
+                            <span className="text-[11px] font-bold text-amber-600 whitespace-nowrap">
                               {formatMoney(unitPrice)} <span className="text-slate-400 mx-0.5">←</span> {formatMoney(line.master_sale_price)}
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{formatMoney(unitPrice)} للقطعة</span>
+                            <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">{formatMoney(unitPrice)} للقطعة</span>
                           )}
                         </div>
                       </div>
 
                       {/* Warnings */}
                       {isExceedingStock && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg self-start">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg self-start">
                           <AlertTriangle className="w-3 h-3 shrink-0" />
                           تجاوز المخزون (متاح: {line.stock_quantity})
                         </div>
                       )}
                       {isBelowCost && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg self-start">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg self-start">
                           <TrendingUp className="w-3 h-3 shrink-0 rotate-180" />
                           سعر أقل من التكلفة ({cost.toFixed(2)})
                         </div>
                       )}
                       {isDiscountOverflow && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg self-start">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg self-start">
                           <AlertTriangle className="w-3 h-3 shrink-0" />
                           الخصم يتجاوز إجمالي السطر
                         </div>
@@ -3511,11 +3511,11 @@ export default function POSPage() {
           <div data-help="payment-section" className="shrink-0 flex flex-col border-t border-slate-200 bg-white shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] z-30 animate-fade-in">
             {/* Totals Summary */}
             <div className="flex flex-col px-4 py-3 bg-slate-900 gap-1.5 border-b border-slate-800">
-              <div className="flex items-center justify-between text-[12px]">
+              <div className="flex items-center justify-between text-2sm">
                 <span className="font-bold text-slate-400">الفرعي</span>
                 <span className="font-mono font-black text-slate-200">{formatMoney(totals.subtotal)}</span>
               </div>
-              <div data-help="discount-field" className="flex items-center justify-between text-[12px] gap-2">
+              <div data-help="discount-field" className="flex items-center justify-between text-2sm gap-2">
                 <span className="font-bold text-slate-400 shrink-0">خصم إضافي</span>
                 <div className="flex items-center gap-1">
                   <input
@@ -3532,12 +3532,12 @@ export default function POSPage() {
                         setDiscount(Math.min(v, totals.subtotal));
                       }
                     }}
-                    className="w-20 rounded-sm border border-slate-700 bg-slate-800 px-2 py-0.5 text-right font-mono text-[12px] font-black text-white outline-none focus:border-slate-500"
+                    className="w-20 rounded-sm border border-slate-700 bg-slate-800 px-2 py-0.5 text-right font-mono text-2sm font-black text-white outline-none focus:border-slate-500"
                   />
                   <button
                     type="button"
                     onClick={() => setInvoiceDiscountMode((m) => m === "pct" ? "flat" : "pct")}
-                    className={`px-1.5 py-0.5 rounded-sm text-[10px] font-black border transition-colors shrink-0
+                    className={`px-1.5 py-0.5 rounded-sm text-[11px] font-black border transition-colors shrink-0
                       ${invoiceDiscountMode === "pct"
                         ? "bg-rose-800 border-rose-600 text-rose-200"
                         : "border-slate-600 bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
@@ -3546,7 +3546,7 @@ export default function POSPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[12px] gap-2">
+              <div className="flex items-center justify-between text-2sm gap-2">
                 <span className="font-bold text-slate-400 shrink-0">إضافة / رسوم</span>
                 <div className="flex items-center gap-1">
                   <input
@@ -3563,12 +3563,12 @@ export default function POSPage() {
                         setIncrease(v);
                       }
                     }}
-                    className="w-20 rounded-sm border border-blue-700 bg-blue-900/40 px-2 py-0.5 text-right font-mono text-[12px] font-black text-blue-200 outline-none focus:border-blue-500"
+                    className="w-20 rounded-sm border border-blue-700 bg-blue-900/40 px-2 py-0.5 text-right font-mono text-2sm font-black text-blue-200 outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
                     onClick={() => setInvoiceIncreaseMode((m) => m === "pct" ? "flat" : "pct")}
-                    className={`px-1.5 py-0.5 rounded-sm text-[10px] font-black border transition-colors shrink-0
+                    className={`px-1.5 py-0.5 rounded-sm text-[11px] font-black border transition-colors shrink-0
                       ${invoiceIncreaseMode === "pct"
                         ? "bg-blue-800 border-blue-600 text-blue-200"
                         : "border-blue-700 bg-blue-800/40 text-blue-300 hover:bg-blue-700/60"}`}
@@ -3578,7 +3578,7 @@ export default function POSPage() {
                 </div>
               </div>
               <div className="border-t border-slate-700 mt-1 pt-1.5 flex items-center justify-between">
-                <span className="text-[12px] font-black text-slate-300 uppercase tracking-widest">الإجمالي المطلوب</span>
+                <span className="text-2sm font-black text-slate-300 uppercase tracking-widest">الإجمالي المطلوب</span>
                 <span className="font-mono text-[34px] font-black text-emerald-400 leading-none drop-shadow-md">{formatMoney(totals.total)}</span>
               </div>
             </div>
@@ -3603,7 +3603,7 @@ export default function POSPage() {
                       type="button"
                       onClick={() => !isDisabled && setPaymentType(type)}
                       disabled={isDisabled}
-                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-[10px] font-black transition-all
+                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-[11px] font-black transition-all
                         ${isActive
                           ? `${c.activeBg} text-white border-transparent shadow-sm`
                           : isDisabled
@@ -3624,9 +3624,9 @@ export default function POSPage() {
               {/* Dynamic Payment Input */}
               {paymentType === "cash" && (
                 <div className="flex gap-2 items-center">
-                  <input type="number" min="0" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="المبلغ المستلم..." className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[14px] font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                  <input type="number" min="0" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="المبلغ المستلم..." className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                   {Number(amountReceived) > 0 && (
-                    <div className={`rounded-lg px-3 py-2.5 text-[12px] font-black shrink-0 ${Number(amountReceived) - totals.total >= 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+                    <div className={`rounded-lg px-3 py-2.5 text-2sm font-black shrink-0 ${Number(amountReceived) - totals.total >= 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
                       الباقي: {formatMoney(Math.abs(Number(amountReceived) - totals.total))}
                     </div>
                   )}
@@ -3637,7 +3637,7 @@ export default function POSPage() {
                   <label className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5 mb-1.5">
                     <CreditCard className="w-3 h-3" /> اختر البنك / البطاقة
                   </label>
-                  <select value={selectedBankId} onChange={(e) => setSelectedBankId(e.target.value)} className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-[13px] font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                  <select value={selectedBankId} onChange={(e) => setSelectedBankId(e.target.value)} className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
                     <option value="">اختر البنك / البطاقة</option>
                     {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
@@ -3656,11 +3656,11 @@ export default function POSPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">دفعة مقدم:</span>
-                    <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-sm font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">تاريخ القسط:</span>
-                    <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                   </div>
                   <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-3 py-1.5 text-center border border-violet-200">المتبقي كأقساط: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))}</div>
                 </div>
@@ -3672,23 +3672,23 @@ export default function POSPage() {
                   </div>
                   <div className="flex flex-col divide-y divide-slate-100">
                     <div className="flex items-center gap-3 py-2 first:pt-0">
-                      <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug">💵 نقدي</span>
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug">💵 نقدي</span>
                       <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
-                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     </div>
                     {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
                       <div key={m.id} className="flex items-center gap-3 py-2">
-                        <span className="flex-1 min-w-0 text-[12px] font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
+                        <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
                         <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
-                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                       </div>
                     ))}
                     <div className="flex items-center gap-3 py-2 last:pb-0">
-                      <span className={`flex-1 min-w-0 text-[12px] font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                      <span className={`flex-1 min-w-0 text-2sm font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
                       <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
                         placeholder={customer?.id ? "0.00" : "اختر عميل..."}
                         disabled={!customer?.id}
-                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
                     </div>
                   </div>
                   {(() => {
@@ -3713,19 +3713,19 @@ export default function POSPage() {
                 </PermissionGate>
                 <div className="flex gap-2">
                   <PermissionGate page="pos" action="add">
-                    <button type="button" onClick={() => setSaveConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"}`}>
+                    <button type="button" onClick={() => setSaveConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-2sm font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"}`}>
                       حفظ فقط
                     </button>
                   </PermissionGate>
                   <PermissionGate page="pos" action="void">
-                    <button type="button" onClick={() => setCancelModalOpen(true)} disabled={!lines.length} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    <button type="button" onClick={() => setCancelModalOpen(true)} disabled={!lines.length} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-2sm font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                       <Trash2 className="h-4 w-4" /> إلغاء
                     </button>
                   </PermissionGate>
                   <button
                     type="button"
                     onClick={() => setNewInvoiceModalOpen(true)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all"
                   >
                     <FilePlus className="h-4 w-4" /> جديدة
                   </button>
@@ -3736,7 +3736,7 @@ export default function POSPage() {
                       data-help="hold-button"
                       type="button"
                       onClick={() => setHeldDropdownOpen((v) => !v)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-[13px] font-black transition-all ${(() => {
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-sm font-black transition-all ${(() => {
                         const yellowHours = Number(storeSettings?.held_yellow_hours || 2);
                         const redHours = Number(storeSettings?.held_red_hours || 8);
                         const now = Date.now();
@@ -3765,7 +3765,7 @@ export default function POSPage() {
 
       {/* ── Toast ── */}
       {saveMessage && (
-        <div className="absolute left-1/2 top-4 z-[150] -translate-x-1/2 rounded-sm border border-rose-200 bg-rose-50 px-5 py-2.5 font-bold text-[13px] text-rose-700 shadow-xl">
+        <div className="absolute left-1/2 top-4 z-[150] -translate-x-1/2 rounded-sm border border-rose-200 bg-rose-50 px-5 py-2.5 font-bold text-sm text-rose-700 shadow-xl">
           {saveMessage}
         </div>
       )}
@@ -3866,14 +3866,14 @@ export default function POSPage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto">
             <ShieldCheck className="h-7 w-7 text-amber-600" />
           </div>
-          <p className="text-[13px] font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح (15% من الإجمالي).</p>
-          <p className="text-[12px] text-slate-500">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
+          <p className="text-sm font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح (15% من الإجمالي).</p>
+          <p className="text-2sm text-slate-500">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
           <div className="flex justify-center gap-3 pt-2">
             <button type="button" onClick={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }}
-              className="rounded-sm border border-slate-200 px-5 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
+              className="rounded-sm border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
             <PermissionGate page="pos" action="discount">
               <button type="button" onClick={confirmSupervisorOverride}
-                className="rounded-sm bg-amber-600 px-5 py-2.5 text-[13px] font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
+                className="rounded-sm bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
             </PermissionGate>
           </div>
         </div>
@@ -3883,7 +3883,7 @@ export default function POSPage() {
       <Modal open={multiModalOpen} onClose={() => setMultiModalOpen(false)} title="توزيع مبالغ الدفع المتعدد">
         <div className="space-y-4 animate-modal-enter">
           <div className="rounded-sm bg-slate-950 p-5 text-center">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">المبلغ المطلوب توزيعه</p>
+            <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">المبلغ المطلوب توزيعه</p>
             <p className="font-mono text-[28px] font-black text-white">{formatMoney(totals.total)}</p>
           </div>
           <div className="space-y-2">
@@ -3896,27 +3896,27 @@ export default function POSPage() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-slate-50 text-slate-500">
                       {m.type === "cash" ? <Banknote className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
                     </div>
-                    <span className="text-[13px] font-black text-slate-800">{m.name}</span>
+                    <span className="text-sm font-black text-slate-800">{m.name}</span>
                   </div>
                   <input type="number" value={amount} placeholder="0.000"
                     onChange={(e) => {
                       const val = e.target.value;
                       setActiveMultiPayments(prev => [...prev.filter(p => p.method_id !== m.id), { method_id: m.id, amount: val }]);
                     }}
-                    className="w-28 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-right font-mono text-[13px] font-black text-slate-800 outline-none focus:border-slate-800" />
+                    className="w-28 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-right font-mono text-sm font-black text-slate-800 outline-none focus:border-slate-800" />
                 </div>
               );
             })}
           </div>
           <div className="flex items-center justify-between border-t border-slate-100 pt-4">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-slate-400 uppercase">الموزع</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase">الموزع</span>
               <span className={`font-mono text-[16px] font-black ${Math.abs(totals.total - multiTotal) < 0.005 ? "text-emerald-600" : "text-rose-600"}`}>
                 {formatMoney(multiTotal)}
               </span>
             </div>
             <button onClick={() => setMultiModalOpen(false)}
-              className="rounded-sm bg-slate-900 px-8 py-2.5 text-[13px] font-black text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition-all">
+              className="rounded-sm bg-slate-900 px-8 py-2.5 text-sm font-black text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition-all">
               تأكيد وإغلاق
             </button>
           </div>
@@ -3970,9 +3970,9 @@ export default function POSPage() {
       {/* Set Default View Modal */}
       <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
-          <p className="text-[13px] font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
+          <p className="text-sm font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
           <div className="flex gap-2">
-            <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
+            <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
             <button
               onClick={() => {
                 api.put("/api/settings", { ...storeSettings, default_pos_view: pendingViewMode })
@@ -3987,7 +3987,7 @@ export default function POSPage() {
                   });
                 setShowSetDefaultModal(false);
               }}
-              className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
+              className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
             >
               نعم، احفظه كافتراضي
             </button>
@@ -4003,8 +4003,8 @@ export default function POSPage() {
               <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
                 <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[13px] font-black text-amber-800">يوجد أصناف في الفاتورة الحالية</p>
-                  <p className="text-[12px] font-bold text-amber-700 mt-1">اختر كيف تريد المتابعة:</p>
+                  <p className="text-sm font-black text-amber-800">يوجد أصناف في الفاتورة الحالية</p>
+                  <p className="text-2sm font-bold text-amber-700 mt-1">اختر كيف تريد المتابعة:</p>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -4014,7 +4014,7 @@ export default function POSPage() {
                     saveInvoice(false);
                   }}
                   disabled={isSaving}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
                   {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}
                 </button>
@@ -4030,7 +4030,7 @@ export default function POSPage() {
                     setInvoiceSeq((s) => s + 1);
                     toast.success("تم تعليق الفاتورة");
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
                 >
                   <PauseCircle className="h-4 w-4" />
                   تعليق الحالية وإنشاء جديدة
@@ -4045,14 +4045,14 @@ export default function POSPage() {
                     setPaymentType("cash");
                     setInvoiceSeq((s) => s + 1);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
                 >
                   <Trash2 className="h-4 w-4" />
                   تجاهل وإنشاء جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                 >
                   إلغاء
                 </button>
@@ -4063,8 +4063,8 @@ export default function POSPage() {
               <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
                 <FilePlus className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[13px] font-black text-emerald-800">إنشاء فاتورة جديدة</p>
-                  <p className="text-[12px] font-bold text-emerald-700 mt-1">الفاتورة الحالية فارغة</p>
+                  <p className="text-sm font-black text-emerald-800">إنشاء فاتورة جديدة</p>
+                  <p className="text-2sm font-bold text-emerald-700 mt-1">الفاتورة الحالية فارغة</p>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -4078,14 +4078,14 @@ export default function POSPage() {
                     setPaymentType("cash");
                     setInvoiceSeq((s) => s + 1);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
                 >
                   <FilePlus className="h-4 w-4" />
                   إنشاء فاتورة جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
                 >
                   إلغاء
                 </button>
@@ -4103,21 +4103,21 @@ export default function POSPage() {
           <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
             <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
-              <p className="text-[12px] font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
+              <p className="text-sm font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
+              <p className="text-2sm font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <button
               onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
               disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
             >
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد الحفظ"}
             </button>
             <button
               onClick={() => setSaveConfirmOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
             >
               تراجع
             </button>
@@ -4131,8 +4131,8 @@ export default function POSPage() {
           <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
             <Trash2 className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] font-black text-rose-800">هل تريد إلغاء الفاتورة الحالية؟</p>
-              <p className="text-[12px] font-bold text-rose-700 mt-1">سيتم حذف جميع الأصناف المضافة</p>
+              <p className="text-sm font-black text-rose-800">هل تريد إلغاء الفاتورة الحالية؟</p>
+              <p className="text-2sm font-bold text-rose-700 mt-1">سيتم حذف جميع الأصناف المضافة</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -4146,14 +4146,14 @@ export default function POSPage() {
                 setPaymentType("cash");
                 setInvoiceSeq((s) => s + 1);
               }}
-              className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-[13px] font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-sm font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
             >
               <Trash2 className="h-4 w-4" />
               نعم، إلغاء الفاتورة
             </button>
             <button
               onClick={() => setCancelModalOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
             >
               تراجع
             </button>

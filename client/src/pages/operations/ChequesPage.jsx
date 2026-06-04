@@ -38,7 +38,7 @@ function StatusBadge({ status }) {
   };
   const config = configs[status] || { label: status, class: "bg-slate-50 text-slate-400 border-slate-100" };
   return (
-    <span className={`rounded-sm border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest shadow-sm ${config.class}`}>
+    <span className={`rounded-sm border px-2.5 py-0.5 text-[11px] font-black uppercase tracking-widest shadow-sm ${config.class}`}>
       {config.label}
     </span>
   );
@@ -159,21 +159,21 @@ export default function ChequesPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-[24px] font-black text-slate-800">إدارة أوراق القبض (الشيكات)</h1>
-          <p className="text-[13px] font-bold text-slate-400">متابعة حصيلة الشيكات، تواريخ الاستحقاق، وحالات التحصيل والإرجاع البنكي</p>
+          <p className="text-sm font-bold text-slate-400">متابعة حصيلة الشيكات، تواريخ الاستحقاق، وحالات التحصيل والإرجاع البنكي</p>
         </div>
         <div className="flex items-center gap-2">
           <PermissionGate page="cheques" action="print">
-          <button onClick={() => setPrintOpen(true)} className="flex items-center gap-2 rounded-sm bg-white border border-slate-200 px-4 py-2.5 text-[12px] font-black text-slate-700 transition-all hover:bg-slate-50">
+          <button onClick={() => setPrintOpen(true)} className="flex items-center gap-2 rounded-sm bg-white border border-slate-200 px-4 py-2.5 text-2sm font-black text-slate-700 transition-all hover:bg-slate-50">
             <Printer className="h-4 w-4" /> طباعة السجل
           </button>
           </PermissionGate>
           <PermissionGate page="cheques" action="edit">
-          <button data-help="toggle-button" onClick={() => { setBatchMode(!batchMode); setBatchSelected([]); }} className={`flex items-center gap-2 rounded-sm px-4 py-2.5 text-[12px] font-black transition-all ${batchMode ? "bg-violet-600 text-white" : "bg-white border border-slate-200 text-slate-700"}`}>
+          <button data-help="toggle-button" onClick={() => { setBatchMode(!batchMode); setBatchSelected([]); }} className={`flex items-center gap-2 rounded-sm px-4 py-2.5 text-2sm font-black transition-all ${batchMode ? "bg-violet-600 text-white" : "bg-white border border-slate-200 text-slate-700"}`}>
             {batchMode ? "إلغاء التحديد" : "تحديث متعدد"}
           </button>
           </PermissionGate>
           <PermissionGate page="cheques" action="add">
-          <button data-help="add-button" onClick={() => setAddOpen(true)} className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95">
+          <button data-help="add-button" onClick={() => setAddOpen(true)} className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95">
             <Plus className="h-4 w-4" /> إضافة شيك يدوي
           </button>
           </PermissionGate>
@@ -217,11 +217,11 @@ export default function ChequesPage() {
                 placeholder="بحث برقم الشيك أو البنك..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-80 rounded-sm border border-slate-200 bg-white py-2 pl-3 pr-10 text-[12px] font-bold outline-none focus:border-slate-800"
+                className="w-80 rounded-sm border border-slate-200 bg-white py-2 pl-3 pr-10 text-2sm font-bold outline-none focus:border-slate-800"
               />
            </div>
            <div className="flex items-center gap-4">
-              <button onClick={() => setView(view === "cards" ? "calendar" : "cards")} className="flex items-center gap-2 text-[12px] font-black text-violet-600 uppercase hover:text-violet-800">
+              <button onClick={() => setView(view === "cards" ? "calendar" : "cards")} className="flex items-center gap-2 text-2sm font-black text-violet-600 uppercase hover:text-violet-800">
                  <Calendar className="h-3.5 w-3.5" /> {view === "cards" ? "عرض التقويم" : "عرض البطاقات"}
               </button>
               {batchMode && batchSelected.length > 0 && (
@@ -231,7 +231,7 @@ export default function ChequesPage() {
                   <button onClick={() => handleBatchUpdate("bounced")} className="rounded-sm bg-rose-600 px-3 py-1.5 text-[11px] font-black text-white">مرتد</button>
                 </div>
               )}
-              <button data-help="due-filter" className="flex items-center gap-2 text-[12px] font-black text-slate-500 uppercase hover:text-slate-800">
+              <button data-help="due-filter" className="flex items-center gap-2 text-2sm font-black text-slate-500 uppercase hover:text-slate-800">
                  <Filter className="h-3.5 w-3.5" /> تصفية النتائج
               </button>
            </div>
@@ -242,13 +242,13 @@ export default function ChequesPage() {
             {Object.entries(calendarData).sort(([a], [b]) => a.localeCompare(b)).map(([date, cheques]) => (
               <div key={date} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
                 <div>
-                  <div className="text-[13px] font-black text-slate-800">{new Date(date).toLocaleDateString("ar-EG-u-nu-latn", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
+                  <div className="text-sm font-black text-slate-800">{new Date(date).toLocaleDateString("ar-EG-u-nu-latn", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
                   <div className="text-[11px] text-slate-400">{cheques.length} شيك</div>
                 </div>
                 <div className="text-[16px] font-black text-violet-700">{formatMoney(cheques.reduce((s, c) => s + Number(c.amount || 0), 0))} ج.م</div>
               </div>
             ))}
-            {Object.keys(calendarData).length === 0 && <div className="py-16 text-center text-[12px] font-black text-slate-400">لا توجد شيكات معلقة في التقويم</div>}
+            {Object.keys(calendarData).length === 0 && <div className="py-16 text-center text-2sm font-black text-slate-400">لا توجد شيكات معلقة في التقويم</div>}
           </div>
         ) : (
         <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2 lg:grid-cols-3">
@@ -272,7 +272,7 @@ export default function ChequesPage() {
                          <Receipt className="h-4 w-4 text-slate-400" />
                          <span className="font-mono text-[11px] font-black text-slate-400 uppercase tracking-tighter">CHK-{String(row.id).padStart(5, '0')}</span>
                       </div>
-                      <h3 className="mt-2 text-[20px] font-black text-slate-800">{formatMoney(row.amount)} <span className="text-[12px] text-slate-400">ج.م</span></h3>
+                      <h3 className="mt-2 text-[20px] font-black text-slate-800">{formatMoney(row.amount)} <span className="text-2sm text-slate-400">ج.م</span></h3>
                    </div>
                    <StatusBadge status={row.status} />
                 </div>
@@ -280,15 +280,15 @@ export default function ChequesPage() {
                 <div className="mt-6 space-y-3">
                    <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                       <span className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest"><CreditCard className="h-3.5 w-3.5" /> بنك الشيك</span>
-                      <span className="text-[12px] font-black text-slate-700">{row.bank_name || "غير محدد"}</span>
+                      <span className="text-2sm font-black text-slate-700">{row.bank_name || "غير محدد"}</span>
                    </div>
                    <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                       <span className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest"><Calendar className="h-3.5 w-3.5" /> تاريخ الاستحقاق</span>
-                      <span className="text-[12px] font-black text-slate-700">{new Date(row.due_date).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+                      <span className="text-2sm font-black text-slate-700">{new Date(row.due_date).toLocaleDateString("ar-EG-u-nu-latn")}</span>
                    </div>
                    <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                       <span className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest"><Search className="h-3.5 w-3.5" /> رقم الشيك</span>
-                      <span className="font-mono text-[12px] font-black text-slate-800">{row.cheque_no}</span>
+                      <span className="font-mono text-2sm font-black text-slate-800">{row.cheque_no}</span>
                    </div>
                 </div>
 
@@ -296,7 +296,7 @@ export default function ChequesPage() {
                    <PermissionGate page="cheques" action="edit">
                    <button
                     onClick={() => updateStatus(row.id, 'cleared')}
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-sm bg-emerald-50 py-3 text-[10px] font-black text-emerald-700 transition-all hover:bg-emerald-100"
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-sm bg-emerald-50 py-3 text-[11px] font-black text-emerald-700 transition-all hover:bg-emerald-100"
                    >
                      <CheckCircle2 className="h-4 w-4" /> تحصيل
                    </button>
@@ -304,7 +304,7 @@ export default function ChequesPage() {
                    <PermissionGate page="cheques" action="edit">
                    <button
                     onClick={() => updateStatus(row.id, 'deposited')}
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-sm bg-blue-50 py-3 text-[10px] font-black text-blue-700 transition-all hover:bg-blue-100"
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-sm bg-blue-50 py-3 text-[11px] font-black text-blue-700 transition-all hover:bg-blue-100"
                    >
                      <ArrowRightLeft className="h-4 w-4" /> إيداع
                    </button>
@@ -312,7 +312,7 @@ export default function ChequesPage() {
                    <PermissionGate page="cheques" action="edit">
                    <button
                     onClick={() => updateStatus(row.id, 'bounced')}
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-sm bg-rose-50 py-3 text-[10px] font-black text-rose-700 transition-all hover:bg-rose-100"
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-sm bg-rose-50 py-3 text-[11px] font-black text-rose-700 transition-all hover:bg-rose-100"
                    >
                      <AlertCircle className="h-4 w-4" /> مرتد
                    </button>
@@ -321,7 +321,7 @@ export default function ChequesPage() {
                 {row.status === "bounced" && (
                   <PermissionGate page="cheques" action="add">
                   <button onClick={() => openReplacement(row)}
-                    className="mt-3 w-full rounded-sm bg-violet-50 py-2 text-[10px] font-black text-violet-700 hover:bg-violet-100">
+                    className="mt-3 w-full rounded-sm bg-violet-50 py-2 text-[11px] font-black text-violet-700 hover:bg-violet-100">
                     استبدال بشيك جديد
                   </button>
                   </PermissionGate>
@@ -349,28 +349,28 @@ export default function ChequesPage() {
                 <div className="flex gap-2">
                   {[["received", "مستلم (من عميل)"], ["issued", "صادر (لمورد)"]].map(([v, l]) => (
                     <button key={v} onClick={() => setAddForm(f => ({ ...f, type: v }))}
-                      className={`flex-1 py-2 rounded-xl text-[12px] font-black border ${addForm.type === v ? "bg-violet-600 text-white border-violet-600" : "border-slate-200 text-slate-600"}`}>
+                      className={`flex-1 py-2 rounded-xl text-2sm font-black border ${addForm.type === v ? "bg-violet-600 text-white border-violet-600" : "border-slate-200 text-slate-600"}`}>
                       {l}
                     </button>
                   ))}
                 </div>
               </div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">رقم الشيك *</label>
-                <input value={addForm.cheque_no} onChange={e => setAddForm(f => ({ ...f, cheque_no: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-[13px] font-black outline-none focus:border-violet-500" dir="ltr" /></div>
+                <input value={addForm.cheque_no} onChange={e => setAddForm(f => ({ ...f, cheque_no: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-violet-500" dir="ltr" /></div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">اسم البنك *</label>
-                <input value={addForm.bank_name} onChange={e => setAddForm(f => ({ ...f, bank_name: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-[12px] outline-none focus:border-violet-500" /></div>
+                <input value={addForm.bank_name} onChange={e => setAddForm(f => ({ ...f, bank_name: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" /></div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ *</label>
-                <input type="number" min="0" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-[13px] font-black outline-none focus:border-violet-500" dir="ltr" /></div>
+                <input type="number" min="0" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-violet-500" dir="ltr" /></div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">تاريخ الاستحقاق *</label>
-                <input type="date" value={addForm.due_date} onChange={e => setAddForm(f => ({ ...f, due_date: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-[12px] outline-none focus:border-violet-500" /></div>
+                <input type="date" value={addForm.due_date} onChange={e => setAddForm(f => ({ ...f, due_date: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" /></div>
               <div className="col-span-2"><label className="text-[11px] font-black text-slate-600 block mb-1.5">اسم الساحب / المستفيد</label>
-                <input value={addForm.drawer_name} onChange={e => setAddForm(f => ({ ...f, drawer_name: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-[12px] outline-none" /></div>
+                <input value={addForm.drawer_name} onChange={e => setAddForm(f => ({ ...f, drawer_name: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
               <div className="col-span-2"><label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-                <input value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-[12px] outline-none" /></div>
+                <input value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
             </div>
             <PermissionGate page="cheques" action="add">
             <button onClick={handleAddCheque} disabled={!addForm.cheque_no || !addForm.bank_name || !addForm.amount || !addForm.due_date || adding}
-              className="w-full mt-4 rounded-xl bg-violet-600 py-3 text-[13px] font-black text-white hover:bg-violet-700 disabled:opacity-40">
+              className="w-full mt-4 rounded-xl bg-violet-600 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-40">
               {adding ? "جاري الحفظ..." : "حفظ الشيك"}
             </button>
             </PermissionGate>

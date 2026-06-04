@@ -16,7 +16,7 @@ function VirtualRow({ data: { columns, colWidths, rows, rowKey, onRowClick, rowC
       {columns.map((c) => (
         <div
           key={c.id}
-          className={`px-2 py-2 text-[13px] text-slate-800 border-l border-slate-100/50 flex items-center ${c.cellClass || "text-center"}`}
+          className={`px-2 py-2 text-sm text-slate-800 border-l border-slate-100/50 flex items-center ${c.cellClass || "text-center"}`}
           style={{ width: colWidths[c.id], minWidth: colWidths[c.id], maxWidth: colWidths[c.id], wordBreak: "break-word", overflowWrap: "break-word" }}
           title={(row[c.id] || "-")?.toString()}
         >
@@ -124,7 +124,7 @@ export default function DataGrid({
       <div className={containerClass}>
         <div className="flex h-full w-full select-none flex-col items-center justify-center py-10 opacity-40 min-h-[200px]">
           {emptyIcon && <div className="mb-4 text-slate-400">{emptyIcon}</div>}
-          <span className="text-[14px] font-black tracking-widest text-slate-500">{emptyMessage}</span>
+          <span className="text-sm font-black tracking-widest text-slate-500">{emptyMessage}</span>
         </div>
       </div>
     );
@@ -204,7 +204,7 @@ export default function DataGrid({
                 {columns.map((c) => (
                   <td
                     key={c.id}
-                    className={`px-2 py-2 text-[13px] text-slate-800 border-l border-slate-100/50 truncate align-middle ${c.cellClass || "text-center"}`}
+                    className={`px-2 py-2 text-sm text-slate-800 border-l border-slate-100/50 truncate align-middle ${c.cellClass || "text-center"}`}
                     style={{ maxWidth: colWidths[c.id] }}
                     title={(row[c.id] ?? "") !== "" ? String(row[c.id]) : "-"}
                   >

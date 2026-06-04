@@ -35,13 +35,13 @@ function formatDate(d) {
 function PriceDelta({ entered, baseline, baseLabel = "سعر البيع", className = "" }) {
   const e = Number(entered) || 0;
   const b = Number(baseline) || 0;
-  if (!b || !e) return <span className={`text-[10px] font-mono text-slate-400 ${className}`}>—</span>;
+  if (!b || !e) return <span className={`text-[11px] font-mono text-slate-400 ${className}`}>—</span>;
   const diff = e - b;
   const pct = (diff / b) * 100;
-  if (Math.abs(diff) < 0.005) return <span className={`text-[10px] font-bold text-slate-400 ${className}`}>مطابق {baseLabel}</span>;
+  if (Math.abs(diff) < 0.005) return <span className={`text-[11px] font-bold text-slate-400 ${className}`}>مطابق {baseLabel}</span>;
   const up = diff > 0;
   return (
-    <span className={`text-[10px] font-bold font-mono ${up ? "text-emerald-600" : "text-rose-600"} ${className}`}>
+    <span className={`text-[11px] font-bold font-mono ${up ? "text-emerald-600" : "text-rose-600"} ${className}`}>
       {up ? "▲ أعلى بـ" : "▼ أقل بـ"} {formatMoney(Math.abs(diff))} ({up ? "+" : "−"}{Math.abs(pct).toFixed(1)}%)
     </span>
   );
@@ -80,7 +80,7 @@ function OriginalInvoicePreview({ invoice }) {
   const total = Number(invoice.total || 0);
   const lines = invoice.lines || [];
   return (
-    <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-white overflow-hidden text-[12px] shadow-[0_2px_10px_rgba(251,191,36,0.1)] relative">
+    <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-white overflow-hidden text-2sm shadow-[0_2px_10px_rgba(251,191,36,0.1)] relative">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply" />
       {/* Header */}
       <div className="px-3 py-2.5 bg-amber-100/50 border-b border-amber-200/60 flex items-center justify-between gap-2 relative z-10">
@@ -89,16 +89,16 @@ function OriginalInvoicePreview({ invoice }) {
             <Clock className="h-3 w-3 text-amber-500" />
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-amber-700/80 leading-tight">الفاتورة الأصلية</span>
+            <span className="text-[11px] font-bold text-amber-700/80 leading-tight">الفاتورة الأصلية</span>
             <span className="text-[11px] font-black text-amber-900 font-mono tracking-tight leading-tight">#{invoice.invoice_no || invoice.doc_no}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {invoice.payment_type && (
-            <span className="text-[10px] text-amber-700 font-bold bg-white px-1.5 py-0.5 rounded-md border border-amber-200">{paymentTypeLabel(invoice.payment_type)}</span>
+            <span className="text-[11px] text-amber-700 font-bold bg-white px-1.5 py-0.5 rounded-md border border-amber-200">{paymentTypeLabel(invoice.payment_type)}</span>
           )}
           {invoice.status && (
-            <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-black ${statusColor(invoice.status)}`}>{statusLabel(invoice.status)}</span>
+            <span className={`rounded-md border px-1.5 py-0.5 text-[11px] font-black ${statusColor(invoice.status)}`}>{statusLabel(invoice.status)}</span>
           )}
         </div>
       </div>
@@ -111,7 +111,7 @@ function OriginalInvoicePreview({ invoice }) {
             const price = Number(l.unit_price || 0);
             const code = l.item_code || l.code || l.barcode;
             return (
-              <div key={i} className="flex items-center justify-between gap-2 text-[10px] leading-tight">
+              <div key={i} className="flex items-center justify-between gap-2 text-[11px] leading-tight">
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-slate-700 truncate">{l.item_name_ar || l.item_name || l.name || `#${l.item_id}`}</span>
                   {code && <span className="font-mono text-[8px] text-slate-400 leading-none">{code}</span>}
@@ -146,15 +146,15 @@ function OriginalInvoicePreview({ invoice }) {
             <span className="font-bold">+ {formatMoney(increase)} <span className="font-sans text-[9px]">ج.م</span></span>
           </div>
         )}
-        <div className="flex justify-between items-center border-t border-amber-200/50 pt-2 mt-1 text-slate-900 font-black text-[13px]">
+        <div className="flex justify-between items-center border-t border-amber-200/50 pt-2 mt-1 text-slate-900 font-black text-sm">
           <span>الإجمالي</span>
-          <span>{formatMoney(total)} <span className="text-slate-500 font-sans text-[10px]">ج.م</span></span>
+          <span>{formatMoney(total)} <span className="text-slate-500 font-sans text-[11px]">ج.م</span></span>
         </div>
       </div>
       {/* Payments */}
       {invoice.payments && invoice.payments.length > 0 && (
         <div className="border-t border-amber-200/50 px-4 py-3 flex flex-col gap-2 bg-amber-50/50 relative z-10">
-          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">وسائل الدفع</span>
+          <span className="text-[11px] font-bold text-amber-700 uppercase tracking-widest">وسائل الدفع</span>
           {invoice.payments.map((p, i) => (
             <div key={i} className="flex justify-between items-center text-[11px] text-slate-700">
               <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-300"/>{p.method_name || p.method}</span>
@@ -749,7 +749,7 @@ export default function SalesReturnFormPage() {
               </div>
               <div className="relative z-10 flex flex-col">
                 <span className="text-[22px] font-black text-slate-900 mb-2">مرتجع مباشر (حر)</span>
-                <span className="text-[14px] font-bold text-slate-500 leading-relaxed">إضافة الأصناف يدوياً وتحديد الكميات والأسعار بدون الارتباط بفاتورة مبيعات مسبقة.</span>
+                <span className="text-sm font-bold text-slate-500 leading-relaxed">إضافة الأصناف يدوياً وتحديد الكميات والأسعار بدون الارتباط بفاتورة مبيعات مسبقة.</span>
               </div>
             </button>
 
@@ -761,12 +761,12 @@ export default function SalesReturnFormPage() {
               </div>
               <div className="relative z-10 flex flex-col">
                 <span className="text-[22px] font-black text-white mb-2">من فاتورة سابقة</span>
-                <span className="text-[14px] font-bold text-emerald-100 leading-relaxed">البحث برقم الفاتورة وتحديد الكميات المرتجعة منها بدقة لضمان التسعير والخصومات الصحيحة.</span>
+                <span className="text-sm font-bold text-emerald-100 leading-relaxed">البحث برقم الفاتورة وتحديد الكميات المرتجعة منها بدقة لضمان التسعير والخصومات الصحيحة.</span>
               </div>
             </button>
           </div>
           {message.text && (
-            <div className={`flex items-center gap-2 rounded-xl px-6 py-3 text-[14px] font-black ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+            <div className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-black ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
               {message.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
               {message.text}
             </div>
@@ -810,7 +810,7 @@ export default function SalesReturnFormPage() {
         actions={
           <>
             {message.text && (
-              <div className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-[12px] font-bold ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+              <div className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-2sm font-bold ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : message.type === "warning" ? "bg-yellow-50 text-yellow-800 border border-yellow-300" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
                 {message.type === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />} {message.text}
               </div>
             )}
@@ -862,7 +862,7 @@ export default function SalesReturnFormPage() {
         {/* Left Panel */}
         <aside className="flex w-[340px] lg:w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
           <div className="flex flex-col gap-5 p-5">
-            <button onClick={handleTodayInvoicesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-[13px] font-bold text-white hover:bg-slate-800 transition-all shadow-sm active:scale-[0.98]">
+            <button onClick={handleTodayInvoicesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> فواتير المبيعات
             </button>
 
@@ -871,7 +871,7 @@ export default function SalesReturnFormPage() {
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">العميل</label>
                 {!isLocked && !customerLockedFromInvoice && (
-                  <button onClick={() => setCustomerCreateOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800 transition-colors">
+                  <button onClick={() => setCustomerCreateOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 transition-colors">
                     <UserPlus className="h-3 w-3" /> عميل جديد
                   </button>
                 )}
@@ -885,7 +885,7 @@ export default function SalesReturnFormPage() {
                   onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
                   onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
                   disabled={isLocked || customerLockedFromInvoice}
-                  className={`w-full h-10 rounded-xl border px-3 text-[13px] font-bold outline-none disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm placeholder:font-normal placeholder:text-slate-400 ${hasCustomerBalance ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100" : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"}`}
+                  className={`w-full h-10 rounded-xl border px-3 text-sm font-bold outline-none disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm placeholder:font-normal placeholder:text-slate-400 ${hasCustomerBalance ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100" : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"}`}
                 />
                 {customerLookupOpen && !isLocked && !customerLockedFromInvoice && (
                   <SearchDropdown
@@ -896,9 +896,9 @@ export default function SalesReturnFormPage() {
                   />
                 )}
               </div>
-              {customerLockedFromInvoice && !isLocked && <p className="text-[10px] text-slate-400 font-medium">العميل محدد من الفاتورة الأصلية</p>}
+              {customerLockedFromInvoice && !isLocked && <p className="text-[11px] text-slate-400 font-medium">العميل محدد من الفاتورة الأصلية</p>}
               {customer?.id && (
-                <button onClick={() => setCustomerInfoOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 transition-colors">
+                <button onClick={() => setCustomerInfoOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-blue-500 hover:text-blue-700 transition-colors">
                   <ExternalLink className="h-3 w-3" /> بيانات العميل
                 </button>
               )}
@@ -930,7 +930,7 @@ export default function SalesReturnFormPage() {
             {customer && customerBalance !== null && (
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-1 h-full bg-slate-200" />
-                <div className="flex justify-between items-center text-[12px]">
+                <div className="flex justify-between items-center text-2sm">
                   <span className="font-bold text-slate-500">الرصيد الحالي</span>
                   <span className={`font-black font-mono ${customerBalance > 0 ? "text-rose-600" : "text-emerald-600"}`}>{formatMoney(customerBalance)} ج.م</span>
                 </div>
@@ -940,13 +940,13 @@ export default function SalesReturnFormPage() {
                       <span className="text-[11px] font-bold text-emerald-600">
                         {netCreditAdjustment > 0 ? "الخصم من الرصيد" : "إضافة للرصيد"}
                       </span>
-                      <span className={`text-[13px] font-black font-mono ${netCreditAdjustment > 0 ? "text-emerald-700" : "text-rose-600"}`}>
+                      <span className={`text-sm font-black font-mono ${netCreditAdjustment > 0 ? "text-emerald-700" : "text-rose-600"}`}>
                         {netCreditAdjustment > 0 ? "−" : "+"}{formatMoney(Math.abs(netCreditAdjustment))}
                       </span>
                     </div>
                     <div className="flex items-center justify-between border-t border-emerald-200/60 pt-1.5">
                       <span className="text-[11px] font-bold text-slate-600">الرصيد بعد الحفظ</span>
-                      <span className={`text-[13px] font-black font-mono ${predictedBalance > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                      <span className={`text-sm font-black font-mono ${predictedBalance > 0 ? "text-rose-600" : "text-emerald-700"}`}>
                         {formatMoney(predictedBalance)}
                       </span>
                     </div>
@@ -963,7 +963,7 @@ export default function SalesReturnFormPage() {
                     <span className="font-black font-mono text-amber-700">{formatMoney(ajalDebt)} ج.م</span>
                   </div>
                 )}
-                <Link to={`/definitions/customers/${customer.id}`} className="flex items-center justify-center gap-1 mt-2 py-1.5 rounded-lg bg-slate-50 text-[10px] font-bold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors">
+                <Link to={`/definitions/customers/${customer.id}`} className="flex items-center justify-center gap-1 mt-2 py-1.5 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors">
                   <ExternalLink className="h-3 w-3" /> عرض سجل العميل الكامل
                 </Link>
               </div>
@@ -982,17 +982,17 @@ export default function SalesReturnFormPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-0.5">
-                      <label className="text-[10px] font-bold text-slate-500">خصم الفاتورة الكامل</label>
+                      <label className="text-[11px] font-bold text-slate-500">خصم الفاتورة الكامل</label>
                       <input readOnly value={formatMoney(loadedInvoice.discount || 0)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-[12px] font-black font-mono text-rose-600 cursor-not-allowed" />
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-2sm font-black font-mono text-rose-600 cursor-not-allowed" />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <label className="text-[10px] font-bold text-slate-500">زيادة الفاتورة الكاملة</label>
+                      <label className="text-[11px] font-bold text-slate-500">زيادة الفاتورة الكاملة</label>
                       <input readOnly value={formatMoney(loadedInvoice.increase || 0)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-[12px] font-black font-mono text-emerald-600 cursor-not-allowed" />
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-2sm font-black font-mono text-emerald-600 cursor-not-allowed" />
                     </div>
                   </div>
-                  <div className="rounded-lg bg-white/70 border border-amber-200/70 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 leading-relaxed">
+                  <div className="rounded-lg bg-white/70 border border-amber-200/70 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 leading-relaxed">
                     {subtotal > 0 ? (
                       <>هذا المرتجع = <span className="font-black text-amber-700">{pct.toFixed(1)}%</span> من الفاتورة، فيُطبَّق نصيبه:
                         {Number(headerDiscount) > 0 && <span className="text-rose-600 font-black"> خصم −{formatMoney(headerDiscount)}</span>}
@@ -1012,11 +1012,11 @@ export default function SalesReturnFormPage() {
             {subtotal > 0 && (
               <div className="flex flex-col gap-2 rounded-xl border border-emerald-200/60 bg-emerald-50/50 px-4 py-3 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-bold text-slate-600">إجمالي الأصناف</span>
-                  <span className="text-[13px] font-black text-slate-700 font-mono">{formatMoney(subtotal)} ج.م</span>
+                  <span className="text-2sm font-bold text-slate-600">إجمالي الأصناف</span>
+                  <span className="text-sm font-black text-slate-700 font-mono">{formatMoney(subtotal)} ج.م</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-[12px] font-bold text-rose-600 shrink-0">خصم على المرتجع</label>
+                  <label className="text-2sm font-bold text-rose-600 shrink-0">خصم على المرتجع</label>
                   <div className="flex items-center gap-1">
                     <input
                       type="number" min="0" step="any" value={headerDiscount || ""}
@@ -1024,13 +1024,13 @@ export default function SalesReturnFormPage() {
                       onChange={e => { setAdjustmentTouched(true); setHeaderDiscount(Math.max(0, Number(e.target.value) || 0)); }}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className={`w-24 rounded-lg border px-2 py-1 text-center text-[13px] font-black font-mono outline-none focus:ring-1 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${discountExceedsCap ? "border-rose-400 bg-rose-50 text-rose-700 focus:ring-rose-200" : "border-rose-200 bg-white text-rose-700 focus:border-rose-400 focus:ring-rose-100"}`}
+                      className={`w-24 rounded-lg border px-2 py-1 text-center text-sm font-black font-mono outline-none focus:ring-1 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${discountExceedsCap ? "border-rose-400 bg-rose-50 text-rose-700 focus:ring-rose-200" : "border-rose-200 bg-white text-rose-700 focus:border-rose-400 focus:ring-rose-100"}`}
                     />
-                    <span className="text-[10px] text-slate-400 shrink-0">ج.م</span>
+                    <span className="text-[11px] text-slate-400 shrink-0">ج.م</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-[12px] font-bold text-emerald-700 shrink-0">زيادة على المرتجع</label>
+                  <label className="text-2sm font-bold text-emerald-700 shrink-0">زيادة على المرتجع</label>
                   <div className="flex items-center gap-1">
                     <input
                       type="number" min="0" step="any" value={headerIncrease || ""}
@@ -1038,13 +1038,13 @@ export default function SalesReturnFormPage() {
                       onChange={e => { setAdjustmentTouched(true); setHeaderIncrease(Math.max(0, Number(e.target.value) || 0)); }}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-center text-[13px] font-black font-mono text-emerald-700 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                      className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-center text-sm font-black font-mono text-emerald-700 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                     />
-                    <span className="text-[10px] text-slate-400 shrink-0">ج.م</span>
+                    <span className="text-[11px] text-slate-400 shrink-0">ج.م</span>
                   </div>
                 </div>
                 {mode === "invoice" && (headerDiscount > 0 || headerIncrease > 0) && (
-                  <div className="text-[10px] font-bold text-slate-400 -mt-1">
+                  <div className="text-[11px] font-bold text-slate-400 -mt-1">
                     {adjustmentTouched ? "معدّل يدوياً" : "محسوب تلقائياً من الفاتورة الأصلية"}
                   </div>
                 )}
@@ -1055,7 +1055,7 @@ export default function SalesReturnFormPage() {
                   </label>
                 )}
                 <div className="flex items-center justify-between border-t border-emerald-200/60 pt-2 mt-0.5">
-                  <span className="text-[12px] font-black text-emerald-700">صافي المرتجع</span>
+                  <span className="text-2sm font-black text-emerald-700">صافي المرتجع</span>
                   <span className="text-[16px] font-black text-emerald-800">{formatMoney(total)} ج.م</span>
                 </div>
               </div>
@@ -1075,7 +1075,7 @@ export default function SalesReturnFormPage() {
                   return (
                     <button key={opt.value} onClick={() => !disabled && setRefundMethod(opt.value)} disabled={disabled}
                       className={`flex-1 rounded-lg py-2 px-1 text-center transition-all disabled:cursor-not-allowed ${active ? "bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
-                      <div className="text-[12px] font-bold">{opt.label}</div>
+                      <div className="text-2sm font-bold">{opt.label}</div>
                       <div className="text-[9px] font-medium opacity-70 leading-tight mt-0.5 hidden sm:block">{opt.desc}</div>
                     </button>
                   );
@@ -1089,7 +1089,7 @@ export default function SalesReturnFormPage() {
                       type="number" min="0" max={total} step="0.01"
                       value={splitCashAmount}
                       onChange={e => setSplitCashAmount(e.target.value)}
-                      className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[13px] font-bold text-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-bold text-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                       placeholder="0.00"
                     />
                     <span className="text-[11px] text-slate-500 shrink-0">ج.م</span>
@@ -1106,21 +1106,21 @@ export default function SalesReturnFormPage() {
             <div className="flex flex-col">
               <button onClick={() => setReasonOpen(o => !o)}
                 className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors uppercase tracking-widest">
-                <span>سبب الاسترداد {reason !== "other" ? <span className="text-emerald-600 normal-case tracking-normal text-[10px] ml-1">({REASONS.find(r => r.value === reason)?.label})</span> : reasonOther ? <span className="text-emerald-600 normal-case tracking-normal text-[10px] ml-1">({reasonOther})</span> : ""}</span>
+                <span>سبب الاسترداد {reason !== "other" ? <span className="text-emerald-600 normal-case tracking-normal text-[11px] ml-1">({REASONS.find(r => r.value === reason)?.label})</span> : reasonOther ? <span className="text-emerald-600 normal-case tracking-normal text-[11px] ml-1">({reasonOther})</span> : ""}</span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${reasonOpen ? "rotate-180" : ""}`} />
               </button>
               {reasonOpen && (
                 <div className="mt-3 flex flex-col gap-2">
                   <div className="relative">
                     <select value={reason} onChange={e => setReason(e.target.value)} disabled={isLocked}
-                      className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-bold text-slate-800 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none">
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none">
                       {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                     <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                   {reason === "other" && !isLocked && (
                     <input value={reasonOther} onChange={e => setReasonOther(e.target.value)} placeholder="اذكر السبب بتفصيل..."
-                      className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-medium text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 shadow-sm transition-all" />
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-medium text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 shadow-sm transition-all" />
                   )}
                 </div>
               )}
@@ -1131,12 +1131,12 @@ export default function SalesReturnFormPage() {
               <div className="w-full h-px bg-slate-100" />
               <div className="flex gap-2">
                 <button onClick={() => setTodayReturnsOpen(true)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-all">
                   <Calendar className="h-4 w-4" /> سجل المرتجعات
                 </button>
                 <PermissionGate page="sales_returns" action="print">
                   <button onClick={() => setPrintPreview(true)} disabled={!total}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] font-black text-slate-600 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                     <Printer className="h-4 w-4" /> طباعة
                   </button>
                 </PermissionGate>
@@ -1144,7 +1144,7 @@ export default function SalesReturnFormPage() {
               {mode && !isLocked && (
                 <PermissionGate page="sales_returns" action={isEditMode ? "edit" : "add"}>
                   <button onClick={() => setShowSaveConfirmModal(true)} disabled={isSaving || !total}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-[13px] font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
                   </button>
                 </PermissionGate>
@@ -1153,7 +1153,7 @@ export default function SalesReturnFormPage() {
                 {isEditMode && isLocked && (
                   <PermissionGate page="sales_returns" action="edit">
                     <button onClick={() => setShowEditWarnModal(true)}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2.5 text-[12px] font-black text-white hover:bg-indigo-700 transition-all">
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2.5 text-2sm font-black text-white hover:bg-indigo-700 transition-all">
                       <Pencil className="h-4 w-4" /> تعديل
                     </button>
                   </PermissionGate>
@@ -1161,14 +1161,14 @@ export default function SalesReturnFormPage() {
                 {isEditMode && !isLocked && (
                   <PermissionGate page="sales_returns" action="delete">
                     <button onClick={() => setMessage({ text: "حذف المرتجع غير متاح حالياً", type: "error" })}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-black text-rose-600 hover:bg-rose-100 transition-all">
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-2sm font-black text-rose-600 hover:bg-rose-100 transition-all">
                       <Trash2 className="h-4 w-4" /> حذف
                     </button>
                   </PermissionGate>
                 )}
                 {!isEditMode && (
                   <button onClick={() => setShowWarningModal(true)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all">
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-all">
                     <RotateCcw className="h-4 w-4" /> مرتجع جديد
                   </button>
                 )}
@@ -1177,7 +1177,7 @@ export default function SalesReturnFormPage() {
 
             {/* Invoice selected count */}
             {mode === "invoice" && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] font-bold text-slate-500 flex items-center gap-2 mt-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-2sm font-bold text-slate-500 flex items-center gap-2 mt-2">
                 <Package className="w-4 h-4 opacity-50" />
                 {invoiceLines.filter(l => l.checked).length > 0 ? (
                   <span className="text-emerald-700">تم اختيار <span className="font-black">{invoiceLines.filter(l => l.checked).length}</span> أصناف للاسترداد</span>
@@ -1208,7 +1208,7 @@ export default function SalesReturnFormPage() {
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] font-bold text-emerald-300">سيتم استرداد</span>
-                <span className="text-[10px] text-emerald-400">المبلغ المُعاد للعميل</span>
+                <span className="text-[11px] text-emerald-400">المبلغ المُعاد للعميل</span>
               </div>
               <span className="text-[20px] font-black text-white">{formatMoney(total)} ج.م</span>
             </div>
@@ -1233,7 +1233,7 @@ export default function SalesReturnFormPage() {
                             onChange={e => { setItemQuery(e.target.value); setLookupOpen(true); if (stagingItem) { setStagingItem(null); setStagingPrice(""); setStagingPurchasePrice(""); } }}
                             onFocus={e => { setLookupOpen(true); e.target.select(); }}
                             placeholder="ابحث عن صنف بالاسم أو الكود..."
-                            className="flex-1 bg-transparent text-[12px] font-bold text-slate-800 outline-none placeholder:text-slate-400"
+                            className="flex-1 bg-transparent text-2sm font-bold text-slate-800 outline-none placeholder:text-slate-400"
                             onKeyDown={e => {
                               if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
                               else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
@@ -1272,7 +1272,7 @@ export default function SalesReturnFormPage() {
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">المستودع</label>
                       <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingQtyRef, itemInputRef)}
-                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800">
+                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800">
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                       </select>
                     </div>
@@ -1280,7 +1280,7 @@ export default function SalesReturnFormPage() {
                     {/* Unit — read-only preview */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                      <div className="w-full h-[37px] border border-slate-200 rounded-sm bg-slate-100 py-2 px-2 text-[12px] font-bold text-slate-500 flex items-center">
+                      <div className="w-full h-[37px] border border-slate-200 rounded-sm bg-slate-100 py-2 px-2 text-2sm font-bold text-slate-500 flex items-center">
                         {stagingItem
                           ? (units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية")
                           : "—"}
@@ -1299,14 +1299,14 @@ export default function SalesReturnFormPage() {
                           setStagingQty(u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value);
                         }}
                         onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingPriceRef, stagingWHRef)}
-                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
+                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                     </div>
 
                     {/* Return price input */}
                     <div className="flex flex-col gap-0.5">
                       <label className="text-[11px] font-bold text-slate-600">سعر المرتجع</label>
                       <input ref={stagingPriceRef} type="number" step="any" value={stagingPrice} onChange={e => setStagingPrice(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, addBtnRef, stagingQtyRef, true)}
-                        className={`w-full h-[37px] border rounded-sm py-2 px-2 text-[12px] font-black outline-none text-center transition-colors
+                        className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black outline-none text-center transition-colors
                           ${stagingItem && Number(stagingPurchasePrice) > 0 && Number(stagingPrice) > 0 && Number(stagingPrice) < Number(stagingPurchasePrice)
                             ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
                             : "border-slate-300 bg-slate-50 text-slate-800 focus:border-slate-800"}`} />
@@ -1317,7 +1317,7 @@ export default function SalesReturnFormPage() {
                             <PriceDelta entered={stagingPrice} baseline={stagingItem.sale_price} className="shrink-0" />
                           </>
                         ) : (
-                          <span className="text-[10px] font-mono text-slate-400">—</span>
+                          <span className="text-[11px] font-mono text-slate-400">—</span>
                         )}
                       </div>
                     </div>
@@ -1326,7 +1326,7 @@ export default function SalesReturnFormPage() {
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">المخزون الحالي</label>
                       <div className="border border-slate-300 rounded-sm bg-slate-50 overflow-y-auto outline-none" style={{height:"37px"}}>
-                        <table className="w-full text-[10px] border-collapse">
+                        <table className="w-full text-[11px] border-collapse">
                           <tbody>
                             {warehouses.map(w => {
                               const qty = stagingItem && stockLevels[stagingItem.id] ? (stockLevels[stagingItem.id][w.id] || 0) : 0;
@@ -1344,7 +1344,7 @@ export default function SalesReturnFormPage() {
 
                     {/* Add button */}
                     <button ref={addBtnRef} onClick={addStagingToCart} disabled={!stagingItem}
-                      className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 text-[12px] font-bold text-white hover:bg-emerald-700 disabled:opacity-40 transition-all shadow-sm">
+                      className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 text-2sm font-bold text-white hover:bg-emerald-700 disabled:opacity-40 transition-all shadow-sm">
                       <Plus className="h-4 w-4" /> إضافة
                     </button>
                   </div>
@@ -1356,7 +1356,7 @@ export default function SalesReturnFormPage() {
                     <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
                       <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
                         <th className="px-3 py-2.5 text-[11px] font-bold text-slate-400 text-center w-14">الكود</th>
-                        <th className="px-4 py-2.5 text-[12px] font-bold text-slate-700">الصنف</th>
+                        <th className="px-4 py-2.5 text-2sm font-bold text-slate-700">الصنف</th>
                         <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">المستودع</th>
                         <th className="px-3 py-2.5 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
                         <th className="px-3 py-2.5 text-center">
@@ -1373,12 +1373,12 @@ export default function SalesReturnFormPage() {
                         </th>
                         <th className="px-3 py-2.5 text-center">
                           <div className="flex flex-col items-center gap-px">
-                            <span className="text-[12px] font-black text-emerald-700">سعر المرتجع</span>
+                            <span className="text-2sm font-black text-emerald-700">سعر المرتجع</span>
                             <span className="text-[9px] font-medium text-slate-400 leading-none">قابل للتعديل</span>
                           </div>
                         </th>
                         <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">الكمية</th>
-                        <th className="px-3 py-2.5 text-[12px] font-black text-slate-700 text-center">الإجمالي</th>
+                        <th className="px-3 py-2.5 text-2sm font-black text-slate-700 text-center">الإجمالي</th>
                         {!isLocked && <th className="px-3 py-2.5 w-10"></th>}
                       </tr>
                     </thead>
@@ -1386,14 +1386,14 @@ export default function SalesReturnFormPage() {
                       {cart.map((l, idx) => (
                         <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50/80 animate-slide-up [&>*+*]:border-r [&>*+*]:border-slate-100" style={{ animationDelay: `${idx * 50}ms` }}>
                           <td className="px-3 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
-                          <td className="px-4 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
+                          <td className="px-4 py-3 text-sm font-bold text-slate-800">{l.item_name}</td>
                           <td className="px-2 py-2 text-center">
                             {!isLocked ? (
                               <div className="flex flex-col items-center gap-1">
                                 <select
                                   value={l.warehouse_id}
                                   onChange={e => updateCartWarehouse(l.key, e.target.value)}
-                                  className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-100 transition-colors cursor-pointer"
+                                  className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-100 transition-colors cursor-pointer"
                                 >
                                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
@@ -1412,13 +1412,13 @@ export default function SalesReturnFormPage() {
                                 })()}
                               </div>
                             ) : (
-                              <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-[12px] font-bold text-slate-600">{l.warehouse_name}</span>
+                              <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-2sm font-bold text-slate-600">{l.warehouse_name}</span>
                             )}
                           </td>
-                          <td className="px-3 py-3 text-center text-[12px] font-bold text-slate-500">{l.unit_name}</td>
+                          <td className="px-3 py-3 text-center text-2sm font-bold text-slate-500">{l.unit_name}</td>
                           <td className="px-3 py-2.5 text-center">
                             <div
-                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-[13px] font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
+                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر البيع — للمعاينة فقط"
                             >
                               {l.sale_price > 0 ? formatMoney(l.sale_price) : "—"}
@@ -1426,7 +1426,7 @@ export default function SalesReturnFormPage() {
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <div
-                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-[13px] font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
+                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر الشراء — للمعاينة فقط"
                             >
                               {l.purchase_price > 0 ? formatMoney(l.purchase_price) : "—"}
@@ -1438,26 +1438,26 @@ export default function SalesReturnFormPage() {
                                 <input type="number" step="any" min="0" value={l.unit_price}
                                   onChange={e => updateCartPrice(l.key, e.target.value)}
                                   onFocus={e => e.target.select()}
-                                  className={`w-24 rounded border px-2 py-1 text-center text-[13px] font-black font-mono outline-none focus:ring-1 transition-colors
+                                  className={`w-24 rounded border px-2 py-1 text-center text-sm font-black font-mono outline-none focus:ring-1 transition-colors
                                     ${l.purchase_price > 0 && Number(l.unit_price) > 0 && Number(l.unit_price) < l.purchase_price
                                       ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
                                       : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-emerald-200"}`} />
                                 <PriceDelta entered={l.unit_price} baseline={l.sale_price} />
                               </div>
                             ) : (
-                              <span className="text-[13px] font-black text-slate-700 font-mono">{formatMoney(l.unit_price)}</span>
+                              <span className="text-sm font-black text-slate-700 font-mono">{formatMoney(l.unit_price)}</span>
                             )}
                           </td>
                           <td className="px-3 py-3 text-center">
                             {!isLocked ? (
                               <div className="flex items-center justify-center gap-1">
                                 <button onClick={() => updateCartQty(l.key, -1)} className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-95 transition-all"><Minus className="h-3 w-3" /></button>
-                                <span className="w-8 text-center text-[13px] font-black text-slate-800">{l.quantity}</span>
+                                <span className="w-8 text-center text-sm font-black text-slate-800">{l.quantity}</span>
                                 <button onClick={() => updateCartQty(l.key, 1)} className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-95 transition-all"><Plus className="h-3 w-3" /></button>
                               </div>
-                            ) : <span className="text-[13px] font-black text-slate-700">{l.quantity}</span>}
+                            ) : <span className="text-sm font-black text-slate-700">{l.quantity}</span>}
                           </td>
-                          <td className="px-3 py-3 text-center text-[14px] font-black text-emerald-700 font-mono">{formatMoney(l.unit_price * l.quantity)}</td>
+                          <td className="px-3 py-3 text-center text-sm font-black text-emerald-700 font-mono">{formatMoney(l.unit_price * l.quantity)}</td>
                           {!isLocked && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button></td>}
                         </tr>
                       ))}
@@ -1467,7 +1467,7 @@ export default function SalesReturnFormPage() {
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-slate-200 bg-white text-slate-400">
                   <RotateCcw className="h-10 w-10 opacity-30" />
-                  <div className="text-[13px] font-bold">ابحث عن صنف وأضفه للمرتجع</div>
+                  <div className="text-sm font-bold">ابحث عن صنف وأضفه للمرتجع</div>
                 </div>
               )}
             </div>
@@ -1479,22 +1479,22 @@ export default function SalesReturnFormPage() {
                 {!loadedInvoice ? (
                   <div className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-400">
                     <Search className="h-12 w-12 opacity-20" />
-                    <p className="text-[14px] font-black">لم يتم اختيار فاتورة بعد</p>
-                    <button onClick={() => setInvoicePickerOpen(true)} className="flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-[13px] font-black text-white hover:bg-emerald-800 transition-colors">
+                    <p className="text-sm font-black">لم يتم اختيار فاتورة بعد</p>
+                    <button onClick={() => setInvoicePickerOpen(true)} className="flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-black text-white hover:bg-emerald-800 transition-colors">
                       <Search className="h-4 w-4" /> اختيار فاتورة مبيعات
                     </button>
                   </div>
                 ) : (
                   <div className="flex flex-1 flex-col gap-4 overflow-hidden">
                     <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 shrink-0">
-                      <div className="flex items-center gap-4 text-[13px]">
+                      <div className="flex items-center gap-4 text-sm">
                         <span className="font-black text-emerald-800">فاتورة #{loadedInvoice.invoice_no || loadedInvoice.doc_no}</span>
                         {loadedInvoice.customer_name && <span className="text-slate-600">العميل: <strong>{loadedInvoice.customer_name}</strong></span>}
                         <span className="text-slate-500">{formatDate(loadedInvoice.created_at)}</span>
                         <span className="font-bold text-emerald-700">الإجمالي: {formatMoney(loadedInvoice.total)} ج.م</span>
                       </div>
                       {!isLocked && (
-                        <button onClick={() => setInvoicePickerOpen(true)} className="flex items-center gap-1.5 text-[12px] font-bold text-rose-600 hover:text-rose-800">
+                        <button onClick={() => setInvoicePickerOpen(true)} className="flex items-center gap-1.5 text-2sm font-bold text-rose-600 hover:text-rose-800">
                           <X className="h-3.5 w-3.5" /> تغيير الفاتورة
                         </button>
                       )}
@@ -1527,10 +1527,10 @@ export default function SalesReturnFormPage() {
                                     className="h-4 w-4 rounded border-slate-300 accent-emerald-600 cursor-pointer disabled:cursor-not-allowed" />
                                 </td>
                                 <td className="px-2 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
-                                <td className="px-3 py-3 text-[13px] font-bold text-slate-800">{l.item_name}</td>
+                                <td className="px-3 py-3 text-sm font-bold text-slate-800">{l.item_name}</td>
                                 <td className="px-3 py-3 text-center">
                                   <div className="flex items-center justify-center gap-1">
-                                    <span className={`text-[12px] font-mono ${l.purchase_price > 0 && l.unit_price < l.purchase_price ? "text-rose-600 font-bold" : "text-slate-600"}`}>
+                                    <span className={`text-2sm font-mono ${l.purchase_price > 0 && l.unit_price < l.purchase_price ? "text-rose-600 font-bold" : "text-slate-600"}`}>
                                       {formatMoney(l.unit_price)}
                                     </span>
                                     {l.purchase_price > 0 && l.unit_price < l.purchase_price && (
@@ -1538,19 +1538,19 @@ export default function SalesReturnFormPage() {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 py-3 text-center text-[13px] text-slate-600">{l.original_qty}</td>
-                                <td className="px-3 py-3 text-center text-[12px] font-bold text-slate-700">{formatMoney(originalTotal)}</td>
-                                <td className="px-3 py-3 text-center text-[13px] text-slate-500">{l.already_returned || "—"}</td>
+                                <td className="px-3 py-3 text-center text-sm text-slate-600">{l.original_qty}</td>
+                                <td className="px-3 py-3 text-center text-2sm font-bold text-slate-700">{formatMoney(originalTotal)}</td>
+                                <td className="px-3 py-3 text-center text-sm text-slate-500">{l.already_returned || "—"}</td>
                                 <td className="px-3 py-3 text-center">
                                   <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return}
                                     onChange={e => setInvoiceLineQty(l.invoice_line_id, e.target.value)}
                                     disabled={!l.checked || isLocked}
-                                    className="w-16 rounded-sm border border-slate-200 px-2 py-1 text-center text-[13px] font-black text-slate-800 outline-none focus:border-emerald-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
+                                    className="w-16 rounded-sm border border-slate-200 px-2 py-1 text-center text-sm font-black text-slate-800 outline-none focus:border-emerald-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
                                 </td>
-                                <td className="px-3 py-3 text-center text-[12px] font-black text-emerald-700">
+                                <td className="px-3 py-3 text-center text-2sm font-black text-emerald-700">
                                   {l.checked && returnTotal > 0 ? formatMoney(returnTotal) : "—"}
                                 </td>
-                                <td className={`px-3 py-3 text-center text-[13px] font-bold ${afterReturn < 0 ? "text-rose-600" : "text-slate-500"}`}>{afterReturn}</td>
+                                <td className={`px-3 py-3 text-center text-sm font-bold ${afterReturn < 0 ? "text-rose-600" : "text-slate-500"}`}>{afterReturn}</td>
                               </tr>
                             );
                           })}
@@ -1563,16 +1563,16 @@ export default function SalesReturnFormPage() {
                             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
                               <CheckCircle2 className="h-8 w-8" />
                             </div>
-                            <div className="text-[14px] font-black text-emerald-700">تم إرجاع جميع أصناف هذه الفاتورة بالكامل</div>
-                            <div className="text-[12px] font-bold text-slate-400">لا توجد كميات متبقية قابلة للإرجاع</div>
-                            <Link to={`/sales/returns?invoice_id=${loadedInvoice?.id}`} className="flex items-center gap-1 text-[12px] font-bold text-emerald-600 hover:underline mt-1">
+                            <div className="text-sm font-black text-emerald-700">تم إرجاع جميع أصناف هذه الفاتورة بالكامل</div>
+                            <div className="text-2sm font-bold text-slate-400">لا توجد كميات متبقية قابلة للإرجاع</div>
+                            <Link to={`/sales/returns?invoice_id=${loadedInvoice?.id}`} className="flex items-center gap-1 text-2sm font-bold text-emerald-600 hover:underline mt-1">
                               <ExternalLink className="h-3.5 w-3.5" /> عرض مرتجعات هذه الفاتورة
                             </Link>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400">
                             <AlertCircle className="h-8 w-8 opacity-30" />
-                            <div className="text-[13px]">لا توجد أصناف قابلة للإرجاع في هذه الفاتورة</div>
+                            <div className="text-sm">لا توجد أصناف قابلة للإرجاع في هذه الفاتورة</div>
                           </div>
                         );
                       })()}
@@ -1590,14 +1590,14 @@ export default function SalesReturnFormPage() {
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex flex-col gap-1">
-              <p className="text-[14px] font-black text-slate-800">هل أنت متأكد من حفظ هذا المرتجع؟</p>
-              <p className="text-[12px] text-slate-600">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة إجمالية <span className="font-black text-emerald-700">{formatMoney(total)} ج.م</span> وتحديث المخزون والحسابات.</p>
+              <p className="text-sm font-black text-slate-800">هل أنت متأكد من حفظ هذا المرتجع؟</p>
+              <p className="text-2sm text-slate-600">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة إجمالية <span className="font-black text-emerald-700">{formatMoney(total)} ج.م</span> وتحديث المخزون والحسابات.</p>
             </div>
           </div>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowSaveConfirmModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => setShowSaveConfirmModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
             <button onClick={() => { setShowSaveConfirmModal(false); handleSave(); }} disabled={isSaving}
-              className="flex items-center gap-2 rounded-md bg-emerald-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-all active:scale-[0.98]">
+              className="flex items-center gap-2 rounded-md bg-emerald-700 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><CheckCircle2 className="w-4 h-4" /> نعم، حفظ المرتجع</>}
             </button>
           </div>
@@ -1606,31 +1606,31 @@ export default function SalesReturnFormPage() {
 
       <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء">
         <div className="flex flex-col gap-5 animate-modal-enter">
-          <p className="text-[14px] text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
+          <p className="text-sm text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
-            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">نعم، إلغاء</button>
+            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
+            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">نعم، إلغاء</button>
           </div>
         </div>
       </Modal>
 
       <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع">
         <div className="flex flex-col gap-5 animate-modal-enter">
-          <p className="text-[14px] text-slate-700">هل تريد تعديل هذا المرتجع؟ سيتم فتح المرتجع للتعديل.</p>
+          <p className="text-sm text-slate-700">هل تريد تعديل هذا المرتجع؟ سيتم فتح المرتجع للتعديل.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowEditWarnModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-            <button onClick={() => { setShowEditWarnModal(false); setIsLocked(false); }} className="rounded-md bg-indigo-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-indigo-700 transition-all active:scale-[0.98]">نعم، تعديل</button>
+            <button onClick={() => setShowEditWarnModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowEditWarnModal(false); setIsLocked(false); }} className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition-all active:scale-[0.98]">نعم، تعديل</button>
           </div>
         </div>
       </Modal>
 
       <Modal open={showSwitchInvoiceWarning} onClose={() => setShowSwitchInvoiceWarning(false)} title="تغيير الفاتورة">
         <div className="flex flex-col gap-5 animate-modal-enter">
-          <p className="text-[14px] text-slate-700">يوجد مرتجع قيد التحرير. هل تريد حفظه أولاً قبل اختيار فاتورة أخرى؟</p>
+          <p className="text-sm text-slate-700">يوجد مرتجع قيد التحرير. هل تريد حفظه أولاً قبل اختيار فاتورة أخرى؟</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowSwitchInvoiceWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-            <button onClick={() => { setShowSwitchInvoiceWarning(false); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-[13px] font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">تجاهل وتغيير</button>
-            <button onClick={async () => { setShowSwitchInvoiceWarning(false); await handleSave(); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-emerald-700 px-5 py-2 text-[13px] font-bold text-white hover:bg-emerald-800 transition-all active:scale-[0.98]">حفظ ثم تغيير</button>
+            <button onClick={() => setShowSwitchInvoiceWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowSwitchInvoiceWarning(false); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">تجاهل وتغيير</button>
+            <button onClick={async () => { setShowSwitchInvoiceWarning(false); await handleSave(); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-emerald-700 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-800 transition-all active:scale-[0.98]">حفظ ثم تغيير</button>
           </div>
         </div>
       </Modal>
@@ -1690,26 +1690,26 @@ export default function SalesReturnFormPage() {
                 </div>
                 <div>
                   <h2 className="text-[17px] font-black text-slate-900 mb-1">تأكيد حذف المرتجع</h2>
-                  <p className="text-[13px] font-medium text-slate-500 leading-relaxed">
+                  <p className="text-sm font-medium text-slate-500 leading-relaxed">
                     سيتم حذف هذا المرتجع نهائياً وعكس تأثيره على المخزون ورصيد العميل. هذا الإجراء لا يمكن التراجع عنه.
                   </p>
                 </div>
               </div>
-              <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 mb-6 text-[12px] font-bold text-rose-700">
+              <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 mb-6 text-2sm font-bold text-rose-700">
                 تأكد من صحة قرارك قبل المتابعة.
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[13px] font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
                   {isDeleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
                 </button>
                 <button
                   onClick={() => setShowDeleteModal(false)}
                   disabled={isDeleting}
-                  className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200 transition-colors"
+                  className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200 transition-colors"
                 >
                   إلغاء
                 </button>

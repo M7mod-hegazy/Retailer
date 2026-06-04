@@ -67,17 +67,17 @@ export default function PurchaseProfitModal({ lines, onClose }) {
                 <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
                   <div className="text-[11px] text-emerald-500 font-bold uppercase mb-1">الربح الإجمالي</div>
                   <div className="font-black text-xl text-emerald-700">{fmt(totalProfit)}</div>
-                  <div className="text-[10px] text-emerald-400 mt-0.5">ج.م</div>
+                  <div className="text-[11px] text-emerald-400 mt-0.5">ج.م</div>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
                   <div className="text-[11px] text-blue-500 font-bold uppercase mb-1">هامش الربح</div>
                   <div className="font-black text-xl text-blue-700">{overallMargin !== null ? `${overallMargin}%` : "—"}</div>
-                  <div className="text-[10px] text-blue-400 mt-0.5">من التكلفة</div>
+                  <div className="text-[11px] text-blue-400 mt-0.5">من التكلفة</div>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
                   <div className="text-[11px] text-slate-500 font-bold uppercase mb-1">إجمالي التكلفة</div>
                   <div className="font-black text-xl text-slate-700">{fmt(totalCost)}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">ج.م</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">ج.م</div>
                 </div>
               </div>
 
@@ -135,7 +135,7 @@ export default function PurchaseProfitModal({ lines, onClose }) {
                 </div>
               )}
 
-              <p className="mt-4 text-[10px] text-slate-400 text-center">
+              <p className="mt-4 text-[11px] text-slate-400 text-center">
                 * الأرقام تقديرية بناءً على سعر البيع الحالي. الأرباح الفعلية قد تختلف.
               </p>
             </>

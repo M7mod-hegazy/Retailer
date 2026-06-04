@@ -100,7 +100,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
       {/* Subtotals & Discounts */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>المجموع الفرعي</span>
-        <span style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, monospace' }}>{totals.subtotal}</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{totals.subtotal}</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -115,7 +115,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
             style={{
               width: '70px', padding: '4px 6px',
               border: '1px solid var(--border-normal)', borderRadius: '6px',
-              textAlign: 'center', fontSize: '12px', fontFamily: 'Inter, monospace',
+              textAlign: 'center', fontSize: '12px', fontFamily: 'var(--font-mono)',
               color: 'var(--text-primary)', outline: 'none'
             }}
           />
@@ -128,7 +128,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
         paddingTop: '12px', borderTop: '2px dashed var(--border-subtle)', marginBottom: '16px'
       }}>
         <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>الإجمالي</span>
-        <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--primary)', fontFamily: 'Inter, sans-serif' }}>
+        <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--primary)', fontFamily: 'var(--font-number)' }}>
           <CurrencyDisplay value={totals.total} />
         </span>
       </div>
@@ -165,7 +165,7 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
               width: '100%', padding: '7px 10px',
               border: '1px solid var(--border-normal)', borderRadius: '8px',
               background: 'var(--bg-input)', color: 'var(--text-primary)',
-              fontSize: '13px', fontFamily: 'Inter, monospace', outline: 'none',
+              fontSize: '13px', fontFamily: 'var(--font-mono)', outline: 'none',
               boxSizing: 'border-box'
             }}
           />

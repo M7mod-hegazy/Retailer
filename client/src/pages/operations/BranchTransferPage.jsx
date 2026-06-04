@@ -100,7 +100,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
 
           {d.notes && (
             <div className="rounded-[2rem] bg-slate-50 border border-slate-200 p-6">
-              <span className="text-[12px] font-black uppercase tracking-widest text-slate-500 block mb-2">ملاحظات</span>
+              <span className="text-2sm font-black uppercase tracking-widest text-slate-500 block mb-2">ملاحظات</span>
               <span className="text-[15px] font-bold text-slate-700">{d.notes}</span>
             </div>
           )}
@@ -116,16 +116,16 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {(d.lines || []).length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-slate-400 text-[14px] font-black">القائمة خالية</div>
+                <div className="flex items-center justify-center h-32 text-slate-400 text-sm font-black">القائمة خالية</div>
               ) : (
                 (d.lines || []).map(l => (
                   <div key={l.id} className="grid grid-cols-[100px_1fr_90px_90px_90px_110px] items-center rounded-xl hover:bg-slate-50 p-3 transition-colors">
-                    <div className="px-2 text-center border-l border-slate-100 font-mono text-[12px] text-slate-400">{l.item_code || l.barcode || "—"}</div>
-                    <div className="px-3 border-l border-slate-100 text-[14px] font-black text-slate-900">{l.item_name}</div>
-                    <div className="px-2 text-center border-l border-slate-100 text-[12px] font-bold text-slate-500">{l.unit_name || "—"}</div>
+                    <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-400">{l.item_code || l.barcode || "—"}</div>
+                    <div className="px-3 border-l border-slate-100 text-sm font-black text-slate-900">{l.item_name}</div>
+                    <div className="px-2 text-center border-l border-slate-100 text-2sm font-bold text-slate-500">{l.unit_name || "—"}</div>
                     <div className="px-2 text-center border-l border-slate-100 font-black font-mono text-[15px] text-slate-900">{formatQty(l.quantity)}</div>
-                    <div className="px-2 text-center border-l border-slate-100 font-mono text-[12px] text-slate-600">{fmtMoney(l.unit_cost)}</div>
-                    <div className="px-2 text-center font-black font-mono text-[14px] text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                    <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-600">{fmtMoney(l.unit_cost)}</div>
+                    <div className="px-2 text-center font-black font-mono text-sm text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
                   </div>
                 ))
               )}
@@ -140,13 +140,13 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <button onClick={onClose} className="rounded-[1.5rem] bg-slate-100 px-10 py-4 text-[14px] font-black text-slate-900 hover:bg-slate-200 transition-all active:scale-95">
+            <button onClick={onClose} className="rounded-[1.5rem] bg-slate-100 px-10 py-4 text-sm font-black text-slate-900 hover:bg-slate-200 transition-all active:scale-95">
               إغلاق
             </button>
             <PermissionGate page="branch_transfer" action="edit">
               <button
                 onClick={() => onEdit(d.id)}
-                className="flex items-center gap-2 rounded-[1.5rem] bg-slate-900 px-10 py-4 text-[14px] font-black text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
+                className="flex items-center gap-2 rounded-[1.5rem] bg-slate-900 px-10 py-4 text-sm font-black text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
               >
                 <Pencil className="h-4 w-4" /> تعديل المستند
               </button>
@@ -300,7 +300,7 @@ export default function BranchTransferPage() {
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
                 <ArrowLeftRight className="w-5 h-5 text-emerald-500" />
               </div>
-              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">العمليات الداخلية</span>
+              <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">العمليات الداخلية</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">
               حركات <span className="text-emerald-600">النقل الداخلي</span>
@@ -376,7 +376,7 @@ export default function BranchTransferPage() {
                     type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                     placeholder="البحث برقم الوصل أو الفرع..."
                     autoFocus
-                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pr-10 pl-4 py-3 text-[14px] font-bold text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all outline-none"
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pr-10 pl-4 py-3 text-sm font-bold text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all outline-none"
                   />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0">
@@ -401,7 +401,7 @@ export default function BranchTransferPage() {
               {filtersOpen && (
                 <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                    <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
                     <select value={userId} onChange={e => setUserId(e.target.value)}
                       className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
                       <option value="">كل المستخدمين</option>
@@ -411,12 +411,12 @@ export default function BranchTransferPage() {
                     </select>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
+                    <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                     <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                       className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
+                    <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
                     <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                       className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
                   </div>
@@ -470,7 +470,7 @@ export default function BranchTransferPage() {
                       {selectedItemFilter.item_code || selectedItemFilter.code || `#${selectedItemFilter.id}`}
                     </span>
                     <div className="h-3 w-px bg-emerald-300 shrink-0" />
-                    <span className="text-[12px] text-emerald-700 font-bold truncate">{selectedItemFilter.name}</span>
+                    <span className="text-2sm text-emerald-700 font-bold truncate">{selectedItemFilter.name}</span>
                     <button type="button" onClick={() => { setSelectedItemFilter(null); setItemQuery(""); setItemLookupResults([]); setItemRows([]); setItemSearched(false); }}
                       className="mr-auto text-emerald-400 hover:text-rose-500 transition-colors">
                       <X className="w-3.5 h-3.5" />
@@ -545,7 +545,7 @@ export default function BranchTransferPage() {
                             <div className="flex flex-col gap-1.5 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-mono text-[16px] font-black text-zinc-900 tracking-tight">{row.reference_no}</span>
-                                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black border ${
+                                <span className={`px-2.5 py-0.5 rounded-lg text-[11px] font-black border ${
                                   isReceive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"
                                 }`}>
                                   {isReceive ? "استلام" : "تسليم"}
@@ -554,7 +554,7 @@ export default function BranchTransferPage() {
                               {row.partner_branch && (
                                 <div className="flex items-center gap-1.5 text-zinc-400">
                                   <Warehouse className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="text-[13px] font-bold text-zinc-500 truncate">{row.partner_branch}</span>
+                                  <span className="text-sm font-bold text-zinc-500 truncate">{row.partner_branch}</span>
                                 </div>
                               )}
                             </div>
@@ -562,17 +562,17 @@ export default function BranchTransferPage() {
 
                           <div className="flex flex-wrap items-center gap-6 lg:w-[42%] bg-zinc-50 rounded-xl px-5 py-3">
                             <div className="flex flex-col">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">التاريخ</span>
-                              <span className="text-[13px] font-bold text-zinc-700 mt-0.5">{formatDate(row.created_at)}</span>
+                              <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">التاريخ</span>
+                              <span className="text-sm font-bold text-zinc-700 mt-0.5">{formatDate(row.created_at)}</span>
                             </div>
                             <div className="h-8 w-px bg-zinc-200 shrink-0" />
                             <div className="flex flex-col items-center">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">الأصناف</span>
+                              <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">الأصناف</span>
                               <span className="text-[18px] font-black text-zinc-900 mt-0.5">{row.line_count}</span>
                             </div>
                             <div className="h-8 w-px bg-zinc-200 shrink-0" />
                             <div className="flex flex-col items-center">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">الكمية</span>
+                              <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">الكمية</span>
                               <span className="text-[20px] font-black font-mono text-zinc-950 mt-0.5">{formatQty(row.total_qty)}</span>
                             </div>
                           </div>

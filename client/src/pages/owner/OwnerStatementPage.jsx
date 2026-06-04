@@ -386,7 +386,7 @@ function MetricModal({ metric, rows, period, onClose }) {
           {/* Table Container */}
           <div className="flex-1 overflow-auto bg-slate-50/20 scrollbar-thin">
             <table className="w-full min-w-[760px] border-collapse text-right text-xs">
-              <thead className="sticky top-0 bg-slate-100/90 backdrop-blur-md text-[10px] font-black uppercase text-slate-500 border-b border-slate-200/80">
+              <thead className="sticky top-0 bg-slate-100/90 backdrop-blur-md text-[11px] font-black uppercase text-slate-500 border-b border-slate-200/80">
                 <tr>
                   {columns.map(([key, label]) => (
                     <th key={key} className="px-6 py-4 font-black text-slate-500 tracking-wider">
@@ -476,7 +476,7 @@ function ComparePanel({ data, onClose }) {
         >
           <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="space-y-1">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-[10px] font-black text-white uppercase tracking-wider shadow-[0_2px_8px_rgba(15,23,42,0.15)]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-[11px] font-black text-white uppercase tracking-wider shadow-[0_2px_8px_rgba(15,23,42,0.15)]">
                 <GitCompare size={11} className="text-indigo-400" /> تحليل ومقارنة الفترات
               </span>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-1.5">كشف مقارنة الفترات المالية</h2>
@@ -492,7 +492,7 @@ function ComparePanel({ data, onClose }) {
           <div className="overflow-x-auto rounded-2xl border border-slate-150 shadow-inner">
             <table className="w-full text-right text-xs">
               <thead>
-                <tr className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   <th className="px-5 py-3.5">البند المالي</th>
                   <th className="px-5 py-3.5">الفترة الأولى (أ)</th>
                   <th className="px-5 py-3.5">الفترة الثانية (ب)</th>
@@ -667,13 +667,13 @@ export default function OwnerStatementPage() {
         {/* Top Header Deck */}
         <div data-help="owner-header" className="flex flex-wrap items-start justify-between gap-6 pb-2">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-[10px] font-black text-white uppercase tracking-widest shadow-sm">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-[11px] font-black text-white uppercase tracking-widest shadow-sm">
               <FileText size={11} className="text-indigo-400" /> لوحة صاحب المحل التأسيسية
             </div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
               {frozen ? "وثيقة الإقفال المحفوظة" : "الإقفال المالي والشهري"}
               {frozen && (
-                <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${activeSnapshot?.status === "locked" ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-amber-50 border-amber-100 text-amber-800"}`}>
+                <span className={`text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${activeSnapshot?.status === "locked" ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-amber-50 border-amber-100 text-amber-800"}`}>
                   {activeSnapshot?.status === "locked" ? "مؤرشف ومقفل" : "نسخة مسودة"}
                 </span>
               )}
@@ -713,7 +713,7 @@ export default function OwnerStatementPage() {
                   onChange={(event) => updateRange({ ...range, from: event.target.value })}
                   className="bg-transparent text-xs font-bold text-slate-700 outline-none disabled:opacity-60 cursor-pointer"
                 />
-                <span className="text-[10px] font-bold text-slate-400 px-1">إلى</span>
+                <span className="text-[11px] font-bold text-slate-400 px-1">إلى</span>
                 <input
                   disabled={frozen}
                   type="date"
@@ -726,7 +726,7 @@ export default function OwnerStatementPage() {
               <div className="h-6 w-px bg-slate-200" />
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400 block tracking-wider">تقييم الكلفة:</span>
+                <span className="text-[11px] font-black text-slate-400 block tracking-wider">تقييم الكلفة:</span>
                 <select
                   disabled={frozen}
                   value={costMethod}
@@ -745,7 +745,7 @@ export default function OwnerStatementPage() {
                       <button
                         key={preset.key}
                         onClick={() => updateRange(applyQuickRange(preset.key))}
-                        className="rounded-xl border border-slate-100 hover:border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-[10px] font-black text-slate-600 transition-colors shadow-sm"
+                        className="rounded-xl border border-slate-100 hover:border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-[11px] font-black text-slate-600 transition-colors shadow-sm"
                       >
                         {preset.label}
                       </button>
@@ -830,7 +830,7 @@ export default function OwnerStatementPage() {
                         {netProfitMetric.label}
                       </span>
                     </div>
-                    <span className={`inline-flex rounded-full px-3.5 py-1 text-[10px] font-black ${isLoss ? "bg-rose-500/35 text-rose-200" : "bg-emerald-500/35 text-emerald-200"} border border-white/5`}>
+                    <span className={`inline-flex rounded-full px-3.5 py-1 text-[11px] font-black ${isLoss ? "bg-rose-500/35 text-rose-200" : "bg-emerald-500/35 text-emerald-200"} border border-white/5`}>
                       إجمالي
                     </span>
                   </div>
@@ -891,11 +891,11 @@ export default function OwnerStatementPage() {
                     {/* Trend indicator and action footer */}
                     <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
                       {cfg.trend ? (
-                        <span className={`inline-flex rounded-lg px-2.5 py-0.5 text-[10px] font-black ${cfg.trendCls}`}>
+                        <span className={`inline-flex rounded-lg px-2.5 py-0.5 text-[11px] font-black ${cfg.trendCls}`}>
                           {cfg.trend}
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-slate-400">سجل اليوم</span>
+                        <span className="text-[11px] font-bold text-slate-400">سجل اليوم</span>
                       )}
 
                       <span className="text-xs font-black text-indigo-600 group-hover:text-indigo-800 flex items-center gap-0.5">
@@ -979,7 +979,7 @@ export default function OwnerStatementPage() {
 
               <div className="grid gap-3 md:grid-cols-2 mt-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 block tracking-wider mr-1">الفترة الأولى (أ):</label>
+                  <label className="text-[11px] font-black text-slate-400 block tracking-wider mr-1">الفترة الأولى (أ):</label>
                   <select
                     value={leftCompare}
                     onChange={(event) => setLeftCompare(event.target.value)}
@@ -991,7 +991,7 @@ export default function OwnerStatementPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 block tracking-wider mr-1">الفترة الثانية (ب):</label>
+                  <label className="text-[11px] font-black text-slate-400 block tracking-wider mr-1">الفترة الثانية (ب):</label>
                   <select
                     value={rightCompare}
                     onChange={(event) => setRightCompare(event.target.value)}

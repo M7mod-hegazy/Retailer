@@ -131,7 +131,7 @@ function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
                 </div>
                 <div>
                   <h2 className="text-[17px] font-black text-zinc-900 mb-1">تأكيد إلغاء الفاتورة</h2>
-                  <p className="text-[13px] font-medium text-zinc-500 leading-relaxed">
+                  <p className="text-sm font-medium text-zinc-500 leading-relaxed">
                     سيتم إلغاء فاتورة الشراء <span className="font-black text-zinc-800 font-mono">{row.doc_no || `#${row.id}`}</span> نهائياً.
                     سيؤدي ذلك إلى عكس تأثيرها على المخزون وحساب المورد والخزينة.
                   </p>
@@ -155,14 +155,14 @@ function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
                 <button
                   type="submit"
                   disabled={cancelling}
-                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[13px] font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98] shadow-sm shadow-rose-200"
+                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98] shadow-sm shadow-rose-200"
                 >
                   {cancelling ? "جاري الإلغاء..." : "تأكيد إلغاء الفاتورة"}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="h-11 px-6 rounded-2xl bg-zinc-100 text-zinc-700 text-[13px] font-black hover:bg-zinc-200 transition-colors"
+                  className="h-11 px-6 rounded-2xl bg-zinc-100 text-zinc-700 text-sm font-black hover:bg-zinc-200 transition-colors"
                 >
                   تراجع
                 </button>
@@ -225,15 +225,15 @@ function PreviewDrawer({ purchaseId, onClose }) {
           {/* Header Card */}
           <div className="rounded-3xl bg-emerald-50/50 border border-emerald-100/80 p-5 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-black text-emerald-600 tracking-wider uppercase">رقم المستند</span>
+              <span className="text-[11px] font-black text-emerald-600 tracking-wider uppercase">رقم المستند</span>
               <span className="font-mono text-xl font-black text-zinc-950">{d.doc_no}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-black text-zinc-400 tracking-wider uppercase">تاريخ الفاتورة</span>
+              <span className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">تاريخ الفاتورة</span>
               <span className="font-mono text-sm font-bold text-zinc-600">{fmtDate(d.created_at)}</span>
             </div>
             <div className="flex flex-col gap-1 items-start md:items-end">
-              <span className="text-[10px] font-black text-emerald-600 tracking-wider uppercase">إجمالي الفاتورة</span>
+              <span className="text-[11px] font-black text-emerald-600 tracking-wider uppercase">إجمالي الفاتورة</span>
               <span className="font-mono text-xl font-black text-emerald-700">{formatMoney(d.total)} ج.م</span>
             </div>
           </div>
@@ -289,12 +289,12 @@ function PreviewDrawer({ purchaseId, onClose }) {
               {/* Discount & Increase row */}
               {Number(d.discount) > 0 && Number(d.increase) > 0 && (
                 <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                  <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                  <span className="text-[11px] font-black text-rose-600 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     خصم الفاتورة
                   </span>
                   <span className="font-mono text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
-                  <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
+                  <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     إضافة / رسوم
                   </span>
@@ -303,7 +303,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
               )}
               {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
                 <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                  <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                  <span className="text-[11px] font-black text-rose-600 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     خصم الفاتورة
                   </span>
@@ -312,7 +312,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
               )}
               {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
                 <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                  <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                  <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     إضافة / رسوم
                   </span>
@@ -412,15 +412,15 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
             <span className="text-base font-black text-zinc-900 font-mono tracking-tight">
               {row.doc_no || `#${row.id}`}
             </span>
-            <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${
+            <span className={`px-2 py-0.5 rounded-md border text-[11px] font-black ${
               row.status === "cancelled" ? "bg-zinc-100 text-zinc-400 border-zinc-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
             }`}>
               {row.status === "cancelled" ? "ملغاة" : "نشطة"}
             </span>
-            <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${METHOD_COLORS[row.payment_method] || "bg-zinc-50"}`}>
+            <span className={`px-2 py-0.5 rounded-md border text-[11px] font-black ${METHOD_COLORS[row.payment_method] || "bg-zinc-50"}`}>
               {METHOD_LABELS[row.payment_method] || row.payment_method}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-zinc-50 text-zinc-500 border-zinc-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-zinc-50 text-zinc-500 border-zinc-200">
               <Package className="w-3 h-3" /> {row.items_count} أصناف
             </span>
           </div>
@@ -447,7 +447,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
         <div className="flex items-stretch gap-0 bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3.5 py-1.5 min-w-[90px]">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الإجمالي</span>
-            <div className="text-[14px] font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
+            <div className="text-sm font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
               <span>{formatMoney(total)}</span>
               <span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
             </div>
@@ -461,7 +461,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
                   <span className="w-1 h-1 rounded-full bg-emerald-500 inline-block" />
                   المدفوع
                 </span>
-                <div className="text-[13px] font-black text-emerald-700 font-mono leading-none flex items-baseline gap-0.5">
+                <div className="text-sm font-black text-emerald-700 font-mono leading-none flex items-baseline gap-0.5">
                   <span>{formatMoney(paid)}</span>
                   <span className="text-[8px] font-bold mr-0.5">ج.م</span>
                 </div>
@@ -477,7 +477,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
                   <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />
                   المتبقي
                 </span>
-                <div className="text-[13px] font-black text-amber-700 font-mono leading-none flex items-baseline gap-0.5">
+                <div className="text-sm font-black text-amber-700 font-mono leading-none flex items-baseline gap-0.5">
                   <span>{formatMoney(remaining)}</span>
                   <span className="text-[8px] font-bold mr-0.5">ج.م</span>
                 </div>
@@ -706,7 +706,7 @@ export default function PurchasesHubPage() {
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
                 <Layers className="w-5 h-5 text-emerald-500" />
               </div>
-              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">سلسلة الإمداد</span>
+              <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">سلسلة الإمداد</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">فواتير <span className="text-emerald-600">المشتريات</span></h1>
           </div>
@@ -850,7 +850,7 @@ export default function PurchasesHubPage() {
                         {selectedItemFilter.code || selectedItemFilter.item_code || `#${selectedItemFilter.id}`}
                       </span>
                       <div className="h-3 w-px bg-emerald-300 shrink-0" />
-                      <span className="text-[12px] text-emerald-700 font-bold truncate">{selectedItemFilter.name}</span>
+                      <span className="text-2sm text-emerald-700 font-bold truncate">{selectedItemFilter.name}</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -889,7 +889,7 @@ export default function PurchasesHubPage() {
           {filtersOpen && (
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
                 <select value={userId} onChange={e => setUserId(e.target.value)}
                   className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
                   <option value="">كل المستخدمين</option>
@@ -899,7 +899,7 @@ export default function PurchasesHubPage() {
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                 <input 
                   type="date" 
                   value={dateFrom} 
@@ -908,7 +908,7 @@ export default function PurchasesHubPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
                 <input 
                   type="date" 
                   value={dateTo} 
@@ -917,7 +917,7 @@ export default function PurchasesHubPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المورد</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المورد</span>
                 <div className="relative">
                   <input
                     ref={supplierInputRef}
@@ -1048,7 +1048,7 @@ export default function PurchasesHubPage() {
                         <td className="px-5 py-4 font-bold text-zinc-800">
                           <div>{r.item_name || "—"}</div>
                           {r.item_id && (
-                            <Link to={`/operations/items/${r.item_id}?types=purchases`} className="mt-1 inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 hover:text-emerald-800">
+                            <Link to={`/operations/items/${r.item_id}?types=purchases`} className="mt-1 inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 hover:text-emerald-800">
                               <ExternalLink className="w-3 h-3" /> عرض كامل
                             </Link>
                           )}

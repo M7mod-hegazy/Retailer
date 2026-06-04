@@ -358,11 +358,11 @@ export default function PrintPreviewModal({
               {/* Zoom controls */}
               <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-[10px] bg-white/90 border border-slate-200 shadow-md backdrop-blur-sm overflow-hidden z-50">
                 <button type="button" onClick={() => setViewZoom((v) => Math.min(2, v + 0.1))}
-                  className="px-2.5 py-1.5 text-[13px] font-black text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200">+</button>
+                  className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200">+</button>
                 <button type="button" onClick={resetView}
                   className="px-2.5 py-1.5 text-[9px] font-black text-slate-600 hover:bg-slate-100 min-w-[40px] text-center">{Math.round(viewZoom * 100)}%</button>
                 <button type="button" onClick={() => setViewZoom((v) => Math.max(0.2, v - 0.1))}
-                  className="px-2.5 py-1.5 text-[13px] font-black text-slate-700 hover:bg-slate-100 transition-colors border-r border-slate-200">−</button>
+                  className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-r border-slate-200">−</button>
               </div>
 
               <div className="absolute top-3 right-3 flex items-center gap-1 rounded-md bg-black/40 px-2 py-1 text-[9px] font-bold text-white backdrop-blur-sm pointer-events-none z-50">
@@ -401,14 +401,14 @@ export default function PrintPreviewModal({
                   <button
                     onClick={handlePrint}
                     disabled={isSaving}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-[12px] text-[13px] font-black transition-all shadow-[0_4px_12px_rgba(5,150,105,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-[12px] text-sm font-black transition-all shadow-[0_4px_12px_rgba(5,150,105,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Printer size={16} /> حفظ وطباعة
                   </button>
                   <button
                     onClick={() => { onSaveOnly(); onClose(); }}
                     disabled={isSaving}
-                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-[12px] text-[13px] font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-[12px] text-sm font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSaving ? "جاري الحفظ..." : "حفظ بدون طباعة"}
                   </button>
@@ -416,7 +416,7 @@ export default function PrintPreviewModal({
               ) : (
                 <button
                   onClick={handlePrint}
-                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-[12px] text-[13px] font-black transition-all shadow-[0_4px_12px_rgba(79,70,229,0.25)] active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-[12px] text-sm font-black transition-all shadow-[0_4px_12px_rgba(79,70,229,0.25)] active:scale-95"
                 >
                   <Printer size={16} /> طباعة
                 </button>
@@ -424,7 +424,7 @@ export default function PrintPreviewModal({
 
               {/* Template selector */}
               <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">قالب الطباعة</h4>
+                <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">قالب الطباعة</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {validTemplates.map((t) => {
                     const isDefault = cfg ? (resolveDocPaperSize(docType, docSettings) === t.id) : false;
@@ -442,7 +442,7 @@ export default function PrintPreviewModal({
                       >
                         <Icon className={`h-4 w-4 ${active ? "text-white" : "text-slate-400"}`} />
                         <div className="text-center">
-                          <div className={`text-[12px] font-black tracking-widest leading-none ${active ? "text-white" : "text-slate-800"}`}>{t.label}</div>
+                          <div className={`text-2sm font-black tracking-widest leading-none ${active ? "text-white" : "text-slate-800"}`}>{t.label}</div>
                           <div className={`text-[9px] font-bold mt-0.5 ${active ? "text-slate-300" : "text-slate-400"}`}>{t.sub}</div>
                         </div>
                         {isDefault && (
@@ -466,7 +466,7 @@ export default function PrintPreviewModal({
               {isReportDoc && reportColumns.length > 0 && (
                 <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">الأعمدة</h4>
+                    <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأعمدة</h4>
                     <div className="flex items-center gap-1">
                       <button type="button" onClick={() => setReportPrintKeys(smartKeys("essential"))}
                         className="px-2 py-1 rounded-[6px] bg-slate-900 text-[9px] font-bold text-white flex items-center gap-1">
@@ -522,7 +522,7 @@ export default function PrintPreviewModal({
                       return (
                         <div
                           key={key}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-bold transition-all ${
+                          className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-bold transition-all ${
                             active
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : "text-slate-500 border border-transparent"
@@ -578,7 +578,7 @@ export default function PrintPreviewModal({
                 </button>
               )}
               <button onClick={onClose}
-                className="w-full flex justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-[10px] text-[12px] font-bold transition-all active:scale-95">
+                className="w-full flex justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-[10px] text-2sm font-bold transition-all active:scale-95">
                 إغلاق
               </button>
             </div>
@@ -605,7 +605,7 @@ export default function PrintPreviewModal({
                       const v = parseInt(e.target.value, 10);
                       if (v >= 1 && v <= totalPrintPages) goToPage(v);
                     }}
-                    className="w-10 h-8 text-center rounded-lg border border-slate-200 text-[12px] font-bold"
+                    className="w-10 h-8 text-center rounded-lg border border-slate-200 text-2sm font-bold"
                     min={1}
                     max={totalPrintPages}
                   />

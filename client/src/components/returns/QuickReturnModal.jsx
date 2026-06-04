@@ -64,7 +64,7 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
     <div className="absolute inset-0 z-10 bg-white flex flex-col rounded-xl">
       <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50 rounded-t-xl">
         <div className="flex flex-col">
-          <span className="text-[14px] font-black text-slate-800">
+          <span className="text-sm font-black text-slate-800">
             {isSales ? (doc.invoice_no || `#${doc.id}`) : `PUR-${String(doc.id).padStart(5,"0")}`}
           </span>
           <span className="text-[11px] text-slate-400 font-bold">
@@ -75,7 +75,7 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
         <div className="flex items-center gap-2">
           <button
             onClick={onSelect}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-[12px] font-black text-white hover:bg-slate-700"
+            className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-2sm font-black text-white hover:bg-slate-700"
           >
             إنشاء مرتجع <ArrowLeft className="h-3.5 w-3.5" />
           </button>
@@ -86,11 +86,11 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         {lines.length === 0 ? (
-          <p className="text-center text-[12px] text-slate-400 py-8">لا توجد أصناف</p>
+          <p className="text-center text-2sm text-slate-400 py-8">لا توجد أصناف</p>
         ) : (
           <table className="w-full text-right">
             <thead>
-              <tr className="text-[10px] font-black text-slate-500 uppercase border-b border-slate-100">
+              <tr className="text-[11px] font-black text-slate-500 uppercase border-b border-slate-100">
                 <th className="pb-2">الصنف</th>
                 <th className="pb-2 text-center">الكمية</th>
                 <th className="pb-2 text-center">المتاح</th>
@@ -100,8 +100,8 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
             <tbody>
               {lines.map(l => (
                 <tr key={l.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="py-2 text-[12px] font-bold text-slate-800">{l.item_name}</td>
-                  <td className="py-2 text-[12px] font-black text-slate-600 text-center">{l.quantity}</td>
+                  <td className="py-2 text-2sm font-bold text-slate-800">{l.item_name}</td>
+                  <td className="py-2 text-2sm font-black text-slate-600 text-center">{l.quantity}</td>
                   <td className="py-2 text-center">
                     <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-sm ${
                       (l.returnable_quantity ?? l.quantity) > 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"
@@ -109,7 +109,7 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
                       {l.returnable_quantity ?? l.quantity}
                     </span>
                   </td>
-                  <td className="py-2 text-[12px] font-black text-slate-700 text-left">
+                  <td className="py-2 text-2sm font-black text-slate-700 text-left">
                     {fmt(l.unit_price ?? l.unit_cost)} ج.م
                   </td>
                 </tr>
@@ -369,12 +369,12 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     placeholder={isSales ? "رقم الفاتورة، اسم العميل..." : "رقم الفاتورة، اسم المورد..."}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 pr-9 pl-3 py-2.5 text-[13px] font-bold text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 pr-9 pl-3 py-2.5 text-sm font-bold text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none transition-colors"
                   />
                 </div>
                 <button
                   onClick={() => setShowFilters(f => !f)}
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[12px] font-bold transition-all ${
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-2sm font-bold transition-all ${
                     showFilters || hasFilters
                       ? "border-slate-700 bg-slate-800 text-white"
                       : "border-slate-200 text-slate-500 hover:bg-slate-50"
@@ -390,7 +390,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
                   {/* Product search */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
                       <Tag className="h-3 w-3" /> بحث بالصنف
                     </label>
                     <div className="relative">
@@ -400,21 +400,21 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                         value={productSearch}
                         onChange={e => setProductSearch(e.target.value)}
                         placeholder="اسم صنف أو باركود..."
-                        className="w-full rounded-md border border-slate-200 bg-white pr-8 pl-3 py-2 text-[12px] font-bold text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
+                        className="w-full rounded-md border border-slate-200 bg-white pr-8 pl-3 py-2 text-2sm font-bold text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
                       />
                     </div>
-                    {productSearch && <p className="text-[10px] text-slate-400">سيعرض الفواتير التي تحتوي هذا الصنف</p>}
+                    {productSearch && <p className="text-[11px] text-slate-400">سيعرض الفواتير التي تحتوي هذا الصنف</p>}
                   </div>
 
                   {/* Party filter */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
                       <User className="h-3 w-3" /> {isSales ? "العميل" : "المورد"}
                     </label>
                     <select
                       value={partyId}
                       onChange={e => setPartyId(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-700 focus:border-slate-400 focus:outline-none appearance-none"
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-2sm font-bold text-slate-700 focus:border-slate-400 focus:outline-none appearance-none"
                     >
                       <option value="">— الكل —</option>
                       {parties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -424,25 +424,25 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                   {/* Date range */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
                         <Calendar className="h-3 w-3" /> من
                       </label>
                       <input
                         type="date"
                         value={dateFrom}
                         onChange={e => setDateFrom(e.target.value)}
-                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-2sm font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
                         <Calendar className="h-3 w-3" /> إلى
                       </label>
                       <input
                         type="date"
                         value={dateTo}
                         onChange={e => setDateTo(e.target.value)}
-                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-2sm font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -520,14 +520,14 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
 
               {/* Loading */}
               {searching && (
-                <p className="text-center text-[12px] text-slate-400 animate-pulse py-4">جاري البحث...</p>
+                <p className="text-center text-2sm text-slate-400 animate-pulse py-4">جاري البحث...</p>
               )}
 
               {/* Empty state */}
               {!searching && (searchTerm || hasFilters) && searchResults.length === 0 && (
                 <div className="flex flex-col items-center gap-2 py-8 text-slate-400">
                   <AlertCircle className="h-8 w-8 opacity-40" />
-                  <p className="text-[12px] font-bold">لا توجد نتائج مطابقة</p>
+                  <p className="text-2sm font-bold">لا توجد نتائج مطابقة</p>
                   <p className="text-[11px] text-slate-300">جرب تغيير الفلاتر أو توسيع نطاق البحث</p>
                 </div>
               )}
@@ -552,7 +552,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                         onClick={() => loadDoc(doc.id)}
                         disabled={docLoading}
                       >
-                        <span className="text-[13px] font-black text-slate-800 group-hover:text-slate-900">
+                        <span className="text-sm font-black text-slate-800 group-hover:text-slate-900">
                           {isSales ? (doc.invoice_no || `#${doc.id}`) : `PUR-${String(doc.id).padStart(5,"0")}`}
                         </span>
                         <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
@@ -565,7 +565,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                       </button>
 
                       <div className="flex items-center gap-2 shrink-0 mr-3">
-                        <span className="text-[13px] font-black text-slate-700">{fmt(doc.total)} ج.م</span>
+                        <span className="text-sm font-black text-slate-700">{fmt(doc.total)} ج.م</span>
 
                         {/* Fast preview button */}
                         <button
@@ -604,7 +604,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
               <div className={`rounded-lg p-3 flex items-center gap-3 ${isSales ? "bg-blue-50 border border-blue-100" : "bg-amber-50 border border-amber-100"}`}>
                 <User className={`h-4 w-4 shrink-0 ${isSales ? "text-blue-500" : "text-amber-500"}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-black text-slate-800 truncate">
+                  <p className="text-sm font-black text-slate-800 truncate">
                     {isSales ? (selectedDoc.customer_name || "عميل نقدي") : (selectedDoc.supplier_name || `مورد #${selectedDoc.supplier_id}`)}
                   </p>
                   <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1">
@@ -623,12 +623,12 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                 )}
               </div>
 
-              <p className="text-[12px] font-bold text-slate-500">اختر الأصناف التي تريد إرجاعها:</p>
+              <p className="text-2sm font-bold text-slate-500">اختر الأصناف التي تريد إرجاعها:</p>
 
               {returnableLines.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-8 text-slate-400">
                   <Package className="h-8 w-8 opacity-40" />
-                  <p className="text-[12px] font-bold">جميع الأصناف تم إرجاعها مسبقاً</p>
+                  <p className="text-2sm font-bold">جميع الأصناف تم إرجاعها مسبقاً</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -648,7 +648,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                             {isChecked && <div className="h-2 w-2 rounded-sm bg-slate-800" />}
                           </div>
                           <div className="min-w-0">
-                            <p className={`text-[13px] font-black truncate ${isChecked ? "text-white" : "text-slate-800"}`}>{line.item_name}</p>
+                            <p className={`text-sm font-black truncate ${isChecked ? "text-white" : "text-slate-800"}`}>{line.item_name}</p>
                             <p className={`text-[11px] font-bold ${isChecked ? "text-slate-300" : "text-slate-400"}`}>
                               المتاح للإرجاع: {maxQty} · {fmt(line.unit_price ?? line.unit_cost)} ج.م
                             </p>
@@ -660,7 +660,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                             value={selected[line.id]?.quantity || 1}
                             onClick={e => e.stopPropagation()}
                             onChange={e => setQty(line.id, Math.min(maxQty, Math.max(1, Number(e.target.value))))}
-                            className="w-16 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-center text-[13px] font-black text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+                            className="w-16 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-center text-sm font-black text-white focus:outline-none focus:ring-1 focus:ring-white/40"
                           />
                         )}
                       </div>
@@ -672,7 +672,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
               {selectedLines.length > 0 && (
                 <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-2.5 flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-500">إجمالي المرتجع المحدد</span>
-                  <span className="text-[14px] font-black text-slate-800">{fmt(returnTotal)} ج.م</span>
+                  <span className="text-sm font-black text-slate-800">{fmt(returnTotal)} ج.م</span>
                 </div>
               )}
             </div>
@@ -681,18 +681,18 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
           {/* ── Step 3: Confirm ────────────────────────────────────────────── */}
           {step === 3 && (
             <div className="px-6 pb-4 space-y-4">
-              <p className="text-[12px] font-bold text-slate-400 text-center">مراجعة وتأكيد المرتجع</p>
+              <p className="text-2sm font-bold text-slate-400 text-center">مراجعة وتأكيد المرتجع</p>
 
               <div className="rounded-lg border border-slate-200 overflow-hidden">
                 <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">الأصناف المرتجعة</span>
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأصناف المرتجعة</span>
                 </div>
                 {selectedLines.map(({ quantity, line }) => (
                   <div key={line.id} className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 last:border-0">
-                    <span className="text-[13px] font-bold text-slate-700">{line.item_name}</span>
+                    <span className="text-sm font-bold text-slate-700">{line.item_name}</span>
                     <div className="flex items-center gap-4">
-                      <span className="text-[12px] text-slate-400 font-bold">× {quantity}</span>
-                      <span className="text-[13px] font-black text-slate-800">{fmt(quantity * (line.unit_price ?? line.unit_cost ?? 0))} ج.م</span>
+                      <span className="text-2sm text-slate-400 font-bold">× {quantity}</span>
+                      <span className="text-sm font-black text-slate-800">{fmt(quantity * (line.unit_price ?? line.unit_cost ?? 0))} ج.م</span>
                     </div>
                   </div>
                 ))}
@@ -708,7 +708,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                   <select
                     value={reason}
                     onChange={e => setReason(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
                   >
                     <option value="">اختر السبب (اختياري)</option>
                     {reasons.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -723,7 +723,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                         <button
                           key={m.value}
                           onClick={() => setRefundMethod(m.value)}
-                          className={`rounded-lg border px-4 py-2.5 text-[13px] font-black transition-all ${
+                          className={`rounded-lg border px-4 py-2.5 text-sm font-black transition-all ${
                             refundMethod === m.value
                               ? "border-slate-700 bg-slate-800 text-white"
                               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -745,7 +745,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                             key={m.value}
                             type="button"
                             onClick={() => setPurchaseSettlement(m.value)}
-                            className={`rounded-lg border px-3 py-2.5 text-[12px] font-black transition-all ${
+                            className={`rounded-lg border px-3 py-2.5 text-2sm font-black transition-all ${
                               purchaseSettlement === m.value
                                 ? "border-slate-700 bg-slate-800 text-white"
                                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -762,7 +762,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                         <select
                           value={selectedTreasury}
                           onChange={(e) => setSelectedTreasury(e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] font-bold text-slate-700 focus:border-emerald-500 focus:outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 focus:border-emerald-500 focus:outline-none"
                         >
                           {treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
@@ -778,21 +778,21 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
         {/* Footer */}
         <div className="border-t border-slate-100 px-6 py-4 bg-slate-50/50">
           {step === 1 && (
-            <button onClick={onClose} className="w-full rounded-lg border border-slate-200 py-2.5 text-[13px] font-black text-slate-500 hover:bg-slate-100 transition-colors">
+            <button onClick={onClose} className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-100 transition-colors">
               إلغاء
             </button>
           )}
           {step === 2 && (
             <div className="flex gap-3">
               {!initialDocId && (
-                <button onClick={() => { setStep(1); setSelectedDoc(null); setSelected({}); }} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-[13px] font-black text-slate-500 hover:bg-slate-100">
+                <button onClick={() => { setStep(1); setSelectedDoc(null); setSelected({}); }} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-100">
                   <ArrowRight className="h-4 w-4" /> رجوع
                 </button>
               )}
               <button
                 onClick={() => setStep(3)}
                 disabled={selectedLines.length === 0}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-slate-800 py-2.5 text-[13px] font-black text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-slate-800 py-2.5 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 التالي <ArrowLeft className="h-4 w-4" />
               </button>
@@ -800,13 +800,13 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
           )}
           {step === 3 && (
             <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-[13px] font-black text-slate-500 hover:bg-slate-100">
+              <button onClick={() => setStep(2)} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-100">
                 <ArrowRight className="h-4 w-4" /> رجوع
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className={`flex-1 rounded-lg py-2.5 text-[13px] font-black text-white transition-all disabled:opacity-60 ${
+                className={`flex-1 rounded-lg py-2.5 text-sm font-black text-white transition-all disabled:opacity-60 ${
                   isSales ? "bg-blue-700 hover:bg-blue-600" : "bg-amber-600 hover:bg-amber-500"
                 }`}
               >

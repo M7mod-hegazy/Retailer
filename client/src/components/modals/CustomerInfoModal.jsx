@@ -119,7 +119,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                 <div>
                   <p className="text-[16px] font-black text-slate-900">{customer.name}</p>
                   {customer.code && (
-                    <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{customer.code}</span>
+                    <span className="text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{customer.code}</span>
                   )}
                 </div>
               </div>
@@ -137,7 +137,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               {/* Phones */}
               {(customer.phone || extraPhones.length > 0) && (
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">أرقام الهاتف</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">أرقام الهاتف</p>
                   <div className="space-y-1.5">
                     {customer.phone && (
                       <div className="flex items-center gap-2 text-sm text-slate-700 font-mono">
@@ -158,7 +158,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               {/* Addresses */}
               {addresses.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">العناوين</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">العناوين</p>
                   <div className="space-y-1.5">
                     {addresses.map((a, i) => (
                       <div key={i} className="flex items-start gap-2 text-sm text-slate-600">
@@ -173,7 +173,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               {/* Notes */}
               {customer.notes && (
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ملاحظات</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">ملاحظات</p>
                   <p className="text-sm text-slate-600 leading-relaxed">{customer.notes}</p>
                 </div>
               )}

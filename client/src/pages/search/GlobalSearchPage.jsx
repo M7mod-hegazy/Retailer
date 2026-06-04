@@ -223,7 +223,7 @@ export default function GlobalSearchPage() {
               <X className="h-4 w-4" />
             </button>
           ) : (
-            <kbd className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 shadow-sm">
+            <kbd className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-black uppercase tracking-widest text-slate-400 shadow-sm">
               ESC
             </kbd>
           )}
@@ -237,7 +237,7 @@ export default function GlobalSearchPage() {
           {/* Quick-access grid when not searching */}
           {!showSearch && (
             <div className="px-5 py-5">
-              <div className="mb-3 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              <div className="mb-3 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
                 تصفح سريع
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -260,7 +260,7 @@ export default function GlobalSearchPage() {
                         <Icon className={`h-4 w-4 ${color}`} strokeWidth={1.5} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-black text-slate-800">{item.title}</div>
+                        <div className="truncate text-sm font-black text-slate-800">{item.title}</div>
                         <div className="truncate text-[11px] text-slate-400">{item.subtitle}</div>
                       </div>
                     </button>
@@ -277,7 +277,7 @@ export default function GlobalSearchPage() {
                 <div className="flex flex-col items-center justify-center py-14 text-center">
                   <Search className="mb-4 h-12 w-12 text-slate-200" strokeWidth={1} />
                   <div className="text-[15px] font-bold text-slate-400">لا توجد نتائج مطابقة</div>
-                  <div className="mt-1 text-[12px] text-slate-300">جرّب كلمة مختلفة أو تحقق من الإملاء</div>
+                  <div className="mt-1 text-2sm text-slate-300">جرّب كلمة مختلفة أو تحقق من الإملاء</div>
                 </div>
               )}
 
@@ -291,7 +291,7 @@ export default function GlobalSearchPage() {
                         <Icon className={`h-2.5 w-2.5 ${color}`} strokeWidth={2.5} />
                       </div>
                       <span className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</span>
-                      <span className="ml-auto font-bold text-[10px] text-slate-300 ltr">{entries.length}</span>
+                      <span className="ml-auto font-bold text-[11px] text-slate-300 ltr">{entries.length}</span>
                     </div>
 
                     {/* Result cards */}
@@ -319,7 +319,7 @@ export default function GlobalSearchPage() {
 
                             {/* Text */}
                             <div className="min-w-0 flex-1">
-                              <div className={`truncate text-[14px] font-bold transition-colors ${isActive ? "text-emerald-800" : "text-slate-800"}`}>
+                              <div className={`truncate text-sm font-bold transition-colors ${isActive ? "text-emerald-800" : "text-slate-800"}`}>
                                 <Highlight text={item.title} query={query} />
                               </div>
                               {item.subtitle && (
@@ -350,7 +350,7 @@ export default function GlobalSearchPage() {
           <div className="flex shrink-0 items-center gap-5 border-t border-slate-100 bg-slate-50/60 px-5 py-2.5">
             {[["↑↓", "تنقل"], ["↵", "فتح"]].map(([k, lbl]) => (
               <span key={k} className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
-                <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-black shadow-sm">{k}</kbd>
+                <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-black shadow-sm">{k}</kbd>
                 {lbl}
               </span>
             ))}

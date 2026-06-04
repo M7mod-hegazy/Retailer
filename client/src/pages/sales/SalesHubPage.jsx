@@ -183,15 +183,15 @@ function PreviewDrawer({ invoiceId, onClose }) {
         {/* Header */}
         <div className="rounded-3xl bg-blue-50/50 border border-blue-100/80 p-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-blue-600 tracking-wider uppercase">رقم الفاتورة</span>
+            <span className="text-[11px] font-black text-blue-600 tracking-wider uppercase">رقم الفاتورة</span>
             <span className="font-mono text-xl font-black text-zinc-950">{d.invoice_no}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-zinc-400 tracking-wider uppercase">تاريخ الفاتورة</span>
+            <span className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">تاريخ الفاتورة</span>
             <span className="font-mono text-sm font-bold text-zinc-600">{fmtDate(d.created_at)}</span>
           </div>
           <div className="flex flex-col gap-1 items-end">
-            <span className="text-[10px] font-black text-blue-600 tracking-wider uppercase">إجمالي الفاتورة</span>
+            <span className="text-[11px] font-black text-blue-600 tracking-wider uppercase">إجمالي الفاتورة</span>
             <span className="font-mono text-xl font-black text-blue-700">{fmt(total)} ج.م</span>
           </div>
         </div>
@@ -267,12 +267,12 @@ function PreviewDrawer({ invoiceId, onClose }) {
             {/* Discount & Increase row */}
             {Number(d.discount) > 0 && Number(d.increase) > 0 && (
               <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                <span className="text-[11px] font-black text-rose-600 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   خصم الفاتورة
                 </span>
                 <span className="font-mono text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
-                <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
+                <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   إضافة / رسوم
                 </span>
@@ -281,7 +281,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
             )}
             {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
               <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                <span className="text-[10px] font-black text-rose-600 flex items-center gap-1">
+                <span className="text-[11px] font-black text-rose-600 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   خصم الفاتورة
                 </span>
@@ -290,7 +290,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
             )}
             {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
               <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   إضافة / رسوم
                 </span>
@@ -301,7 +301,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
             {chips.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {chips.map((chip, i) => (
-                  <span key={i} className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1.5 rounded-xl border ${CHIP_COLORS[chip.method] || "bg-zinc-50 text-zinc-600 border-zinc-200"}`}>
+                  <span key={i} className={`inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl border ${CHIP_COLORS[chip.method] || "bg-zinc-50 text-zinc-600 border-zinc-200"}`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
                     {chip.label}
                     <span className="font-mono">{fmt(chip.amount)}</span>
@@ -423,7 +423,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-base font-black text-zinc-900 font-mono tracking-tight">{row.invoice_no || `#${row.id}`}</span>
-            <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${
+            <span className={`px-2 py-0.5 rounded-md border text-[11px] font-black ${
               row.status === "cancelled" || row.status === "voided"
                 ? "bg-zinc-100 text-zinc-400 border-zinc-200"
                 : row.amended_by ? "bg-orange-50 text-orange-600 border-orange-200"
@@ -431,7 +431,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
             }`}>
               {row.status === "cancelled" || row.status === "voided" ? "ملغاة" : row.amended_by ? "معدّلة" : "نشطة"}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-zinc-50 text-zinc-500 border-zinc-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-zinc-50 text-zinc-500 border-zinc-200">
               <Package className="w-3 h-3" /> {row.items_count} أصناف
             </span>
           </div>
@@ -451,7 +451,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
         <div className="flex items-stretch gap-0 bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3.5 py-1.5 min-w-[80px]">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الإجمالي</span>
-            <div className="text-[14px] font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
+            <div className="text-sm font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
               <span>{fmt(total)}</span><span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
             </div>
           </div>
@@ -467,7 +467,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
                   <span className="w-1 h-1 rounded-full bg-current inline-block" />
                   {chip.label}
                 </span>
-                <div className={`text-[12px] font-black font-mono leading-none ${
+                <div className={`text-2sm font-black font-mono leading-none ${
                   chip.method === "credit" ? "text-amber-700" : "text-blue-700"
                 }`}>
                   {fmt(chip.amount)}
@@ -482,7 +482,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
                 <span className="text-[8px] font-black text-amber-500 tracking-wider mb-0.5 flex items-center gap-1">
                   <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" /> المتبقي
                 </span>
-                <div className="text-[13px] font-black text-amber-700 font-mono leading-none">
+                <div className="text-sm font-black text-amber-700 font-mono leading-none">
                   {fmt(debt)}
                 </div>
               </div>
@@ -644,7 +644,7 @@ export default function SalesHubPage() {
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
                 <Layers className="w-5 h-5 text-blue-500" />
               </div>
-              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">فواتير المبيعات</span>
+              <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">فواتير المبيعات</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">فواتير <span className="text-blue-600">المبيعات</span></h1>
           </div>
@@ -749,7 +749,7 @@ export default function SalesHubPage() {
                         {selectedItemFilter.code || selectedItemFilter.item_code || `#${selectedItemFilter.id}`}
                       </span>
                       <div className="h-3 w-px bg-blue-300 shrink-0" />
-                      <span className="text-[12px] text-blue-700 font-bold truncate">{selectedItemFilter.name}</span>
+                      <span className="text-2sm text-blue-700 font-bold truncate">{selectedItemFilter.name}</span>
                       <button type="button" onClick={clearItemSelection} className="mr-auto text-blue-400 hover:text-rose-500 transition-colors">
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -779,7 +779,7 @@ export default function SalesHubPage() {
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
               {activeTab === "invoices" && (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">العميل</span>
+                  <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">العميل</span>
                   <div className="relative">
                     <input
                       ref={customerInputRef}
@@ -806,7 +806,7 @@ export default function SalesHubPage() {
                 </div>
               )}
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
                 <select value={userId} onChange={e => setUserId(e.target.value)}
                   className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
                   <option value="">كل المستخدمين</option>
@@ -816,7 +816,7 @@ export default function SalesHubPage() {
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                 <input 
                   type="date" 
                   value={dateFrom} 
@@ -825,7 +825,7 @@ export default function SalesHubPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
+                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
                 <input 
                   type="date" 
                   value={dateTo} 
@@ -929,7 +929,7 @@ export default function SalesHubPage() {
                         <td className="px-5 py-4 font-bold text-zinc-800">
                           <div>{r.item_name || "—"}</div>
                           {r.item_id && (
-                            <Link to={`/operations/items/${r.item_id}?types=sales`} className="mt-1 inline-flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-800">
+                            <Link to={`/operations/items/${r.item_id}?types=sales`} className="mt-1 inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:text-blue-800">
                               <ExternalLink className="w-3 h-3" /> عرض كامل
                             </Link>
                           )}

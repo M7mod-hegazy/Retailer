@@ -192,7 +192,7 @@ export default function QuotationsPage() {
             <div className="bg-violet-100 p-4 rounded-[1.5rem]"><FileText className="h-8 w-8 text-violet-600" /></div>
             <div>
               <h1 className="text-[28px] font-black text-slate-900 tracking-tight">عرض سعر</h1>
-              <p className="text-[14px] font-bold text-slate-500 mt-1 max-w-[45ch]">إعداد عروض سعر للعملاء وتحويلها لفواتير بيع بعد اعتمادها.</p>
+              <p className="text-sm font-bold text-slate-500 mt-1 max-w-[45ch]">إعداد عروض سعر للعملاء وتحويلها لفواتير بيع بعد اعتمادها.</p>
             </div>
           </div>
 
@@ -200,7 +200,7 @@ export default function QuotationsPage() {
             <div className="flex items-center gap-8 px-6 lg:border-r border-slate-200">
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">القيم المعروضة</span>
-                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter font-mono">{formatMoney(stats.total)}<span className="text-[12px] text-slate-400 font-sans mr-1">ج.م</span></span>
+                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter font-mono">{formatMoney(stats.total)}<span className="text-2sm text-slate-400 font-sans mr-1">ج.م</span></span>
                </div>
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1">معدل التحويل</span>
@@ -224,7 +224,7 @@ export default function QuotationsPage() {
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide w-full lg:w-auto px-2">
             {STATUS_TABS.map(tab => (
               <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
-                className={`whitespace-nowrap rounded-full px-6 py-3 text-[14px] font-black transition-all ${
+                className={`whitespace-nowrap rounded-full px-6 py-3 text-sm font-black transition-all ${
                   statusFilter === tab.value ? "bg-slate-900 text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                 }`}>
                 {tab.label}
@@ -235,7 +235,7 @@ export default function QuotationsPage() {
             <Search className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-slate-400" />
             <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
               placeholder="ابحث باسم العميل أو رقم العرض..."
-              className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3.5 text-[14px] font-black text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:bg-white transition-all outline-none" />
+              className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3.5 text-sm font-black text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:bg-white transition-all outline-none" />
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@ export default function QuotationsPage() {
                             <span className="font-mono text-[18px] font-black text-slate-900 tracking-tight">QTN-{String(row.id).padStart(5, "0")}</span>
                             <StatusBadge status={effStatus} expiresAt={row.expires_at} />
                           </div>
-                          <div className="flex items-center gap-2 text-[14px] font-bold text-slate-500 mt-1">
+                          <div className="flex items-center gap-2 text-sm font-bold text-slate-500 mt-1">
                             <User className="h-4 w-4 opacity-50" />
                             <span className="truncate max-w-[220px]">{row.customer_name || `عميل #${row.customer_id}`}</span>
                           </div>
@@ -295,7 +295,7 @@ export default function QuotationsPage() {
                       <div className="flex items-center justify-end gap-3 lg:w-[20%] shrink-0">
                         {canConvert(row) && (
                           <PermissionGate page="quotations" action="edit">
-                            <button data-help="convert-button" onClick={(e) => { e.stopPropagation(); setConvertTarget(row); }} className="flex h-12 px-6 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-[14px] font-black hover:bg-emerald-600 hover:text-white transition-all">
+                            <button data-help="convert-button" onClick={(e) => { e.stopPropagation(); setConvertTarget(row); }} className="flex h-12 px-6 items-center justify-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-black hover:bg-emerald-600 hover:text-white transition-all">
                               <Sparkles className="h-4.5 w-4.5" /> تحويل لبيع
                             </button>
                           </PermissionGate>
@@ -308,25 +308,25 @@ export default function QuotationsPage() {
                           <AnimatePresence>
                             {openMenu === row.id && (
                               <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-56 rounded-2xl border border-slate-200/60 bg-white p-2 shadow-2xl origin-bottom-left flex flex-col gap-1">
-                                <Link to={`/operations/quotations/new?id=${row.id}`} className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
+                                <Link to={`/operations/quotations/new?id=${row.id}`} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
                                   فتح للتعديل
                                 </Link>
                                 {canSend(row) && (
                                   <PermissionGate page="quotations" action="edit">
-                                    <button onClick={(e) => { e.stopPropagation(); handleSend(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-black text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); handleSend(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
                                       تحديد كمُرسل
                                     </button>
                                   </PermissionGate>
                                 )}
                                 <PermissionGate page="quotations" action="add">
-                                  <button onClick={(e) => { e.stopPropagation(); handleDuplicate(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
+                                  <button onClick={(e) => { e.stopPropagation(); handleDuplicate(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
                                     نسخ العرض
                                   </button>
                                 </PermissionGate>
                                 {canDelete(row) && (
                                   <PermissionGate page="quotations" action="delete">
                                     <div className="h-px bg-slate-100 my-1 w-full" />
-                                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
                                       حذف العرض
                                     </button>
                                   </PermissionGate>
@@ -390,7 +390,7 @@ export default function QuotationsPage() {
                     <div className="px-2 border-l border-slate-100">
                       <p className="text-[15px] font-black text-slate-900 truncate">{line.item_name}</p>
                       {(line.item_code || line.code) && <p className="font-mono text-[11px] text-slate-400 truncate">{line.item_code || line.code}</p>}
-                      {line.description && <p className="text-[13px] font-bold text-slate-400 mt-1 truncate">{line.description}</p>}
+                      {line.description && <p className="text-sm font-bold text-slate-400 mt-1 truncate">{line.description}</p>}
                     </div>
                     <div className="px-2 text-center border-l border-slate-100 font-black text-[16px]">{line.quantity}</div>
                     <div className="px-2 text-center border-l border-slate-100 font-mono text-[15px] text-slate-500">{formatMoney(line.unit_price)}</div>
@@ -403,7 +403,7 @@ export default function QuotationsPage() {
               </div>
               <div className="flex items-center justify-between bg-slate-950 px-10 py-8 text-white relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-violet-900/40 via-transparent to-transparent pointer-events-none" />
-                <span className="text-[12px] font-black uppercase tracking-widest opacity-60 relative z-10">إجمالي قيمة العرض</span>
+                <span className="text-2sm font-black uppercase tracking-widest opacity-60 relative z-10">إجمالي قيمة العرض</span>
                 <span className="text-[3rem] font-black font-mono tracking-tighter leading-none relative z-10">{formatMoney(activeQuotation.total)} <span className="text-[16px] font-sans opacity-50">ج.م</span></span>
               </div>
             </div>

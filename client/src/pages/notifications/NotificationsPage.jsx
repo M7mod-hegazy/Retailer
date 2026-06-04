@@ -107,7 +107,7 @@ function NotifRow({ note, onMarkRead, onDelete, index }) {
             </span>
             {note.type && note.type !== "info" && (
               <span
-                className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                className="shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{ background: cfg.bg, color: cfg.text }}
               >
                 {cfg.label}

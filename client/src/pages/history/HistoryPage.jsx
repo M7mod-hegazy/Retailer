@@ -182,7 +182,7 @@ function SummaryCard({ data, resource }) {
       {entries.map(([key, val]) => (
         <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
           <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{labels[key] || key}</p>
-          <p className="text-[12px] font-black text-zinc-900 truncate" dir="ltr">{fmt(key, val)}</p>
+          <p className="text-2sm font-black text-zinc-900 truncate" dir="ltr">{fmt(key, val)}</p>
         </div>
       ))}
     </div>
@@ -229,7 +229,7 @@ function DetailPanel({ log, payload }) {
           {usefulPayloadEntries.map(([key, val]) => (
             <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{key}</p>
-              <p className="text-[12px] font-black text-zinc-900 truncate" dir="ltr">
+              <p className="text-2sm font-black text-zinc-900 truncate" dir="ltr">
                 {typeof val === "object" ? JSON.stringify(val) : String(val)}
               </p>
             </div>
@@ -266,7 +266,7 @@ function DetailPanel({ log, payload }) {
                     <td className="px-3 py-2.5 text-zinc-400 font-bold w-8">{i + 1}</td>
                     <td className="px-3 py-2.5">
                       {line.item_code || line.sku ? (
-                        <span className="font-mono font-bold text-zinc-700 bg-zinc-100 px-1.5 py-0.5 rounded text-[10px]">
+                        <span className="font-mono font-bold text-zinc-700 bg-zinc-100 px-1.5 py-0.5 rounded text-[11px]">
                           <Hash className="w-3 h-3 inline ml-0.5 -mt-0.5 text-zinc-400" />
                           {line.item_code || line.sku}
                         </span>
@@ -277,7 +277,7 @@ function DetailPanel({ log, payload }) {
                     <td className="px-3 py-2.5">
                       <span className="font-black text-zinc-800">{line.item_name || `#${line.item_id}`}</span>
                       {line.warehouse_id && (
-                        <span className="text-[10px] text-zinc-400 mr-1">(م {line.warehouse_id})</span>
+                        <span className="text-[11px] text-zinc-400 mr-1">(م {line.warehouse_id})</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5">
@@ -389,28 +389,28 @@ function LogRow({ log, index, highlighted, autoExpand }) {
           </p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {log.resource && (
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400">
                 {resourceLabel}
               </span>
             )}
             {log.action && (
-              <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black tracking-wide ${badgeClasses}`}>
+              <span className={`px-2 py-0.5 rounded-md border text-[11px] font-black tracking-wide ${badgeClasses}`}>
                 {actionLabel}
               </span>
             )}
             {log.full_name && log.full_name !== log.username && (
-              <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
+              <span className="text-[11px] font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
                 👤 {log.full_name}
               </span>
             )}
             {hasDetails && payloadEntries.length > 0 && (
-              <span className="text-[10px] font-bold text-zinc-300">·</span>
+              <span className="text-[11px] font-bold text-zinc-300">·</span>
             )}
             {hasDetails && payloadEntries.slice(0, 3).map(([key, val]) => {
               const isMonetary = ["total", "amount", "subtotal", "price", "cost"].some(k => key.toLowerCase().includes(k));
               const displayVal = isMonetary ? Number(val).toLocaleString("en-US") : (typeof val === "object" ? JSON.stringify(val) : String(val ?? "—"));
               return (
-                <span key={key} className="text-[10px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <span key={key} className="text-[11px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded flex items-center gap-1">
                   <span className="text-zinc-400">{key}:</span>
                   <span dir="ltr">{displayVal}</span>
                 </span>
@@ -419,7 +419,7 @@ function LogRow({ log, index, highlighted, autoExpand }) {
             {hasDetails && payloadEntries.length > 3 && (
               <button
                 onClick={() => setExpanded(e => !e)}
-                className="text-[10px] font-bold text-zinc-400 hover:text-zinc-700 transition-colors"
+                className="text-[11px] font-bold text-zinc-400 hover:text-zinc-700 transition-colors"
               >
                 +{payloadEntries.length - 3} المزيد
               </button>
@@ -436,7 +436,7 @@ function LogRow({ log, index, highlighted, autoExpand }) {
               {initial}
             </div>
           </div>
-          <time dir="ltr" className="text-[10px] font-mono font-bold text-zinc-400" title={log.created_at}>
+          <time dir="ltr" className="text-[11px] font-mono font-bold text-zinc-400" title={log.created_at}>
             {log.created_at
               ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
                   year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"

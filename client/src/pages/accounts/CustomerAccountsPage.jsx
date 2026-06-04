@@ -149,7 +149,7 @@ function InstallmentsBadge({ debtId }) {
   return (
     <div className="mt-2">
       <button onClick={load}
-        className="flex items-center gap-1.5 text-[10px] font-bold text-violet-650 bg-violet-50/80 border border-violet-200/60 rounded-xl px-3 py-1.5 hover:bg-violet-100/80 transition-colors">
+        className="flex items-center gap-1.5 text-[11px] font-bold text-violet-650 bg-violet-50/80 border border-violet-200/60 rounded-xl px-3 py-1.5 hover:bg-violet-100/80 transition-colors">
         <Calendar className="h-3.5 w-3.5" />
         {pending !== null ? `${pending} أقساط متبقية` : "متابعة جدول الأقساط"}
         {open ? <ChevronUp className="h-3.5 w-3.5 mr-1" /> : <ChevronDown className="h-3.5 w-3.5 mr-1" />}
@@ -167,7 +167,7 @@ function InstallmentsBadge({ debtId }) {
               const isOverdue = s.status !== "paid" && s.due_date < today;
               const isPaid = s.status === "paid";
               return (
-                <div key={s.id} className={`flex items-center justify-between rounded-xl px-3 py-2 text-[10px] font-bold border transition-colors ${isPaid
+                <div key={s.id} className={`flex items-center justify-between rounded-xl px-3 py-2 text-[11px] font-bold border transition-colors ${isPaid
                     ? "bg-emerald-50/30 border-emerald-100/80 text-emerald-700"
                     : isOverdue
                       ? "bg-rose-50/30 border-rose-100/80 text-rose-700"
@@ -190,7 +190,7 @@ function InstallmentsBadge({ debtId }) {
         )}
       </AnimatePresence>
       {open && schedules?.length === 0 && (
-        <div className="text-[10px] text-slate-450 pr-3 font-semibold">لا توجد أقساط مجدولة لهذا الدين</div>
+        <div className="text-[11px] text-slate-450 pr-3 font-semibold">لا توجد أقساط مجدولة لهذا الدين</div>
       )}
     </div>
   );
@@ -246,7 +246,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                 <button
                   key={btn.id}
                   onClick={() => setFilterType(btn.id)}
-                  className={`text-[12px] font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                  className={`text-2sm font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                     active 
                       ? "bg-slate-900 border-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
                       : `${btn.color} border-slate-200/80 shadow-sm hover:scale-[1.01]`
@@ -268,23 +268,23 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* From Date Pill */}
             <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-450 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
-              <span className="text-[10px] font-black text-slate-450 shrink-0">من</span>
+              <span className="text-[11px] font-black text-slate-450 shrink-0">من</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="text-[12px] font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+                className="text-2sm font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
               />
             </div>
 
             {/* To Date Pill */}
             <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-450 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
-              <span className="text-[10px] font-black text-slate-450 shrink-0">إلى</span>
+              <span className="text-[11px] font-black text-slate-450 shrink-0">إلى</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="text-[12px] font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+                className="text-2sm font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
               />
             </div>
 
@@ -443,7 +443,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 animate-pulse">
         <RefreshCw className="h-7 w-7 animate-spin text-blue-600" />
-        <span className="text-[12px] font-bold">جاري تحميل سجل الحركات المالية...</span>
+        <span className="text-2sm font-bold">جاري تحميل سجل الحركات المالية...</span>
       </div>
     );
   }
@@ -454,7 +454,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
         <div className="p-4 rounded-full bg-slate-50 border border-slate-100/80 shadow-sm">
           <FileText className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
         </div>
-        <span className="font-extrabold text-[13px] text-slate-500 tracking-tight">لا توجد حركات مالية مسجلة في هذا الحساب حالياً</span>
+        <span className="font-extrabold text-sm text-slate-500 tracking-tight">لا توجد حركات مالية مسجلة في هذا الحساب حالياً</span>
       </div>
     );
   }
@@ -468,7 +468,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
           <div className="p-4 rounded-full bg-slate-50 border border-slate-100 shadow-sm">
             <SlidersHorizontal className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
           </div>
-          <span className="font-extrabold text-[13px] text-slate-500 tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
+          <span className="font-extrabold text-sm text-slate-500 tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
           <button 
             onClick={() => { setFilterType("all"); setStartDate(""); setEndDate(""); }}
             className="text-[11px] font-black text-blue-650 bg-blue-50 border border-blue-150 rounded-xl px-4 py-2 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
@@ -659,7 +659,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                           
                           <div className="mt-2.5 flex items-center gap-1">
                             <span className="text-[9.5px] font-bold text-slate-400 select-none">المرجع:</span>
-                            <span className="text-[10px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
+                            <span className="text-[11px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
                               {isOpening ? "سجل افتتاحي" : ev.ref}
                             </span>
                           </div>
@@ -681,7 +681,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                               >
                                 <span className={`h-1.5 w-1.5 rounded-full ${style.dot} animate-pulse`} />
                                 {arMethod(chip.method)}
-                                <span className="font-mono text-[10px] font-black">{fmt(chip.amount)}</span>
+                                <span className="font-mono text-[11px] font-black">{fmt(chip.amount)}</span>
                                 {isMulti && <span className="opacity-60 text-[8.5px] font-bold mr-0.5">({pct}%)</span>}
                               </span>
                             );
@@ -710,7 +710,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                             <ExternalLink className="h-3 w-3 shrink-0" />
                           </button>
                         ) : ev.type === "return" ? (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
                             <RotateCcw className="h-3 w-3 shrink-0" />
                             مرتجع مباشر
                             <span className="text-[8.5px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded-lg leading-none">بدون فاتورة</span>
@@ -755,7 +755,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                                   : "المخصوم من المديونية"}
                             </span>
                             <div className="text-[18px] font-black font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
-                              <span className="text-[13px] font-black select-none leading-none mr-0.5">
+                              <span className="text-sm font-black select-none leading-none mr-0.5">
                                 {ev.impactDir === "add" || isMulti ? "+" : "−"}
                               </span>
                               <span>{fmt(displayImpactAmount)}</span>
@@ -1050,7 +1050,7 @@ export default function CustomerAccountsPage() {
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-blue-650 transition-colors stroke-[2.3px]" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="البحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-[12px] font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
           </div>
 
           <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
@@ -1108,11 +1108,11 @@ export default function CustomerAccountsPage() {
         {/* ── Customers List Scroll ── */}
         <div data-help="main-table" className="flex-1 overflow-y-auto px-1 pb-4">
           {loading ? (
-            <div className="py-20 text-center text-[12px] font-bold text-slate-400 animate-pulse">جاري تحميل القائمة...</div>
+            <div className="py-20 text-center text-2sm font-bold text-slate-400 animate-pulse">جاري تحميل القائمة...</div>
           ) : filtered.length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
               <Users className="h-9 w-9 text-slate-300 opacity-60" />
-              <p className="text-[12px] font-bold text-slate-400">لا يوجد عملاء مطابقين للبحث</p>
+              <p className="text-2sm font-bold text-slate-400">لا يوجد عملاء مطابقين للبحث</p>
             </div>
           ) : filtered.map((c, index) => {
             const b = Number(c.opening_balance || 0);
@@ -1133,7 +1133,7 @@ export default function CustomerAccountsPage() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Letter Avatar with Sleek Minimalist Squircle Aesthetic */}
-                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[13px] font-black shrink-0 transition-all duration-200 ${
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black shrink-0 transition-all duration-200 ${
                     isSelected 
                       ? "bg-blue-600 text-white shadow-sm shadow-blue-300/30" 
                       : "bg-slate-200/50 text-slate-550"
@@ -1151,12 +1151,12 @@ export default function CustomerAccountsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono font-bold leading-none">{c.phone || c.code || "—"}</div>
+                    <div className="text-[11px] text-slate-400 font-mono font-bold leading-none">{c.phone || c.code || "—"}</div>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 select-none">
-                  <span className={`text-[13px] font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  <span className={`text-sm font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                     {fmt(Math.abs(b))}
                   </span>
                   {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">عليه دين</span>}
@@ -1175,7 +1175,7 @@ export default function CustomerAccountsPage() {
             <div className="p-5 rounded-full bg-slate-100/50 border border-slate-200/50 shadow-inner">
               <Users className="h-14 w-14 text-slate-400 opacity-60" />
             </div>
-            <p className="text-[13px] font-bold text-slate-400">برجاء اختيار أحد العملاء من القائمة الجانبية لعرض الملف والتحركات المالية</p>
+            <p className="text-sm font-bold text-slate-400">برجاء اختيار أحد العملاء من القائمة الجانبية لعرض الملف والتحركات المالية</p>
           </div>
         ) : (
           <>
@@ -1201,7 +1201,7 @@ export default function CustomerAccountsPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {selected.phone && (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
                           <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
                           <span className="font-mono">{selected.phone}</span>
                           <button
@@ -1213,7 +1213,7 @@ export default function CustomerAccountsPage() {
                         </span>
                       )}
                       {selected.code && (
-                        <span className="text-[10px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
+                        <span className="text-[11px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
                           <span>كود: {selected.code}</span>
                           <button
                             onClick={() => handleCopy(selected.code, "code")}
@@ -1245,7 +1245,7 @@ export default function CustomerAccountsPage() {
                       {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
                     </div>
                     <div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block">
+                      <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
                         {bal > 0 ? "صافي الرصيد المستحق بذمته" : bal < 0 ? "الرصيد الدائن للعميل" : "رصيد الحساب مسوّى"}
                       </div>
                       <div className="flex items-baseline gap-1 mt-1">
@@ -1282,7 +1282,7 @@ export default function CustomerAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
                       <span>{bal < 0 ? "رد دفعة" : "تحصيل دفعة"}</span>
@@ -1293,7 +1293,7 @@ export default function CustomerAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <SlidersHorizontal className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
                       <span>تسوية رصيد</span>
@@ -1310,7 +1310,7 @@ export default function CustomerAccountsPage() {
                 { id: "notes", label: "ملاحظات وتنبيهات العميل" },
               ].map(t => (
                 <button key={t.id} onClick={() => changeTab(t.id)}
-                  className="px-4 py-2 text-[12px] font-bold rounded-xl relative z-10 transition-colors duration-200"
+                  className="px-4 py-2 text-2sm font-bold rounded-xl relative z-10 transition-colors duration-200"
                   style={{ color: activeTab === t.id ? "#1d4ed8" : "#64748b" }}
                 >
                   {activeTab === t.id && (
@@ -1373,22 +1373,22 @@ export default function CustomerAccountsPage() {
               {detailLoading ? (
                 <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
                   <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
-                  <span className="text-[12px] font-bold">جاري تحميل تفاصيل الفاتورة...</span>
+                  <span className="text-2sm font-bold">جاري تحميل تفاصيل الفاتورة...</span>
                 </div>
               ) : detailData ? (
                 <>
                   <div className="rounded-2xl bg-slate-50/80 border border-slate-200/60 p-4 mb-4">
-                    <div className="grid grid-cols-2 gap-3.5 text-[12px]">
+                    <div className="grid grid-cols-2 gap-3.5 text-2sm">
                       <div><span className="font-bold text-slate-400">العميل المستفيد:</span> <span className="font-bold text-slate-800">{detailData.customer_name || "—"}</span></div>
-                      <div><span className="font-bold text-slate-400">طريقة سداد الفاتورة:</span> <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-bold ${PTYPE_COLOR[detailData.payment_type] || "text-slate-650 bg-slate-100 border-slate-200"}`}>{arMethod(detailData.payment_type)}</span></div>
+                      <div><span className="font-bold text-slate-400">طريقة سداد الفاتورة:</span> <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-bold ${PTYPE_COLOR[detailData.payment_type] || "text-slate-650 bg-slate-100 border-slate-200"}`}>{arMethod(detailData.payment_type)}</span></div>
                       <div><span className="font-bold text-slate-400">تاريخ المعاملة:</span> <span className="font-bold text-slate-800 font-mono">{fmtDate(detailData.created_at)}</span></div>
-                      <div><span className="font-bold text-slate-400">حالة السداد:</span> <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${detailData.status === "paid" ? "bg-emerald-100/80 text-emerald-700" : detailData.status === "cancelled" ? "bg-rose-100/80 text-rose-700" : "bg-amber-100/80 text-amber-700"}`}>{detailData.status === "paid" ? "مسدد بالكامل" : detailData.status === "cancelled" ? "ملغي" : "آجل غير كامل السداد"}</span></div>
+                      <div><span className="font-bold text-slate-400">حالة السداد:</span> <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${detailData.status === "paid" ? "bg-emerald-100/80 text-emerald-700" : detailData.status === "cancelled" ? "bg-rose-100/80 text-rose-700" : "bg-amber-100/80 text-amber-700"}`}>{detailData.status === "paid" ? "مسدد بالكامل" : detailData.status === "cancelled" ? "ملغي" : "آجل غير كامل السداد"}</span></div>
                     </div>
                   </div>
 
                   {/* Lines Receipt */}
                   <div className="rounded-2xl border border-slate-200/80 overflow-hidden mb-4 shadow-sm bg-white">
-                    <div className="bg-slate-50/80 grid grid-cols-12 gap-2 px-4 py-2.5 text-[10px] font-bold text-slate-500 border-b border-slate-200/60">
+                    <div className="bg-slate-50/80 grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-bold text-slate-500 border-b border-slate-200/60">
                       <div className="col-span-5">اسم البند/الصنف</div>
                       <div className="col-span-2 text-center">الكمية</div>
                       <div className="col-span-2 text-center">سعر الوحدة</div>
@@ -1399,12 +1399,12 @@ export default function CustomerAccountsPage() {
                       {detailData.lines?.map((line, i) => (
                         <div key={i} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/40 transition-colors">
                           <div className="col-span-5 flex flex-col min-w-0">
-                            {(line.item_code || line.code) && <span className="font-mono text-[10px] text-slate-400 truncate">{line.item_code || line.code}</span>}
-                            <span className="text-[12px] font-bold text-slate-800 truncate">{line.item_name || line.name}</span>
+                            {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 truncate">{line.item_code || line.code}</span>}
+                            <span className="text-2sm font-bold text-slate-800 truncate">{line.item_name || line.name}</span>
                           </div>
                           <div className="col-span-2 text-center font-mono text-[11px] text-slate-650">{line.quantity}</div>
                           <div className="col-span-2 text-center font-mono text-[11px] text-slate-650">{fmt(line.unit_price)}</div>
-                          <div className="col-span-1 text-center font-mono text-[10px] text-rose-500">{line.discount > 0 ? fmt(line.discount) : "—"}</div>
+                          <div className="col-span-1 text-center font-mono text-[11px] text-rose-500">{line.discount > 0 ? fmt(line.discount) : "—"}</div>
                           <div className="col-span-2 text-left font-mono text-[11px] font-bold text-slate-800">{fmt(line.line_total)}</div>
                         </div>
                       ))}
@@ -1413,7 +1413,7 @@ export default function CustomerAccountsPage() {
                       <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">إجمالي الأصناف الفرعي</span><span className="font-mono">{fmt(detailData.subtotal)} ج.م</span></div>
                       {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">خصم إضافي للفاتورة</span><span className="font-mono text-rose-350">- {fmt(detailData.discount)} ج.م</span></div>}
                       {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">رسوم / تكلفة إضافية</span><span className="font-mono text-amber-350">+ {fmt(detailData.increase)} ج.م</span></div>}
-                      <div className="flex justify-between text-[14px] font-bold border-t border-slate-700/80 pt-3 mt-3">
+                      <div className="flex justify-between text-sm font-bold border-t border-slate-700/80 pt-3 mt-3">
                         <span className="text-slate-355">إجمالي قيمة الفاتورة النهائي</span>
                         <span className="font-mono text-emerald-350">{fmt(detailData.total)} ج.م</span>
                       </div>
@@ -1423,20 +1423,20 @@ export default function CustomerAccountsPage() {
                   {/* Payment Methods Breakdown */}
                   {detailData.payments?.length > 0 && (
                     <div className="rounded-2xl border border-slate-200/80 overflow-hidden mb-4 shadow-sm bg-white">
-                      <div className="bg-slate-50/80 px-4 py-2.5 text-[10px] font-bold text-slate-500 border-b border-slate-200/60 uppercase">
+                      <div className="bg-slate-50/80 px-4 py-2.5 text-[11px] font-bold text-slate-500 border-b border-slate-200/60 uppercase">
                         توزيع القنوات المالية المستلمة
                       </div>
                       <div className="divide-y divide-slate-100">
                         {detailData.payments.map((p, i) => (
                           <div key={i} className="flex items-center justify-between px-4 py-3">
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl border ${p.method === "cash" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
+                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border ${p.method === "cash" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
                                 p.method === "credit" ? "bg-amber-50 text-amber-700 border-amber-200/60" :
                                   p.method === "bank" ? "bg-sky-50 text-sky-700 border-sky-200/60" :
                                     "bg-slate-150 text-slate-750 border-slate-200/60"
                               }`}>
                               {arMethod(p.method) || p.method_name || p.method}
                             </span>
-                            <span className="font-mono font-bold text-[13px] text-slate-800">{fmt(p.amount)} <span className="text-[10px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
+                            <span className="font-mono font-bold text-sm text-slate-800">{fmt(p.amount)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
                           </div>
                         ))}
                       </div>
@@ -1445,16 +1445,16 @@ export default function CustomerAccountsPage() {
 
                   <div className="flex gap-3 mt-5">
                     <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); navigate(`/invoices/${detailInvoice.id}`); }}
-                      className={`flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 text-[12px] font-bold text-white shadow-sm transition-all duration-200 active:scale-[0.98] ${detailInvoiceIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-600 hover:bg-blue-700"}`}>
+                      className={`flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 text-2sm font-bold text-white shadow-sm transition-all duration-200 active:scale-[0.98] ${detailInvoiceIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-600 hover:bg-blue-700"}`}>
                       <ExternalLink className="h-4 w-4" /> فتح الفاتورة بالكامل
                     </button>
-                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="px-6 rounded-2xl border border-slate-250 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">إغلاق</button>
+                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="px-6 rounded-2xl border border-slate-250 text-2sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">إغلاق</button>
                   </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
                   <FileText className="h-8 w-8 opacity-30" />
-                  <span className="font-bold text-[13px]">تعذر عرض تفاصيل الفاتورة المطلوبة</span>
+                  <span className="font-bold text-sm">تعذر عرض تفاصيل الفاتورة المطلوبة</span>
                 </div>
               )}
 
@@ -1477,7 +1477,7 @@ export default function CustomerAccountsPage() {
               </div>
 
               {detailReturnLoading ? (
-                <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
+                <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
                   <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
                 </div>
               ) : detailReturnData ? (
@@ -1488,7 +1488,7 @@ export default function CustomerAccountsPage() {
                     <>
                       {/* Meta info */}
                       <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
-                        <div className="grid grid-cols-2 gap-3 text-[12px]">
+                        <div className="grid grid-cols-2 gap-3 text-2sm">
                           <div><span className="font-black text-slate-400">العميل:</span> <span className="font-bold text-slate-800">{d.customer_name || "—"}</span></div>
                           <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(d.created_at)}</span></div>
                           <div><span className="font-black text-slate-400">طريقة الاسترداد:</span> <span className="font-bold text-slate-800">{RMETHOD[d.refund_method] || d.refund_method || "—"}</span></div>
@@ -1497,7 +1497,7 @@ export default function CustomerAccountsPage() {
                               <span className="font-black text-slate-400">الفاتورة الأصلية: </span>
                               <button
                                 onClick={() => { setDetailReturn(null); setDetailReturnData(null); setDetailInvoiceIsOriginal(true); setDetailInvoice({ id: d.invoice_id, invoice_no: d.original_invoice_no }); }}
-                                className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-[12px] cursor-pointer"
+                                className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-2sm cursor-pointer"
                               >
                                 {d.original_invoice_no}
                               </button>
@@ -1528,7 +1528,7 @@ export default function CustomerAccountsPage() {
                                 <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                                   <td className="px-3 py-2">
                                     <div className="flex flex-col">
-                                      {(l.item_code || l.code) && <span className="font-mono text-[10px] text-slate-400">{l.item_code || l.code}</span>}
+                                      {(l.item_code || l.code) && <span className="font-mono text-[11px] text-slate-400">{l.item_code || l.code}</span>}
                                       <span className="font-bold text-slate-800">{l.item_name || "—"}</span>
                                     </div>
                                   </td>
@@ -1553,7 +1553,7 @@ export default function CustomerAccountsPage() {
                               )}
                               <tr className="border-t border-slate-200">
                                 <td colSpan={3} className="px-3 py-2 text-right font-black text-slate-800">صافي المرتجع</td>
-                                <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-[13px]">{fmt(d.total)}</td>
+                                <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-sm">{fmt(d.total)}</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -1562,8 +1562,8 @@ export default function CustomerAccountsPage() {
 
                       {/* Refund split */}
                       {(Number(d.cash_amount) > 0.005 || Number(d.credit_amount) > 0.005) && (
-                        <div className="rounded-xl border border-slate-200 bg-white p-4 mb-4 flex flex-col gap-1.5 text-[12px]">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">تفاصيل الاسترداد</span>
+                        <div className="rounded-xl border border-slate-200 bg-white p-4 mb-4 flex flex-col gap-1.5 text-2sm">
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تفاصيل الاسترداد</span>
                           {Number(d.cash_amount) > 0.005 && (
                             <div className="flex justify-between items-center">
                               <span className="font-bold text-slate-500">نقداً (صندوق)</span>
@@ -1581,10 +1581,10 @@ export default function CustomerAccountsPage() {
 
                       <div className="flex gap-2 mt-4">
                         <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); navigate(`/pos/sales-returns/${detailReturn.id}`); }}
-                          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-[12px] font-black text-white hover:bg-rose-700">
+                          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-2sm font-black text-white hover:bg-rose-700">
                           <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                         </button>
-                        <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                        <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                       </div>
                     </>
                   );
@@ -1592,7 +1592,7 @@ export default function CustomerAccountsPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
                   <FileText className="h-8 w-8 opacity-40" />
-                  <span className="font-black text-[13px]">لا توجد تفاصيل</span>
+                  <span className="font-black text-sm">لا توجد تفاصيل</span>
                 </div>
               )}
             </div>
@@ -1627,11 +1627,11 @@ export default function CustomerAccountsPage() {
                 <h2 className="text-[16px] font-black text-slate-850">{bal < 0 ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"}</h2>
                 <button onClick={() => setShowPayment(false)} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"><X className="h-4 w-4" /></button>
               </div>
-              <p className="text-[12px] text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-slate-800 font-bold">{selected.name}</span></p>
+              <p className="text-2sm text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-slate-800 font-bold">{selected.name}</span></p>
               {bal > 0 && (
-                <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 mb-4 text-[12px] font-bold text-rose-800 flex justify-between items-center">
+                <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 mb-4 text-2sm font-bold text-rose-800 flex justify-between items-center">
                   <span>إجمالي الرصيد المستحق بذمته:</span>
-                  <span className="font-mono font-bold text-[14px]">{fmt(bal)} ج.م</span>
+                  <span className="font-mono font-bold text-sm">{fmt(bal)} ج.م</span>
                 </div>
               )}
               <div className="space-y-4">
@@ -1643,7 +1643,7 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قناة استلام أو رد النقدية <span className="text-rose-500">*</span></label>
                   <select value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[12px] font-bold bg-white outline-none focus:border-blue-500">
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-blue-500">
                     <option value="">-- اختر القناة المالية --</option>
                     {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
@@ -1651,15 +1651,15 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">ملاحظات توضيحية على الدفعة (اختياري)</label>
                   <input value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[12px] font-semibold outline-none focus:border-blue-500" placeholder="مثال: دفعة تحت الحساب للفواتير المعلقة" />
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-semibold outline-none focus:border-blue-500" placeholder="مثال: دفعة تحت الحساب للفواتير المعلقة" />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={handlePayment} disabled={saving || !payForm.amount || !payForm.method_id}
-                  className="flex-1 h-11 rounded-2xl bg-blue-600 text-white text-[12px] font-bold hover:bg-blue-700 disabled:opacity-50 shadow-sm transition-all duration-200 active:scale-[0.98]">
+                  className="flex-1 h-11 rounded-2xl bg-blue-600 text-white text-2sm font-bold hover:bg-blue-700 disabled:opacity-50 shadow-sm transition-all duration-200 active:scale-[0.98]">
                   {saving ? "جاري قيد المعاملة المالية..." : "تأكيد وقيد الحركة الآن"}
                 </button>
-                <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-[12px] font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
+                <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-2sm font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
               </div>
             </div>
           </Modal>
@@ -1675,7 +1675,7 @@ export default function CustomerAccountsPage() {
                 <h2 className="text-[16px] font-black text-slate-850">تسوية رصيد حساب العميل يدوياً</h2>
                 <button onClick={() => setShowAdjust(false)} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"><X className="h-4 w-4" /></button>
               </div>
-              <p className="text-[12px] text-slate-450 font-bold mb-4">
+              <p className="text-2sm text-slate-450 font-bold mb-4">
                 العميل: <span className="text-slate-800 font-bold">{selected.name}</span>
                 {" — "}قبل التسوية:
                 <span className={`font-mono font-bold ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
@@ -1689,14 +1689,14 @@ export default function CustomerAccountsPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => setAdjForm(f => ({ ...f, direction: "subtract" }))}
-                    className={`p-3 rounded-2xl border-2 text-[12px] font-bold transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
                     <div className="text-[18px] mb-1">↓</div>تخفيض مديونية العميل
-                    <div className="text-[10px] font-medium mt-0.5 opacity-70">(خصم / إعفاء خاص)</div>
+                    <div className="text-[11px] font-medium mt-0.5 opacity-70">(خصم / إعفاء خاص)</div>
                   </button>
                   <button onClick={() => setAdjForm(f => ({ ...f, direction: "add" }))}
-                    className={`p-3 rounded-2xl border-2 text-[12px] font-bold transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
                     <div className="text-[18px] mb-1">↑</div>رفع مديونية العميل
-                    <div className="text-[10px] font-medium mt-0.5 opacity-70">(إضافة دين / قيد تصحيح)</div>
+                    <div className="text-[11px] font-medium mt-0.5 opacity-70">(إضافة دين / قيد تصحيح)</div>
                   </button>
                 </div>
                 <div>
@@ -1708,7 +1708,7 @@ export default function CustomerAccountsPage() {
                   const newBal = adjForm.direction === "subtract" ? bal - Number(adjForm.amount) : bal + Number(adjForm.amount);
                   return (
                     <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
-                      <p className="text-[10px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع لحساب العميل بعد الحفظ:</p>
+                      <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع لحساب العميل بعد الحفظ:</p>
                       <p className={`text-[17px] font-bold font-mono ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"}`}>
                         {fmt(Math.abs(newBal))} ج.م
                       </p>
@@ -1718,16 +1718,16 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">سبب وقيد التسوية اليدوية (مطلوب) <span className="text-rose-500">*</span></label>
                   <input value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[12px] outline-none focus:border-blue-500 font-semibold"
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm outline-none focus:border-blue-500 font-semibold"
                     placeholder="مثال: تسوية خصومات مسموح بها للفواتير السابقة" />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={handleAdjust} disabled={saving || !adjForm.amount || !adjForm.reason}
-                  className="flex-1 h-11 rounded-2xl bg-slate-900 text-white text-[12px] font-bold hover:bg-slate-950 disabled:opacity-50 transition-colors">
+                  className="flex-1 h-11 rounded-2xl bg-slate-900 text-white text-2sm font-bold hover:bg-slate-950 disabled:opacity-50 transition-colors">
                   {saving ? "جاري تنفيذ وحفظ التسوية..." : "تأكيد وقيد التسوية الآن"}
                 </button>
-                <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-[12px] font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
+                <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-2sm font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
               </div>
             </div>
           </Modal>
@@ -1754,7 +1754,7 @@ function NotesTab({ notes, loading, onAdd }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
         <RefreshCw className="h-7 w-7 animate-spin text-amber-600" />
-        <span className="text-[12px] font-bold">جاري تحميل ملاحظات وتنبيهات العميل...</span>
+        <span className="text-2sm font-bold">جاري تحميل ملاحظات وتنبيهات العميل...</span>
       </div>
     );
   }
@@ -1764,13 +1764,13 @@ function NotesTab({ notes, loading, onAdd }) {
       {/* Add note inline */}
       <div className="p-[3px] rounded-[24px] bg-slate-200/40 border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.025)] transition-shadow duration-300">
         <div className="bg-white rounded-[21px] p-5 border border-slate-200/20 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
-          <div className="text-[10px] font-black text-slate-400 mb-2.5 uppercase tracking-wider">إضافة ملاحظة أو تنبيه جديد لملف العميل</div>
+          <div className="text-[11px] font-black text-slate-400 mb-2.5 uppercase tracking-wider">إضافة ملاحظة أو تنبيه جديد لملف العميل</div>
           <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
-            className="w-full rounded-[14px] border border-slate-200 p-3 text-[13px] font-semibold outline-none focus:border-amber-500/60 focus:ring-4 focus:ring-amber-500/[0.05] resize-none transition-all"
+            className="w-full rounded-[14px] border border-slate-200 p-3 text-sm font-semibold outline-none focus:border-amber-500/60 focus:ring-4 focus:ring-amber-500/[0.05] resize-none transition-all"
             placeholder="اكتب هنا أي ملاحظة هامة تتعلق بالتعامل المالي، المبيعات أو شروط التسوية..." />
           <div className="flex justify-end mt-3">
             <button onClick={submit} disabled={saving || !text.trim()}
-              className="h-9.5 px-6 rounded-xl bg-amber-650 hover:bg-amber-700 text-white text-[12px] font-black disabled:opacity-40 transition-all shadow-sm shadow-amber-100 hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
+              className="h-9.5 px-6 rounded-xl bg-amber-650 hover:bg-amber-700 text-white text-2sm font-black disabled:opacity-40 transition-all shadow-sm shadow-amber-100 hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
               {saving ? "جاري الحفظ..." : "حفظ الملاحظة الآن"}
             </button>
           </div>
@@ -1805,7 +1805,7 @@ function NotesTab({ notes, loading, onAdd }) {
                     <MessageSquare className="h-3.5 w-3.5 text-amber-600 stroke-[2px]" />
                     <span>ملاحظة مسجلة</span>
                   </span>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-extrabold">
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 font-extrabold">
                     <span>بواسطة: {n.user_name || "النظام"}</span>
                     <span className="opacity-60">•</span>
                     <span className="font-mono">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>

@@ -81,7 +81,7 @@ export default function SearchDropdown({
 
   if (!items.length && !showRaw) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {emptyLabel}
       </div>
     );
@@ -121,14 +121,14 @@ export default function SearchDropdown({
                   <Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} />
                 </span>
                 <div className="h-px bg-slate-200 my-0.5" />
-                <span className="text-[12px] font-black leading-tight truncate text-slate-800">
+                <span className="text-2sm font-black leading-tight truncate text-slate-800">
                   <Highlight text={item.name} query={query} />
                 </span>
               </div>
             </div>
             <div className="flex flex-col items-end shrink-0 mr-2">
-              {item.price_label && <span className="font-mono text-[12px] font-black text-slate-600 whitespace-nowrap">{item.price_label}</span>}
-              {item.sub_label && <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{item.sub_label}</span>}
+              {item.price_label && <span className="font-mono text-2sm font-black text-slate-600 whitespace-nowrap">{item.price_label}</span>}
+              {item.sub_label && <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">{item.sub_label}</span>}
             </div>
           </button>
         ))}
@@ -156,7 +156,7 @@ export default function SearchDropdown({
               <span className="text-[11px] font-black text-emerald-700 leading-tight">
                 إدخال: {rawText}
               </span>
-              <span className="text-[10px] font-bold text-emerald-400 leading-tight">
+              <span className="text-[11px] font-bold text-emerald-400 leading-tight">
                 إضافة صنف غير مسجل
               </span>
             </div>

@@ -77,7 +77,7 @@ export function PrintActionPanel({
               <p style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
                 {lang === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
               </p>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'Inter, monospace' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                 {invoiceNumber}
               </p>
             </div>

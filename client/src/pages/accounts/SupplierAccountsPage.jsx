@@ -123,7 +123,7 @@ function InstallmentsBadge({ debtId }) {
   return (
     <div className="mt-1.5">
       <button onClick={load}
-        className="flex items-center gap-1 text-[10px] font-black text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-2 py-0.5 hover:bg-violet-100">
+        className="flex items-center gap-1 text-[11px] font-black text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-2 py-0.5 hover:bg-violet-100">
         <Calendar className="h-3 w-3" />
         {pending !== null ? `${pending} قسط متبقي` : "الأقساط"}
         {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -134,7 +134,7 @@ function InstallmentsBadge({ debtId }) {
             const isOverdue = s.status !== "paid" && s.due_date < today;
             const isPaid = s.status === "paid";
             return (
-              <div key={s.id} className={`flex items-center justify-between rounded-lg px-2 py-1 text-[10px] font-bold ${isPaid ? "bg-emerald-50 text-emerald-700" : isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-50 text-slate-600"}`}>
+              <div key={s.id} className={`flex items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold ${isPaid ? "bg-emerald-50 text-emerald-700" : isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-50 text-slate-600"}`}>
                 <span>القسط {s.installment_no} — {fmtDate(s.due_date)}</span>
                 <span className="font-black font-mono">{fmt(s.amount)}</span>
                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isPaid ? "bg-emerald-200 text-emerald-800" : isOverdue ? "bg-rose-200 text-rose-800" : "bg-slate-200 text-slate-700"}`}>
@@ -198,7 +198,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                 <button
                   key={btn.id}
                   onClick={() => setFilterType(btn.id)}
-                  className={`text-[12px] font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                  className={`text-2sm font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                     active 
                       ? "bg-slate-900 border-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
                       : `${btn.color} border-slate-200/80 shadow-sm hover:scale-[1.01]`
@@ -220,23 +220,23 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* From Date Pill */}
             <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
-              <span className="text-[10px] font-black text-slate-450 shrink-0">من</span>
+              <span className="text-[11px] font-black text-slate-450 shrink-0">من</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="text-[12px] font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+                className="text-2sm font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
               />
             </div>
 
             {/* To Date Pill */}
             <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
-              <span className="text-[10px] font-black text-slate-450 shrink-0">إلى</span>
+              <span className="text-[11px] font-black text-slate-450 shrink-0">إلى</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="text-[12px] font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+                className="text-2sm font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
               />
             </div>
 
@@ -418,7 +418,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 animate-pulse">
         <RefreshCw className="h-7 w-7 animate-spin text-orange-600" />
-        <span className="text-[12px] font-bold">جاري تحميل سجل الحركات...</span>
+        <span className="text-2sm font-bold">جاري تحميل سجل الحركات...</span>
       </div>
     );
   }
@@ -429,7 +429,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
         <div className="p-4 rounded-full bg-slate-50 border border-slate-100/80 shadow-sm">
           <FileText className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
         </div>
-        <span className="font-extrabold text-[13px] text-slate-500 tracking-tight">لا توجد حركات مالية مسجلة للمورد حالياً</span>
+        <span className="font-extrabold text-sm text-slate-500 tracking-tight">لا توجد حركات مالية مسجلة للمورد حالياً</span>
       </div>
     );
   }
@@ -443,7 +443,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
           <div className="p-4 rounded-full bg-slate-50 border border-slate-100 shadow-sm">
             <SlidersHorizontal className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
           </div>
-          <span className="font-extrabold text-[13px] text-slate-500 tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
+          <span className="font-extrabold text-sm text-slate-500 tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
           <button 
             onClick={() => { setFilterType("all"); setStartDate(""); setEndDate(""); }}
             className="text-[11px] font-black text-blue-650 bg-blue-50 border border-blue-150 rounded-xl px-4 py-2 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
@@ -638,7 +638,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                           
                           <div className="mt-2.5 flex items-center gap-1">
                             <span className="text-[9.5px] font-bold text-slate-400 select-none">المرجع:</span>
-                            <span className="text-[10px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
+                            <span className="text-[11px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
                               {isOpening ? "سجل افتتاحي" : ev.ref}
                             </span>
                           </div>
@@ -660,7 +660,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                               >
                                 <span className={`h-1.5 w-1.5 rounded-full ${style.dot} animate-pulse`} />
                                 {arMethod(chip.method)}
-                                <span className="font-mono text-[10px] font-black">{fmt(chip.amount)}</span>
+                                <span className="font-mono text-[11px] font-black">{fmt(chip.amount)}</span>
                                 {isMulti && <span className="opacity-60 text-[8.5px] font-bold mr-0.5">({pct}%)</span>}
                               </span>
                             );
@@ -689,7 +689,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                             <ExternalLink className="h-3 w-3 shrink-0" />
                           </button>
                         ) : ev.type === "return" ? (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
                             <RotateCcw className="h-3 w-3 shrink-0" />
                             مرتجع مباشر
                             <span className="text-[8.5px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded-lg leading-none">بدون فاتورة</span>
@@ -734,7 +734,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                                   : "المخصوم من الرصيد"}
                             </span>
                             <div className="text-[18px] font-black font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
-                              <span className="text-[13px] font-black select-none leading-none mr-0.5">
+                              <span className="text-sm font-black select-none leading-none mr-0.5">
                                 {ev.impactDir === "add" || isMulti ? "+" : "−"}
                               </span>
                               <span>{fmt(displayImpactAmount)}</span>
@@ -1010,7 +1010,7 @@ export default function SupplierAccountsPage() {
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-orange-655 transition-colors stroke-[2.3px]" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-[12px] font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-orange-500/80 focus:shadow-[0_4px_16px_rgba(249,115,22,0.03)] focus:ring-4 focus:ring-orange-500/[0.03]" />
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-orange-500/80 focus:shadow-[0_4px_16px_rgba(249,115,22,0.03)] focus:ring-4 focus:ring-orange-500/[0.03]" />
           </div>
           <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
             {[{ id: "all", label: "الكل" }, { id: "creditors", label: "ندين لهم" }, { id: "debtors", label: "يدينون لنا" }].map(f => (
@@ -1067,11 +1067,11 @@ export default function SupplierAccountsPage() {
         {/* ── Suppliers List Scroll ── */}
         <div data-help="main-table" className="flex-1 overflow-y-auto px-1 pb-4">
           {loading ? (
-            <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري التحميل...</div>
+            <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري التحميل...</div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
               <Building className="h-9 w-9 text-slate-350 opacity-60" />
-              <p className="text-[12px] font-black text-slate-400">لا يوجد موردين مطابقين للبحث</p>
+              <p className="text-2sm font-black text-slate-400">لا يوجد موردين مطابقين للبحث</p>
             </div>
           ) : filtered.map((s, index) => {
             const b = Number(s.opening_balance || 0);
@@ -1090,7 +1090,7 @@ export default function SupplierAccountsPage() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Letter Avatar with Sleek Minimalist Squircle Aesthetic */}
-                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[13px] font-black shrink-0 transition-all duration-200 ${
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black shrink-0 transition-all duration-200 ${
                     isSelected 
                       ? "bg-orange-600 text-white shadow-sm shadow-orange-300/30" 
                       : "bg-slate-200/50 text-slate-550"
@@ -1101,12 +1101,12 @@ export default function SupplierAccountsPage() {
 
                   <div className="min-w-0">
                     <div className={`text-[12.5px] font-extrabold truncate transition-colors mb-1 ${isSelected ? "text-orange-950" : "text-slate-800"}`}>{s.name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono font-bold leading-none">{s.phone || s.code || "—"}</div>
+                    <div className="text-[11px] text-slate-400 font-mono font-bold leading-none">{s.phone || s.code || "—"}</div>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 select-none">
-                  <span className={`text-[13px] font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  <span className={`text-sm font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                     {fmt(Math.abs(b))}
                   </span>
                   {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">له مستحق</span>}
@@ -1125,7 +1125,7 @@ export default function SupplierAccountsPage() {
             <div className="p-5 rounded-full bg-slate-100/50 border border-slate-200/50 shadow-inner">
               <Building className="h-14 w-14 text-slate-400 opacity-60" />
             </div>
-            <p className="text-[13px] font-bold text-slate-400">برجاء اختيار أحد الموردين من القائمة الجانبية لعرض الملف والتحركات المالية</p>
+            <p className="text-sm font-bold text-slate-400">برجاء اختيار أحد الموردين من القائمة الجانبية لعرض الملف والتحركات المالية</p>
           </div>
         ) : (
           <>
@@ -1151,7 +1151,7 @@ export default function SupplierAccountsPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {selected.phone && (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
                           <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
                           <span className="font-mono">{selected.phone}</span>
                           <button
@@ -1163,7 +1163,7 @@ export default function SupplierAccountsPage() {
                         </span>
                       )}
                       {selected.code && (
-                        <span className="text-[10px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
+                        <span className="text-[11px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
                           <span>كود: {selected.code}</span>
                           <button
                             onClick={() => handleCopy(selected.code, "code")}
@@ -1190,7 +1190,7 @@ export default function SupplierAccountsPage() {
                       {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
                     </div>
                     <div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block">
+                      <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
                         {bal > 0 ? "له مستحق بذمتنا" : bal < 0 ? "عليه مستحق لنا" : "رصيد الحساب مسوّى"}
                       </div>
                       <div className="flex items-baseline gap-1 mt-1">
@@ -1211,7 +1211,7 @@ export default function SupplierAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(234,88,12,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(234,88,12,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
                       <span>سداد دفعة</span>
@@ -1222,7 +1222,7 @@ export default function SupplierAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-[12px] font-extrabold"
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <SlidersHorizontal className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
                       <span>تسوية رصيد</span>
@@ -1235,7 +1235,7 @@ export default function SupplierAccountsPage() {
             <div className="flex gap-1 px-6 pt-3 bg-white border-b border-slate-200 shrink-0">
               {[{ id: "movements", label: "الحركات" }, { id: "notes", label: "الملاحظات" }].map(t => (
                 <button key={t.id} onClick={() => changeTab(t.id)}
-                  className={`pb-3 px-3 text-[13px] font-black transition-colors relative ${activeTab === t.id ? "text-orange-600" : "text-slate-500 hover:text-slate-800"}`}>
+                  className={`pb-3 px-3 text-sm font-black transition-colors relative ${activeTab === t.id ? "text-orange-600" : "text-slate-500 hover:text-slate-800"}`}>
                   {t.label}
                   {activeTab === t.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t-full" />}
                 </button>
@@ -1273,12 +1273,12 @@ export default function SupplierAccountsPage() {
                 <h2 className={`text-[17px] font-black ${detailPurchaseIsOriginal ? "text-amber-800" : "text-slate-900"}`}>
                   {detailPurchaseIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة الشراء"}
                 </h2>
-                <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailPurchase.doc_no || `#${detailPurchase.id}`}</p>
+                <p className="text-2sm text-slate-400 font-bold font-mono mt-0.5">{detailPurchase.doc_no || `#${detailPurchase.id}`}</p>
               </div>
               <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
             </div>
             {detailLoading ? (
-              <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
+              <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
                 <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
               </div>
             ) : detailData ? (
@@ -1288,7 +1288,7 @@ export default function SupplierAccountsPage() {
                 return (
               <>
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
-                  <div className="grid grid-cols-2 gap-3 text-[12px]">
+                  <div className="grid grid-cols-2 gap-3 text-2sm">
                     <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{detailData.supplier_name || "—"}</span></div>
                     <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(detailData.created_at)}</span></div>
                     <div><span className="font-black text-slate-400">طريقة الدفع:</span> <span className="font-bold text-slate-800">{PM[detailData.payment_method] || detailData.payment_method || "—"}</span></div>
@@ -1316,7 +1316,7 @@ export default function SupplierAccountsPage() {
                           <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                             <td className="px-3 py-2">
                               <div className="flex flex-col">
-                                {(l.item_code || l.code) && <span className="font-mono text-[10px] text-slate-400">{l.item_code || l.code}</span>}
+                                {(l.item_code || l.code) && <span className="font-mono text-[11px] text-slate-400">{l.item_code || l.code}</span>}
                                 <span className="font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name || "—"}</span>
                               </div>
                             </td>
@@ -1332,10 +1332,10 @@ export default function SupplierAccountsPage() {
 
                 <div className="flex gap-2 mt-4">
                   <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); navigate(`/purchases/${detailPurchase.id}`); }}
-                    className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-[12px] font-black text-white ${detailPurchaseIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-orange-600 hover:bg-orange-700"}`}>
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-2sm font-black text-white ${detailPurchaseIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-orange-600 hover:bg-orange-700"}`}>
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
                   </button>
-                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="px-5 rounded-xl border border-slate-200 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                 </div>
               </>
                 );
@@ -1343,7 +1343,7 @@ export default function SupplierAccountsPage() {
             ) : (
               <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
                 <FileText className="h-8 w-8 opacity-40" />
-                <span className="font-black text-[13px]">لا توجد تفاصيل</span>
+                <span className="font-black text-sm">لا توجد تفاصيل</span>
               </div>
             )}
           </div>
@@ -1357,12 +1357,12 @@ export default function SupplierAccountsPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-[17px] font-black text-slate-900">تفاصيل مرتجع المشتريات</h2>
-                <p className="text-[12px] text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
+                <p className="text-2sm text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
               </div>
               <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
             </div>
             {detailReturnLoading ? (
-              <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-[12px] font-black">
+              <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
                 <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
               </div>
             ) : detailReturnData ? (
@@ -1373,7 +1373,7 @@ export default function SupplierAccountsPage() {
                   <>
                     {/* Meta info */}
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
-                      <div className="grid grid-cols-2 gap-3 text-[12px]">
+                      <div className="grid grid-cols-2 gap-3 text-2sm">
                         <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{d.supplier_name || "—"}</span></div>
                         <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(d.created_at)}</span></div>
                         <div><span className="font-black text-slate-400">طريقة التسوية:</span> <span className="font-bold text-slate-800">{STYPE[d.settlement_type] || d.settlement_type || "—"}</span></div>
@@ -1382,7 +1382,7 @@ export default function SupplierAccountsPage() {
                             <span className="font-black text-slate-400">أمر الشراء الأصلي: </span>
                             <button
                               onClick={() => { setDetailReturn(null); setDetailReturnData(null); setDetailPurchaseIsOriginal(true); setDetailPurchase({ id: d.purchase_id, doc_no: d.original_purchase_no }); }}
-                              className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-[12px] cursor-pointer"
+                              className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-2sm cursor-pointer"
                             >
                               {d.original_purchase_no}
                             </button>
@@ -1413,7 +1413,7 @@ export default function SupplierAccountsPage() {
                               <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="px-3 py-2">
                                   <div className="flex flex-col">
-                                    {(l.item_code || l.code) && <span className="font-mono text-[10px] text-slate-400">{l.item_code || l.code}</span>}
+                                    {(l.item_code || l.code) && <span className="font-mono text-[11px] text-slate-400">{l.item_code || l.code}</span>}
                                     <span className="font-bold text-slate-800">{l.item_name || "—"}</span>
                                   </div>
                                 </td>
@@ -1438,7 +1438,7 @@ export default function SupplierAccountsPage() {
                             )}
                             <tr className="border-t border-slate-200">
                               <td colSpan={3} className="px-3 py-2 text-right font-black text-slate-800">صافي المرتجع</td>
-                              <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-[13px]">{fmt(d.total)}</td>
+                              <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-sm">{fmt(d.total)}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -1447,8 +1447,8 @@ export default function SupplierAccountsPage() {
 
                     {/* Settlement split */}
                     {(Number(d.cash_amount) > 0.005 || Number(d.credit_amount) > 0.005) && (
-                      <div className="rounded-xl border border-slate-200 bg-white p-4 mb-4 flex flex-col gap-1.5 text-[12px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">تفاصيل التسوية</span>
+                      <div className="rounded-xl border border-slate-200 bg-white p-4 mb-4 flex flex-col gap-1.5 text-2sm">
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تفاصيل التسوية</span>
                         {Number(d.cash_amount) > 0.005 && (
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-slate-500">نقداً (صندوق)</span>
@@ -1466,10 +1466,10 @@ export default function SupplierAccountsPage() {
 
                     <div className="flex gap-2 mt-4">
                       <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); navigate(`/purchases/returns/${detailReturn.id}`); }}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-[12px] font-black text-white hover:bg-rose-700">
+                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-2sm font-black text-white hover:bg-rose-700">
                         <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                       </button>
-                      <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                      <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                     </div>
                   </>
                 );
@@ -1477,7 +1477,7 @@ export default function SupplierAccountsPage() {
             ) : (
               <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
                 <FileText className="h-8 w-8 opacity-40" />
-                <span className="font-black text-[13px]">لا توجد تفاصيل</span>
+                <span className="font-black text-sm">لا توجد تفاصيل</span>
               </div>
             )}
           </div>
@@ -1508,38 +1508,38 @@ export default function SupplierAccountsPage() {
               <h2 className="text-[17px] font-black text-slate-900">سداد دفعة للمورد</h2>
               <button onClick={() => setShowPayment(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
-            <p className="text-[12px] text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
+            <p className="text-2sm text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
             {bal > 0 && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 text-[12px] font-bold text-rose-800">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 text-2sm font-bold text-rose-800">
                 له مستحق <span className="font-mono font-black">{fmt(bal)} ج.م</span>
               </div>
             )}
             <div className="space-y-4">
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
+                <label className="text-2sm font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
                   className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500" placeholder="0.00" autoFocus />
               </div>
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">وسيلة الدفع <span className="text-rose-500">*</span></label>
+                <label className="text-2sm font-black text-slate-600 mb-1.5 block">وسيلة الدفع <span className="text-rose-500">*</span></label>
                 <select value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
-                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[13px] font-bold bg-white outline-none focus:border-orange-500">
+                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm font-bold bg-white outline-none focus:border-orange-500">
                   <option value="">-- اختر الوسيلة --</option>
                   {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">ملاحظات (اختياري)</label>
+                <label className="text-2sm font-black text-slate-600 mb-1.5 block">ملاحظات (اختياري)</label>
                 <input value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500" placeholder="مثال: سداد فاتورة" />
+                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-orange-500" placeholder="مثال: سداد فاتورة" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handlePayment} disabled={saving || !payForm.amount || !payForm.method_id}
-                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-[13px] font-black hover:bg-orange-700 disabled:opacity-50 shadow-md shadow-orange-200">
+                className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-sm font-black hover:bg-orange-700 disabled:opacity-50 shadow-md shadow-orange-200">
                 {saving ? "جاري التسجيل..." : "تأكيد السداد"}
               </button>
-              <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
+              <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200">إلغاء</button>
             </div>
           </div>
         </Modal>
@@ -1553,7 +1553,7 @@ export default function SupplierAccountsPage() {
               <h2 className="text-[17px] font-black text-slate-900">تسوية رصيد يدوية</h2>
               <button onClick={() => setShowAdjust(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
-            <p className="text-[12px] text-slate-500 font-bold mb-5">
+            <p className="text-2sm text-slate-500 font-bold mb-5">
               المورد: <span className="text-slate-800">{selected.name}</span>
               {" — "}الرصيد الحالي:
               <span className={`font-mono font-black ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
@@ -1564,34 +1564,34 @@ export default function SupplierAccountsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setAdjForm(f => ({ ...f, direction: "subtract" }))}
-                  className={`p-3 rounded-xl border-2 text-[12px] font-black transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
+                  className={`p-3 rounded-xl border-2 text-2sm font-black transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
                   <div className="text-[18px] mb-1">↓</div>تخفيض المستحق للمورد
-                  <div className="text-[10px] font-bold mt-0.5 opacity-70">(خصم / تصحيح)</div>
+                  <div className="text-[11px] font-bold mt-0.5 opacity-70">(خصم / تصحيح)</div>
                 </button>
                 <button onClick={() => setAdjForm(f => ({ ...f, direction: "add" }))}
-                  className={`p-3 rounded-xl border-2 text-[12px] font-black transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-500"}`}>
+                  className={`p-3 rounded-xl border-2 text-2sm font-black transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-500"}`}>
                   <div className="text-[18px] mb-1">↑</div>رفع المستحق للمورد
-                  <div className="text-[10px] font-bold mt-0.5 opacity-70">(إضافة مستحق / تصحيح)</div>
+                  <div className="text-[11px] font-bold mt-0.5 opacity-70">(إضافة مستحق / تصحيح)</div>
                 </button>
               </div>
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
+                <label className="text-2sm font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
                   className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500" placeholder="0.00" autoFocus />
               </div>
               <div>
-                <label className="text-[12px] font-black text-slate-600 mb-1.5 block">سبب التسوية</label>
+                <label className="text-2sm font-black text-slate-600 mb-1.5 block">سبب التسوية</label>
                 <input value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-[13px] outline-none focus:border-orange-500"
+                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-orange-500"
                   placeholder="مثال: خصم متفق عليه / تصحيح خطأ" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handleAdjust} disabled={saving || !adjForm.amount}
-                className="flex-1 h-11 rounded-xl bg-slate-800 text-white text-[13px] font-black hover:bg-slate-900 disabled:opacity-50">
+                className="flex-1 h-11 rounded-xl bg-slate-800 text-white text-sm font-black hover:bg-slate-900 disabled:opacity-50">
                 {saving ? "جاري التسوية..." : "تأكيد التسوية وتسجيلها"}
               </button>
-              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-black hover:bg-slate-200">إلغاء</button>
+              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200">إلغاء</button>
             </div>
           </div>
         </Modal>
@@ -1612,17 +1612,17 @@ function NotesTab({ notes, loading, onAdd }) {
     setSaving(false);
   };
 
-  if (loading) return <div className="flex h-32 items-center justify-center text-[12px] font-black text-slate-400 animate-pulse">جاري التحميل...</div>;
+  if (loading) return <div className="flex h-32 items-center justify-center text-2sm font-black text-slate-400 animate-pulse">جاري التحميل...</div>;
 
   return (
     <div className="space-y-4 max-w-2xl">
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
         <div className="text-[11px] font-black text-slate-500 mb-2">إضافة ملاحظة</div>
         <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
-          className="w-full rounded-xl border border-slate-200 p-3 text-[13px] font-bold outline-none focus:border-amber-400 resize-none"
+          className="w-full rounded-xl border border-slate-200 p-3 text-sm font-bold outline-none focus:border-amber-400 resize-none"
           placeholder="اكتب ملاحظتك هنا..." />
         <button onClick={submit} disabled={saving || !text.trim()}
-          className="mt-2 h-9 px-5 rounded-xl bg-amber-600 text-white text-[12px] font-black hover:bg-amber-700 disabled:opacity-40">
+          className="mt-2 h-9 px-5 rounded-xl bg-amber-600 text-white text-2sm font-black hover:bg-amber-700 disabled:opacity-40">
           {saving ? "جاري الحفظ..." : "حفظ الملاحظة"}
         </button>
       </div>
@@ -1630,18 +1630,18 @@ function NotesTab({ notes, loading, onAdd }) {
       {notes.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-24 text-slate-300 gap-2">
           <MessageSquare className="h-8 w-8 opacity-40" />
-          <span className="font-black text-[13px]">لا توجد ملاحظات</span>
+          <span className="font-black text-sm">لا توجد ملاحظات</span>
         </div>
       ) : notes.map(n => (
         <div key={n.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">📝 ملاحظة</span>
+            <span className="text-[11px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">📝 ملاحظة</span>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-400 font-bold">{n.user_name || "النظام"}</span>
-              <span className="text-[10px] text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
+              <span className="text-[11px] text-slate-400 font-bold">{n.user_name || "النظام"}</span>
+              <span className="text-[11px] text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
             </div>
           </div>
-          <p className="text-[13px] font-bold leading-relaxed text-slate-800">{n.note}</p>
+          <p className="text-sm font-bold leading-relaxed text-slate-800">{n.note}</p>
         </div>
       ))}
     </div>

@@ -109,19 +109,19 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-[10px] font-black text-slate-400">إجمالي الأقساط</div>
+          <div className="text-[11px] font-black text-slate-400">إجمالي الأقساط</div>
           <div className="mt-1 text-[20px] font-black font-mono text-slate-900">{fmt(stats.total)}</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-[10px] font-black text-slate-400">المسدد</div>
+          <div className="text-[11px] font-black text-slate-400">المسدد</div>
           <div className="mt-1 text-[20px] font-black font-mono text-emerald-700">{fmt(stats.paid)}</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-[10px] font-black text-slate-400">المتبقي</div>
+          <div className="text-[11px] font-black text-slate-400">المتبقي</div>
           <div className="mt-1 text-[20px] font-black font-mono text-amber-700">{fmt(stats.remaining)}</div>
         </div>
         <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
-          <div className="text-[10px] font-black text-rose-400">متأخر</div>
+          <div className="text-[11px] font-black text-rose-400">متأخر</div>
           <div className="mt-1 text-[20px] font-black font-mono text-rose-700">{stats.overdue}</div>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
         <div className="relative max-w-xs flex-1">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-[12px] font-bold outline-none focus:border-slate-400"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-2sm font-bold outline-none focus:border-slate-400"
             placeholder="بحث برقم الفاتورة..." />
         </div>
         <button onClick={loadSchedules} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
@@ -144,15 +144,15 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
         {/* Schedule list */}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {loading ? (
-            <div className="flex h-40 items-center justify-center text-[13px] font-black text-slate-400">جاري التحميل...</div>
+            <div className="flex h-40 items-center justify-center text-sm font-black text-slate-400">جاري التحميل...</div>
           ) : filtered.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center gap-2">
               <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-              <span className="text-[14px] font-black text-emerald-600">{search ? "لا توجد نتائج" : "لا توجد أقساط مسجلة"}</span>
-              <span className="text-[12px] font-bold text-slate-400">{search ? "حاول بحثاً آخر" : "لم يتم إنشاء جدول أقساط بعد"}</span>
+              <span className="text-sm font-black text-emerald-600">{search ? "لا توجد نتائج" : "لا توجد أقساط مسجلة"}</span>
+              <span className="text-2sm font-bold text-slate-400">{search ? "حاول بحثاً آخر" : "لم يتم إنشاء جدول أقساط بعد"}</span>
             </div>
           ) : (
-            <table className="w-full text-[12px]">
+            <table className="w-full text-2sm">
               <thead className="bg-slate-50">
                 <tr>{["الفاتورة", "القسط", "تاريخ الاستحقاق", "المبلغ", "الحالة", ""].map(h => (
                   <th key={h} className="px-4 py-3 text-right text-[11px] font-black text-slate-500">{h}</th>
@@ -172,7 +172,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                       <td className="px-4 py-3 text-slate-500">{fmtDate(s.due_date)}</td>
                       <td className="px-4 py-3 font-black font-mono text-slate-800">{fmt(s.amount)}</td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusCls}`}>{statusLabel}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${statusCls}`}>{statusLabel}</span>
                       </td>
                       <td className="px-4 py-3">
                         {s.status !== "paid" && (
@@ -194,14 +194,14 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
           {!selected ? (
             <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-2 p-8 text-center text-slate-300">
               <AlertCircle className="h-10 w-10" />
-              <span className="text-[13px] font-black">اختر قسطاً للعرض</span>
+              <span className="text-sm font-black">اختر قسطاً للعرض</span>
             </div>
           ) : (
             <div className="flex h-full flex-col">
               {/* Header */}
               <div className={`flex items-center justify-between border-b ${theme.border} ${theme.soft} px-4 py-3`}>
                 <div>
-                  <div className="text-[13px] font-black text-slate-900">{selected.invoice_no || `AJAL-${selected.debt_id}`}</div>
+                  <div className="text-sm font-black text-slate-900">{selected.invoice_no || `AJAL-${selected.debt_id}`}</div>
                   <div className="text-[11px] font-bold text-slate-500">القسط {selected.installment_no}</div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -222,11 +222,11 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
               <div className="border-b border-slate-100 bg-white p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl bg-slate-50 p-2 text-center">
-                    <div className="text-[10px] font-black text-slate-400">مبلغ القسط</div>
+                    <div className="text-[11px] font-black text-slate-400">مبلغ القسط</div>
                     <div className="text-[15px] font-black font-mono text-slate-800">{fmt(selected.amount)}</div>
                   </div>
                   <div className="rounded-xl bg-slate-50 p-2 text-center">
-                    <div className="text-[10px] font-black text-slate-400">تاريخ الاستحقاق</div>
+                    <div className="text-[11px] font-black text-slate-400">تاريخ الاستحقاق</div>
                     <div className="text-[15px] font-black font-mono text-slate-800">{fmtDate(selected.due_date)}</div>
                   </div>
                 </div>
@@ -234,17 +234,17 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 {/* Invoice preview */}
                 {selected.invoice_no && (
                   <div className="rounded-xl border border-slate-200 bg-white p-2">
-                    <div className="text-[10px] font-black text-slate-400 mb-1">الفاتورة</div>
+                    <div className="text-[11px] font-black text-slate-400 mb-1">الفاتورة</div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[12px] font-black text-slate-900">{selected.invoice_no}</span>
-                      <span className="text-[12px] font-black font-mono text-slate-700">
+                      <span className="text-2sm font-black text-slate-900">{selected.invoice_no}</span>
+                      <span className="text-2sm font-black font-mono text-slate-700">
                         {fmt(selected.invoice_total)} ج.م
                       </span>
                     </div>
                     {selected.payment_splits && (
                       <div className="text-[9px] text-slate-400 mt-0.5">{selected.payment_splits.replace(/\|\|\|/g, " | ")}</div>
                     )}
-                    <div className="text-[10px] text-slate-400 mt-0.5">{fmtDate(selected.invoice_date)}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">{fmtDate(selected.invoice_date)}</div>
                   </div>
                 )}
               </div>
@@ -253,13 +253,13 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 {/* Pay section */}
                 {selected.status !== "paid" && (
                   <div className="space-y-2">
-                    <div className="text-[10px] font-black text-slate-400">تسديد القسط</div>
+                    <div className="text-[11px] font-black text-slate-400">تسديد القسط</div>
                     <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-[12px] font-bold outline-none focus:border-slate-500">
+                      className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-2sm font-bold outline-none focus:border-slate-500">
                       {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                     <button onClick={handlePay} disabled={paying}
-                      className={`w-full rounded-xl py-2.5 text-[12px] font-black text-white disabled:opacity-40 ${theme.main}`}>
+                      className={`w-full rounded-xl py-2.5 text-2sm font-black text-white disabled:opacity-40 ${theme.main}`}>
                       {paying ? "جاري التسديد..." : "تسديد القسط"}
                     </button>
                   </div>
@@ -268,13 +268,13 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 {/* Edit section */}
                 {editMode && (
                   <div className="space-y-2 border-t border-slate-100 pt-3">
-                    <div className="text-[10px] font-black text-slate-400">تعديل القسط</div>
+                    <div className="text-[11px] font-black text-slate-400">تعديل القسط</div>
                     <input type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
-                      className="h-10 w-full rounded-xl border border-slate-300 px-4 text-[12px] outline-none focus:border-slate-500" />
+                      className="h-10 w-full rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-slate-500" />
                     <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
-                      className="h-10 w-full rounded-xl border border-slate-300 px-4 text-[14px] font-black outline-none focus:border-slate-500" />
+                      className="h-10 w-full rounded-xl border border-slate-300 px-4 text-sm font-black outline-none focus:border-slate-500" />
                     <button onClick={handleEdit} disabled={saving}
-                      className="w-full rounded-xl bg-slate-800 py-2.5 text-[12px] font-black text-white hover:bg-slate-900 disabled:opacity-40">
+                      className="w-full rounded-xl bg-slate-800 py-2.5 text-2sm font-black text-white hover:bg-slate-900 disabled:opacity-40">
                       {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
                     </button>
                   </div>

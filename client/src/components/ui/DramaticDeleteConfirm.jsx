@@ -109,7 +109,7 @@ export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'a
             borderRadius: '10px',
             padding: '12px',
             fontSize: '16px',
-            fontFamily: 'Inter, monospace',
+            fontFamily: 'var(--font-mono)',
             background: 'var(--bg-surface)',
             color: 'var(--text-primary)',
             outline: 'none',

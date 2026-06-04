@@ -168,13 +168,13 @@ export default function CategoriesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-black text-slate-900">أقسام الأصناف</h1>
-          <p className="text-[13px] font-bold text-slate-400">إدارة تصنيفات المنتجات وتحليلاتها</p>
+          <p className="text-sm font-bold text-slate-400">إدارة تصنيفات المنتجات وتحليلاتها</p>
         </div>
         <PermissionGate page="categories" action="add">
         <button
           data-help="add-button"
           onClick={openAddCategory}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
+          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
         >
           <Plus className="h-4 w-4" />
           إضافة قسم جديد
@@ -254,7 +254,7 @@ export default function CategoriesPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-black text-slate-600">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-black text-slate-600">
                       {cat.sku_prefix}
                     </span>
                     <h3 className="text-[15px] font-black text-slate-900 truncate">{cat.name}</h3>
@@ -267,15 +267,15 @@ export default function CategoriesPage() {
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="rounded-lg bg-slate-50 px-2 py-2 text-center">
                   <p className="text-[9px] font-black text-slate-400 uppercase">المخزون</p>
-                  <p className="text-[14px] font-black text-slate-700">{formatMoney(stats.totalStock)}</p>
+                  <p className="text-sm font-black text-slate-700">{formatMoney(stats.totalStock)}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 px-2 py-2 text-center">
                   <p className="text-[9px] font-black text-slate-400 uppercase">القيمة</p>
-                  <p className="text-[14px] font-black text-slate-700">{formatMoney(stats.totalValue)}</p>
+                  <p className="text-sm font-black text-slate-700">{formatMoney(stats.totalValue)}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 px-2 py-2 text-center">
                   <p className="text-[9px] font-black text-slate-400 uppercase">الهامش</p>
-                  <p className={`text-[14px] font-black ${stats.avgMargin >= 10 ? "text-emerald-600" : stats.avgMargin >= 5 ? "text-amber-600" : "text-slate-700"}`}>
+                  <p className={`text-sm font-black ${stats.avgMargin >= 10 ? "text-emerald-600" : stats.avgMargin >= 5 ? "text-amber-600" : "text-slate-700"}`}>
                     {stats.avgMargin.toFixed(1)}%
                   </p>
                 </div>
@@ -323,11 +323,11 @@ export default function CategoriesPage() {
             <Tag className="h-8 w-8" />
           </div>
           <h3 className="text-[16px] font-black text-slate-700">لا توجد أقسام بعد</h3>
-          <p className="text-[13px] text-slate-400 mt-1">ابدأ بإنشاء قسم جديد لتنظيم أصنافك</p>
+          <p className="text-sm text-slate-400 mt-1">ابدأ بإنشاء قسم جديد لتنظيم أصنافك</p>
           <PermissionGate page="categories" action="add">
           <button
             onClick={openAddCategory}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
+            className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
           >
             <Plus className="h-4 w-4" />
             إضافة قسم جديد
@@ -349,7 +349,7 @@ export default function CategoriesPage() {
               <h3 className="text-[18px] font-black text-slate-900">
                 {blocked ? "لا يمكن حذف هذا القسم الآن" : "تأكيد حذف القسم"}
               </h3>
-              <p className="mt-2 text-[13px] font-bold leading-6 text-slate-500">
+              <p className="mt-2 text-sm font-bold leading-6 text-slate-500">
                 {blocked
                   ? `القسم "${deleteModal.name}" مرتبط بعدد ${linkedItems.length} صنف. انقل الأصناف لقسم آخر أو احذفها أولا، ثم احذف القسم.`
                   : `سيتم حذف القسم "${deleteModal.name}" نهائيا لأنه لا يحتوي على أصناف.`}
@@ -359,7 +359,7 @@ export default function CategoriesPage() {
                   <div className="text-[11px] font-black text-rose-700">أصناف مرتبطة بالقسم</div>
                   <div className="mt-2 space-y-1">
                     {linkedItems.slice(0, 4).map((item) => (
-                      <div key={item.id} className="truncate rounded-lg bg-white px-3 py-2 text-[12px] font-bold text-slate-700">
+                      <div key={item.id} className="truncate rounded-lg bg-white px-3 py-2 text-2sm font-bold text-slate-700">
                         {item.code ? `${item.code} - ` : ""}{item.name}
                       </div>
                     ))}
@@ -373,7 +373,7 @@ export default function CategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setDeleteModal(null)}
-                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50"
                 >
                   إغلاق
                 </button>
@@ -382,7 +382,7 @@ export default function CategoriesPage() {
                     type="button"
                     disabled={saving}
                     onClick={() => deleteCategory(deleteModal)}
-                    className="rounded-xl bg-rose-600 px-5 py-2.5 text-[13px] font-black text-white hover:bg-rose-700 disabled:opacity-50"
+                    className="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50"
                   >
                     {saving ? "جار الحذف..." : "حذف القسم"}
                   </button>
@@ -409,7 +409,7 @@ export default function CategoriesPage() {
                   className={`w-full rounded-xl border border-slate-200 px-4 py-2.5 font-mono text-sm font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 ${catModal.mode === "edit" ? "bg-slate-100 text-slate-500" : "bg-white text-slate-800"}`}
                 />
                 {catModal.mode === "add" ? (
-                  <div className="mt-1 text-[10px] font-bold text-slate-400">تم اختيار الرقم التالي تلقائيا، ويمكنك تغييره قبل الحفظ.</div>
+                  <div className="mt-1 text-[11px] font-bold text-slate-400">تم اختيار الرقم التالي تلقائيا، ويمكنك تغييره قبل الحفظ.</div>
                 ) : null}
               </div>
               <div className="flex items-start gap-4">
@@ -429,7 +429,7 @@ export default function CategoriesPage() {
                     onChange={(e) => setCatDraft((p) => ({ ...p, name: e.target.value }))}
                     required
                     placeholder="مثال: زيوت، بويات، أدوات صحية..."
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[14px] font-bold text-slate-800 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                   />
                 </div>
               </div>
@@ -437,14 +437,14 @@ export default function CategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setCatModal(null)}
-                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-xl bg-emerald-600 px-6 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  className="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                 >
                   {saving ? "جاري الحفظ…" : catModal.mode === "edit" ? "حفظ التعديلات" : "إنشاء القسم"}
                 </button>

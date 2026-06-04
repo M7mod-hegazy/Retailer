@@ -254,11 +254,11 @@ export default function ReportsCenter() {
             <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-zinc-900 text-white">
               <LayoutTemplate size={20} strokeWidth={2.5} />
             </div>
-            <span className="text-[14px] font-black text-zinc-900 ml-2">التقارير</span>
+            <span className="text-sm font-black text-zinc-900 ml-2">التقارير</span>
           </div>
           <button
             onClick={() => setActiveCat("all")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[10px] transition-all font-bold text-[13px] whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-[10px] transition-all font-bold text-sm whitespace-nowrap ${
               activeCat === "all" ? "bg-zinc-100 text-zinc-900 shadow-sm border border-zinc-200" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
             }`}
           >
@@ -270,7 +270,7 @@ export default function ReportsCenter() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCat(cat.id)}
-                className={`group relative flex items-center gap-2 px-4 py-2 rounded-[10px] transition-all duration-300 font-bold text-[13px] whitespace-nowrap ${
+                className={`group relative flex items-center gap-2 px-4 py-2 rounded-[10px] transition-all duration-300 font-bold text-sm whitespace-nowrap ${
                   active ? "bg-white shadow-sm border border-zinc-200" : "hover:bg-zinc-50 text-zinc-500 hover:text-zinc-700"
                 }`}
                 style={active ? { color: cat.color } : {}}
@@ -298,14 +298,14 @@ export default function ReportsCenter() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ابحث في مصادر التقارير..."
-                className="w-full h-12 rounded-2xl border border-zinc-200 bg-white pl-4 pr-12 text-[14px] font-bold text-zinc-900 placeholder:text-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none"
+                className="w-full h-12 rounded-2xl border border-zinc-200 bg-white pl-4 pr-12 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none"
               />
               <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-emerald-500" />
             </div>
             <button
               data-help="favorite-button"
               onClick={() => setOnlyFavs(!onlyFavs)}
-              className={`flex h-12 items-center gap-2 rounded-2xl border px-5 text-[13px] font-bold transition-all shadow-sm ${
+              className={`flex h-12 items-center gap-2 rounded-2xl border px-5 text-sm font-bold transition-all shadow-sm ${
                 onlyFavs ? "border-amber-400 bg-amber-50 text-amber-600" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
               }`}
             >
@@ -321,7 +321,7 @@ export default function ReportsCenter() {
               <div className="flex h-64 flex-col items-center justify-center text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 mb-4"><Search size={24} /></div>
                 <h3 className="text-[16px] font-black text-zinc-900 mb-1">لا توجد مصادر مطابقة</h3>
-                <p className="text-[13px] text-zinc-500">جرب البحث بكلمات أخرى أو تغيير الفئة.</p>
+                <p className="text-sm text-zinc-500">جرب البحث بكلمات أخرى أو تغيير الفئة.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 auto-rows-max items-start">
@@ -352,7 +352,7 @@ export default function ReportsCenter() {
                             <SourceIcon size={20} strokeWidth={2.5} />
                           </div>
                           <div>
-                            <div className="text-[10px] font-black uppercase tracking-widest mb-1 text-zinc-500">{cat.label} · {source.id}</div>
+                            <div className="text-[11px] font-black uppercase tracking-widest mb-1 text-zinc-500">{cat.label} · {source.id}</div>
                             <h3 className={`text-[15px] font-black leading-tight transition-colors ${sel ? "text-emerald-600" : "text-zinc-900 group-hover:text-emerald-600"}`}>
                               {source.label}
                             </h3>
@@ -367,13 +367,13 @@ export default function ReportsCenter() {
                         </button>
                       </div>
 
-                      <p className="text-[13px] leading-relaxed text-zinc-500 line-clamp-2 mb-4">
+                      <p className="text-sm leading-relaxed text-zinc-500 line-clamp-2 mb-4">
                         {classifications.length} تصنيف · {clsDef ? (clsDef.availableModes || ["detailed"]).map((m) => m === "detailed" ? "تفصيلي" : m === "summary" ? "ملخص" : m).join(" / ") : ""}
                       </p>
 
                       {/* Embedded Preview */}
                       <div className="mt-auto pt-4 border-t border-zinc-100">
-                        <div className="text-[10px] font-bold text-zinc-400 mb-2">أعمدة التقرير ومعاينة:</div>
+                        <div className="text-[11px] font-bold text-zinc-400 mb-2">أعمدة التقرير ومعاينة:</div>
                         <ColumnPreviewStrip catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={null} />
                         <GhostPreviewRows catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={null} dateRange={dateRange} scope={scope} />
                       </div>
@@ -408,7 +408,7 @@ export default function ReportsCenter() {
           >
             {/* Inspector Header */}
             <div className="shrink-0 p-8 border-b border-zinc-100 bg-zinc-50/50">
-              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">إعدادات التقرير</div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-zinc-400 mb-2">إعدادات التقرير</div>
               <h2 className="text-[20px] font-black text-zinc-900 leading-tight">{selectedSource.label}</h2>
             </div>
 
@@ -417,7 +417,7 @@ export default function ReportsCenter() {
               
               {/* 1. Classification Selector */}
               <div className="space-y-3">
-                <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                   <span className="h-5 w-1 rounded-full bg-emerald-500"></span> التصنيف
                 </h3>
                 <select
@@ -429,7 +429,7 @@ export default function ReportsCenter() {
                       [selectedSource.id]: { classification: clsId, dataMode: prev[selectedSource.id]?.dataMode || getDefaultMode(selectedSource.id, clsId) },
                     }));
                   }}
-                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                 >
                   {selectedClassifications.map((cls) => (
                     <option key={cls.id} value={cls.id}>{clsLabel(cls)}</option>
@@ -440,7 +440,7 @@ export default function ReportsCenter() {
               {/* 2. Data Mode Toggle */}
               {selectedClsDef && selectedClsDef.availableModes && selectedClsDef.availableModes.length > 1 && (
                 <div className="space-y-3">
-                  <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                     <span className="h-5 w-1 rounded-full bg-emerald-500"></span> وضع البيانات
                   </h3>
                   <DataModeToggle
@@ -459,7 +459,7 @@ export default function ReportsCenter() {
               {/* 3. Scope Selector */}
               {selectedClsDef?.supportsScope && (
                 <div className="space-y-3">
-                  <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                     <span className="h-5 w-1 rounded-full bg-emerald-500"></span> النطاق التحليلي
                   </h3>
                   <ScopeSelector
@@ -473,17 +473,17 @@ export default function ReportsCenter() {
               {/* 4. Date Range */}
               {selectedClsDef?.supportsDates && (
                 <div className="space-y-3">
-                  <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                     <span className="h-5 w-1 rounded-full bg-emerald-500"></span> الفترة الزمنية
                   </h3>
                   <DatePresets activeFrom={dateRange.from} activeTo={dateRange.to} onApply={setDateRange} />
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 mb-1.5">من تاريخ</label>
+                      <label className="block text-[11px] font-bold text-zinc-500 mb-1.5">من تاريخ</label>
                       <RDate value={dateRange.from} onChange={(v) => setDateRange({ ...dateRange, from: v })} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 mb-1.5">إلى تاريخ</label>
+                      <label className="block text-[11px] font-bold text-zinc-500 mb-1.5">إلى تاريخ</label>
                       <RDate value={dateRange.to} onChange={(v) => setDateRange({ ...dateRange, to: v })} />
                     </div>
                   </div>
@@ -493,7 +493,7 @@ export default function ReportsCenter() {
 
               {/* 5. Search + Dimension Filters */}
               <div className="space-y-3">
-                <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                   <span className="h-5 w-1 rounded-full bg-emerald-500"></span> <Search size={13} /> فلاتر التقرير
                 </h3>
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3 space-y-3">
@@ -502,7 +502,7 @@ export default function ReportsCenter() {
                     <input type="text" value={workspaceFilters.q || ""}
                       onChange={(e) => handleWorkspaceFilter("q", e.target.value)}
                       placeholder="بحث عام..."
-                      className="w-full h-9 pr-9 pl-3 rounded-xl border border-zinc-200 bg-white text-[12px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-zinc-400"
+                      className="w-full h-9 pr-9 pl-3 rounded-xl border border-zinc-200 bg-white text-2sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-zinc-400"
                     />
                   </div>
                   {dimensions.map((dim) => (
@@ -512,9 +512,9 @@ export default function ReportsCenter() {
                   ))}
                   {selectedClsDef?.hasProfit && (
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-zinc-500">طريقة التكلفة</label>
+                      <label className="block text-[11px] font-bold text-zinc-500">طريقة التكلفة</label>
                       <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)}
-                        className="w-full h-9 px-3 rounded-xl border border-zinc-200 bg-white text-[12px] font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                        className="w-full h-9 px-3 rounded-xl border border-zinc-200 bg-white text-2sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                       >
                         {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
                       </select>
@@ -525,7 +525,7 @@ export default function ReportsCenter() {
 
               {/* 6. Column Toggles */}
               <div className="space-y-3">
-                <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                   <span className="h-5 w-1 rounded-full bg-emerald-500"></span> أعمدة التقرير
                 </h3>
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4">
@@ -536,14 +536,14 @@ export default function ReportsCenter() {
               {/* 7. Multi-select filters */}
               {selectedClsDef?.multiSelectFilters?.map((msf) => (
                 <div key={msf.key} className="space-y-3">
-                  <h3 className="text-[12px] font-black text-zinc-900 flex items-center gap-2">
+                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
                     <span className="h-5 w-1 rounded-full bg-emerald-500"></span> {CLS_ARABIC[msf.label_key] || msf.label_key}
                   </h3>
                   <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3 space-y-2">
                     {msf.options.map((opt) => (
                       <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
                         <input type="checkbox" className="w-4 h-4 rounded accent-emerald-500" />
-                        <span className="text-[12px] font-bold text-zinc-700">{clsOptionLabel(opt)}</span>
+                        <span className="text-2sm font-bold text-zinc-700">{clsOptionLabel(opt)}</span>
                       </label>
                     ))}
                   </div>
@@ -573,7 +573,7 @@ export default function ReportsCenter() {
         ) : (
           <div className="w-[420px] shrink-0 border-r border-zinc-200 bg-white flex flex-col items-center justify-center text-center p-8">
             <Settings2 size={40} className="text-zinc-200 mb-4" />
-            <p className="text-[14px] font-bold text-zinc-400">حدد مصدراً لعرض إعداداته</p>
+            <p className="text-sm font-bold text-zinc-400">حدد مصدراً لعرض إعداداته</p>
           </div>
         )}
       </AnimatePresence>

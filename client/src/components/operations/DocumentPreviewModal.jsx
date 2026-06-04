@@ -328,10 +328,10 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
           <div className="flex items-center justify-between border-b border-slate-100 p-6 bg-slate-50/50 sticky top-0 z-10">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-[10px] font-black text-white uppercase tracking-wider shadow-[0_2px_8px_rgba(15,23,42,0.15)]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-[11px] font-black text-white uppercase tracking-wider shadow-[0_2px_8px_rgba(15,23,42,0.15)]">
                   <FileText size={11} className="text-slate-300" /> {docTitle}
                 </span>
-                <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black ${statusInfo.cls}`}>
+                <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-black ${statusInfo.cls}`}>
                   {statusInfo.label}
                 </span>
               </div>
@@ -390,7 +390,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                     <div className="p-6 flex flex-col flex-1">
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-500/[0.03] border-4 border-dashed border-emerald-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-emerald-500/10 text-[10px] font-black uppercase tracking-widest rotate-[-25deg]">مبيعات معتمدة</span>
+                        <span className="text-emerald-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">مبيعات معتمدة</span>
                       </div>
 
                       <div className="text-center pb-4 border-b border-dashed border-[#dfd6be] relative z-10">
@@ -399,7 +399,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                       </div>
 
                       <div className="flex-1 py-4 space-y-3 relative z-10">
-                        <div className="flex items-center justify-between text-[10px] font-black text-slate-400 tracking-wider pb-1.5 border-b border-[#ece2c9] px-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-slate-400 tracking-wider pb-1.5 border-b border-[#ece2c9] px-1">
                           <span>الصنف والبيان</span>
                           <div className="flex gap-7">
                             <span>الكمية</span>
@@ -439,7 +439,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                           <span className="text-xs font-black text-slate-800">صافي المدفوع</span>
                           <div className="flex items-baseline gap-0.5">
                             <span className="font-mono text-2xl font-black text-emerald-600">{money(total)}</span>
-                            <span className="text-[10px] font-sans font-bold text-emerald-550">ج.م</span>
+                            <span className="text-[11px] font-sans font-bold text-emerald-550">ج.م</span>
                           </div>
                         </div>
                       </div>
@@ -473,7 +473,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                     <div className="p-6 flex flex-col flex-1">
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/[0.02] border-4 border-dashed border-blue-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-blue-500/10 text-[10px] font-black uppercase tracking-widest rotate-[-25deg]">توريد مشتريات</span>
+                        <span className="text-blue-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">توريد مشتريات</span>
                       </div>
 
                       <div className="flex-1 py-2 space-y-3 relative z-10">
@@ -483,7 +483,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 border-b border-blue-50 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-blue-50 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-20 text-left">الكمية</span>
                             <span className="w-24 text-left">الإجمالي</span>
@@ -510,7 +510,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="text-left font-mono">
-                          <span className="text-[10px] text-slate-400 block font-sans font-bold">إجمالي المشتريات</span>
+                          <span className="text-[11px] text-slate-400 block font-sans font-bold">إجمالي المشتريات</span>
                           <div className="flex items-baseline justify-end gap-0.5">
                             <span className="text-xl font-black text-blue-700">{money(total)}</span>
                             <span className="text-[9px] font-sans font-bold text-blue-500">ج.م</span>
@@ -537,7 +537,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                     <div className="p-6 flex flex-col flex-1">
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/[0.03] border-4 border-dashed border-amber-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-amber-500/10 text-[10px] font-black uppercase tracking-widest rotate-[-25deg]">مرتجع قيد التسوية</span>
+                        <span className="text-amber-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">مرتجع قيد التسوية</span>
                       </div>
 
                       <div className="flex-1 py-2 space-y-3 relative z-10">
@@ -549,7 +549,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         )}
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 border-b border-[#ece2c9] pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-[#ece2c9] pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <div className="flex gap-7">
                               <span>الكمية</span>
@@ -577,7 +577,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                           <span className="text-xs font-black text-slate-800">إجمالي القيمة المستردة</span>
                           <div className="flex items-baseline gap-0.5">
                             <span className="font-mono text-2xl font-black text-amber-700">{money(total)}</span>
-                            <span className="text-[10px] font-sans font-bold text-amber-500">ج.م</span>
+                            <span className="text-[11px] font-sans font-bold text-amber-500">ج.م</span>
                           </div>
                         </div>
                       </div>
@@ -597,7 +597,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                     <div className="p-6 flex flex-col flex-1">
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-rose-500/[0.02] border-4 border-dashed border-rose-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-rose-500/10 text-[10px] font-black uppercase tracking-widest rotate-[-25deg]">مرتجع مورد</span>
+                        <span className="text-rose-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">مرتجع مورد</span>
                       </div>
 
                       <div className="flex-1 py-2 space-y-3 relative z-10">
@@ -609,7 +609,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         )}
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 border-b border-rose-50 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-rose-50 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-20 text-left">الكمية</span>
                             <span className="w-24 text-left">الإجمالي</span>
@@ -635,7 +635,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="text-left font-mono">
-                          <span className="text-[10px] text-slate-400 block font-sans font-bold">قيمة الخصم المستحق</span>
+                          <span className="text-[11px] text-slate-400 block font-sans font-bold">قيمة الخصم المستحق</span>
                           <div className="flex items-baseline justify-end gap-0.5">
                             <span className="text-xl font-black text-rose-700">{money(total)}</span>
                             <span className="text-[9px] font-sans font-bold text-rose-500">ج.م</span>
@@ -657,7 +657,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                     <div className="p-6 flex flex-col flex-1">
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-indigo-500/[0.02] border-4 border-dashed border-indigo-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-indigo-500/10 text-[10px] font-black uppercase tracking-widest rotate-[-25deg]">تحويل مخزني</span>
+                        <span className="text-indigo-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">تحويل مخزني</span>
                       </div>
 
                       <div className="flex-1 py-2 space-y-4 relative z-10">
@@ -691,7 +691,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 border-b border-indigo-200 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-indigo-200 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-24 text-left">الكمية المحولة</span>
                           </div>
@@ -712,8 +712,8 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         <div className="border border-indigo-200 bg-indigo-50/50 rounded-xl p-2.5 text-right w-full">
                           <span className="text-[8px] font-black text-indigo-700 block uppercase tracking-wider mb-1">مسؤولية النقل والاستلام</span>
                           <div className="flex justify-between items-end mt-4">
-                            <span className="text-[10px] font-bold text-slate-400">توقيع أمين المستودع: _____________________</span>
-                            <span className="text-[10px] font-bold text-slate-400">تاريخ الاستلام الفعلي: _____________________</span>
+                            <span className="text-[11px] font-bold text-slate-400">توقيع أمين المستودع: _____________________</span>
+                            <span className="text-[11px] font-bold text-slate-400">تاريخ الاستلام الفعلي: _____________________</span>
                           </div>
                         </div>
                       </div>
@@ -732,7 +732,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                     <div className="p-6 flex flex-col flex-1">
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-slate-500/[0.02] border-4 border-dashed border-slate-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-slate-500/10 text-[10px] font-black uppercase tracking-widest rotate-[-25deg]">رصيد تأسيسي</span>
+                        <span className="text-slate-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">رصيد تأسيسي</span>
                       </div>
 
                       <div className="flex-1 py-2 space-y-3 relative z-10">
@@ -742,7 +742,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 border-b border-slate-200 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-slate-200 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-24 text-left">الكمية المسجلة</span>
                           </div>
@@ -766,7 +766,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="text-left font-mono">
-                          <span className="text-[10px] text-slate-400 block font-sans font-bold">القيمة التقديرية</span>
+                          <span className="text-[11px] text-slate-400 block font-sans font-bold">القيمة التقديرية</span>
                           <div className="flex items-baseline justify-end gap-0.5">
                             <span className="text-xl font-black text-slate-800">{money(total)}</span>
                             <span className="text-[9px] font-sans font-bold text-slate-500">ج.م</span>
@@ -786,7 +786,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                 {config.totalKey && (
                   <div className="rounded-[1.8rem] bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 text-white shadow-[0_12px_24px_-10px_rgba(99,102,241,0.35)] relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-36 h-36 bg-white/5 rounded-full blur-2xl translate-x-8 -translate-y-8 pointer-events-none" />
-                    <span className="text-[10px] font-black text-indigo-200 block mb-1 uppercase tracking-wider">الإجمالي المالي المعتمد</span>
+                    <span className="text-[11px] font-black text-indigo-200 block mb-1 uppercase tracking-wider">الإجمالي المالي المعتمد</span>
                     <div className="flex items-baseline gap-1">
                       <span className="font-mono text-3xl font-black tracking-tight" dir="ltr">
                         {money(total)}
@@ -880,7 +880,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                 {/* Payment Breakdown Details Grid */}
                 {payments.length > 0 && (
                   <div className="rounded-2xl border border-slate-200/60 bg-white p-4">
-                    <div className="mb-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <div className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-wider">
                       {docType === "sales_return" || docType === "purchase_return" ? "تفاصيل رد المبالغ" : "تفاصيل استحقاقات الدفع"}
                     </div>
                     <div className="grid gap-2.5 grid-cols-2">

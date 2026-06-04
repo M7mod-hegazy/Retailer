@@ -9,6 +9,7 @@ import { useHelpStore } from "../../stores/helpStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { usePageTour } from "../../hooks/usePageTour";
 import { getHelpPageKey } from "../../help/routeHelp";
+import { applyFontSettings } from "../../utils/fontSettings";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -62,6 +63,7 @@ export default function AppShell({ children }) {
         if (!mounted) return;
         const settings = response.data?.data || {};
         applySettings(settings);
+        applyFontSettings(settings);
         setBranding({
           title: settings.app_name || settings.company_name || "ElHegazi Retailer",
           subtitle: settings.app_subtitle || settings.branch_name || "Retailer Suite",

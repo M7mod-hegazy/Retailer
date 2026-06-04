@@ -86,14 +86,14 @@ export default function InstallmentsPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-[22px] font-black text-slate-800">إدارة الأقساط والمديونيات الآجلة</h1>
-          <p className="text-[13px] text-slate-400 font-bold mt-0.5">متابعة وتحصيل الديون الآجلة للعملاء والموردين</p>
+          <p className="text-sm text-slate-400 font-bold mt-0.5">متابعة وتحصيل الديون الآجلة للعملاء والموردين</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
-            <button onClick={() => setPartyType("customer")} className={`px-4 py-2 text-[12px] font-black transition-all flex items-center gap-1.5 ${partyType === "customer" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button onClick={() => setPartyType("customer")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "customer" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
               <User className="h-3.5 w-3.5" /> العملاء
             </button>
-            <button onClick={() => setPartyType("supplier")} className={`px-4 py-2 text-[12px] font-black transition-all flex items-center gap-1.5 ${partyType === "supplier" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button onClick={() => setPartyType("supplier")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "supplier" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
               <Building2 className="h-3.5 w-3.5" /> الموردين
             </button>
           </div>
@@ -106,24 +106,24 @@ export default function InstallmentsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">إجمالي المستحق</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">إجمالي المستحق</span>
           <div className="mt-1 text-[22px] font-black text-slate-800">{fmt(summary.total_owed)}</div>
-          <div className="text-[10px] text-slate-400 font-bold">{summary.open_count} دَين مفتوح</div>
+          <div className="text-[11px] text-slate-400 font-bold">{summary.open_count} دَين مفتوح</div>
         </div>
         <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 shadow-sm">
-          <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">متأخرة السداد</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-rose-400">متأخرة السداد</span>
           <div className="mt-1 text-[22px] font-black text-rose-700">{summary.overdue_count}</div>
-          <div className="text-[10px] text-rose-400 font-bold">{fmt(summary.overdue_amount)} ج.م</div>
+          <div className="text-[11px] text-rose-400 font-bold">{fmt(summary.overdue_amount)} ج.م</div>
         </div>
         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 shadow-sm">
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">مستحقة اليوم</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">مستحقة اليوم</span>
           <div className="mt-1 text-[22px] font-black text-amber-700">{summary.due_today}</div>
-          <div className="text-[10px] text-amber-400 font-bold">يجب تحصيلها اليوم</div>
+          <div className="text-[11px] text-amber-400 font-bold">يجب تحصيلها اليوم</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">عدد المدينين</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">عدد المدينين</span>
           <div className="mt-1 text-[22px] font-black text-slate-800">{summary.debtors}</div>
-          <div className="text-[10px] text-slate-400 font-bold">{partyType === "customer" ? "عميل" : "مورد"} مديون</div>
+          <div className="text-[11px] text-slate-400 font-bold">{partyType === "customer" ? "عميل" : "مورد"} مديون</div>
         </div>
       </div>
 
@@ -136,7 +136,7 @@ export default function InstallmentsPage() {
             placeholder="بحث بالاسم أو رقم الفاتورة..."
             value={query}
             onChange={e => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-[13px] font-bold outline-none focus:border-slate-800"
+            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm font-bold outline-none focus:border-slate-800"
           />
         </div>
         <div className="flex gap-1">
@@ -157,7 +157,7 @@ export default function InstallmentsPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-right">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-black uppercase tracking-widest text-slate-400">
                 <th className="px-5 py-3">{partyType === "customer" ? "العميل" : "المورد"}</th>
                 <th className="px-5 py-3">المصدر</th>
                 <th className="px-5 py-3">تاريخ الاستحقاق</th>
@@ -184,24 +184,24 @@ export default function InstallmentsPage() {
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-400 border border-slate-200 shrink-0">
                             {partyType === "supplier" ? <Building2 className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                           </div>
-                          <span className="text-[13px] font-black text-slate-800">{debt.party_name || debt.customer_name || debt.supplier_name || `#${debt.customer_id || debt.supplier_id}`}</span>
+                          <span className="text-sm font-black text-slate-800">{debt.party_name || debt.customer_name || debt.supplier_name || `#${debt.customer_id || debt.supplier_id}`}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="text-[12px] font-bold text-slate-600">{debt.source_type === "purchase" ? "مشتريات" : "فاتورة"}</div>
-                        <div className="text-[10px] font-mono text-slate-400">#{debt.invoice_id || "—"}</div>
+                        <div className="text-2sm font-bold text-slate-600">{debt.source_type === "purchase" ? "مشتريات" : "فاتورة"}</div>
+                        <div className="text-[11px] font-mono text-slate-400">#{debt.invoice_id || "—"}</div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className={`flex items-center gap-1.5 text-[12px] font-bold ${debt.status === "overdue" ? "text-rose-600" : "text-slate-600"}`}>
+                        <div className={`flex items-center gap-1.5 text-2sm font-bold ${debt.status === "overdue" ? "text-rose-600" : "text-slate-600"}`}>
                           <Calendar className="h-3.5 w-3.5 opacity-60" />
                           {dateStr(debt.due_date)}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-left font-mono text-[13px] font-bold text-slate-700">{fmt(debt.original_amount)}</td>
-                      <td className="px-5 py-3.5 text-left font-mono text-[13px] font-bold text-emerald-600">{fmt(debt.paid_amount)}</td>
-                      <td className="px-5 py-3.5 text-left font-mono text-[13px] font-black text-slate-800">{fmt(remaining)}</td>
+                      <td className="px-5 py-3.5 text-left font-mono text-sm font-bold text-slate-700">{fmt(debt.original_amount)}</td>
+                      <td className="px-5 py-3.5 text-left font-mono text-sm font-bold text-emerald-600">{fmt(debt.paid_amount)}</td>
+                      <td className="px-5 py-3.5 text-left font-mono text-sm font-black text-slate-800">{fmt(remaining)}</td>
                       <td className="px-5 py-3.5 text-center">
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black ${st.color}`}>
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-black ${st.color}`}>
                           {st.label}
                         </span>
                       </td>
@@ -234,19 +234,19 @@ export default function InstallmentsPage() {
         {selectedDebt && (
           <form onSubmit={handlePay} className="flex flex-col gap-4 mt-2">
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 flex flex-col gap-1">
-              <div className="flex justify-between text-[12px]">
+              <div className="flex justify-between text-2sm">
                 <span className="font-bold text-slate-500">{partyType === "customer" ? "العميل" : "المورد"}</span>
                 <span className="font-black text-slate-800">{selectedDebt.party_name || selectedDebt.customer_name}</span>
               </div>
-              <div className="flex justify-between text-[12px]">
+              <div className="flex justify-between text-2sm">
                 <span className="font-bold text-slate-500">المبلغ الأصلي</span>
                 <span className="font-black font-mono text-slate-700">{fmt(selectedDebt.original_amount)}</span>
               </div>
-              <div className="flex justify-between text-[12px]">
+              <div className="flex justify-between text-2sm">
                 <span className="font-bold text-slate-500">المسدد</span>
                 <span className="font-black font-mono text-emerald-600">{fmt(selectedDebt.paid_amount)}</span>
               </div>
-              <div className="flex justify-between text-[12px] border-t border-slate-200 pt-1 mt-1">
+              <div className="flex justify-between text-2sm border-t border-slate-200 pt-1 mt-1">
                 <span className="font-black text-slate-700">المتبقي</span>
                 <span className="font-black font-mono text-rose-600">{fmt(Number(selectedDebt.original_amount) - Number(selectedDebt.paid_amount))}</span>
               </div>
@@ -270,14 +270,14 @@ export default function InstallmentsPage() {
                 value={payNote}
                 onChange={e => setPayNote(e.target.value)}
                 placeholder="مثال: دفعة نقدية..."
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-bold outline-none focus:border-slate-800"
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold outline-none focus:border-slate-800"
               />
             </div>
             <div className="flex gap-2 mt-2">
-              <button type="button" onClick={() => setSelectedDebt(null)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-100 transition-colors">
+              <button type="button" onClick={() => setSelectedDebt(null)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 transition-colors">
                 إلغاء
               </button>
-              <button type="submit" disabled={paying} className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-[13px] font-black text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
+              <button type="submit" disabled={paying} className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-black text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
                 <CheckCircle2 className="h-4 w-4" /> {paying ? "جاري التسجيل..." : "تأكيد السداد"}
               </button>
             </div>

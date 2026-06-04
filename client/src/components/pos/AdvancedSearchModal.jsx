@@ -14,7 +14,7 @@ function FilterSelect({ value, onChange, children, icon: Icon }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none h-10 rounded-xl border border-slate-200/80 bg-white ${Icon ? "pr-9" : "pr-3"} pl-8 text-[12px] font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 cursor-pointer shadow-sm transition-all`}
+        className={`appearance-none h-10 rounded-xl border border-slate-200/80 bg-white ${Icon ? "pr-9" : "pr-3"} pl-8 text-2sm font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 cursor-pointer shadow-sm transition-all`}
       >
         {children}
       </select>
@@ -35,7 +35,7 @@ function RangeInput({ label, min, max, onMinChange, onMaxChange }) {
         value={min}
         onChange={(e) => onMinChange(e.target.value)}
         placeholder="من"
-        className="w-[60px] h-full bg-transparent px-2 text-[12px] font-bold text-slate-700 text-center outline-none"
+        className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-slate-700 text-center outline-none"
       />
       <div className="w-px h-4 bg-slate-200" />
       <input
@@ -44,7 +44,7 @@ function RangeInput({ label, min, max, onMinChange, onMaxChange }) {
         value={max}
         onChange={(e) => onMaxChange(e.target.value)}
         placeholder="إلى"
-        className="w-[60px] h-full bg-transparent px-2 text-[12px] font-bold text-slate-700 text-center outline-none"
+        className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-slate-700 text-center outline-none"
       />
     </div>
   );
@@ -154,7 +154,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ابحث بالاسم، الكود، الباركود..."
                 autoFocus
-                className="w-full h-12 rounded-xl border border-slate-200/80 bg-white pr-11 pl-10 text-[14px] font-bold text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 shadow-sm transition-all placeholder:font-normal placeholder:text-slate-400"
+                className="w-full h-12 rounded-xl border border-slate-200/80 bg-white pr-11 pl-10 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 shadow-sm transition-all placeholder:font-normal placeholder:text-slate-400"
               />
               {search && (
                 <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
@@ -165,7 +165,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
             {hasFilters && (
               <button
                 onClick={reset}
-                className="flex h-12 items-center gap-2 px-4 rounded-xl border border-rose-200 bg-rose-50 text-[13px] font-bold text-rose-600 hover:bg-rose-100 transition-colors shadow-sm shrink-0"
+                className="flex h-12 items-center gap-2 px-4 rounded-xl border border-rose-200 bg-rose-50 text-sm font-bold text-rose-600 hover:bg-rose-100 transition-colors shadow-sm shrink-0"
               >
                 <RefreshCw className="h-4 w-4" />
                 تفريغ الفلاتر
@@ -201,7 +201,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
                 onChange={(e) => setHideZero(e.target.checked)}
                 className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
               />
-              <span className="text-[12px] font-bold text-slate-700">إخفاء نفاد المخزون</span>
+              <span className="text-2sm font-bold text-slate-700">إخفاء نفاد المخزون</span>
             </label>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
         {/* Stats bar */}
         {!loading && !error && (
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2 text-[12px] font-bold text-slate-500">
+            <div className="flex items-center gap-2 text-2sm font-bold text-slate-500">
               <Filter className="h-3.5 w-3.5" />
               <span>{filtered.length} صنف</span>
               {rows.length !== filtered.length && (
@@ -224,25 +224,25 @@ export default function AdvancedSearchModal({ open, onClose }) {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-              <span className="text-[13px] font-bold">جاري تحميل بيانات المخزون...</span>
+              <span className="text-sm font-bold">جاري تحميل بيانات المخزون...</span>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-20 text-rose-400 gap-3">
               <Package className="h-10 w-10 text-rose-300" />
-              <span className="text-[13px] font-bold">تعذر تحميل البيانات</span>
+              <span className="text-sm font-bold">تعذر تحميل البيانات</span>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
               <Package className="h-10 w-10 text-slate-300" />
-              <span className="text-[13px] font-bold">لا توجد نتائج مطابقة</span>
+              <span className="text-sm font-bold">لا توجد نتائج مطابقة</span>
               {hasFilters && (
-                <button onClick={reset} className="text-[12px] font-bold text-indigo-500 hover:text-indigo-700 underline">
+                <button onClick={reset} className="text-2sm font-bold text-indigo-500 hover:text-indigo-700 underline">
                   مسح الفلاتر
                 </button>
               )}
             </div>
           ) : (
-            <table className="w-full text-[12px]" dir="rtl">
+            <table className="w-full text-2sm" dir="rtl">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-800 text-white">
                   <th className="px-4 py-3 text-right font-black text-[11px] tracking-wide">#</th>

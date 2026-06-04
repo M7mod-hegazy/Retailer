@@ -114,7 +114,7 @@ function MethodsTab() {
         )}
       </div>
       
-      {m.description && <p className="text-[14px] text-slate-500 font-bold mb-6 line-clamp-2 leading-relaxed">{m.description}</p>}
+      {m.description && <p className="text-sm text-slate-500 font-bold mb-6 line-clamp-2 leading-relaxed">{m.description}</p>}
       
       <div className="mt-auto pt-6 flex items-center justify-between border-t border-slate-100 relative z-10">
         {!isSystem && m.excludes_from_treasury ? (
@@ -124,7 +124,7 @@ function MethodsTab() {
           </div>
         ) : (
           <div className="text-[11px] font-black tracking-widest uppercase text-slate-400">
-            تداولات الشهر <span className="text-[14px] font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg ml-2">{m.monthly_count || 0}</span>
+            تداولات الشهر <span className="text-sm font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg ml-2">{m.monthly_count || 0}</span>
           </div>
         )}
 
@@ -170,11 +170,11 @@ function MethodsTab() {
             <div className="flex items-center gap-4">
               {userMethods.length === 0 && (
                 <PermissionGate page="payment_methods" action="add">
-                  <button onClick={seedDefaults} className="text-[12px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors">إدراج الافتراضيات</button>
+                  <button onClick={seedDefaults} className="text-2sm font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors">إدراج الافتراضيات</button>
                 </PermissionGate>
               )}
               <PermissionGate page="payment_methods" action="add">
-                <button data-help="add-button" onClick={openCreate} className="flex h-12 items-center gap-2 rounded-full bg-slate-900 px-6 text-[13px] font-black text-white hover:bg-slate-800 transition-all shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] active:scale-95 uppercase tracking-widest">
+                <button data-help="add-button" onClick={openCreate} className="flex h-12 items-center gap-2 rounded-full bg-slate-900 px-6 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] active:scale-95 uppercase tracking-widest">
                   <Plus size={16} /> وسيلة جديدة
                 </button>
               </PermissionGate>
@@ -182,7 +182,7 @@ function MethodsTab() {
           </div>
           
           {loading ? (
-            <div className="flex items-center justify-center h-48 text-slate-400 font-black text-[13px] uppercase tracking-widest animate-pulse">جاري فحص الوسائل...</div>
+            <div className="flex items-center justify-center h-48 text-slate-400 font-black text-sm uppercase tracking-widest animate-pulse">جاري فحص الوسائل...</div>
           ) : (
             <div data-help="main-table" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {userMethods.map((m, idx) => <MethodCard key={m.id} m={m} isSystem={false} idx={idx} />)}
@@ -242,15 +242,15 @@ function MethodsTab() {
                   </div>
                   <div className="flex-1">
                     <div className="text-[15px] font-black text-slate-900 mb-1">عزل عن الخزينة اليومية</div>
-                    <div className="text-[12px] font-bold text-slate-500 leading-relaxed max-w-sm">تفعيل هذا الخيار سيمنع ظهور معاملات هذه الوسيلة في إجمالي السيولة النقدية لدرج الكاشير.</div>
+                    <div className="text-2sm font-bold text-slate-500 leading-relaxed max-w-sm">تفعيل هذا الخيار سيمنع ظهور معاملات هذه الوسيلة في إجمالي السيولة النقدية لدرج الكاشير.</div>
                   </div>
                 </label>
               </div>
 
               <div className="p-8 border-t border-slate-100 flex gap-4">
-                <button onClick={() => setModalOpen(false)} className="flex-1 rounded-full bg-slate-100 py-4 text-[14px] font-black text-slate-600 hover:bg-slate-200 transition-colors uppercase tracking-widest">إلغاء</button>
+                <button onClick={() => setModalOpen(false)} className="flex-1 rounded-full bg-slate-100 py-4 text-sm font-black text-slate-600 hover:bg-slate-200 transition-colors uppercase tracking-widest">إلغاء</button>
                 <button onClick={handleSave} disabled={!form.name.trim() || saving}
-                  className="flex-[2] rounded-full bg-slate-950 py-4 text-[14px] font-black text-white hover:bg-slate-800 disabled:opacity-50 transition-all shadow-lg active:scale-95 uppercase tracking-widest">
+                  className="flex-[2] rounded-full bg-slate-950 py-4 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50 transition-all shadow-lg active:scale-95 uppercase tracking-widest">
                   {saving ? "جاري التسجيل..." : "حفظ الوسيلة"}
                 </button>
               </div>
@@ -320,21 +320,21 @@ function TransactionsTab() {
             <div data-help="search-bar" className="relative w-full max-w-[300px]">
               <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
               <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") load(); }} placeholder="بحث برقم المستند، البيان..."
-                className="w-full h-14 rounded-full bg-slate-50 pr-14 pl-6 text-[14px] font-black text-slate-900 outline-none focus:bg-slate-100 transition-colors" />
+                className="w-full h-14 rounded-full bg-slate-50 pr-14 pl-6 text-sm font-black text-slate-900 outline-none focus:bg-slate-100 transition-colors" />
             </div>
             
             <div className="flex items-center bg-slate-50 rounded-full h-14 px-4 overflow-hidden border border-slate-100">
-              <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} className="flex-1 h-full px-2 bg-transparent text-[13px] font-bold text-slate-600 outline-none font-mono" />
+              <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} className="flex-1 h-full px-2 bg-transparent text-sm font-bold text-slate-600 outline-none font-mono" />
               <div className="w-px h-6 bg-slate-200 mx-2" />
-              <input type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} className="flex-1 h-full px-2 bg-transparent text-[13px] font-bold text-slate-600 outline-none font-mono" />
+              <input type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} className="flex-1 h-full px-2 bg-transparent text-sm font-bold text-slate-600 outline-none font-mono" />
             </div>
 
-            <select value={filters.method} onChange={e => setFilters(f => ({ ...f, method: e.target.value }))} className="h-14 rounded-full bg-slate-50 px-6 text-[13px] font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
+            <select value={filters.method} onChange={e => setFilters(f => ({ ...f, method: e.target.value }))} className="h-14 rounded-full bg-slate-50 px-6 text-sm font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
               <option value="">جميع الوسائل</option>
               {methods.map(m => <option key={m.id} value={m.id}>{m.icon} {m.name}</option>)}
             </select>
             
-            <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} className="h-14 rounded-full bg-slate-50 px-6 text-[13px] font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
+            <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} className="h-14 rounded-full bg-slate-50 px-6 text-sm font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
               <option value="">كل الاتجاهات</option>
               <option value="in">عمليات الدخول</option>
               <option value="out">عمليات الخروج</option>
@@ -357,7 +357,7 @@ function TransactionsTab() {
         <div className="relative" style={{ minHeight: '400px' }}>
           {loading && rows.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-slate-900 text-[14px] font-black shadow-xl uppercase tracking-widest border border-slate-100">
+              <div className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-slate-900 text-sm font-black shadow-xl uppercase tracking-widest border border-slate-100">
                 <RefreshCw className="h-5 w-5 animate-spin" /> جاري سحب البيانات...
               </div>
             </div>
@@ -366,7 +366,7 @@ function TransactionsTab() {
               <BookOpen className="w-24 h-24 text-slate-300 mb-8" strokeWidth={1} />
               <span className="block text-2xl font-black text-slate-400 mb-2">لا توجد حركات مسجلة</span>
               {isFiltered && (
-                 <button onClick={() => { setFilters({ search: "", from: "", to: "", method: "", type: "" }); load(); }} className="mt-4 text-[13px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800">إعادة ضبط الفلاتر</button>
+                 <button onClick={() => { setFilters({ search: "", from: "", to: "", method: "", type: "" }); load(); }} className="mt-4 text-sm font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800">إعادة ضبط الفلاتر</button>
               )}
             </div>
           ) : (
@@ -389,10 +389,10 @@ function TransactionsTab() {
                       className="hover:bg-slate-50 transition-colors group"
                     >
                       <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="font-mono text-[14px] font-bold text-slate-400 group-hover:text-slate-900 transition-colors">{r.doc_no || `#${r.id}`}</span>
+                        <span className="font-mono text-sm font-bold text-slate-400 group-hover:text-slate-900 transition-colors">{r.doc_no || `#${r.id}`}</span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="text-[14px] font-black text-slate-800 tracking-tight">{r.doc_type || "—"}</span>
+                        <span className="text-sm font-black text-slate-800 tracking-tight">{r.doc_type || "—"}</span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="font-mono text-[18px] font-black text-slate-900 tabular-nums tracking-tighter">{fmt(r.amount)}</span>
@@ -404,17 +404,17 @@ function TransactionsTab() {
                           {r.direction === "out" ? "منصرف" : "مقبوض"}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-[14px] font-bold text-slate-600 max-w-[300px] truncate" title={r.party || r.description}>
+                      <td className="px-8 py-5 text-sm font-bold text-slate-600 max-w-[300px] truncate" title={r.party || r.description}>
                         {r.party || r.description || <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm text-[16px]">{methods.find(m => m.id === r.method_id)?.icon || "💳"}</span>
-                          <span className="text-[13px] font-black text-slate-900">{r.method_name || "—"}</span>
+                          <span className="text-sm font-black text-slate-900">{r.method_name || "—"}</span>
                         </div>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="text-[13px] font-bold text-slate-400 font-mono tracking-tight group-hover:text-slate-600 transition-colors">
+                        <span className="text-sm font-bold text-slate-400 font-mono tracking-tight group-hover:text-slate-600 transition-colors">
                           {r.created_at ? new Date(r.created_at).toLocaleString("en-US", { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : "—"}
                         </span>
                       </td>
@@ -480,7 +480,7 @@ export default function PaymentMethodsPage() {
               <button
                 key={item.id}
                 onClick={() => setTab(item.id)}
-                className={`relative flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] text-[13px] font-black tracking-widest uppercase transition-all duration-300 outline-none ${
+                className={`relative flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] text-sm font-black tracking-widest uppercase transition-all duration-300 outline-none ${
                   isActive ? "text-slate-900" : "text-slate-400 hover:text-white"
                 }`}
               >

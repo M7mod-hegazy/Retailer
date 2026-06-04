@@ -82,11 +82,11 @@ export default function PaymentMethodsPage() {
              <span className="text-[11px] font-black uppercase tracking-widest">إعدادات الخزينة</span>
           </div>
           <h1 className="text-[24px] font-black text-slate-800">قنوات الدفع والتحصيل</h1>
-          <p className="text-[13px] font-bold text-slate-400">إدارة كافة الوسائل المستخدمة في استلام وتوريد النقدية (خزينة، بنك، فيزا...)</p>
+          <p className="text-sm font-bold text-slate-400">إدارة كافة الوسائل المستخدمة في استلام وتوريد النقدية (خزينة، بنك، فيزا...)</p>
         </div>
         <button 
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95"
+          className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95"
         >
           <Plus className="h-4 w-4" /> تعريف قناة دفع
         </button>
@@ -107,7 +107,7 @@ export default function PaymentMethodsPage() {
                   </div>
                   <div className="flex flex-col">
                      <span className="text-[16px] font-black text-slate-800">{m.name}</span>
-                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                     <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                         {m.type === 'cash' ? 'خزينة / صندوق' : 'حساب بنكي / فيزا'}
                      </span>
                   </div>
@@ -116,7 +116,7 @@ export default function PaymentMethodsPage() {
                <div className="mt-6 flex items-center justify-between rounded-sm bg-slate-50 px-4 py-2 border border-slate-100">
                   <div className="flex flex-col">
                      <span className="text-[9px] font-black uppercase text-slate-400">يوجه إلى</span>
-                     <span className="text-[12px] font-bold text-slate-600 truncate max-w-[120px]">
+                     <span className="text-2sm font-bold text-slate-600 truncate max-w-[120px]">
                         {m.target_name || (m.type === 'cash' ? treasuries.find(t => t.id === m.target_id)?.name : banks.find(b => b.id === m.target_id)?.name) || "مصدر افتراضي"}
                      </span>
                   </div>
@@ -167,7 +167,7 @@ export default function PaymentMethodsPage() {
                          value={form.name}
                          onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
                          placeholder="الاسم التعريفي..."
-                         className="w-full rounded-sm border border-slate-200 py-3 px-4 text-[14px] font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                         className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
                        />
                     </div>
 
@@ -176,7 +176,7 @@ export default function PaymentMethodsPage() {
                        <select 
                           value={form.type}
                           onChange={(e) => setForm(p => ({ ...p, type: e.target.value, target_id: "" }))}
-                          className="w-full rounded-sm border border-slate-200 py-3 px-4 text-[14px] font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                          className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
                        >
                           <option value="cash">نقدي (خزينة)</option>
                           <option value="bank">بنكي (حساب بنك)</option>
@@ -191,7 +191,7 @@ export default function PaymentMethodsPage() {
                              required
                              value={form.target_id}
                              onChange={(e) => setForm(p => ({ ...p, target_id: e.target.value }))}
-                             className="w-full rounded-sm border border-slate-200 py-3 px-4 text-[14px] font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                             className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
                           >
                              <option value="">اختيار المصدر المالي...</option>
                              {form.type === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -204,14 +204,14 @@ export default function PaymentMethodsPage() {
                     <button 
                       type="button" 
                       onClick={() => setModalOpen(false)}
-                      className="flex-1 rounded-sm border border-slate-200 py-3 text-[14px] font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                      className="flex-1 rounded-sm border border-slate-200 py-3 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
                     >
                        إلغاء
                     </button>
                     <button 
                       type="submit" 
                       disabled={isSubmitting}
-                      className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-slate-900 py-3 text-[14px] font-black text-white shadow-xl transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                      className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-slate-900 py-3 text-sm font-black text-white shadow-xl transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
                     >
                        {isSubmitting ? 'جاري الحفظ...' : (
                           <>

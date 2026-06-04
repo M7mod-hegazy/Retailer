@@ -111,7 +111,7 @@ const Cell = React.forwardRef(function Cell(
     <input ref={ref} type={type} value={value} onChange={onChange} onBlur={onBlur} onKeyDown={onKeyDown}
       placeholder={placeholder} disabled={disabled}
       min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined}
-      className={`w-full bg-transparent px-2 py-1.5 text-[13px] font-bold outline-none border border-transparent transition-all
+      className={`w-full bg-transparent px-2 py-1.5 text-sm font-bold outline-none border border-transparent transition-all
         focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-slate-300
         disabled:cursor-not-allowed disabled:text-slate-400 rounded-sm
         ${dirty ? "bg-amber-50/50" : ""}
@@ -123,7 +123,7 @@ const Cell = React.forwardRef(function Cell(
 function UnitSelect({ value, onChange, onBlur, units, disabled = false, dirty = false }) {
   return (
     <select value={value} onChange={onChange} onBlur={onBlur} disabled={disabled}
-      className={`w-full bg-transparent px-1.5 py-1.5 text-[13px] font-black outline-none border border-transparent transition-all rounded-sm
+      className={`w-full bg-transparent px-1.5 py-1.5 text-sm font-black outline-none border border-transparent transition-all rounded-sm
         focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-slate-300
         disabled:cursor-not-allowed
         ${dirty ? "bg-amber-50/50" : ""}`}>
@@ -160,16 +160,16 @@ function SaveAllBar({ count, onSaveAll, onDiscard }) {
   return (
     <div className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 flex items-center gap-6 rounded-sm border border-amber-200 bg-amber-50 px-6 py-4 shadow-2xl animate-in slide-in-from-bottom-8">
       <div className="flex flex-col">
-         <span className="text-[13px] font-black text-amber-900">{count} تعديلات معلقة</span>
-         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">تأكد من الحفظ قبل مغادرة الصفحة</span>
+         <span className="text-sm font-black text-amber-900">{count} تعديلات معلقة</span>
+         <span className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">تأكد من الحفظ قبل مغادرة الصفحة</span>
       </div>
       <div className="flex gap-2">
          <button onClick={onSaveAll}
-           className="flex items-center gap-2 rounded-sm bg-amber-600 px-6 py-2 text-[12px] font-black text-white hover:bg-amber-700 shadow-md transition-all active:scale-95">
+           className="flex items-center gap-2 rounded-sm bg-amber-600 px-6 py-2 text-2sm font-black text-white hover:bg-amber-700 shadow-md transition-all active:scale-95">
            <Check className="h-4 w-4" /> حفظ الكل
          </button>
          <button onClick={onDiscard}
-           className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-4 py-2 text-[12px] font-bold text-amber-700 hover:bg-amber-100 transition-all">
+           className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-4 py-2 text-2sm font-bold text-amber-700 hover:bg-amber-100 transition-all">
            <X className="h-3.5 w-3.5" /> تجاهل
          </button>
       </div>
@@ -192,32 +192,32 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
   return (
     <div className="fixed bottom-8 left-1/2 z-[60] -translate-x-1/2 flex flex-wrap items-center gap-4 rounded-sm border border-slate-800 bg-slate-900 px-6 py-4 shadow-2xl animate-in zoom-in-95" dir="rtl">
       <div className="flex flex-col border-l border-white/10 pl-6 shrink-0">
-         <span className="text-[14px] font-black text-white">تم تحديد {count} صنف</span>
-         <span className="text-[10px] font-bold text-slate-400 tracking-tighter uppercase">عمليات على مجموعة مختارة</span>
+         <span className="text-sm font-black text-white">تم تحديد {count} صنف</span>
+         <span className="text-[11px] font-bold text-slate-400 tracking-tighter uppercase">عمليات على مجموعة مختارة</span>
       </div>
 
       <div className="flex items-center gap-2">
          <button onClick={onDelete}
-           className="flex items-center gap-2 rounded-sm bg-rose-600 px-4 py-2 text-[12px] font-black text-white hover:bg-rose-700 transition-all">
+           className="flex items-center gap-2 rounded-sm bg-rose-600 px-4 py-2 text-2sm font-black text-white hover:bg-rose-700 transition-all">
            <Trash2 className="h-4 w-4" /> حذف المجلد
          </button>
 
          <div className="relative">
            <button onClick={() => { setShowMove((p) => !p); setShowPrice(false); }}
-             className="flex items-center gap-2 rounded-sm border border-white/20 bg-white/5 px-4 py-2 text-[12px] font-black text-white hover:bg-white/10 transition-all">
+             className="flex items-center gap-2 rounded-sm border border-white/20 bg-white/5 px-4 py-2 text-2sm font-black text-white hover:bg-white/10 transition-all">
              <Layers className="h-4 w-4" /> نقل لفئة
            </button>
            {showMove && (
              <div className="absolute bottom-12 right-0 z-[70] flex flex-col gap-2 rounded-sm border border-slate-200 bg-white p-3 shadow-xl min-w-[220px]">
-               <span className="text-[10px] font-black uppercase text-slate-400">نقل إلى المجلد الرئيسي</span>
+               <span className="text-[11px] font-black uppercase text-slate-400">نقل إلى المجلد الرئيسي</span>
                <select value={moveCat} onChange={(e) => setMoveCat(e.target.value)}
-                 className="w-full rounded-sm border border-slate-200 px-2 py-2 text-[12px] font-bold">
+                 className="w-full rounded-sm border border-slate-200 px-2 py-2 text-2sm font-bold">
                  <option value="">اختر فئة...</option>
                  {categories.map((c) => <option key={c.id} value={c.id}>{c.sku_prefix ? `${c.sku_prefix} — ` : ""}{c.name}</option>)}
                </select>
                <button onClick={() => { if (moveCat) { onMove(Number(moveCat)); setShowMove(false); setMoveCat(""); } }}
                  disabled={!moveCat}
-                 className="w-full rounded-sm bg-slate-900 px-3 py-2 text-[12px] font-black text-white disabled:opacity-40 hover:bg-slate-800">
+                 className="w-full rounded-sm bg-slate-900 px-3 py-2 text-2sm font-black text-white disabled:opacity-40 hover:bg-slate-800">
                  نقل الآن
                </button>
              </div>
@@ -226,15 +226,15 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
 
          <div className="relative">
            <button onClick={() => { setShowPrice((p) => !p); setShowMove(false); setShowUnit(false); }}
-             className="flex items-center gap-2 rounded-sm border border-white/20 bg-white/5 px-4 py-2 text-[12px] font-black text-white hover:bg-white/10 transition-all">
+             className="flex items-center gap-2 rounded-sm border border-white/20 bg-white/5 px-4 py-2 text-2sm font-black text-white hover:bg-white/10 transition-all">
              <ArrowUpDown className="h-4 w-4" /> تعديل الأسعار
            </button>
            {showPrice && (
              <div className="absolute bottom-12 right-0 z-[70] flex flex-col gap-3 rounded-sm border border-slate-200 bg-white p-4 shadow-xl min-w-[300px]">
                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase text-slate-400">تعديل الحقل المالي</span>
+                  <span className="text-[11px] font-black uppercase text-slate-400">تعديل الحقل المالي</span>
                   <select value={priceField} onChange={(e) => setPriceField(e.target.value)}
-                    className="w-full rounded-sm border border-slate-200 px-2 py-2 text-[12px] font-bold">
+                    className="w-full rounded-sm border border-slate-200 px-2 py-2 text-2sm font-bold">
                     <option value="sale_price">سعر بيع المستهلك</option>
                     <option value="wholesale_price">سعر بيع الجملة</option>
                     <option value="purchase_price">سعر الشراء</option>
@@ -242,17 +242,17 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
                </div>
                <div className="flex gap-2">
                  <select value={priceType} onChange={(e) => setPriceType(e.target.value)}
-                   className="w-24 rounded-sm border border-slate-200 px-2 py-2 text-[12px] font-bold">
+                   className="w-24 rounded-sm border border-slate-200 px-2 py-2 text-2sm font-bold">
                    <option value="pct">نسبة %</option>
                    <option value="fixed">مبلغ ثابت</option>
                  </select>
                  <input type="number" step="0.01" value={priceVal} onChange={(e) => setPriceVal(e.target.value)}
                    placeholder={priceType === "pct" ? "مثال: 10" : "0.00"}
-                   className="flex-1 rounded-sm border border-slate-200 px-3 py-2 text-[13px] font-bold outline-none focus:border-slate-800" />
+                   className="flex-1 rounded-sm border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-slate-800" />
                </div>
                <button onClick={() => { if (priceVal) { onPriceChange(priceField, priceType, Number(priceVal)); setShowPrice(false); setPriceVal(""); } }}
                  disabled={!priceVal}
-                 className="w-full rounded-sm bg-slate-900 px-3 py-2.5 text-[12px] font-black text-white disabled:opacity-40 hover:bg-slate-800 transition-all shadow-md">
+                 className="w-full rounded-sm bg-slate-900 px-3 py-2.5 text-2sm font-black text-white disabled:opacity-40 hover:bg-slate-800 transition-all shadow-md">
                  تطبيق الحسبة المالية
                </button>
              </div>
@@ -261,20 +261,20 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
 
          <div className="relative">
            <button onClick={() => { setShowUnit((p) => !p); setShowMove(false); setShowPrice(false); }}
-             className="flex items-center gap-2 rounded-sm border border-white/20 bg-white/5 px-4 py-2 text-[12px] font-black text-white hover:bg-white/10 transition-all">
+             className="flex items-center gap-2 rounded-sm border border-white/20 bg-white/5 px-4 py-2 text-2sm font-black text-white hover:bg-white/10 transition-all">
              <Layers className="h-4 w-4" /> تغيير الوحدة
            </button>
            {showUnit && (
              <div className="absolute bottom-12 right-0 z-[70] flex flex-col gap-2 rounded-sm border border-slate-200 bg-white p-3 shadow-xl min-w-[220px]">
-               <span className="text-[10px] font-black uppercase text-slate-400">تغيير وحدة القياس</span>
+               <span className="text-[11px] font-black uppercase text-slate-400">تغيير وحدة القياس</span>
                <select value={unitVal} onChange={(e) => setUnitVal(e.target.value)}
-                 className="w-full rounded-sm border border-slate-200 px-2 py-2 text-[12px] font-bold">
+                 className="w-full rounded-sm border border-slate-200 px-2 py-2 text-2sm font-bold">
                  <option value="">اختر وحدة...</option>
                  {(units || []).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                </select>
                <button onClick={() => { if (unitVal) { onUnitChange(Number(unitVal)); setShowUnit(false); setUnitVal(""); } }}
                  disabled={!unitVal}
-                 className="w-full rounded-sm bg-slate-900 px-3 py-2 text-[12px] font-black text-white disabled:opacity-40 hover:bg-slate-800">
+                 className="w-full rounded-sm bg-slate-900 px-3 py-2 text-2sm font-black text-white disabled:opacity-40 hover:bg-slate-800">
                  تطبيق
                </button>
              </div>
@@ -307,11 +307,11 @@ function CalcPopover({ purchasePrice, onApply }) {
          <BadgeDollarSign className="h-3.5 w-3.5 text-emerald-500" />
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-[12px] font-bold text-slate-500">هامش الربح</span>
+        <span className="text-2sm font-bold text-slate-500">هامش الربح</span>
         <div className="relative flex-1">
            <input type="number" value={margin} onChange={(e) => setMargin(e.target.value)} placeholder="0"
-             className="w-full rounded-sm border border-slate-200 py-1.5 pl-2 pr-6 text-[14px] font-black text-slate-800 outline-none focus:border-emerald-600" autoFocus />
-           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400">%</span>
+             className="w-full rounded-sm border border-slate-200 py-1.5 pl-2 pr-6 text-sm font-black text-slate-800 outline-none focus:border-emerald-600" autoFocus />
+           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2sm font-bold text-slate-400">%</span>
         </div>
       </div>
       {computed && (
@@ -945,7 +945,7 @@ export default function ItemsListPage() {
         </div>
         <button 
            onClick={() => setNewCategoryOpen(true)}
-           className="flex items-center gap-2 rounded-sm bg-slate-800 px-8 py-3 text-[14px] font-black text-white hover:bg-slate-700 transition-all active:scale-95"
+           className="flex items-center gap-2 rounded-sm bg-slate-800 px-8 py-3 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-95"
         >
            <Plus className="h-4 w-4" /> إنشاء فئة جديدة الآن
         </button>
@@ -955,11 +955,11 @@ export default function ItemsListPage() {
               <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">اسم الفئة الرئيسية</label>
               <input autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="مثلاً: بويات، أدوات صحية، زيوت..."
-                className="w-full rounded-sm border border-slate-200 px-4 py-3 text-[14px] font-bold outline-none focus:border-slate-800" required />
+                className="w-full rounded-sm border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-slate-800" required />
             </div>
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-[12px] font-black text-slate-500 hover:bg-slate-50">إلغاء</button>
-              <button type="submit" className="rounded-sm bg-slate-900 px-8 py-2 text-[12px] font-black text-white shadow-lg">تأكيد الحفظ</button>
+              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-slate-500 hover:bg-slate-50">إلغاء</button>
+              <button type="submit" className="rounded-sm bg-slate-900 px-8 py-2 text-2sm font-black text-white shadow-lg">تأكيد الحفظ</button>
             </div>
           </form>
         </Modal>
@@ -976,27 +976,27 @@ export default function ItemsListPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
          <div className="flex flex-col gap-1">
             <h1 className="text-[24px] font-black text-slate-900">قاعدة بيانات الأصناف</h1>
-            <p className="text-[13px] font-bold text-slate-400">إدارة المخزون، الأسعار، وحركات الربحية للأقسام التشغيلية</p>
+            <p className="text-sm font-bold text-slate-400">إدارة المخزون، الأسعار، وحركات الربحية للأقسام التشغيلية</p>
          </div>
          <div className="flex items-center gap-2">
             <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 shadow-sm">
                <Activity className="h-4 w-4 text-emerald-500" />
                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-black text-slate-400 uppercase leading-none">نشط حالياً</span>
-                  <span className="text-[13px] font-black text-slate-800 leading-none">{stats.active}</span>
+                  <span className="text-[11px] font-black text-slate-400 uppercase leading-none">نشط حالياً</span>
+                  <span className="text-sm font-black text-slate-800 leading-none">{stats.active}</span>
                </div>
             </div>
             <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 shadow-sm">
                <AlertTriangle className="h-4 w-4 text-rose-500" />
                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-black text-slate-400 uppercase leading-none">هوامش حرجة</span>
-                  <span className="text-[13px] font-black text-slate-800 leading-none">{stats.outOfStock}</span>
+                  <span className="text-[11px] font-black text-slate-400 uppercase leading-none">هوامش حرجة</span>
+                  <span className="text-sm font-black text-slate-800 leading-none">{stats.outOfStock}</span>
                </div>
             </div>
             <PermissionGate page="items" action="add">
             <button
                onClick={() => setNewCategoryOpen(true)}
-               className="flex h-[42px] items-center gap-2 rounded-sm bg-slate-100 border border-slate-200 px-4 text-[13px] font-black text-slate-600 hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
+               className="flex h-[42px] items-center gap-2 rounded-sm bg-slate-100 border border-slate-200 px-4 text-sm font-black text-slate-600 hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
             >
                <Plus className="h-3.5 w-3.5" /> فئة جديدة
             </button>
@@ -1005,7 +1005,7 @@ export default function ItemsListPage() {
             <button
                data-help="import-button"
                onClick={() => setImportOpen(true)}
-               className="flex h-[42px] items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-all shadow-sm"
+               className="flex h-[42px] items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-all shadow-sm"
                title="استيراد من Excel"
             >
                <Upload className="h-4 w-4" /> استيراد
@@ -1014,7 +1014,7 @@ export default function ItemsListPage() {
             <PermissionGate page="items" action="print">
             <button
                onClick={() => setExportOpen(true)}
-               className="flex h-[42px] items-center gap-2 rounded-sm border border-sky-200 bg-sky-50 px-4 text-[12px] font-black text-sky-700 hover:bg-sky-100 transition-all shadow-sm"
+               className="flex h-[42px] items-center gap-2 rounded-sm border border-sky-200 bg-sky-50 px-4 text-2sm font-black text-sky-700 hover:bg-sky-100 transition-all shadow-sm"
                title="تصدير Excel"
             >
                <Download className="h-4 w-4" /> تصدير
@@ -1023,7 +1023,7 @@ export default function ItemsListPage() {
             <PermissionGate page="items" action="edit">
             <button
                onClick={() => setSmartUpdateOpen(true)}
-               className="flex h-[42px] items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-[12px] font-black text-amber-700 hover:bg-amber-100 transition-all shadow-sm"
+               className="flex h-[42px] items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-2sm font-black text-amber-700 hover:bg-amber-100 transition-all shadow-sm"
                title="تحديث ذكي من Excel"
             >
                <RefreshCw className="h-4 w-4" /> تحديث ذكي
@@ -1041,14 +1041,14 @@ export default function ItemsListPage() {
                   <input value={search} onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && loadItems(selectedCatId, search, showDeleted)}
                     placeholder="بحث سريع (الاسم، الباركود، الكود الداخلي)..."
-                    className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-[13px] font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {search && (
                       <button onClick={() => { setSearch(""); loadItems(selectedCatId, "", showDeleted); }} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
                         <X className="h-3 w-3" />
                       </button>
                     )}
-                    <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400">
+                    <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[11px] font-medium text-slate-400">
                       Enter
                     </kbd>
                   </div>
@@ -1056,7 +1056,7 @@ export default function ItemsListPage() {
                <div data-help="category-filter" className="relative w-72 group">
                   <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                   <select value={selectedCatId ?? ""} onChange={(e) => setSelectedCatId(Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">
+                    className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">
                     {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.sku_prefix ? `${cat.sku_prefix} — ` : ""}{cat.name}</option>)}
                   </select>
                   <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:rotate-180 transition-transform" />
@@ -1077,7 +1077,7 @@ export default function ItemsListPage() {
                   <Eye className="h-3.5 w-3.5" /> {showDeleted ? "إخفاء المحذوفة" : "عرض المحذوفة"}
                </button>
                <button data-help="add-button" onClick={() => loadItems(selectedCatId, search, showDeleted)}
-                  className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[13px] font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                  className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
                   <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث القائمة
                </button>
             </div>
@@ -1111,17 +1111,17 @@ export default function ItemsListPage() {
                      <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
                        className="h-3.5 w-3.5 cursor-pointer rounded-sm accent-slate-800" />
                    </th>
-                   <th className="w-9 px-1 py-3 text-center text-[10px] font-black text-slate-400">صورة</th>
-                   <th className="w-9 px-1 py-3 text-center text-[10px] font-black text-slate-400">نشط</th>
+                   <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">صورة</th>
+                   <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">نشط</th>
                    <SortTh label="الكود" sortKey="code" sortConfig={sortConfig} onSort={toggleSort} resizableKey="code" width={colWidths.code} onResizeStart={onResizeStart} />
                    <SortTh label="الاسم / المواصفات" sortKey="name" sortConfig={sortConfig} onSort={toggleSort} resizableKey="name" width={colWidths.name} onResizeStart={onResizeStart} />
-                   <th className="relative px-2 py-3 text-right text-[10px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>
+                   <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>
                      الوحدة
                      <div onMouseDown={(e) => onResizeStart(e, "unit")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
                    </th>
                    <SortTh label="الباركود" sortKey="barcode" sortConfig={sortConfig} onSort={toggleSort} resizableKey="barcode" width={colWidths.barcode} onResizeStart={onResizeStart} />
                    <SortTh label="شراء" sortKey="purchase_price" sortConfig={sortConfig} onSort={toggleSort} resizableKey="purchase_price" width={colWidths.purchase_price} onResizeStart={onResizeStart} />
-                   <th className="relative px-2 py-3 text-right text-[10px] font-black uppercase text-slate-500" style={{width: colWidths.sale_price, minWidth: colWidths.sale_price}}>
+                   <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.sale_price, minWidth: colWidths.sale_price}}>
                      <div className="flex items-center justify-between gap-2">
                        <span>مستهلك</span>
                        <button onClick={toggleProfitMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors" title="تبديل عرض الربح">
@@ -1130,7 +1130,7 @@ export default function ItemsListPage() {
                      </div>
                      <div onMouseDown={(e) => onResizeStart(e, "sale_price")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
                    </th>
-                   <th className="relative px-2 py-3 text-right text-[10px] font-black uppercase text-slate-500" style={{width: colWidths.wholesale_price, minWidth: colWidths.wholesale_price}}>
+                   <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.wholesale_price, minWidth: colWidths.wholesale_price}}>
                      <div className="flex items-center justify-between gap-2">
                        <span>جملة</span>
                        <button onClick={toggleProfitMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors" title="تبديل عرض الربح">
@@ -1139,31 +1139,31 @@ export default function ItemsListPage() {
                      </div>
                      <div onMouseDown={(e) => onResizeStart(e, "wholesale_price")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
                    </th>
-                   <th className="relative px-2 py-3 text-center text-[10px] font-black uppercase text-slate-500" style={{width: colWidths.min_stock_qty, minWidth: colWidths.min_stock_qty}}>
+                   <th className="relative px-2 py-3 text-center text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.min_stock_qty, minWidth: colWidths.min_stock_qty}}>
                      الحد الأدنى
                      <div onMouseDown={(e) => onResizeStart(e, "min_stock_qty")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
                    </th>
-                   <th className="relative px-1 py-3 text-center text-[10px] font-black uppercase text-slate-500" style={{width: colWidths.margin, minWidth: colWidths.margin}}>
+                   <th className="relative px-1 py-3 text-center text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.margin, minWidth: colWidths.margin}}>
                      هامش
                      <div onMouseDown={(e) => onResizeStart(e, "margin")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
                    </th>
                    <SortTh label="مخزون" sortKey="stock_quantity" sortConfig={sortConfig} onSort={toggleSort} resizableKey="stock_quantity" width={colWidths.stock_quantity} onResizeStart={onResizeStart} className="text-center" />
-                   <th className="w-20 px-2 py-3 text-center text-[10px] font-black uppercase text-slate-500">إجراءات</th>
+                   <th className="w-20 px-2 py-3 text-center text-[11px] font-black uppercase text-slate-500">إجراءات</th>
                 </tr>
              </thead>
              <tbody className="divide-y divide-slate-50">
                {loading ? (
                  <SkeletonRows cols={COLS} />
               ) : tableRows.length === 0 ? (
-                 <tr><td colSpan={COLS} className="py-24 text-center text-[13px] font-black text-slate-300 uppercase tracking-widest animate-pulse">لا يوجد بيانات لعرضها في هذه الفئة</td></tr>
+                 <tr><td colSpan={COLS} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا يوجد بيانات لعرضها في هذه الفئة</td></tr>
                ) : (
                  tableRows.map((item) => {
                    if (item.__gap) {
                      return (
                        <tr key={item.id} className="bg-violet-50/60">
-                         <td colSpan={3} className="px-3 py-2 text-center text-[10px] font-black text-violet-500">فراغ SKU</td>
+                         <td colSpan={3} className="px-3 py-2 text-center text-[11px] font-black text-violet-500">فراغ SKU</td>
                          <td className="px-4 py-2 border-l border-violet-100">
-                           <span className="font-mono text-[12px] font-black text-violet-700">{item.code}</span>
+                           <span className="font-mono text-2sm font-black text-violet-700">{item.code}</span>
                          </td>
                          <td colSpan={9} className="px-4 py-2 text-[11px] font-bold text-violet-700">
                            هذا الرقم فارغ. لا يتم إنشاء صنف هنا إلا بعد اختيار الرقم وكتابة بيانات الصف ثم الضغط على إضافة.
@@ -1215,7 +1215,7 @@ export default function ItemsListPage() {
                        </td>
                        <td className="px-1 py-1 text-center border-l border-slate-100">
                           {isDeleted ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black text-rose-600 bg-rose-100">محذوف</span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-black text-rose-600 bg-rose-100">محذوف</span>
                           ) : (
                             <ImageUpload size="sm"
                               url={item.primary_image_url}
@@ -1234,7 +1234,7 @@ export default function ItemsListPage() {
                           {!isDeleted && <ActiveToggle active={d.is_active !== false && d.is_active !== 0} onToggle={() => toggleActive(item)} />}
                        </td>
                        <td className="px-4 py-1 border-l border-slate-100">
-                          <span className="font-mono text-[12px] font-black text-slate-400 tracking-tighter">{item.code || "—"}</span>
+                          <span className="font-mono text-2sm font-black text-slate-400 tracking-tighter">{item.code || "—"}</span>
                        </td>
                        <td className={`${DENSITY_CLS[density]} px-4 border-l border-slate-100`}>
                           <Cell value={d.name} onChange={(e) => updateDraft(item.id, "name", e.target.value)} disabled={isDeleted} dirty={isDirty} className={`font-black ${isDeleted ? "line-through text-slate-400" : "text-slate-800"}`} />
@@ -1253,7 +1253,7 @@ export default function ItemsListPage() {
                             <Cell type="number" value={d.sale_price} onChange={(e) => updateDraft(item.id, "sale_price", e.target.value)} dirty={isDirty} className="text-left font-black text-emerald-800 pr-8 w-full"
                               onKeyDown={(e) => e.key === "F2" && setCalcAnchor({ itemId: item.id, field: "sale_price" })} />
                             <button onClick={() => setCalcAnchor(calcAnchor?.itemId === item.id ? null : { itemId: item.id, field: "sale_price" })}
-                              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md hover:bg-emerald-100 text-emerald-600 opacity-60 hover:opacity-100 transition-all font-black text-[12px] bg-white shadow-sm border border-emerald-100" title=" F2 لفتح الحاسبة ">
+                              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md hover:bg-emerald-100 text-emerald-600 opacity-60 hover:opacity-100 transition-all font-black text-2sm bg-white shadow-sm border border-emerald-100" title=" F2 لفتح الحاسبة ">
                                %
                             </button>
                           </div>
@@ -1279,7 +1279,7 @@ export default function ItemsListPage() {
                        </td>
                        <td className="px-2 py-1 text-center border-l border-slate-100">
                           {margin && (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black ${margin.cls} border border-transparent`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black ${margin.cls} border border-transparent`}>
                               {margin.belowThreshold && <AlertTriangle className="h-3 w-3" />}{margin.label}
                             </span>
                           )}
@@ -1343,12 +1343,12 @@ export default function ItemsListPage() {
              {!loading && (
                <tfoot className="sticky bottom-0 z-20 bg-slate-100 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] border-t border-slate-200">
                   <tr className="bg-white">
-                     <td colSpan="3" className="px-2 text-[10px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد</td>
+                     <td colSpan="3" className="px-2 text-[11px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد</td>
                      <td className="px-2">
                         <div className="flex items-center justify-center gap-1">
                           <span className={`font-mono text-[11px] font-black tracking-tighter ${newRow.code ? "text-violet-700" : "text-slate-400 opacity-60"}`}>{nextCodePreview}</span>
                           {newRow.code ? (
-                            <button type="button" onClick={() => setNewRow((prev) => ({ ...prev, code: "" }))} className="rounded bg-violet-100 px-1 text-[10px] font-black text-violet-700">آخر</button>
+                            <button type="button" onClick={() => setNewRow((prev) => ({ ...prev, code: "" }))} className="rounded bg-violet-100 px-1 text-[11px] font-black text-violet-700">آخر</button>
                           ) : null}
                         </div>
                      </td>
@@ -1390,7 +1390,7 @@ export default function ItemsListPage() {
                         <button
                            onClick={createFromNewRow}
                            disabled={!newRow.name.trim() || savingRowId === "new" || (!selectedCatId && !newRow.category_id)}
-                           className="flex w-full items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 py-2.5 text-[12px] font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
+                           className="flex w-full items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 py-2.5 text-2sm font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
                         >
                            {savingRowId === "new" ? "جاري..." : <><Plus className="h-4 w-4" /> إضافة</>}
                         </button>
@@ -1417,12 +1417,12 @@ export default function ItemsListPage() {
               <div className="space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-widest">اسم الفئة (مثلاً: بويات، زيوت)</label>
                  <input autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
-                   className="w-full rounded-sm border border-slate-200 py-3 px-4 text-[14px] font-bold outline-none focus:border-slate-800" required />
+                   className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold outline-none focus:border-slate-800" required />
               </div>
            </div>
            <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-6">
-              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-[12px] font-black text-slate-400 hover:bg-slate-50">تجاهل</button>
-              <button type="submit" className="rounded-sm bg-slate-900 px-10 py-2.5 text-[13px] font-black text-white shadow-xl active:scale-95 transition-all">إنشاء الفئة الآن</button>
+              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-slate-400 hover:bg-slate-50">تجاهل</button>
+              <button type="submit" className="rounded-sm bg-slate-900 px-10 py-2.5 text-sm font-black text-white shadow-xl active:scale-95 transition-all">إنشاء الفئة الآن</button>
            </div>
         </form>
       </Modal>

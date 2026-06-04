@@ -209,11 +209,11 @@ export default function AjalTrackerPage() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
               placeholder="بحث بالعميل أو رقم الفاتورة..."
-              className="w-full h-9 rounded-xl border border-slate-200 pr-9 pl-3 text-[12px] outline-none focus:border-amber-400" />
+              className="w-full h-9 rounded-xl border border-slate-200 pr-9 pl-3 text-2sm outline-none focus:border-amber-400" />
           </div>
           {["all", "open", "partial", "overdue", "paid"].map(s => (
             <button key={s} onClick={() => setFilters(f => ({ ...f, status: s }))}
-              className={`px-3 py-1.5 rounded-lg text-[12px] font-black transition-colors ${filters.status === s ? "bg-amber-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+              className={`px-3 py-1.5 rounded-lg text-2sm font-black transition-colors ${filters.status === s ? "bg-amber-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
               {s === "all" ? "الكل" : STATUS_MAP[s]?.label}
             </button>
           ))}
@@ -239,7 +239,7 @@ export default function AjalTrackerPage() {
                 <Calendar className="h-10 w-10" /><span className="font-black">لا توجد ديون مطابقة</span>
               </div>
             ) : (
-              <table className="w-full text-[12px]">
+              <table className="w-full text-2sm">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     {["العميل", "رقم الفاتورة", "المبلغ الأصلي", "المدفوع", "المتبقي", "الاستحقاق", "الحالة", "إجراءات"].map(h => (
@@ -268,7 +268,7 @@ export default function AjalTrackerPage() {
                           )}
                           <span>{d.customer_name}</span>
                         </div>
-                        {getAgingLabel(d) && <div className="mt-1 text-[10px] font-black text-rose-600">{getAgingLabel(d)}</div>}
+                        {getAgingLabel(d) && <div className="mt-1 text-[11px] font-black text-rose-600">{getAgingLabel(d)}</div>}
                       </td>
                       <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{d.invoice_no || "—"}</td>
                       <td className="px-4 py-3 font-black font-mono">{fmt(d.original_amount)}</td>
@@ -276,7 +276,7 @@ export default function AjalTrackerPage() {
                       <td className="px-4 py-3 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
                       <td className={`px-4 py-3 text-[11px] font-black ${d.status === "overdue" ? "text-rose-600" : "text-slate-500"}`}>{fmtDate(d.due_date)}</td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${STATUS_MAP[d.status]?.cls || "bg-slate-100 text-slate-600"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${STATUS_MAP[d.status]?.cls || "bg-slate-100 text-slate-600"}`}>
                           {STATUS_MAP[d.status]?.label || d.status}
                         </span>
                       </td>
@@ -300,20 +300,20 @@ export default function AjalTrackerPage() {
         <div className="w-[380px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-amber-50">
             <div>
-              <div className="text-[14px] font-black text-slate-900">{selected.customer_name}</div>
+              <div className="text-sm font-black text-slate-900">{selected.customer_name}</div>
               <div className="text-[11px] text-slate-400 font-bold">{selected.customer_phone}</div>
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={() => handleWhatsAppReminder(selected)}
-                className="rounded-lg bg-emerald-500 px-2 py-1 text-[10px] font-black text-white hover:bg-emerald-600">
+                className="rounded-lg bg-emerald-500 px-2 py-1 text-[11px] font-black text-white hover:bg-emerald-600">
                 واتساب
               </button>
               <button onClick={() => setPrintType("statement")}
-                className="rounded-lg bg-slate-800 px-2 py-1 text-[10px] font-black text-white hover:bg-slate-900">
+                className="rounded-lg bg-slate-800 px-2 py-1 text-[11px] font-black text-white hover:bg-slate-900">
                 كشف
               </button>
               <button onClick={() => setPrintType("schedule")}
-                className="rounded-lg bg-violet-600 px-2 py-1 text-[10px] font-black text-white hover:bg-violet-700">
+                className="rounded-lg bg-violet-600 px-2 py-1 text-[11px] font-black text-white hover:bg-violet-700">
                 أقساط
               </button>
               <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700"><X className="h-5 w-5" /></button>
@@ -328,8 +328,8 @@ export default function AjalTrackerPage() {
               { label: "المتبقي", val: fmt(selected.remaining), bold: true },
             ].map(({ label, val, bold }) => (
               <div key={label} className="text-center">
-                <div className="text-[10px] font-black text-slate-400 uppercase">{label}</div>
-                <div className={`text-[14px] font-black font-mono ${bold ? "text-rose-700" : "text-slate-700"}`}>{val}</div>
+                <div className="text-[11px] font-black text-slate-400 uppercase">{label}</div>
+                <div className={`text-sm font-black font-mono ${bold ? "text-rose-700" : "text-slate-700"}`}>{val}</div>
               </div>
             ))}
           </div>
@@ -338,7 +338,7 @@ export default function AjalTrackerPage() {
           <div className="flex border-b border-slate-100 shrink-0">
             {[["pay", "سداد دفعة"], ["schedule", "جدولة أقساط"], ["history", "السجل"]].map(([k, label]) => (
               <button key={k} onClick={() => setActivePanel(k)}
-                className={`flex-1 py-2.5 text-[12px] font-black transition-colors ${activePanel === k ? "border-b-2 border-amber-600 text-amber-700" : "text-slate-500 hover:text-slate-800"}`}>
+                className={`flex-1 py-2.5 text-2sm font-black transition-colors ${activePanel === k ? "border-b-2 border-amber-600 text-amber-700" : "text-slate-500 hover:text-slate-800"}`}>
                 {label}
               </button>
             ))}
@@ -352,7 +352,7 @@ export default function AjalTrackerPage() {
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ (ج.م) *</label>
                   <input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
                     autoFocus placeholder={`المتبقي: ${fmt(selected.remaining)}`}
-                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-[13px] font-black text-center outline-none focus:border-amber-500" />
+                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-sm font-black text-center outline-none focus:border-amber-500" />
                 </div>
                 <MultiPaymentInput
                   totalAmount={Number(payForm.amount) || 0}
@@ -363,10 +363,10 @@ export default function AjalTrackerPage() {
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
                   <input type="text" value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-[12px] outline-none focus:border-slate-400" />
+                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-slate-400" />
                 </div>
                 <button onClick={handlePay} disabled={!payForm.amount || paying}
-                  className="w-full rounded-xl bg-amber-600 py-3 text-[13px] font-black text-white hover:bg-amber-700 disabled:opacity-40 transition-colors">
+                  className="w-full rounded-xl bg-amber-600 py-3 text-sm font-black text-white hover:bg-amber-700 disabled:opacity-40 transition-colors">
                   {paying ? "جاري السداد..." : "تسجيل الدفعة"}
                 </button>
               </div>
@@ -378,12 +378,12 @@ export default function AjalTrackerPage() {
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">عدد الأقساط</label>
                   <input type="number" min="2" max="60" value={schedForm.installments}
                     onChange={e => setSchedForm(f => ({ ...f, installments: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-center text-[14px] font-black outline-none focus:border-amber-500" />
+                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-center text-sm font-black outline-none focus:border-amber-500" />
                 </div>
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">التكرار</label>
                   <select value={schedForm.frequency} onChange={e => setSchedForm(f => ({ ...f, frequency: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-[12px] font-bold outline-none bg-white focus:border-amber-500">
+                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm font-bold outline-none bg-white focus:border-amber-500">
                     <option value="weekly">أسبوعي</option>
                     <option value="biweekly">كل أسبوعين</option>
                     <option value="monthly">شهري</option>
@@ -392,7 +392,7 @@ export default function AjalTrackerPage() {
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">تاريخ البداية</label>
                   <input type="date" value={schedForm.start_date} onChange={e => setSchedForm(f => ({ ...f, start_date: e.target.value }))}
-                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-[12px] outline-none focus:border-amber-500" />
+                    className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-amber-500" />
                 </div>
                 {selected.remaining > 0 && schedForm.installments > 0 && (
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
@@ -403,7 +403,7 @@ export default function AjalTrackerPage() {
                   </div>
                 )}
                 <button onClick={handleSchedule} disabled={scheduling}
-                  className="w-full rounded-xl bg-slate-800 py-3 text-[13px] font-black text-white hover:bg-slate-700 disabled:opacity-40">
+                  className="w-full rounded-xl bg-slate-800 py-3 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-40">
                   {scheduling ? "جاري الجدولة..." : "إنشاء جدول الأقساط"}
                 </button>
 
@@ -431,12 +431,12 @@ export default function AjalTrackerPage() {
             {activePanel === "history" && (
               <div className="space-y-2">
                 {(!selected.payments || selected.payments.length === 0) ? (
-                  <div className="text-center text-slate-400 py-8 font-black text-[12px]">لا توجد مدفوعات مسجلة</div>
+                  <div className="text-center text-slate-400 py-8 font-black text-2sm">لا توجد مدفوعات مسجلة</div>
                 ) : selected.payments.map(p => (
                   <div key={p.id} className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
                     <div>
-                      <div className="text-[12px] font-black text-emerald-800">{fmt(p.amount)} ج.م</div>
-                      <div className="text-[10px] text-emerald-600 font-bold">{p.method_name} — {fmtDate(p.payment_date)}</div>
+                      <div className="text-2sm font-black text-emerald-800">{fmt(p.amount)} ج.م</div>
+                      <div className="text-[11px] text-emerald-600 font-bold">{p.method_name} — {fmtDate(p.payment_date)}</div>
                     </div>
                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   </div>
@@ -454,7 +454,7 @@ export default function AjalTrackerPage() {
               <button onClick={() => setBulkPayOpen(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
             <div className="mb-3 rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
-              <div className="text-[10px] font-black text-slate-400">إجمالي المحدد</div>
+              <div className="text-[11px] font-black text-slate-400">إجمالي المحدد</div>
               <div className="text-[20px] font-black font-mono text-slate-900">
                 {fmt(debts.filter((debt) => bulkSelected.includes(debt.id)).reduce((sum, debt) => sum + Number(debt.remaining || 0), 0))} ج.م
               </div>
@@ -466,7 +466,7 @@ export default function AjalTrackerPage() {
               allowPartial={true}
             />
             <button onClick={handleBulkPay} disabled={paying || !bulkPayments.length}
-              className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-[13px] font-black text-white hover:bg-emerald-700 disabled:opacity-40">
+              className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-40">
               {paying ? "جاري التحصيل..." : "تأكيد التحصيل"}
             </button>
           </div>

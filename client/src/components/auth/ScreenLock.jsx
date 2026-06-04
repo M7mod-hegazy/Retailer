@@ -190,7 +190,7 @@ export default function ScreenLock() {
         </div>
 
         <h2 className="mt-8 text-[32px] font-black tracking-tight text-slate-900 drop-shadow-sm">النظام مقفل</h2>
-        <p className="mt-3 text-[13px] font-medium leading-relaxed text-slate-500">
+        <p className="mt-3 text-sm font-medium leading-relaxed text-slate-500">
           حماية الجلسة نشطة. أدخل كلمة المرور<br />للمتابعة من حيث توقفت.
         </p>
 
@@ -216,7 +216,7 @@ export default function ScreenLock() {
           
           <div className="mt-4 h-5 flex justify-center items-center">
             {error && (
-              <p className="animate-in fade-in slide-in-from-top-1 text-[13px] font-bold text-rose-500">
+              <p className="animate-in fade-in slide-in-from-top-1 text-sm font-bold text-rose-500">
                 كلمة المرور غير صحيحة
               </p>
             )}
@@ -244,7 +244,7 @@ export default function ScreenLock() {
               writeLockState({ locked: false, lastActivity: Date.now() });
               logout();
             }}
-            className="mt-6 text-[13px] font-bold text-slate-400 decoration-slate-300 decoration-wavy underline-offset-[6px] hover:text-slate-700 hover:underline transition-colors"
+            className="mt-6 text-sm font-bold text-slate-400 decoration-slate-300 decoration-wavy underline-offset-[6px] hover:text-slate-700 hover:underline transition-colors"
           >
             التبديل لمستخدم آخر (تسجيل خروج)
           </button>

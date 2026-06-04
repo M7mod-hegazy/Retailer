@@ -191,14 +191,14 @@ export default function FinancialCategoriesPage() {
         id: "index",
         header: "#",
         accessorFn: (_, i) => String(i + 1).padStart(2, '0'),
-        cell: (info) => <span className="text-[10px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
+        cell: (info) => <span className="text-[11px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
         size: 50,
       },
       {
         accessorKey: "name",
         header: "القسم",
         cell: (info) => (
-          <span className="text-[13px] font-bold text-slate-800">
+          <span className="text-sm font-bold text-slate-800">
             <Highlight text={String(info.getValue() ?? '-')} query={query} />
           </span>
         ),
@@ -209,10 +209,10 @@ export default function FinancialCategoriesPage() {
         cell: (info) => {
           const val = info.getValue();
           return val ? (
-            <span className="text-[12px] font-medium text-slate-500">
+            <span className="text-2sm font-medium text-slate-500">
                <Highlight text={String(val)} query={query} />
             </span>
-          ) : <span className="text-[12px] font-medium text-slate-300">—</span>;
+          ) : <span className="text-2sm font-medium text-slate-300">—</span>;
         },
       },
       {
@@ -286,7 +286,7 @@ export default function FinancialCategoriesPage() {
               className="h-px bg-zinc-400"
             />
             <Database className="h-3 w-3" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">نظام الإدارة الأساسي</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">نظام الإدارة الأساسي</span>
           </div>
           
           <h1 className="max-w-4xl text-5xl md:text-7xl font-black text-zinc-950 tracking-tighter leading-[1.1] mb-6">
@@ -307,7 +307,7 @@ export default function FinancialCategoriesPage() {
                 <button
                   key={t.id}
                   onClick={() => setActiveTabId(t.id)}
-                  className={`relative px-6 py-3 text-[14px] font-black transition-all rounded-2xl flex items-center gap-2 overflow-hidden border ${
+                  className={`relative px-6 py-3 text-sm font-black transition-all rounded-2xl flex items-center gap-2 overflow-hidden border ${
                     isActive 
                       ? 'border-zinc-900 text-white shadow-lg' 
                       : 'border-slate-200/50 bg-white/50 text-slate-500 hover:text-zinc-900 hover:bg-white hover:border-slate-300'
@@ -359,7 +359,7 @@ export default function FinancialCategoriesPage() {
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => exportToCSV(rows, csvColumnDefs, activeTab.label)}
-                className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-[12px] font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
+                className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
               >
                 <Download className="h-4 w-4" /> تصدير السجلات
               </motion.button>
@@ -412,7 +412,7 @@ export default function FinancialCategoriesPage() {
                     </span>
                   )}
                 </div>
-                <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${editingRow ? 'text-amber-700/70' : 'text-slate-400'}`}>
+                <p className={`text-[11px] font-bold uppercase tracking-widest mt-1 ${editingRow ? 'text-amber-700/70' : 'text-slate-400'}`}>
                   {editingRow ? `تحديث السجل ID: ${editingRow.id}` : `إنشاء ${activeTab.label} جديدة`}
                 </p>
               </div>
@@ -439,7 +439,7 @@ export default function FinancialCategoriesPage() {
                     transition={{ delay: 0.5 + (idx * 0.1) }}
                     className="flex flex-col gap-2 relative group"
                   >
-                    <label className={`text-[10px] font-black uppercase tracking-widest flex items-center justify-between ${editingRow ? 'text-amber-900/70' : 'text-slate-500'}`}>
+                    <label className={`text-[11px] font-black uppercase tracking-widest flex items-center justify-between ${editingRow ? 'text-amber-900/70' : 'text-slate-500'}`}>
                       {field.label}
                       {field.required && <span className={`text-[9px] font-bold ${editingRow ? 'text-amber-600' : 'text-zinc-400'}`}>مطلوب</span>}
                     </label>
@@ -474,7 +474,7 @@ export default function FinancialCategoriesPage() {
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isSubmitting}
-                    className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all shadow-xl disabled:opacity-50 ${
+                    className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50 ${
                       editingRow 
                         ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' 
                         : 'bg-zinc-950 hover:bg-zinc-800 shadow-zinc-950/20'
@@ -495,7 +495,7 @@ export default function FinancialCategoriesPage() {
                 <div className="mt-4 pt-4 border-t border-slate-200/60">
                   <div className="flex items-center gap-2 mb-3 text-slate-400">
                     <Tag className="h-3 w-3" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">إضافة سريعة</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest">إضافة سريعة</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {activeTab.recommendations.map(rec => {

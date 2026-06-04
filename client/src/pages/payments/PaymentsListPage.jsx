@@ -88,14 +88,14 @@ export default function PaymentsListPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-[24px] font-black text-slate-800">سجل المقبوضات والمدفوعات</h1>
-          <p className="text-[13px] font-bold text-slate-400">متابعة كافة الحركات المالية الصادرة والواردة وتوزيعاتها</p>
+          <p className="text-sm font-bold text-slate-400">متابعة كافة الحركات المالية الصادرة والواردة وتوزيعاتها</p>
         </div>
         <div className="flex items-center gap-2">
           <TodayInvoicesButton variant="ghost" />
           <PermissionGate page="payments" action="add">
             <Link
               to="/payments/new"
-              className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-slate-700 hover:shadow-xl active:scale-95"
+              className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 hover:shadow-xl active:scale-95"
             >
               <Plus className="h-4 w-4" /> إضافة حركة مالية
             </Link>
@@ -113,7 +113,7 @@ export default function PaymentsListPage() {
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">إجمالي المقبوضات (تحصيل)</span>
             <div className="flex items-baseline gap-1">
                <span className="text-[20px] font-black text-slate-800">{stats.collections}</span>
-               <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+               <span className="text-[11px] font-bold text-slate-400">ج.م</span>
             </div>
           </div>
         </div>
@@ -126,7 +126,7 @@ export default function PaymentsListPage() {
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">إجمالي المدفوعات (سداد)</span>
             <div className="flex items-baseline gap-1">
                <span className="text-[20px] font-black text-slate-800">{stats.expenditures}</span>
-               <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+               <span className="text-[11px] font-bold text-slate-400">ج.م</span>
             </div>
           </div>
         </div>
@@ -154,11 +154,11 @@ export default function PaymentsListPage() {
                 placeholder="بحث في الحركات..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="rounded-sm border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-[12px] font-bold text-slate-600 outline-none hover:border-slate-300 focus:border-slate-800" 
+                className="rounded-sm border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-2sm font-bold text-slate-600 outline-none hover:border-slate-300 focus:border-slate-800" 
               />
             </div>
             <PermissionGate page="payments" action="export">
-              <button className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+              <button className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
                 <Download className="h-3.5 w-3.5" /> تصدير PDF
               </button>
             </PermissionGate>
@@ -186,11 +186,11 @@ export default function PaymentsListPage() {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-20 text-center text-[13px] font-bold text-slate-400 animate-pulse">جاري تحميل السجلات...</td>
+                  <td colSpan="7" className="py-20 text-center text-sm font-bold text-slate-400 animate-pulse">جاري تحميل السجلات...</td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-20 text-center text-[13px] font-bold text-slate-400">لا توجد حركات مالية مطابقة</td>
+                  <td colSpan="7" className="py-20 text-center text-sm font-bold text-slate-400">لا توجد حركات مالية مطابقة</td>
                 </tr>
               ) : (
                 filteredRows.map((row) => (
@@ -198,11 +198,11 @@ export default function PaymentsListPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className={`h-2 w-2 rounded-full ${row.party_type === 'customer' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                        <span className="font-mono text-[13px] font-black text-slate-800">PAY-{String(row.id).padStart(5, '0')}</span>
+                        <span className="font-mono text-sm font-black text-slate-800">PAY-{String(row.id).padStart(5, '0')}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                       <span className={`rounded-sm px-2 py-0.5 text-[10px] font-black uppercase ${row.party_type === 'customer' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                       <span className={`rounded-sm px-2 py-0.5 text-[11px] font-black uppercase ${row.party_type === 'customer' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
                           {row.party_type === 'customer' ? 'تحصيل عميل' : 'سداد مورد'}
                        </span>
                     </td>
@@ -211,11 +211,11 @@ export default function PaymentsListPage() {
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                           {row.party_type === 'customer' ? <User className="h-3.5 w-3.5" /> : <Briefcase className="h-3.5 w-3.5" />}
                         </div>
-                        <span className="text-[13px] font-bold text-slate-700">{row.party_name || `طرف #${row.party_id}`}</span>
+                        <span className="text-sm font-bold text-slate-700">{row.party_name || `طرف #${row.party_id}`}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                       <div className="flex items-center gap-2 text-slate-500 font-bold text-[12px]">
+                       <div className="flex items-center gap-2 text-slate-500 font-bold text-2sm">
                           {row.method_type === 'bank' ? <CreditCard className="h-3.5 w-3.5 opacity-50" /> : <Banknote className="h-3.5 w-3.5 opacity-50" />}
                           {row.method_name || row.method}
                        </div>
@@ -223,11 +223,11 @@ export default function PaymentsListPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-slate-500">
                         <Calendar className="h-3.5 w-3.5 opacity-50" />
-                        <span className="text-[12px] font-medium">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+                        <span className="text-2sm font-medium">{new Date(row.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-left">
-                      <span className={`font-mono text-[14px] font-black ${row.party_type === 'customer' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      <span className={`font-mono text-sm font-black ${row.party_type === 'customer' ? 'text-emerald-700' : 'text-rose-700'}`}>
                          {formatMoney(row.amount)}
                       </span>
                     </td>

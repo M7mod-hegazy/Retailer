@@ -180,7 +180,7 @@ function AmountCell({ t }) {
           {isReturn && creditAmt > 0.005 && (
             <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>
               <span className={`text-[8px] font-black ${isSalesReturn ? "text-blue-500" : "text-amber-600"}`}>{isSalesReturn ? "رصيد حساب" : "ذمة مورد"}</span>
-              <span className={`text-[10px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
+              <span className={`text-[11px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
             </div>
           )}
           {isSalesReturn && t.original_invoice_no && (
@@ -260,7 +260,7 @@ function AmountCell({ t }) {
           {isReturn && creditAmt > 0.005 && (
             <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>
               <span className={`text-[8px] font-black ${isSalesReturn ? "text-blue-500" : "text-amber-600"}`}>{isSalesReturn ? "رصيد حساب" : "ذمة مورد"}</span>
-              <span className={`text-[10px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
+              <span className={`text-[11px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
             </div>
           )}
 
@@ -277,7 +277,7 @@ function AmountCell({ t }) {
   }
 
   /* ── TRULY EMPTY ─────────────────────────────────────────── */
-  return <span className="text-slate-300 text-[13px] font-black block text-center">—</span>;
+  return <span className="text-slate-300 text-sm font-black block text-center">—</span>;
 }
 
 const TABS = [
@@ -782,7 +782,7 @@ export default function DailyTreasuryPage() {
           <div className="flex flex-col items-start justify-center">
             <motion.div variants={fadeInUp} className="flex items-center gap-2 text-slate-400 mb-2">
               <Wallet className="h-4 w-4" />
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] font-mono">المالية // تسوية ومراجعة الحركات</span>
+              <span className="text-[11px] font-black uppercase tracking-[0.15em] font-mono">المالية // تسوية ومراجعة الحركات</span>
             </motion.div>
 
             <motion.h1 variants={fadeInUp} className="text-3xl md:text-4xl font-black text-zinc-950 tracking-tighter">
@@ -797,7 +797,7 @@ export default function DailyTreasuryPage() {
                 value={date}
                 max={todayStr()}
                 onChange={(e) => { setDate(e.target.value); setActiveTab("all"); }}
-                className="h-10 rounded-xl border border-slate-200 bg-white/50 px-3 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer"
+                className="h-10 rounded-xl border border-slate-200 bg-white/50 px-3 text-2sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer"
               />
             </div>
 
@@ -805,7 +805,7 @@ export default function DailyTreasuryPage() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { setDate(todayStr()); setActiveTab("all"); setGlobalAmountSearch(""); }}
-              className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-[12px] font-black transition-colors ${isToday ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+              className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-2sm font-black transition-colors ${isToday ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
                 }`}
             >
               <Calendar className="h-3.5 w-3.5" /> اليوم
@@ -813,7 +813,7 @@ export default function DailyTreasuryPage() {
 
             <div className={`flex items-center gap-1.5 h-10 px-3 rounded-xl border ${isClosed ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700"}`}>
               {isClosed ? <Lock className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-              <span className="text-[13px] font-black">{isClosed ? "مغلق" : "مفتوح"}</span>
+              <span className="text-sm font-black">{isClosed ? "مغلق" : "مفتوح"}</span>
             </div>
 
             <label className="flex items-center gap-1.5 h-10 cursor-pointer rounded-xl border border-slate-200 px-3 text-[11px] font-black text-slate-600 hover:bg-slate-50 transition-colors select-none">
@@ -870,7 +870,7 @@ export default function DailyTreasuryPage() {
             <div className="flex items-center justify-center h-64">
               <div className="flex flex-col items-center gap-4">
                 <RefreshCw className="h-8 w-8 animate-spin text-slate-300" />
-                <span className="text-[14px] font-black text-slate-400">جاري تحميل بيانات الخزينة...</span>
+                <span className="text-sm font-black text-slate-400">جاري تحميل بيانات الخزينة...</span>
               </div>
             </div>
           ) : !sess ? (
@@ -884,7 +884,7 @@ export default function DailyTreasuryPage() {
                 <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-blue-50 border border-blue-100 px-6 py-4">
                   <div className="flex items-center gap-3">
                     <Lock className="h-5 w-5 text-blue-500" />
-                    <span className="text-[13px] font-black text-blue-800">
+                    <span className="text-sm font-black text-blue-800">
                       {isToday && isClosed
                         ? "اليومية مغلقة. يمكنك إعادة فتحها إذا أُغلقت بالخطأ."
                         : `عرض يوم ${date} للقراءة والمراجعة.`}
@@ -925,7 +925,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setQuickModal("expense")}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-rose-600 py-4 text-[14px] font-black text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-600/20 border border-rose-500"
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-rose-600 py-4 text-sm font-black text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-600/20 border border-rose-500"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><TrendingDown className="h-4 w-4" /></div>
                     تسجيل مصروف سريع
@@ -934,7 +934,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setQuickModal("revenue")}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-emerald-600 py-4 text-[14px] font-black text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 border border-emerald-500"
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-emerald-600 py-4 text-sm font-black text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 border border-emerald-500"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><TrendingUp className="h-4 w-4" /></div>
                     تسجيل إيراد سريع
@@ -943,7 +943,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setWithdrawalOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-slate-900 py-4 text-[14px] font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-slate-900 py-4 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
                     تسجيل مسحوبات سريع
@@ -952,7 +952,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setMoneyOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-blue-600 py-4 text-[14px] font-black text-white hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 border border-blue-500"
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-blue-600 py-4 text-sm font-black text-white hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 border border-blue-500"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><Coins className="h-4 w-4" /></div>
                     عد العملة (جرد الخزينة)
@@ -962,7 +962,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setCalcOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-indigo-600 py-4 text-[14px] font-black text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20 border border-indigo-500"
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-indigo-600 py-4 text-sm font-black text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20 border border-indigo-500"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><Calculator className="h-4 w-4" /></div>
                     آلة حاسبة
@@ -977,7 +977,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setCalcOpen(true)}
-                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-[12px] font-black text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-2sm font-black text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
                   >
                     <Calculator className="h-4 w-4" />
                     آلة حاسبة
@@ -1019,7 +1019,7 @@ export default function DailyTreasuryPage() {
                     <div className={`absolute -right-4 -top-4 h-16 w-16 rounded-full bg-${color}-50/50 blur-xl group-hover:bg-${color}-100/50 transition-colors`}></div>
                     <div className="relative z-10 flex flex-col h-full justify-between">
                       <div className="flex items-start justify-between mb-2">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-tight">{label}</span>
+                        <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest leading-tight">{label}</span>
                         <div className={`flex h-8 w-8 items-center justify-center rounded-xl bg-${color}-50 text-${color}-600 ring-1 ring-inset ring-${color}-100 shadow-sm shrink-0`}>
                           <Icon className="h-4 w-4" />
                         </div>
@@ -1028,9 +1028,9 @@ export default function DailyTreasuryPage() {
                         <div className={`text-[22px] font-black font-mono tracking-tighter ${value != null && value < 0 ? "text-rose-600" : "text-zinc-900"}`}>
                           {value != null ? fmt(value) : "—"}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-bold mt-0.5">جنيه مصري</div>
+                        <div className="text-[11px] text-slate-400 font-bold mt-0.5">جنيه مصري</div>
                         {compareYesterday && yesterday != null && (
-                          <div className="mt-2 text-[10px] text-slate-500 font-bold border-t border-slate-100/80 pt-2 flex items-center justify-between">
+                          <div className="mt-2 text-[11px] text-slate-500 font-bold border-t border-slate-100/80 pt-2 flex items-center justify-between">
                             <span>بالأمس:</span>
                             <span className="font-mono">{fmt(yesterday)} ج.م</span>
                           </div>
@@ -1054,7 +1054,7 @@ export default function DailyTreasuryPage() {
                       </div>
                       <div>
                         <h3 className="text-[22px] font-black text-zinc-900 leading-tight">معادلة الخزينة</h3>
-                        <p className="text-[13px] font-bold text-slate-500 mt-1">الرصيد المتوقع = الرصيد السابق + الداخل النقدي − الخارج النقدي</p>
+                        <p className="text-sm font-bold text-slate-500 mt-1">الرصيد المتوقع = الرصيد السابق + الداخل النقدي − الخارج النقدي</p>
                       </div>
                     </div>
 
@@ -1070,7 +1070,7 @@ export default function DailyTreasuryPage() {
                               </div>
                               <span className="text-[15px] font-black text-slate-700">رصيد سابق</span>
                             </div>
-                            <span className="text-[22px] font-black font-mono text-zinc-900">{fmt(summary?.previous_balance ?? summary?.opening_balance)} <span className="text-[12px] text-slate-400">ج.م</span></span>
+                            <span className="text-[22px] font-black font-mono text-zinc-900">{fmt(summary?.previous_balance ?? summary?.opening_balance)} <span className="text-2sm text-slate-400">ج.م</span></span>
                           </div>
 
                           {/* Cash In */}
@@ -1101,14 +1101,14 @@ export default function DailyTreasuryPage() {
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <div className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-                                        <span className="text-[12px] text-slate-700 font-bold text-right leading-snug">{row.label}</span>
+                                        <span className="text-2sm text-slate-700 font-bold text-right leading-snug">{row.label}</span>
                                         <Info className="h-3 w-3 text-slate-300 shrink-0" />
                                       </div>
                                       <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
-                                        <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
+                                        <span className={`font-black text-sm font-mono transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
                                           }`}>{fmt(row.value)}</span>
                                         {affect && (
-                                          <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                          <span className="text-[11px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
                                             ← هذه الحركة: {fmt(affect.amount)}
                                           </span>
                                         )}
@@ -1147,14 +1147,14 @@ export default function DailyTreasuryPage() {
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <div className="h-2 w-2 rounded-full bg-rose-400 shrink-0" />
-                                        <span className="text-[12px] text-slate-700 font-bold text-right leading-snug">{row.label}</span>
+                                        <span className="text-2sm text-slate-700 font-bold text-right leading-snug">{row.label}</span>
                                         <Info className="h-3 w-3 text-slate-300 shrink-0" />
                                       </div>
                                       <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
-                                        <span className={`font-black text-[14px] font-mono transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
+                                        <span className={`font-black text-sm font-mono transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
                                           }`}>{fmt(row.value)}</span>
                                         {affect && (
-                                          <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                          <span className="text-[11px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
                                             ← هذه الحركة: {fmt(affect.amount)}
                                           </span>
                                         )}
@@ -1168,7 +1168,7 @@ export default function DailyTreasuryPage() {
 
                           {/* Non-cash */}
                           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                            <div className="mb-2 text-[13px] font-black text-slate-600">حركات لا تؤثر على الخزنة نقدياً</div>
+                            <div className="mb-2 text-sm font-black text-slate-600">حركات لا تؤثر على الخزنة نقدياً</div>
                             <div className="space-y-1">
                               {nonCashRows.map((row) => {
                                 const affect = txAffects?.find(a => a.id === row.id);
@@ -1191,10 +1191,10 @@ export default function DailyTreasuryPage() {
                                         <Info className="h-3 w-3 text-slate-300 shrink-0" />
                                       </div>
                                       <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
-                                        <span className={`font-black text-[13px] font-mono transition-all ${isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
+                                        <span className={`font-black text-sm font-mono transition-all ${isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
                                           }`}>{fmt(row.value)}</span>
                                         {affect && (
-                                          <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                          <span className="text-[11px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
                                             ← هذه الحركة: {fmt(affect.amount)}
                                           </span>
                                         )}
@@ -1218,7 +1218,7 @@ export default function DailyTreasuryPage() {
                                   <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
                                     <Wallet className="h-5 w-5 text-slate-300" />
                                   </div>
-                                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
+                                  <div className="text-2sm font-bold text-slate-400 uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
                                 </div>
                                 <div className="text-left">
                                   <div className="text-[28px] font-black font-mono tracking-tighter leading-none">{fmt(expected)}</div>
@@ -1236,7 +1236,7 @@ export default function DailyTreasuryPage() {
                                     <div className="text-[11px] font-bold text-slate-400">الرصيد الفعلي المُغلق</div>
                                     <div className="text-[20px] font-black font-mono">{fmt(sess.actual_cash)}</div>
                                   </div>
-                                  <div className={"text-[13px] font-black " + (discrepancy >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                                  <div className={"text-sm font-black " + (discrepancy >= 0 ? "text-emerald-400" : "text-rose-400")}>
                                     الفرق: {discrepancy >= 0 ? "+" : ""}{fmt(discrepancy)} ج.م
                                   </div>
                                 </motion.div>
@@ -1250,7 +1250,7 @@ export default function DailyTreasuryPage() {
                               </h4>
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-2">
-                                  <label className="text-[13px] font-black text-slate-700">الرصيد الفعلي (ج.م)</label>
+                                  <label className="text-sm font-black text-slate-700">الرصيد الفعلي (ج.م)</label>
                                   <div className="flex gap-3">
                                     <input
                                       type="number"
@@ -1275,29 +1275,29 @@ export default function DailyTreasuryPage() {
                                   <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={"text-center rounded-2xl py-3 px-4 text-[14px] font-black border " + (Number(actualCash) - expected >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700")}
+                                    className={"text-center rounded-2xl py-3 px-4 text-sm font-black border " + (Number(actualCash) - expected >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700")}
                                   >
                                     الفرق: {Number(actualCash) - expected >= 0 ? "+" : ""}{fmt(Number(actualCash) - expected)} ج.م
                                   </motion.div>
                                 )}
                                 {actualCash && (
                                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                    <div className="mb-2 flex items-center gap-2 text-[12px] font-black text-slate-700">
+                                    <div className="mb-2 flex items-center gap-2 text-2sm font-black text-slate-700">
                                       <Sparkles className="h-4 w-4 text-amber-500" /> مساعد العجز والزيادة
                                     </div>
                                     <div className="space-y-1">
                                       {discrepancySuggestions.map((tip, idx) => (
-                                        <div key={idx} className="text-[12px] font-bold text-slate-500 leading-5">• {tip}</div>
+                                        <div key={idx} className="text-2sm font-bold text-slate-500 leading-5">• {tip}</div>
                                       ))}
                                     </div>
                                   </div>
                                 )}
                                 <div className="flex flex-col gap-1.5">
-                                  <label className="text-[12px] font-black uppercase tracking-widest text-slate-500">ملاحظات</label>
+                                  <label className="text-2sm font-black uppercase tracking-widest text-slate-500">ملاحظات</label>
                                   <textarea
                                     value={closeNotes}
                                     onChange={(e) => setCloseNotes(e.target.value)}
-                                    className="w-full h-16 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-[13px] font-bold text-zinc-800 outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-slate-300 transition-all"
+                                    className="w-full h-16 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm font-bold text-zinc-800 outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-slate-300 transition-all"
                                     placeholder="ملاحظات حول الرصيد..."
                                   />
                                 </div>
@@ -1323,7 +1323,7 @@ export default function DailyTreasuryPage() {
                                 {methodTotals.length === 0 ? (
                                   <div className="h-full min-h-[120px] flex flex-col items-center justify-center text-center px-4 py-6">
                                     <CreditCard className="h-8 w-8 text-slate-200 mb-2" />
-                                    <span className="text-[12px] font-black text-slate-400">لا توجد وسائل دفع إضافية</span>
+                                    <span className="text-2sm font-black text-slate-400">لا توجد وسائل دفع إضافية</span>
                                     <span className="text-[11px] font-bold text-slate-300 mt-1">أضف محفظة أو بنك من شاشة وسائل الدفع</span>
                                   </div>
                                 ) : (
@@ -1338,7 +1338,7 @@ export default function DailyTreasuryPage() {
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-[18px] leading-none shrink-0">{m.icon || "💳"}</span>
-                                            <span className="text-[13px] font-black text-zinc-900 truncate">{m.name}</span>
+                                            <span className="text-sm font-black text-zinc-900 truncate">{m.name}</span>
                                           </div>
                                           <div className="flex flex-col items-end shrink-0">
                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">الصافي</span>
@@ -1349,16 +1349,16 @@ export default function DailyTreasuryPage() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                           <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1.5">
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600">
                                               <TrendingUp className="h-3 w-3" /> داخل
                                             </span>
-                                            <span className="text-[12px] font-black font-mono text-emerald-700 tabular-nums">{fmt(m.in)}</span>
+                                            <span className="text-2sm font-black font-mono text-emerald-700 tabular-nums">{fmt(m.in)}</span>
                                           </div>
                                           <div className="flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-1.5">
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-600">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-black text-rose-600">
                                               <TrendingDown className="h-3 w-3" /> خارج
                                             </span>
-                                            <span className="text-[12px] font-black font-mono text-rose-700 tabular-nums">{fmt(m.out)}</span>
+                                            <span className="text-2sm font-black font-mono text-rose-700 tabular-nums">{fmt(m.out)}</span>
                                           </div>
                                         </div>
                                       </div>
@@ -1386,7 +1386,7 @@ export default function DailyTreasuryPage() {
                       value={globalAmountSearch}
                       onChange={(e) => { setGlobalAmountSearch(e.target.value); if (e.target.value) setActiveTab("all"); }}
                       placeholder="البحث الشامل برقم الفاتورة، المبلغ، أو اسم العميل..."
-                      className="w-full h-12 bg-white/80 backdrop-blur-xl rounded-2xl pr-12 pl-4 text-[13px] font-bold text-zinc-800 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-zinc-900/5 shadow-sm border border-slate-200/60 placeholder:text-slate-400"
+                      className="w-full h-12 bg-white/80 backdrop-blur-xl rounded-2xl pr-12 pl-4 text-sm font-bold text-zinc-800 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-zinc-900/5 shadow-sm border border-slate-200/60 placeholder:text-slate-400"
                     />
                     {globalAmountSearch && (
                       <button onClick={() => setGlobalAmountSearch("")} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 bg-slate-100 rounded-full p-1 transition-colors">
@@ -1441,14 +1441,14 @@ export default function DailyTreasuryPage() {
                       ) : sortedTransactions.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-400 gap-3">
                           <FileText className="h-10 w-10 text-slate-200" />
-                          <span className="text-[13px] font-black">لا توجد حركات مسجلة في هذا التبويب</span>
+                          <span className="text-sm font-black">لا توجد حركات مسجلة في هذا التبويب</span>
                         </div>
                       ) : (
                         <table className="w-full text-center border-collapse [&_td]:align-middle">
                           <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
                             <tr className="border-b border-slate-200">
                               {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
-                                <th key={h} className={`px-3 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
+                                <th key={h} className={`px-3 py-3 text-[11px] font-black uppercase text-slate-400 tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
                                   {h}
                                 </th>
                               ))}
@@ -1521,10 +1521,10 @@ export default function DailyTreasuryPage() {
                                   <td className="px-3 py-3.5 text-slate-600 text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
                                     {t.party || t.description || "—"}
                                   </td>
-                                  <td className="px-3 py-3.5 text-slate-500 text-[10px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
+                                  <td className="px-3 py-3.5 text-slate-500 text-[11px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
                                     {t.seller_name || t.cancelled_by_name || "—"}
                                   </td>
-                                  <td className="px-3 py-3.5 text-slate-400 text-[10px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
+                                  <td className="px-3 py-3.5 text-slate-400 text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
                                     {t.created_at
                                       ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
                                       : "—"}
@@ -1553,10 +1553,10 @@ export default function DailyTreasuryPage() {
                           </tbody>
                           <tfoot className="sticky bottom-0 bg-white/95 backdrop-blur-xl shadow-[0_-1px_0_0_#f1f5f9]">
                             <tr>
-                              <td className="px-3 py-3 font-black text-slate-500 uppercase tracking-widest text-[10px]" colSpan={2}>
+                              <td className="px-3 py-3 font-black text-slate-500 uppercase tracking-widest text-[11px]" colSpan={2}>
                                 الإجمالي للتبويب الحالي
                               </td>
-                              <td className="px-3 py-3 font-black text-zinc-950 font-mono text-[13px]">
+                              <td className="px-3 py-3 font-black text-zinc-950 font-mono text-sm">
                                 {fmt(txTotal)} ج.م
                               </td>
                               <td colSpan={3} />
@@ -1606,11 +1606,11 @@ export default function DailyTreasuryPage() {
                 {/* Header Summary */}
                 <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden mb-4">
                   <div className={"p-4 text-center border-b border-slate-100 " + (DOC_TYPE_COLOR[slideOver.doc_type] || "bg-white")}>
-                    <div className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">القيمة</div>
+                    <div className="text-[11px] font-black uppercase tracking-widest opacity-60 mb-1">القيمة</div>
                     <div className="text-[28px] font-black font-mono leading-none tracking-tighter">
                       {fmt(slideOver.amount)}
                     </div>
-                    <div className="text-[10px] font-bold mt-1 opacity-70">جنيه مصري</div>
+                    <div className="text-[11px] font-bold mt-1 opacity-70">جنيه مصري</div>
                   </div>
                   <div className="p-2">
                     {[
@@ -1626,8 +1626,8 @@ export default function DailyTreasuryPage() {
                       },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">{label}</span>
-                        <span className="text-[12px] font-bold text-zinc-900 text-right truncate">{value}</span>
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">{label}</span>
+                        <span className="text-2sm font-bold text-zinc-900 text-right truncate">{value}</span>
                       </div>
                     ))}
                   </div>
@@ -1646,14 +1646,14 @@ export default function DailyTreasuryPage() {
                         <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                             <FileText className="h-4 w-4 text-slate-400" />
-                            <span className="text-[12px] font-black text-slate-700">تفاصيل الاسترداد</span>
+                            <span className="text-2sm font-black text-slate-700">تفاصيل الاسترداد</span>
                           </div>
                           <div className="p-3 flex flex-wrap items-stretch gap-0 bg-slate-50/80 border-b border-slate-200/80">
                             {/* Total */}
                             <div className="flex flex-col items-end justify-center px-4 py-2.5 min-w-[110px]">
                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
                               <div className="text-[18px] font-black text-slate-800 font-mono leading-none">
-                                {fmt(total)} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+                                {fmt(total)} <span className="text-[11px] font-bold text-slate-400">ج.م</span>
                               </div>
                             </div>
                             {cashAmt > 0.005 && (
@@ -1665,7 +1665,7 @@ export default function DailyTreasuryPage() {
                                     {isSalesReturn ? "نقداً — صندوق" : "نقداً مُستردّ"}
                                   </span>
                                   <div className="text-[16px] font-black text-emerald-700 font-mono leading-none">
-                                    {fmt(cashAmt)} <span className="text-[10px] font-bold">ج.م</span>
+                                    {fmt(cashAmt)} <span className="text-[11px] font-bold">ج.م</span>
                                   </div>
                                 </div>
                               </>
@@ -1679,7 +1679,7 @@ export default function DailyTreasuryPage() {
                                     {isSalesReturn ? "رصيد حساب العميل" : "خصم من ذمة المورد"}
                                   </span>
                                   <div className="text-[16px] font-black text-blue-700 font-mono leading-none">
-                                    {fmt(creditAmt)} <span className="text-[10px] font-bold">ج.م</span>
+                                    {fmt(creditAmt)} <span className="text-[11px] font-bold">ج.م</span>
                                   </div>
                                 </div>
                               </>
@@ -1698,38 +1698,38 @@ export default function DailyTreasuryPage() {
                           <div className="divide-y divide-slate-50">
                             {isSalesReturn && slideOverDetails?.invoice_id && (
                               <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-indigo-50 text-indigo-700 border-indigo-200">
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-indigo-50 text-indigo-700 border-indigo-200">
                                   <FileText className="w-3 h-3" /> من فاتورة سابقة
                                 </span>
                               </div>
                             )}
                             {isSalesReturn && !slideOverDetails?.invoice_id && slideOverDetails && (
                               <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black bg-amber-50 text-amber-700 border-amber-200">
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-amber-50 text-amber-700 border-amber-200">
                                   <RotateCcw className="w-3 h-3" /> مرتجع مباشر
                                 </span>
                               </div>
                             )}
                             {(slideOver.description || slideOverDetails?.reason) && (
                               <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">السبب</span>
-                                <span className="text-[12px] font-bold text-zinc-900 text-right">
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">السبب</span>
+                                <span className="text-2sm font-bold text-zinc-900 text-right">
                                   {REASON_MAP[slideOver.description || slideOverDetails?.reason] || slideOver.description || slideOverDetails?.reason || "أخرى"}
                                 </span>
                               </div>
                             )}
                             {slideOverDetails?.original_invoice_no && (
                               <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">الفاتورة الأصلية</span>
-                                <span className="text-[12px] font-black text-indigo-700 font-mono">{slideOverDetails.original_invoice_no}</span>
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">الفاتورة الأصلية</span>
+                                <span className="text-2sm font-black text-indigo-700 font-mono">{slideOverDetails.original_invoice_no}</span>
                               </div>
                             )}
                             {(slideOverDetails?.notes || slideOver.notes) && (
                               <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">ملاحظات</span>
-                                <span className="text-[12px] font-bold text-zinc-700 text-right truncate">{slideOverDetails?.notes || slideOver.notes}</span>
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">ملاحظات</span>
+                                <span className="text-2sm font-bold text-zinc-700 text-right truncate">{slideOverDetails?.notes || slideOver.notes}</span>
                               </div>
                             )}
                           </div>
@@ -1741,10 +1741,10 @@ export default function DailyTreasuryPage() {
                     <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                         <FileText className="h-4 w-4 text-slate-400" />
-                        <span className="text-[12px] font-black text-slate-700">الأصناف المرتجعة</span>
+                        <span className="text-2sm font-black text-slate-700">الأصناف المرتجعة</span>
                       </div>
                       {slideOverLoading ? (
-                        <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                        <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
                       ) : slideOverDetails?.lines?.length ? (
                         <div className="divide-y divide-slate-100">
                           <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
@@ -1764,13 +1764,13 @@ export default function DailyTreasuryPage() {
                               <div className="col-span-3 text-left font-mono text-[11px] font-black text-rose-700">{fmt(line.line_total || line.unit_price * line.quantity)}</div>
                             </div>
                           ))}
-                          <div className="bg-slate-900 text-white px-3 py-3 flex justify-between text-[12px] font-black">
+                          <div className="bg-slate-900 text-white px-3 py-3 flex justify-between text-2sm font-black">
                             <span className="text-slate-400">الإجمالي</span>
                             <span className="font-mono">{fmt(slideOver.amount)} ج.م</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="p-6 text-center text-[12px] text-slate-400">لا توجد تفاصيل متاحة</div>
+                        <div className="p-6 text-center text-2sm text-slate-400">لا توجد تفاصيل متاحة</div>
                       )}
                     </div>
                   </div>
@@ -1781,10 +1781,10 @@ export default function DailyTreasuryPage() {
                   <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-slate-400" />
-                      <span className="text-[12px] font-black text-slate-700">تفاصيل الفاتورة</span>
+                      <span className="text-2sm font-black text-slate-700">تفاصيل الفاتورة</span>
                     </div>
                     {slideOverLoading ? (
-                      <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                      <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
                     ) : slideOverDetails?.lines?.length ? (
                       <div className="divide-y divide-slate-100">
                         {/* Column Headers */}
@@ -1804,29 +1804,29 @@ export default function DailyTreasuryPage() {
                             </div>
                             <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{line.quantity}</div>
                             <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{fmt(line.unit_price)}</div>
-                            <div className="col-span-1 text-center font-mono text-[10px] font-bold text-amber-600">{line.line_discount || line.discount || "—"}</div>
+                            <div className="col-span-1 text-center font-mono text-[11px] font-bold text-amber-600">{line.line_discount || line.discount || "—"}</div>
                             <div className="col-span-2 text-left font-mono text-[11px] font-black text-emerald-700">{fmt((line.unit_price * line.quantity) - (line.line_discount || 0))}</div>
                           </div>
                         ))}
                         {/* Totals */}
                         <div className="bg-slate-900 text-white px-3 py-3">
-                          <div className="flex justify-between text-[10px] font-bold mb-1">
+                          <div className="flex justify-between text-[11px] font-bold mb-1">
                             <span className="text-slate-400">الفرعي</span>
                             <span className="font-mono">{fmt(slideOverDetails.subtotal)}</span>
                           </div>
                           {Number(slideOverDetails.discount) > 0 && (
-                            <div className="flex justify-between text-[10px] font-bold mb-1">
+                            <div className="flex justify-between text-[11px] font-bold mb-1">
                               <span className="text-slate-400">الخصم</span>
                               <span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span>
                             </div>
                           )}
                           {Number(slideOverDetails.increase) > 0 && (
-                            <div className="flex justify-between text-[10px] font-bold mb-1">
+                            <div className="flex justify-between text-[11px] font-bold mb-1">
                               <span className="text-slate-400">الإضافة</span>
                               <span className="font-mono text-emerald-300">+ {fmt(slideOverDetails.increase)}</span>
                             </div>
                           )}
-                          <div className="flex justify-between text-[12px] font-black border-t border-slate-700 pt-2 mt-2">
+                          <div className="flex justify-between text-2sm font-black border-t border-slate-700 pt-2 mt-2">
                             <span>الإجمالي</span>
                             <span className="font-mono">{fmt(slideOverDetails.total)} ج.م</span>
                           </div>
@@ -1840,7 +1840,7 @@ export default function DailyTreasuryPage() {
                                     return (
                                       <div key={i} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${isCash ? "bg-emerald-900/40 border border-emerald-700/40" : "bg-slate-700/40 border border-slate-600/40"}`}>
                                         <div className="flex items-center gap-1.5">
-                                          <span className="text-[10px] font-black text-white">{p.method_name || arMethod(p.method)}</span>
+                                          <span className="text-[11px] font-black text-white">{p.method_name || arMethod(p.method)}</span>
                                           {!isCash && (
                                             <span className="text-[8px] font-bold text-slate-400 bg-slate-600/50 px-1.5 py-0.5 rounded">لا يؤثر على حساب الخزنة</span>
                                           )}
@@ -1854,7 +1854,7 @@ export default function DailyTreasuryPage() {
                                   <>
                                     <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-emerald-900/40 border border-emerald-700/40">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-black text-white">💰 نقداً (دفعة مقدم)</span>
+                                        <span className="text-[11px] font-black text-white">💰 نقداً (دفعة مقدم)</span>
                                         <span className="text-[8px] font-bold text-emerald-300 bg-emerald-800/50 px-1.5 py-0.5 rounded">يضاف للخزنة</span>
                                       </div>
                                       <span className="font-mono text-[11px] font-black text-emerald-300">{fmt(Number(slideOverDetails.amount_received || 0))} ج.م</span>
@@ -1862,7 +1862,7 @@ export default function DailyTreasuryPage() {
                                     {Number(slideOverDetails.total) > Number(slideOverDetails.amount_received || 0) && (
                                       <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-violet-900/40 border border-violet-700/40">
                                         <div className="flex items-center gap-1.5">
-                                          <span className="text-[10px] font-black text-white">📋 آجل (قسط)</span>
+                                          <span className="text-[11px] font-black text-white">📋 آجل (قسط)</span>
                                           <span className="text-[8px] font-bold text-violet-300 bg-violet-800/50 px-1.5 py-0.5 rounded">يضاف لذمة العميل</span>
                                         </div>
                                         <span className="font-mono text-[11px] font-black text-violet-300">{fmt(Number(slideOverDetails.total) - Number(slideOverDetails.amount_received || 0))} ج.م</span>
@@ -1873,7 +1873,7 @@ export default function DailyTreasuryPage() {
                                 {slideOverDetails.payment_type === "credit" && (
                                   <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-amber-900/40 border border-amber-700/40">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] font-black text-white">📋 آجل (كامل المبلغ)</span>
+                                      <span className="text-[11px] font-black text-white">📋 آجل (كامل المبلغ)</span>
                                       <span className="text-[8px] font-bold text-amber-300 bg-amber-800/50 px-1.5 py-0.5 rounded">يضاف لذمة العميل</span>
                                     </div>
                                     <span className="font-mono text-[11px] font-black text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
@@ -1885,7 +1885,7 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="p-6 text-center text-[12px] text-slate-400">لا توجد تفاصيل متاحة</div>
+                      <div className="p-6 text-center text-2sm text-slate-400">لا توجد تفاصيل متاحة</div>
                     )}
                   </div>
                 )}
@@ -1895,10 +1895,10 @@ export default function DailyTreasuryPage() {
                   <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-slate-400" />
-                      <span className="text-[12px] font-black text-slate-700">تفاصيل فاتورة الشراء</span>
+                      <span className="text-2sm font-black text-slate-700">تفاصيل فاتورة الشراء</span>
                     </div>
                     {slideOverLoading ? (
-                      <div className="p-6 text-center text-[12px] text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                      <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
                     ) : slideOverDetails?.lines?.length ? (
                       <div className="divide-y divide-slate-100">
                         <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
@@ -1920,12 +1920,12 @@ export default function DailyTreasuryPage() {
                         ))}
                         <div className="bg-slate-900 text-white px-3 py-3">
                           {Number(slideOverDetails.discount) > 0 && (
-                            <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span></div>
+                            <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span></div>
                           )}
                           {Number(slideOverDetails.increase) > 0 && (
-                            <div className="flex justify-between text-[10px] font-bold mb-1"><span className="text-slate-400">الإضافة</span><span className="font-mono text-emerald-300">+ {fmt(slideOverDetails.increase)}</span></div>
+                            <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-slate-400">الإضافة</span><span className="font-mono text-emerald-300">+ {fmt(slideOverDetails.increase)}</span></div>
                           )}
-                          <div className="flex justify-between text-[12px] font-black border-t border-slate-700 pt-2 mt-1">
+                          <div className="flex justify-between text-2sm font-black border-t border-slate-700 pt-2 mt-1">
                             <span>الإجمالي</span><span className="font-mono">{fmt(slideOverDetails.total)} ج.م</span>
                           </div>
                           {slideOverDetails.payment_method === "multi" && slideOverDetails.payments?.length > 0 && (
@@ -1935,7 +1935,7 @@ export default function DailyTreasuryPage() {
                                 const isCredit = p.method_type === "credit" || p.method_category === "credit";
                                 return (
                                   <div key={i} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${isCredit ? "bg-amber-900/40 border border-amber-700/40" : "bg-emerald-900/40 border border-emerald-700/40"}`}>
-                                    <span className="text-[10px] font-black text-white">{p.method_name || arMethod(p.method)} {isCredit && <span className="text-[8px] text-amber-300">(آجل — ذمة المورد)</span>}</span>
+                                    <span className="text-[11px] font-black text-white">{p.method_name || arMethod(p.method)} {isCredit && <span className="text-[8px] text-amber-300">(آجل — ذمة المورد)</span>}</span>
                                     <span className={`font-mono text-[11px] font-black ${isCredit ? "text-amber-300" : "text-emerald-300"}`}>{fmt(p.amount)} ج.م</span>
                                   </div>
                                 );
@@ -1945,7 +1945,7 @@ export default function DailyTreasuryPage() {
                           {(slideOverDetails.payment_method === "credit" || slideOverDetails.payment_method === "future_due") && (
                             <div className="mt-3 pt-3 border-t border-slate-700">
                               <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-amber-900/40 border border-amber-700/40">
-                                <span className="text-[10px] font-black text-white">📋 آجل (كامل المبلغ — ذمة المورد)</span>
+                                <span className="text-[11px] font-black text-white">📋 آجل (كامل المبلغ — ذمة المورد)</span>
                                 <span className="font-mono text-[11px] font-black text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
                               </div>
                             </div>
@@ -1953,7 +1953,7 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="p-6 text-center text-[12px] text-slate-400">لا توجد تفاصيل متاحة</div>
+                      <div className="p-6 text-center text-2sm text-slate-400">لا توجد تفاصيل متاحة</div>
                     )}
                   </div>
                 )}
@@ -1964,7 +1964,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/purchases/" + slideOver.id); }}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-[12px] font-black text-white hover:bg-orange-700 shadow-lg shadow-orange-600/20"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-2sm font-black text-white hover:bg-orange-700 shadow-lg shadow-orange-600/20"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
                   </motion.button>
@@ -1974,7 +1974,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => window.open("/invoices/" + slideOver.id, "_blank")}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-[12px] font-black text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-2sm font-black text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> فتح الفاتورة الكاملة
                   </motion.button>
@@ -1984,7 +1984,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/pos/sales-returns/" + slideOver.id); }}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-pink-600 py-2.5 text-[12px] font-black text-white hover:bg-pink-700 shadow-lg shadow-pink-600/20"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-pink-600 py-2.5 text-2sm font-black text-white hover:bg-pink-700 shadow-lg shadow-pink-600/20"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                   </motion.button>
@@ -1994,7 +1994,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/purchases/returns/" + slideOver.id); }}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 text-[12px] font-black text-white hover:bg-amber-700 shadow-lg shadow-amber-600/20"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 text-2sm font-black text-white hover:bg-amber-700 shadow-lg shadow-amber-600/20"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                   </motion.button>
@@ -2003,7 +2003,7 @@ export default function DailyTreasuryPage() {
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handlePrint}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-zinc-950 py-2.5 text-[12px] font-black text-white hover:bg-zinc-800 shadow-lg shadow-zinc-950/20"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-zinc-950 py-2.5 text-2sm font-black text-white hover:bg-zinc-800 shadow-lg shadow-zinc-950/20"
                 >
                   <Printer className="h-3.5 w-3.5" /> طباعة
                 </motion.button>
@@ -2030,28 +2030,28 @@ export default function DailyTreasuryPage() {
                 <button onClick={() => setHistoryOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-zinc-900 hover:bg-slate-50 transition-colors shadow-sm"><X className="h-5 w-5" /></button>
               </div>
               <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-3">
-                <div className="relative flex-1 min-w-[240px]"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder="بحث بتاريخ اليوم أو ملاحظات الإغلاق" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pr-9 pl-3 text-[12px] font-bold outline-none focus:border-indigo-500 focus:bg-white" /></div>
-                <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-black text-slate-600 outline-none focus:border-indigo-500"><option value="">كل الحالات</option><option value="open">مفتوح</option><option value="closed">مغلق</option></select>
+                <div className="relative flex-1 min-w-[240px]"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder="بحث بتاريخ اليوم أو ملاحظات الإغلاق" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pr-9 pl-3 text-2sm font-bold outline-none focus:border-indigo-500 focus:bg-white" /></div>
+                <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-black text-slate-600 outline-none focus:border-indigo-500"><option value="">كل الحالات</option><option value="open">مفتوح</option><option value="closed">مغلق</option></select>
                 <button onClick={() => { setHistorySearch(""); setHistoryStatus(""); }} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-500 hover:bg-slate-50">مسح الفلاتر</button>
               </div>
               <div className="flex-1 overflow-auto p-4 bg-[#fafafa]">
                 <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-right">
-                  <thead><tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">افتتاحي</th><th className="px-3 py-2">فعلي</th><th className="px-3 py-2">ختامي</th><th className="px-3 py-2">عجز / زيادة</th><th className="px-3 py-2">إجراءات</th></tr></thead>
+                  <thead><tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">افتتاحي</th><th className="px-3 py-2">فعلي</th><th className="px-3 py-2">ختامي</th><th className="px-3 py-2">عجز / زيادة</th><th className="px-3 py-2">إجراءات</th></tr></thead>
                   <tbody>
                     {pastSessions.map((s) => (
                       <tr key={s.id} className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
                         <td className="rounded-r-2xl px-3 py-3 font-black text-zinc-900">{s.date}</td>
-                        <td className="px-3 py-3"><span className={"inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[10px] font-black " + (s.status === "closed" ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700")}>{s.status === "closed" ? <Lock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}{s.status === "closed" ? "مغلق" : "مفتوح"}</span></td>
-                        <td className="px-3 py-3 font-mono text-[12px] font-black text-slate-600">{fmt(s.opening_balance)}</td>
-                        <td className="px-3 py-3 font-mono text-[12px] font-black text-slate-600">{s.actual_cash == null ? "—" : fmt(s.actual_cash)}</td>
-                        <td className="px-3 py-3 font-mono text-[12px] font-black text-slate-600">{s.closing_balance == null ? "—" : fmt(s.closing_balance)}</td>
-                        <td className={"px-3 py-3 font-mono text-[12px] font-black " + (Number(s.discrepancy || 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{s.discrepancy == null ? "—" : fmt(s.discrepancy)}</td>
+                        <td className="px-3 py-3"><span className={"inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-black " + (s.status === "closed" ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700")}>{s.status === "closed" ? <Lock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}{s.status === "closed" ? "مغلق" : "مفتوح"}</span></td>
+                        <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{fmt(s.opening_balance)}</td>
+                        <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{s.actual_cash == null ? "—" : fmt(s.actual_cash)}</td>
+                        <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{s.closing_balance == null ? "—" : fmt(s.closing_balance)}</td>
+                        <td className={"px-3 py-3 font-mono text-2sm font-black " + (Number(s.discrepancy || 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{s.discrepancy == null ? "—" : fmt(s.discrepancy)}</td>
                         <td className="rounded-l-2xl px-3 py-3"><button onClick={() => { setDate(s.date); setHistoryOpen(false); setActiveTab("all"); }} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-slate-900 px-3 text-[11px] font-black text-white hover:bg-slate-800"><Eye className="h-3.5 w-3.5" /> معاينة</button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {pastSessions.length === 0 && <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3"><History className="h-8 w-8 text-slate-200" /><span className="text-[13px] font-black">لا توجد يوميات مطابقة</span></div>}
+                {pastSessions.length === 0 && <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3"><History className="h-8 w-8 text-slate-200" /><span className="text-sm font-black">لا توجد يوميات مطابقة</span></div>}
               </div>
             </motion.div>
           </div>
@@ -2106,7 +2106,7 @@ export default function DailyTreasuryPage() {
                     value={quickNote}
                     onChange={(e) => setQuickNote(e.target.value)}
                     placeholder="سبب المعاملة..."
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-[14px] font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
+                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -2114,7 +2114,7 @@ export default function DailyTreasuryPage() {
                   <select
                     value={quickCategoryId}
                     onChange={(e) => setQuickCategoryId(e.target.value)}
-                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-[13px] font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!quickCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
+                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-sm font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!quickCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
                     required
                   >
                     <option value="">— اختر الفئة (مطلوب) —</option>
@@ -2186,7 +2186,7 @@ export default function DailyTreasuryPage() {
                     value={withdrawalNote}
                     onChange={(e) => setWithdrawalNote(e.target.value)}
                     placeholder="سبب المسحوبات..."
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-[14px] font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
+                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -2194,7 +2194,7 @@ export default function DailyTreasuryPage() {
                   <select
                     value={withdrawalCategoryId}
                     onChange={(e) => setWithdrawalCategoryId(e.target.value)}
-                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-[13px] font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!withdrawalCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
+                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-sm font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!withdrawalCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
                     required
                   >
                     <option value="">— اختر التصنيف (مطلوب) —</option>
@@ -2208,7 +2208,7 @@ export default function DailyTreasuryPage() {
                   <select
                     value={withdrawalPaymentMethod}
                     onChange={(e) => setWithdrawalPaymentMethod(e.target.value)}
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-[13px] font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
+                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
                   >
                     <option value="cash">نقدي</option>
                     <option value="bank_transfer">تحويل بنكي</option>
@@ -2262,7 +2262,7 @@ export default function DailyTreasuryPage() {
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div className="rounded-3xl bg-slate-50 border border-slate-200/60 p-4">
-                  <div className="grid grid-cols-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">
+                  <div className="grid grid-cols-3 text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">
                     <span>الفئة النقدية</span>
                     <span className="text-center">العدد</span>
                     <span className="text-left">الإجمالي الفرعي</span>
@@ -2270,7 +2270,7 @@ export default function DailyTreasuryPage() {
                   <div className="space-y-2">
                     {DENOMS.map((d) => (
                       <div key={d} className="grid grid-cols-3 items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm transition-colors hover:border-blue-200">
-                        <span className="text-[14px] font-black text-slate-800 px-2 flex items-center gap-2">
+                        <span className="text-sm font-black text-slate-800 px-2 flex items-center gap-2">
                           <Banknote className="h-4 w-4 text-emerald-500 opacity-50" />
                           {d >= 1 ? d + " ج" : (d * 100) + " قرش"}
                         </span>
@@ -2293,10 +2293,10 @@ export default function DailyTreasuryPage() {
 
               <div className="p-6 border-t border-slate-100 bg-white shrink-0 space-y-4">
                 <div className="flex items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-100 p-5 shadow-inner">
-                  <span className="font-black text-emerald-800 text-[14px] uppercase tracking-widest">مجموع الجرد الفعلي</span>
+                  <span className="font-black text-emerald-800 text-sm uppercase tracking-widest">مجموع الجرد الفعلي</span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-[28px] font-black font-mono text-emerald-700 tracking-tighter leading-none">{fmt(moneyTotal)}</span>
-                    <span className="text-[12px] font-bold text-emerald-600">ج.م</span>
+                    <span className="text-2sm font-bold text-emerald-600">ج.م</span>
                   </div>
                 </div>
                 <motion.button
@@ -2330,7 +2330,7 @@ export default function DailyTreasuryPage() {
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6">
                 <div className="text-right">
                   {calcPrev !== null && calcOp && (
-                    <div className="text-[12px] text-slate-400 font-mono mb-1">
+                    <div className="text-2sm text-slate-400 font-mono mb-1">
                       {fmt(calcPrev)} {calcOp}
                     </div>
                   )}

@@ -281,11 +281,11 @@ function StepTabs({ step, stats }) {
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-black uppercase">STEP {item.id}</span>
+              <span className="text-[11px] font-black uppercase">STEP {item.id}</span>
               {done ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : null}
             </div>
-            <div className="mt-1 truncate text-[12px] font-black">{item.label}</div>
-            <div className={`mt-1 truncate text-[10px] font-bold ${active ? "text-white/70" : done ? "text-emerald-700/70" : "text-slate-400"}`}>{item.metric}</div>
+            <div className="mt-1 truncate text-2sm font-black">{item.label}</div>
+            <div className={`mt-1 truncate text-[11px] font-bold ${active ? "text-white/70" : done ? "text-emerald-700/70" : "text-slate-400"}`}>{item.metric}</div>
           </div>
         );
       })}
@@ -1114,7 +1114,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
         <StepTabs step={step} stats={importStats} />
 
         {error ? (
-          <div className="flex items-start gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-bold text-amber-800">
+          <div className="flex items-start gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-2sm font-bold text-amber-800">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -1134,19 +1134,19 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
               <FileSpreadsheet className="h-8 w-8" />
             </div>
             <h3 className="mt-5 text-[22px] font-black text-slate-900">ارفع ملف الأصناف</h3>
-            <p className="mt-2 text-[13px] font-bold text-slate-500">اسحب ملف Excel هنا أو اختره من الجهاز. ستظهر نتيجة القراءة هنا مباشرة.</p>
+            <p className="mt-2 text-sm font-bold text-slate-500">اسحب ملف Excel هنا أو اختره من الجهاز. ستظهر نتيجة القراءة هنا مباشرة.</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={reading}
-                className="inline-flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-3 text-[13px] font-black text-white shadow-lg hover:bg-slate-800 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-lg hover:bg-slate-800 disabled:opacity-50"
               >
                 <Upload className="h-4 w-4" />
                 {reading ? "جاري قراءة الملف..." : "اختيار ملف"}
               </button>
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
-              <button type="button" onClick={downloadImportTemplate} className="inline-flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-5 py-3 text-[13px] font-black text-slate-600 hover:bg-slate-50">
+              <button type="button" onClick={downloadImportTemplate} className="inline-flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 hover:bg-slate-50">
                 <Download className="h-4 w-4" />
                 تحميل قالب
               </button>
@@ -1154,16 +1154,16 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
             {fileName ? (
               <div className="mx-auto mt-5 grid max-w-3xl gap-2 sm:grid-cols-3">
                 <div className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-right">
-                  <div className="text-[10px] font-black text-slate-400">الملف</div>
-                  <div className="truncate text-[12px] font-black text-slate-800">{fileName}</div>
+                  <div className="text-[11px] font-black text-slate-400">الملف</div>
+                  <div className="truncate text-2sm font-black text-slate-800">{fileName}</div>
                 </div>
                 <div className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-right">
-                  <div className="text-[10px] font-black text-slate-400">الصفوف</div>
-                  <div className="text-[12px] font-black text-slate-800">{importStats.totalRows}</div>
+                  <div className="text-[11px] font-black text-slate-400">الصفوف</div>
+                  <div className="text-2sm font-black text-slate-800">{importStats.totalRows}</div>
                 </div>
                 <div className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-right">
-                  <div className="text-[10px] font-black text-slate-400">الثقة</div>
-                  <div className="text-[12px] font-black text-slate-800">{importStats.confidence}%</div>
+                  <div className="text-[11px] font-black text-slate-400">الثقة</div>
+                  <div className="text-2sm font-black text-slate-800">{importStats.confidence}%</div>
                 </div>
               </div>
             ) : null}
@@ -1175,7 +1175,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-[18px] font-black text-slate-900">مراجعة ملف الأصناف</h3>
-                <p className="text-[12px] font-bold text-slate-500">الملف: {fileName}</p>
+                <p className="text-2sm font-bold text-slate-500">الملف: {fileName}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1184,7 +1184,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                     setIssueTrayOpen((prev) => !prev);
                     if (!issueTrayOpen && blockingIssues.length) setIssueTab("errors");
                   }}
-                  className="inline-flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-700 hover:bg-slate-50"
                 >
                   {issueTrayOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                   {issueTrayOpen ? "إخفاء لوحة الإصلاح" : "إظهار لوحة الإصلاح"}
@@ -1193,7 +1193,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                   type="button"
                   onClick={proceedToReview}
                   disabled={categorySyncing}
-                  className={`rounded-sm px-5 py-2.5 text-[12px] font-black text-white shadow-sm ${blockingIssues.length ? "bg-rose-600 hover:bg-rose-700" : "bg-slate-900 hover:bg-slate-800"}`}
+                  className={`rounded-sm px-5 py-2.5 text-2sm font-black text-white shadow-sm ${blockingIssues.length ? "bg-rose-600 hover:bg-rose-700" : "bg-slate-900 hover:bg-slate-800"}`}
                 >
                   {categorySyncing ? "جاري إنشاء الفئات..." : blockingIssues.length ? "إصلاح المطلوب" : missingSkuCategories.length ? "إنشاء الفئات والمتابعة" : "متابعة"}
                 </button>
@@ -1203,14 +1203,14 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
             <div className={`rounded-sm border px-4 py-3 ${guideStep.tone === "rose" ? "border-rose-200 bg-rose-50" : guideStep.tone === "sky" ? "border-sky-200 bg-sky-50" : "border-emerald-200 bg-emerald-50"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className={`text-[14px] font-black ${guideStep.tone === "rose" ? "text-rose-800" : guideStep.tone === "sky" ? "text-sky-800" : "text-emerald-800"}`}>{guideStep.title}</div>
-                  <div className={`mt-1 text-[12px] font-bold ${guideStep.tone === "rose" ? "text-rose-700" : guideStep.tone === "sky" ? "text-sky-700" : "text-emerald-700"}`}>{guideStep.body}</div>
+                  <div className={`text-sm font-black ${guideStep.tone === "rose" ? "text-rose-800" : guideStep.tone === "sky" ? "text-sky-800" : "text-emerald-800"}`}>{guideStep.title}</div>
+                  <div className={`mt-1 text-2sm font-bold ${guideStep.tone === "rose" ? "text-rose-700" : guideStep.tone === "sky" ? "text-sky-700" : "text-emerald-700"}`}>{guideStep.body}</div>
                   {!hasSourceStores && duplicateGroups.length ? (
                     <div className="mt-2 text-[11px] font-bold text-slate-600">ملاحظة المخازن: عمود المخزن في الملف فارغ، لذلك أخفيته من الجدول. إذا كانت التكرارات بسبب مخازن مختلفة اختر "توزيع على مخازن النظام" ثم حدد المخزن لكل صف.</div>
                   ) : null}
                 </div>
                 {guideStep.action ? (
-                  <button type="button" onClick={guideStep.run} className={`rounded-sm px-4 py-2.5 text-[12px] font-black text-white ${guideStep.tone === "rose" ? "bg-rose-600 hover:bg-rose-700" : guideStep.tone === "sky" ? "bg-sky-700 hover:bg-sky-800" : "bg-emerald-700 hover:bg-emerald-800"}`}>
+                  <button type="button" onClick={guideStep.run} className={`rounded-sm px-4 py-2.5 text-2sm font-black text-white ${guideStep.tone === "rose" ? "bg-rose-600 hover:bg-rose-700" : guideStep.tone === "sky" ? "bg-sky-700 hover:bg-sky-800" : "bg-emerald-700 hover:bg-emerald-800"}`}>
                     {guideStep.action}
                   </button>
                 ) : null}
@@ -1247,7 +1247,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                     }}
                     className={`rounded-sm border px-3 py-2 text-right transition hover:bg-slate-50 ${label === "أخطاء" && importStats.errors ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}
                   >
-                    <div className="text-[10px] font-black text-slate-400">{label}</div>
+                    <div className="text-[11px] font-black text-slate-400">{label}</div>
                     <div className={`mt-1 text-[16px] font-black ${label === "أخطاء" && importStats.errors ? "text-rose-600" : "text-slate-900"}`}>{value}</div>
                   </button>
                 ))}
@@ -1261,7 +1261,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-right"
               >
                 <span>
-                  <span className="flex items-center gap-2 text-[13px] font-black text-slate-900">
+                  <span className="flex items-center gap-2 text-sm font-black text-slate-900">
                     <Columns3 className="h-4 w-4 text-slate-500" />
                     الأعمدة المرتبطة
                   </span>
@@ -1276,8 +1276,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                       const mappedField = mapping[index] || "";
                       return (
                         <div key={`${header}-${index}`} className={`w-44 shrink-0 rounded-sm border p-2 ${mappedField ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-                          <div className="truncate font-mono text-[10px] font-black text-slate-500">{header || `عمود ${index + 1}`}</div>
-                          <select value={mappedField} onChange={(event) => updateMapping(index, event.target.value)} className="mt-2 w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-[12px] font-bold">
+                          <div className="truncate font-mono text-[11px] font-black text-slate-500">{header || `عمود ${index + 1}`}</div>
+                          <select value={mappedField} onChange={(event) => updateMapping(index, event.target.value)} className="mt-2 w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-2sm font-bold">
                             <option value="">تجاهل</option>
                             {ITEM_FIELDS.map((field) => <option key={field.key} value={field.key}>{field.label}</option>)}
                           </select>
@@ -1293,7 +1293,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
               <div className="order-2 overflow-hidden rounded-sm border border-slate-200 bg-white">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
                   <div>
-                    <div className="text-[13px] font-black text-slate-900">جدول المراجعة</div>
+                    <div className="text-sm font-black text-slate-900">جدول المراجعة</div>
                     <div className="text-[11px] font-bold text-slate-500">الجدول هو مساحة العمل الأساسية. صحح الخلايا مباشرة أو استخدم لوحة الإصلاح.</div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
@@ -1336,7 +1336,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                   </div>
                 </div>
                 <div className="max-h-[480px] overflow-x-auto overflow-y-auto overscroll-x-contain">
-                  <table style={{ minWidth: "max-content" }} className="border-separate border-spacing-0 text-right text-[12px]">
+                  <table style={{ minWidth: "max-content" }} className="border-separate border-spacing-0 text-right text-2sm">
                     <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
                       <tr>
                         <th className="w-16 border-b border-l border-slate-200 bg-slate-50 px-3 py-3 text-center">#</th>
@@ -1357,8 +1357,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             <th key={field} style={{ width, minWidth: width }} className="relative border-b border-l border-slate-200 bg-slate-50 px-3 py-3 align-top">
                               <button type="button" onClick={() => toggleSort(field)} className="flex w-full items-center justify-between gap-2 text-right">
                                 <span className="min-w-0">
-                                  <span className="block truncate text-[12px] font-black text-slate-900">{meta.label}</span>
-                                  <span className="mt-1 block truncate font-mono text-[10px] font-bold text-slate-400">{headers[Number(sourceIndex)] || "مشتق"}</span>
+                                  <span className="block truncate text-2sm font-black text-slate-900">{meta.label}</span>
+                                  <span className="mt-1 block truncate font-mono text-[11px] font-bold text-slate-400">{headers[Number(sourceIndex)] || "مشتق"}</span>
                                 </span>
                                 <ArrowUpDown className={`h-3.5 w-3.5 shrink-0 ${sortConfig.key === field ? "text-slate-900" : "text-slate-300"}`} />
                               </button>
@@ -1414,13 +1414,13 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                               <Lock className="h-3.5 w-3.5" />
                                               دمج تلقائي للكمية
                                             </div>
-                                            <div className="mt-1 text-[10px] font-bold text-emerald-700">{group.length} صفوف مخزون ستصبح صنفا واحدا بإجمالي {stockTotal}</div>
+                                            <div className="mt-1 text-[11px] font-bold text-emerald-700">{group.length} صفوف مخزون ستصبح صنفا واحدا بإجمالي {stockTotal}</div>
                                           </div>
                                           <div className="max-h-24 overflow-auto rounded-sm border border-slate-100 bg-white">
                                             {group.map((item) => (
                                               <div key={item.__rowNumber} className="grid grid-cols-[52px_1fr] gap-2 border-b border-slate-100 px-2 py-1.5 last:border-b-0">
-                                                <span className="text-[10px] font-black text-slate-400">صف {item.__rowNumber}</span>
-                                                <span className="truncate text-[10px] font-bold text-slate-600">كمية {item.stock_quantity || 0}</span>
+                                                <span className="text-[11px] font-black text-slate-400">صف {item.__rowNumber}</span>
+                                                <span className="truncate text-[11px] font-bold text-slate-600">كمية {item.stock_quantity || 0}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -1438,7 +1438,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                             <Unlock className="h-3.5 w-3.5" />
                                             توزيع المخزون داخل نفس المنتج
                                           </div>
-                                          <div className="mt-1 text-[10px] font-bold text-sky-700">اختر المخزن لكل كمية هنا. لن تحتاج إلى استخدام عمود مخزن النظام لهذا المنتج.</div>
+                                          <div className="mt-1 text-[11px] font-bold text-sky-700">اختر المخزن لكل كمية هنا. لن تحتاج إلى استخدام عمود مخزن النظام لهذا المنتج.</div>
                                         </div>
                                         <select value={groupWarehouseValue(group)} onChange={(event) => applyValueToRows("warehouse_id", event.target.value, group, "المخزن")} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold">
                                           <option value="">تطبيق مخزن واحد على الصفوف</option>
@@ -1447,7 +1447,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                         <div className="space-y-1.5 rounded-sm border border-slate-100 bg-white p-2">
                                           {group.map((item) => (
                                             <div key={item.__rowNumber} className="grid grid-cols-[58px_1fr] gap-2 rounded-sm bg-slate-50 p-1.5">
-                                              <div className="min-w-0 text-[10px] font-bold text-slate-500">
+                                              <div className="min-w-0 text-[11px] font-bold text-slate-500">
                                                 <div className="font-black">صف {item.__rowNumber}</div>
                                                 <div className="truncate">كمية {item.stock_quantity || 0}</div>
                                                 {item.store_name ? <div className="truncate text-slate-400">{item.store_name}</div> : null}
@@ -1470,7 +1470,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                     );
                                   })()
                                 ) : meta.type === "unit" ? (
-                                  <select value={row.unit_name || ""} onChange={(event) => updateRowValue(row.__rowNumber, "unit_name", event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-[12px] font-bold outline-none focus:border-slate-800">
+                                  <select value={row.unit_name || ""} onChange={(event) => updateRowValue(row.__rowNumber, "unit_name", event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-2sm font-bold outline-none focus:border-slate-800">
                                     <option value="">بدون وحدة</option>
                                     {units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
                                     {row.unit_name && !hasOption(units, row.unit_name) ? <option value={row.unit_name}>{row.unit_name}</option> : null}
@@ -1480,7 +1480,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                     const sku = parseSkuCode(row.code);
                                     const category = sku ? categoryBySkuPrefix(systemCategories, sku.prefix) : null;
                                     return (
-                                      <div className={`rounded-sm border px-2 py-2 text-[12px] font-bold ${category ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                                      <div className={`rounded-sm border px-2 py-2 text-2sm font-bold ${category ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
                                         {category ? `[${category.sku_prefix}] ${category.name}` : sku ? `سيتم إنشاء فئة رقم ${sku.prefix}` : "لا يمكن تحديد الفئة بدون SKU صحيح"}
                                       </div>
                                     );
@@ -1493,11 +1493,11 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                       </div>
                                     ) : (
                                       <>
-                                        <select value={resolvedWarehouseId(warehouses, row)} onChange={(event) => updateRowValue(row.__rowNumber, "warehouse_id", event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-[12px] font-bold outline-none focus:border-slate-800">
+                                        <select value={resolvedWarehouseId(warehouses, row)} onChange={(event) => updateRowValue(row.__rowNumber, "warehouse_id", event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-2sm font-bold outline-none focus:border-slate-800">
                                           <option value="">اختر مخزن النظام</option>
                                           {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                                         </select>
-                                        <div className="mt-1 text-[10px] font-bold text-slate-400">
+                                        <div className="mt-1 text-[11px] font-bold text-slate-400">
                                           {row.store_name ? `مصدر الملف: ${row.store_name}` : "مخزن النظام المستخدم للاستيراد"}
                                         </div>
                                       </>
@@ -1509,12 +1509,12 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                                     value={row[field] ?? ""}
                                     readOnly={field === "code"}
                                     onChange={(event) => updateRowValue(row.__rowNumber, field, event.target.value)}
-                                    className={`w-full rounded-sm border border-slate-200 px-2 py-2 text-[12px] outline-none focus:border-slate-800 ${field === "code" ? "bg-slate-100 text-slate-500" : "bg-white"} ${field === "code" || field === "barcode" ? "font-mono" : "font-bold"}`}
+                                    className={`w-full rounded-sm border border-slate-200 px-2 py-2 text-2sm outline-none focus:border-slate-800 ${field === "code" ? "bg-slate-100 text-slate-500" : "bg-white"} ${field === "code" || field === "barcode" ? "font-mono" : "font-bold"}`}
                                   />
                                 )}
-                                {row.__inferredUnitName && field === "unit_name" ? <div className="mt-1 text-[10px] font-bold text-slate-400">مستخرجة من المخزون</div> : null}
+                                {row.__inferredUnitName && field === "unit_name" ? <div className="mt-1 text-[11px] font-bold text-slate-400">مستخرجة من المخزون</div> : null}
                                 {cellIssues.map((issue, issueIndex) => (
-                                  <div key={issueIndex} className={`mt-1 text-[10px] font-bold ${issue.severity === "error" ? "text-rose-600" : "text-amber-700"}`}>{issue.message}</div>
+                                  <div key={issueIndex} className={`mt-1 text-[11px] font-bold ${issue.severity === "error" ? "text-rose-600" : "text-amber-700"}`}>{issue.message}</div>
                                 ))}
                               </td>
                             );
@@ -1530,9 +1530,9 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4">
                     <div>
                       <div className="text-[15px] font-black text-slate-900">مركز إصلاح الاستيراد</div>
-                      <div className="mt-1 text-[12px] font-bold text-slate-500">ابدأ بالبطاقات الحمراء. كل بطاقة تصلح نوعا كاملا من المشاكل مرة واحدة.</div>
+                      <div className="mt-1 text-2sm font-bold text-slate-500">ابدأ بالبطاقات الحمراء. كل بطاقة تصلح نوعا كاملا من المشاكل مرة واحدة.</div>
                     </div>
-                    <button type="button" onClick={() => setIssueTrayOpen(false)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                    <button type="button" onClick={() => setIssueTrayOpen(false)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
                   </div>
                   <div className="max-h-[420px] overflow-auto p-4">
                     <div className="grid gap-3 lg:grid-cols-5">
@@ -1562,17 +1562,17 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                       <div className={`rounded-md border p-4 ${unitErrorCount ? "border-rose-200 bg-white" : "border-slate-200 bg-slate-50"}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="text-[13px] font-black text-slate-900">إصلاح الوحدات</div>
+                            <div className="text-sm font-black text-slate-900">إصلاح الوحدات</div>
                             <div className="mt-1 text-[11px] font-bold text-slate-500">{unitErrorCount ? `اختر وحدة موجودة لتطبيقها على ${unitErrorCount} صف.` : "لا توجد أخطاء وحدات."}</div>
                           </div>
-                          <span className={`rounded-sm px-2 py-1 text-[10px] font-black ${unitErrorCount ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>{unitErrorCount}</span>
+                          <span className={`rounded-sm px-2 py-1 text-[11px] font-black ${unitErrorCount ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>{unitErrorCount}</span>
                         </div>
                         <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-                          <select value={selectedQuickUnit} onChange={(event) => setQuickUnitValue(event.target.value)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                          <select value={selectedQuickUnit} onChange={(event) => setQuickUnitValue(event.target.value)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                             <option value="">اختر الوحدة الصحيحة</option>
                             {units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
                           </select>
-                          <button type="button" disabled={!selectedQuickUnit || !unitErrorCount} onClick={applyQuickUnitFix} className={`inline-flex items-center justify-center gap-1 rounded-sm px-4 py-2 text-[12px] font-black text-white disabled:opacity-40 ${lastAppliedFix?.key === "unit-invalid" ? "bg-emerald-600" : "bg-slate-900"}`}>
+                          <button type="button" disabled={!selectedQuickUnit || !unitErrorCount} onClick={applyQuickUnitFix} className={`inline-flex items-center justify-center gap-1 rounded-sm px-4 py-2 text-2sm font-black text-white disabled:opacity-40 ${lastAppliedFix?.key === "unit-invalid" ? "bg-emerald-600" : "bg-slate-900"}`}>
                             {lastAppliedFix?.key === "unit-invalid" ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
                             {lastAppliedFix?.key === "unit-invalid" ? "تم" : "تطبيق"}
                           </button>
@@ -1583,25 +1583,25 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                       <div className={`rounded-md border p-4 ${warehouseErrorCount ? "border-rose-200 bg-white" : "border-slate-200 bg-slate-50"}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="text-[13px] font-black text-slate-900">إصلاح المخازن</div>
+                            <div className="text-sm font-black text-slate-900">إصلاح المخازن</div>
                             <div className="mt-1 text-[11px] font-bold text-slate-500">
                               {warehouseErrorCount
                                 ? `اختر مخزنا لتطبيقه على ${warehouseErrorCount} صف يحتاج مخزن، أو طبقه على كل الصفوف.`
                                 : "لا توجد أخطاء مخازن. يمكنك تطبيق مخزن واحد على كل الصفوف من هنا."}
                             </div>
                           </div>
-                          <span className={`rounded-sm px-2 py-1 text-[10px] font-black ${warehouseErrorCount ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>{warehouseErrorCount}</span>
+                          <span className={`rounded-sm px-2 py-1 text-[11px] font-black ${warehouseErrorCount ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>{warehouseErrorCount}</span>
                         </div>
                         <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto] xl:grid-cols-1 2xl:grid-cols-[1fr_auto_auto]">
-                          <select value={selectedQuickWarehouse} onChange={(event) => setQuickWarehouseValue(event.target.value)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                          <select value={selectedQuickWarehouse} onChange={(event) => setQuickWarehouseValue(event.target.value)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                             <option value="">اختر المخزن الصحيح</option>
                             {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                           </select>
-                          <button type="button" disabled={!selectedQuickWarehouse || !warehouseErrorCount} onClick={applyQuickWarehouseFix} className={`inline-flex items-center justify-center gap-1 rounded-sm px-4 py-2 text-[12px] font-black text-white disabled:opacity-40 ${lastAppliedFix?.key === "warehouse-invalid" ? "bg-emerald-600" : "bg-slate-900"}`}>
+                          <button type="button" disabled={!selectedQuickWarehouse || !warehouseErrorCount} onClick={applyQuickWarehouseFix} className={`inline-flex items-center justify-center gap-1 rounded-sm px-4 py-2 text-2sm font-black text-white disabled:opacity-40 ${lastAppliedFix?.key === "warehouse-invalid" ? "bg-emerald-600" : "bg-slate-900"}`}>
                             {lastAppliedFix?.key === "warehouse-invalid" ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
                             {lastAppliedFix?.key === "warehouse-invalid" ? "تم" : "للناقص"}
                           </button>
-                          <button type="button" disabled={!selectedQuickWarehouse || !workingRows.length} onClick={applyQuickWarehouseToAll} className={`inline-flex items-center justify-center gap-1 rounded-sm border px-4 py-2 text-[12px] font-black disabled:opacity-40 ${lastAppliedFix?.key === "warehouse-all" ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-300 bg-white text-slate-900"}`}>
+                          <button type="button" disabled={!selectedQuickWarehouse || !workingRows.length} onClick={applyQuickWarehouseToAll} className={`inline-flex items-center justify-center gap-1 rounded-sm border px-4 py-2 text-2sm font-black disabled:opacity-40 ${lastAppliedFix?.key === "warehouse-all" ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-300 bg-white text-slate-900"}`}>
                             {lastAppliedFix?.key === "warehouse-all" ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
                             {lastAppliedFix?.key === "warehouse-all" ? "تم" : "للكل"}
                           </button>
@@ -1614,21 +1614,21 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                       <div className="mt-3 rounded-md border border-violet-200 bg-violet-50 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <div className="text-[13px] font-black text-violet-900">تسمية فئات SKU الجديدة</div>
+                            <div className="text-sm font-black text-violet-900">تسمية فئات SKU الجديدة</div>
                             <div className="mt-1 text-[11px] font-bold text-violet-700">
                               الفئة تتحدد من رقم SKU فقط. اكتب اسم الفئة الجديدة، وسيتم إنشاؤها بهذا الرقم قبل الاستيراد.
                             </div>
                           </div>
-                          <span className="rounded-sm bg-white px-2 py-1 text-[10px] font-black text-violet-700">{missingSkuCategories.length}</span>
+                          <span className="rounded-sm bg-white px-2 py-1 text-[11px] font-black text-violet-700">{missingSkuCategories.length}</span>
                         </div>
                         <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                           {missingSkuCategories.map((entry) => (
                             <label key={entry.prefix} className="block rounded-sm border border-violet-100 bg-white p-2">
-                              <span className="text-[10px] font-black text-violet-500">فئة SKU {entry.prefix} - {entry.rows.length} صف</span>
+                              <span className="text-[11px] font-black text-violet-500">فئة SKU {entry.prefix} - {entry.rows.length} صف</span>
                               <input
                                 value={skuCategoryNames[entry.prefix] ?? entry.name}
                                 onChange={(event) => setSkuCategoryNames((prev) => ({ ...prev, [entry.prefix]: event.target.value }))}
-                                className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold outline-none focus:border-violet-500"
+                                className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold outline-none focus:border-violet-500"
                               />
                             </label>
                           ))}
@@ -1640,10 +1640,10 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                       <div className="rounded-md border border-slate-200 bg-white p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <div className="text-[13px] font-black text-slate-900">منتجات موجودة مسبقا</div>
+                            <div className="text-sm font-black text-slate-900">منتجات موجودة مسبقا</div>
                             <div className="mt-1 text-[11px] font-bold text-slate-500">{exactExistingRows.length ? "راجع هل تريد تخطيها أو تحديثها." : "لا توجد منتجات مطابقة في النظام."}</div>
                           </div>
-                          <span className="rounded-sm bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">{exactExistingRows.length}</span>
+                          <span className="rounded-sm bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">{exactExistingRows.length}</span>
                         </div>
                         {exactExistingRows.length ? (
                           <div className="mt-3">
@@ -1659,9 +1659,9 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             {exactExistingRows.slice(0, 4).map((row) => (
                               <div key={row.__rowNumber} className="grid gap-2 rounded-sm bg-slate-50 p-2 sm:grid-cols-[1fr_170px] sm:items-center">
                                 <div className="min-w-0">
-                                  <div className="truncate text-[12px] font-black text-slate-800">{row.name}</div>
-                                  <div className="mt-1 truncate text-[10px] font-bold text-emerald-700">{changePreviewForRow(row)[0]}</div>
-                                  <div className="text-[10px] font-bold text-slate-400">صف {row.__rowNumber}</div>
+                                  <div className="truncate text-2sm font-black text-slate-800">{row.name}</div>
+                                  <div className="mt-1 truncate text-[11px] font-bold text-emerald-700">{changePreviewForRow(row)[0]}</div>
+                                  <div className="text-[11px] font-bold text-slate-400">صف {row.__rowNumber}</div>
                                 </div>
                                 <select value={rowAction(row)} onChange={(event) => setActions((prev) => ({ ...prev, [row.__rowNumber]: event.target.value }))} className="rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold">
                                   <option value="skip">تخطي</option>
@@ -1671,16 +1671,16 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             ))}
                             </div>
                             {exactExistingRows.length > 4 ? (
-                              <div className="mt-2 text-[10px] font-bold text-slate-400">سيتم تطبيق القرار الجماعي على باقي المنتجات الموجودة أيضا.</div>
+                              <div className="mt-2 text-[11px] font-bold text-slate-400">سيتم تطبيق القرار الجماعي على باقي المنتجات الموجودة أيضا.</div>
                             ) : null}
                           </div>
                         ) : null}
                       </div>
 
                       <div className="rounded-md border border-slate-200 bg-white p-4">
-                        <div className="text-[13px] font-black text-slate-900">ربط الأعمدة</div>
+                        <div className="text-sm font-black text-slate-900">ربط الأعمدة</div>
                         <div className="mt-1 text-[11px] font-bold text-slate-500">افتحه فقط إذا كان اسم الصنف أو الوحدة أو المخزن مربوطا بعمود خطأ.</div>
-                        <button type="button" onClick={() => setColumnMappingOpen(true)} className="mt-3 w-full rounded-sm border border-slate-200 bg-slate-900 px-4 py-2 text-[12px] font-black text-white hover:bg-slate-800">
+                        <button type="button" onClick={() => setColumnMappingOpen(true)} className="mt-3 w-full rounded-sm border border-slate-200 bg-slate-900 px-4 py-2 text-2sm font-black text-white hover:bg-slate-800">
                           فتح ربط الأعمدة
                         </button>
                       </div>
@@ -1738,10 +1738,10 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             className="flex w-full items-center justify-between gap-3 rounded-sm border border-rose-100 bg-rose-50 px-3 py-2 text-right text-[11px] font-bold text-rose-700"
                           >
                             <span>{issue.rowNumber ? `صف ${issue.rowNumber}: ` : ""}{issue.message}</span>
-                            {issue.rowNumber ? <span className="shrink-0 rounded-sm bg-white/70 px-2 py-1 text-[10px] text-rose-600">عرض الصف</span> : null}
+                            {issue.rowNumber ? <span className="shrink-0 rounded-sm bg-white/70 px-2 py-1 text-[11px] text-rose-600">عرض الصف</span> : null}
                           </button>
                         )) : (
-                          <div className="rounded-sm border border-emerald-100 bg-emerald-50 px-3 py-3 text-[12px] font-black text-emerald-700">لا توجد أخطاء تمنع المتابعة.</div>
+                          <div className="rounded-sm border border-emerald-100 bg-emerald-50 px-3 py-3 text-2sm font-black text-emerald-700">لا توجد أخطاء تمنع المتابعة.</div>
                         )}
                         {validationIssues.filter((issue) => issue.severity !== "error").slice(0, 8).map((issue, index) => (
                           <div key={index} className="rounded-sm border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
@@ -1753,27 +1753,27 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                     {false && issueTab === "duplicates" ? (
                       <div className="space-y-3">
                         <div className="rounded-sm border border-sky-100 bg-sky-50 px-4 py-3">
-                          <div className="text-[13px] font-black text-sky-900">صفوف مخزون لنفس المنتج</div>
-                          <div className="mt-1 text-[12px] font-bold text-sky-800">النظام سيدمج الكميات تلقائيا. غيّر القرار فقط إذا كنت تريد توزيع الكميات على مخازن النظام.</div>
+                          <div className="text-sm font-black text-sky-900">صفوف مخزون لنفس المنتج</div>
+                          <div className="mt-1 text-2sm font-bold text-sky-800">النظام سيدمج الكميات تلقائيا. غيّر القرار فقط إذا كنت تريد توزيع الكميات على مخازن النظام.</div>
                         </div>
                         <div className="grid gap-2 lg:grid-cols-3">
                           <button type="button" onClick={() => { setDuplicateMode("combine"); setDuplicatePolicies({}); }} className={`rounded-sm border px-3 py-3 text-right ${duplicateMode === "combine" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-700"}`}>
-                            <span className="block text-[12px] font-black">دمج كل الكميات</span>
-                            <span className="mt-1 block text-[10px] font-bold opacity-80">الأبسط، ويحول كل منتج مكرر إلى صف واحد بإجمالي الكمية.</span>
+                            <span className="block text-2sm font-black">دمج كل الكميات</span>
+                            <span className="mt-1 block text-[11px] font-bold opacity-80">الأبسط، ويحول كل منتج مكرر إلى صف واحد بإجمالي الكمية.</span>
                           </button>
                           <button type="button" onClick={() => setDuplicateMode("warehouse")} className={`rounded-sm border px-3 py-3 text-right ${duplicateMode === "warehouse" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-slate-200 bg-white text-slate-700"}`}>
-                            <span className="block text-[12px] font-black">توزيع على مخازن</span>
-                            <span className="mt-1 block text-[10px] font-bold opacity-80">استخدمها فقط لو كل صف يمثل كمية في مخزن مختلف.</span>
+                            <span className="block text-2sm font-black">توزيع على مخازن</span>
+                            <span className="mt-1 block text-[11px] font-bold opacity-80">استخدمها فقط لو كل صف يمثل كمية في مخزن مختلف.</span>
                           </button>
                           <button type="button" onClick={() => setDuplicateMode("skip")} className={`rounded-sm border px-3 py-3 text-right ${duplicateMode === "skip" ? "border-rose-300 bg-rose-50 text-rose-800" : "border-slate-200 bg-white text-slate-700"}`}>
-                            <span className="block text-[12px] font-black">تخطي صفوف المخزون</span>
-                            <span className="mt-1 block text-[10px] font-bold opacity-80">لا تستورد الكمية المتكررة لهذا النوع من الصفوف.</span>
+                            <span className="block text-2sm font-black">تخطي صفوف المخزون</span>
+                            <span className="mt-1 block text-[11px] font-bold opacity-80">لا تستورد الكمية المتكررة لهذا النوع من الصفوف.</span>
                           </button>
                         </div>
                         <div className="grid gap-2 rounded-sm border border-slate-200 bg-white p-3 md:grid-cols-[1fr_220px_140px] md:items-end">
                           <label>
-                            <span className="text-[10px] font-black text-slate-400">توزيع سريع لكل صفوف المخزون على مخزن واحد</span>
-                            <select value={quickStorageWarehouse} onChange={(event) => setQuickStorageWarehouse(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                            <span className="text-[11px] font-black text-slate-400">توزيع سريع لكل صفوف المخزون على مخزن واحد</span>
+                            <select value={quickStorageWarehouse} onChange={(event) => setQuickStorageWarehouse(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                               <option value="">اختر مخزن</option>
                               {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                             </select>
@@ -1785,11 +1785,11 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                               setDuplicateMode("warehouse");
                               applyValueToRows("warehouse_id", quickStorageWarehouse, rowsForScope("warehouse_id", "duplicates"), "المخزن");
                             }}
-                            className="rounded-sm bg-slate-900 px-4 py-2.5 text-[12px] font-black text-white disabled:opacity-40"
+                            className="rounded-sm bg-slate-900 px-4 py-2.5 text-2sm font-black text-white disabled:opacity-40"
                           >
                             تطبيق على صفوف المخزون
                           </button>
-                          <button type="button" onClick={() => { setQuickStorageWarehouse(""); setDuplicateMode("combine"); setDuplicatePolicies({}); }} className="rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-600">إرجاع للدمج</button>
+                          <button type="button" onClick={() => { setQuickStorageWarehouse(""); setDuplicateMode("combine"); setDuplicatePolicies({}); }} className="rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600">إرجاع للدمج</button>
                         </div>
                         {duplicateGroups.length ? duplicateGroups.map((group) => {
                           const first = group[0];
@@ -1801,8 +1801,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             <div key={key} className="rounded-sm border border-slate-200 bg-slate-50 p-3">
                               <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <div className="truncate text-[12px] font-black text-slate-900">{first.name || first.code}</div>
-                                  <div className="mt-1 text-[10px] font-bold text-slate-500">{group.length} صفوف مخزون، إجمالي الكمية {stockTotal}{stores.length ? `، مخازن المصدر: ${stores.join("، ")}` : "، لا توجد أسماء مخازن في الملف"}</div>
+                                  <div className="truncate text-2sm font-black text-slate-900">{first.name || first.code}</div>
+                                  <div className="mt-1 text-[11px] font-bold text-slate-500">{group.length} صفوف مخزون، إجمالي الكمية {stockTotal}{stores.length ? `، مخازن المصدر: ${stores.join("، ")}` : "، لا توجد أسماء مخازن في الملف"}</div>
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {[
@@ -1817,7 +1817,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                               {groupPolicy === "warehouse" ? (
                                 <div className="mt-2 space-y-2 rounded-sm border border-sky-100 bg-sky-50 p-2">
                                   <div className="grid gap-2 md:grid-cols-[1fr_220px] md:items-center">
-                                    <div className="text-[10px] font-bold text-sky-700">اختر مخزن النظام لكل صف، أو اختر مخزنا واحدا لكل صفوف هذا المنتج.</div>
+                                    <div className="text-[11px] font-bold text-sky-700">اختر مخزن النظام لكل صف، أو اختر مخزنا واحدا لكل صفوف هذا المنتج.</div>
                                     <select value={groupWarehouseValue(group)} onChange={(event) => applyValueToRows("warehouse_id", event.target.value, group, "المخزن")} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold">
                                       <option value="">مخزن واحد لكل الصفوف</option>
                                       {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
@@ -1841,13 +1841,13 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             </div>
                           );
                         }) : (
-                          <div className="rounded-sm border border-emerald-100 bg-emerald-50 px-3 py-3 text-[12px] font-black text-emerald-700">لا توجد تكرارات داخل الملف.</div>
+                          <div className="rounded-sm border border-emerald-100 bg-emerald-50 px-3 py-3 text-2sm font-black text-emerald-700">لا توجد تكرارات داخل الملف.</div>
                         )}
                       </div>
                     ) : null}
                     {false && issueTab === "existing" ? (
                       <div className="space-y-3">
-                        <div className="rounded-sm border border-sky-100 bg-sky-50 px-3 py-3 text-[12px] font-bold text-sky-800">
+                        <div className="rounded-sm border border-sky-100 bg-sky-50 px-3 py-3 text-2sm font-bold text-sky-800">
                           المنتجات الموجودة بالفعل يتم تخطيها افتراضيا إذا كان الكود واسم الصنف مطابقين للنظام. لن يتم تحديث السعر أو المخزون إلا إذا غيرت الإجراء هنا.
                         </div>
                         {exactExistingRows.length ? exactExistingRows.map((row) => {
@@ -1855,17 +1855,17 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                           return (
                             <div key={row.__rowNumber} className="grid gap-2 rounded-sm border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_180px] md:items-center">
                               <div className="min-w-0">
-                                <div className="truncate text-[12px] font-black text-slate-900">{row.name}</div>
-                                <div className="mt-1 text-[10px] font-bold text-slate-500">الكود: {row.code}، موجود بالنظام: {existing?.name}</div>
+                                <div className="truncate text-2sm font-black text-slate-900">{row.name}</div>
+                                <div className="mt-1 text-[11px] font-bold text-slate-500">الكود: {row.code}، موجود بالنظام: {existing?.name}</div>
                               </div>
-                              <select value={rowAction(row)} onChange={(event) => setActions((prev) => ({ ...prev, [row.__rowNumber]: event.target.value }))} className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                              <select value={rowAction(row)} onChange={(event) => setActions((prev) => ({ ...prev, [row.__rowNumber]: event.target.value }))} className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                                 <option value="skip">تخطي المنتج الموجود</option>
                                 <option value="update">تحديث المنتج الموجود</option>
                               </select>
                             </div>
                           );
                         }) : (
-                          <div className="rounded-sm border border-emerald-100 bg-emerald-50 px-3 py-3 text-[12px] font-black text-emerald-700">لا توجد منتجات مطابقة للكود والاسم في النظام.</div>
+                          <div className="rounded-sm border border-emerald-100 bg-emerald-50 px-3 py-3 text-2sm font-black text-emerald-700">لا توجد منتجات مطابقة للكود والاسم في النظام.</div>
                         )}
                       </div>
                     ) : null}
@@ -1873,18 +1873,18 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                       <div className="space-y-3">
                         <div className="grid gap-3 lg:grid-cols-2">
                           <div className="rounded-sm border border-rose-100 bg-rose-50 p-3">
-                            <div className="text-[12px] font-black text-rose-800">إصلاح أخطاء الوحدة</div>
-                            <div className="mt-1 text-[10px] font-bold text-rose-700">{unitErrorCount} صف يحتاج وحدة موجودة في النظام.</div>
-                            <select value={quickUnitValue} onChange={(event) => setQuickUnitValue(event.target.value)} className="mt-3 w-full rounded-sm border border-rose-200 bg-white px-3 py-2 text-[12px] font-bold">
+                            <div className="text-2sm font-black text-rose-800">إصلاح أخطاء الوحدة</div>
+                            <div className="mt-1 text-[11px] font-bold text-rose-700">{unitErrorCount} صف يحتاج وحدة موجودة في النظام.</div>
+                            <select value={quickUnitValue} onChange={(event) => setQuickUnitValue(event.target.value)} className="mt-3 w-full rounded-sm border border-rose-200 bg-white px-3 py-2 text-2sm font-bold">
                               <option value="">اختر وحدة تطبق على الأخطاء</option>
                               {units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
                             </select>
-                            <button type="button" disabled={!quickUnitValue || !unitErrorCount} onClick={() => applyValueToRows("unit_name", quickUnitValue, rowsForScope("unit_name", "invalid"), "الوحدة")} className="mt-2 w-full rounded-sm bg-rose-600 px-4 py-2.5 text-[12px] font-black text-white disabled:opacity-40">تطبيق الوحدة على كل أخطاء الوحدة</button>
+                            <button type="button" disabled={!quickUnitValue || !unitErrorCount} onClick={() => applyValueToRows("unit_name", quickUnitValue, rowsForScope("unit_name", "invalid"), "الوحدة")} className="mt-2 w-full rounded-sm bg-rose-600 px-4 py-2.5 text-2sm font-black text-white disabled:opacity-40">تطبيق الوحدة على كل أخطاء الوحدة</button>
                           </div>
                           <div className="rounded-sm border border-sky-100 bg-sky-50 p-3">
-                            <div className="text-[12px] font-black text-sky-800">إصلاح المخزن</div>
-                            <div className="mt-1 text-[10px] font-bold text-sky-700">اختر مخزنا من النظام وطبقه على صفوف المخزون أو الأخطاء.</div>
-                            <select value={quickWarehouseValue} onChange={(event) => setQuickWarehouseValue(event.target.value)} className="mt-3 w-full rounded-sm border border-sky-200 bg-white px-3 py-2 text-[12px] font-bold">
+                            <div className="text-2sm font-black text-sky-800">إصلاح المخزن</div>
+                            <div className="mt-1 text-[11px] font-bold text-sky-700">اختر مخزنا من النظام وطبقه على صفوف المخزون أو الأخطاء.</div>
+                            <select value={quickWarehouseValue} onChange={(event) => setQuickWarehouseValue(event.target.value)} className="mt-3 w-full rounded-sm border border-sky-200 bg-white px-3 py-2 text-2sm font-bold">
                               <option value="">اختر مخزن</option>
                               {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                             </select>
@@ -1896,8 +1896,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                         <div className="rounded-sm border border-slate-200 bg-white p-3">
                           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <div className="text-[12px] font-black text-slate-900">إصلاح متقدم للصفوف المحددة</div>
-                              <div className="text-[10px] font-bold text-slate-500">استخدمه عندما تريد قيمة محددة لحقل معين على نطاق معين.</div>
+                              <div className="text-2sm font-black text-slate-900">إصلاح متقدم للصفوف المحددة</div>
+                              <div className="text-[11px] font-bold text-slate-500">استخدمه عندما تريد قيمة محددة لحقل معين على نطاق معين.</div>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               <button type="button" onClick={() => selectRows(visibleRows)} className="rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-600">تحديد الظاهر</button>
@@ -1905,36 +1905,36 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             </div>
                           </div>
                         <label className="block">
-                          <span className="text-[10px] font-black text-slate-400">الحقل</span>
-                          <select value={bulkField} onChange={(event) => { setBulkField(event.target.value); setBulkValue(""); }} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                          <span className="text-[11px] font-black text-slate-400">الحقل</span>
+                          <select value={bulkField} onChange={(event) => { setBulkField(event.target.value); setBulkValue(""); }} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                             {BULK_FIELDS.map((field) => <option key={field} value={field}>{FIELD_META[field]?.label || field}</option>)}
                           </select>
                         </label>
                         <label className="block">
-                          <span className="text-[10px] font-black text-slate-400">القيمة</span>
+                          <span className="text-[11px] font-black text-slate-400">القيمة</span>
                           {bulkField === "unit_name" ? (
-                            <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                            <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                               <option value="">اختر وحدة من النظام</option>
                               {units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
                             </select>
                           ) : bulkField === "warehouse_id" ? (
-                            <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                            <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                               <option value="">اختر مخزن من النظام</option>
                               {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                             </select>
                           ) : bulkField === "item_type" ? (
-                            <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                            <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                               <option value="">اختر النوع</option>
                               <option value="product">منتج</option>
                               <option value="service">خدمة</option>
                             </select>
                           ) : (
-                            <input type="number" value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold" />
+                            <input type="number" value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold" />
                           )}
                         </label>
                         <label className="block">
-                          <span className="text-[10px] font-black text-slate-400">النطاق</span>
-                          <select value={bulkScope} onChange={(event) => setBulkScope(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                          <span className="text-[11px] font-black text-slate-400">النطاق</span>
+                          <select value={bulkScope} onChange={(event) => setBulkScope(event.target.value)} className="mt-1 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                             <option value="selected">الصفوف المحددة ({selectedRows.size})</option>
                             <option value="invalid">صفوف الأخطاء</option>
                             <option value="duplicates">صفوف التكرار</option>
@@ -1942,7 +1942,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             <option value="all">كل الصفوف</option>
                           </select>
                         </label>
-                        <button type="button" onClick={applyBulkEdit} disabled={!bulkValue || (bulkScope === "selected" && selectedRows.size === 0)} className="w-full rounded-sm bg-slate-900 px-4 py-2.5 text-[12px] font-black text-white disabled:opacity-40">
+                        <button type="button" onClick={applyBulkEdit} disabled={!bulkValue || (bulkScope === "selected" && selectedRows.size === 0)} className="w-full rounded-sm bg-slate-900 px-4 py-2.5 text-2sm font-black text-white disabled:opacity-40">
                           <Wrench className="ml-2 inline h-4 w-4" />
                           تطبيق الإصلاح
                         </button>
@@ -1951,8 +1951,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                     ) : null}
                     {false && issueTab === "columns" ? (
                       <div className="space-y-3">
-                        <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] font-bold text-slate-600">افتح شريط "الأعمدة المرتبطة" أعلى الجدول لتعديل الربط. الحقول المهمة: الكود، اسم الصنف، المخزون، الوحدة، السعر، ومخزن النظام عند وجود مخازن.</div>
-                        <button type="button" onClick={() => setColumnMappingOpen(true)} className="w-full rounded-sm bg-slate-900 px-4 py-2.5 text-[12px] font-black text-white">فتح ربط الأعمدة</button>
+                        <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-3 text-2sm font-bold text-slate-600">افتح شريط "الأعمدة المرتبطة" أعلى الجدول لتعديل الربط. الحقول المهمة: الكود، اسم الصنف، المخزون، الوحدة، السعر، ومخزن النظام عند وجود مخازن.</div>
+                        <button type="button" onClick={() => setColumnMappingOpen(true)} className="w-full rounded-sm bg-slate-900 px-4 py-2.5 text-2sm font-black text-white">فتح ربط الأعمدة</button>
                       </div>
                     ) : null}
                   </div>
@@ -1967,11 +1967,11 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-[18px] font-black text-slate-900">مراجعة الصفوف والتكرارات</h3>
-                <p className="text-[12px] font-bold text-slate-500">جاهز {counts.ready || 0}، موجود مسبقا {counts.existing || 0}، محتمل التكرار {counts.possible_duplicate || 0}، مكرر بالملف {counts.file_duplicate || 0}، غير صالح {counts.invalid || 0}</p>
+                <p className="text-2sm font-bold text-slate-500">جاهز {counts.ready || 0}، موجود مسبقا {counts.existing || 0}، محتمل التكرار {counts.possible_duplicate || 0}، مكرر بالملف {counts.file_duplicate || 0}، غير صالح {counts.invalid || 0}</p>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setStep(2)} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-[12px] font-black text-slate-600">رجوع للربط</button>
-                <button type="button" onClick={handleImport} disabled={loading || blockingIssues.length > 0} className="rounded-sm bg-emerald-600 px-5 py-2 text-[12px] font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-40">{loading ? "جاري التنفيذ..." : "تنفيذ الاستيراد"}</button>
+                <button type="button" onClick={() => setStep(2)} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-2sm font-black text-slate-600">رجوع للربط</button>
+                <button type="button" onClick={handleImport} disabled={loading || blockingIssues.length > 0} className="rounded-sm bg-emerald-600 px-5 py-2 text-2sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-40">{loading ? "جاري التنفيذ..." : "تنفيذ الاستيراد"}</button>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
@@ -1983,7 +1983,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                 ["إجمالي الصفوف", importStats.totalRows, "border-slate-200 bg-white text-slate-800"],
               ].map(([label, value, cls]) => (
                 <div key={label} className={`rounded-sm border px-3 py-2 ${cls}`}>
-                  <div className="flex items-center gap-2 text-[10px] font-black">
+                  <div className="flex items-center gap-2 text-[11px] font-black">
                     <BarChart3 className="h-3.5 w-3.5" />
                     {label}
                   </div>
@@ -2004,19 +2004,19 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-[260px] flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-sm bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">صف {row.__rowNumber}</span>
-                          <span className={`rounded-sm px-2 py-1 text-[10px] font-black ${rowHasError ? "bg-rose-100 text-rose-700" : row.__status === "existing" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          <span className="rounded-sm bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500">صف {row.__rowNumber}</span>
+                          <span className={`rounded-sm px-2 py-1 text-[11px] font-black ${rowHasError ? "bg-rose-100 text-rose-700" : row.__status === "existing" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"}`}>
                             {statusLabel(row.__status)}
                           </span>
-                          <span className="rounded-sm bg-slate-900 px-2 py-1 text-[10px] font-black text-white">{actionLabel(action)}</span>
+                          <span className="rounded-sm bg-slate-900 px-2 py-1 text-[11px] font-black text-white">{actionLabel(action)}</span>
                         </div>
-                        <div className="mt-2 text-[14px] font-black text-slate-900">{row.name || "بدون اسم"}</div>
+                        <div className="mt-2 text-sm font-black text-slate-900">{row.name || "بدون اسم"}</div>
                         <div className="mt-1 flex flex-wrap gap-2 text-[11px] font-bold text-slate-500">
                           <span className="font-mono">SKU: {row.code || "-"}</span>
                           {row.barcode ? <span>باركود: {row.barcode}</span> : null}
                         </div>
                       </div>
-                      <select value={action} disabled={row.__status === "invalid"} onChange={(event) => setActions((prev) => ({ ...prev, [row.__rowNumber]: event.target.value }))} className="min-w-[180px] rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-black text-slate-800">
+                      <select value={action} disabled={row.__status === "invalid"} onChange={(event) => setActions((prev) => ({ ...prev, [row.__rowNumber]: event.target.value }))} className="min-w-[180px] rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-black text-slate-800">
                         <option value="insert">إضافة منتج جديد</option>
                         <option value="update">تحديث المنتج الموجود</option>
                         <option value="warehouse_stock">استلام مخزون فقط</option>
@@ -2026,26 +2026,26 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
 
                     <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                       <div className={`rounded-sm border px-3 py-2 ${categoryIssues.length ? "border-amber-200 bg-amber-50" : "border-emerald-100 bg-emerald-50"}`}>
-                        <div className="text-[10px] font-black text-slate-500">الفئة من SKU</div>
-                        <div className="mt-1 text-[12px] font-black text-slate-800">{categoryLabelForRow(row)}</div>
+                        <div className="text-[11px] font-black text-slate-500">الفئة من SKU</div>
+                        <div className="mt-1 text-2sm font-black text-slate-800">{categoryLabelForRow(row)}</div>
                       </div>
                       <label className={`rounded-sm border px-3 py-2 ${unitIssues.some((issue) => issue.severity === "error") ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
-                        <div className="mb-1 text-[10px] font-black text-slate-500">الوحدة</div>
-                        <select value={row.unit_name || ""} onChange={(event) => updateRowValue(row.__rowNumber, "unit_name", event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-bold">
+                        <div className="mb-1 text-[11px] font-black text-slate-500">الوحدة</div>
+                        <select value={row.unit_name || ""} onChange={(event) => updateRowValue(row.__rowNumber, "unit_name", event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold">
                           <option value="">اختر وحدة</option>
                           {units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
                         </select>
                       </label>
                       <label className={`rounded-sm border px-3 py-2 ${warehouseIssues.some((issue) => issue.severity === "error") ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
-                        <div className="mb-1 text-[10px] font-black text-slate-500">المخزن الذي سيستلم الكمية</div>
-                        <select value={resolvedWarehouseId(warehouses, row)} onChange={(event) => updateRowValue(row.__rowNumber, "warehouse_id", event.target.value)} disabled={row.__duplicatePolicy === "warehouse"} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-bold disabled:bg-slate-100">
+                        <div className="mb-1 text-[11px] font-black text-slate-500">المخزن الذي سيستلم الكمية</div>
+                        <select value={resolvedWarehouseId(warehouses, row)} onChange={(event) => updateRowValue(row.__rowNumber, "warehouse_id", event.target.value)} disabled={row.__duplicatePolicy === "warehouse"} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold disabled:bg-slate-100">
                           <option value="">اختر مخزن</option>
                           {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                         </select>
                       </label>
                       <div className="rounded-sm border border-slate-200 bg-white px-3 py-2">
-                        <div className="text-[10px] font-black text-slate-500">الكمية والأسعار</div>
-                        <div className="mt-1 grid grid-cols-3 gap-2 text-[12px] font-black text-slate-800">
+                        <div className="text-[11px] font-black text-slate-500">الكمية والأسعار</div>
+                        <div className="mt-1 grid grid-cols-3 gap-2 text-2sm font-black text-slate-800">
                           <span>كمية: {Number(row.stock_quantity || 0)}</span>
                           <span>شراء: {Number(row.purchase_price || 0)}</span>
                           <span>بيع: {Number(row.sale_price || 0)}</span>
@@ -2055,7 +2055,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
 
                     <div className="mt-3 grid gap-2 lg:grid-cols-2">
                       <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
-                        <div className="text-[10px] font-black text-slate-500">ما سيحدث عند الاستيراد</div>
+                        <div className="text-[11px] font-black text-slate-500">ما سيحدث عند الاستيراد</div>
                         <div className="mt-1 space-y-1">
                           {changePreviewForRow(row).slice(0, 5).map((message, index) => (
                             <div key={index} className="text-[11px] font-bold text-slate-700">{message}</div>
@@ -2074,7 +2074,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
             </div>
 
             <div className="hidden max-h-[560px] overflow-x-auto overflow-y-auto rounded-sm border border-slate-200">
-              <table className="min-w-[1500px] text-right text-[12px]">
+              <table className="min-w-[1500px] text-right text-2sm">
                 <thead className="sticky top-0 bg-slate-50 text-slate-500">
                   <tr>
                     <th className="px-3 py-3">الصف</th>
@@ -2134,14 +2134,14 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                               </div>
                             );
                           })()}
-                          {categoryIssues.map((issue, index) => <div key={index} className="mt-1 text-[10px] font-bold text-rose-600">{issue.message}</div>)}
+                          {categoryIssues.map((issue, index) => <div key={index} className="mt-1 text-[11px] font-bold text-rose-600">{issue.message}</div>)}
                         </td>
                         <td className="px-3 py-2 align-top">
                           <select value={row.unit_name || ""} onChange={(event) => updateRowValue(row.__rowNumber, "unit_name", event.target.value)} className={`w-32 rounded-sm border bg-white px-2 py-1.5 font-bold outline-none focus:border-slate-800 ${unitIssues.some((issue) => issue.severity === "error") ? "border-rose-300 text-rose-700" : "border-slate-200"}`}>
                             <option value="">اختر وحدة</option>
                             {units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
                           </select>
-                          {unitIssues.map((issue, index) => <div key={index} className="mt-1 text-[10px] font-bold text-rose-600">{issue.message}</div>)}
+                          {unitIssues.map((issue, index) => <div key={index} className="mt-1 text-[11px] font-bold text-rose-600">{issue.message}</div>)}
                         </td>
                         <td className="px-3 py-2 align-top">
                           {row.__duplicatePolicy === "warehouse" ? (
@@ -2152,24 +2152,24 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                               {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                             </select>
                           )}
-                          {warehouseIssues.map((issue, index) => <div key={index} className="mt-1 text-[10px] font-bold text-rose-600">{issue.message}</div>)}
+                          {warehouseIssues.map((issue, index) => <div key={index} className="mt-1 text-[11px] font-bold text-rose-600">{issue.message}</div>)}
                         </td>
                         <td className="px-3 py-2 align-top">
                           {row.__duplicatePolicy === "warehouse" && Array.isArray(row.__warehouseDistribution) ? (
                             <div className="w-64 space-y-1">
                               {row.__warehouseDistribution.map((item) => (
                                 <div key={item.__rowNumber} className="grid grid-cols-[54px_1fr] items-center gap-1">
-                                  <span className="text-[10px] font-black text-slate-400">صف {item.__rowNumber}</span>
+                                  <span className="text-[11px] font-black text-slate-400">صف {item.__rowNumber}</span>
                                   <select value={explicitWarehouseId(warehouses, item)} onChange={(event) => updateRowValue(item.__rowNumber, "warehouse_id", event.target.value)} className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 font-bold outline-none focus:border-slate-800">
                                     <option value="">اختر مخزن</option>
                                     {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
                                   </select>
                                 </div>
                               ))}
-                              {storageIssues.map((issue, index) => <div key={index} className="mt-1 text-[10px] font-bold text-rose-600">{issue.message}</div>)}
+                              {storageIssues.map((issue, index) => <div key={index} className="mt-1 text-[11px] font-bold text-rose-600">{issue.message}</div>)}
                             </div>
                           ) : (
-                            <span className="rounded-sm bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">{row.__duplicatePolicy === "combine" ? "دمج الكميات" : row.__duplicatePolicy === "skip" ? "تخطي" : "صف واحد"}</span>
+                            <span className="rounded-sm bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500">{row.__duplicatePolicy === "combine" ? "دمج الكميات" : row.__duplicatePolicy === "skip" ? "تخطي" : "صف واحد"}</span>
                           )}
                         </td>
                         <td className="px-3 py-2">
@@ -2183,7 +2183,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                             <div className="space-y-1">
                               <div className="font-black text-slate-700">{row.__matchField}: {row.__existing.name}</div>
                               {changePreviewForRow(row).slice(0, 4).map((message, index) => (
-                                <div key={index} className="rounded-sm bg-white/70 px-2 py-1 text-[10px] font-bold text-slate-600">
+                                <div key={index} className="rounded-sm bg-white/70 px-2 py-1 text-[11px] font-bold text-slate-600">
                                   {message}
                                 </div>
                               ))}
@@ -2205,8 +2205,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
           <div className="rounded-sm border border-slate-200 bg-slate-50 px-6 py-10 text-center">
             {Number(result?.failed || 0) > 0 ? <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" /> : <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />}
             <h3 className="mt-4 text-[22px] font-black text-slate-900">انتهى الاستيراد</h3>
-            <p className="mt-2 text-[13px] font-bold text-slate-500">تمت إضافة {result?.inserted || 0}، تحديث {result?.updated || 0}، تخطي {result?.skipped || 0}، فشل {result?.failed || 0}.</p>
-            <button type="button" onClick={close} className="mt-6 rounded-sm bg-slate-900 px-8 py-3 text-[13px] font-black text-white">إغلاق</button>
+            <p className="mt-2 text-sm font-bold text-slate-500">تمت إضافة {result?.inserted || 0}، تحديث {result?.updated || 0}، تخطي {result?.skipped || 0}، فشل {result?.failed || 0}.</p>
+            <button type="button" onClick={close} className="mt-6 rounded-sm bg-slate-900 px-8 py-3 text-sm font-black text-white">إغلاق</button>
           </div>
         ) : null}
       </div>

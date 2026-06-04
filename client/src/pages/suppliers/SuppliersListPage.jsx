@@ -30,7 +30,7 @@ export default function SuppliersListPage() {
           render: (v) => (
             <span className={Number(v) < 0 ? "text-blue-600 font-black" : Number(v) > 0 ? "text-rose-600 font-black" : "text-emerald-700 font-black"}>
               {Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-              {Number(v) < 0 && <span className="mr-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md">دائن</span>}
+              {Number(v) < 0 && <span className="mr-1 text-[11px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md">دائن</span>}
             </span>
           ),
         },

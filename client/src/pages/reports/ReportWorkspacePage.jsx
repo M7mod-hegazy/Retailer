@@ -243,7 +243,7 @@ function ExportPill({ format, onExport }) {
     <button
       onClick={handleClick}
       disabled={isLoading}
-      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all duration-200 border bg-white shadow-sm hover:shadow-md active:scale-95"
+      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold transition-all duration-200 border bg-white shadow-sm hover:shadow-md active:scale-95"
       style={{
         color: isReady ? "#047857" : isError ? "#b91c1c" : cfg.color,
         borderColor: isReady ? "#6ee7b7" : isError ? "#fca5a5" : "#e4e4e7",
@@ -278,7 +278,7 @@ function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
         <select
           value={value || ""}
           onChange={(e) => onChange(filter.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
         >
           <option value="">الكل</option>
           {opts.map((opt) => (
@@ -297,7 +297,7 @@ function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
           value={value || ""}
           onChange={(e) => onChange(filter.key, e.target.value)}
           placeholder={t(filter.label_key)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
         />
       </div>
     );
@@ -877,7 +877,7 @@ export default function ReportWorkspacePage() {
             <h1 className="text-2xl font-black text-zinc-900 mb-2">التقرير غير متاح</h1>
             <p className="text-sm text-zinc-500 max-w-sm">هذا التقرير غير معروف في النظام الحالي.</p>
           </div>
-          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold hover:bg-zinc-800 transition-colors shadow-lg">
+          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-800 transition-colors shadow-lg">
             <ArrowLeft size={16} /> العودة إلى مركز التقارير
           </Link>
         </div>
@@ -903,22 +903,22 @@ export default function ReportWorkspacePage() {
               </div>
               <div className="pt-1">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{definition.id}</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">{definition.id}</span>
                   <span className="w-1 h-1 rounded-full bg-zinc-300" />
                   <span className="text-[11px] font-bold text-zinc-500">{categoryMeta?.label}</span>
                 </div>
                 <h1 className="text-3xl font-black tracking-tight text-zinc-900 mb-1">{definition.title}</h1>
-                <p className="text-[13px] font-medium text-zinc-500 max-w-xl leading-relaxed">{definition.desc}</p>
+                <p className="text-sm font-medium text-zinc-500 max-w-xl leading-relaxed">{definition.desc}</p>
               </div>
             </div>
           </div>
           
           <div className="flex items-center justify-between mt-6 pt-6 border-t border-zinc-100/80">
-            <Link to="/reports/center" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-50 hover:bg-zinc-100 text-zinc-600 text-[12px] font-bold transition-all hover:scale-[1.02] active:scale-95">
+            <Link to="/reports/center" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-50 hover:bg-zinc-100 text-zinc-600 text-2sm font-bold transition-all hover:scale-[1.02] active:scale-95">
               <LayoutTemplate size={16} /> الرجوع للمركز
             </Link>
             {definition.supportsDates && (
-              <div className="flex items-center gap-2 text-[12px] font-bold text-zinc-500 bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-100">
+              <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500 bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-100">
                 <CalendarDays size={14} className="text-zinc-400" />
                 <span>الفترة: <span className="text-zinc-900 tabular-nums">{appliedParams.start_date || "—"}</span> إلی <span className="text-zinc-900 tabular-nums">{appliedParams.end_date || "—"}</span></span>
               </div>
@@ -951,13 +951,13 @@ export default function ReportWorkspacePage() {
       {/* 2. STICKY COMMAND BAR */}
       <div className="sticky top-4 z-40 bg-white/80 backdrop-blur-xl border border-zinc-200 rounded-[20px] p-2.5 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-3 transition-all">
          <div className="flex items-center gap-2">
-           <button onClick={() => setFiltersOpen(!filtersOpen)} className={`px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-zinc-900 text-white shadow-md" : "bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-200"}`}>
+           <button onClick={() => setFiltersOpen(!filtersOpen)} className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-zinc-900 text-white shadow-md" : "bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-200"}`}>
              <SlidersHorizontal size={16} /> 
              <span>الفلاتر المتقدمة</span>
              <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180 text-zinc-400" : ""}`} />
            </button>
            <div className="w-px h-6 bg-zinc-200 mx-1" />
-           <button onClick={() => refetch()} className="px-4 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 text-[13px] font-bold flex items-center gap-2 transition-all hover:shadow-sm active:scale-95">
+           <button onClick={() => refetch()} className="px-4 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 text-sm font-bold flex items-center gap-2 transition-all hover:shadow-sm active:scale-95">
              <RefreshCw size={14} className={isFetching ? "animate-spin text-emerald-500" : ""} /> تحديث البيانات
            </button>
          </div>
@@ -997,7 +997,7 @@ export default function ReportWorkspacePage() {
                       value={filters.q || ""} 
                       onChange={(e) => setFilters(c => ({ ...c, q: e.target.value }))} 
                       placeholder="ابحث بالاسم، الكود، الوصف..." 
-                      className="w-full h-11 pr-11 pl-4 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] text-zinc-900 font-bold placeholder:text-zinc-400 placeholder:font-medium focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" 
+                      className="w-full h-11 pr-11 pl-4 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 font-bold placeholder:text-zinc-400 placeholder:font-medium focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" 
                     />
                   </div>
                 </div>
@@ -1009,14 +1009,14 @@ export default function ReportWorkspacePage() {
                       الفترة الزمنية
                       <div className="flex gap-1">
                         {DATE_PRESETS.map(p => (
-                          <button key={p.label} onClick={() => applyDatePreset(p.days)} className="text-[10px] text-zinc-400 hover:text-zinc-900 transition-colors bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded-md">{p.label}</button>
+                          <button key={p.label} onClick={() => applyDatePreset(p.days)} className="text-[11px] text-zinc-400 hover:text-zinc-900 transition-colors bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded-md">{p.label}</button>
                         ))}
                       </div>
                     </label>
                     <div className="flex items-center gap-2">
-                      <input type="date" value={filters.from} onChange={(e) => setFilters(c => ({ ...c, from: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
+                      <input type="date" value={filters.from} onChange={(e) => setFilters(c => ({ ...c, from: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
                       <span className="text-zinc-400">-</span>
-                      <input type="date" value={filters.to} onChange={(e) => setFilters(c => ({ ...c, to: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
+                      <input type="date" value={filters.to} onChange={(e) => setFilters(c => ({ ...c, to: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
                     </div>
                   </div>
                 )}
@@ -1043,7 +1043,7 @@ export default function ReportWorkspacePage() {
                 {hasCostMethodSelector && (
                   <div className="space-y-2">
                     <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">طريقة حساب التكلفة</label>
-                    <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
+                    <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
                       {COST_METHODS.map(m => (<option key={m.value} value={m.value}>{m.label}</option>))}
                     </select>
                   </div>
@@ -1052,15 +1052,15 @@ export default function ReportWorkspacePage() {
 
               <div className="flex items-center justify-between gap-3 mt-6 pt-6 border-t border-zinc-100">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                     <motion.span animate={{ scale: isFetching ? [1, 1.2, 1] : 1 }} transition={{ duration: 0.4, repeat: isFetching ? Infinity : 0 }} className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     {isFetching ? "تحديث..." : "تلقائي"}
                   </span>
-                  {invalidRange && <span className="text-[10px] font-bold text-red-600">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
+                  {invalidRange && <span className="text-[11px] font-bold text-red-600">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-[12px] font-bold text-zinc-500 hover:bg-zinc-100 transition-colors">إعادة تعيين</button>
-                  <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 rounded-xl text-[12px] font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors">إغلاق</button>
+                  <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-2sm font-bold text-zinc-500 hover:bg-zinc-100 transition-colors">إعادة تعيين</button>
+                  <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 rounded-xl text-2sm font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors">إغلاق</button>
                 </div>
               </div>
             </div>
@@ -1070,7 +1070,7 @@ export default function ReportWorkspacePage() {
 
       {exportProgress && (
         <div className="mb-6 rounded-[20px] border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[12px] font-bold text-emerald-800 mb-2">
+          <div className="flex items-center justify-between text-2sm font-bold text-emerald-800 mb-2">
             <span>جاري تجهيز وتصدير ملف {exportProgress.format.toUpperCase()}...</span>
             <span>{exportProgress.percent}%</span>
           </div>
@@ -1080,10 +1080,10 @@ export default function ReportWorkspacePage() {
 
       {/* 3. WORKSPACE TABS */}
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setActiveTab("table")} className={`px-5 py-2.5 text-[13px] font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
+        <button onClick={() => setActiveTab("table")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
           <LayoutList size={16} /> جدول البيانات
         </button>
-        <button onClick={() => setActiveTab("chart")} className={`px-5 py-2.5 text-[13px] font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
+        <button onClick={() => setActiveTab("chart")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
           <BarChart3 size={16} /> تحليل بياني
         </button>
       </div>
@@ -1097,24 +1097,24 @@ export default function ReportWorkspacePage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 bg-zinc-50/50 z-10 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200 shadow-sm text-zinc-500"><LayoutList size={12} /></span>
-                <span className="text-[13px] font-black text-zinc-900">سجلات التقرير التفصيلية</span>
+                <span className="text-sm font-black text-zinc-900">سجلات التقرير التفصيلية</span>
                 {!isLoading && <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("en-US")} صف</span>}
               </div>
               <div className="flex items-center gap-3">
                 {/* Column settings */}
                 <div className="relative" ref={columnDropdownRef}>
-                  <button onClick={() => setColumnVisibilityOpen(!columnVisibilityOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 transition-all shadow-sm">
+                  <button onClick={() => setColumnVisibilityOpen(!columnVisibilityOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 transition-all shadow-sm">
                     <Settings2 size={14} /> تخصيص الأعمدة
                   </button>
                   <AnimatePresence>
                     {columnVisibilityOpen && (
                       <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute left-0 top-full mt-2 z-50 w-72 rounded-2xl border border-zinc-200 bg-white shadow-xl p-3 flex flex-col gap-1" style={{ maxHeight: "400px", overflow: "auto" }}>
-                        <div className="text-[10px] font-black text-zinc-400 px-2 py-1 uppercase tracking-widest mb-2 border-b border-zinc-100 pb-2">الأعمدة الظاهرة وترتيبها</div>
+                        <div className="text-[11px] font-black text-zinc-400 px-2 py-1 uppercase tracking-widest mb-2 border-b border-zinc-100 pb-2">الأعمدة الظاهرة وترتيبها</div>
                         {allColumns.map((col, idx) => (
                           <div key={col.id} className="flex items-center justify-between group px-2 py-1.5 rounded-xl hover:bg-zinc-50 transition-colors">
                             <button onClick={() => toggleColumnVisibility(col.id)} className="flex items-center gap-2.5 flex-1 text-right">
                               {columnVisibility[col.id] !== false ? <Eye size={14} className="text-emerald-500" /> : <EyeOff size={14} className="text-zinc-300" />}
-                              <span className={`text-[12px] font-bold ${columnVisibility[col.id] !== false ? "text-zinc-800" : "text-zinc-400 line-through decoration-zinc-300"}`}>{col.header}</span>
+                              <span className={`text-2sm font-bold ${columnVisibility[col.id] !== false ? "text-zinc-800" : "text-zinc-400 line-through decoration-zinc-300"}`}>{col.header}</span>
                             </button>
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => moveColumn(col.id, -1)} disabled={idx === 0} className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-transparent"><ArrowUp size={12} /></button>
@@ -1136,7 +1136,7 @@ export default function ReportWorkspacePage() {
               <div className="flex flex-col items-center justify-center flex-1 text-center py-24 bg-zinc-50/50">
                 <div className="h-16 w-16 rounded-3xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-300 mb-4 shadow-sm"><Search size={28} /></div>
                 <h3 className="text-[16px] font-black text-zinc-800 mb-1">لا توجد بيانات للعرض</h3>
-                <p className="text-[13px] font-medium text-zinc-500 max-w-xs">يرجى تغيير فلاتر البحث أو تحديد أعمدة لعرضها.</p>
+                <p className="text-sm font-medium text-zinc-500 max-w-xs">يرجى تغيير فلاتر البحث أو تحديد أعمدة لعرضها.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1150,21 +1150,21 @@ export default function ReportWorkspacePage() {
                     headerClass: "text-right font-black text-[11px] text-zinc-500 uppercase tracking-wide bg-zinc-50/80 border-b border-zinc-200",
                     cellClass: "text-right border-b border-zinc-100 py-3",
                     render: SKU_COLUMN_KEYS.has(c.id)
-                      ? (row) => (<span className="font-mono text-[13px] font-bold tabular-nums px-2 py-0.5 rounded-md text-zinc-700 bg-zinc-100/50 border border-zinc-200/50" dir="ltr">{row[c.id] != null && row[c.id] !== "" ? String(row[c.id]) : "—"}</span>)
+                      ? (row) => (<span className="font-mono text-sm font-bold tabular-nums px-2 py-0.5 rounded-md text-zinc-700 bg-zinc-100/50 border border-zinc-200/50" dir="ltr">{row[c.id] != null && row[c.id] !== "" ? String(row[c.id]) : "—"}</span>)
                       : c.id === "warehouse_id" || c.id === "supplier_id" || c.id === "customer_id" || c.id === "cashier_id" || c.id === "user_id" || c.id === "category_id"
                         ? (row) => {
                             const nameKey = c.id.replace("_id", "_name");
                             const displayName = row[nameKey] || row[c.id];
                             if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
-                            return <span className="text-[13px] font-medium text-zinc-700">{String(displayName)}</span>;
+                            return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
                           }
                         : (row) => {
                           const val = row[c.id];
                           if (val == null || val === "") return <span className="text-zinc-300">—</span>;
                           const num = Number(val);
                           const isNum = !isNaN(num) && String(val).trim() !== "";
-                          if (isNum) return (<span className="tabular-nums text-[13px] font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>);
-                          return <span className="text-[13px] font-medium text-zinc-700">{String(val)}</span>;
+                          if (isNum) return (<span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>);
+                          return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
                         },
                   }))}
                   rowKey={(row) => row.id || JSON.stringify(row)}
@@ -1184,7 +1184,7 @@ export default function ReportWorkspacePage() {
                       className="flex items-center justify-center px-3 py-2.5 text-center border-l border-emerald-100 last:border-l-0"
                     >
                       {hasVal ? (
-                        <span className="text-[13px] font-black text-emerald-800 tabular-nums" dir="ltr">
+                        <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
                           {Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                         </span>
                       ) : (
@@ -1199,7 +1199,7 @@ export default function ReportWorkspacePage() {
             {/* Pagination */}
             {!isLoading && totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 bg-zinc-50 shrink-0">
-                <div className="flex items-center gap-2 text-[12px] font-bold text-zinc-500">
+                <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500">
                   <span>إجمالي الصفحات: {totalPages.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-xl p-1 shadow-sm">
@@ -1209,11 +1209,11 @@ export default function ReportWorkspacePage() {
                     const page = start + i;
                     if (page > totalPages) return null;
                     const isActive = page === currentPage;
-                    return (<button key={page} onClick={() => handlePageChange(page)} className={`h-8 min-w-[32px] px-2 flex items-center justify-center rounded-lg text-[13px] font-black transition-all ${isActive ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"}`}>{page}</button>);
+                    return (<button key={page} onClick={() => handlePageChange(page)} className={`h-8 min-w-[32px] px-2 flex items-center justify-center rounded-lg text-sm font-black transition-all ${isActive ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"}`}>{page}</button>);
                   })}
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 hover:text-zinc-900 transition-all"><ChevronLeft size={16} /></button>
                 </div>
-                <div className="text-[12px] font-bold text-zinc-400">صفحة {currentPage} من {totalPages}</div>
+                <div className="text-2sm font-bold text-zinc-400">صفحة {currentPage} من {totalPages}</div>
               </div>
             )}
           </>
@@ -1225,11 +1225,11 @@ export default function ReportWorkspacePage() {
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="h-20 w-20 rounded-3xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300 mb-6 shadow-inner"><BarChart3 size={32} /></div>
                 <h3 className="text-[18px] font-black text-zinc-900 mb-2">لا يمكن رسم بياني لهذه البيانات</h3>
-                <p className="text-[14px] font-medium text-zinc-500 max-w-sm">جرب اختيار أعمدة تحتوي على قيم رقمية وتصنيفات (أو تواريخ).</p>
+                <p className="text-sm font-medium text-zinc-500 max-w-sm">جرب اختيار أعمدة تحتوي على قيم رقمية وتصنيفات (أو تواريخ).</p>
               </div>
             ) : (
               <div className="space-y-8 max-w-5xl mx-auto">
-                <div className="flex items-center gap-4 text-[13px] font-bold text-zinc-500 bg-zinc-50 px-6 py-4 rounded-2xl border border-zinc-100">
+                <div className="flex items-center gap-4 text-sm font-bold text-zinc-500 bg-zinc-50 px-6 py-4 rounded-2xl border border-zinc-100">
                   <div className="flex items-center gap-2"><LineChart size={16} className="text-emerald-500" /> <span>المحور السيني: <span className="text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200">{prettifyLabel(xKey)}</span></span></div>
                   <span className="w-px h-4 bg-zinc-300" />
                   <div className="flex items-center gap-2"><PieChart size={16} className="text-emerald-500" /> <span>المحور الصادي: <span className="text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200">{prettifyLabel(yKey)}</span></span></div>

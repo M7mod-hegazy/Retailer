@@ -28,7 +28,7 @@ function toDateInput(date = new Date()) {
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
   if (!items.length) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {emptyLabel}
       </div>
     );
@@ -51,8 +51,8 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
                 <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300" /></div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-emerald-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[10px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
+                <span className={`text-sm font-black ${activeIndex === i ? "text-emerald-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
+                <span className="font-mono text-[11px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
               </div>
             </div>
           </button>
@@ -94,7 +94,7 @@ function ReturnPreviewModal({ ret, onClose }) {
       ) : (
         <>
           <div className="flex items-center justify-between rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3">
-            <div className="flex items-center gap-4 text-[13px] flex-wrap">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <span className="font-black text-emerald-800">مرتجع #{detail?.doc_no || ret.doc_no}</span>
               <span className="text-slate-600">العميل: <strong>{(detail || ret).customer_name || "—"}</strong></span>
               <span className="text-slate-500">{(detail || ret).created_at ? formatArabicDateTime(new Date((detail || ret).created_at)) : "—"}</span>
@@ -104,7 +104,7 @@ function ReturnPreviewModal({ ret, onClose }) {
             </div>
           </div>
           <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">
-            <table className="w-full text-[12px] border-collapse">
+            <table className="w-full text-2sm border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
@@ -129,8 +129,8 @@ function ReturnPreviewModal({ ret, onClose }) {
           </div>
           {/* Payment breakdown card */}
           {detail && (Number(detail.cash_amount || 0) > 0 || Number(detail.credit_amount || 0) > 0) && (
-            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة الاسترداد</p>
+            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة الاسترداد</p>
               {Number(detail.cash_amount || 0) > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />نقداً (صندوق)</span>
@@ -148,8 +148,8 @@ function ReturnPreviewModal({ ret, onClose }) {
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => { onClose(); navigate("/sales/returns/new", { state: { edit_return_id: ret.id } }); }} className="flex items-center gap-2 rounded-sm bg-emerald-700 px-6 py-2 text-[13px] font-black text-white hover:bg-emerald-800 transition-colors">
+        <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
+        <button onClick={() => { onClose(); navigate("/sales/returns/new", { state: { edit_return_id: ret.id } }); }} className="flex items-center gap-2 rounded-sm bg-emerald-700 px-6 py-2 text-sm font-black text-white hover:bg-emerald-800 transition-colors">
           <Pencil className="h-4 w-4" /> فتح وتعديل
         </button>
       </div>
@@ -289,26 +289,26 @@ export default function SalesReturnTodayModal({ open, onClose }) {
   }
 
   const docColumns = [
-    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[12px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
-    { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (r) => r.customer_name || "—" },
-    { id: "original_invoice_no", header: "الفاتورة الأصلية", width: 140, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.original_invoice_no ? r.original_invoice_no : <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black bg-amber-50 text-amber-700 border-amber-200">مباشر</span> },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (r) => formatMoney(r.total) },
+    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => r.doc_no || "—" },
+    { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.customer_name || "—" },
+    { id: "original_invoice_no", header: "الفاتورة الأصلية", width: 140, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.original_invoice_no ? r.original_invoice_no : <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black bg-amber-50 text-amber-700 border-amber-200">مباشر</span> },
+    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (r) => formatMoney(r.total) },
     { id: "refund_method", header: "طريقة الرد", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => {
       const info = REFUND_LABELS[r.refund_method] || REFUND_LABELS.cash_back;
       const cashAmt = Number(r.cash_amount || 0);
       const creditAmt = Number(r.credit_amount || 0);
       return (
         <div className="flex flex-col gap-0.5">
-          <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>
+          <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
           {r.refund_method === "split" && (<>
-            {cashAmt > 0 && <span className="text-[10px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>}
-            {creditAmt > 0 && <span className="text-[10px] text-blue-600 font-bold">رصيد: {formatMoney(creditAmt)}</span>}
+            {cashAmt > 0 && <span className="text-[11px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>}
+            {creditAmt > 0 && <span className="text-[11px] text-blue-600 font-bold">رصيد: {formatMoney(creditAmt)}</span>}
           </>)}
           {(r.refund_method === "credit_note" || r.refund_method === "store_credit") && creditAmt > 0 && (
-            <span className="text-[10px] text-blue-600 font-bold">رصيد: {formatMoney(creditAmt)}</span>
+            <span className="text-[11px] text-blue-600 font-bold">رصيد: {formatMoney(creditAmt)}</span>
           )}
           {r.refund_method === "cash_back" && cashAmt > 0 && (
-            <span className="text-[10px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>
+            <span className="text-[11px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>
           )}
         </div>
       );
@@ -325,12 +325,12 @@ export default function SalesReturnTodayModal({ open, onClose }) {
 
   const itemColumns = [
     { id: "item_code", header: "كود الصنف", width: 110, cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.item_code || "—" },
-    { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (r) => r.item_name || "—" },
+    { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
     { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
     { id: "customer_name", header: "العميل", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.customer_name || "—" },
-    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center font-mono text-[12px] font-bold text-slate-600", render: (r) => Number(r.quantity) },
-    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 font-mono text-[12px] font-black text-slate-700", render: (r) => formatMoney(r.unit_price) },
-    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 font-mono text-[13px] font-black text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
+    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center font-mono text-2sm font-bold text-slate-600", render: (r) => Number(r.quantity) },
+    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => formatMoney(r.unit_price) },
+    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
     { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
@@ -345,15 +345,15 @@ export default function SalesReturnTodayModal({ open, onClose }) {
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
-            <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">سجل المرتجعات المسجلة</span>
-            <span className="text-[10px] text-amber-600 font-bold">— هذه قائمة بمرتجعات المبيعات التي تم إنشاؤها مسبقاً، وليست فواتير البيع.</span>
+            <span className="text-[11px] font-black text-amber-700 uppercase tracking-widest">سجل المرتجعات المسجلة</span>
+            <span className="text-[11px] text-amber-600 font-bold">— هذه قائمة بمرتجعات المبيعات التي تم إنشاؤها مسبقاً، وليست فواتير البيع.</span>
           </div>
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-sm border border-emerald-200">
             <span className="text-[11px] font-black text-emerald-700 shrink-0">بحث برقم المستند:</span>
             <input value={docSearch} onChange={e => setDocSearch(e.target.value)}
               placeholder="SRET-0001..."
-              className="flex-1 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+              className="flex-1 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
             <span className="text-[11px] font-black text-emerald-700 shrink-0">بحث صنف:</span>
             <div className="relative flex-1">
               <input value={itemSearch}
@@ -367,7 +367,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
                   else if (e.key === "Escape") { setItemLookupOpen(false); }
                 }}
                 placeholder="اسم الصنف أو الكود..."
-                className="w-full rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                className="w-full rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
               {itemLookupOpen && (
                 <LookupList items={filteredItems} onPick={(item) => { setItemSearch(item.code || item.barcode || item.name); setItemLookupOpen(false); }}
                   activeIndex={activeItemIndex} query={itemSearch} />
@@ -382,17 +382,17 @@ export default function SalesReturnTodayModal({ open, onClose }) {
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">من</label>
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">إلى</label>
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">ترتيب</label>
               <select value={sort} onChange={(e) => setSort(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500">
+                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
                 <option value="doc_no">رقم المستند</option>
@@ -407,7 +407,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">المستخدم</label>
                 <select value={userId} onChange={(e) => setUserId(e.target.value)}
-                  className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500">
+                  className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
@@ -432,7 +432,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
                   if (e.key === "Escape") setCustomerLookupOpen(false);
                 }}
                 placeholder="كل العملاء..."
-                className="w-[140px] rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                className="w-[140px] rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
               {customerQuery && (
                 <button onClick={() => { setCustomerQuery(""); setCustomerId(""); }} className="text-slate-400 hover:text-slate-600">
                   <X className="h-3.5 w-3.5" />
@@ -444,19 +444,19 @@ export default function SalesReturnTodayModal({ open, onClose }) {
               )}
             </div>
             <button onClick={loadData}
-              className="flex items-center gap-1.5 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-[12px] font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
+              className="flex items-center gap-1.5 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث
             </button>
           </div>
           {/* Summary strip */}
           <div className="flex items-center gap-4 rounded-sm bg-emerald-800 px-4 py-3">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">عدد المرتجعات</span>
+              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">عدد المرتجعات</span>
               <span className="font-mono text-[20px] font-black text-white leading-none">{summary.count}</span>
             </div>
             <div className="h-8 w-px bg-emerald-700" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">إجمالي المرتجعات</span>
+              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">إجمالي المرتجعات</span>
               <span className="font-mono text-[20px] font-black text-emerald-300 leading-none">{formatMoney(summary.total)}</span>
             </div>
           </div>

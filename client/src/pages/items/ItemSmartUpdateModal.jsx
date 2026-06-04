@@ -135,8 +135,8 @@ export default function ItemSmartUpdateModal({ open, onClose, items, categories,
           <div className="rounded-sm border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
             <RefreshCw className="mx-auto h-12 w-12 text-slate-700" />
             <h3 className="mt-4 text-[22px] font-black text-slate-900">ارفع ملف تحديث الأسعار أو البيانات</h3>
-            <p className="mt-2 text-[13px] font-bold text-slate-500">لن يتم إنشاء أصناف جديدة هنا. الصفوف غير المطابقة ستظهر للمراجعة ويتم تجاهلها.</p>
-            <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-sm bg-slate-900 px-6 py-3 text-[13px] font-black text-white shadow-lg hover:bg-slate-800">
+            <p className="mt-2 text-sm font-bold text-slate-500">لن يتم إنشاء أصناف جديدة هنا. الصفوف غير المطابقة ستظهر للمراجعة ويتم تجاهلها.</p>
+            <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-sm bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-lg hover:bg-slate-800">
               <Upload className="h-4 w-4" />
               اختيار ملف
               <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
@@ -149,16 +149,16 @@ export default function ItemSmartUpdateModal({ open, onClose, items, categories,
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-[18px] font-black text-slate-900">إعداد المطابقة والحقول</h3>
-                <p className="text-[12px] font-bold text-slate-500">الملف: {fileName}</p>
+                <p className="text-2sm font-bold text-slate-500">الملف: {fileName}</p>
               </div>
-              <button type="button" onClick={() => setStep(3)} className="rounded-sm bg-slate-900 px-5 py-2.5 text-[12px] font-black text-white">معاينة التغييرات</button>
+              <button type="button" onClick={() => setStep(3)} className="rounded-sm bg-slate-900 px-5 py-2.5 text-2sm font-black text-white">معاينة التغييرات</button>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
               <div className="space-y-4 rounded-sm border border-slate-200 bg-slate-50 p-4">
                 <div>
                   <label className="text-[11px] font-black text-slate-500">المطابقة حسب</label>
-                  <select value={matchBy} onChange={(event) => setMatchBy(event.target.value)} className="mt-2 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold">
+                  <select value={matchBy} onChange={(event) => setMatchBy(event.target.value)} className="mt-2 w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm font-bold">
                     <option value="barcode">الباركود</option>
                     <option value="code">الكود</option>
                     <option value="name">الاسم</option>
@@ -170,7 +170,7 @@ export default function ItemSmartUpdateModal({ open, onClose, items, categories,
                     {UPDATE_FIELDS.map((field) => {
                       const label = ITEM_FIELDS.find((entry) => entry.key === field)?.label || field;
                       return (
-                        <label key={field} className="flex items-center gap-2 text-[12px] font-bold text-slate-700">
+                        <label key={field} className="flex items-center gap-2 text-2sm font-bold text-slate-700">
                           <input type="checkbox" checked={selectedFields.includes(field)} onChange={() => toggleField(field)} />
                           {label}
                         </label>
@@ -181,13 +181,13 @@ export default function ItemSmartUpdateModal({ open, onClose, items, categories,
               </div>
 
               <div className="overflow-auto rounded-sm border border-slate-200">
-                <table className="w-full min-w-[900px] text-right text-[12px]">
+                <table className="w-full min-w-[900px] text-right text-2sm">
                   <thead className="bg-slate-50">
                     <tr>
                       {headers.map((header, index) => (
                         <th key={`${header}-${index}`} className="border-l border-slate-100 px-3 py-3 align-top">
                           <div className="font-black text-slate-800">{header || `عمود ${index + 1}`}</div>
-                          <select value={mapping[index] || ""} onChange={(event) => setMapping((prev) => ({ ...prev, [index]: event.target.value }))} className="mt-2 w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-[12px] font-bold">
+                          <select value={mapping[index] || ""} onChange={(event) => setMapping((prev) => ({ ...prev, [index]: event.target.value }))} className="mt-2 w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-2sm font-bold">
                             <option value="">تجاهل</option>
                             {ITEM_FIELDS.map((field) => <option key={field.key} value={field.key}>{field.label}</option>)}
                           </select>
@@ -213,15 +213,15 @@ export default function ItemSmartUpdateModal({ open, onClose, items, categories,
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-[18px] font-black text-slate-900">معاينة التحديث</h3>
-                <p className="text-[12px] font-bold text-slate-500">تمت مطابقة {matchedCount} من {previewRows.length} صف.</p>
+                <p className="text-2sm font-bold text-slate-500">تمت مطابقة {matchedCount} من {previewRows.length} صف.</p>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setStep(2)} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-[12px] font-black text-slate-600">رجوع</button>
-                <button type="button" onClick={handleUpdate} disabled={loading} className="rounded-sm bg-emerald-600 px-5 py-2 text-[12px] font-black text-white shadow-lg disabled:opacity-40">{loading ? "جاري التحديث..." : "تأكيد التحديث"}</button>
+                <button type="button" onClick={() => setStep(2)} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-2sm font-black text-slate-600">رجوع</button>
+                <button type="button" onClick={handleUpdate} disabled={loading} className="rounded-sm bg-emerald-600 px-5 py-2 text-2sm font-black text-white shadow-lg disabled:opacity-40">{loading ? "جاري التحديث..." : "تأكيد التحديث"}</button>
               </div>
             </div>
             <div className="max-h-[520px] overflow-auto rounded-sm border border-slate-200">
-              <table className="w-full min-w-[1050px] text-right text-[12px]">
+              <table className="w-full min-w-[1050px] text-right text-2sm">
                 <thead className="sticky top-0 bg-slate-50 text-slate-500">
                   <tr>
                     <th className="px-3 py-3">الصف</th>
@@ -256,8 +256,8 @@ export default function ItemSmartUpdateModal({ open, onClose, items, categories,
           <div className="rounded-sm border border-slate-200 bg-slate-50 px-6 py-10 text-center">
             {Number(result?.failed || 0) > 0 ? <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" /> : <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />}
             <h3 className="mt-4 text-[22px] font-black text-slate-900">انتهى التحديث الذكي</h3>
-            <p className="mt-2 text-[13px] font-bold text-slate-500">تم تحديث {result?.updated || 0}، تخطي {result?.skipped || 0}، فشل {result?.failed || 0}.</p>
-            <button type="button" onClick={close} className="mt-6 rounded-sm bg-slate-900 px-8 py-3 text-[13px] font-black text-white">إغلاق</button>
+            <p className="mt-2 text-sm font-bold text-slate-500">تم تحديث {result?.updated || 0}، تخطي {result?.skipped || 0}، فشل {result?.failed || 0}.</p>
+            <button type="button" onClick={close} className="mt-6 rounded-sm bg-slate-900 px-8 py-3 text-sm font-black text-white">إغلاق</button>
           </div>
         ) : null}
       </div>

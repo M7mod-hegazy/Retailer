@@ -1,5 +1,7 @@
-// Integer-safe currency math to avoid floating point issues
-// All money values are stored as integers (piasters/cents)
+function getNumeralLocale() {
+  const style = document.documentElement.dataset.numeralStyle || "western";
+  return style === "arabic" ? "ar-SA" : "en-US";
+}
 
 export function toMinor(amount, decimals = 2) {
   return Math.round(Number(amount) * Math.pow(10, decimals));
@@ -21,6 +23,16 @@ export function multiplyMoney(amount, qty) {
   return toMinor(amount) * qty;
 }
 
+export function formatNumber(amount, options = {}) {
+  const { decimals = 2, showSymbol = false, symbol = "ر.س" } = options;
+  const locale = getNumeralLocale();
+  const formatted = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(Number(amount || 0));
+  return showSymbol ? `${formatted} ${symbol}` : formatted;
+}
+
 export function formatCurrency(amount, symbol = "ر.س", decimals = 2) {
-  return `${Number(amount || 0).toFixed(decimals)} ${symbol}`;
+  return formatNumber(amount, { decimals, showSymbol: true, symbol });
 }

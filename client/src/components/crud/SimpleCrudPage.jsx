@@ -104,14 +104,14 @@ export default function SimpleCrudPage({
         id: "index",
         header: "#",
         accessorFn: (_, i) => String(i + 1).padStart(2, '0'),
-        cell: (info) => <span className="text-[10px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
+        cell: (info) => <span className="text-[11px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
         size: 50,
       },
       ...columnDefs.map(col => ({
         accessorKey: col.key,
         header: col.label,
         cell: (info) => (
-          <span className={`text-[13px] font-bold text-slate-800 ${col.key === 'code' ? 'font-mono' : ''}`}>
+          <span className={`text-sm font-bold text-slate-800 ${col.key === 'code' ? 'font-mono' : ''}`}>
             {col.render
               ? col.render(info.getValue(), info.row.original)
               : <Highlight text={String(info.getValue() ?? '-')} query={query} />}
@@ -255,7 +255,7 @@ export default function SimpleCrudPage({
               className="h-px bg-zinc-400"
             />
             <Database className="h-3 w-3" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">نظام الإدارة الأساسي</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">نظام الإدارة الأساسي</span>
           </div>
           
           <h1 className="max-w-4xl text-5xl md:text-7xl font-black text-zinc-950 tracking-tighter leading-[1.1] mb-6">
@@ -302,7 +302,7 @@ export default function SimpleCrudPage({
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => exportToCSV(rows, columnDefs, title)}
-                    className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-[12px] font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
+                    className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
                   >
                     <Download className="h-4 w-4" /> تصدير السجلات
                   </motion.button>
@@ -312,7 +312,7 @@ export default function SimpleCrudPage({
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => exportToCSV(rows, columnDefs, title)}
-                  className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-[12px] font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
+                  className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
                 >
                   <Download className="h-4 w-4" /> تصدير السجلات
                 </motion.button>
@@ -365,7 +365,7 @@ export default function SimpleCrudPage({
                     </span>
                   )}
                 </div>
-                <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${editingRow ? 'text-amber-700/70' : 'text-slate-400'}`}>
+                <p className={`text-[11px] font-bold uppercase tracking-widest mt-1 ${editingRow ? 'text-amber-700/70' : 'text-slate-400'}`}>
                   {editingRow ? `تحديث السجل ID: ${editingRow.id}` : 'إنشاء سجل جديد'}
                 </p>
               </div>
@@ -392,7 +392,7 @@ export default function SimpleCrudPage({
                     transition={{ delay: 0.5 + (idx * 0.1) }}
                     className="flex flex-col gap-2 relative group"
                   >
-                    <label className={`text-[10px] font-black uppercase tracking-widest flex items-center justify-between ${editingRow ? 'text-amber-900/70' : 'text-slate-500'}`}>
+                    <label className={`text-[11px] font-black uppercase tracking-widest flex items-center justify-between ${editingRow ? 'text-amber-900/70' : 'text-slate-500'}`}>
                       {field.label}
                       {field.required && <span className={`text-[9px] font-bold ${editingRow ? 'text-amber-600' : 'text-zinc-400'}`}>مطلوب</span>}
                     </label>
@@ -434,7 +434,7 @@ export default function SimpleCrudPage({
                             ? "bg-emerald-50/80 border-emerald-200/60"
                             : "bg-slate-50/80 border-slate-200/60"
                         }`}>
-                          <span className={`text-[10px] font-black uppercase tracking-wider ${
+                          <span className={`text-[11px] font-black uppercase tracking-wider ${
                             isDebit ? "text-rose-500" : isCredit ? "text-emerald-600" : "text-slate-400"
                           }`}>
                             {isDebit ? "عليه رصيد (مديون)" : isCredit ? "له رصيد (دائن)" : "رصيد مسوّى"}
@@ -443,7 +443,7 @@ export default function SimpleCrudPage({
                             isDebit ? "text-rose-600" : isCredit ? "text-emerald-600" : "text-slate-400"
                           }`}>
                             {Math.abs(bal).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                            <span className="text-[10px] font-bold mr-1 opacity-70">ج.م</span>
+                            <span className="text-[11px] font-bold mr-1 opacity-70">ج.م</span>
                           </span>
                         </div>
                       );
@@ -464,7 +464,7 @@ export default function SimpleCrudPage({
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all shadow-xl disabled:opacity-50 ${
+                  className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50 ${
                     editingRow
                       ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                       : 'bg-zinc-950 hover:bg-zinc-800 shadow-zinc-950/20'

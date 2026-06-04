@@ -45,7 +45,7 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
         <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
-          <div className={`rounded-xl px-5 py-4 flex flex-wrap gap-x-6 gap-y-2 text-[13px] ${isReceive ? "bg-emerald-50 border border-emerald-200" : "bg-blue-50 border border-blue-200"}`}>
+          <div className={`rounded-xl px-5 py-4 flex flex-wrap gap-x-6 gap-y-2 text-sm ${isReceive ? "bg-emerald-50 border border-emerald-200" : "bg-blue-50 border border-blue-200"}`}>
             <span className={`font-black text-[15px] ${isReceive ? "text-emerald-800" : "text-blue-800"}`}>{d.reference_no}</span>
             <span className={`px-2 py-0.5 rounded text-[11px] font-black ${isReceive ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
               {isReceive ? "استلام" : "تسليم"}
@@ -55,7 +55,7 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
           </div>
 
           <div className="max-h-[280px] overflow-auto rounded-xl border border-slate-200">
-            <table className="w-full text-[12px] border-collapse">
+            <table className="w-full text-2sm border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
@@ -84,22 +84,22 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
           </div>
 
           <div className="flex items-center justify-between bg-slate-50 rounded-xl border border-slate-200 px-5 py-3">
-            <span className="text-[12px] font-black text-slate-500">إجمالي الكمية</span>
+            <span className="text-2sm font-black text-slate-500">إجمالي الكمية</span>
             <span className="font-black font-mono text-[18px] text-slate-900">
               {fmtQty((d.lines || []).reduce((s, l) => s + Number(l.quantity || 0), 0))}
             </span>
           </div>
 
           {d.notes && (
-            <div className="rounded-xl border border-slate-200 bg-amber-50 px-4 py-2.5 text-[12px] text-slate-600">
-              <span className="font-black text-slate-500 text-[10px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
+            <div className="rounded-xl border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
+              <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
             </div>
           )}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => onEdit(transfer.id)} className="flex items-center gap-2 rounded-xl bg-slate-800 px-6 py-2 text-[13px] font-black text-white hover:bg-slate-900 transition-colors">
+        <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
+        <button onClick={() => onEdit(transfer.id)} className="flex items-center gap-2 rounded-xl bg-slate-800 px-6 py-2 text-sm font-black text-white hover:bg-slate-900 transition-colors">
           <Pencil className="h-4 w-4" /> تعديل المستند
         </button>
       </div>
@@ -169,7 +169,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
     {
       id: "ref", header: "رقم المستند", width: 170, sortable: true,
       headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 font-mono text-[12px] font-black text-slate-800",
+      cellClass: "px-3 font-mono text-2sm font-black text-slate-800",
       render: (r) => r.reference_no,
     },
     {
@@ -183,19 +183,19 @@ export default function BranchTransferTodayModal({ open, onClose }) {
     {
       id: "partner_branch", header: "الفرع", width: 130, sortable: true,
       headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-[12px] font-bold text-slate-600",
+      cellClass: "px-3 text-2sm font-bold text-slate-600",
       render: (r) => r.partner_branch || "—",
     },
     {
       id: "line_count", header: "الأصناف", width: 80, sortable: true,
       headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-center text-[12px] font-bold text-slate-600",
+      cellClass: "px-3 text-center text-2sm font-bold text-slate-600",
       render: (r) => r.line_count,
     },
     {
       id: "total_qty", header: "الكمية", width: 90, sortable: true,
       headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-center font-mono font-black text-[13px] text-slate-800",
+      cellClass: "px-3 text-center font-mono font-black text-sm text-slate-800",
       render: (r) => fmtQty(r.total_qty),
     },
     {
@@ -230,7 +230,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
               value={docSearch}
               onChange={e => setDocSearch(e.target.value)}
               placeholder="BT-R-..."
-              className="w-[160px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-[12px] font-bold text-white outline-none focus:border-slate-400"
+              className="w-[160px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
             />
             <span className="text-[11px] font-black text-slate-400 shrink-0">بحث صنف:</span>
             <div className="relative flex-1 min-w-[160px]">
@@ -250,7 +250,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
                   else if (e.key === "Escape") setItemLookupOpen(false);
                 }}
                 placeholder="اسم الصنف أو SKU..."
-                className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-[12px] font-bold text-white outline-none focus:border-slate-400"
+                className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
               />
               {itemLookupOpen && filteredItemSuggestions.length > 0 && (
                 <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl">
@@ -264,8 +264,8 @@ export default function BranchTransferTodayModal({ open, onClose }) {
                         className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start ${activeItemIdx === i ? "bg-slate-100" : "hover:bg-slate-50"}`}
                       >
                         <Package className="w-4 h-4 text-slate-300 shrink-0" />
-                        <span className="text-[12px] font-bold text-slate-800">{item.name}</span>
-                        <span className="text-[10px] font-mono text-slate-400 mr-auto">{item.item_code || ""}</span>
+                        <span className="text-2sm font-bold text-slate-800">{item.name}</span>
+                        <span className="text-[11px] font-mono text-slate-400 mr-auto">{item.item_code || ""}</span>
                       </button>
                     ))}
                   </div>
@@ -284,15 +284,15 @@ export default function BranchTransferTodayModal({ open, onClose }) {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 border border-slate-200">
               <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
+                className="rounded-lg bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
               <span className="text-slate-300 text-[11px]">—</span>
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
+                className="rounded-lg bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
             </div>
             <div className="flex items-center gap-1">
               {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
                 <button key={v} onClick={() => setTypeFilter(v)}
-                  className={`rounded-full px-4 py-1.5 text-[12px] font-black transition-all ${typeFilter === v ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                  className={`rounded-full px-4 py-1.5 text-2sm font-black transition-all ${typeFilter === v ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                   {l}
                 </button>
               ))}

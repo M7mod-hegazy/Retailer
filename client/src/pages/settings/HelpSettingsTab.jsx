@@ -28,7 +28,7 @@ export function HelpSettingsTab() {
             <Route className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-[13px] font-black uppercase tracking-widest text-slate-800">
+            <div className="text-sm font-black uppercase tracking-widest text-slate-800">
               {lang === "ar" ? "الشروحات التوجيهية (Tours)" : "Page Onboarding Tours"}
             </div>
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-500 max-w-[400px]">
@@ -39,7 +39,7 @@ export function HelpSettingsTab() {
           </div>
         </div>
         <div className="shrink-0 flex items-center gap-3 border-r border-slate-100 pr-4">
-           <span className={`inline-flex items-center rounded-sm px-2 py-1 text-[10px] font-black uppercase tracking-widest ${toursDisabledGlobally ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"}`}>
+           <span className={`inline-flex items-center rounded-sm px-2 py-1 text-[11px] font-black uppercase tracking-widest ${toursDisabledGlobally ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"}`}>
             {toursDisabledGlobally ? (lang === "ar" ? "معطل" : "Disabled") : lang === "ar" ? "مفعل" : "Enabled"}
           </span>
           {!toursDisabledGlobally && (
@@ -58,7 +58,7 @@ export function HelpSettingsTab() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-[13px] font-black uppercase tracking-widest text-slate-800">
+            <div className="text-sm font-black uppercase tracking-widest text-slate-800">
               {lang === "ar" ? "التلميحات السريعة (Tooltips)" : "Smart Tooltips"}
             </div>
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-500 max-w-[400px]">
@@ -69,7 +69,7 @@ export function HelpSettingsTab() {
           </div>
         </div>
         <div className="shrink-0 flex items-center gap-3 border-r border-slate-100 pr-4">
-           <span className={`inline-flex items-center rounded-sm px-2 py-1 text-[10px] font-black uppercase tracking-widest ${tooltipsDisabledGlobally ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"}`}>
+           <span className={`inline-flex items-center rounded-sm px-2 py-1 text-[11px] font-black uppercase tracking-widest ${tooltipsDisabledGlobally ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"}`}>
             {tooltipsDisabledGlobally ? (lang === "ar" ? "معطل" : "Disabled") : lang === "ar" ? "مفعل" : "Enabled"}
           </span>
           {!tooltipsDisabledGlobally && (
@@ -83,11 +83,11 @@ export function HelpSettingsTab() {
 
       {/* Reset */}
       <div className="flex items-center justify-between gap-4 p-5 rounded-sm border border-amber-200 bg-amber-50/50 transition-all hover:border-amber-300">
-         <div className="flex items-center gap-2 text-[12px] font-bold text-amber-800">
+         <div className="flex items-center gap-2 text-2sm font-bold text-amber-800">
             <RotateCcw size={16} className="text-amber-600" />
             {lang === "ar" ? "إعادة تعيين وعرض جميع الشروحات التوجيهية للواجهة" : "Reset all tour steps"}
          </div>
-         <button onClick={resetAllTours} className="flex h-9 items-center justify-center rounded-sm bg-amber-600 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-amber-700 transition-all active:scale-95 shadow-md">
+         <button onClick={resetAllTours} className="flex h-9 items-center justify-center rounded-sm bg-amber-600 px-5 text-2sm font-black text-white px-6 uppercase tracking-widest hover:bg-amber-700 transition-all active:scale-95 shadow-md">
             إعادة الضبط
          </button>
       </div>

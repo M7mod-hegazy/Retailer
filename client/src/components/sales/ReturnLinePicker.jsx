@@ -10,7 +10,7 @@ export default function ReturnLinePicker({ lines = [], selected = {}, onToggle, 
         >
           <span className="text-sm text-slate-100 flex flex-col gap-0.5">
             <span className="flex items-center gap-1.5">
-              {(line.item_code || line.code) && <span className="font-mono text-[10px] text-slate-400 bg-white/10 px-1.5 py-0.5 rounded">{line.item_code || line.code}</span>}
+              {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 bg-white/10 px-1.5 py-0.5 rounded">{line.item_code || line.code}</span>}
               {line.item_name || `Item #${line.item_id}`}
             </span>
             <span className="text-[11px] text-slate-400">المسموح: {line.returnable_quantity ?? line.quantity}</span>

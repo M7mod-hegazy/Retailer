@@ -263,11 +263,11 @@ export default function QuotationFormPage() {
                   {cart.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center text-slate-300">
                        <ShoppingCart className="h-16 w-16 mb-4 opacity-20" />
-                       <p className="text-[14px] font-black">عرض السعر فارغ</p>
+                       <p className="text-sm font-black">عرض السعر فارغ</p>
                        <p className="text-[11px] font-bold opacity-60">ابدأ بإضافة الأصناف للعرض</p>
                     </div>
                   ) : cart.map((item, idx) => (
-                    <div key={item.id} className="grid grid-cols-[50px_minmax(200px,3fr)_120px_100px_100px_120px_50px] items-center text-[12px] hover:bg-slate-50 transition-colors">
+                    <div key={item.id} className="grid grid-cols-[50px_minmax(200px,3fr)_120px_100px_100px_120px_50px] items-center text-2sm hover:bg-slate-50 transition-colors">
                        <div className="px-4 py-3 text-center font-mono text-slate-400 border-l border-slate-50">{idx + 1}</div>
                        <div className="px-4 py-3 font-black text-slate-800 border-l border-slate-50">
                           <div className="flex items-center gap-2">
@@ -289,8 +289,8 @@ export default function QuotationFormPage() {
                               );
                             })()}
                             <div className="flex flex-col">
-                              <span className="text-[12px]">{item.name}</span>
-                              <span className="font-mono text-[10px] text-slate-400">{item.code}</span>
+                              <span className="text-2sm">{item.name}</span>
+                              <span className="font-mono text-[11px] text-slate-400">{item.code}</span>
                             </div>
                           </div>
                        </div>
@@ -346,8 +346,8 @@ export default function QuotationFormPage() {
                        <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-800"><User className="h-4 w-4" /></div>
                           <div className="flex flex-col">
-                             <span className="text-[13px] font-black">{selectedCustomer.name}</span>
-                             <span className="text-[10px] font-bold opacity-60">{selectedCustomer.phone}</span>
+                             <span className="text-sm font-black">{selectedCustomer.name}</span>
+                             <span className="text-[11px] font-bold opacity-60">{selectedCustomer.phone}</span>
                           </div>
                        </div>
                        <button onClick={() => { setSelectedCustomer(null); setCustomerQuery(""); }} className="opacity-40 hover:opacity-100"><X className="h-4 w-4"/></button>
@@ -361,7 +361,7 @@ export default function QuotationFormPage() {
                          placeholder="ابحث عن عميل..."
                          value={customerQuery}
                          onChange={(e) => { setCustomerQuery(e.target.value); setShowCustomerList(true); }}
-                         className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2.5 pr-10 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
+                         className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2.5 pr-10 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
                        />
                        {showCustomerList && filteredCustomers.length > 0 && (
                          <div className="absolute top-full right-0 z-20 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-xl">
@@ -371,8 +371,8 @@ export default function QuotationFormPage() {
                                 onClick={() => { setSelectedCustomer(c); setShowCustomerList(false); }}
                                 className="flex w-full flex-col px-4 py-2 text-right hover:bg-slate-50 border-b last:border-0 border-slate-50"
                               >
-                                 <span className="text-[12px] font-black text-slate-800">{c.name}</span>
-                                 <span className="text-[10px] font-bold text-slate-400">{c.phone}</span>
+                                 <span className="text-2sm font-black text-slate-800">{c.name}</span>
+                                 <span className="text-[11px] font-bold text-slate-400">{c.phone}</span>
                               </button>
                             ))}
                          </div>
@@ -391,7 +391,7 @@ export default function QuotationFormPage() {
                           type="date" 
                           value={expiresAt}
                           onChange={(e) => setExpiresAt(e.target.value)}
-                          className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2.5 pr-10 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
+                          className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2.5 pr-10 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
                         />
                      </div>
                   </div>
@@ -402,7 +402,7 @@ export default function QuotationFormPage() {
                         placeholder="اكتب أي ملاحظات إضافية تظهر في العرض..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800 resize-none"
+                        className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 resize-none"
                      />
                   </div>
                </div>
@@ -411,24 +411,24 @@ export default function QuotationFormPage() {
             {/* Totals Section */}
             <div className="mt-auto space-y-4">
                <div className="rounded-md border border-slate-200 bg-slate-50 p-4 space-y-3">
-                  <div className="flex justify-between text-[12px] font-bold text-slate-500">
+                  <div className="flex justify-between text-2sm font-bold text-slate-500">
                      <span>الإجمالي قبل الخصم</span>
                      <span>{formatMoney(totals.subtotal)}</span>
                   </div>
-                  <div className="flex justify-between text-[12px] font-bold text-rose-500">
+                  <div className="flex justify-between text-2sm font-bold text-rose-500">
                      <span>إجمالي الخصم</span>
                      <span>-{formatMoney(totals.discount)}</span>
                   </div>
                   <div className="h-px bg-slate-200" />
                   <div className="flex items-center justify-between">
-                     <span className="text-[14px] font-black text-slate-800 uppercase tracking-tight">الصافي النهائي</span>
+                     <span className="text-sm font-black text-slate-800 uppercase tracking-tight">الصافي النهائي</span>
                      <span className="text-[24px] font-black text-slate-900">{formatMoney(totals.total)}</span>
                   </div>
                </div>
 
                <div className="grid grid-cols-2 gap-3">
                   <PermissionGate page="quotations" action="print">
-                    <button className="flex h-11 items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white text-[13px] font-black text-slate-700 hover:bg-slate-50">
+                    <button className="flex h-11 items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white text-sm font-black text-slate-700 hover:bg-slate-50">
                        <Printer className="h-4 w-4 text-slate-400" /> معاينة
                     </button>
                   </PermissionGate>
@@ -436,7 +436,7 @@ export default function QuotationFormPage() {
                     <button 
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="flex h-11 items-center justify-center gap-2 rounded-sm bg-slate-800 text-[13px] font-black text-white hover:bg-slate-700 shadow-md transition-all active:scale-95"
+                      className="flex h-11 items-center justify-center gap-2 rounded-sm bg-slate-800 text-sm font-black text-white hover:bg-slate-700 shadow-md transition-all active:scale-95"
                     >
                        <Save className="h-4 w-4" /> حفظ العرض
                     </button>
@@ -445,7 +445,7 @@ export default function QuotationFormPage() {
                
                <div className="flex items-center gap-3 rounded-sm border border-amber-100 bg-amber-50 p-3">
                   <Info className="h-4 w-4 text-amber-600 shrink-0" />
-                  <p className="text-[10px] font-bold text-amber-900 leading-tight">عرض السعر لا يخصم من رصيد المخزن حتى يتم تحويله لفاتورة بيع فعلية.</p>
+                  <p className="text-[11px] font-bold text-amber-900 leading-tight">عرض السعر لا يخصم من رصيد المخزن حتى يتم تحويله لفاتورة بيع فعلية.</p>
                </div>
             </div>
          </aside>
@@ -472,17 +472,17 @@ export default function QuotationFormPage() {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-[14px] font-black text-slate-900 mb-1">تجاهل عرض السعر؟</h3>
-              <p className="text-[12px] font-bold text-slate-500 leading-relaxed">
+              <h3 className="text-sm font-black text-slate-900 mb-1">تجاهل عرض السعر؟</h3>
+              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
                 هل أنت متأكد من رغبتك في المغادرة؟ سيتم <span className="text-rose-600">إلغاء التعديلات غير المحفوظة</span> ولن يتم حفظها.
               </p>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setWarnModalOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50">
+            <button onClick={() => setWarnModalOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
               تراجع وإكمال العرض
             </button>
-            <button onClick={() => navigate("/operations/quotations")} className="rounded-sm bg-rose-600 px-5 py-2 text-[13px] font-black text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20">
+            <button onClick={() => navigate("/operations/quotations")} className="rounded-sm bg-rose-600 px-5 py-2 text-sm font-black text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20">
               نعم، تجاهل ومغادرة
             </button>
           </div>

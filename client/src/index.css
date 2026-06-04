@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Noto+Sans+Arabic:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@400;500;600;700&family=Changa:wght@400;500;600;700;800&family=Scheherazade+New:wght@400;500;600;700&family=Amiri:wght@400;700&family=Markazi+Text:wght@400;500;600;700&family=Mirza:wght@400;500;600;700&family=Rakkas&family=Lalezar&family=El+Messiri:wght@400;500;600;700&family=Alexandria:wght@400;500;600;700&family=Lemonada:wght@400;500;600;700&family=Lateef:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&family=Mada:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -87,6 +87,12 @@
   --info-border:     #7dd3fc;
   --info-light:      rgba(56, 187, 248, 0.1);
 
+  /* ─── Font System ─── */
+  --font-body:   'Noto Sans Arabic', 'Tajawal', sans-serif;
+  --font-number: 'Outfit', sans-serif;
+  --font-mono:   'Outfit', monospace;
+  --font-number-scale: 1;
+
   /* ─── Animation ─── */
   --duration-instant: 60ms;
   --duration-fast:    120ms;
@@ -135,7 +141,7 @@ html {
 }
 
 body {
-  font-family: 'Tajawal', 'Noto Sans Arabic', 'Outfit', sans-serif;
+  font-family: var(--font-body);
   direction: rtl;
   text-align: start;
   background: var(--bg-base);
@@ -195,8 +201,10 @@ textarea {
 
 /* Numbers always LTR */
 .number, .currency, .quantity, .invoice-number {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-number);
   font-variant-numeric: tabular-nums;
+  font-size: calc(1em * var(--font-number-scale));
+  line-height: 1.1;
 }
 
 .ar-text {
@@ -204,14 +212,14 @@ textarea {
 }
 
 .mixed-number {
-  font-family: 'Outfit', 'Tajawal', sans-serif;
+  font-family: var(--font-number), var(--font-body);
   direction: ltr;
   display: inline-block;
 }
 
 .code, .invoice-ref, .barcode-text {
   direction: ltr;
-  font-family: 'Outfit', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 0.05em;
   display: inline-block;
 }
@@ -682,12 +690,12 @@ textarea {
   }
   
   .kpi-card__value {
-    font-size: 1.75rem;
+    font-size: calc(1.75rem * var(--font-number-scale));
     font-weight: 800;
     color: var(--text-primary);
     line-height: 1.1;
     letter-spacing: -0.02em;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-number);
   }
   
   .kpi-card__meta {

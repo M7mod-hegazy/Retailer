@@ -23,11 +23,11 @@ const SearchInput = forwardRef(function SearchInput({
 }, ref) {
 
   const sz = {
-    sm: { wrap: 'h-8',   input: 'py-1.5 text-[12px]', icon: 'h-3.5 w-3.5', clearBtn: 'h-4 w-4 left-2',   clearIcon: 'h-[9px] w-[9px]', pr: 'pr-8',  pl: 'pl-7'  },
-    md: { wrap: 'h-9',   input: 'py-2   text-[13px]', icon: 'h-4 w-4',     clearBtn: 'h-5 w-5 left-2.5', clearIcon: 'h-3 w-3',         pr: 'pr-9',  pl: 'pl-8'  },
-    lg: { wrap: 'h-10',  input: 'py-2.5 text-[14px]', icon: 'h-4 w-4',     clearBtn: 'h-5 w-5 left-2.5', clearIcon: 'h-3 w-3',         pr: 'pr-9',  pl: 'pl-8'  },
+    sm: { wrap: 'h-8',   input: 'py-1.5 text-2sm', icon: 'h-3.5 w-3.5', clearBtn: 'h-4 w-4 left-2',   clearIcon: 'h-[9px] w-[9px]', pr: 'pr-8',  pl: 'pl-7'  },
+    md: { wrap: 'h-9',   input: 'py-2   text-sm', icon: 'h-4 w-4',     clearBtn: 'h-5 w-5 left-2.5', clearIcon: 'h-3 w-3',         pr: 'pr-9',  pl: 'pl-8'  },
+    lg: { wrap: 'h-10',  input: 'py-2.5 text-sm', icon: 'h-4 w-4',     clearBtn: 'h-5 w-5 left-2.5', clearIcon: 'h-3 w-3',         pr: 'pr-9',  pl: 'pl-8'  },
   }[size] || {
-    wrap: 'h-9', input: 'py-2 text-[13px]', icon: 'h-4 w-4', clearBtn: 'h-5 w-5 left-2.5', clearIcon: 'h-3 w-3', pr: 'pr-9', pl: 'pl-8',
+    wrap: 'h-9', input: 'py-2 text-sm', icon: 'h-4 w-4', clearBtn: 'h-5 w-5 left-2.5', clearIcon: 'h-3 w-3', pr: 'pr-9', pl: 'pl-8',
   };
 
   return (

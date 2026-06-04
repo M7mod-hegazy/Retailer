@@ -41,7 +41,7 @@ export function SmartTooltip({ pageKey, tooltipKey, className = '' }) {
         type="button"
         onClick={() => isOpen ? closeTooltip() : openTooltip(globalKey)}
         onMouseLeave={() => closeTooltip()}
-        className="mx-1 flex h-4 w-4 items-center justify-center rounded-full bg-info/15 text-[10px] font-bold leading-none text-info-DEFAULT transition hover:bg-info/25"
+        className="mx-1 flex h-4 w-4 items-center justify-center rounded-full bg-info/15 text-[11px] font-bold leading-none text-info-DEFAULT transition hover:bg-info/25"
         title="مساعدة"
       >
         ?

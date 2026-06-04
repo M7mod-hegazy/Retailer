@@ -57,7 +57,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
         }`}
       >
         {Icon && <Icon className="h-4 w-4 text-slate-400 shrink-0" />}
-        <span className={`text-[12px] font-bold truncate max-w-[120px] ${selectedOption ? 'text-zinc-800' : 'text-slate-400'}`}>
+        <span className={`text-2sm font-bold truncate max-w-[120px] ${selectedOption ? 'text-zinc-800' : 'text-slate-400'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -75,7 +75,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
             <div className="max-h-[250px] overflow-y-auto no-scrollbar flex flex-col gap-0.5">
               <button
                 onClick={() => { onChange(""); setOpen(false); }}
-                className={`w-full text-right px-3 py-2 rounded-xl text-[12px] font-bold transition-colors ${
+                className={`w-full text-right px-3 py-2 rounded-xl text-2sm font-bold transition-colors ${
                   value === "" ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
@@ -85,7 +85,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
                 <button
                   key={opt.value}
                   onClick={() => { onChange(opt.value); setOpen(false); }}
-                  className={`w-full text-right px-3 py-2 rounded-xl text-[12px] font-bold transition-colors ${
+                  className={`w-full text-right px-3 py-2 rounded-xl text-2sm font-bold transition-colors ${
                     value === opt.value ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -152,7 +152,7 @@ function SmartDatePicker({ dateFrom, dateTo, setDateFrom, setDateTo }) {
           <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: "auto", opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="flex items-center">
             <input 
               type="date" value={dateFrom} onChange={handleSingleDate} 
-              className="h-8 bg-transparent text-[12px] font-bold text-zinc-700 outline-none px-2 cursor-pointer" 
+              className="h-8 bg-transparent text-2sm font-bold text-zinc-700 outline-none px-2 cursor-pointer" 
             />
           </motion.div>
         )}
@@ -160,12 +160,12 @@ function SmartDatePicker({ dateFrom, dateTo, setDateFrom, setDateTo }) {
           <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: "auto", opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="flex items-center gap-1 overflow-hidden">
             <input 
               type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} 
-              className="h-8 bg-transparent text-[12px] font-bold text-zinc-700 outline-none px-2 cursor-pointer w-[110px]" 
+              className="h-8 bg-transparent text-2sm font-bold text-zinc-700 outline-none px-2 cursor-pointer w-[110px]" 
             />
             <ArrowLeftRight className="h-3 w-3 text-slate-300 shrink-0" />
             <input 
               type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} 
-              className="h-8 bg-transparent text-[12px] font-bold text-zinc-700 outline-none px-2 cursor-pointer w-[110px]" 
+              className="h-8 bg-transparent text-2sm font-bold text-zinc-700 outline-none px-2 cursor-pointer w-[110px]" 
             />
           </motion.div>
         )}
@@ -227,7 +227,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-emerald-100 text-emerald-600">
               <Command className="h-4 w-4" />
             </div>
-            <span className="text-[13px] font-black text-slate-800 tracking-tight">
+            <span className="text-sm font-black text-slate-800 tracking-tight">
               {initialData?.id ? 'تعديل الإيراد' : 'تسجيل إيراد جديد'}
             </span>
           </div>
@@ -248,20 +248,20 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">تصنيف الإيراد <span className="text-emerald-500">*</span></label>
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصنيف الإيراد <span className="text-emerald-500">*</span></label>
               <select 
                 value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}
-                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-[13px] font-bold outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 appearance-none"
+                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 appearance-none"
               >
                 <option value="" disabled>اختر التصنيف...</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</label>
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</label>
               <select 
                 value={form.payment_method} onChange={e => setForm({...form, payment_method: e.target.value})}
-                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-[13px] font-bold outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 appearance-none"
+                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 appearance-none"
               >
                 <option value="cash">نقدي (Cash)</option>
                 <option value="bank_transfer">تحويل بنكي</option>
@@ -271,24 +271,24 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">البيان / المصدر</label>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">البيان / المصدر</label>
             <input 
               placeholder="اكتب مصدر الإيراد أو وصفاً مختصراً..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}
-              className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-[13px] font-bold outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
+              className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ملاحظات إضافية</label>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ملاحظات إضافية</label>
             <textarea 
               placeholder="تفاصيل إضافية (اختياري)..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}
-              className="w-full h-20 resize-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[12px] font-medium outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
+              className="w-full h-20 resize-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-2sm font-medium outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
             />
           </div>
         </div>
 
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
             <span className="px-1.5 py-0.5 rounded border border-slate-200 bg-white">Ctrl</span>
             <span>+</span>
             <span className="px-1.5 py-0.5 rounded border border-slate-200 bg-white">Enter</span>
@@ -296,7 +296,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           </div>
           <button 
             onClick={() => onSubmit(form)} disabled={saving || !form.amount || !form.category_id}
-            className="h-10 px-6 rounded-xl bg-zinc-900 text-white text-[12px] font-black hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-lg shadow-zinc-900/20 flex items-center gap-2"
+            className="h-10 px-6 rounded-xl bg-zinc-900 text-white text-2sm font-black hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-lg shadow-zinc-900/20 flex items-center gap-2"
           >
             {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             تأكيد العملية
@@ -470,8 +470,8 @@ export default function RevenuesListPage() {
           <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tighter">
             تدفقات الإيرادات
           </motion.h1>
-          <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="text-[13px] font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
-            دفتر تشغيلي لإدارة وتسجيل كافة الإيرادات اليومية وتتبع مصادر الدخل. استخدم الفلاتر للبحث وتحديد فترات زمنية، واضغط على <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-500 mx-1 shadow-sm">Ctrl+K</kbd> في أي وقت لتسجيل إيراد جديد.
+          <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="text-sm font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
+            دفتر تشغيلي لإدارة وتسجيل كافة الإيرادات اليومية وتتبع مصادر الدخل. استخدم الفلاتر للبحث وتحديد فترات زمنية، واضغط على <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[11px] font-mono text-slate-500 mx-1 shadow-sm">Ctrl+K</kbd> في أي وقت لتسجيل إيراد جديد.
           </motion.p>
         </div>
 
@@ -488,14 +488,14 @@ export default function RevenuesListPage() {
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-1.5 cursor-default" title="إجمالي إيرادات اليوم فقط">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">إيراد اليوم:</span>
-                  <span className="text-[12px] font-black font-mono text-emerald-600">{fmt(stats.todayAmt)} ج.م</span>
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إيراد اليوم:</span>
+                  <span className="text-2sm font-black font-mono text-emerald-600">{fmt(stats.todayAmt)} ج.م</span>
                 </div>
                 <div className="h-4 w-px bg-slate-200 hidden sm:block" />
                 <div className="flex items-center gap-1.5 cursor-default" title="إجمالي الفترة المحددة بالفلتر">
                   <Database className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">إجمالي الفترة:</span>
-                  <span className="text-[12px] font-black font-mono text-zinc-800">{fmt(stats.total)} ج.م</span>
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إجمالي الفترة:</span>
+                  <span className="text-2sm font-black font-mono text-zinc-800">{fmt(stats.total)} ج.م</span>
                 </div>
               </div>
             </div>
@@ -505,7 +505,7 @@ export default function RevenuesListPage() {
               
               {/* Add Button */}
               <PermissionGate page="revenues" action="add">
-              <button data-help="add-button" onClick={openCreate} title="تسجيل إيراد جديد (Ctrl+K)" className="h-10 px-6 shrink-0 flex items-center justify-center gap-2 rounded-xl text-[12px] font-black text-white bg-zinc-900 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/20 active:scale-95 w-full sm:w-auto">
+              <button data-help="add-button" onClick={openCreate} title="تسجيل إيراد جديد (Ctrl+K)" className="h-10 px-6 shrink-0 flex items-center justify-center gap-2 rounded-xl text-2sm font-black text-white bg-zinc-900 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/20 active:scale-95 w-full sm:w-auto">
                 <Command className="h-3.5 w-3.5 text-zinc-400" /> تسجيل إيراد
               </button>
               </PermissionGate>
@@ -518,7 +518,7 @@ export default function RevenuesListPage() {
                 <input 
                   value={query} onChange={e => setQuery(e.target.value)} 
                   placeholder="ابحث في البيان والملاحظات..." 
-                  className="w-full h-10 rounded-xl bg-slate-50/80 border border-transparent pr-9 pl-4 text-[12px] font-bold text-zinc-800 outline-none hover:bg-slate-100 focus:bg-white focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400" 
+                  className="w-full h-10 rounded-xl bg-slate-50/80 border border-transparent pr-9 pl-4 text-2sm font-bold text-zinc-800 outline-none hover:bg-slate-100 focus:bg-white focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400" 
                 />
               </div>
 
@@ -550,7 +550,7 @@ export default function RevenuesListPage() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
             <Database className="h-12 w-12 stroke-[1]" />
-            <span className="text-[14px] font-black">لا توجد سجلات تطابق بحثك</span>
+            <span className="text-sm font-black">لا توجد سجلات تطابق بحثك</span>
           </div>
         ) : (
           groupedRows.map(([date, dateRows]) => (
@@ -582,7 +582,7 @@ export default function RevenuesListPage() {
                           <span className="text-[15px] font-black text-zinc-900 leading-none">
                             <Highlight text={row.description || "إيراد عام"} query={query} />
                           </span>
-                          <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-black text-slate-500 tracking-wider">
+                          <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-[11px] font-black text-slate-500 tracking-wider">
                             <Highlight text={row.category_name || "غير مصنف"} query={query} />
                           </span>
                         </div>

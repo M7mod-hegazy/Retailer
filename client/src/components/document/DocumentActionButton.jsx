@@ -6,7 +6,7 @@ import React from "react";
  * quotation, etc).
  *
  * It codifies the flat invoice toolbar style that all of those pages already
- * use by hand: h-9, rounded-sm, text-[13px], font-black, gap-2, icon + label.
+ * use by hand: h-9, rounded-sm, text-sm, font-black, gap-2, icon + label.
  *
  * Variants encode the ACTION (identical color everywhere):
  *   - print  : neutral white/slate outline (Print / Preview)
@@ -22,15 +22,15 @@ import React from "react";
 // Per-action fixed styling (color encodes the action, same on every page).
 const VARIANTS = {
   print:
-    "px-4 text-[13px] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+    "px-4 text-sm border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
   delete:
-    "px-4 text-[13px] border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100",
+    "px-4 text-sm border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100",
   edit:
-    "px-6 text-[13px] bg-indigo-600 text-white hover:bg-indigo-700",
+    "px-6 text-sm bg-indigo-600 text-white hover:bg-indigo-700",
   today:
-    "px-4 text-[13px] border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+    "px-4 text-sm border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
   ghost:
-    "px-4 text-[13px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+    "px-4 text-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
 };
 
 // Identity colors for the PRIMARY save/submit button (one per document type).
@@ -58,7 +58,7 @@ export default function DocumentActionButton({
 }) {
   const isPrimary = variant === "primary";
   const variantClasses = isPrimary
-    ? `px-6 text-[13px] text-white ${IDENTITY[identity] || IDENTITY.slate}`
+    ? `px-6 text-sm text-white ${IDENTITY[identity] || IDENTITY.slate}`
     : VARIANTS[variant] || VARIANTS.ghost;
 
   const classes = [BASE, variantClasses, className].filter(Boolean).join(" ");

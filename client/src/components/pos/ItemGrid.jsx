@@ -124,13 +124,13 @@ export default function ItemGrid() {
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '4px' }}>
                 {item.name}
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'Inter, monospace' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                 {item.item_code || item.code || item.barcode || "بدون كود"}
               </div>
             </div>
             
             <div style={{ marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary)', fontFamily: 'Inter, sans-serif' }}>
+              <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-number)' }}>
                 {Number(item.sale_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </span>
             </div>

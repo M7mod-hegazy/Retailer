@@ -26,7 +26,7 @@ export default function BackupSettingsTab() {
             <Download className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-[13px] font-black uppercase tracking-widest text-slate-800">النسخ الاحتياطي اليدوي</div>
+            <div className="text-sm font-black uppercase tracking-widest text-slate-800">النسخ الاحتياطي اليدوي</div>
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-500 w-full max-w-[400px]">
               يقوم النظام بتجميد العمليات وإنشاء نسخة احتياطية فورية من قاعدة البيانات الحالية داخل المسار المحدد.
             </p>
@@ -34,7 +34,7 @@ export default function BackupSettingsTab() {
         </div>
         <div className="shrink-0">
           <PermissionGate page="backup" action="create">
-            <button type="button" onClick={handleCreate} className="flex h-9 items-center justify-center rounded-sm bg-slate-900 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-md">
+            <button type="button" onClick={handleCreate} className="flex h-9 items-center justify-center rounded-sm bg-slate-900 px-5 text-2sm font-black text-white px-6 uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-md">
               إنشاء نسخة الآن
             </button>
           </PermissionGate>
@@ -47,7 +47,7 @@ export default function BackupSettingsTab() {
             <UploadCloud className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-[13px] font-black uppercase tracking-widest text-rose-800">استعادة البيانات</div>
+            <div className="text-sm font-black uppercase tracking-widest text-rose-800">استعادة البيانات</div>
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-rose-600/80 w-full max-w-[400px]">
               اختر ملف نسخة احتياطية صالحاً للاستعادة. تحذير: هذه العملية ستستبدل جميع البيانات الحالية بالبيانات الموجودة في النسخة.
             </p>
@@ -55,7 +55,7 @@ export default function BackupSettingsTab() {
         </div>
         <div className="shrink-0">
           <PermissionGate page="backup" action="restore">
-            <label className="flex h-9 items-center justify-center rounded-sm bg-rose-600 px-5 text-[12px] font-black text-white px-6 uppercase tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-md cursor-pointer">
+            <label className="flex h-9 items-center justify-center rounded-sm bg-rose-600 px-5 text-2sm font-black text-white px-6 uppercase tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-md cursor-pointer">
               {restoring ? "جارٍ الاستعادة..." : "استعادة بيانات"}
               <input
                 type="file"

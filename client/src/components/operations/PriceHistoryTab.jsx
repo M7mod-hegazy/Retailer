@@ -48,7 +48,7 @@ const DOC_TYPE_LABELS = {
 // ── sub-components ────────────────────────────────────────────────────────────
 function Badge({ label, colorClass }) {
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${colorClass ?? "bg-slate-100 text-slate-600"}`}>
+    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${colorClass ?? "bg-slate-100 text-slate-600"}`}>
       {label}
     </span>
   );
@@ -312,9 +312,9 @@ function PriceSparkline({ label, points, currentVal }) {
   if (!points || points.length < 2) {
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-3">
-        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{label}</p>
+        <p className="text-[11px] font-bold text-slate-400 uppercase mb-1">{label}</p>
         <p className="text-xl font-black text-slate-800 font-mono">{fmt(currentVal)}</p>
-        <p className="text-[10px] text-slate-400 mt-1">تغيير واحد فقط</p>
+        <p className="text-[11px] text-slate-400 mt-1">تغيير واحد فقط</p>
       </div>
     );
   }
@@ -333,7 +333,7 @@ function PriceSparkline({ label, points, currentVal }) {
   const color = isUp ? "#e11d48" : "#059669";
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3">
-      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{label}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase mb-1">{label}</p>
       <p className="text-xl font-black text-slate-800 font-mono">{fmt(currentVal)}</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 mt-1" preserveAspectRatio="none">
         <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -378,7 +378,7 @@ function ProductDetail({ data }) {
           </Link>
           {[["سعر البيع", item.sale_price], ["سعر الشراء", item.purchase_price], ["سعر الجملة", item.wholesale_price]].map(([label, val]) => (
             <div key={label} className="text-center">
-              <p className="text-[10px] text-slate-400 font-bold">{label}</p>
+              <p className="text-[11px] text-slate-400 font-bold">{label}</p>
               <p className="text-xl font-black text-slate-800 font-mono">{fmt(val)}</p>
             </div>
           ))}
@@ -402,7 +402,7 @@ function ProductDetail({ data }) {
 
       {/* History table */}
       <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">سجل التغييرات</p>
+        <p className="text-[11px] font-bold text-slate-400 uppercase mb-2">سجل التغييرات</p>
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full text-sm text-right border-collapse">
             <thead>
@@ -431,7 +431,7 @@ function ProductDetail({ data }) {
                     <td className={`px-3 py-2 font-mono font-bold ${isBaseline ? "text-slate-500" : "text-slate-800"}`}>{fmt(r.new_value)}</td>
                     <td className="px-3 py-2">
                       {isBaseline
-                        ? <span className="text-[10px] text-slate-400 italic">—</span>
+                        ? <span className="text-[11px] text-slate-400 italic">—</span>
                         : <DiffChip oldVal={r.old_value} newVal={r.new_value} />}
                     </td>
                     <td className="px-3 py-2">
@@ -533,11 +533,11 @@ function ProductView() {
               }`}>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-slate-800 truncate leading-tight">{p.name}</p>
-                <p className="text-[10px] font-mono font-black text-indigo-600">{p.code || "—"}</p>
-                {p.category_name && <p className="text-[10px] text-slate-400 truncate">{p.category_name}</p>}
-                <p className="text-[10px] text-slate-300 mt-0.5">{p.latest_change?.slice(0, 10)}</p>
+                <p className="text-[11px] font-mono font-black text-indigo-600">{p.code || "—"}</p>
+                {p.category_name && <p className="text-[11px] text-slate-400 truncate">{p.category_name}</p>}
+                <p className="text-[11px] text-slate-300 mt-0.5">{p.latest_change?.slice(0, 10)}</p>
               </div>
-              <span className="text-[10px] text-slate-400 shrink-0 mt-0.5 whitespace-nowrap">{p.change_count} تغيير</span>
+              <span className="text-[11px] text-slate-400 shrink-0 mt-0.5 whitespace-nowrap">{p.change_count} تغيير</span>
             </button>
           ))}
         </div>

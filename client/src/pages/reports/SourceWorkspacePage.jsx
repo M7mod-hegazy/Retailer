@@ -239,7 +239,7 @@ function ExportPill({ format, onExport }) {
   };
   return (
     <button onClick={handleClick} disabled={status === "loading"}
-      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all duration-200 border bg-white shadow-sm hover:shadow-md active:scale-95"
+      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold transition-all duration-200 border bg-white shadow-sm hover:shadow-md active:scale-95"
       style={{ color: status === "ready" ? "#047857" : status === "error" ? "#b91c1c" : cfg.color, borderColor: status === "ready" ? "#6ee7b7" : status === "error" ? "#fca5a5" : "#e4e4e7" }}>
       {status === "loading" ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
       <span>{status === "loading" ? "جاري..." : status === "ready" ? "تم ✓" : status === "error" ? "خطأ" : cfg.label}</span>
@@ -265,7 +265,7 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
       <div className="space-y-1.5">
         <label className="text-[11px] font-semibold text-slate-500">{filterLabel}</label>
         <select value={value || ""} onChange={(e) => onChange(filter.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
+          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
           <option value="">الكل</option>
           {opts.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label || a(opt.label_key)}</option>
@@ -280,7 +280,7 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
       <div className="space-y-1.5">
         <label className="text-[11px] font-semibold text-slate-500">{filterLabel}</label>
         <input type="text" value={value || ""} onChange={(e) => onChange(filter.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm" />
+          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm" />
       </div>
     );
   }
@@ -743,7 +743,7 @@ export default function SourceWorkspacePage() {
             <h1 className="text-2xl font-black text-zinc-900 mb-2">المصدر غير متاح</h1>
             <p className="text-sm text-zinc-500">مصدر التقرير غير معروف.</p>
           </div>
-          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold hover:bg-zinc-800 transition-colors shadow-lg">
+          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-800 transition-colors shadow-lg">
             <ArrowLeft size={16} /> العودة إلى مركز التقارير
           </Link>
         </div>
@@ -787,7 +787,7 @@ export default function SourceWorkspacePage() {
                 const mode = cls?.availableModes?.[0] || "detailed";
                 navigate(`/reports/source/${sourceKey}/${e.target.value}/${mode}`);
               }}
-              className="h-9 px-4 rounded-lg border-none bg-transparent text-[13px] font-semibold text-slate-800 focus:outline-none focus:ring-0 transition-all cursor-pointer"
+              className="h-9 px-4 rounded-lg border-none bg-transparent text-sm font-semibold text-slate-800 focus:outline-none focus:ring-0 transition-all cursor-pointer"
             >
               {classifications.map((cls) => (
                 <option key={cls.id} value={cls.id}>{a(cls.label_key)}</option>
@@ -808,12 +808,12 @@ export default function SourceWorkspacePage() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-3 bg-white">
           <div className="flex items-center gap-2">
             <button onClick={() => setFiltersOpen(!filtersOpen)}
-              className={`h-9 px-4 rounded-lg text-[13px] font-semibold flex items-center gap-2 transition-all ${filtersOpen ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"}`}>
+              className={`h-9 px-4 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${filtersOpen ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"}`}>
               <SlidersHorizontal size={14} />
               <span>فلاتر متقدمة</span>
               <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180" : ""}`} />
             </button>
-            <button onClick={() => refetch()} className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-[13px] font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+            <button onClick={() => refetch()} className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
               <RefreshCw size={14} className={isFetching ? "animate-spin text-slate-900" : "text-slate-400"} /> تحديث
             </button>
           </div>
@@ -837,7 +837,7 @@ export default function SourceWorkspacePage() {
                     <div className="relative group">
                       <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                       <input type="text" value={filters.q || ""} onChange={(e) => setFilters((c) => ({ ...c, q: e.target.value }))}
-                        placeholder="ابحث بالاسم، الكود، الوصف..." className="w-full h-10 pr-9 pl-3 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm font-medium" />
+                        placeholder="ابحث بالاسم، الكود، الوصف..." className="w-full h-10 pr-9 pl-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm font-medium" />
                     </div>
                   </div>
 
@@ -852,14 +852,14 @@ export default function SourceWorkspacePage() {
                               const end = new Date(); const start = new Date();
                               if (p.days > 0) start.setDate(end.getDate() - p.days);
                               setFilters((c) => ({ ...c, from: formatDate(start), to: formatDate(end) }));
-                            }} className="text-[10px] text-slate-500 hover:text-slate-900 transition-colors bg-white hover:bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{p.label}</button>
+                            }} className="text-[11px] text-slate-500 hover:text-slate-900 transition-colors bg-white hover:bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{p.label}</button>
                           ))}
                         </div>
                       </label>
                       <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-sm h-10 overflow-hidden focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-100 transition-all">
-                        <input type="date" value={filters.from} onChange={(e) => setFilters((c) => ({ ...c, from: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-[13px] font-medium text-slate-900 focus:outline-none font-mono" />
+                        <input type="date" value={filters.from} onChange={(e) => setFilters((c) => ({ ...c, from: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-sm font-medium text-slate-900 focus:outline-none font-mono" />
                         <div className="w-px h-6 bg-slate-200" />
-                        <input type="date" value={filters.to} onChange={(e) => setFilters((c) => ({ ...c, to: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-[13px] font-medium text-slate-900 focus:outline-none font-mono" />
+                        <input type="date" value={filters.to} onChange={(e) => setFilters((c) => ({ ...c, to: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-sm font-medium text-slate-900 focus:outline-none font-mono" />
                       </div>
                     </div>
                   )}
@@ -888,7 +888,7 @@ export default function SourceWorkspacePage() {
                   {clsDef?.hasProfit && (
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-semibold text-slate-500">طريقة حساب التكلفة</label>
-                      <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
+                      <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
                         {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
                       </select>
                     </div>
@@ -905,8 +905,8 @@ export default function SourceWorkspacePage() {
                     {invalidRange && <span className="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 px-3 py-1 rounded-full">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-[13px] font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors">إعادة تعيين</button>
-                    <button onClick={() => setFiltersOpen(false)} className="h-9 px-5 rounded-lg text-[13px] font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
+                    <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors">إعادة تعيين</button>
+                    <button onClick={() => setFiltersOpen(false)} className="h-9 px-5 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
                   </div>
                 </div>
               </div>
@@ -917,7 +917,7 @@ export default function SourceWorkspacePage() {
 
       {exportProgress && (
         <div className="mb-6 rounded-[20px] border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <div className="flex items-center justify-between text-[12px] font-bold text-emerald-800 mb-2">
+          <div className="flex items-center justify-between text-2sm font-bold text-emerald-800 mb-2">
             <span>جاري تصدير {exportProgress.format.toUpperCase()}...</span>
             <span>{exportProgress.percent}%</span>
           </div>
@@ -928,11 +928,11 @@ export default function SourceWorkspacePage() {
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => setActiveTab("table")}
-          className={`px-5 py-2.5 text-[13px] font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
+          className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
           <LayoutList size={16} /> جدول
         </button>
         <button onClick={() => setActiveTab("chart")}
-          className={`px-5 py-2.5 text-[13px] font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
+          className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
           <BarChart3 size={16} /> رسم بياني
         </button>
       </div>
@@ -945,7 +945,7 @@ export default function SourceWorkspacePage() {
           <div className="flex flex-col items-center justify-center flex-1 text-center py-24 bg-zinc-50/50">
             <div className="h-16 w-16 rounded-3xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-300 mb-4 shadow-sm"><Search size={28} /></div>
             <h3 className="text-[16px] font-black text-zinc-800 mb-1">لا توجد بيانات</h3>
-            <p className="text-[13px] text-zinc-500 max-w-xs">يرجى تغيير الفلاتر أو اختيار تصنيف آخر.</p>
+            <p className="text-sm text-zinc-500 max-w-xs">يرجى تغيير الفلاتر أو اختيار تصنيف آخر.</p>
           </div>
         ) : activeTab === "table" ? (
           <div className="flex flex-col">
@@ -954,7 +954,7 @@ export default function SourceWorkspacePage() {
                 <motion.span
                   animate={isFetching ? { scale: [1, 1.05, 1] } : {}}
                   transition={{ duration: 0.3 }}
-                  className="text-[13px] font-black text-zinc-900"
+                  className="text-sm font-black text-zinc-900"
                 >
                   {isFetching ? "جاري التحديث..." : "البيانات"}
                 </motion.span>
@@ -963,7 +963,7 @@ export default function SourceWorkspacePage() {
               <div className="flex items-center gap-3">
                 <div className="relative" ref={columnDropdownRef}>
                   <button onClick={() => setColumnVisibilityOpen(!columnVisibilityOpen)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 transition-all shadow-sm">
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 transition-all shadow-sm">
                     <Settings2 size={14} /> الأعمدة
                   </button>
                   <AnimatePresence>
@@ -971,9 +971,9 @@ export default function SourceWorkspacePage() {
                       <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
                         className="absolute left-0 top-full mt-2 z-50 w-80 rounded-2xl border border-zinc-200 bg-white shadow-xl p-3 max-h-[420px] overflow-y-auto">
                         <div className="flex items-center justify-between mb-2 pb-2 border-b border-zinc-100">
-                          <span className="text-[10px] font-black text-zinc-400">الأعمدة</span>
+                          <span className="text-[11px] font-black text-zinc-400">الأعمدة</span>
                           <button onClick={() => setShowAllColumns(!showAllColumns)}
-                            className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
+                            className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
                             {showAllColumns ? "إخفاء الاختياري" : "إظهار الكل"}
                           </button>
                         </div>
@@ -983,7 +983,7 @@ export default function SourceWorkspacePage() {
                             <div key={col.id} className="flex items-center justify-between group px-2 py-1.5 rounded-xl hover:bg-zinc-50">
                               <button onClick={() => toggleColumnVisibility(col.id)} className="flex items-center gap-2 flex-1 text-right">
                                 {columnVisibility[col.id] !== false ? <Eye size={14} className="text-emerald-500 shrink-0" /> : <EyeOff size={14} className="text-zinc-300 shrink-0" />}
-                                <span className={`text-[12px] font-bold ${columnVisibility[col.id] !== false ? "text-zinc-800" : "text-zinc-400 line-through"}`}>{col.header}</span>
+                                <span className={`text-2sm font-bold ${columnVisibility[col.id] !== false ? "text-zinc-800" : "text-zinc-400 line-through"}`}>{col.header}</span>
                                 <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border ${isOptional ? "text-zinc-400 bg-zinc-50 border-zinc-200" : "text-emerald-600 bg-emerald-50 border-emerald-200"} shrink-0`}>
                                   {isOptional ? "اختياري" : "افتراضي"}
                                 </span>
@@ -998,7 +998,7 @@ export default function SourceWorkspacePage() {
                         {pickerColumns.some(c => c.adjustedPriority === 'optional') && (
                           <div className="mt-2 pt-2 border-t border-zinc-100">
                             <button onClick={() => setShowAllColumns(!showAllColumns)}
-                              className="w-full text-center text-[10px] font-bold text-emerald-600 hover:text-emerald-700 py-1 rounded-lg hover:bg-emerald-50 transition-all">
+                              className="w-full text-center text-[11px] font-bold text-emerald-600 hover:text-emerald-700 py-1 rounded-lg hover:bg-emerald-50 transition-all">
                               {showAllColumns ? "إخفاء الأعمدة الاختيارية" : `إظهار الأعمدة الإضافية${hiddenOptionalCount > 0 ? ` (${hiddenOptionalCount})` : ""}`}
                             </button>
                           </div>
@@ -1024,17 +1024,17 @@ export default function SourceWorkspacePage() {
                         const nameKey = c.id.replace("_id", "_name");
                         const displayName = row[nameKey] || row[c.id];
                         if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
-                        return <span className="text-[13px] font-medium text-zinc-700">{String(displayName)}</span>;
+                        return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
                       }
                     : c.type === "cur" || c.type === "num" || c.type === "percent" || c.type === "money" || c.type === "number"
                       ? (row) => {
                           const val = row[c.id];
                           if (val == null || val === "") return <span className="text-zinc-300">—</span>;
                           const num = Number(val);
-                          if (isNaN(num)) return <span className="text-[13px] font-medium text-zinc-700">{String(val)}</span>;
+                          if (isNaN(num)) return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
                           const suffix = c.type === "percent" ? "%" : "";
                           return (
-                            <span className="tabular-nums text-[13px] font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                            <span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
                               {num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
                             </span>
                           );
@@ -1056,7 +1056,7 @@ export default function SourceWorkspacePage() {
                         className="flex items-center justify-center px-3 py-2.5 text-center border-l border-emerald-100 last:border-l-0"
                       >
                         {hasVal ? (
-                          <span className="text-[13px] font-black text-emerald-800 tabular-nums" dir="ltr">
+                          <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
                             {Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                           </span>
                         ) : (
@@ -1070,12 +1070,12 @@ export default function SourceWorkspacePage() {
             </motion.div>
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-3 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
-                <div className="flex items-center gap-2 text-[12px] font-bold text-zinc-500">
+                <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500">
                   <span>إجمالي الصفحات: {totalPages.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-30"><ChevronRight size={16} /></button>
-                  <span className="text-[12px] font-bold text-zinc-700 px-2">{currentPage.toLocaleString("en-US")} / {totalPages.toLocaleString("en-US")}</span>
+                  <span className="text-2sm font-bold text-zinc-700 px-2">{currentPage.toLocaleString("en-US")} / {totalPages.toLocaleString("en-US")}</span>
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-30"><ChevronLeft size={16} /></button>
                 </div>
               </div>
@@ -1106,7 +1106,7 @@ export default function SourceWorkspacePage() {
                 )}
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-zinc-400 text-[13px] font-bold">
+              <div className="flex h-full items-center justify-center text-zinc-400 text-sm font-bold">
                 لا توجد بيانات كافية للرسم البياني
               </div>
             )}

@@ -376,7 +376,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
   const Btn = ({ active, onClick, title, disabled, children }) => (
     <button type="button" title={title} disabled={disabled} onClick={onClick}
-      className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-[12px] font-bold transition-colors disabled:opacity-30 ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+      className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-2sm font-bold transition-colors disabled:opacity-30 ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
       {children}
     </button>
   );
@@ -391,7 +391,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
         <div className="flex items-center gap-3">
-          <span className="text-[13px] font-black text-slate-900">المحرر المتقدم — {label}</span>
+          <span className="text-sm font-black text-slate-900">المحرر المتقدم — {label}</span>
           <div className="flex rounded-lg border border-slate-200 p-0.5">
             {["page", "roll"].map((f) => (
               <button key={f} type="button" onClick={() => switchFamily(f)}
@@ -403,15 +403,15 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           <div className="flex gap-1">
             {SIZES[family].map((sz) => (
               <button key={sz} type="button" onClick={() => setSize(sz)}
-                className={`rounded-md border px-2 py-1 text-[10px] font-bold ${size === sz ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}>{sz}</button>
+                className={`rounded-md border px-2 py-1 text-[11px] font-bold ${size === sz ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}>{sz}</button>
             ))}
           </div>
           <button type="button" onClick={() => setStress((v) => !v)} title="بيانات اختبار مزدحمة"
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${stress ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-500"}`}><FlaskConical size={12} /> اختبار</button>
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold ${stress ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-500"}`}><FlaskConical size={12} /> اختبار</button>
           <button type="button" onClick={() => setCompare((v) => !v)} title="مقارنة المقاسات جنباً إلى جنب"
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${compare ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Columns2 size={12} /> مقارنة</button>
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold ${compare ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Columns2 size={12} /> مقارنة</button>
           <button type="button" onClick={() => setShowRuler((v) => !v)} title="مسطرة وهوامش"
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${showRuler ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Ruler size={12} /> مسطرة</button>
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold ${showRuler ? "border-slate-700 bg-slate-700 text-white" : "border-slate-200 text-slate-500"}`}><Ruler size={12} /> مسطرة</button>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
@@ -420,7 +420,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           </div>
           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
             <select value="" onChange={(e) => { if (e.target.value) applyPreset(e.target.value); }} title="تطبيق قالب"
-              className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-bold text-slate-600">
+              className="h-8 rounded-lg border border-slate-200 px-2 text-[11px] font-bold text-slate-600">
               <option value="">قوالب…</option>
               {famPresets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
             </select>
@@ -437,7 +437,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
       {/* Format toolbar (acts on the selected block) */}
       <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-1.5">
-        <span className="min-w-[120px] text-[10px] font-black text-slate-400">{selected ? `العنصر: ${selLabel}` : "اختر عنصراً من المعاينة أو القائمة"}</span>
+        <span className="min-w-[120px] text-[11px] font-black text-slate-400">{selected ? `العنصر: ${selLabel}` : "اختر عنصراً من المعاينة أو القائمة"}</span>
         <div className={`flex items-center gap-1 ${selected ? "" : "pointer-events-none opacity-40"}`}>
           <button type="button" onClick={() => setOverride(selected, { fontSize: Math.max(6, (Number(selOv.fontSize) || 11) - 1) })} className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50">−</button>
           <span className="min-w-9 text-center text-[11px] font-bold text-slate-600">{selOv.fontSize || "—"}</span>
@@ -468,7 +468,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
       <div className="flex min-h-0 flex-1">
         {/* Left palette */}
         <div className="flex w-[150px] shrink-0 flex-col gap-2 border-l border-slate-200 bg-white p-3">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">إضافة عنصر</div>
+          <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">إضافة عنصر</div>
           {INSERTABLE.map(({ type, label: lbl, icon: Icon }) => (
             <button key={type} type="button" onClick={() => insert(type)}
               className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-bold text-slate-600 hover:border-slate-400 hover:bg-slate-50">
@@ -486,7 +486,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             <div className="flex items-start justify-center gap-6" onClick={(e) => e.stopPropagation()}>
               {SIZES[family].map((sz) => (
                 <div key={sz} className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-black text-slate-500">{sz}</span>
+                  <span className="text-[11px] font-black text-slate-500">{sz}</span>
                   <div style={{ width: SHEET_W[sz], transform: `scale(${family === "roll" ? 0.9 : 0.42})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }}>
                     <LayoutRenderer family={family} size={sz} invoice={invoiceData} settings={merged} layout={draftForRender.layout} />
                   </div>
@@ -513,9 +513,9 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           )}
 
           <div className="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white/90 shadow">
-            <button type="button" onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100">+</button>
-            <span className="min-w-[42px] px-1 text-center text-[10px] font-black text-slate-600">{Math.round(zoom * 100)}%</span>
-            <button type="button" onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))} className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100">−</button>
+            <button type="button" onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100">+</button>
+            <span className="min-w-[42px] px-1 text-center text-[11px] font-black text-slate-600">{Math.round(zoom * 100)}%</span>
+            <button type="button" onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))} className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100">−</button>
           </div>
         </div>
 
@@ -523,7 +523,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
         <div className="flex w-[300px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-slate-200 bg-white p-3">
           {/* Outline */}
           <div>
-            <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">ترتيب العناصر — اسحب للترتيب</div>
+            <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">ترتيب العناصر — اسحب للترتيب</div>
             <div className="space-y-0.5">
               {fam.order.map((type, idx) => {
                 const entry = BLOCK_REGISTRY[type];
@@ -553,11 +553,11 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           {/* Hidden blocks tray — re-add removed sections */}
           {hiddenBlocks.length > 0 && (
             <div>
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">عناصر مخفية — انقر للإرجاع</div>
+              <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">عناصر مخفية — انقر للإرجاع</div>
               <div className="flex flex-wrap gap-1.5">
                 {hiddenBlocks.map((t) => (
                   <button key={t} type="button" onClick={() => addToOrder(t)}
-                    className="flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700">
+                    className="flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-500 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700">
                     + {BLOCK_REGISTRY[t]?.label || t}
                   </button>
                 ))}
@@ -568,7 +568,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           {/* Inserted elements */}
           {(fam.inserted || []).length > 0 && (
             <div>
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">العناصر المضافة</div>
+              <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">العناصر المضافة</div>
               <div className="space-y-0.5">
                 {(fam.inserted || []).map((b) => (
                   <div key={b.id} onClick={() => setSelected(b.id)} onMouseEnter={() => setHovered(b.id)} onMouseLeave={() => setHovered(null)}
@@ -584,12 +584,12 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           {/* Custom-text editor for selected insert */}
           {selInsert && selInsert.type === "custom_text" && (
             <div>
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">نص العنصر</div>
+              <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">نص العنصر</div>
               <textarea value={selInsert.props?.text || ""} onChange={(e) => setInsert(selInsert.id, { props: { text: e.target.value } })}
-                className="h-20 w-full resize-none rounded-lg border border-slate-300 p-2 text-[12px] outline-none focus:border-violet-500" />
+                className="h-20 w-full resize-none rounded-lg border border-slate-300 p-2 text-2sm outline-none focus:border-violet-500" />
               <div className="mt-2 flex gap-2">
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500">موضع بعد:
-                  <select value={selInsert.after} onChange={(e) => setInsert(selInsert.id, { after: e.target.value })} className="rounded-md border border-slate-200 px-1 py-1 text-[10px]">
+                <label className="flex items-center gap-1 text-[11px] font-bold text-slate-500">موضع بعد:
+                  <select value={selInsert.after} onChange={(e) => setInsert(selInsert.id, { after: e.target.value })} className="rounded-md border border-slate-200 px-1 py-1 text-[11px]">
                     {fam.order.map((t) => <option key={t} value={t}>{BLOCK_REGISTRY[t]?.label || t}</option>)}
                   </select>
                 </label>
@@ -600,12 +600,12 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           {/* Block spacing (selected order block or insert) */}
           {selected && (selInOrder || selInsert) && (
             <div>
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">تباعد العنصر (px)</div>
+              <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">تباعد العنصر (px)</div>
               <div className="flex gap-2">
                 {[["marginTop", "علوي"], ["marginBottom", "سفلي"]].map(([k, lbl]) => (
-                  <label key={k} className="flex flex-1 flex-col gap-1 text-[10px] font-bold text-slate-500">{lbl}
+                  <label key={k} className="flex flex-1 flex-col gap-1 text-[11px] font-bold text-slate-500">{lbl}
                     <input type="number" value={selOv[k] ?? 0} onChange={(e) => setOverride(selected, { [k]: Number(e.target.value) })}
-                      className="h-8 w-full rounded-lg border border-slate-300 px-2 text-[12px] outline-none focus:border-violet-500" />
+                      className="h-8 w-full rounded-lg border border-slate-300 px-2 text-2sm outline-none focus:border-violet-500" />
                   </label>
                 ))}
               </div>
@@ -615,12 +615,12 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           {/* Logo controls */}
           {selected === "logo" && (
             <div>
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">الشعار</div>
-              <input type="file" accept="image/*" onChange={(e) => onLogoFile(e.target.files && e.target.files[0])} className="w-full text-[10px] font-bold text-slate-500" />
+              <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">الشعار</div>
+              <input type="file" accept="image/*" onChange={(e) => onLogoFile(e.target.files && e.target.files[0])} className="w-full text-[11px] font-bold text-slate-500" />
               <div className="mt-2 flex gap-1">
                 {[["right", "يمين"], ["center", "وسط"], ["left", "يسار"]].map(([a, lbl]) => (
                   <button key={a} type="button" onClick={() => setTopLevel("logo_alignment", a)}
-                    className={`flex-1 rounded-md border px-1 py-1 text-[10px] font-bold ${(merged.logo_alignment || "center") === a ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-500"}`}>{lbl}</button>
+                    className={`flex-1 rounded-md border px-1 py-1 text-[11px] font-bold ${(merged.logo_alignment || "center") === a ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-500"}`}>{lbl}</button>
                 ))}
               </div>
               <div className="mt-1 text-[9px] font-bold text-slate-400">اسحب مقبض الزاوية لتغيير الارتفاع.</div>
@@ -630,7 +630,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           {/* Column editor when items table selected */}
           {selected === "items_table" && (
             <div>
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">أعمدة الجدول</div>
+              <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">أعمدة الجدول</div>
               <div className="space-y-0.5">
                 {columns.map((c, i) => (
                   <div key={c.key} className="flex items-center gap-1.5 rounded-md border border-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-600">
@@ -638,8 +638,8 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
                       <button type="button" disabled={i === 0} onClick={() => { const n = [...columns]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setColumns(n); }} className="text-[8px] leading-none text-slate-400 disabled:opacity-20">▲</button>
                       <button type="button" disabled={i === columns.length - 1} onClick={() => { const n = [...columns]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; setColumns(n); }} className="text-[8px] leading-none text-slate-400 disabled:opacity-20">▼</button>
                     </div>
-                    <input value={c.label} onChange={(e) => { const n = columns.map((x) => x.key === c.key ? { ...x, label: e.target.value } : x); setColumns(n); }} className="w-16 rounded border border-slate-200 px-1 py-0.5 text-[10px]" />
-                    <select value={c.align || "right"} onChange={(e) => { const n = columns.map((x) => x.key === c.key ? { ...x, align: e.target.value } : x); setColumns(n); }} className="rounded border border-slate-200 px-1 py-0.5 text-[10px]">
+                    <input value={c.label} onChange={(e) => { const n = columns.map((x) => x.key === c.key ? { ...x, label: e.target.value } : x); setColumns(n); }} className="w-16 rounded border border-slate-200 px-1 py-0.5 text-[11px]" />
+                    <select value={c.align || "right"} onChange={(e) => { const n = columns.map((x) => x.key === c.key ? { ...x, align: e.target.value } : x); setColumns(n); }} className="rounded border border-slate-200 px-1 py-0.5 text-[11px]">
                       <option value="right">يمين</option><option value="center">وسط</option><option value="left">يسار</option>
                     </select>
                     <button type="button" onClick={() => { const n = columns.map((x) => x.key === c.key ? { ...x, visible: x.visible === false ? true : false } : x); setColumns(n); }} className="mr-auto text-slate-400 hover:text-slate-700">
@@ -649,10 +649,10 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
                 ))}
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                <label className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
                   <input type="checkbox" checked={ov("items_table").zebra !== false} onChange={(e) => setOverride("items_table", { zebra: e.target.checked })} /> تظليل الصفوف
                 </label>
-                <select value={ov("items_table").tableBorder || "none"} onChange={(e) => setOverride("items_table", { tableBorder: e.target.value })} className="rounded border border-slate-200 px-1 py-0.5 text-[10px]">
+                <select value={ov("items_table").tableBorder || "none"} onChange={(e) => setOverride("items_table", { tableBorder: e.target.value })} className="rounded border border-slate-200 px-1 py-0.5 text-[11px]">
                   <option value="none">بلا حدود</option><option value="lines">خطوط</option><option value="grid">شبكة</option>
                 </select>
               </div>
@@ -661,20 +661,20 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
           {/* Margins */}
           <div>
-            <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">الهوامش (mm)</div>
+            <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">الهوامش (mm)</div>
             <div className="flex gap-2">
               {[["top", "علوي"], ["side", "جانبي"]].map(([k, lbl]) => (
-                <label key={k} className="flex flex-1 flex-col gap-1 text-[10px] font-bold text-slate-500">{lbl}
+                <label key={k} className="flex flex-1 flex-col gap-1 text-[11px] font-bold text-slate-500">{lbl}
                   <input type="number" value={merged[MARGIN_KEY[k]] ?? 4}
                     onChange={(e) => setMargin(k, Number(e.target.value))}
-                    className="h-9 w-full rounded-lg border border-slate-300 px-2 text-[12px] outline-none focus:border-violet-500" />
+                    className="h-9 w-full rounded-lg border border-slate-300 px-2 text-2sm outline-none focus:border-violet-500" />
                 </label>
               ))}
             </div>
             <div className="mt-1 text-[9px] font-bold text-slate-400">يُطبَّق على الهوامش العامة لهذا المستند.</div>
             {family === "page" && (
-              <label className="mt-3 flex items-center justify-between text-[10px] font-bold text-slate-500">محاذاة بيانات الرأس
-                <select value={fam.headerMetaAlign || "left"} onChange={(e) => setFamLayout(() => ({ headerMetaAlign: e.target.value }))} className="rounded border border-slate-200 px-1 py-0.5 text-[10px]">
+              <label className="mt-3 flex items-center justify-between text-[11px] font-bold text-slate-500">محاذاة بيانات الرأس
+                <select value={fam.headerMetaAlign || "left"} onChange={(e) => setFamLayout(() => ({ headerMetaAlign: e.target.value }))} className="rounded border border-slate-200 px-1 py-0.5 text-[11px]">
                   <option value="left">يسار</option><option value="center">وسط</option><option value="right">يمين</option>
                 </select>
               </label>

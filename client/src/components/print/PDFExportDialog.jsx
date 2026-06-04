@@ -90,7 +90,7 @@ export default function PDFExportDialog({
       <div className="flex flex-col md:flex-row gap-6 mt-4" style={{ minHeight: 400 }}>
         {/* Left: Column Selection */}
         <div className="w-full md:w-1/2 border-l border-zinc-200 pl-4">
-          <h4 className="text-[13px] font-black text-zinc-800 mb-3">اختيار الأعمدة</h4>
+          <h4 className="text-sm font-black text-zinc-800 mb-3">اختيار الأعمدة</h4>
           <div className="space-y-1 max-h-[360px] overflow-y-auto">
             {orderedColumns.map((col, idx) => {
               const colId = col.id || col.key;
@@ -112,7 +112,7 @@ export default function PDFExportDialog({
                       {isSelected && <Check size={10} className="text-white" strokeWidth={3} />}
                     </div>
                     <span
-                      className={`text-[12px] font-bold ${
+                      className={`text-2sm font-bold ${
                         isSelected ? "text-zinc-800" : "text-zinc-400 line-through"
                       }`}
                     >
@@ -142,13 +142,13 @@ export default function PDFExportDialog({
           <div className="mt-3 flex gap-2">
             <button
               onClick={() => setSelectedColumns(columns.map((c) => c.id || c.key))}
-              className="px-3 py-1.5 rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-600 hover:bg-zinc-200"
+              className="px-3 py-1.5 rounded-lg bg-zinc-100 text-[11px] font-bold text-zinc-600 hover:bg-zinc-200"
             >
               تحديد الكل
             </button>
             <button
               onClick={() => setSelectedColumns([])}
-              className="px-3 py-1.5 rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-600 hover:bg-zinc-200"
+              className="px-3 py-1.5 rounded-lg bg-zinc-100 text-[11px] font-bold text-zinc-600 hover:bg-zinc-200"
             >
               إلغاء الكل
             </button>
@@ -157,7 +157,7 @@ export default function PDFExportDialog({
 
         {/* Right: Style Options */}
         <div className="w-full md:w-1/2">
-          <h4 className="text-[13px] font-black text-zinc-800 mb-3">خيارات التنسيق</h4>
+          <h4 className="text-sm font-black text-zinc-800 mb-3">خيارات التنسيق</h4>
           <div className="space-y-4">
             {/* Orientation */}
             <div>
@@ -167,7 +167,7 @@ export default function PDFExportDialog({
                   <button
                     key={opt}
                     onClick={() => setOrientation(opt)}
-                    className={`flex-1 px-3 py-2 rounded-xl text-[12px] font-bold border transition-all ${
+                    className={`flex-1 px-3 py-2 rounded-xl text-2sm font-bold border transition-all ${
                       orientation === opt
                         ? "bg-zinc-900 text-white border-zinc-900"
                         : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
@@ -185,7 +185,7 @@ export default function PDFExportDialog({
               <select
                 value={paperSize}
                 onChange={(e) => setPaperSize(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-[13px] font-bold focus:outline-none focus:border-emerald-500"
+                className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500"
               >
                 {PAPER_SIZES.map((p) => (
                   <option key={p.id} value={p.id}>{p.label}</option>
@@ -201,7 +201,7 @@ export default function PDFExportDialog({
                   <button
                     key={f.id}
                     onClick={() => setFontSize(f.id)}
-                    className={`flex-1 px-3 py-2 rounded-xl text-[12px] font-bold border transition-all ${
+                    className={`flex-1 px-3 py-2 rounded-xl text-2sm font-bold border transition-all ${
                       fontSize === f.id
                         ? "bg-zinc-900 text-white border-zinc-900"
                         : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
@@ -216,7 +216,7 @@ export default function PDFExportDialog({
             {/* Toggles */}
             <div className="space-y-2">
               <label className="flex items-center justify-between cursor-pointer">
-                <span className="text-[12px] font-bold text-zinc-700">إظهار صف المجاميع</span>
+                <span className="text-2sm font-bold text-zinc-700">إظهار صف المجاميع</span>
                 <button
                   onClick={() => setShowTotals(!showTotals)}
                   className={`relative w-10 h-5 rounded-full transition-colors ${
@@ -231,7 +231,7 @@ export default function PDFExportDialog({
                 </button>
               </label>
               <label className="flex items-center justify-between cursor-pointer">
-                <span className="text-[12px] font-bold text-zinc-700">ترقيم الصفحات</span>
+                <span className="text-2sm font-bold text-zinc-700">ترقيم الصفحات</span>
                 <button
                   onClick={() => setShowPageNumbers(!showPageNumbers)}
                   className={`relative w-10 h-5 rounded-full transition-colors ${
@@ -266,14 +266,14 @@ export default function PDFExportDialog({
       <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-zinc-100">
         <button
           onClick={onClose}
-          className="px-5 py-2.5 rounded-xl text-[13px] font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
+          className="px-5 py-2.5 rounded-xl text-sm font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
         >
           إلغاء
         </button>
         <button
           onClick={handleGenerate}
           disabled={exporting || visibleColumns.length === 0}
-          className="px-6 py-2.5 rounded-xl text-[13px] font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
+          className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
         >
           {exporting ? (
             <Loader2 size={16} className="animate-spin" />

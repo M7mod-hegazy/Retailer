@@ -18,19 +18,19 @@ export function UnsavedChangesModal({ open, onStay, onLeave }) {
           <AlertTriangle className="h-8 w-8 text-amber-500" />
         </div>
         <h3 className="text-[18px] font-black text-slate-800 mb-2">مغادرة الصفحة؟</h3>
-        <p className="text-[14px] font-medium text-slate-500 mb-6">
+        <p className="text-sm font-medium text-slate-500 mb-6">
           لديك تغييرات لم يتم حفظها. إذا غادرت الآن ستُفقد هذه التغييرات.
         </p>
         <div className="flex gap-3 w-full">
           <button
             onClick={onStay}
-            className="flex-1 rounded-xl bg-slate-100 py-3 text-[14px] font-bold text-slate-700 hover:bg-slate-200 transition-all active:scale-95"
+            className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 transition-all active:scale-95"
           >
             ابقَ في الصفحة
           </button>
           <button
             onClick={onLeave}
-            className="flex-1 rounded-xl bg-rose-500 py-3 text-[14px] font-bold text-white hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 active:scale-95"
+            className="flex-1 rounded-xl bg-rose-500 py-3 text-sm font-bold text-white hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 active:scale-95"
           >
             اغادر بدون حفظ
           </button>

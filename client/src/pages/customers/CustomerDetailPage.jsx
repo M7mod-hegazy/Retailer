@@ -31,7 +31,7 @@ export default function CustomerDetailPage() {
       </section>
       {Number(customer.opening_balance) < 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3">
-          <span className="text-[13px] font-bold text-blue-700">رصيد دائن (مبلغ لصالح العميل):</span>
+          <span className="text-sm font-bold text-blue-700">رصيد دائن (مبلغ لصالح العميل):</span>
           <span className="font-black font-mono text-blue-900">
             {Math.abs(Number(customer.opening_balance)).toLocaleString("en-US", { minimumFractionDigits: 2 })} ج.م
           </span>

@@ -304,7 +304,7 @@ export default function PurchaseOrderFormPage() {
                       onFocus={() => setSupplierLookupOpen(true)}
                       onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
                       placeholder="ابحث عن مورد..."
-                      className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
+                      className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
                     />
                     {supplierLookupOpen && (
                       <SearchDropdown 
@@ -326,7 +326,7 @@ export default function PurchaseOrderFormPage() {
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="أية تعليمات خاصة للتوريد..."
-                      className="w-full border border-slate-300 rounded-sm bg-white py-2 pl-3 pr-9 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
+                      className="w-full border border-slate-300 rounded-sm bg-white py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
                     />
                   </div>
                 </div>
@@ -388,7 +388,7 @@ export default function PurchaseOrderFormPage() {
                     }}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, unitSelectRef, itemInputRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center"
+                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -399,7 +399,7 @@ export default function PurchaseOrderFormPage() {
                       value={staging.unitId}
                       onChange={(e) => setStaging(s => ({ ...s, unitId: e.target.value }))}
                       onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, qtyInputRef)}
-                      className="w-full h-[37px] appearance-none border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800"
+                      className="w-full h-[37px] appearance-none border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
                     >
                       <option value="">أساسية</option>
                       {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -417,7 +417,7 @@ export default function PurchaseOrderFormPage() {
                     onChange={(e) => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, addBtnRef, unitSelectRef, true)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-[12px] font-black text-slate-800 outline-none focus:border-slate-800 text-center"
+                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
                   />
                 </div>
                 <button 
@@ -425,7 +425,7 @@ export default function PurchaseOrderFormPage() {
                   onClick={addLine}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
                   disabled={!selectedItem}
-                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-slate-800 px-6 text-[12px] font-black text-white hover:bg-slate-700 disabled:opacity-40 transition-all"
+                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-slate-800 px-6 text-2sm font-black text-white hover:bg-slate-700 disabled:opacity-40 transition-all"
                 >
                   <Plus className="h-4 w-4" /> إدراج
                 </button>
@@ -443,11 +443,11 @@ export default function PurchaseOrderFormPage() {
                 containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent min-h-0"
                 columns={[
                   {
-                    id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-[12px] text-slate-400 border-l border-slate-100",
+                    id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-2sm text-slate-400 border-l border-slate-100",
                     render: (_, i) => i + 1
                   },
                   {
-                    id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[12px] font-black tracking-wider text-slate-500 border-l border-slate-100 text-center",
+                    id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-2sm font-black tracking-wider text-slate-500 border-l border-slate-100 text-center",
                     render: (l) => l.barcode || l.code || l.item_code || '-'
                   },
                   {
@@ -473,15 +473,15 @@ export default function PurchaseOrderFormPage() {
                     }
                   },
                   {
-                    id: "quantity", header: "الكمية", width: 80, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-[13px] text-slate-800 border-l border-slate-100",
+                    id: "quantity", header: "الكمية", width: 80, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-sm text-slate-800 border-l border-slate-100",
                     render: (l) => Number(l.quantity)
                   },
                   {
-                    id: "unit_cost", header: "سعر الوحدة", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-[13px] text-slate-500 border-l border-slate-100",
+                    id: "unit_cost", header: "سعر الوحدة", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-sm text-slate-500 border-l border-slate-100",
                     render: (l) => Number(l.unit_cost).toLocaleString("en-US", { minimumFractionDigits: 2 })
                   },
                   {
-                    id: "total", header: "إجمالي المتوقع", width: 140, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-[14px] text-slate-900 bg-slate-50/50 border-l-0",
+                    id: "total", header: "إجمالي المتوقع", width: 140, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l-0",
                     sortValue: (l) => l.total,
                     render: (l) => Number(l.total).toLocaleString("en-US", { minimumFractionDigits: 2 })
                   },
@@ -499,17 +499,17 @@ export default function PurchaseOrderFormPage() {
                  <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                        <span className="text-[11px] font-bold text-slate-400">إجمالي الأصناف:</span>
-                       <span className="text-[13px] font-black text-slate-700">{totals.items}</span>
+                       <span className="text-sm font-black text-slate-700">{totals.items}</span>
                     </div>
                     <div className="flex items-center gap-2">
                        <span className="text-[11px] font-bold text-slate-400">إجمالي الكميات:</span>
-                       <span className="text-[13px] font-black text-slate-700 font-mono">{lines.reduce((acc, l) => acc + l.quantity, 0)}</span>
+                       <span className="text-sm font-black text-slate-700 font-mono">{lines.reduce((acc, l) => acc + l.quantity, 0)}</span>
                     </div>
                  </div>
                  <div className="flex items-center gap-3">
-                    <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">القيمة الإجمالية المتوقعة</span>
+                    <span className="text-2sm font-bold text-slate-500 uppercase tracking-wider">القيمة الإجمالية المتوقعة</span>
                     <span className="text-[20px] font-black text-slate-900 font-mono">{totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                    <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+                    <span className="text-[11px] font-bold text-slate-400">ج.م</span>
                  </div>
               </div>
             </section>
@@ -518,7 +518,7 @@ export default function PurchaseOrderFormPage() {
           {/* Right Sidebar */}
           <aside className="w-[320px] flex flex-col gap-4">
              <div className="rounded-md border border-slate-300 bg-white p-5 shadow-md">
-                <h3 className="mb-4 text-[12px] font-black text-slate-800 border-b pb-2 border-slate-100 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="mb-4 text-2sm font-black text-slate-800 border-b pb-2 border-slate-100 uppercase tracking-widest flex items-center gap-2">
                   <Clock className="h-4 w-4 text-slate-400" /> حالة الطلب
                 </h3>
                 <div className="space-y-3">
@@ -527,8 +527,8 @@ export default function PurchaseOrderFormPage() {
                          <Plus className="h-4 w-4" />
                       </div>
                       <div className="flex flex-col">
-                         <span className="text-[12px] font-black text-amber-900">مسودة (Pending)</span>
-                         <span className="text-[10px] text-amber-600 font-bold">في انتظار المراجعة</span>
+                         <span className="text-2sm font-black text-amber-900">مسودة (Pending)</span>
+                         <span className="text-[11px] text-amber-600 font-bold">في انتظار المراجعة</span>
                       </div>
                    </div>
                    <p className="text-[11px] leading-relaxed text-slate-400 text-center font-bold">
@@ -540,7 +540,7 @@ export default function PurchaseOrderFormPage() {
              <div className="rounded-md border border-slate-200 bg-white p-5 flex-1 flex flex-col justify-end">
                  <button 
                   onClick={handleSave} 
-                  className="w-full rounded-sm bg-slate-800 py-4 text-[14px] font-black text-white hover:bg-slate-700 transition-all shadow-lg active:scale-95"
+                  className="w-full rounded-sm bg-slate-800 py-4 text-sm font-black text-white hover:bg-slate-700 transition-all shadow-lg active:scale-95"
                  >
                    اعتماد وإرسال الطلب
                  </button>
@@ -570,17 +570,17 @@ export default function PurchaseOrderFormPage() {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-[14px] font-black text-slate-900 mb-1">تجاهل التغييرات؟</h3>
-              <p className="text-[12px] font-bold text-slate-500 leading-relaxed">
+              <h3 className="text-sm font-black text-slate-900 mb-1">تجاهل التغييرات؟</h3>
+              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
                 هل أنت متأكد من رغبتك في المغادرة؟ سيتم <span className="text-rose-600">فقدان جميع بيانات أمر الشراء</span> التي أدخلتها.
               </p>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setWarnModalOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-[13px] font-black text-slate-700 hover:bg-slate-50">
+            <button onClick={() => setWarnModalOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
               تراجع وإكمال الطلب
             </button>
-            <button onClick={() => navigate("/purchases/orders")} className="rounded-sm bg-rose-600 px-5 py-2 text-[13px] font-black text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20">
+            <button onClick={() => navigate("/purchases/orders")} className="rounded-sm bg-rose-600 px-5 py-2 text-sm font-black text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20">
               نعم، تجاهل ومغادرة
             </button>
           </div>

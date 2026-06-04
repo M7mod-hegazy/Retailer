@@ -95,7 +95,7 @@ export default function MultiPaymentInput({
             value={line.method_id || ""}
             disabled={disabled}
             onChange={(event) => updateLine(idx, "method_id", event.target.value)}
-            className="flex-1 h-10 rounded-xl border border-slate-300 bg-white px-3 text-[12px] font-bold outline-none focus:border-violet-500"
+            className="flex-1 h-10 rounded-xl border border-slate-300 bg-white px-3 text-2sm font-bold outline-none focus:border-violet-500"
           >
             {methods.map((method) => (
               <option key={method.id} value={method.id}>{method.icon || "card"} {method.name}</option>
@@ -108,7 +108,7 @@ export default function MultiPaymentInput({
             value={line.amount}
             disabled={disabled}
             onChange={(event) => updateLine(idx, "amount", event.target.value)}
-            className="w-32 h-10 rounded-xl border border-slate-300 px-3 text-left text-[13px] font-black font-mono outline-none focus:border-violet-500 ltr:text-left"
+            className="w-32 h-10 rounded-xl border border-slate-300 px-3 text-left text-sm font-black font-mono outline-none focus:border-violet-500 ltr:text-left"
             dir="ltr"
           />
           {value.length > 1 && (
@@ -155,7 +155,7 @@ export default function MultiPaymentInput({
       </div>
 
       {cashLine && remaining < -0.01 && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[13px] font-black text-emerald-700">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
           {t("payment.multi.change", "الباقي للعميل")}: {fmt(Math.abs(remaining))} {t("currency.egp", "ج.م")}
         </div>
       )}

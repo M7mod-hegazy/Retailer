@@ -52,9 +52,10 @@ const PAPER_OPTIONS = [
 ];
 
 const FONT_FAMILIES = [
-  { value: "monospace",  label: "Courier — حرارية" },
+  { value: "Noto Sans Arabic", label: "Noto Sans Arabic — موصى به" },
   { value: "sans-serif", label: "Arial — حديث"    },
   { value: "serif",      label: "Times — رسمي"    },
+  { value: "monospace",  label: "Courier — حرارية" },
 ];
 
 const DEFAULTS = {
@@ -62,8 +63,8 @@ const DEFAULTS = {
   return_prefix: "RET", work_order_prefix: "WO", receipt_prefix: "REC",
   receipt_header: "أهلاً وسهلاً بكم",
   receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
-  header_font_size: 16, body_font_size: 11, footer_font_size: 10,
-  item_font_size: 11, print_font: "monospace", logo_max_height: 48,
+  header_font_size: 16, body_font_size: 13, footer_font_size: 11,
+  item_font_size: 13, print_font: "Noto Sans Arabic", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   margin_top: 4, margin_side: 4, qr_size: 44,
   show_cashier_name: true, show_customer_name: true, show_tax: true,
@@ -149,7 +150,7 @@ function SectionLabel({ icon: Icon, title, hint }) {
       </div>
       <div>
         <div className="text-[11px] font-black uppercase tracking-widest text-slate-800">{title}</div>
-        {hint && <div className="text-[10px] font-bold text-slate-400">{hint}</div>}
+        {hint && <div className="text-[11px] font-bold text-slate-400">{hint}</div>}
       </div>
     </div>
   );
@@ -172,12 +173,12 @@ function ControlField({ label, hint, fieldKey, hovered, onHover, onLeave, childr
         </div>
       )}
       <label className="block space-y-1.5 text-slate-500 focus-within:text-slate-900 transition-colors px-0.5 pb-0.5 pt-1">
-        <span className="flex items-center justify-between gap-1 text-[10px] font-black uppercase tracking-widest">
+        <span className="flex items-center justify-between gap-1 text-[11px] font-black uppercase tracking-widest">
           <span>{label}</span>
           {hint && (
             <span className="group relative cursor-help">
               <Info className="h-3 w-3 text-slate-300 group-hover:text-slate-600" />
-              <div className="absolute left-0 top-5 z-20 hidden w-44 rounded-sm bg-slate-800 p-2 text-[10px] font-bold text-white shadow-xl group-hover:block">{hint}</div>
+              <div className="absolute left-0 top-5 z-20 hidden w-44 rounded-sm bg-slate-800 p-2 text-[11px] font-bold text-white shadow-xl group-hover:block">{hint}</div>
             </span>
           )}
         </span>
@@ -193,12 +194,12 @@ function ControlField({ label, hint, fieldKey, hovered, onHover, onLeave, childr
 }
 
 function StyledInput({ ...props }) {
-  return <input {...props} className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal" />;
+  return <input {...props} className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal" />;
 }
 
 function StyledSelect({ value, onChange, options }) {
   return (
-    <select value={value ?? ""} onChange={onChange} className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-[12px] font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all appearance-none cursor-pointer">
+    <select value={value ?? ""} onChange={onChange} className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all appearance-none cursor-pointer">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -208,9 +209,9 @@ function Stepper({ value, onChange, min = 0, max = 100, step = 1, unit }) {
   const v = Number(value ?? 0);
   return (
     <div className="flex items-center rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <button type="button" onClick={() => onChange(Math.max(min, v - step))} className="px-3 py-2 text-[14px] font-black text-slate-500 hover:bg-slate-100 border-l border-slate-200">−</button>
-      <div className="flex-1 text-center text-[13px] font-black text-slate-800 py-2">{v}{unit && <span className="text-[10px] font-bold text-slate-400 ml-1">{unit}</span>}</div>
-      <button type="button" onClick={() => onChange(Math.min(max, v + step))} className="px-3 py-2 text-[14px] font-black text-slate-500 hover:bg-slate-100 border-r border-slate-200">+</button>
+      <button type="button" onClick={() => onChange(Math.max(min, v - step))} className="px-3 py-2 text-sm font-black text-slate-500 hover:bg-slate-100 border-l border-slate-200">−</button>
+      <div className="flex-1 text-center text-sm font-black text-slate-800 py-2">{v}{unit && <span className="text-[11px] font-bold text-slate-400 ml-1">{unit}</span>}</div>
+      <button type="button" onClick={() => onChange(Math.min(max, v + step))} className="px-3 py-2 text-sm font-black text-slate-500 hover:bg-slate-100 border-r border-slate-200">+</button>
     </div>
   );
 }
@@ -228,7 +229,7 @@ function ToggleSwitch({ checked, onChange, label, hint, fieldKey, hovered, onHov
     >
       <div className="min-w-0">
         <div className={`text-[11px] font-black uppercase tracking-widest truncate ${checked ? "text-white" : "text-slate-800"}`}>{label}</div>
-        {hint && <div className={`mt-0.5 text-[10px] font-bold truncate ${checked ? "text-slate-300" : "text-slate-400"}`}>{hint}</div>}
+        {hint && <div className={`mt-0.5 text-[11px] font-bold truncate ${checked ? "text-slate-300" : "text-slate-400"}`}>{hint}</div>}
       </div>
       {checked ? <ToggleRight className="h-5 w-5 shrink-0 text-emerald-400" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-slate-300" />}
     </div>
@@ -243,7 +244,7 @@ function PaperPicker({ value, onChange }) {
           className={`flex flex-col items-center gap-1.5 rounded-sm border py-4 transition-all ${value === v ? "border-slate-900 bg-slate-900 shadow-lg scale-[1.02]" : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"}`}>
           <Icon className={`h-5 w-5 ${value === v ? "text-white" : "text-slate-400"}`} />
           <div className="text-center">
-            <div className={`text-[13px] font-black tracking-widest leading-none ${value === v ? "text-white" : "text-slate-800"}`}>{label}</div>
+            <div className={`text-sm font-black tracking-widest leading-none ${value === v ? "text-white" : "text-slate-800"}`}>{label}</div>
             <div className={`text-[9px] font-bold mt-1 ${value === v ? "text-slate-300" : "text-slate-400"}`}>{sub}</div>
             <div className={`text-[9px] font-bold ${value === v ? "text-slate-400" : "text-slate-300"}`}>{dims}</div>
           </div>
@@ -1147,12 +1148,12 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
       {/* Controls */}
       <div className="w-[380px] shrink-0 overflow-y-auto space-y-4 rounded-sm border border-slate-200 bg-white p-4">
         <div>
-          <div className="text-[13px] font-black text-slate-900">تجاوزات خاصة بـ "{label}"</div>
-          <div className="text-[10px] font-bold text-slate-400">الإعدادات غير المحددة ترث من ⚙ الإعدادات العامة تلقائياً.</div>
+          <div className="text-sm font-black text-slate-900">تجاوزات خاصة بـ "{label}"</div>
+          <div className="text-[11px] font-bold text-slate-400">الإعدادات غير المحددة ترث من ⚙ الإعدادات العامة تلقائياً.</div>
         </div>
 
         <button type="button" onClick={() => setDesignerOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-50 py-2.5 text-[12px] font-black text-violet-700 hover:border-violet-500 hover:bg-violet-100">
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-50 py-2.5 text-2sm font-black text-violet-700 hover:border-violet-500 hover:bg-violet-100">
           <Maximize2 size={14} /> المحرر المتقدم (ملء الشاشة)
         </button>
 
@@ -1192,21 +1193,21 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
           <label key={key} className="block space-y-1">
             <span className="text-[11px] font-black text-slate-600">{labelText}</span>
             <input value={settings[key] || ""} onChange={(e) => set(key, e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-300 px-3 text-[12px] outline-none focus:border-violet-500" />
+              className="h-10 w-full rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" />
           </label>
         ))}
         {[["show_logo", "إظهار الشعار"], ["show_address", "إظهار العنوان"], ["show_phone", "إظهار الهاتف"], ["show_payment_details", "إظهار تفاصيل الدفع"], ["show_signature_lines", "إظهار خطوط التوقيع"], ["show_watermark", "طابع مائي"]].map(([key, labelText]) => (
           <label key={key} className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50">
-            <span className="text-[12px] font-bold text-slate-700">{labelText}</span>
+            <span className="text-2sm font-bold text-slate-700">{labelText}</span>
             <input type="checkbox" checked={settings[key] !== undefined ? Boolean(settings[key]) : true} onChange={(e) => set(key, e.target.checked)} />
           </label>
         ))}
         <button type="button" onClick={() => setDesignerOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-[12px] font-black text-slate-700 hover:border-slate-500 hover:bg-slate-50">
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-2sm font-black text-slate-700 hover:border-slate-500 hover:bg-slate-50">
           <Maximize2 size={14} /> المحرر المتقدم (ملء الشاشة)
         </button>
         <button type="button" onClick={() => onSave(docType, settings)}
-          className="w-full rounded-xl bg-violet-600 py-3 text-[13px] font-black text-white hover:bg-violet-700">
+          className="w-full rounded-xl bg-violet-600 py-3 text-sm font-black text-white hover:bg-violet-700">
           حفظ إعدادات هذا المستند
         </button>
       </div>
@@ -1236,7 +1237,7 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
           <div className="flex items-center gap-3">
             <span className="text-[9px] font-bold text-slate-400">عجلة الفأرة للتكبير • اسحب للتنقل</span>
             <button type="button" onClick={() => setDesignerOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-black text-white hover:bg-violet-500">
+              className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-violet-500">
               <Maximize2 size={13} /> المحرر المتقدم
             </button>
           </div>
@@ -1274,13 +1275,13 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
           {/* Zoom controls */}
           <div className="absolute bottom-3 left-3 flex items-center gap-0 rounded-sm bg-white/90 border border-slate-200 shadow-md backdrop-blur-sm overflow-hidden z-10">
             <button type="button" onClick={() => setViewZoom((v) => Math.min(2, v + 0.1))}
-              className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100 border-l border-slate-200">+</button>
+              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 border-l border-slate-200">+</button>
             <button type="button" onClick={resetView}
-              className="px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:bg-slate-100 min-w-[46px] text-center">
+              className="px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-100 min-w-[46px] text-center">
               {Math.round(viewZoom * 100)}%
             </button>
             <button type="button" onClick={() => setViewZoom((v) => Math.max(0.2, v - 0.1))}
-              className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100 border-r border-slate-200">−</button>
+              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 border-r border-slate-200">−</button>
           </div>
         </div>
       </div>
@@ -1464,7 +1465,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         {/* Visibility */}
         <section>
           <SectionLabel icon={ListChecks} title="عناصر الظهور" hint="مرر فأرتك على مفتاح لتمييز مكانه في المعاينة — أو اضغط على عنصر المعاينة مباشرة" />
-          <div className="mb-3 flex items-center gap-2 rounded-sm border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-bold text-blue-700">
+          <div className="mb-3 flex items-center gap-2 rounded-sm border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-700">
             <Zap className="h-3.5 w-3.5 shrink-0" />
             اضغط على أي عنصر في المعاينة للانتقال إلى إعداده المقابل هنا والعكس صحيح
           </div>
@@ -1537,9 +1538,9 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-3 rounded-t-sm">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-slate-400" />
-            <span className="text-[12px] font-black uppercase tracking-widest">معاينة حية</span>
+            <span className="text-2sm font-black uppercase tracking-widest">معاينة حية</span>
           </div>
-          <div className="text-[10px] font-bold">
+          <div className="text-[11px] font-bold">
             {hovered && VISUAL_FIELDS.has(hovered)
               ? <span className="flex items-center gap-1.5 text-amber-400"><MousePointerClick className="h-3 w-3" />يتم التمييز</span>
               : <span className="text-slate-500">مرر على الإعدادات</span>
@@ -1551,7 +1552,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         <div className="flex overflow-hidden border-x border-slate-200">
           {PAPER_OPTIONS.map(({ value: v, label }) => (
             <button key={v} type="button" onClick={() => switchPreviewTab(v)}
-              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all border-l last:border-l-0 border-slate-200 ${previewTab === v ? "bg-amber-400 text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}>
+              className={`flex-1 py-2 text-[11px] font-black uppercase tracking-widest transition-all border-l last:border-l-0 border-slate-200 ${previewTab === v ? "bg-amber-400 text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}>
               {label}
             </button>
           ))}
@@ -1604,7 +1605,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             <button
               type="button"
               onClick={() => setViewZoom(v => Math.min(2, v + 0.1))}
-              className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200"
+              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200"
               title="تكبير"
             >+</button>
             <button
@@ -1616,7 +1617,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             <button
               type="button"
               onClick={() => setViewZoom(v => Math.max(0.2, v - 0.1))}
-              className="px-2.5 py-1.5 text-[14px] font-black text-slate-700 hover:bg-slate-100 transition-colors border-r border-slate-200"
+              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-r border-slate-200"
               title="تصغير"
             >−</button>
           </div>

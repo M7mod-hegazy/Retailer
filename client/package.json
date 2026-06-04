@@ -27,7 +27,7 @@
     "vitest": "^4.1.6"
   },
   "dependencies": {
-    "@fontsource/noto-sans-arabic": "^5.2.10",
+
     "@gsap/react": "^2.1.2",
     "@headlessui/react": "^2.2.10",
     "@tanstack/react-query": "^5.99.2",

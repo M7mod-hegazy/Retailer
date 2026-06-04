@@ -26,16 +26,16 @@ function CancelReasonModal({ onConfirm, onClose }) {
         <div className="flex flex-wrap gap-2 mb-3">
           {PRESETS.map(p => (
             <button key={p} onClick={() => setReason(p)}
-              className={`px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
+              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
             >{p}</button>
           ))}
         </div>
         <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="أو اكتب السبب..."
-          className="w-full border border-slate-200 rounded-xl p-3 text-[12px] resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300" />
+          className="w-full border border-slate-200 rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300" />
         <div className="flex gap-2 mt-4">
           <button onClick={() => reason.trim() && onConfirm(reason)} disabled={!reason.trim()}
-            className="flex-1 bg-rose-600 text-white rounded-xl py-2.5 text-[13px] font-black disabled:opacity-40 hover:bg-rose-700 transition-colors">تأكيد</button>
-          <button onClick={onClose} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-[13px] font-black text-slate-600 hover:bg-slate-50 transition-colors">رجوع</button>
+            className="flex-1 bg-rose-600 text-white rounded-xl py-2.5 text-sm font-black disabled:opacity-40 hover:bg-rose-700 transition-colors">تأكيد</button>
+          <button onClick={onClose} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors">رجوع</button>
         </div>
       </div>
     </div>
@@ -110,15 +110,15 @@ export default function PurchaseReturnDetailPage() {
   }
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center bg-slate-50"><div className="text-[14px] font-black text-slate-400 animate-pulse">جاري التحميل...</div></div>;
+    return <div className="flex h-full items-center justify-center bg-slate-50"><div className="text-sm font-black text-slate-400 animate-pulse">جاري التحميل...</div></div>;
   }
 
   if (!doc) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-50 flex-col gap-3">
         <RotateCcw className="h-12 w-12 text-slate-300" />
-        <p className="text-[14px] font-black text-slate-400">مرتجع الشراء غير موجود</p>
-        <button onClick={() => navigate(-1)} className="text-[12px] font-bold text-slate-500 underline">عودة</button>
+        <p className="text-sm font-black text-slate-400">مرتجع الشراء غير موجود</p>
+        <button onClick={() => navigate(-1)} className="text-2sm font-bold text-slate-500 underline">عودة</button>
       </div>
     );
   }
@@ -136,21 +136,21 @@ export default function PurchaseReturnDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-[14px] font-black text-slate-800">مرتجع شراء #{doc.doc_no}</h1>
-            <span className="text-[10px] font-bold text-slate-400">
+            <h1 className="text-sm font-black text-slate-800">مرتجع شراء #{doc.doc_no}</h1>
+            <span className="text-[11px] font-bold text-slate-400">
               {doc.purchase_id ? `من فاتورة شراء #${doc.purchase_id}` : "مرتجع عام"}
             </span>
           </div>
-          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black ${statusInfo.cls}`}>
+          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-black ${statusInfo.cls}`}>
             {statusInfo.label}
           </span>
           {isAmended && (
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-700">
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-700">
               مُعدَّل ← {doc.amended_by_no || doc.amended_by}
             </span>
           )}
           {isAmendment && (
-            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[10px] font-black text-blue-700">
+            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[11px] font-black text-blue-700">
               تعديل ↑ {doc.amendment_of_no || doc.amendment_of}
             </span>
           )}
@@ -158,14 +158,14 @@ export default function PurchaseReturnDetailPage() {
         <div className="flex items-center gap-3">
           <PermissionGate page="purchase_returns" action="print">
             <button onClick={() => setPrintOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-[13px] font-black text-slate-700 hover:bg-slate-50 transition-all">
+              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all">
               <Printer className="h-4 w-4" /> طباعة
             </button>
           </PermissionGate>
           {!isCancelled && !isAmended && (
             <PermissionGate page="purchase_returns" action="delete">
               <button onClick={() => setCancelOpen(true)}
-                className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-[13px] font-black text-rose-600 hover:bg-rose-100 transition-all">
+                className="flex h-9 items-center gap-2 rounded-sm border border-rose-200 bg-rose-50 px-4 text-sm font-black text-rose-600 hover:bg-rose-100 transition-all">
                 <Trash2 className="h-4 w-4" /> إلغاء المرتجع
               </button>
             </PermissionGate>
@@ -173,7 +173,7 @@ export default function PurchaseReturnDetailPage() {
           {!isCancelled && !isAmended && (
             <PermissionGate page="purchase_returns" action="edit">
               <button onClick={handleAmend}
-                className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-[13px] font-black text-white hover:bg-indigo-700 transition-all">
+                className="flex h-9 items-center gap-2 rounded-sm bg-indigo-600 px-6 text-sm font-black text-white hover:bg-indigo-700 transition-all">
                 <Pencil className="h-4 w-4" /> تعديل المرتجع
               </button>
             </PermissionGate>
@@ -185,28 +185,28 @@ export default function PurchaseReturnDetailPage() {
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-auto">
           <section className="grid grid-cols-4 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">المورد</span>
-              <span className="text-[13px] font-black text-slate-800">{doc.supplier_name || "—"}</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">المورد</span>
+              <span className="text-sm font-black text-slate-800">{doc.supplier_name || "—"}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
-              <span className="text-[13px] font-black text-slate-800">{new Date(doc.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
+              <span className="text-sm font-black text-slate-800">{new Date(doc.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">التسوية</span>
-              <span className="text-[13px] font-black text-slate-800">{SETTLEMENT_LABELS[doc.settlement_type] || doc.settlement_type}</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التسوية</span>
+              <span className="text-sm font-black text-slate-800">{SETTLEMENT_LABELS[doc.settlement_type] || doc.settlement_type}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">السبب</span>
-              <span className="text-[13px] font-black text-slate-800">{doc.reason || "—"}</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">السبب</span>
+              <span className="text-sm font-black text-slate-800">{doc.reason || "—"}</span>
             </div>
           </section>
 
           <section className="rounded-md border border-slate-300 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-slate-100 px-4 py-3">
-              <h2 className="text-[13px] font-black text-slate-700 flex items-center gap-2"><Package className="h-4 w-4" /> الأصناف المرتجعة</h2>
+              <h2 className="text-sm font-black text-slate-700 flex items-center gap-2"><Package className="h-4 w-4" /> الأصناف المرتجعة</h2>
             </div>
-            <table className="w-full text-[12px]">
+            <table className="w-full text-2sm">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-2 text-right font-black text-slate-500">الصنف</th>
@@ -220,7 +220,7 @@ export default function PurchaseReturnDetailPage() {
                   <tr key={i} className="border-t border-slate-50 hover:bg-slate-50/50">
                     <td className="px-4 py-2.5">
                       <div className="flex flex-col">
-                        {(l.item_code || l.code) && <span className="font-mono text-[10px] text-slate-400">{l.item_code || l.code}</span>}
+                        {(l.item_code || l.code) && <span className="font-mono text-[11px] text-slate-400">{l.item_code || l.code}</span>}
                         <span className="font-bold text-slate-800">{l.item_name_ar || l.item_name || l.item_id}</span>
                       </div>
                     </td>
@@ -253,7 +253,7 @@ export default function PurchaseReturnDetailPage() {
                 )}
                 <tr>
                   <td colSpan={3} className="px-4 py-3 text-right font-black text-slate-700">صافي المرتجع</td>
-                  <td className="px-4 py-3 text-left font-black text-slate-900 text-[14px]">{fmt(doc.total)} ج.م</td>
+                  <td className="px-4 py-3 text-left font-black text-slate-900 text-sm">{fmt(doc.total)} ج.م</td>
                 </tr>
               </tfoot>
             </table>
@@ -262,7 +262,7 @@ export default function PurchaseReturnDetailPage() {
 
         {timeline.length > 1 && (
           <aside className="w-64 shrink-0 overflow-auto rounded-md border border-slate-300 bg-white p-4 shadow-sm flex flex-col gap-3">
-            <h3 className="text-[12px] font-black text-slate-600 uppercase tracking-wider border-b border-slate-100 pb-2">سلسلة التعديلات</h3>
+            <h3 className="text-2sm font-black text-slate-600 uppercase tracking-wider border-b border-slate-100 pb-2">سلسلة التعديلات</h3>
             {timeline.map((t, i) => {
               const timelineStatus = statusBadge(t.status, "active");
               return (
@@ -275,8 +275,8 @@ export default function PurchaseReturnDetailPage() {
                     {i === 0 && timeline.length > 1 && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">الأصلي</span>}
                     {i === timeline.length - 1 && i !== 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">الأحدث</span>}
                   </div>
-                  <div className="text-[10px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
-                  <div className="text-[10px] font-bold text-slate-500">{fmt(t.total)} ج.م</div>
+                  <div className="text-[11px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
+                  <div className="text-[11px] font-bold text-slate-500">{fmt(t.total)} ج.م</div>
                   <span className={`inline-flex mt-1 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-black ${timelineStatus.cls}`}>
                     {timelineStatus.label}
                   </span>

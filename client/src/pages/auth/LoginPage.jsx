@@ -122,7 +122,7 @@ export default function LoginPage() {
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-50 flex items-center justify-center border border-emerald-200/60 shadow-inner animate-[subtle-drift_4s_ease-in-out_infinite] group-hover:scale-110 transition-transform duration-500">
                 <Radar className="w-4 h-4 text-emerald-600" />
               </div>
-              <span className="text-[12px] font-black tracking-[0.2em] text-emerald-800 uppercase" style={{ fontFamily: 'Outfit, sans-serif' }}>ElHegazi POS Framework</span>
+              <span className="text-2sm font-black tracking-[0.2em] text-emerald-800 uppercase" style={{ fontFamily: 'var(--font-number)' }}>ElHegazi POS Framework</span>
             </div>
 
             {/* Massive Brand Showcase */}
@@ -175,7 +175,7 @@ export default function LoginPage() {
                 {/* Username Field */}
                 <div className={`relative rounded-2xl border-2 transition-all duration-300 bg-slate-50/80 group overflow-hidden ${focusedField === 'username' ? 'border-emerald-500 bg-white shadow-[0_4px_20px_rgba(5,150,105,0.12)]' : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'}`}>
                   <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
-                    <span className={`text-[12px] font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'username' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>ID</span>
+                    <span className={`text-2sm font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'username' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>ID</span>
                   </div>
                   <input
                     type="text"
@@ -196,7 +196,7 @@ export default function LoginPage() {
                 {/* Password Field with Added View Toggle */}
                 <div className={`relative rounded-2xl border-2 transition-all duration-300 bg-slate-50/80 group overflow-hidden ${focusedField === 'password' ? 'border-emerald-500 bg-white shadow-[0_4px_20px_rgba(5,150,105,0.12)]' : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'}`}>
                    <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
-                    <span className={`text-[12px] font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>PW</span>
+                    <span className={`text-2sm font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>PW</span>
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}

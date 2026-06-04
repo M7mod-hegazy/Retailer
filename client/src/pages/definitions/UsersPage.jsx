@@ -402,7 +402,7 @@ export default function UsersPage() {
         header: "#",
         accessorFn: (_, i) => String(i + 1).padStart(2, "0"),
         cell: (info) => (
-          <span className="text-[10px] font-black text-slate-300 font-mono">
+          <span className="text-[11px] font-black text-slate-300 font-mono">
             {info.getValue()}
           </span>
         ),
@@ -412,7 +412,7 @@ export default function UsersPage() {
         accessorKey: "full_name",
         header: "الاسم",
         cell: (info) => (
-          <span className="text-[13px] font-bold text-slate-800">
+          <span className="text-sm font-bold text-slate-800">
             {info.getValue() ?? "-"}
           </span>
         ),
@@ -421,7 +421,7 @@ export default function UsersPage() {
         accessorKey: "username",
         header: "اسم المستخدم",
         cell: (info) => (
-          <span className="text-[13px] font-bold text-slate-800 font-mono">
+          <span className="text-sm font-bold text-slate-800 font-mono">
             {info.getValue() ?? "-"}
           </span>
         ),
@@ -439,7 +439,7 @@ export default function UsersPage() {
         accessorKey: "is_active",
         header: "نشط",
         cell: (info) => (
-          <span className="text-[13px] font-bold text-slate-800">
+          <span className="text-sm font-bold text-slate-800">
             {info.getValue() ? "نعم" : "لا"}
           </span>
         ),
@@ -507,7 +507,7 @@ export default function UsersPage() {
           <div className="flex items-center gap-3 text-slate-400 mb-6">
             <div className="h-px w-8 bg-zinc-400" />
             <Database className="h-3 w-3" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">
               نظام الإدارة الأساسي
             </span>
           </div>
@@ -573,7 +573,7 @@ export default function UsersPage() {
                   {editingRow ? "وضع التعديل" : "إضافة جديد"}
                 </h2>
                 <p
-                  className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${
+                  className={`text-[11px] font-bold uppercase tracking-widest mt-1 ${
                     editingRow ? "text-amber-700/70" : "text-slate-400"
                   }`}
                 >
@@ -645,7 +645,7 @@ export default function UsersPage() {
                 ].map((field) => (
                   <div key={field.name} className="flex flex-col gap-2">
                     <label
-                      className={`text-[10px] font-black uppercase tracking-widest flex items-center justify-between ${
+                      className={`text-[11px] font-black uppercase tracking-widest flex items-center justify-between ${
                         editingRow ? "text-amber-900/70" : "text-slate-500"
                       }`}
                     >
@@ -691,7 +691,7 @@ export default function UsersPage() {
                 {/* Create-only: privilege template (auto-sets role) */}
                 {!editingRow && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">
                       نمط الصلاحيات
                     </label>
                     <select
@@ -714,7 +714,7 @@ export default function UsersPage() {
                 {editingRow && (
                   <>
                     <div className="flex flex-col gap-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-amber-900/70">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-amber-900/70">
                         الدور (مشتق من الصلاحيات)
                       </label>
                       <div className="h-12 bg-white/60 rounded-xl px-4 flex items-center border border-amber-200">
@@ -732,7 +732,7 @@ export default function UsersPage() {
                   type="submit"
                   disabled={isSubmitting}
                   animate={infoSaved ? { scale: [1, 1.02, 1] } : {}}
-                  className={`w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all shadow-xl disabled:opacity-50 ${
+                  className={`w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50 ${
                     infoSaved
                       ? "bg-emerald-500"
                       : editingRow
@@ -766,7 +766,7 @@ export default function UsersPage() {
               <div data-help="permissions-section" className="p-6 flex flex-col gap-4 bg-amber-100/20">
                 {/* Template selector */}
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-amber-200">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-amber-900/70 whitespace-nowrap">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-amber-900/70 whitespace-nowrap">
                     قالب الدور
                   </label>
                   <select
@@ -794,7 +794,7 @@ export default function UsersPage() {
                     value={permSearch}
                     onChange={(e) => setPermSearch(e.target.value)}
                     placeholder="بحث في الصفحات..."
-                    className="w-full h-9 bg-white rounded-lg pr-9 pl-3 text-[12px] font-bold text-zinc-800 outline-none focus:ring-2 focus:ring-amber-400/40 border border-slate-200"
+                    className="w-full h-9 bg-white rounded-lg pr-9 pl-3 text-2sm font-bold text-zinc-800 outline-none focus:ring-2 focus:ring-amber-400/40 border border-slate-200"
                   />
                 </div>
 
@@ -819,7 +819,7 @@ export default function UsersPage() {
                               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             }, 50);
                           }}
-                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap transition-all shadow-sm shrink-0 ${
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all shadow-sm shrink-0 ${
                             isOpen 
                               ? "bg-amber-600 text-white border-amber-600 font-black scale-105" 
                               : activeCount > 0
@@ -889,7 +889,7 @@ export default function UsersPage() {
                                 </div>
                                 <div className="flex flex-col items-start gap-0.5">
                                   <span className="text-xs font-black text-slate-800">{cat.label}</span>
-                                  <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                  <span className="text-[11px] font-bold text-slate-400 font-mono">
                                     {activeCount} / {totalCount} نشط
                                   </span>
                                 </div>
@@ -960,7 +960,7 @@ export default function UsersPage() {
                                             <span className="text-[9px] font-black text-amber-600/70 tracking-wide uppercase">
                                               {cat.label}
                                             </span>
-                                            <span className="text-[12px] font-black text-slate-800">{meta.label}</span>
+                                            <span className="text-2sm font-black text-slate-800">{meta.label}</span>
                                           </div>
                                           
                                           {/* Glowing Status badge */}
@@ -1044,7 +1044,7 @@ export default function UsersPage() {
                                                   <button
                                                     type="button"
                                                     onClick={() => toggleAction(pageKey, act)}
-                                                    className={`h-7 px-2.5 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 select-none ${
+                                                    className={`h-7 px-2.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 select-none ${
                                                       checked 
                                                         ? "bg-zinc-950 text-white border-zinc-950 font-black shadow-sm" 
                                                         : "bg-slate-50 text-slate-500 border-slate-200/60 hover:bg-slate-100 hover:text-slate-700"
@@ -1081,7 +1081,7 @@ export default function UsersPage() {
                   type="button"
                   onClick={handleSavePermissions}
                   disabled={permSaving || permLoading}
-                  className="w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white bg-amber-600 hover:bg-amber-700 transition-all shadow-xl disabled:opacity-50"
+                  className="w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white bg-amber-600 hover:bg-amber-700 transition-all shadow-xl disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
                   {permSaving ? "جاري الحفظ..." : "حفظ الصلاحيات"}

@@ -57,7 +57,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
                 scope === item.key ? "border-slate-900 bg-slate-900 text-white shadow-lg" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
-              <span className="block text-[13px] font-black">{item.label}</span>
+              <span className="block text-sm font-black">{item.label}</span>
               <span className={`mt-1 block text-[11px] font-bold ${scope === item.key ? "text-white/70" : "text-slate-400"}`}>{item.count} صنف</span>
             </button>
           ))}
@@ -67,7 +67,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-              <span className="text-[13px] font-black text-slate-800">حقول ملف التصدير</span>
+              <span className="text-sm font-black text-slate-800">حقول ملف التصدير</span>
             </div>
             <button
               type="button"
@@ -85,7 +85,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
                   key={field.key}
                   type="button"
                   onClick={() => toggleField(field.key)}
-                  className={`flex items-center justify-between rounded-sm border px-3 py-2 text-[12px] font-bold transition-all ${
+                  className={`flex items-center justify-between rounded-sm border px-3 py-2 text-2sm font-bold transition-all ${
                     checked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -98,14 +98,14 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <div className="text-[12px] font-bold text-slate-500">
+          <div className="text-2sm font-bold text-slate-500">
             سيتم تصدير {exportRows.length} صنف مع {selectedFields.length} حقل بصيغة Excel قابلة للاستيراد مرة أخرى.
           </div>
           <button
             type="button"
             onClick={handleExport}
             disabled={!exportRows.length || !selectedFields.length}
-            className="inline-flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-[13px] font-black text-white shadow-lg transition hover:bg-slate-800 disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-lg transition hover:bg-slate-800 disabled:opacity-40"
           >
             <Download className="h-4 w-4" />
             تصدير Excel

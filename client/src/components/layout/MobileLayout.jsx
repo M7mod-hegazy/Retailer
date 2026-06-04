@@ -38,7 +38,7 @@ export default function MobileLayout({ children, branding }) {
           <Link to="/notifications" className="btn-icon relative text-text-secondary">
             <Bell className={`h-5 w-5 ${unreadCount > 0 ? "animate-bell-ring text-warning-DEFAULT" : ""}`} />
             {unreadCount > 0 && (
-              <span className="badge-pulse absolute -end-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger-DEFAULT px-1 text-[10px] font-bold text-white">
+              <span className="badge-pulse absolute -end-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger-DEFAULT px-1 text-[11px] font-bold text-white">
                 {unreadCount}
               </span>
             )}

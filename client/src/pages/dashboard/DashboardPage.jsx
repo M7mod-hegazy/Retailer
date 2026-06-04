@@ -229,7 +229,7 @@ function QuickEntryModal({ type, onClose }) {
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className={`w-full text-[13px] font-bold text-zinc-900 bg-zinc-50 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all appearance-none ${!categoryId ? "border-rose-300" : "border-zinc-200"}`}
+              className={`w-full text-sm font-bold text-zinc-900 bg-zinc-50 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all appearance-none ${!categoryId ? "border-rose-300" : "border-zinc-200"}`}
               required
             >
               <option value="">— اختر الفئة (مطلوب) —</option>
@@ -247,7 +247,7 @@ function QuickEntryModal({ type, onClose }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="اكتب وصفاً مختصراً..."
-              className="w-full text-[14px] font-semibold text-zinc-900 placeholder:text-zinc-300 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
+              className="w-full text-sm font-semibold text-zinc-900 placeholder:text-zinc-300 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
             />
           </div>
 
@@ -255,7 +255,7 @@ function QuickEntryModal({ type, onClose }) {
           <button
             type="submit"
             disabled={submitting || !amount || !categoryId}
-            className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-black text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${colors.btn}`}
+            className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-black text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${colors.btn}`}
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {submitting ? "جاري الحفظ..." : "حفظ الآن"}
@@ -303,7 +303,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
   }
 
   const actionBtnClass = (active) =>
-    `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black border ${
+    `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border ${
       active
         ? "bg-white/10 border-white/20 text-white hover:bg-emerald-500 hover:border-emerald-400"
         : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-500 hover:border-emerald-400 hover:text-white"
@@ -355,7 +355,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
                 <button
                   onClick={handleQuickClick}
                   title={qa.label}
-                  className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-black border ${
+                  className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${
                     active
                       ? "bg-white/10 border-white/20 text-white hover:bg-emerald-500 hover:border-emerald-400"
                       : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-500 hover:border-emerald-400 hover:text-white"
@@ -470,7 +470,7 @@ export default function DashboardPage() {
                         <div className="text-xl font-black text-white mb-1">{item.label}</div>
                         {shortcut && (
                           <div className="text-xs font-bold flex items-center gap-2 text-emerald-100">
-                            <kbd className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-black/20 text-white">{shortcut}</kbd>
+                            <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-black/20 text-white">{shortcut}</kbd>
                             <span>اختصار لوحة المفاتيح</span>
                           </div>
                         )}
@@ -496,7 +496,7 @@ export default function DashboardPage() {
                       <div className="text-xl font-black text-white mb-1">{item.label}</div>
                       {shortcut && (
                         <div className="text-xs font-bold flex items-center gap-2 text-zinc-400">
-                          <kbd className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-white/10 text-white">{shortcut}</kbd>
+                          <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-white/10 text-white">{shortcut}</kbd>
                           <span>اختصار لوحة المفاتيح</span>
                         </div>
                       )}

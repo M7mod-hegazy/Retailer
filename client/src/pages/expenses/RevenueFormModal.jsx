@@ -130,7 +130,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                        required
                        value={form.category_id}
                        onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
-                       className="w-full appearance-none rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-[13px] font-bold text-slate-700 outline-none focus:border-slate-800"
+                       className="w-full appearance-none rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
                     >
                        <option value="">اختيار الفئة...</option>
                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -148,7 +148,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                        value={form.description}
                        onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
                        placeholder="مثلاً: بيع خردة، عمولة، خدمات أخرى..."
-                       className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-[13px] font-bold text-slate-700 outline-none focus:border-slate-800"
+                       className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
                     />
                  </div>
               </div>
@@ -180,7 +180,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                  <select 
                     value={form.payment_method === 'cash' ? form.treasury_id : form.bank_id}
                     onChange={(e) => setForm(f => ({ ...f, [form.payment_method === 'cash' ? 'treasury_id' : 'bank_id']: e.target.value }))}
-                    className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-[12px] font-bold text-slate-700 outline-none"
+                    className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
                  >
                     <option value="">{form.payment_method === 'cash' ? 'اختر الخزينة المستلمة...' : 'اختر الحساب البنكي...'}</option>
                     {form.payment_method === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -196,7 +196,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                        type="date"
                        value={form.created_at}
                        onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
-                       className="w-full rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-[12px] font-black text-slate-800 outline-none"
+                       className="w-full rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-2sm font-black text-slate-800 outline-none"
                     />
                  </div>
               </div>
@@ -208,7 +208,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                     value={form.notes}
                     onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
                     placeholder="اكتب أي تفاصيل أخرى هنا..."
-                    className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-[12px] font-bold text-slate-700 outline-none focus:bg-white resize-none"
+                    className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-2sm font-bold text-slate-700 outline-none focus:bg-white resize-none"
                     rows="2"
                  />
               </div>
@@ -218,14 +218,14 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
               <button 
                  type="button"
                  onClick={onClose}
-                 className="rounded-sm border border-slate-200 px-6 py-2.5 text-[13px] font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                 className="rounded-sm border border-slate-200 px-6 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
               >
                  إلغاء التغييرات
               </button>
               <button 
                  type="submit"
                  disabled={loading}
-                 className="flex items-center gap-2 rounded-sm bg-emerald-900 px-10 py-2.5 text-[13px] font-black text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-emerald-800 active:scale-95 disabled:opacity-50"
+                 className="flex items-center gap-2 rounded-sm bg-emerald-900 px-10 py-2.5 text-sm font-black text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-emerald-800 active:scale-95 disabled:opacity-50"
               >
                  {loading ? 'جاري الحفظ...' : (
                     <>

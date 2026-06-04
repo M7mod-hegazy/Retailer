@@ -57,7 +57,7 @@ export default function Table({ columns = [], rows = [] }) {
                         </div>
                       ) : null}
                     </div>
-                    {actionColumn ? <div className="rounded-full border border-border-subtle px-2 py-1 text-[10px] text-text-secondary" style={{ background: "var(--bg-input)" }}>اضغط مطولاً</div> : null}
+                    {actionColumn ? <div className="rounded-full border border-border-subtle px-2 py-1 text-[11px] text-text-secondary" style={{ background: "var(--bg-input)" }}>اضغط مطولاً</div> : null}
                   </div>
                   {rest.length > 0 ? (
                     <div className="mt-4 grid gap-2 text-sm text-text-secondary">

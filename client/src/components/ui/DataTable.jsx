@@ -141,7 +141,7 @@ export default function DataTable({
                         className="px-6 py-5"
                         style={isFixedColumn ? { width: cell.column.columnDef.size } : {}}
                       >
-                        <span className={`text-[13px] font-bold text-slate-700 ${cell.column.id === 'code' ? 'font-mono tracking-wider' : ''}`}>
+                        <span className={`text-sm font-bold text-slate-700 ${cell.column.id === 'code' ? 'font-mono tracking-wider' : ''}`}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </span>
                       </td>

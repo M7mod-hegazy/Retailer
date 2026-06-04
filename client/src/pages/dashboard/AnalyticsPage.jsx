@@ -166,7 +166,7 @@ export default function AnalyticsPage() {
           <div className="absolute inset-0 rounded-full animate-ping bg-slate-900 opacity-10"></div>
           <Activity className="h-8 w-8 animate-pulse text-slate-800" />
         </div>
-        <div className="text-[12px] font-black tracking-[0.2em] text-slate-400 uppercase">جاري تجميع البيانات...</div>
+        <div className="text-2sm font-black tracking-[0.2em] text-slate-400 uppercase">جاري تجميع البيانات...</div>
       </div>
     );
   }
@@ -186,7 +186,7 @@ export default function AnalyticsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">الرؤية والتحليلات</h1>
-            <p className="text-[14px] font-bold text-slate-500 mt-1">
+            <p className="text-sm font-bold text-slate-500 mt-1">
               راقب أداء المبيعات لحظة بلحظة لقرارات أسرع وأدق.
             </p>
           </div>
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
         <Link to="/reports/center" className="hidden md:flex items-center gap-4 bg-white border border-slate-200 rounded-[20px] py-2 px-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group">
           <div className="flex flex-col text-left items-end">
             <span className="text-[11px] font-black tracking-widest text-slate-400 uppercase">المركز</span>
-            <span className="text-[14px] font-bold text-slate-700">تقارير مفصلة</span>
+            <span className="text-sm font-bold text-slate-700">تقارير مفصلة</span>
           </div>
           <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center group-hover:bg-slate-100 text-slate-400 group-hover:text-slate-600 transition-colors">
             <FileText className="w-5 h-5" />
@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
                 <h2 className="text-[20px] font-black text-slate-900 tracking-tight">حركة المبيعات الإجمالية</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  <span className="text-[12px] font-bold text-slate-500">مزامنة في الوقت الفعلي</span>
+                  <span className="text-2sm font-bold text-slate-500">مزامنة في الوقت الفعلي</span>
                 </div>
               </div>
 
@@ -235,13 +235,13 @@ export default function AnalyticsPage() {
                 <div className="flex p-1 bg-slate-100 rounded-[14px]">
                   <button 
                     onClick={() => setChartMetric("revenue")}
-                    className={`px-4 py-1.5 rounded-[10px] text-[12px] font-black transition-all ${chartMetric === "revenue" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-2sm font-black transition-all ${chartMetric === "revenue" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     بالقيمة
                   </button>
                   <button 
                     onClick={() => setChartMetric("count")}
-                    className={`px-4 py-1.5 rounded-[10px] text-[12px] font-black transition-all ${chartMetric === "count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-2sm font-black transition-all ${chartMetric === "count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     بالعدد
                   </button>
@@ -251,7 +251,7 @@ export default function AnalyticsPage() {
                   <select 
                      value={chartDateMode}
                      onChange={e => setChartDateMode(e.target.value)}
-                     className="bg-slate-200/50 hover:bg-slate-200 border-none outline-none text-[12px] font-black text-slate-700 py-1.5 px-2 rounded-[10px] ml-1 transition-colors cursor-pointer"
+                     className="bg-slate-200/50 hover:bg-slate-200 border-none outline-none text-2sm font-black text-slate-700 py-1.5 px-2 rounded-[10px] ml-1 transition-colors cursor-pointer"
                   >
                      <option value="predefined">فترة محددة</option>
                      <option value="custom">تاريخ مخصص</option>
@@ -265,7 +265,7 @@ export default function AnalyticsPage() {
                         <button 
                           key={days}
                           onClick={() => setChartRange(days)}
-                          className={`px-3 py-1.5 rounded-[10px] text-[12px] transition-all ${chartRange === days ? "bg-indigo-600 text-white shadow-sm font-black" : "hover:text-slate-900 hover:bg-slate-200/50"}`}
+                          className={`px-3 py-1.5 rounded-[10px] text-2sm transition-all ${chartRange === days ? "bg-indigo-600 text-white shadow-sm font-black" : "hover:text-slate-900 hover:bg-slate-200/50"}`}
                         >
                           {days === 1 ? 'يومي' : days === 7 ? 'أسبوع' : days === 14 ? '١٤ي' : 'شهر'}
                         </button>
@@ -279,7 +279,7 @@ export default function AnalyticsPage() {
                         onChange={e => setChartCustomDates(c => ({...c, start: e.target.value}))} 
                         className="text-[11px] bg-white rounded-[8px] px-2 py-1 outline-none border border-slate-200 font-mono shadow-sm"
                       />
-                      <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">الي</span>
+                      <span className="text-[11px] uppercase font-black tracking-widest text-slate-400">الي</span>
                       <input 
                         type="date" 
                         value={chartCustomDates.end} 
@@ -343,14 +343,14 @@ export default function AnalyticsPage() {
               </div>
               <div className="flex-1 space-y-3">
                 {topCategories.length === 0 ? (
-                  <div className="text-center text-[13px] text-slate-400 font-bold py-6">لا توجد بيانات كافية للأقسام</div>
+                  <div className="text-center text-sm text-slate-400 font-bold py-6">لا توجد بيانات كافية للأقسام</div>
                 ) : (
                   topCategories.map((cat, idx) => {
                     const maxRev = topCategories[0].revenue || 1;
                     const percent = Math.max(5, (cat.revenue / maxRev) * 100);
                     return (
                       <div key={idx} className="relative">
-                        <div className="flex justify-between text-[12px] font-black mb-1.5 relative z-10 px-1">
+                        <div className="flex justify-between text-2sm font-black mb-1.5 relative z-10 px-1">
                           <span className="text-slate-700">{cat.category_name}</span>
                           <span className="text-slate-900"><CurrencyDisplay value={cat.revenue || 0} /></span>
                         </div>
@@ -399,7 +399,7 @@ export default function AnalyticsPage() {
                   الأصناف {itemsSort === 'top' ? 'الأكثر' : 'الأقل'} مبيعاً
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                   <select value={itemsSort} onChange={e => setItemsSort(e.target.value)} className="text-[12px] font-bold bg-white border border-slate-200 shadow-sm rounded-[10px] px-2 py-1.5 outline-none text-slate-700 cursor-pointer">
+                   <select value={itemsSort} onChange={e => setItemsSort(e.target.value)} className="text-2sm font-bold bg-white border border-slate-200 shadow-sm rounded-[10px] px-2 py-1.5 outline-none text-slate-700 cursor-pointer">
                      <option value="top">الأكثر مبيعاً</option>
                      <option value="bottom">الأقل مبيعاً</option>
                    </select>
@@ -429,14 +429,14 @@ export default function AnalyticsPage() {
                            type="date" 
                            value={itemsCustomDates.start} 
                            onChange={e => setItemsCustomDates(c => ({...c, start: e.target.value}))} 
-                           className="text-[10px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
+                           className="text-[11px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
                          />
                          <span className="text-[9px] uppercase font-black text-slate-400">الي</span>
                          <input 
                            type="date" 
                            value={itemsCustomDates.end} 
                            onChange={e => setItemsCustomDates(c => ({...c, end: e.target.value}))} 
-                           className="text-[10px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
+                           className="text-[11px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
                          />
                        </div>
                      )}
@@ -450,9 +450,9 @@ export default function AnalyticsPage() {
             
             <div className="overflow-x-auto">
               {topItems.length === 0 ? (
-                <div className="text-center py-10 text-[14px] text-slate-400 font-bold">لا يوجد مبيعات كافية לעرض الأصناف الأكثر مبيعا.</div>
+                <div className="text-center py-10 text-sm text-slate-400 font-bold">لا يوجد مبيعات كافية לעرض الأصناف الأكثر مبيعا.</div>
               ) : (
-                <table className="w-full text-right text-[13px] border-separate border-spacing-y-2">
+                <table className="w-full text-right text-sm border-separate border-spacing-y-2">
                   <thead>
                     <tr className="text-slate-400 font-black uppercase tracking-widest text-[11px]">
                       <th className="pb-3 px-4 font-black">الصنف</th>
@@ -466,17 +466,17 @@ export default function AnalyticsPage() {
                       <tr key={index} className="group">
                         <td className="bg-white group-hover:bg-slate-50 py-3.5 px-4 rounded-r-[16px] border border-l-0 border-slate-100 transition-colors">
                           <div className="flex items-center gap-3">
-                            <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-black">{index + 1}</span>
+                            <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-black">{index + 1}</span>
                             <span className="font-bold text-slate-800">{item.item_name}</span>
                           </div>
                         </td>
                         <td className="bg-white group-hover:bg-slate-50 py-3.5 px-4 border-y border-slate-100 transition-colors">
-                          <span className="font-mono text-[12px] font-bold text-slate-600 tabular-nums" dir="ltr">
+                          <span className="font-mono text-2sm font-bold text-slate-600 tabular-nums" dir="ltr">
                             {item.item_code || "—"}
                           </span>
                         </td>
                         <td className="bg-white group-hover:bg-slate-50 py-3.5 px-4 font-black text-slate-600 border-y border-slate-100 transition-colors">
-                          {item.quantity_sold} <span className="text-[10px] font-normal text-slate-400 ml-1">وحدة</span>
+                          {item.quantity_sold} <span className="text-[11px] font-normal text-slate-400 ml-1">وحدة</span>
                         </td>
                         <td className="bg-white group-hover:bg-slate-50 py-3.5 px-4 font-black text-slate-900 rounded-l-[16px] border border-r-0 border-slate-100 transition-colors">
                           <CurrencyDisplay value={item.revenue} />
@@ -505,14 +505,14 @@ export default function AnalyticsPage() {
                      <Sparkles className="w-6 h-6" />
                    </div>
                    <span className="text-[15px] font-black text-slate-800">مخزونك في أمان تام</span>
-                   <span className="text-[12px] font-bold text-slate-500 mt-1">لا توجد أصناف تحت الحد الأدنى للطلب.</span>
+                   <span className="text-2sm font-bold text-slate-500 mt-1">لا توجد أصناف تحت الحد الأدنى للطلب.</span>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {lowStock.map((item) => (
                     <div key={item.id} className="flex items-center justify-between rounded-[20px] border border-slate-100 bg-white p-4 hover:border-orange-200 transition-all hover:shadow-sm group">
                       <div className="min-w-0 flex flex-col gap-0.5">
-                        <span className="font-bold text-slate-800 text-[13px]">{item.name}</span>
+                        <span className="font-bold text-slate-800 text-sm">{item.name}</span>
                         {item.item_code ? (
                           <span className="font-mono text-[11px] font-bold text-slate-500 tabular-nums" dir="ltr">
                             SKU: {item.item_code}
@@ -520,15 +520,15 @@ export default function AnalyticsPage() {
                         ) : null}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">رصيد</span>
-                        <span className="inline-flex items-center justify-center h-7 px-3 bg-red-50 text-red-600 rounded-full text-[12px] font-black ring-1 ring-red-100 group-hover:scale-105 transition-transform">
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">رصيد</span>
+                        <span className="inline-flex items-center justify-center h-7 px-3 bg-red-50 text-red-600 rounded-full text-2sm font-black ring-1 ring-red-100 group-hover:scale-105 transition-transform">
                           {Number(item.quantity || 0)}
                         </span>
                       </div>
                     </div>
                   ))}
                   {lowStock.length === 5 && (
-                     <Link to="/stock/levels" className="block w-full py-3 mt-2 text-center text-[12px] font-black text-indigo-600 bg-indigo-50/50 rounded-[16px] hover:bg-indigo-50 transition-colors">
+                     <Link to="/stock/levels" className="block w-full py-3 mt-2 text-center text-2sm font-black text-indigo-600 bg-indigo-50/50 rounded-[16px] hover:bg-indigo-50 transition-colors">
                        عرض التفاصيل الكاملة ←
                      </Link>
                   )}
@@ -555,26 +555,26 @@ export default function AnalyticsPage() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <span className="text-[15px] font-black text-slate-800">هوامش الربح سليمة</span>
-                <span className="text-[12px] font-bold text-slate-500 mt-1">لا توجد أصناف تحت الحد الأدنى للهامش.</span>
+                <span className="text-2sm font-bold text-slate-500 mt-1">لا توجد أصناف تحت الحد الأدنى للهامش.</span>
               </div>
             ) : (
               <div className="space-y-3">
                 {belowMargin.map((item) => (
                   <div key={item.item_id || item.id} className="flex items-center justify-between rounded-[20px] border border-rose-100 bg-rose-50/40 p-4">
                     <div className="flex flex-col min-w-0">
-                      {(item.item_code || item.code) && <span className="font-mono text-[10px] text-slate-400">{item.item_code || item.code}</span>}
-                      <span className="font-bold text-slate-800 text-[13px]">{item.item_name || item.name}</span>
+                      {(item.item_code || item.code) && <span className="font-mono text-[11px] text-slate-400">{item.item_code || item.code}</span>}
+                      <span className="font-bold text-slate-800 text-sm">{item.item_name || item.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">هامش</span>
-                      <span className="inline-flex items-center justify-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-[12px] font-black ring-1 ring-rose-200">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">هامش</span>
+                      <span className="inline-flex items-center justify-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-2sm font-black ring-1 ring-rose-200">
                         {Number(item.current_margin_percent ?? 0).toFixed(1)}%
                       </span>
                     </div>
                   </div>
                 ))}
                 {belowMargin.length === 5 && (
-                  <Link to="/reports/margin-health" className="block w-full py-3 mt-2 text-center text-[12px] font-black text-rose-600 bg-rose-50/50 rounded-[16px] hover:bg-rose-50 transition-colors">
+                  <Link to="/reports/margin-health" className="block w-full py-3 mt-2 text-center text-2sm font-black text-rose-600 bg-rose-50/50 rounded-[16px] hover:bg-rose-50 transition-colors">
                     عرض التفاصيل الكاملة ←
                   </Link>
                 )}
@@ -609,7 +609,7 @@ function BentoMetric({ title, value, icon: Icon, theme = "default", trend }) {
            <Icon className="w-5 h-5" />
         </div>
         <div>
-           <div className={`text-[12px] font-bold mb-1 ${isDark ? 'text-slate-400' : theme === 'alert' ? 'text-red-700/70' : 'text-slate-500'}`}>{title}</div>
+           <div className={`text-2sm font-bold mb-1 ${isDark ? 'text-slate-400' : theme === 'alert' ? 'text-red-700/70' : 'text-slate-500'}`}>{title}</div>
            <div className={`text-[20px] lg:text-[22px] font-black tracking-tight leading-none ${isDark ? 'text-white' : theme === 'alert' ? 'text-red-900' : 'text-slate-900'}`}>
              {value}
            </div>

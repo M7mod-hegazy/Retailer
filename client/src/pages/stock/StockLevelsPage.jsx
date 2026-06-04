@@ -56,7 +56,7 @@ const PAGE = 50;
 function Tab({ active, onClick, children, ...rest }) {
   return (
     <button type="button" onClick={onClick} {...rest}
-      className={`flex items-center justify-center gap-2 px-6 py-3 text-[13px] font-black uppercase tracking-widest border-b-2 transition-all ${
+      className={`flex items-center justify-center gap-2 px-6 py-3 text-sm font-black uppercase tracking-widest border-b-2 transition-all ${
         active
           ? "border-slate-800 text-slate-900 bg-slate-50/50"
           : "border-transparent text-slate-400 hover:text-slate-800 hover:bg-slate-50/30"
@@ -70,7 +70,7 @@ function Tab({ active, onClick, children, ...rest }) {
 function SortTh({ label, sortKey, sortConfig, onSort, width, className = "" }) {
   const isSorted = sortConfig.key === sortKey;
   return (
-    <th className={`relative px-4 py-3 text-right text-[10px] font-black uppercase text-slate-500 hover:bg-slate-100 transition-colors select-none group border-l border-slate-100 ${className}`}
+    <th className={`relative px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 hover:bg-slate-100 transition-colors select-none group border-l border-slate-100 ${className}`}
       style={width ? { width, minWidth: width } : {}}
     >
       <div className="flex items-center gap-1 cursor-pointer" onClick={() => onSort(sortKey)}>
@@ -473,28 +473,28 @@ export default function StockLevelsPage() {
                <Warehouse className="h-6 w-6 text-slate-800" />
                أرصدة وحركات المخزون
             </h1>
-            <p className="text-[13px] font-bold text-slate-400">تابع الكميات، حوّل بين الفروع، وراجع الحركات المباشرة</p>
+            <p className="text-sm font-bold text-slate-400">تابع الكميات، حوّل بين الفروع، وراجع الحركات المباشرة</p>
          </div>
          <div className="flex items-center gap-2">
             <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 shadow-sm">
                <Warehouse className="h-4 w-4 text-sky-500" />
                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-black text-slate-400 uppercase leading-none">فروع المخازن</span>
-                  <span className="text-[13px] font-black text-slate-800 leading-none">{warehouses.length}</span>
+                  <span className="text-[11px] font-black text-slate-400 uppercase leading-none">فروع المخازن</span>
+                  <span className="text-sm font-black text-slate-800 leading-none">{warehouses.length}</span>
                </div>
             </div>
             <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-amber-200 bg-amber-50 px-3 shadow-sm">
                <AlertTriangle className="h-4 w-4 text-amber-500" />
                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-black text-amber-600 uppercase leading-none">أصناف منخفضة</span>
-                  <span className="text-[13px] font-black text-amber-800 leading-none">{lowCount}</span>
+                  <span className="text-[11px] font-black text-amber-600 uppercase leading-none">أصناف منخفضة</span>
+                  <span className="text-sm font-black text-amber-800 leading-none">{lowCount}</span>
                </div>
             </div>
             <div className="flex h-[42px] items-center gap-1.5 rounded-sm border border-rose-200 bg-rose-50 px-3 shadow-sm">
                <X className="h-4 w-4 text-rose-500" />
                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-black text-rose-600 uppercase leading-none">نفدت تماماً</span>
-                  <span className="text-[13px] font-black text-rose-800 leading-none">{zeroCount}</span>
+                  <span className="text-[11px] font-black text-rose-600 uppercase leading-none">نفدت تماماً</span>
+                  <span className="text-sm font-black text-rose-800 leading-none">{zeroCount}</span>
                </div>
             </div>
          </div>
@@ -522,7 +522,7 @@ export default function StockLevelsPage() {
             {(lowCount > 0 || zeroCount > 0) && (
                <div className="flex items-center gap-3 bg-amber-50 px-6 py-3 border-b border-amber-100">
                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                 <p className="flex-1 text-[12px] font-bold text-amber-800">
+                 <p className="flex-1 text-2sm font-bold text-amber-800">
                    {lowCount > 0 && <><span className="font-black">{lowCount} صنف</span> وصلت للحد الأدنى. </>}
                    {zeroCount > 0 && <span className="font-black text-rose-600">{zeroCount} نفدت تماماً.</span>}
                  </p>
@@ -540,17 +540,17 @@ export default function StockLevelsPage() {
                      <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                      <input value={levelsSearch} onChange={(e) => setLS(e.target.value)}
                        placeholder="بحث سريع بالاسم أو الباركود..."
-                       className="w-full rounded-md border border-slate-200 bg-white py-2 pl-3 pr-10 text-[13px] font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                       className="w-full rounded-md border border-slate-200 bg-white py-2 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
                   </div>
                   <div className="relative w-64 group">
                      <select value={levelsWH} onChange={(e) => setLWH(e.target.value)}
-                       className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+                       className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
                        {whOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                      </select>
                      <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                </div>
-               <p className="text-[12px] font-black text-slate-500 uppercase tracking-widest">{filteredLevels.length} رصيد</p>
+               <p className="text-2sm font-black text-slate-500 uppercase tracking-widest">{filteredLevels.length} رصيد</p>
             </div>
 
             {/* Table */}
@@ -574,11 +574,11 @@ export default function StockLevelsPage() {
                 }}
                 columns={[
                   {
-                    id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[12px] font-black text-slate-500 border-l border-slate-100",
+                    id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-2sm font-black text-slate-500 border-l border-slate-100",
                     render: (r) => r.code || "—"
                   },
                   {
-                    id: "item_name", header: "الصنف", width: 220, sortable: true, cellClass: "font-black text-[13px] text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
+                    id: "item_name", header: "الصنف", width: 220, sortable: true, cellClass: "font-black text-sm text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
                     render: (r) => (
                       <div className="flex flex-col">
                         <span>{r.item_name}</span>
@@ -587,19 +587,19 @@ export default function StockLevelsPage() {
                     )
                   },
                   {
-                    id: "category_name", header: "القسم", width: 140, sortable: true, cellClass: "text-[12px] font-bold text-slate-500 border-l border-slate-100 px-2", headerClass: "text-right px-2",
+                    id: "category_name", header: "القسم", width: 140, sortable: true, cellClass: "text-2sm font-bold text-slate-500 border-l border-slate-100 px-2", headerClass: "text-right px-2",
                     render: (r) => r.category_name || "—"
                   },
                   {
-                    id: "warehouse_name", header: "المخزن", width: 140, sortable: true, cellClass: "text-[12px] font-bold text-slate-600 border-l border-slate-100 px-2", headerClass: "text-right px-2",
+                    id: "warehouse_name", header: "المخزن", width: 140, sortable: true, cellClass: "text-2sm font-bold text-slate-600 border-l border-slate-100 px-2", headerClass: "text-right px-2",
                     render: (r) => r.warehouse_name || "—"
                   },
                   {
-                    id: "quantity", header: "الرصيد المتاح", width: 120, sortable: true, headerClass: "text-center", cellClass: "text-center bg-slate-50/40 font-mono font-black text-[14px] text-slate-700 border-x border-slate-100",
+                    id: "quantity", header: "الرصيد المتاح", width: 120, sortable: true, headerClass: "text-center", cellClass: "text-center bg-slate-50/40 font-mono font-black text-sm text-slate-700 border-x border-slate-100",
                     render: (r) => r.quantity
                   },
                   {
-                    id: "min_stock_qty", header: "الحد الأدنى", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-bold text-[12px] text-slate-400 border-l border-slate-100",
+                    id: "min_stock_qty", header: "الحد الأدنى", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-bold text-2sm text-slate-400 border-l border-slate-100",
                     render: (r) => r.min_stock_qty ?? 0
                   },
                   {
@@ -636,16 +636,16 @@ export default function StockLevelsPage() {
                       <td colSpan={9} className="px-6 py-5 border-b-2 border-sky-100">
                         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
                           <div className="flex flex-col gap-1 w-48">
-                            <span className="text-[10px] font-black uppercase text-sky-600/70">الصنف المستهدف</span>
-                            <span className="text-[13px] font-black text-sky-900 leading-tight">{adjustRow.name}</span>
+                            <span className="text-[11px] font-black uppercase text-sky-600/70">الصنف المستهدف</span>
+                            <span className="text-sm font-black text-sky-900 leading-tight">{adjustRow.name}</span>
                             <span className="text-[11px] font-bold text-sky-700">رصيد حالي: <span className="font-mono font-black">{adjustRow.current}</span></span>
                           </div>
                           {adjustRow.warehouse_id == null && (
                             <div className="space-y-1.5 w-48">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-sky-600/70">المخزن</span>
+                              <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">المخزن</span>
                               <div className="relative">
                                 <select value={adjWarehouseId} onChange={(e) => setAdjWH(e.target.value)}
-                                  className="w-full appearance-none rounded-sm border border-sky-200 bg-white py-1.5 pl-7 pr-3 text-[13px] font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm">
+                                  className="w-full appearance-none rounded-sm border border-sky-200 bg-white py-1.5 pl-7 pr-3 text-sm font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm">
                                   <option value="">اختر مخزناً...</option>
                                   {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
@@ -654,8 +654,8 @@ export default function StockLevelsPage() {
                             </div>
                           )}
                           <div className="space-y-1.5 flex-1 min-w-[200px]">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-sky-600/70">نوع التسوية</span>
-                            <div className="flex overflow-hidden rounded-sm border border-sky-200/50 shadow-sm font-bold text-[13px] bg-white">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">نوع التسوية</span>
+                            <div className="flex overflow-hidden rounded-sm border border-sky-200/50 shadow-sm font-bold text-sm bg-white">
                               {[["delta","فروق وتسويات (+/-)"],["absolute","اعتماد الرصيد المطلق"]].map(([m,l], idx) => (
                                 <React.Fragment key={m}>
                                    {idx > 0 && <div className="w-[1px] bg-sky-100" />}
@@ -666,11 +666,11 @@ export default function StockLevelsPage() {
                             </div>
                           </div>
                           <div className="w-32 space-y-1.5">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-sky-600/70">{adjMode === "delta" ? "الفرق (+/-)" : "الكمية الحقيقية"}</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">{adjMode === "delta" ? "الفرق (+/-)" : "الكمية الحقيقية"}</span>
                             <div className="relative">
                                <input type="number" step="1" value={adjQty} onChange={(e) => setAdjQty(e.target.value)}
                                  placeholder={adjMode === "delta" ? "+10, -5" : "0"}
-                                 className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-[14px] font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm font-mono text-center" />
+                                 className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-sm font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm font-mono text-center" />
                             </div>
                             {adjMode === "delta" && adjQty !== "" && !isNaN(Number(adjQty)) && (
                                <div className="absolute mt-1 text-[11px] font-bold text-sky-800">
@@ -679,16 +679,16 @@ export default function StockLevelsPage() {
                             )}
                           </div>
                           <div className="flex-1 space-y-1.5 min-w-[200px]">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-sky-600/70">ملاحظات العمليات (سبب التسوية)</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">ملاحظات العمليات (سبب التسوية)</span>
                             <input type="text" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder="مثلاً: بضاعة تالفة, خطأ جرد..."
-                               className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-[13px] font-bold text-sky-900 outline-none focus:border-sky-500 shadow-sm" />
+                               className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-sm font-bold text-sky-900 outline-none focus:border-sky-500 shadow-sm" />
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => setAdjustRow(null)}
-                              className="h-[34px] px-4 rounded-sm border border-sky-200 text-[12px] font-black text-sky-700 hover:bg-sky-100 transition-colors">إلغاء</button>
+                              className="h-[34px] px-4 rounded-sm border border-sky-200 text-2sm font-black text-sky-700 hover:bg-sky-100 transition-colors">إلغاء</button>
                             <PermissionGate page="stock" action="adjust">
                               <button onClick={submitAdjust} disabled={adjLoading}
-                                className="h-[34px] px-6 rounded-sm bg-sky-600 text-[12px] font-black text-white hover:bg-sky-700 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1.5">
+                                className="h-[34px] px-6 rounded-sm bg-sky-600 text-2sm font-black text-white hover:bg-sky-700 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1.5">
                                 {adjLoading ? "جارٍ الحفظ..." : <><CheckCircle2 className="h-3.5 w-3.5" /> اعتماد التسوية</>}
                               </button>
                             </PermissionGate>
@@ -704,13 +704,13 @@ export default function StockLevelsPage() {
             {/* Pagination Toolbar */}
             {!levelsLoading && filteredLevels.length > PAGE && (
                <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-6 py-3">
-                 <p className="text-[12px] font-bold text-slate-400">عرض صفحة <span className="text-slate-800">{levelsPage}</span> من <span className="text-slate-800">{totalLvlPages}</span></p>
+                 <p className="text-2sm font-bold text-slate-400">عرض صفحة <span className="text-slate-800">{levelsPage}</span> من <span className="text-slate-800">{totalLvlPages}</span></p>
                  <div className="flex items-center gap-1" dir="ltr">
                    <button disabled={levelsPage === 1} onClick={() => setLP((p) => p - 1)}
                      className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-800 disabled:opacity-30 shadow-sm transition-all">
                      <ChevronLeft className="h-4 w-4" />
                    </button>
-                   <span className="px-3 text-[13px] font-black">{levelsPage}</span>
+                   <span className="px-3 text-sm font-black">{levelsPage}</span>
                    <button disabled={levelsPage === totalLvlPages} onClick={() => setLP((p) => p + 1)}
                      className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-800 disabled:opacity-30 shadow-sm transition-all">
                      <ChevronRight className="h-4 w-4" />
@@ -727,29 +727,29 @@ export default function StockLevelsPage() {
             {/* Top Config Strip */}
             <div className="flex flex-wrap items-end gap-x-6 gap-y-4 px-6 py-4 border-b border-slate-200 bg-white">
               <div className="w-52 space-y-1.5 relative group">
-                <span className="text-[10px] font-black tracking-widest uppercase text-slate-500">من مخزن (المصدر)</span>
+                <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">من مخزن (المصدر)</span>
                 <select value={fromWH} onChange={(e) => { setFromWH(e.target.value); setToWH(""); }}
-                  className="w-full appearance-none rounded-sm border border-slate-200 bg-slate-50/50 py-2 pl-8 pr-3 text-[13px] font-black text-slate-800 outline-none focus:border-slate-800 focus:bg-white shadow-sm transition-colors">
+                  className="w-full appearance-none rounded-sm border border-slate-200 bg-slate-50/50 py-2 pl-8 pr-3 text-sm font-black text-slate-800 outline-none focus:border-slate-800 focus:bg-white shadow-sm transition-colors">
                   <option value="">اختر المخزن المصدر...</option>
                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
                 <ChevronDown className="absolute left-3 bottom-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
               </div>
               <div className="w-52 space-y-1.5 relative group">
-                <span className="text-[10px] font-black tracking-widest uppercase text-slate-500">إلى مخزن (الوجهة)</span>
+                <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">إلى مخزن (الوجهة)</span>
                 <select value={toWH} onChange={(e) => setToWH(e.target.value)}
-                  className={`w-full appearance-none rounded-sm border py-2 pl-8 pr-3 text-[13px] font-black outline-none transition-colors shadow-sm
+                  className={`w-full appearance-none rounded-sm border py-2 pl-8 pr-3 text-sm font-black outline-none transition-colors shadow-sm
                     ${fromWH && !toWH ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-600 focus:bg-white" : "border-slate-200 bg-slate-50/50 text-slate-800 focus:border-slate-800 focus:bg-white"}`}>
                   <option value="">اختر المخزن الوجهة...</option>
                   {warehouses.filter(w => String(w.id) !== String(fromWH)).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
                 <ChevronDown className="absolute left-3 bottom-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
-                {fromWH && !toWH && <span className="absolute -top-1 left-0 flex items-center gap-1 text-[10px] font-black text-amber-600 animate-pulse"><AlertTriangle className="h-3 w-3" />مطلوب</span>}
+                {fromWH && !toWH && <span className="absolute -top-1 left-0 flex items-center gap-1 text-[11px] font-black text-amber-600 animate-pulse"><AlertTriangle className="h-3 w-3" />مطلوب</span>}
               </div>
               <div className="flex-1 min-w-[200px] space-y-1.5">
-                <span className="text-[10px] font-black tracking-widest uppercase text-slate-500">ملاحظات (اختياري)</span>
+                <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">ملاحظات (اختياري)</span>
                 <input type="text" value={txNotes} onChange={(e) => setTxNotes(e.target.value)} placeholder="سبب التحويل أو رقم الإذن..."
-                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-[13px] font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
               </div>
             </div>
 
@@ -757,7 +757,7 @@ export default function StockLevelsPage() {
             {(fromWH && toWH) && (
               <div className={`flex items-center justify-between px-6 py-2.5 border-b shadow-sm ${errorItems.length > 0 ? "bg-rose-50 border-rose-200" : "bg-emerald-50 border-emerald-100"}`}>
                 <div className="flex items-center gap-4">
-                  <div className={`flex items-center gap-2 text-[13px] font-black ${errorItems.length > 0 ? "text-rose-800" : "text-emerald-800"}`}>
+                  <div className={`flex items-center gap-2 text-sm font-black ${errorItems.length > 0 ? "text-rose-800" : "text-emerald-800"}`}>
                     <span>{fromWarehouse?.name}</span>
                     <ArrowLeftRight className="h-4 w-4 opacity-50" />
                     <span>{toWarehouse?.name}</span>
@@ -778,7 +778,7 @@ export default function StockLevelsPage() {
                        const v = itemValidation[it.item_id];
                        return (
                          <li key={it.item_id} className="text-[11px] font-bold text-rose-700 flex items-center gap-1.5 bg-rose-100/50 px-2 py-1 rounded-sm w-max break-inside-avoid">
-                           {(it.item_code || it.code) && <span className="font-mono text-[10px] font-black text-rose-500 bg-rose-200/60 px-1 rounded">{it.item_code || it.code}</span>}
+                           {(it.item_code || it.code) && <span className="font-mono text-[11px] font-black text-rose-500 bg-rose-200/60 px-1 rounded">{it.item_code || it.code}</span>}
                            <span className="font-black text-rose-900">{it.item_name}</span>
                            {v === "no_qty" && <span>لم تحدد كمية للتحويل.</span>}
                            {v === "over_qty" && <span>لا يكفي! المطلوب {qtys[it.item_id]} والمتاح {it.quantity}</span>}
@@ -793,7 +793,7 @@ export default function StockLevelsPage() {
             {!fromWH ? (
               <div className="flex flex-col items-center justify-center py-32 opacity-40">
                  <Warehouse className="h-16 w-16 text-slate-400 mb-4" />
-                 <span className="text-[14px] font-black uppercase text-slate-500 tracking-widest">يرجى تحديد المخزن المصدر لتحميل البضاعة</span>
+                 <span className="text-sm font-black uppercase text-slate-500 tracking-widest">يرجى تحديد المخزن المصدر لتحميل البضاعة</span>
               </div>
             ) : (
               <div className="flex flex-col">
@@ -803,10 +803,10 @@ export default function StockLevelsPage() {
                     <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input type="text" value={txSearch} onChange={(e) => setTxSearch(e.target.value)}
                       placeholder="البحث ضمن المخزن المصدر..."
-                      className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-3 pr-9 text-[12px] font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
+                      className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-3 pr-9 text-2sm font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-[12px] font-black text-slate-500 uppercase tracking-widest">{filteredTxItems.length} صنف متاح</span>
+                    <span className="text-2sm font-black text-slate-500 uppercase tracking-widest">{filteredTxItems.length} صنف متاح</span>
                     {selected.size > 0 && (
                       <button onClick={() => { setSelected(new Set()); setQtys({}); }}
                         className="flex items-center gap-1 text-[11px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-200 hover:bg-rose-100 transition-colors">
@@ -827,17 +827,17 @@ export default function StockLevelsPage() {
                         <th colSpan="1" className="w-[100px] border-l border-slate-200 bg-slate-50" />
                         <th colSpan="1" className="w-[220px] border-l border-slate-200 bg-slate-50" />
                         <th colSpan="2" className="border-l border-slate-200 bg-blue-100 px-2 py-2">
-                          <div className="text-[10px] font-black text-blue-700 uppercase tracking-wider text-center">
+                          <div className="text-[11px] font-black text-blue-700 uppercase tracking-wider text-center">
                             📦 {fromWarehouse?.name || "المصدر"}
                           </div>
                         </th>
                         <th colSpan="1" className="w-[130px] border-l border-slate-200 bg-amber-100 px-2 py-2">
-                          <div className="text-[10px] font-black text-amber-700 uppercase tracking-wider text-center">
+                          <div className="text-[11px] font-black text-amber-700 uppercase tracking-wider text-center">
                             ↔️ النقل
                           </div>
                         </th>
                         <th colSpan="2" className="border-l border-slate-200 bg-emerald-100 px-2 py-2">
-                          <div className="text-[10px] font-black text-emerald-700 uppercase tracking-wider text-center">
+                          <div className="text-[11px] font-black text-emerald-700 uppercase tracking-wider text-center">
                             📥 {toWarehouse?.name || "الوجهة"}
                           </div>
                         </th>
@@ -852,13 +852,13 @@ export default function StockLevelsPage() {
                             className="h-3.5 w-3.5 cursor-pointer rounded-sm accent-slate-800" 
                           />
                         </th>
-                        <th className="w-[100px] py-2 text-center text-[10px] font-black border-l border-slate-100">الكود</th>
-                        <th className="w-[220px] py-2 text-right px-3 text-[10px] font-black border-l border-slate-100">الصنف</th>
-                        <th className="py-2 text-center text-[10px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[90px]">قبل</th>
-                        <th className="py-2 text-center text-[10px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[80px]">بعد</th>
-                        <th className="py-2 text-center text-[10px] font-black text-amber-700 border-l border-slate-100 bg-amber-50/30 w-[130px]">الكمية</th>
-                        <th className="py-2 text-center text-[10px] font-black text-emerald-600 border-l border-slate-100 bg-emerald-50/30 w-[80px]">قبل</th>
-                        <th className="py-2 text-center text-[10px] font-black text-emerald-600 bg-emerald-50/30 w-[80px]">بعد</th>
+                        <th className="w-[100px] py-2 text-center text-[11px] font-black border-l border-slate-100">الكود</th>
+                        <th className="w-[220px] py-2 text-right px-3 text-[11px] font-black border-l border-slate-100">الصنف</th>
+                        <th className="py-2 text-center text-[11px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[90px]">قبل</th>
+                        <th className="py-2 text-center text-[11px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[80px]">بعد</th>
+                        <th className="py-2 text-center text-[11px] font-black text-amber-700 border-l border-slate-100 bg-amber-50/30 w-[130px]">الكمية</th>
+                        <th className="py-2 text-center text-[11px] font-black text-emerald-600 border-l border-slate-100 bg-emerald-50/30 w-[80px]">قبل</th>
+                        <th className="py-2 text-center text-[11px] font-black text-emerald-600 bg-emerald-50/30 w-[80px]">بعد</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -867,7 +867,7 @@ export default function StockLevelsPage() {
                             <td colSpan="8" className="py-16 text-center">
                               <div className="flex flex-col items-center opacity-40">
                                 <Package className="h-12 w-12 text-slate-400 mb-2" />
-                                <span className="text-[13px] font-black text-slate-500">لا توجد أصناف في المصدر</span>
+                                <span className="text-sm font-black text-slate-500">لا توجد أصناف في المصدر</span>
                               </div>
                             </td>
                           </tr>
@@ -906,7 +906,7 @@ export default function StockLevelsPage() {
                                 </td>
                                 <td className="py-2 px-3 border-l border-slate-100 w-[220px]">
                                   <div className="flex flex-col">
-                                    <p className="font-black text-[12px] text-slate-800 leading-tight">{item.item_name}</p>
+                                    <p className="font-black text-2sm text-slate-800 leading-tight">{item.item_name}</p>
                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                       {item.barcode && <span className="font-mono text-[9px] text-slate-400 bg-slate-100 px-1 rounded-sm">{item.barcode}</span>}
                                       <span className="text-[9px] font-bold text-slate-400">{item.category_name || "—"}</span>
@@ -914,20 +914,20 @@ export default function StockLevelsPage() {
                                   </div>
                                 </td>
                                 <td className="py-2 px-2 text-center border-l border-slate-100 bg-blue-50/10 w-[90px]">
-                                  <span className={`font-mono font-black text-[13px] ${item.quantity === 0 ? "text-rose-500" : item.quantity <= (item.min_stock_qty ?? 0) ? "text-amber-600" : "text-blue-700"}`}>
+                                  <span className={`font-mono font-black text-sm ${item.quantity === 0 ? "text-rose-500" : item.quantity <= (item.min_stock_qty ?? 0) ? "text-amber-600" : "text-blue-700"}`}>
                                     {item.quantity}
                                   </span>
                                 </td>
                                 <td className="py-2 px-2 text-center border-l border-slate-100 bg-blue-50/10 w-[80px]">
                                   {isSel && txQty > 0 ? (
                                     <div className="flex flex-col items-center">
-                                      <span className={`font-mono font-black text-[13px] ${item.quantity - txQty < 0 ? "text-rose-600" : "text-blue-800"}`}>
+                                      <span className={`font-mono font-black text-sm ${item.quantity - txQty < 0 ? "text-rose-600" : "text-blue-800"}`}>
                                         {item.quantity - txQty}
                                       </span>
                                       <span className="text-[8px] font-bold text-blue-500">−{txQty}</span>
                                     </div>
                                   ) : (
-                                    <span className="text-slate-300 font-mono text-[12px]">—</span>
+                                    <span className="text-slate-300 font-mono text-2sm">—</span>
                                   )}
                                 </td>
                                 <td className="py-2 px-1 text-center border-l border-slate-100 bg-amber-50/20 w-[130px]">
@@ -935,43 +935,43 @@ export default function StockLevelsPage() {
                                     <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                                       <button 
                                         onClick={() => setItemQty(item.item_id, String(Math.max(1, txQty - 1)))}
-                                        className="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-[14px] transition-colors"
+                                        className="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-sm transition-colors"
                                       >
                                         −
                                       </button>
                                       <input type="number" min="1" max={item.quantity} step="1" 
                                         value={qtys[item.item_id] || ""} 
                                         onChange={(e) => setItemQty(item.item_id, e.target.value)}
-                                        className={`w-14 rounded border py-1 text-center font-mono text-[12px] font-black outline-none
+                                        className={`w-14 rounded border py-1 text-center font-mono text-2sm font-black outline-none
                                           ${validation === "over_qty" ? "border-rose-400 bg-rose-50 text-rose-800"
                                           : validation === "no_qty" ? "border-amber-400 bg-amber-50 text-amber-900"
                                           : "border-amber-300 bg-white text-amber-900"}`}
                                       />
                                       <button 
                                         onClick={() => setItemQty(item.item_id, String(item.quantity))}
-                                        className="w-6 h-6 flex items-center justify-center rounded bg-amber-200 hover:bg-amber-300 text-amber-800 font-black text-[14px] transition-colors"
+                                        className="w-6 h-6 flex items-center justify-center rounded bg-amber-200 hover:bg-amber-300 text-amber-800 font-black text-sm transition-colors"
                                         title="تحديد الكمية المتاحة كاملة"
                                       >
                                         +
                                       </button>
                                     </div>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-slate-300">انقر لتحديد</span>
+                                    <span className="text-[11px] font-bold text-slate-300">انقر لتحديد</span>
                                   )}
                                 </td>
                                 <td className="py-2 px-2 text-center border-l border-slate-100 bg-emerald-50/10 w-[80px]">
-                                  <span className="font-mono font-black text-[12px] text-slate-600">{destBefore}</span>
+                                  <span className="font-mono font-black text-2sm text-slate-600">{destBefore}</span>
                                 </td>
                                 <td className="py-2 px-2 text-center bg-emerald-50/10 w-[80px]">
                                   {destAfter !== null ? (
                                     <div className="flex flex-col items-center">
-                                      <span className="font-mono font-black text-[13px] text-emerald-700">
+                                      <span className="font-mono font-black text-sm text-emerald-700">
                                         {destAfter}
                                       </span>
                                       <span className="text-[8px] font-bold text-emerald-600">+{txQty}</span>
                                     </div>
                                   ) : (
-                                    <span className="text-slate-300 font-mono text-[12px]">—</span>
+                                    <span className="text-slate-300 font-mono text-2sm">—</span>
                                   )}
                                 </td>
                               </tr>
@@ -986,13 +986,13 @@ export default function StockLevelsPage() {
                 {/* Pagination */}
                 {!txLoading && filteredTxItems.length > PAGE && (
                   <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-6 py-3">
-                    <p className="text-[12px] font-bold text-slate-400">عرض صفحة <span className="text-slate-800">{txPage}</span> من <span className="text-slate-800">{txTotalPages}</span></p>
+                    <p className="text-2sm font-bold text-slate-400">عرض صفحة <span className="text-slate-800">{txPage}</span> من <span className="text-slate-800">{txTotalPages}</span></p>
                     <div className="flex items-center gap-1" dir="ltr">
                       <button disabled={txPage === 1} onClick={() => setTxPage((p) => p - 1)}
                         className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-800 disabled:opacity-30 shadow-sm transition-all">
                         <ChevronLeft className="h-4 w-4" />
                       </button>
-                      <span className="px-3 text-[13px] font-black">{txPage}</span>
+                      <span className="px-3 text-sm font-black">{txPage}</span>
                       <button disabled={txPage === txTotalPages} onClick={() => setTxPage((p) => p + 1)}
                         className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-800 disabled:opacity-30 shadow-sm transition-all">
                         <ChevronRight className="h-4 w-4" />
@@ -1008,10 +1008,10 @@ export default function StockLevelsPage() {
               <div className="border-t border-slate-200 bg-white px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <span className={`px-3 py-1.5 rounded-sm text-[12px] font-black ${errorItems.length > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                    <span className={`px-3 py-1.5 rounded-sm text-2sm font-black ${errorItems.length > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
                       {errorItems.length > 0 ? `${errorItems.length} أخطاء` : `${validItems.length} صنف جاهز`}
                     </span>
-                    <span className="text-[12px] font-bold text-slate-500">
+                    <span className="text-2sm font-bold text-slate-500">
                       {fromWarehouse?.name} ← {toWarehouse?.name}
                     </span>
                     <button onClick={() => { setSelected(new Set()); setQtys({}); }} className="text-[11px] font-bold text-slate-400 hover:text-rose-600 underline">
@@ -1020,7 +1020,7 @@ export default function StockLevelsPage() {
                   </div>
                   <PermissionGate page="stock" action="transfer">
                     <button onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
-                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-[13px] shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-sm shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
                       <CheckCircle2 className="h-4 w-4" />
                       {txSubmitting ? "جاري التحويل..." : "تنفيذ التحويل"}
                     </button>
@@ -1043,21 +1043,21 @@ export default function StockLevelsPage() {
                 size="md"
               />
               <div className="relative w-44 group">
-                <select value={movWH} onChange={(e) => setMovWH(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+                <select value={movWH} onChange={(e) => setMovWH(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
                   {whOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
               <div className="relative w-48 group">
-                <select value={movType} onChange={(e) => setMovType(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-[13px] font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+                <select value={movType} onChange={(e) => setMovType(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
                   <option value="">كل أنواع الحركات</option>
                   {Object.entries(MOVEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
                 <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
-              <input type="date" value={movDateFrom} onChange={(e) => setMovDateFrom(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-[12px] font-black text-slate-700" />
-              <input type="date" value={movDateTo} onChange={(e) => setMovDateTo(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-[12px] font-black text-slate-700" />
-              <p className="text-[12px] font-black text-slate-500">{movTotal} حركة</p>
+              <input type="date" value={movDateFrom} onChange={(e) => setMovDateFrom(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-2sm font-black text-slate-700" />
+              <input type="date" value={movDateTo} onChange={(e) => setMovDateTo(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-2sm font-black text-slate-700" />
+              <p className="text-2sm font-black text-slate-500">{movTotal} حركة</p>
             </div>
 
             <div className="flex flex-col flex-1 h-[62vh] min-h-[400px]">
@@ -1076,7 +1076,7 @@ export default function StockLevelsPage() {
                     render: (mv) => mv.created_at?.slice(0, 16).replace("T", " ")
                   },
                   {
-                    id: "code", header: "الكود", width: 100, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-[12px] font-black text-slate-500 border-l border-slate-100",
+                    id: "code", header: "الكود", width: 100, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-2sm font-black text-slate-500 border-l border-slate-100",
                     render: (mv) => mv.item_code || mv.code || "—"
                   },
                   {
@@ -1084,14 +1084,14 @@ export default function StockLevelsPage() {
                     headerClass: "text-right px-3", cellClass: "px-3 border-l border-slate-100",
                     render: (mv) => (
                        <div className="flex flex-col">
-                          <span className="text-[13px] font-black text-slate-800">{mv.item_name}</span>
-                          {(mv.item_code || mv.code || mv.barcode) && <span className="font-mono text-[10px] text-slate-400">{mv.item_code || mv.code || mv.barcode}</span>}
+                          <span className="text-sm font-black text-slate-800">{mv.item_name}</span>
+                          {(mv.item_code || mv.code || mv.barcode) && <span className="font-mono text-[11px] text-slate-400">{mv.item_code || mv.code || mv.barcode}</span>}
                        </div>
                     )
                   },
                   {
                     id: "warehouse_name", header: "المخزن", width: 140, sortable: true,
-                    headerClass: "text-right px-3", cellClass: "px-3 text-[12px] font-bold text-slate-600 border-l border-slate-100",
+                    headerClass: "text-right px-3", cellClass: "px-3 text-2sm font-bold text-slate-600 border-l border-slate-100",
                     render: (mv) => mv.warehouse_name || "—"
                   },
                   {
@@ -1108,7 +1108,7 @@ export default function StockLevelsPage() {
                   },
                   {
                     id: "quantity", header: "الكمية", width: 100, sortable: true,
-                    headerClass: "text-center bg-slate-50/40", cellClass: "text-center border-l text-[13px] font-mono font-black border-slate-100 bg-slate-50/40",
+                    headerClass: "text-center bg-slate-50/40", cellClass: "text-center border-l text-sm font-mono font-black border-slate-100 bg-slate-50/40",
                     render: (mv) => {
                       const pos = mv.quantity > 0;
                       return <span className={`${pos ? "text-emerald-700" : "text-rose-700"}`}>{pos ? "+" : ""}{mv.quantity}</span>;
@@ -1116,7 +1116,7 @@ export default function StockLevelsPage() {
                   },
                   {
                     id: "before_qty", header: "قبل ← بعد", width: 140, sortable: true,
-                    headerClass: "text-center", cellClass: "text-center text-[12px] font-mono font-black text-slate-700 border-l border-slate-100",
+                    headerClass: "text-center", cellClass: "text-center text-2sm font-mono font-black text-slate-700 border-l border-slate-100",
                     render: (mv) => (
                       <>{(mv.before_qty ?? "—")} <span className="text-slate-400">←</span> {(mv.after_qty ?? "—")}</>
                     )
@@ -1155,10 +1155,10 @@ export default function StockLevelsPage() {
 
             {!movLoading && movTotalPages > 1 && (
               <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-6 py-3">
-                <p className="text-[12px] font-bold text-slate-500">صفحة <span className="text-slate-800">{movPage}</span> من <span className="text-slate-800">{movTotalPages}</span></p>
+                <p className="text-2sm font-bold text-slate-500">صفحة <span className="text-slate-800">{movPage}</span> من <span className="text-slate-800">{movTotalPages}</span></p>
                 <div className="flex items-center gap-1" dir="ltr">
                   <button disabled={movPage === 1} onClick={() => setMovPage((p) => p - 1)} className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-800 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-                  <span className="px-3 text-[13px] font-black">{movPage}</span>
+                  <span className="px-3 text-sm font-black">{movPage}</span>
                   <button disabled={movPage === movTotalPages} onClick={() => setMovPage((p) => p + 1)} className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-800 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
                 </div>
               </div>

@@ -56,10 +56,10 @@ export default function TodayInvoicesButton({ variant = "default" }) {
     variant === "compact"
       ? "flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:border-emerald-400 hover:text-emerald-700 shadow-sm transition-colors"
       : variant === "pill"
-      ? "flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-[12px] font-black text-white hover:bg-emerald-700 shadow-md transition-colors"
+      ? "flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-2sm font-black text-white hover:bg-emerald-700 shadow-md transition-colors"
       : variant === "ghost"
-      ? "flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-black text-emerald-700 hover:bg-emerald-50 transition-colors"
-      : "flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-[12px] font-black text-white hover:bg-slate-700 shadow-sm transition-colors";
+      ? "flex items-center gap-1.5 rounded-xl px-3 py-2 text-2sm font-black text-emerald-700 hover:bg-emerald-50 transition-colors"
+      : "flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-2sm font-black text-white hover:bg-slate-700 shadow-sm transition-colors";
 
   return (
     <>
@@ -104,7 +104,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold outline-none focus:border-emerald-400"
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -113,14 +113,14 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold outline-none focus:border-emerald-400"
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
                 />
               </div>
               {usersList.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black text-slate-500">المستخدم:</span>
                   <select value={userId} onChange={(e) => setUserId(e.target.value)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold outline-none focus:border-emerald-400">
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400">
                     <option value="">الكل</option>
                     {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                   </select>
@@ -156,7 +156,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                   <span className="font-black">لا توجد فواتير</span>
                 </div>
               ) : (
-                <table className="w-full text-[12px] border-collapse">
+                <table className="w-full text-2sm border-collapse">
                   <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                     <tr>
                       {["رقم الفاتورة", "العميل", "الأصناف", "الإجمالي", "طريقة الدفع", "الحالة", "تعديل", "المستخدم", "الوقت"].map((h) => (
@@ -176,14 +176,14 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                         onClick={() => { setOpen(false); navigate(`/invoices/${inv.id}`); }}
                         className={`border-b border-slate-50 hover:bg-emerald-50 cursor-pointer transition-colors ${i % 2 === 0 ? "" : "bg-slate-50/40"}`}
                       >
-                        <td className="px-4 py-3 font-mono text-[12px] font-black text-slate-700">{inv.invoice_no}</td>
-                        <td className="px-4 py-3 text-[12px] font-bold text-slate-800 max-w-[140px] truncate">
+                        <td className="px-4 py-3 font-mono text-2sm font-black text-slate-700">{inv.invoice_no}</td>
+                        <td className="px-4 py-3 text-2sm font-bold text-slate-800 max-w-[140px] truncate">
                           {inv.customer_name || "زبون نقدي"}
                         </td>
-                        <td className="px-4 py-3 text-center text-[12px] font-bold text-slate-600">
+                        <td className="px-4 py-3 text-center text-2sm font-bold text-slate-600">
                           {inv.items_count || "—"}
                         </td>
-                        <td className="px-4 py-3 font-mono text-[13px] font-black text-emerald-700">
+                        <td className="px-4 py-3 font-mono text-sm font-black text-emerald-700">
                           {fmt(inv.total)} ج.م
                         </td>
                         <td className="px-4 py-3 text-[11px] font-bold text-slate-600">
@@ -191,7 +191,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black ${
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-black ${
                               inv.status === "paid"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : inv.status === "partial"

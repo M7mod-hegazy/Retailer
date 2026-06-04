@@ -309,13 +309,13 @@ export default function UpdatesPage() {
               
               <div className="space-y-8">
                 <div>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
+                  <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
                     نسخة النواة
                   </p>
                   <p className="font-mono text-3xl font-black text-white tracking-tight">{currentVersion}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
+                  <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
                     قناة التحديث
                   </p>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
@@ -324,7 +324,7 @@ export default function UpdatesPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
+                  <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
                     آخر تزامن
                   </p>
                   <p className="text-sm font-bold text-zinc-300 font-mono">

@@ -51,7 +51,7 @@ export default function SupplierProfilePage() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50" dir="rtl" data-help-root="supplier_profile">
-      <div className="flex items-center gap-2 px-6 py-3 bg-white border-b border-slate-100 text-[12px] font-bold text-slate-500 shrink-0" data-help="breadcrumb">
+      <div className="flex items-center gap-2 px-6 py-3 bg-white border-b border-slate-100 text-2sm font-bold text-slate-500 shrink-0" data-help="breadcrumb">
         <Link to="/definitions/suppliers" className="flex items-center gap-1 hover:text-slate-800"><ChevronLeft className="h-3.5 w-3.5" /> الموردين</Link>
         <span>/</span><span className="text-slate-800">{supplier.name}</span>
       </div>
@@ -64,7 +64,7 @@ export default function SupplierProfilePage() {
             </div>
             <div>
               <h1 className="text-[20px] font-black text-slate-900">{supplier.name}</h1>
-              <div className="flex items-center gap-4 mt-1 text-[12px] text-slate-500 font-bold">
+              <div className="flex items-center gap-4 mt-1 text-2sm text-slate-500 font-bold">
                 {supplier.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {supplier.phone}</span>}
                 {supplier.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> {supplier.email}</span>}
               </div>
@@ -72,12 +72,12 @@ export default function SupplierProfilePage() {
           </div>
           <div className="flex items-center gap-3">
             <div className={`rounded-xl p-3 text-center min-w-[120px] ${balance > 0 ? "bg-rose-50 border border-rose-200" : "bg-emerald-50 border border-emerald-200"}`}>
-              <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-0.5">مستحق للمورد</div>
+              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-0.5">مستحق للمورد</div>
               <div className={`text-[18px] font-black font-mono ${balance > 0 ? "text-rose-700" : "text-emerald-700"}`}>{fmt(Math.abs(balance))}</div>
-              <div className="text-[10px] text-slate-400 font-bold">ج.م</div>
+              <div className="text-[11px] text-slate-400 font-bold">ج.م</div>
             </div>
             <Link to={`/payments/new?party_type=supplier&party_id=${id}`}
-              className="flex h-9 items-center gap-1.5 rounded-xl bg-orange-600 px-4 text-[12px] font-black text-white hover:bg-orange-700">
+              className="flex h-9 items-center gap-1.5 rounded-xl bg-orange-600 px-4 text-2sm font-black text-white hover:bg-orange-700">
               <Plus className="h-4 w-4" /> سداد دفعة
             </Link>
           </div>
@@ -87,7 +87,7 @@ export default function SupplierProfilePage() {
       <div className="flex gap-1 px-4 mt-4 shrink-0" data-help="profile-tabs">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2 rounded-xl text-[12px] font-black transition-colors ${activeTab === t.id ? "bg-orange-600 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+            className={`px-4 py-2 rounded-xl text-2sm font-black transition-colors ${activeTab === t.id ? "bg-orange-600 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
             {t.label}
           </button>
         ))}
@@ -100,7 +100,7 @@ export default function SupplierProfilePage() {
           ) : tabData.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-slate-300 font-black">لا توجد بيانات</div>
           ) : (
-            <table className="w-full text-[12px]">
+            <table className="w-full text-2sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   {activeTab === "purchases" && ["رقم الفاتورة", "التاريخ", "الإجمالي", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px] uppercase">{h}</th>)}
@@ -115,7 +115,7 @@ export default function SupplierProfilePage() {
                       <td className="px-4 py-3 font-mono text-[11px] text-orange-700">{row.doc_no || `#${row.id}`}</td>
                       <td className="px-4 py-3 text-slate-500">{fmtDate(row.created_at)}</td>
                       <td className="px-4 py-3 font-black font-mono">{fmt(row.total)} ج.م</td>
-                      <td className="px-4 py-3"><span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-700">{row.status || "—"}</span></td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-black text-orange-700">{row.status || "—"}</span></td>
                     </>}
                     {activeTab === "payments" && <>
                       <td className="px-4 py-3 font-mono text-[11px]">{row.doc_no || `PAY-${row.id}`}</td>
@@ -128,7 +128,7 @@ export default function SupplierProfilePage() {
                       <td className="px-4 py-3 font-black font-mono">{fmt(row.amount)} ج.م</td>
                       <td className="px-4 py-3 text-slate-500">{row.bank_name || "—"}</td>
                       <td className="px-4 py-3 text-slate-500">{fmtDate(row.due_date)}</td>
-                      <td className="px-4 py-3"><span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-black text-violet-700">{row.status}</span></td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-black text-violet-700">{row.status}</span></td>
                     </>}
                   </tr>
                 ))}

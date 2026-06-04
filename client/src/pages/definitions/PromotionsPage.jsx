@@ -126,7 +126,7 @@ export default function PromotionsPage() {
               <span className="text-[11px] font-black uppercase tracking-widest">قواعد الخصم والعروض الزمنية</span>
             </div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">العروض الترويجية</h1>
-            <p className="text-[13px] font-bold text-slate-500 max-w-lg leading-relaxed">
+            <p className="text-sm font-bold text-slate-500 max-w-lg leading-relaxed">
               إدارة حملات الخصم ضمن نفس اللغة البصرية للنظام، مع وضوح في المدة والحالة والإجراءات اليومية.
             </p>
           </div>
@@ -134,7 +134,7 @@ export default function PromotionsPage() {
             <button
               data-help="add-button"
               onClick={() => { resetForm(); setOpenModal(true); }}
-              className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-xl bg-indigo-600 px-6 text-[13px] font-black text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.3)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(79,70,229,0.4)] active:scale-[0.98]"
+              className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-xl bg-indigo-600 px-6 text-sm font-black text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.3)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(79,70,229,0.4)] active:scale-[0.98]"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-150%] skew-x-[-15deg] group-hover:translate-x-[150%] transition-transform duration-700 ease-out" />
               <Plus className="h-4 w-4 relative z-10" />
@@ -148,7 +148,7 @@ export default function PromotionsPage() {
           {loading ? (
             <div className="flex h-64 flex-col items-center justify-center gap-3">
               <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
-              <span className="text-[12px] font-bold text-slate-500">جاري تحميل العروض...</span>
+              <span className="text-2sm font-bold text-slate-500">جاري تحميل العروض...</span>
             </div>
           ) : promotions.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center mt-4">
@@ -157,7 +157,7 @@ export default function PromotionsPage() {
               </div>
               <div>
                 <h3 className="text-[15px] font-black text-slate-800">لا يوجد عروض حالياً</h3>
-                <p className="text-[13px] font-bold text-slate-500 mt-1">ابدأ بإنشاء أول عرض ترويجي لعملائك</p>
+                <p className="text-sm font-bold text-slate-500 mt-1">ابدأ بإنشاء أول عرض ترويجي لعملائك</p>
               </div>
             </div>
           ) : (
@@ -174,7 +174,7 @@ export default function PromotionsPage() {
                       
                       <div className="relative z-10">
                         <div className="flex items-start justify-between mb-4">
-                          <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black tracking-widest uppercase ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/50' : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200/50'}`}>
+                          <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black tracking-widest uppercase ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/50' : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200/50'}`}>
                             {isActive ? <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
                             {isActive ? "نشط" : "متوقف"}
                           </div>
@@ -195,26 +195,26 @@ export default function PromotionsPage() {
                         
                         <h3 className="text-[18px] font-black text-slate-800 mb-1 leading-tight">{promo.name}</h3>
                         
-                        <div className="flex items-center gap-2 mt-4 text-[13px] font-bold text-slate-600">
+                        <div className="flex items-center gap-2 mt-4 text-sm font-bold text-slate-600">
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
                             <Percent className="w-4 h-4" />
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 uppercase">قيمة الخصم</span>
-                            <span className="text-[14px] font-black font-mono text-indigo-700">{rule.value}% <span className="text-[11px] font-bold text-slate-500 font-sans">من الإجمالي</span></span>
+                            <span className="text-[11px] font-black text-slate-400 uppercase">قيمة الخصم</span>
+                            <span className="text-sm font-black font-mono text-indigo-700">{rule.value}% <span className="text-[11px] font-bold text-slate-500 font-sans">من الإجمالي</span></span>
                           </div>
                         </div>
                       </div>
                       
                       <div className="mt-6 flex items-center gap-4 border-t border-slate-50 pt-4 relative z-10">
                         <div className="flex flex-col gap-0.5">
-                          <span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase"><Calendar className="w-3 h-3" /> يبدأ</span>
-                          <span className="text-[12px] font-bold text-slate-700 font-mono">{promo.starts_at || "—"}</span>
+                          <span className="flex items-center gap-1 text-[11px] font-black text-slate-400 uppercase"><Calendar className="w-3 h-3" /> يبدأ</span>
+                          <span className="text-2sm font-bold text-slate-700 font-mono">{promo.starts_at || "—"}</span>
                         </div>
                         <div className="w-px h-6 bg-slate-100" />
                         <div className="flex flex-col gap-0.5">
-                          <span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase"><Calendar className="w-3 h-3" /> ينتهي</span>
-                          <span className="text-[12px] font-bold text-slate-700 font-mono">{promo.ends_at || "—"}</span>
+                          <span className="flex items-center gap-1 text-[11px] font-black text-slate-400 uppercase"><Calendar className="w-3 h-3" /> ينتهي</span>
+                          <span className="text-2sm font-bold text-slate-700 font-mono">{promo.ends_at || "—"}</span>
                         </div>
                       </div>
                    </div>
@@ -233,31 +233,31 @@ export default function PromotionsPage() {
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-800">{formData.id ? "تعديل عرض ترويجي" : "عرض ترويجي جديد"}</h2>
-              <p className="text-[12px] font-bold text-slate-500 mt-0.5">قم بضبط إعدادات الخصم وفترة الصلاحية</p>
+              <p className="text-2sm font-bold text-slate-500 mt-0.5">قم بضبط إعدادات الخصم وفترة الصلاحية</p>
             </div>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-[12px] font-black text-slate-700 uppercase tracking-widest">اسم العرض</label>
+              <label className="text-2sm font-black text-slate-700 uppercase tracking-widest">اسم العرض</label>
               <input 
                 required 
                 type="text" 
                 value={formData.name} 
                 onChange={(e) => setFormData(p => ({...p, name: e.target.value}))} 
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] font-bold text-slate-800 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 placeholder="مثال: خصم عيد الفطر"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[12px] font-black text-slate-700 uppercase tracking-widest">نوع الخصم</label>
+                <label className="text-2sm font-black text-slate-700 uppercase tracking-widest">نوع الخصم</label>
                 <div className="relative">
                   <select 
                     value={formData.rule_type} 
                     onChange={(e) => setFormData(p => ({...p, rule_type: e.target.value}))}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-4 pr-10 py-3 text-[13px] font-bold text-slate-800 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-4 pr-10 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                   >
                     <option value="percentage_off_total">خصم نسبة (%) من الإجمالي</option>
                   </select>
@@ -265,7 +265,7 @@ export default function PromotionsPage() {
               </div>
               
               <div className="space-y-1.5">
-                <label className="text-[12px] font-black text-slate-700 uppercase tracking-widest">النسبة (%)</label>
+                <label className="text-2sm font-black text-slate-700 uppercase tracking-widest">النسبة (%)</label>
                 <div className="relative">
                   <input 
                     required 
@@ -273,7 +273,7 @@ export default function PromotionsPage() {
                     min="1" max="100" 
                     value={formData.rule_value} 
                     onChange={(e) => setFormData(p => ({...p, rule_value: e.target.value}))} 
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] font-black font-mono text-indigo-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 text-left"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black font-mono text-indigo-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 text-left"
                     placeholder="0"
                     dir="ltr"
                   />
@@ -284,21 +284,21 @@ export default function PromotionsPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[12px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> يبدأ في</label>
+                <label className="text-2sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> يبدأ في</label>
                 <input 
                   type="date" 
                   value={formData.starts_at} 
                   onChange={(e) => setFormData(p => ({...p, starts_at: e.target.value}))} 
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] font-bold font-mono text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold font-mono text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[12px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> ينتهي في</label>
+                <label className="text-2sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> ينتهي في</label>
                 <input 
                   type="date" 
                   value={formData.ends_at} 
                   onChange={(e) => setFormData(p => ({...p, ends_at: e.target.value}))} 
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] font-bold font-mono text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold font-mono text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
@@ -310,7 +310,7 @@ export default function PromotionsPage() {
                     <Power className="w-5 h-5" />
                   </div>
                   <div className="flex flex-col">
-                    <span className={`text-[14px] font-black ${formData.is_active ? 'text-emerald-900' : 'text-slate-700'}`}>حالة العرض</span>
+                    <span className={`text-sm font-black ${formData.is_active ? 'text-emerald-900' : 'text-slate-700'}`}>حالة العرض</span>
                     <span className={`text-[11px] font-bold ${formData.is_active ? 'text-emerald-700' : 'text-slate-500'}`}>{formData.is_active ? 'العرض مفعل وجاهز للتطبيق' : 'العرض متوقف مؤقتاً'}</span>
                   </div>
                 </div>
@@ -324,13 +324,13 @@ export default function PromotionsPage() {
               <button 
                 type="button" 
                 onClick={() => setOpenModal(false)}
-                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-[13px] font-black text-slate-600 transition-all hover:bg-slate-50 active:scale-[0.98]"
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-600 transition-all hover:bg-slate-50 active:scale-[0.98]"
               >
                 إلغاء
               </button>
               <button 
                 type="submit"
-                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3.5 text-[14px] font-black text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98]"
+                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-black text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98]"
               >
                 حفظ التغييرات
               </button>
@@ -345,21 +345,21 @@ export default function PromotionsPage() {
             <Trash2 className="h-6 w-6 text-rose-600" />
           </div>
           <h3 className="text-[18px] font-black text-slate-800 mb-2">حذف العرض</h3>
-          <p className="text-[13px] font-bold text-slate-500 mb-6">
+          <p className="text-sm font-bold text-slate-500 mb-6">
             سيتم حذف العرض "{promotionToDelete?.name || ""}" نهائياً. هل تريد المتابعة؟
           </p>
           <div className="flex gap-3">
             <button 
               type="button" 
               onClick={() => setPromotionToDelete(null)}
-              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[13px] font-black text-slate-600 transition-all hover:bg-slate-50 active:scale-[0.98]"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition-all hover:bg-slate-50 active:scale-[0.98]"
             >
               تراجع
             </button>
             <button 
               type="button" 
               onClick={handleDelete}
-              className="flex-1 rounded-xl bg-rose-600 px-4 py-3 text-[13px] font-black text-white shadow-sm transition-all hover:bg-rose-700 active:scale-[0.98]"
+              className="flex-1 rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-all hover:bg-rose-700 active:scale-[0.98]"
             >
               نعم، احذف
             </button>

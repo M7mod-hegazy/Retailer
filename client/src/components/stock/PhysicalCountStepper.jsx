@@ -89,10 +89,10 @@ function StepCount({ items, counts, onCountChange }) {
           <tbody>
             {items.map((item, idx) => (
               <tr key={item.id} style={{ borderTop: idx > 0 ? '1px solid var(--border-subtle)' : undefined }}>
-                <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace', color: 'var(--text-muted)', fontSize: '11px' }}>{item.code}</td>
+                <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '11px' }}>{item.code}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 500, color: 'var(--text-primary)' }}>{item.name}</td>
                 <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{item.unit}</td>
-                <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace', color: 'var(--text-primary)' }}>{item.system}</td>
+                <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{item.system}</td>
                 <td style={{ padding: '8px 12px' }}>
                   <input
                     type="number"
@@ -104,7 +104,7 @@ function StepCount({ items, counts, onCountChange }) {
                       width: '80px', padding: '6px 8px',
                       border: '1px solid var(--border-normal)',
                       borderRadius: '6px', textAlign: 'center', fontSize: '13px',
-                      fontFamily: 'Inter, monospace',
+                      fontFamily: 'var(--font-mono)',
                       background: 'var(--bg-surface)', color: 'var(--text-primary)',
                       outline: 'none',
                     }}
@@ -155,12 +155,12 @@ function StepVariances({ items, counts, onApprove }) {
                   <td style={{ padding: '10px 12px', fontWeight: 500 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <span>{r.name}</span>
-                      {(r.code || r.item_code) && <span style={{ fontFamily: 'Inter, monospace', fontSize: '10px', color: 'var(--text-muted)' }}>{r.item_code || r.code}</span>}
+                      {(r.code || r.item_code) && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>{r.item_code || r.code}</span>}
                     </div>
                   </td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace' }}>{r.system}</td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace' }}>{r.counted}</td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'Inter, monospace', fontWeight: 700, color: diffColor }}>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)' }}>{r.system}</td>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)' }}>{r.counted}</td>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: diffColor }}>
                     {r.diff > 0 ? `+${r.diff}` : r.diff}
                   </td>
                   <td style={{ padding: '8px 12px' }}>

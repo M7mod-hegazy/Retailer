@@ -145,7 +145,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="بحث في القوائم..."
-            className="w-full rounded-lg bg-zinc-50 border border-zinc-200/60 py-2 pl-2.5 pr-8 text-[12px] font-semibold text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white focus:outline-none transition-all"
+            className="w-full rounded-lg bg-zinc-50 border border-zinc-200/60 py-2 pl-2.5 pr-8 text-2sm font-semibold text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white focus:outline-none transition-all"
           />
         </div>
 
@@ -167,7 +167,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                   >
                     <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-emerald-400" : ""}`} />
                     <div className="flex flex-col min-w-0">
-                      <span className={`text-[12px] truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
+                      <span className={`text-2sm truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
                       {!isActive && <span className="text-[9px] text-emerald-500 font-bold">اختصار لوحة المفاتيح <kbd className="rounded px-0.5 bg-emerald-100 text-emerald-600 font-mono text-[8px]">F2</kbd></span>}
                     </div>
                   </Link>
@@ -198,7 +198,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                 }`}
               >
                 <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-emerald-400" : ""}`} />
-                <span className={`text-[12px] truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
+                <span className={`text-2sm truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
               </Link>
             );
           })}
@@ -224,7 +224,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <module.icon strokeWidth={1.5} className={`h-[17px] w-[17px] shrink-0 ${hasActiveItem ? "text-emerald-600" : isExpanded ? "text-zinc-900" : "text-zinc-400"}`} />
-                    <span className={`text-[12px] truncate ${isExpanded || hasActiveItem ? "font-black" : "font-bold"}`}>{module.title}</span>
+                    <span className={`text-2sm truncate ${isExpanded || hasActiveItem ? "font-black" : "font-bold"}`}>{module.title}</span>
                   </div>
                   <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180 text-zinc-900" : "text-zinc-400"}`} />
                 </button>

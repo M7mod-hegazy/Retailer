@@ -45,7 +45,7 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
     <Modal open={open} onClose={onClose} title="تحليل ربح الفاتورة الحالية" maxWidth="max-w-3xl">
       <div className="flex flex-col gap-4" dir="rtl">
         {!analysis ? (
-          <div className="py-10 text-center text-[13px] font-bold text-slate-400">
+          <div className="py-10 text-center text-sm font-bold text-slate-400">
             الفاتورة فارغة — أضف أصنافاً لعرض تحليل الربح
           </div>
         ) : (
@@ -53,15 +53,15 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">إجمالي البيع</span>
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إجمالي البيع</span>
                 <span className="text-[15px] font-black font-mono text-slate-800">{formatMoney(analysis.totalRevenue)}</span>
               </div>
               <div className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">إجمالي التكلفة</span>
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إجمالي التكلفة</span>
                 <span className="text-[15px] font-black font-mono text-slate-600">{formatMoney(analysis.totalCost)}</span>
               </div>
               <div className={`flex flex-col gap-1 rounded-xl border p-3 ${analysis.netProfit >= 0 ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${analysis.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>صافي الربح</span>
+                <span className={`text-[11px] font-black uppercase tracking-widest ${analysis.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>صافي الربح</span>
                 <span className={`text-[15px] font-black font-mono ${analysis.netProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                   {formatMoney(analysis.netProfit)}
                 </span>
@@ -72,7 +72,7 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
                 : analysis.netMargin >= 10 ? "border-amber-200 bg-amber-50"
                 : "border-rose-200 bg-rose-50"
               }`}>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                <span className={`text-[11px] font-black uppercase tracking-widest ${
                   analysis.netMargin === null ? "text-slate-400"
                   : analysis.netMargin >= 20 ? "text-emerald-600"
                   : analysis.netMargin >= 10 ? "text-amber-600"
@@ -91,7 +91,7 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
 
             {/* Per-line breakdown */}
             <div className="overflow-auto rounded-lg border border-slate-200" style={{ maxHeight: 340 }}>
-              <table className="w-full text-[12px]" dir="rtl">
+              <table className="w-full text-2sm" dir="rtl">
                 <thead className="sticky top-0 bg-slate-800 text-white">
                   <tr>
                     <th className="px-3 py-2.5 text-right font-black">الصنف</th>

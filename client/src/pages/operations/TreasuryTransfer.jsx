@@ -76,7 +76,7 @@ export default function TreasuryTransfer() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-[24px] font-black text-slate-800">تحويل النقدية (بين الخزائن)</h1>
-          <p className="text-[13px] font-bold text-slate-400">نقل السيولة النقدية بين الصناديق الفرعية والرئيسية مع توثيق كلي للعملية</p>
+          <p className="text-sm font-bold text-slate-400">نقل السيولة النقدية بين الصناديق الفرعية والرئيسية مع توثيق كلي للعملية</p>
         </div>
         <div className="flex items-center gap-3">
            <div className="flex items-center gap-2 rounded-sm bg-slate-100 px-4 py-2 border border-slate-200">
@@ -197,7 +197,7 @@ export default function TreasuryTransfer() {
                          value={formData.reference}
                          onChange={(e) => setFormData(p => ({ ...p, reference: e.target.value }))}
                          placeholder="TR-..."
-                         className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-12 text-[14px] font-bold text-slate-700 outline-none shadow-sm focus:border-slate-800"
+                         className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-12 text-sm font-bold text-slate-700 outline-none shadow-sm focus:border-slate-800"
                        />
                     </div>
                  </div>
@@ -211,7 +211,7 @@ export default function TreasuryTransfer() {
                    value={formData.notes}
                    onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
                    placeholder="اكتب تفاصيل العملية هنا..."
-                   className="w-full rounded-sm border border-slate-200 bg-slate-50 p-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-800 shadow-sm resize-none"
+                   className="w-full rounded-sm border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-800 shadow-sm resize-none"
                  />
               </div>
            </div>

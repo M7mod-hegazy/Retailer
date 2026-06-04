@@ -73,7 +73,7 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
           gap: '12px',
         }}>
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>النقدية بالدرج:</span>
-          <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif' }}>
+          <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-number)' }}>
             <CurrencyDisplay value={Number(shift.current_total || shift.opening_cash || 0)} />
           </span>
         </div>

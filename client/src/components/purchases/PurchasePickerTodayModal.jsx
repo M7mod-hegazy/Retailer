@@ -26,7 +26,7 @@ function toDateInput(date = new Date()) {
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
   if (!items.length) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-[12px] font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {emptyLabel}
       </div>
     );
@@ -46,8 +46,8 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
                 <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300" /></div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className={`text-[13px] font-black ${activeIndex === i ? "text-amber-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[10px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
+                <span className={`text-sm font-black ${activeIndex === i ? "text-amber-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
+                <span className="font-mono text-[11px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
               </div>
             </div>
           </button>
@@ -99,7 +99,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
         <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
-          <div className="rounded-sm bg-amber-50 border border-amber-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px]">
+          <div className="rounded-sm bg-amber-50 border border-amber-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
             <span className="font-black text-amber-800">فاتورة #{d.doc_no}</span>
             {statusInfo && <span className={`px-2 py-0.5 rounded text-[11px] font-black ${statusInfo.cls}`}>{statusInfo.label}</span>}
             <span className="text-slate-600">المورد: <strong>{d.supplier_name || "—"}</strong></span>
@@ -108,7 +108,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
             <span className="font-bold text-slate-700">طريقة الدفع: {PAYMENT_METHOD_LABELS[d.payment_method] || d.payment_method || "—"}</span>
           </div>
           <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">
-            <table className="w-full text-[12px] border-collapse">
+            <table className="w-full text-2sm border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
                   <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
@@ -139,7 +139,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
             </table>
           </div>
           <div className="flex gap-3 flex-wrap">
-            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
+            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">المجموع الفرعي</span>
                 <span className="font-black font-mono text-slate-700">{formatMoney(subtotal)}</span>
@@ -162,8 +162,8 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
               </div>
             </div>
             {d.payments?.length > 0 && (
-              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-[12px]">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">المدفوعات</p>
+              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">المدفوعات</p>
                 {d.payments.map((p, i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-slate-600">{p.method_name || "—"}</span>
@@ -174,24 +174,24 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
             )}
           </div>
           {d.notes && (
-            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-[12px] text-slate-600">
-              <span className="font-black text-slate-500 text-[10px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
+            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
+              <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
             </div>
           )}
           {d.status === "cancelled" && d.cancel_reason && (
-            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-2.5 text-[12px] text-rose-700">
-              <span className="font-black text-[10px] uppercase tracking-widest">سبب الإلغاء: </span>{d.cancel_reason}
+            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-2.5 text-2sm text-rose-700">
+              <span className="font-black text-[11px] uppercase tracking-widest">سبب الإلغاء: </span>{d.cancel_reason}
             </div>
           )}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
+        <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
         <div className="flex gap-2">
-          <button onClick={() => navigate(`/purchases/${purchase.purchase_id || purchase.id}`)} className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-5 py-2 text-[13px] font-black text-amber-700 hover:bg-amber-50 transition-colors">
+          <button onClick={() => navigate(`/purchases/${purchase.purchase_id || purchase.id}`)} className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-5 py-2 text-sm font-black text-amber-700 hover:bg-amber-50 transition-colors">
             <Pencil className="h-4 w-4" /> عرض
           </button>
-          <button onClick={() => onConfirm(d)} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-[13px] font-black text-white hover:bg-amber-800 transition-colors">
+          <button onClick={() => onConfirm(d)} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-sm font-black text-white hover:bg-amber-800 transition-colors">
             <CheckCircle2 className="h-4 w-4" /> اختيار هذا الأمر
           </button>
         </div>
@@ -313,10 +313,10 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
   }
 
   const docColumns = [
-    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[12px] font-black text-slate-700", render: (inv) => inv.doc_no },
-    { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[12px] font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
-    { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-[12px] font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[13px] font-black text-amber-700", render: (inv) => (
+    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.doc_no },
+    { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
+    { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
+    { id: "total", header: "الإجمالي", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-sm font-black text-amber-700", render: (inv) => (
       <div className="flex flex-col gap-0.5">
         <span>{formatMoney(inv.total)}</span>
         {(Number(inv.discount) > 0 || Number(inv.increase) > 0) && (
@@ -334,8 +334,8 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
           <div className="flex flex-col gap-0.5">
             {splits.map((s, i) => { const info = PAYMENT_METHOD_STYLES[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
               <div key={i} className="flex items-center gap-1">
-                <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span>
-                <span className="text-[10px] font-mono font-bold text-slate-500">{formatMoney(s.amount)}</span>
+                <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
+                <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(s.amount)}</span>
               </div>
             ); })}
           </div>
@@ -344,8 +344,8 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
       const info = PAYMENT_METHOD_STYLES[inv.payment_method];
       return (
         <div className="flex flex-col gap-0.5">
-          {info ? <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-black ${info.cls}`}>{info.label}</span> : <span className="text-[11px] font-bold text-slate-600">{inv.payment_method || "—"}</span>}
-          <span className="text-[10px] font-mono font-bold text-slate-500">{formatMoney(inv.total)}</span>
+          {info ? <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span> : <span className="text-[11px] font-bold text-slate-600">{inv.payment_method || "—"}</span>}
+          <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(inv.total)}</span>
         </div>
       );
     } },
@@ -359,14 +359,14 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
-            <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">أوامر شراء مسجلة</span>
-            <span className="text-[10px] text-amber-600 font-bold">— اختر أمر شراء أصلي لإنشاء المرتجع منه.</span>
+            <span className="text-[11px] font-black text-amber-700 uppercase tracking-widest">أوامر شراء مسجلة</span>
+            <span className="text-[11px] text-amber-600 font-bold">— اختر أمر شراء أصلي لإنشاء المرتجع منه.</span>
           </div>
           <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-sm border border-amber-200">
             <span className="text-[11px] font-black text-amber-700 shrink-0">بحث برقم المستند:</span>
             <input value={docSearch} onChange={e => setDocSearch(e.target.value)}
               placeholder="PUR-0001..."
-              className="flex-1 rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+              className="flex-1 rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             <span className="text-[11px] font-black text-amber-700 shrink-0">بحث صنف:</span>
             <div className="relative flex-1">
               <input value={itemSearch}
@@ -380,7 +380,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
                   else if (e.key === "Escape") { setItemLookupOpen(false); }
                 }}
                 placeholder="اسم الصنف أو الكود..."
-                className="w-full rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="w-full rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
               {itemLookupOpen && (
                 <LookupList items={filteredItems} onPick={(item) => { setItemSearch(item.code || item.barcode || item.name); setItemLookupOpen(false); }}
                   activeIndex={activeItemIndex} query={itemSearch} />
@@ -394,17 +394,17 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">من</label>
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">إلى</label>
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">ترتيب</label>
               <select value={sort} onChange={(e) => setSort(e.target.value)}
-                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500">
+                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
                 <option value="doc_no">رقم المستند</option>
@@ -419,7 +419,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">المستخدم</label>
                 <select value={userId} onChange={(e) => setUserId(e.target.value)}
-                  className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500">
+                  className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
@@ -442,7 +442,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
                   if (e.key === "Escape") setSupplierLookupOpen(false);
                 }}
                 placeholder="كل الموردين..."
-                className="w-[140px] rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="w-[140px] rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
               {supplierQuery && (
                 <button onClick={() => { setSupplierQuery(""); setSupplierId(""); }} className="text-slate-400 hover:text-slate-600">
                   <X className="h-3.5 w-3.5" />
@@ -454,18 +454,18 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
               )}
             </div>
             <button onClick={loadData}
-              className="flex items-center gap-1.5 rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-black text-amber-700 hover:bg-amber-100 transition-colors">
+              className="flex items-center gap-1.5 rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-2sm font-black text-amber-700 hover:bg-amber-100 transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث
             </button>
           </div>
           <div className="flex items-center gap-4 rounded-sm bg-amber-800 px-4 py-3">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest">عدد الفواتير</span>
+              <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest">عدد الفواتير</span>
               <span className="font-mono text-[20px] font-black text-white leading-none">{summary.count}</span>
             </div>
             <div className="h-8 w-px bg-amber-700" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest">إجمالي المشتريات</span>
+              <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest">إجمالي المشتريات</span>
               <span className="font-mono text-[20px] font-black text-amber-300 leading-none">{formatMoney(summary.total)}</span>
             </div>
           </div>

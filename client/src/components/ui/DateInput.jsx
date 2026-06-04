@@ -174,7 +174,7 @@ export function DateInput({
                 }}
               >
                 <span>{lang === 'ar' ? d.label_ar : d.label_en}</span>
-                <span style={{ color: 'var(--text-muted)', fontFamily: 'Inter, monospace', fontSize: '11px' }}>
+                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
                   {dateVal}
                 </span>
               </button>

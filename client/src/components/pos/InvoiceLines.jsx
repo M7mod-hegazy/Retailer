@@ -42,7 +42,7 @@ export default function InvoiceLines() {
               <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {line.item_name}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Inter, monospace', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
                 كود: {line.item_code || line.code || line.barcode || line.item_id}
               </div>
             </div>
@@ -95,7 +95,7 @@ export default function InvoiceLines() {
                 >
                   <Minus size={14} />
                 </button>
-                <div style={{ width: '36px', textAlign: 'center', fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, monospace', color: 'var(--text-primary)' }}>
+                <div style={{ width: '36px', textAlign: 'center', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                   {line.quantity}
                 </div>
                 <button
@@ -122,7 +122,7 @@ export default function InvoiceLines() {
                   width: '75px', padding: '6px 8px',
                   background: 'var(--bg-input)', border: '1px solid var(--border-strong)',
                   borderRadius: '6px', textAlign: 'center', fontSize: '13px', fontWeight: 600,
-                  fontFamily: 'Inter, monospace', color: 'var(--text-primary)', outline: 'none'
+                  fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', outline: 'none'
                 }}
                 onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = 'var(--shadow-focus)'; }}
                 onBlur={(e) => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
@@ -132,7 +132,7 @@ export default function InvoiceLines() {
             {/* Row Total */}
             <div style={{ flex: '0 0 auto', textAlign: 'end', minWidth: '70px', alignSelf: 'flex-end', paddingBottom: '4px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>الإجمالي</div>
-              <div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'Inter, monospace', color: 'var(--primary)' }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--primary)' }}>
                 {(line.quantity * line.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
