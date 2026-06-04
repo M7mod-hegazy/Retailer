@@ -42,7 +42,6 @@ import Highlight from "../../components/ui/Highlight";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 const ItemExportModal = React.lazy(() => import("./ItemExportModal"));
-const ItemSmartUpdateModal = React.lazy(() => import("./ItemSmartUpdateModal"));
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
 
@@ -378,7 +377,6 @@ export default function ItemsListPage() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
-  const [smartUpdateOpen, setSmartUpdateOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   // sort
   const [sortConfig, setSortConfig]   = useState({ key: null, dir: "asc" });
@@ -1019,15 +1017,6 @@ export default function ItemsListPage() {
                <Download className="h-4 w-4" /> تصدير
             </button>
             </PermissionGate>
-            <PermissionGate page="items" action="edit">
-            <button
-               onClick={() => setSmartUpdateOpen(true)}
-               className="flex h-[42px] items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-2sm font-black text-amber-700 hover:bg-amber-100 transition-all shadow-sm"
-               title="تحديث ذكي من Excel"
-            >
-               <RefreshCw className="h-4 w-4" /> تحديث ذكي
-            </button>
-            </PermissionGate>
          </div>
       </div>
 
@@ -1425,7 +1414,7 @@ export default function ItemsListPage() {
            </div>
         </form>
       </Modal>
-      {(exportOpen || smartUpdateOpen) && (
+      {exportOpen && (
         <React.Suspense fallback={null}>
           <ItemExportModal
             open={exportOpen}
@@ -1434,18 +1423,6 @@ export default function ItemsListPage() {
             filteredItems={displayItems.rows}
             selectedItems={selectedItemsForExport}
             selectedCategoryName={selectedCategory?.name}
-          />
-          <ItemSmartUpdateModal
-            open={smartUpdateOpen}
-            onClose={() => setSmartUpdateOpen(false)}
-            items={items}
-            categories={categories}
-            units={units}
-            selectedCategoryId={selectedCatId}
-            onUpdated={async () => {
-              await Promise.all([loadCategories(), loadUnits()]);
-              await loadItems(selectedCatId, search, showDeleted);
-            }}
           />
         </React.Suspense>
       )}

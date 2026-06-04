@@ -13,6 +13,7 @@ import { getHelpPageKey } from "../../help/routeHelp";
 import { motion, AnimatePresence } from "framer-motion";
 
 const EXTRA_BREADCRUMB_PARENTS = [
+  { match: /^\/definitions\/items\/import$/, parents: [{ label: "البيانات الأساسية", path: "/definitions" }, { label: "الأصناف", path: "/definitions/items" }], current: "استيراد الأصناف" },
   { match: /^\/pos$/, parents: [{ label: "فواتير المبيعات", path: "/sales" }], current: "نقطة البيع (POS)" },
   { match: /^\/invoices\//, parents: [{ label: "فواتير المبيعات", path: "/sales" }, { label: "نقطة البيع (POS)", path: "/pos" }] },
   { match: /^\/purchases\/new$/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة جديدة" },

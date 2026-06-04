@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "adm-zip": "^0.5.17",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",

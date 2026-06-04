@@ -80,55 +80,74 @@ export default function ImportHistoryTab() {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-right text-2sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-[11px] font-black text-slate-400">
-            <th className="px-3 py-2">الملف</th>
-            <th className="px-3 py-2">المستخدم</th>
-            <th className="px-3 py-2">التاريخ</th>
-            <th className="px-3 py-2">إضافة</th>
-            <th className="px-3 py-2">تحديث</th>
-            <th className="px-3 py-2">الحالة</th>
-            <th className="px-3 py-2">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {batches.map((b) => {
-            const undoable = b.status === "active" && hoursSince(b.created_at) <= 24;
-            return (
-              <tr key={b.id} className="border-b border-slate-100 font-bold text-slate-700">
-                <td className="px-3 py-2.5">{b.file_name || `#${b.id}`}</td>
-                <td className="px-3 py-2.5 text-slate-500">{b.user_name || "—"}</td>
-                <td className="px-3 py-2.5 text-slate-500">{String(b.created_at || "").slice(0, 16)}</td>
-                <td className="px-3 py-2.5 text-emerald-700">{b.inserted}</td>
-                <td className="px-3 py-2.5 text-sky-700">{b.updated}</td>
-                <td className="px-3 py-2.5">
-                  {b.status === "undone" ? (
-                    <span className="rounded-sm bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">تم التراجع</span>
-                  ) : undoable ? (
-                    <span className="rounded-sm bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">نشطة</span>
-                  ) : (
-                    <span className="rounded-sm bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700">منتهية المهلة</span>
-                  )}
-                </td>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <button type="button" onClick={() => download(b)} className="flex items-center gap-1 rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50" title="إعادة تنزيل الملف">
-                      <Download className="h-3.5 w-3.5" /> تنزيل
-                    </button>
-                    {canUndo && undoable ? (
-                      <button type="button" disabled={busyId === b.id} onClick={() => undo(b)} className="flex items-center gap-1 rounded-sm border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-black text-rose-700 hover:bg-rose-100 disabled:opacity-50" title="تراجع">
-                        {busyId === b.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />} تراجع
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-card duration-300">
+      <div className="overflow-x-auto">
+        <table className="w-full text-right text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-black text-slate-450">
+              <th className="px-6 py-4.5">الملف</th>
+              <th className="px-6 py-4.5">المستخدم</th>
+              <th className="px-6 py-4.5">التاريخ</th>
+              <th className="px-6 py-4.5 text-center">إضافة</th>
+              <th className="px-6 py-4.5 text-center">تحديث</th>
+              <th className="px-6 py-4.5">الحالة</th>
+              <th className="px-6 py-4.5 text-left">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {batches.map((b) => {
+              const undoable = b.status === "active" && hoursSince(b.created_at) <= 24;
+              return (
+                <tr key={b.id} className="transition-colors hover:bg-slate-50/40 text-slate-700 font-semibold">
+                  <td className="px-6 py-4 font-black text-slate-900 truncate max-w-[240px]" title={b.file_name || `#${b.id}`}>{b.file_name || `#${b.id}`}</td>
+                  <td className="px-6 py-4 text-slate-500 font-medium">{b.user_name || "—"}</td>
+                  <td className="px-6 py-4 text-slate-500 font-mono text-xs">{String(b.created_at || "").slice(0, 16)}</td>
+                  <td className="px-6 py-4 text-center font-mono font-black text-emerald-600">{b.inserted}</td>
+                  <td className="px-6 py-4 text-center font-mono font-black text-sky-600">{b.updated}</td>
+                  <td className="px-6 py-4">
+                    {b.status === "undone" ? (
+                      <span className="inline-flex items-center rounded-lg bg-slate-150 border border-slate-200 px-2.5 py-1 text-2xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100/50">
+                        تم التراجع
+                      </span>
+                    ) : undoable ? (
+                      <span className="inline-flex items-center rounded-lg bg-emerald-55 border border-emerald-200 px-2.5 py-1 text-2xs font-black text-emerald-800 shadow-sm ring-1 ring-emerald-150/40 animate-pulse">
+                        نشطة
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-lg bg-amber-55 border border-amber-250 px-2.5 py-1 text-2xs font-black text-amber-800 shadow-sm ring-1 ring-amber-150/40">
+                        منتهية المهلة
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2.5">
+                      <button 
+                        type="button" 
+                        onClick={() => download(b)} 
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-black text-slate-600 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98]" 
+                        title="إعادة تنزيل الملف"
+                      >
+                        <Download className="h-3.5 w-3.5" /> تنزيل
                       </button>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                      {canUndo && undoable ? (
+                        <button 
+                          type="button" 
+                          disabled={busyId === b.id} 
+                          onClick={() => undo(b)} 
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 shadow-sm transition hover:bg-rose-100 hover:border-rose-300 active:scale-[0.98] disabled:opacity-40" 
+                          title="تراجع"
+                        >
+                          {busyId === b.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />} تراجع
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
