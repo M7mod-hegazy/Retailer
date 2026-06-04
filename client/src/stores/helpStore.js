@@ -134,7 +134,7 @@ export const useHelpStore = create((set, get) => ({
   enableAllTours: async () => {
     set({ toursDisabledGlobally: false });
     try {
-      await api.patch('/api/help/state/reset');
+      await api.delete('/api/help/state/disable-tours');
     } catch { }
   },
 
@@ -142,6 +142,13 @@ export const useHelpStore = create((set, get) => ({
     set({ activeTooltipKey: null, tooltipsDisabledGlobally: true });
     try {
       await api.patch('/api/help/state/disable-tooltips');
+    } catch { }
+  },
+
+  enableAllTooltips: async () => {
+    set({ tooltipsDisabledGlobally: false });
+    try {
+      await api.patch('/api/help/state/enable-tooltips');
     } catch { }
   },
 

@@ -293,9 +293,23 @@ function StepTabs({ step, stats }) {
   );
 }
 
-export default function ItemImportModal({ open, onClose, items, categories, units, selectedCategoryId, onImported }) {
+async function fileToBase64(file) {
+  if (!file) return null;
+  const buffer = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+export default function ItemImportModal({ open, onClose, items, categories, units, selectedCategoryId, onImported, embedded = false }) {
   const [step, setStep] = useState(1);
   const [fileName, setFileName] = useState("");
+  const [sourceFile, setSourceFile] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [rawRows, setRawRows] = useState([]);
   const [headerIndex, setHeaderIndex] = useState(0);
   const [mapping, setMapping] = useState({});
@@ -442,6 +456,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
   const reset = () => {
     setStep(1);
     setFileName("");
+    setSourceFile(null);
+    setPreview(null);
     setRawRows([]);
     setHeaderIndex(0);
     setMapping({});
@@ -543,6 +559,8 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
         setError("تمت قراءة الملف لكن لم يتم العثور على صفوف منتجات بعد صف العناوين.");
       }
       setFileName(file.name);
+      setSourceFile(file);
+      setPreview(null);
       setRawRows(parsed.rows);
       setHeaderIndex(detected.index);
       setMapping(nextMapping);
@@ -1033,28 +1051,7 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
     }));
   };
 
-  const handleImport = async () => {
-    setError("");
-    if (blockingIssues.length) {
-      const message = "يوجد أخطاء في البيانات يجب إصلاحها قبل الاستيراد.";
-      setError(message);
-      toast.error(message);
-      setStep(2);
-      return;
-    }
-
-    let categoryList = systemCategories;
-    try {
-      categoryList = await ensureSkuCategories();
-    } catch (error) {
-      const message = error.response?.data?.message || "تعذر إنشاء فئات SKU الناقصة.";
-      setError(message);
-      toast.error(message);
-      setStep(2);
-      return;
-    }
-
-    const rows = analyzedRows
+  const buildSubmitRows = (categoryList) => analyzedRows
       .filter((row) => row.__status !== "invalid")
       .flatMap((row) => {
         if (row.__duplicatePolicy === "warehouse" && Array.isArray(row.__warehouseDistribution)) {
@@ -1082,6 +1079,29 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
       })
       .filter((row) => row.action !== "skip");
 
+  // dryRun=true simulates the import (counts only, no writes); dryRun=false commits.
+  const runImport = async ({ dryRun, confirmDuplicate = false } = {}) => {
+    setError("");
+    if (blockingIssues.length) {
+      const message = "يوجد أخطاء في البيانات يجب إصلاحها قبل الاستيراد.";
+      setError(message);
+      toast.error(message);
+      setStep(2);
+      return;
+    }
+
+    let categoryList = systemCategories;
+    try {
+      categoryList = await ensureSkuCategories();
+    } catch (error) {
+      const message = error.response?.data?.message || "تعذر إنشاء فئات SKU الناقصة.";
+      setError(message);
+      toast.error(message);
+      setStep(2);
+      return;
+    }
+
+    const rows = buildSubmitRows(categoryList);
     if (!rows.length) {
       const message = "لا توجد صفوف جاهزة للتنفيذ.";
       setError(message);
@@ -1091,25 +1111,59 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
 
     setLoading(true);
     try {
+      const fileBase64 = await fileToBase64(sourceFile);
       const response = await api.post("/api/items/import", {
         rows,
         create_categories: true,
         mode: "smart",
+        dry_run: dryRun,
+        confirm_duplicate: confirmDuplicate,
+        file_name: fileName || null,
+        file_mime: sourceFile?.type || null,
+        file_base64: fileBase64,
       });
-      setResult(response.data?.data || {});
-      setStep(4);
-      await onImported?.();
+      const data = response.data?.data || {};
+      if (dryRun) {
+        setPreview(data);
+        toast.success("تمت المعاينة بنجاح");
+      } else {
+        setResult(data);
+        setPreview(null);
+        setStep(4);
+        await onImported?.();
+      }
     } catch (error) {
-      const message = error?.response?.data?.message || "فشل تنفيذ الاستيراد.";
-      setError(message);
-      toast.error(message);
+      const status = error?.response?.status;
+      const body = error?.response?.data;
+      if (status === 409 && body?.requires_confirm === "duplicate_file") {
+        if (window.confirm("سبق استيراد نفس الملف من قبل. هل تريد المتابعة وتكرار الاستيراد؟")) {
+          setLoading(false);
+          return runImport({ dryRun, confirmDuplicate: true });
+        }
+        setLoading(false);
+        return;
+      }
+      if (status === 409 && body?.reason === "import_in_progress") {
+        toast.error("هناك عملية استيراد جارية بالفعل. انتظر حتى تنتهي.");
+      } else if (status === 400 && body?.reason === "validation") {
+        const message = `يوجد ${body.needFixing} صف يحتاج إصلاح قبل الاستيراد.`;
+        setError(message);
+        toast.error(message);
+        setStep(2);
+      } else {
+        const message = body?.message || "فشل تنفيذ الاستيراد.";
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <Modal open={open} onClose={close} title="استيراد ذكي للأصناف من Excel" maxWidth="max-w-[calc(100vw-3rem)]">
+  const handlePreview = () => runImport({ dryRun: true });
+  const handleImport = () => runImport({ dryRun: false });
+
+  const body = (
       <div className="space-y-5" dir="rtl">
         <StepTabs step={step} stats={importStats} />
 
@@ -1969,8 +2023,14 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
                 <h3 className="text-[18px] font-black text-slate-900">مراجعة الصفوف والتكرارات</h3>
                 <p className="text-2sm font-bold text-slate-500">جاهز {counts.ready || 0}، موجود مسبقا {counts.existing || 0}، محتمل التكرار {counts.possible_duplicate || 0}، مكرر بالملف {counts.file_duplicate || 0}، غير صالح {counts.invalid || 0}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {preview ? (
+                  <span className="rounded-sm border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] font-black text-sky-800">
+                    معاينة: إضافة {preview.inserted || 0}، تحديث {preview.updated || 0}، تخطي {preview.skipped || 0}
+                  </span>
+                ) : null}
                 <button type="button" onClick={() => setStep(2)} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-2sm font-black text-slate-600">رجوع للربط</button>
+                <button type="button" onClick={handlePreview} disabled={loading || blockingIssues.length > 0} className="rounded-sm border border-sky-300 bg-sky-50 px-4 py-2 text-2sm font-black text-sky-700 disabled:cursor-not-allowed disabled:opacity-40">معاينة</button>
                 <button type="button" onClick={handleImport} disabled={loading || blockingIssues.length > 0} className="rounded-sm bg-emerald-600 px-5 py-2 text-2sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-40">{loading ? "جاري التنفيذ..." : "تنفيذ الاستيراد"}</button>
               </div>
             </div>
@@ -2210,6 +2270,12 @@ export default function ItemImportModal({ open, onClose, items, categories, unit
           </div>
         ) : null}
       </div>
+  );
+
+  if (embedded) return body;
+  return (
+    <Modal open={open} onClose={close} title="استيراد ذكي للأصناف من Excel" maxWidth="max-w-[calc(100vw-3rem)]">
+      {body}
     </Modal>
   );
 }

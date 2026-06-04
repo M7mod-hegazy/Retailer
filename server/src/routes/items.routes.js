@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
@@ -6,6 +7,9 @@ const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
 
 const router = express.Router();
+// Guards against two overlapping imports committing at once (better-sqlite3 is
+// synchronous, but Electron can dispatch overlapping requests).
+let importInProgress = false;
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
@@ -829,7 +833,7 @@ function insertWithAvailableColumns(db, table, valuesByColumn) {
 function ensureImportOpeningBalance(db, itemId, payload, warehouseId, quantity) {
   const unitCost = Number(payload.purchase_price || 0);
   const qty = Number(quantity || 0);
-  if (qty <= 0 || unitCost <= 0) return;
+  if (qty <= 0 || unitCost <= 0) return null;
 
   const now = new Date().toISOString().replace("T", " ").slice(0, 19);
   const item = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(itemId);
@@ -883,12 +887,14 @@ function ensureImportOpeningBalance(db, itemId, payload, warehouseId, quantity) 
       source_line_id: line.lastInsertRowid,
     });
   }
+
+  return purchase.id;
 }
 
 function setImportedStockLevel(db, itemId, payload, options = {}) {
-  if (payload.stock_quantity === undefined || !Number.isFinite(payload.stock_quantity)) return;
+  if (payload.stock_quantity === undefined || !Number.isFinite(payload.stock_quantity)) return null;
   const warehouseId = resolveWarehouseId(db, payload, options);
-  if (!warehouseId) return;
+  if (!warehouseId) return null;
   const existing = db.prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(itemId, warehouseId);
   const beforeQty = Number(existing?.quantity || 0);
   const afterQty = Number(payload.stock_quantity || 0);
@@ -913,10 +919,12 @@ function setImportedStockLevel(db, itemId, payload, options = {}) {
       "INSERT INTO stock_movements (item_id, warehouse_id, movement_type, quantity, before_qty, after_qty, reference_type, reference_id, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run(itemId, warehouseId, "branch_receive", delta, beforeQty, afterQty, "item_import", itemId, "استيراد أصناف - استلام مخزون بدون خزنة", null);
   }
+  let obPurchaseId = null;
   if (delta > 0 && unitCost > 0) {
-    ensureImportOpeningBalance(db, itemId, payload, warehouseId, delta);
+    obPurchaseId = ensureImportOpeningBalance(db, itemId, payload, warehouseId, delta);
     recomputeWACCForItem(itemId, db);
   }
+  return { warehouseId, delta, beforeQty, obPurchaseId };
 }
 
 function findExistingItem(db, payload, preferredId, matchField) {
@@ -973,8 +981,8 @@ function insertSmartItem(db, rawPayload, createCategories) {
     );
 
   storeItemImagesInline(db, info.lastInsertRowid, payload.image_urls);
-  setImportedStockLevel(db, info.lastInsertRowid, payload);
-  return info.lastInsertRowid;
+  const stock = setImportedStockLevel(db, info.lastInsertRowid, payload);
+  return { itemId: info.lastInsertRowid, stock };
 }
 
 function updateSmartItem(db, id, rawPayload, createCategories) {
@@ -1027,8 +1035,88 @@ function updateSmartItem(db, id, rawPayload, createCategories) {
   if (rawPayload.image_urls !== undefined || rawPayload.image_urls_text !== undefined) {
     storeItemImagesInline(db, Number(id), payload.image_urls);
   }
-  setImportedStockLevel(db, Number(id), payload);
+  const stock = setImportedStockLevel(db, Number(id), payload);
+  return { stock };
 }
+
+// Pre-flight validation for the smart import. Performs NO writes — it only
+// collects blocking errors (so the all-or-nothing commit never fails midway)
+// and non-blocking warnings. Returns stable `code` strings the client maps to i18n.
+function validateImportRows(db, rows) {
+  const blocking = [];
+  const warnings = [];
+  const numericFields = ["sale_price", "purchase_price", "wholesale_price", "stock_quantity", "min_stock_qty", "tax_rate"];
+  const nonNegative = new Set(["sale_price", "purchase_price", "wholesale_price", "stock_quantity", "min_stock_qty"]);
+
+  // Detect the same barcode used for two different products inside the file.
+  const barcodeIdentities = new Map();
+  rows.forEach((entry) => {
+    const payload = entry.payload || entry;
+    const bc = String(payload.barcode || "").trim();
+    if (!bc) return;
+    const identity = normalizeLookup(payload.code) || normalizeLookup(payload.name);
+    if (!barcodeIdentities.has(bc)) barcodeIdentities.set(bc, new Set());
+    if (identity) barcodeIdentities.get(bc).add(identity);
+  });
+
+  rows.forEach((entry, index) => {
+    const action = entry.action || "insert";
+    const payload = entry.payload || entry;
+    const sourceRow = entry.source_row || index + 1;
+    const errs = [];
+
+    if (action !== "skip") {
+      if (!String(payload.name || "").trim()) errs.push({ code: "name_required" });
+
+      numericFields.forEach((field) => {
+        const raw = payload[field];
+        if (raw === undefined || raw === null || raw === "") return;
+        const num = Number(raw);
+        if (Number.isNaN(num)) errs.push({ code: "non_numeric", field });
+        else if (nonNegative.has(field) && num < 0) errs.push({ code: "negative", field });
+      });
+
+      const sale = Number(payload.sale_price ?? payload.price ?? 0);
+      const purchase = Number(payload.purchase_price ?? 0);
+      if (!Number.isNaN(sale) && !Number.isNaN(purchase) && purchase > 0 && sale > 0 && sale < purchase) {
+        warnings.push({ row: sourceRow, code: "sale_below_purchase" });
+      }
+
+      const bc = String(payload.barcode || "").trim();
+      if (bc) {
+        const identities = barcodeIdentities.get(bc);
+        if (identities && identities.size > 1) errs.push({ code: "barcode_conflict_file" });
+        if (action === "insert") {
+          const existing = db.prepare("SELECT id, code, name FROM items WHERE barcode = ? AND deleted_at IS NULL").get(bc);
+          if (existing) {
+            const rowIdentity = normalizeLookup(payload.code) || normalizeLookup(payload.name);
+            const exIdentity = normalizeLookup(existing.code) || normalizeLookup(existing.name);
+            if (rowIdentity && exIdentity && rowIdentity !== exIdentity) errs.push({ code: "barcode_conflict_existing" });
+          }
+        }
+      }
+
+      if (action === "warehouse_stock") {
+        try {
+          const wid = resolveWarehouseId(db, smartPayload(payload, null, null), { allowDefault: false });
+          if (!wid) errs.push({ code: "warehouse_required" });
+        } catch {
+          errs.push({ code: "warehouse_required" });
+        }
+      }
+
+      if (action === "update" && !findExistingItem(db, payload, entry.existing_id, entry.match_field)) {
+        errs.push({ code: "match_not_found" });
+      }
+    }
+
+    if (errs.length) blocking.push({ row: sourceRow, errors: errs });
+  });
+
+  return { blocking, warnings };
+}
+
+const DRY_RUN_ROLLBACK = "__DRY_RUN_ROLLBACK__";
 
 router.post("/import", requirePagePermission("items", "add"), (req, res, next) => {
   const db = getDb();
@@ -1043,48 +1131,143 @@ router.post("/import", requirePagePermission("items", "add"), (req, res, next) =
 
   try {
     if (smartMode) {
-      const data = { inserted: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
-      const warehouseImportItems = new Map();
-      const tx = db.transaction(() => {
-        rows.forEach((entry, index) => {
-          const action = entry.action || "insert";
-          const payload = entry.payload || entry;
-          const sourceRow = entry.source_row || index + 1;
-          try {
+      const dryRun = req.body?.dry_run === true;
+      const confirmDuplicate = req.body?.confirm_duplicate === true;
+
+      // ---- Pre-flight validation (no writes) ----
+      const validation = validateImportRows(db, rows);
+      if (validation.blocking.length) {
+        return res.status(400).json({
+          success: false,
+          reason: "validation",
+          ready: rows.length - validation.blocking.length,
+          needFixing: validation.blocking.length,
+          rows: validation.blocking,
+          warnings: validation.warnings,
+        });
+      }
+
+      // ---- Duplicate-file / re-import guard ----
+      const fileBase64 = typeof req.body?.file_base64 === "string" ? req.body.file_base64 : null;
+      const fileBuffer = fileBase64 ? Buffer.from(fileBase64, "base64") : null;
+      const fileHash = fileBuffer
+        ? crypto.createHash("sha256").update(fileBuffer).digest("hex")
+        : (req.body?.file_hash || null);
+      if (!dryRun && !confirmDuplicate && fileHash) {
+        const prior = db.prepare(
+          "SELECT id, created_at FROM import_batches WHERE file_hash = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+        ).get(fileHash);
+        if (prior) {
+          return res.status(409).json({ success: false, requires_confirm: "duplicate_file", prior_batch: prior });
+        }
+      }
+
+      // ---- Concurrent-import lock ----
+      if (!dryRun) {
+        if (importInProgress) return res.status(409).json({ success: false, reason: "import_in_progress" });
+        importInProgress = true;
+      }
+
+      try {
+        const data = { inserted: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
+        const warehouseImportItems = new Map();
+        const snapshots = [];
+        const preview = [];
+        const snap = (entry) => snapshots.push(entry);
+
+        const tx = db.transaction(() => {
+          rows.forEach((entry, index) => {
+            const action = entry.action || "insert";
+            const payload = entry.payload || entry;
+            const sourceRow = entry.source_row || index + 1;
+
             if (action === "skip") {
               data.skipped += 1;
+              preview.push({ row: sourceRow, action: "skip" });
               return;
             }
+
             if (action === "warehouse_stock") {
               const itemKey = normalizeLookup(payload.code) || normalizeLookup(payload.barcode) || normalizeLookup(payload.name);
               let itemId = warehouseImportItems.get(itemKey);
+              let firstInsert = false;
               if (!itemId) {
                 const existing = findExistingItem(db, payload, entry.existing_id, entry.match_field);
-                itemId = existing?.id || insertSmartItem(db, { ...payload, stock_quantity: undefined }, createCategories);
+                if (existing?.id) {
+                  itemId = existing.id;
+                  data.updated += 1;
+                } else {
+                  const result = insertSmartItem(db, { ...payload, stock_quantity: undefined }, createCategories);
+                  itemId = result.itemId;
+                  firstInsert = true;
+                  data.inserted += 1;
+                }
                 warehouseImportItems.set(itemKey, itemId);
-                if (existing?.id) data.updated += 1;
-                else data.inserted += 1;
               }
-              setImportedStockLevel(db, itemId, smartPayload(payload, payload.category_id || null, payload.unit_id || null), { allowDefault: false });
+              const stock = setImportedStockLevel(db, itemId, smartPayload(payload, payload.category_id || null, payload.unit_id || null), { allowDefault: false });
+              if (firstInsert || stock) {
+                snap({ item_id: itemId, action: "warehouse_stock", was_new: firstInsert ? 1 : 0, warehouse_id: stock?.warehouseId ?? null, qty_added: stock?.delta ?? 0, prior_stock: stock?.beforeQty ?? null, prior_item_json: null, ob_purchase_id: stock?.obPurchaseId ?? null });
+              }
+              preview.push({ row: sourceRow, action: "warehouse_stock", item_id: itemId, was_new: firstInsert, warehouse_id: stock?.warehouseId ?? null, qty_added: stock?.delta ?? 0 });
               return;
             }
+
             if (action === "update") {
               const existing = findExistingItem(db, payload, entry.existing_id, entry.match_field);
               if (!existing) throw new Error("Matching item not found");
-              updateSmartItem(db, existing.id, payload, createCategories);
+              const result = updateSmartItem(db, existing.id, payload, createCategories);
               data.updated += 1;
+              snap({ item_id: existing.id, action: "update", was_new: 0, warehouse_id: result?.stock?.warehouseId ?? null, qty_added: result?.stock?.delta ?? 0, prior_stock: result?.stock?.beforeQty ?? null, prior_item_json: JSON.stringify(existing), ob_purchase_id: result?.stock?.obPurchaseId ?? null });
+              preview.push({ row: sourceRow, action: "update", item_id: existing.id, code: existing.code });
               return;
             }
-            insertSmartItem(db, payload, createCategories);
+
+            // insert
+            const result = insertSmartItem(db, payload, createCategories);
             data.inserted += 1;
-          } catch (error) {
-            data.failed += 1;
-            data.errors.push({ row: sourceRow, message: error.message });
-          }
+            snap({ item_id: result.itemId, action: "insert", was_new: 1, warehouse_id: result?.stock?.warehouseId ?? null, qty_added: result?.stock?.delta ?? 0, prior_stock: result?.stock?.beforeQty ?? null, prior_item_json: null, ob_purchase_id: result?.stock?.obPurchaseId ?? null });
+            const created = db.prepare("SELECT code FROM items WHERE id = ?").get(result.itemId);
+            preview.push({ row: sourceRow, action: "insert", item_id: result.itemId, code: created?.code || null });
+          });
+
+          if (dryRun) throw new Error(DRY_RUN_ROLLBACK);
+
+          // ---- Persist the batch (same transaction as the data writes) ----
+          const batchInfo = insertWithAvailableColumns(db, "import_batches", {
+            user_id: req.user?.id || null,
+            file_name: req.body?.file_name || null,
+            file_hash: fileHash,
+            file_blob: fileBuffer,
+            file_mime: req.body?.file_mime || null,
+            file_size: fileBuffer ? fileBuffer.length : null,
+            row_count: rows.length,
+            inserted: data.inserted,
+            updated: data.updated,
+            skipped: data.skipped,
+            failed: data.failed,
+            status: "active",
+          });
+          const batchId = batchInfo.lastInsertRowid;
+          const insertSnap = db.prepare(
+            "INSERT INTO import_batch_items (batch_id, item_id, action, was_new, warehouse_id, qty_added, prior_stock, prior_item_json, ob_purchase_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          );
+          snapshots.forEach((s) => insertSnap.run(batchId, s.item_id, s.action, s.was_new, s.warehouse_id, s.qty_added, s.prior_stock, s.prior_item_json, s.ob_purchase_id));
+          data.batch_id = batchId;
         });
-      });
-      tx();
-      return res.json({ success: true, data });
+
+        try {
+          tx();
+        } catch (error) {
+          if (error.message === DRY_RUN_ROLLBACK) {
+            return res.json({ success: true, dry_run: true, data: { ...data, preview, warnings: validation.warnings } });
+          }
+          throw error;
+        }
+
+        return res.json({ success: true, data: { ...data, warnings: validation.warnings } });
+      } finally {
+        if (!dryRun) importInProgress = false;
+      }
     }
 
     let success = 0;
@@ -1168,6 +1351,155 @@ router.post("/import", requirePagePermission("items", "add"), (req, res, next) =
 
     tx();
     return res.json({ success: true, data: { success, failed, errors } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ---- Import history & undo ----
+
+// List recent import batches (excludes the file blob for payload size).
+router.get("/import/batches", requirePagePermission("items", "view"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const batches = db.prepare(`
+      SELECT b.id, b.user_id, u.username AS user_name, b.file_name, b.file_size,
+             b.row_count, b.inserted, b.updated, b.skipped, b.failed,
+             b.status, b.created_at, b.undone_at, b.undone_by
+      FROM import_batches b
+      LEFT JOIN users u ON u.id = b.user_id
+      ORDER BY b.created_at DESC, b.id DESC
+      LIMIT 50
+    `).all();
+    return res.json({ success: true, data: batches });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Re-download the original imported file.
+router.get("/import/batches/:id/file", requirePagePermission("items", "view"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT file_name, file_mime, file_blob FROM import_batches WHERE id = ?").get(Number(req.params.id));
+    if (!row || !row.file_blob) return res.status(404).json({ success: false, message: "الملف غير متاح" });
+    const fileName = encodeURIComponent(row.file_name || `import-${req.params.id}.xlsx`);
+    res.setHeader("Content-Type", row.file_mime || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${fileName}`);
+    return res.end(Buffer.from(row.file_blob));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Returns a reason string if the batch cannot be undone, otherwise null.
+// Timestamps are second-granularity and unreliable for "since import", so we
+// instead detect any external reference to the imported items: any sale,
+// transfer, non-import purchase line, or stock movement that this import did
+// not itself create. obPurchaseIds are this batch's own opening-balance docs.
+function importUndoBlockReason(db, itemIds, obPurchaseIds) {
+  if (!itemIds.length) return null;
+  const ph = itemIds.map(() => "?").join(", ");
+
+  if (db.prepare(`SELECT 1 FROM invoice_lines WHERE item_id IN (${ph}) LIMIT 1`).get(...itemIds)) return "sold";
+
+  const moved = db.prepare(
+    `SELECT 1 FROM stock_movements
+     WHERE item_id IN (${ph}) AND deleted_at IS NULL
+       AND NOT (reference_type = 'item_import' AND reference_id = item_id) LIMIT 1`,
+  ).get(...itemIds);
+  if (moved) return "stock_moved";
+
+  if (hasTable(db, "branch_transfer_lines") && db.prepare(`SELECT 1 FROM branch_transfer_lines WHERE item_id IN (${ph}) LIMIT 1`).get(...itemIds)) {
+    return "transferred";
+  }
+
+  // Purchase lines on these items that are NOT this batch's opening-balance docs.
+  const obFilter = obPurchaseIds.length ? `AND purchase_id NOT IN (${obPurchaseIds.map(() => "?").join(", ")})` : "";
+  if (db.prepare(`SELECT 1 FROM purchase_lines WHERE item_id IN (${ph}) ${obFilter} LIMIT 1`).get(...itemIds, ...obPurchaseIds)) {
+    return "purchased";
+  }
+
+  return null;
+}
+
+router.post("/import/batches/:id/undo", requirePagePermission("items", "import_undo"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const batchId = Number(req.params.id);
+    const batch = db.prepare("SELECT * FROM import_batches WHERE id = ?").get(batchId);
+    if (!batch) return res.status(404).json({ success: false, message: "العملية غير موجودة" });
+    if (batch.status !== "active") return res.status(409).json({ success: false, reason: "already_undone" });
+
+    // 24h window.
+    const ageHours = db.prepare("SELECT (julianday('now') - julianday(?)) * 24 AS h").get(batch.created_at)?.h;
+    if (ageHours === null || ageHours === undefined || ageHours > 24) {
+      return res.status(409).json({ success: false, reason: "expired" });
+    }
+
+    const snaps = db.prepare("SELECT * FROM import_batch_items WHERE batch_id = ?").all(batchId);
+    const itemIds = [...new Set(snaps.map((s) => s.item_id))];
+    const obPurchaseIds = [...new Set(snaps.map((s) => s.ob_purchase_id).filter(Boolean))];
+
+    // Block if anything external has touched these items since import.
+    const blockReason = importUndoBlockReason(db, itemIds, obPurchaseIds);
+    if (blockReason) return res.status(409).json({ success: false, reason: "activity", detail: blockReason });
+
+    const tx = db.transaction(() => {
+      // Revert in dependency-safe order.
+      // 1. Restore field changes for updated items.
+      for (const s of snaps) {
+        if (s.action === "update" && s.prior_item_json) {
+          const prior = JSON.parse(s.prior_item_json);
+          const cols = ["code", "sku_sequence", "name", "name_en", "barcode", "category_id", "unit_id", "sale_price", "wholesale_price", "purchase_price", "tax_rate", "item_type", "description", "is_active", "min_stock_qty"]
+            .filter((c) => Object.prototype.hasOwnProperty.call(prior, c));
+          if (cols.length) {
+            db.prepare(`UPDATE items SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`).run(...cols.map((c) => prior[c]), s.item_id);
+          }
+        }
+      }
+
+      // 2. Revert stock levels.
+      for (const s of snaps) {
+        if (s.warehouse_id == null || Number(s.qty_added) === 0) continue;
+        if (s.prior_stock == null) {
+          db.prepare("DELETE FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").run(s.item_id, s.warehouse_id);
+        } else {
+          db.prepare("UPDATE stock_levels SET quantity = ? WHERE item_id = ? AND warehouse_id = ?").run(s.prior_stock, s.item_id, s.warehouse_id);
+        }
+      }
+
+      // 3. Remove this import's stock movements and opening-balance docs.
+      for (const s of snaps) {
+        db.prepare("DELETE FROM stock_movements WHERE reference_type = 'item_import' AND reference_id = ? AND item_id = ?").run(s.item_id, s.item_id);
+        if (s.ob_purchase_id) {
+          db.prepare("DELETE FROM purchase_lines WHERE purchase_id = ? AND item_id = ?").run(s.ob_purchase_id, s.item_id);
+          if (hasTable(db, "cost_movements")) {
+            db.prepare("DELETE FROM cost_movements WHERE source_table = 'purchase_lines' AND source_id = ? AND item_id = ?").run(s.ob_purchase_id, s.item_id);
+          }
+          const remaining = db.prepare("SELECT COUNT(*) AS n FROM purchase_lines WHERE purchase_id = ?").get(s.ob_purchase_id)?.n || 0;
+          if (remaining === 0) db.prepare("DELETE FROM purchases WHERE id = ?").run(s.ob_purchase_id);
+        }
+      }
+
+      // 4. Delete items this batch created (children first for FK safety).
+      const newItemIds = [...new Set(snaps.filter((s) => Number(s.was_new) === 1).map((s) => s.item_id))];
+      for (const itemId of newItemIds) {
+        db.prepare("DELETE FROM item_images WHERE item_id = ?").run(itemId);
+        db.prepare("DELETE FROM stock_levels WHERE item_id = ?").run(itemId);
+        db.prepare("DELETE FROM items WHERE id = ?").run(itemId);
+      }
+
+      // 5. Recompute WACC for surviving items.
+      for (const itemId of itemIds) {
+        if (!newItemIds.includes(itemId)) recomputeWACCForItem(itemId, db);
+      }
+
+      db.prepare("UPDATE import_batches SET status = 'undone', undone_at = CURRENT_TIMESTAMP, undone_by = ? WHERE id = ?").run(req.user?.id || null, batchId);
+    });
+    tx();
+
+    return res.json({ success: true, data: { batch_id: batchId, status: "undone" } });
   } catch (error) {
     return next(error);
   }

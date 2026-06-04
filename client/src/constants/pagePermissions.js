@@ -18,6 +18,7 @@ export const ACTION_LABELS = {
   export: "تصدير",
   create: "إنشاء",
   restore: "استعادة",
+  import_undo: "التراجع عن الاستيراد",
 };
 
 export const ACTION_DESCRIPTIONS = {
@@ -40,6 +41,7 @@ export const ACTION_DESCRIPTIONS = {
   export: "تصدير البيانات والتقارير إلى ملفات خارجية",
   create: "إنشاء نسخ احتياطية جديدة",
   restore: "استعادة النظام من نسخة احتياطية",
+  import_undo: "التراجع عن عملية استيراد الأصناف خلال 24 ساعة",
 };
 
 export const PAGE_PERMISSIONS = {
@@ -61,7 +63,7 @@ export const PAGE_PERMISSIONS = {
   payment_methods: { label: 'وسائل الدفع', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   bank_operations: { label: 'البنوك والفيزا', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   cheques: { label: 'إدارة الشيكات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  items: { label: 'قاعدة الأصناف', actions: ['view', 'add', 'edit', 'delete', 'print'] },
+  items: { label: 'قاعدة الأصناف', actions: ['view', 'add', 'edit', 'delete', 'print', 'import_undo'] },
   categories: { label: 'أقسام الأصناف', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   bulk_price_update: { label: 'تحديث الأسعار', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   stock_transfer: { label: 'تحويل مخزني', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -101,5 +103,5 @@ export const ROLE_PRESETS = {
 
 // Ordered list of all unique actions across all pages (for matrix column headers)
 const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
-const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo'];
 export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

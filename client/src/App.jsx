@@ -30,6 +30,7 @@ const TeamWorkspacePage = lazy(() => import("./pages/workspaces/TeamWorkspacePag
 const CategoriesPage = lazy(() => import("./pages/definitions/CategoriesPage"));
 const ItemsListPage = lazy(() => import("./pages/items/ItemsListPage"));
 const ItemDetailPage = lazy(() => import("./pages/items/ItemDetailPage"));
+const ItemImportPage = lazy(() => import("./pages/items/import/ItemImportPage"));
 const CustomersListPage = lazy(() => import("./pages/customers/CustomersListPage"));
 const SuppliersListPage = lazy(() => import("./pages/suppliers/SuppliersListPage"));
 const RevenueCategoriesPage = lazy(() => import("./pages/definitions/RevenueCategoriesPage"));
@@ -145,6 +146,7 @@ export default function App() {
                     <Route path="workspace/team" element={<TeamWorkspacePage />} />
                     <Route path="definitions/categories" element={<PermissionRoute page="categories"><CategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/items" element={<PermissionRoute page="items"><ItemsListPage /></PermissionRoute>} />
+                    <Route path="definitions/items/import" element={<PermissionRoute page="items"><ItemImportPage /></PermissionRoute>} />
                     <Route path="definitions/items/:id" element={<PermissionRoute page="items"><ItemDetailPage /></PermissionRoute>} />
                     <Route path="definitions/customers" element={<PermissionRoute page="customers"><CustomersListPage /></PermissionRoute>} />
                     <Route path="definitions/customers/:id" element={<PermissionRoute page="customers"><CustomerProfilePage /></PermissionRoute>} />

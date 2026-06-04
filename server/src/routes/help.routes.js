@@ -78,6 +78,44 @@ router.patch('/state/disable-tooltips', (req, res, next) => {
   }
 });
 
+router.delete('/state/disable-tours', (req, res, next) => {
+  try {
+    getDb().prepare('DELETE FROM user_help_state WHERE user_id = ? AND page_key = ?').run(req.user.id, TOUR_DISABLE_KEY);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/state/enable-tooltips', (req, res, next) => {
+  try {
+    getDb().prepare('DELETE FROM user_help_state WHERE user_id = ? AND page_key = ?').run(req.user.id, TOOLTIP_DISABLE_KEY);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/info', (req, res, next) => {
+  try {
+    const db = getDb();
+    const pkg = require('../../package.json');
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
+    const completedTours = db.prepare('SELECT COUNT(*) as count FROM user_help_state WHERE user_id = ? AND completed = 1 AND page_key NOT LIKE ?').get(req.user.id, '__%')?.count || 0;
+    res.json({
+      success: true,
+      data: {
+        version: pkg.version,
+        node_env: process.env.NODE_ENV || 'development',
+        user_count: userCount,
+        completed_tours: completedTours,
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.patch('/state/reset', requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const targetUserId = req.user.role === 'admin' && req.body?.user_id ? Number(req.body.user_id) : req.user.id;

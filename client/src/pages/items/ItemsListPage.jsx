@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowUpDown, 
   Check, 
@@ -42,7 +42,6 @@ import Highlight from "../../components/ui/Highlight";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 const ItemExportModal = React.lazy(() => import("./ItemExportModal"));
-const ItemImportModal = React.lazy(() => import("./ItemImportModal"));
 const ItemSmartUpdateModal = React.lazy(() => import("./ItemSmartUpdateModal"));
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
@@ -377,7 +376,7 @@ export default function ItemsListPage() {
   const [showDeleted, setShowDeleted]     = useState(false);
   const [showSkuGaps, setShowSkuGaps]     = useState(false);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
+  const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
   const [smartUpdateOpen, setSmartUpdateOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -1004,7 +1003,7 @@ export default function ItemsListPage() {
             <PermissionGate page="items" action="add">
             <button
                data-help="import-button"
-               onClick={() => setImportOpen(true)}
+               onClick={() => navigate("/definitions/items/import")}
                className="flex h-[42px] items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-all shadow-sm"
                title="استيراد من Excel"
             >
@@ -1426,20 +1425,8 @@ export default function ItemsListPage() {
            </div>
         </form>
       </Modal>
-      {(importOpen || exportOpen || smartUpdateOpen) && (
+      {(exportOpen || smartUpdateOpen) && (
         <React.Suspense fallback={null}>
-          <ItemImportModal
-            open={importOpen}
-            onClose={() => setImportOpen(false)}
-            items={items}
-            categories={categories}
-            units={units}
-            selectedCategoryId={selectedCatId}
-            onImported={async () => {
-              await Promise.all([loadCategories(), loadUnits()]);
-              await loadItems(selectedCatId, search, showDeleted);
-            }}
-          />
           <ItemExportModal
             open={exportOpen}
             onClose={() => setExportOpen(false)}
