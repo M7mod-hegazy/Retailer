@@ -4,6 +4,7 @@ import Step1Upload from "./steps/Step1Upload";
 import Step2Columns from "./steps/Step2Columns";
 import FixStep from "./steps/FixStep";
 import Step5Categories from "./steps/Step5Categories";
+import StepSkuConflicts from "./steps/StepSkuConflicts";
 import Step6Duplicates from "./steps/Step6Duplicates";
 import Step7Existing from "./steps/Step7Existing";
 import Step8FinalTable from "./steps/Step8FinalTable";
@@ -17,6 +18,7 @@ function makeSteps(wizard) {
     { id: "warehouses", title: "تحديد المخازن", helper: "أنشئ مخازن الملف الناقصة أو اختر مخزن النظام الذي سيستلم الكمية.", isApplicable: () => wizard.warehouseErrorRows.length > 0, Component: (props) => <FixStep {...props} type="warehouse" /> },
     { id: "units", title: "تحديد الوحدات", helper: "أنشئ وحدات الملف الناقصة أو حولها إلى وحدات موجودة داخل النظام.", isApplicable: () => wizard.unitErrorRows.length > 0, Component: (props) => <FixStep {...props} type="unit" /> },
     { id: "categories", title: "الفئات والأكواد", helper: "راجع بادئات SKU وأنشئ الفئات الناقصة أو عين أكوادا للصفوف الفارغة.", isApplicable: () => wizard.missingSkuCategories.length > 0 || wizard.codelessRows.length > 0, Component: Step5Categories },
+    { id: "sku-conflicts", title: "تعارضات SKU", helper: "اختر أي صف يحتفظ بالكود عندما يظهر نفس SKU لأكثر من صنف.", isApplicable: () => wizard.fileSkuConflicts.length > 0, Component: StepSkuConflicts },
     { id: "duplicates", title: "تكرارات المخزون", helper: "اختر دمج الكميات أو توزيعها على المخازن لكل منتج مكرر.", isApplicable: () => wizard.duplicateGroups.length > 0, Component: Step6Duplicates },
     { id: "existing", title: "الأصناف الموجودة", helper: "قرر هل يتم تحديث الأصناف المطابقة أم تخطيها أم استلام مخزونها فقط.", isApplicable: () => wizard.exactExistingRows.length > 0, Component: Step7Existing },
     { id: "final", title: "الجدول النهائي", helper: "راجع الصفوف، عدل القيم، غير الإجراءات، واحذف ما لا تريد استيراده.", always: true, Component: Step8FinalTable },
@@ -29,6 +31,7 @@ function firstProblemStep(wizard) {
   if (!Object.values(wizard.mapping).includes("name")) return "columns";
   if (wizard.warehouseErrorRows.length) return "warehouses";
   if (wizard.unitErrorRows.length) return "units";
+  if (wizard.fileSkuConflicts?.length) return "sku-conflicts";
   if (wizard.storageErrorRows.length) return "duplicates";
   return null;
 }
@@ -42,17 +45,32 @@ function transitionCopyForStep(targetStep, uploadMode) {
 
 export default function WizardShell({ wizard }) {
   const [currentId, setCurrentId] = useState("upload");
+  const [keptStepIds, setKeptStepIds] = useState(() => new Set(["upload"]));
   const [transition, setTransition] = useState(null);
   const [shake, setShake] = useState(false);
 
   // ── Derived step state (must come BEFORE validationStatus) ──────────────
   const allSteps = useMemo(() => makeSteps(wizard), [wizard]);
-  const visibleSteps = useMemo(() => allSteps.filter((step) => step.always || step.isApplicable?.()), [allSteps]);
+  const visibleSteps = useMemo(() => allSteps.filter((step) => step.always || keptStepIds.has(step.id) || step.id === currentId || step.isApplicable?.()), [allSteps, currentId, keptStepIds]);
   const currentIndex = visibleSteps.findIndex((step) => step.id === currentId);
   const currentStep = visibleSteps[currentIndex] ?? visibleSteps[0];
   const nextStep = visibleSteps[currentIndex + 1] ?? null;
   const prevStep = visibleSteps[currentIndex - 1] ?? null;
   const CurrentComponent = currentStep?.Component ?? (() => null);
+
+  function rememberStep(id) {
+    setKeptStepIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }
+
+  function setActiveStep(id) {
+    rememberStep(id);
+    setCurrentId(id);
+  }
 
   function goToStepId(id) {
     const target = visibleSteps.find((step) => step.id === id);
@@ -60,23 +78,24 @@ export default function WizardShell({ wizard }) {
     const copy = transitionCopyForStep(target, false);
     setTransition(copy);
     setTimeout(() => {
-      setCurrentId(id);
+      setActiveStep(id);
       setTransition(null);
     }, copy.duration);
   }
 
-  function goNext() {
+  function goNext(mode = "normal") {
     if (!nextStep) return;
-    if (!validationStatus.isValid) {
+    const isUpload = currentStep.id === "upload";
+    const triggeredByUpload = mode === "upload";
+    if (!validationStatus.isValid && !(isUpload && triggeredByUpload)) {
       setShake(true);
       setTimeout(() => setShake(false), 600);
       return;
     }
-    const isUpload = currentStep.id === "upload";
     const copy = transitionCopyForStep(nextStep, isUpload);
     setTransition(copy);
     setTimeout(() => {
-      setCurrentId(nextStep.id);
+      setActiveStep(nextStep.id);
       setTransition(null);
     }, copy.duration);
   }
@@ -117,13 +136,25 @@ export default function WizardShell({ wizard }) {
     if (currentStep.id === "categories") {
       const missingSku = wizard.missingSkuCategories?.length || 0;
       const codeless = wizard.codelessRows?.length || 0;
-      if (missingSku > 0 || codeless > 0) {
+      const unnamedSku = wizard.missingSkuCategories?.filter((entry) => !String(wizard.skuCategoryNames?.[entry.prefix] ?? entry.name ?? "").trim()).length || 0;
+      if (codeless > 0 || unnamedSku > 0) {
         let reasons = [];
-        if (missingSku > 0) reasons.push(`${missingSku} فئات بدون بادئة`);
+        if (unnamedSku > 0) reasons.push(`${unnamedSku} فئات بدون اسم`);
         if (codeless > 0) reasons.push(`${codeless} صفوف بدون أكواد`);
-        return { isValid: false, reason: `يوجد ${reasons.join(" و ")} بحاجة لمعالجة وتوليد أكواد.`, shortReason: "إصلاح فئات/أكواد" };
+        return { isValid: false, reason: `يوجد ${reasons.join(" و ")} بحاجة لمعالجة قبل المتابعة.`, shortReason: "إصلاح فئات/أكواد" };
+      }
+      if (missingSku > 0) {
+        return { isValid: true, reason: `سيتم إنشاء ${missingSku} فئة SKU بالاسم المعروض في هذه الخطوة. يمكنك تعديل الاسم أو المتابعة كما هو.`, shortReason: "فئات SKU جاهزة" };
       }
       return { isValid: true, reason: "الفئات وبادئات SKU والأكواد مكتملة وجاهزة.", shortReason: "الأكواد جاهزة" };
+    }
+
+    if (currentStep.id === "sku-conflicts") {
+      const conflicts = wizard.fileSkuConflicts?.length || 0;
+      if (conflicts > 0) {
+        return { isValid: false, reason: `يوجد ${conflicts} كود SKU مستخدم لأكثر من صنف. اختر الصف الذي يحتفظ بالكود أو طبق قرارا جماعيا.`, shortReason: `إصلاح ${conflicts} تعارض SKU` };
+      }
+      return { isValid: true, reason: "تم حل تعارضات SKU ويمكن متابعة خطوات الاستيراد.", shortReason: "تعارضات SKU محلولة" };
     }
 
     if (currentStep.id === "duplicates") {
@@ -182,7 +213,7 @@ export default function WizardShell({ wizard }) {
               <button
                 key={step.id}
                 type="button"
-                onClick={() => setCurrentId(step.id)}
+                onClick={() => setActiveStep(step.id)}
                 disabled={Boolean(transition) || (step.id === "done" && !wizard.result)}
                 className={`group flex-1 min-w-[140px] md:min-w-0 min-h-[64px] rounded-xl border p-3 text-right transition-all duration-300 relative overflow-hidden ${
                   active
@@ -231,7 +262,7 @@ export default function WizardShell({ wizard }) {
       <div className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white/90 px-6 py-4.5 shadow-elevated backdrop-blur-md transition-all duration-300">
         <button
           type="button"
-          onClick={() => prevStep && setCurrentId(prevStep.id)}
+          onClick={() => prevStep && setActiveStep(prevStep.id)}
           disabled={!prevStep || wizard.loading || Boolean(transition)}
           className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
         >
@@ -293,7 +324,7 @@ export default function WizardShell({ wizard }) {
         ) : (
           <button
             type="button"
-            onClick={() => setCurrentId("final")}
+            onClick={() => setActiveStep("final")}
             disabled={wizard.loading || currentStep.id === "done" || Boolean(transition)}
             className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 disabled:opacity-40"
           >

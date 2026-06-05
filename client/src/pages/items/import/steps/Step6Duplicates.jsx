@@ -1,5 +1,6 @@
 import React from "react";
 import StepTable from "../StepTable";
+import WarehouseChoicePanel from "./WarehouseChoicePanel";
 
 export default function Step6Duplicates({ wizard }) {
   const rows = wizard.workingRows.filter((row) => wizard.duplicateRowNumbers.has(row.__rowNumber) || row.__combinedRows?.length);
@@ -40,44 +41,11 @@ export default function Step6Duplicates({ wizard }) {
         </div>
       </div>
 
-      {wizard.missingWarehouses.length ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h4 className="text-base font-black text-amber-900 font-display">قبل التوزيع: أنشئ مخازن الملف الناقصة</h4>
-              <p className="mt-1 text-sm font-medium text-amber-750 font-title">
-                عند اختيار التوزيع، لا نستبدل اسم مخزن الملف بالمخزن الافتراضي. أنشئ المخازن الناقصة أو اختر مخزنا بديلا لكل صف.
-              </p>
-            </div>
-            <button 
-              type="button" 
-              onClick={wizard.createAllMissingWarehouses} 
-              disabled={wizard.categorySyncing} 
-              className="rounded-xl bg-amber-700 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-amber-800 active:scale-[0.98] disabled:opacity-40"
-            >
-              إنشاء كل المخازن
-            </button>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {wizard.missingWarehouses.map((entry) => (
-              <div key={entry.name} className="flex items-center justify-between gap-3 rounded-xl border border-amber-200/60 bg-white p-3.5 shadow-sm transition hover:shadow-md">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-black text-slate-800 font-display">{entry.name}</div>
-                  <div className="mt-0.5 text-xs font-bold text-slate-400 font-mono">{entry.rows.length} صف</div>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => wizard.createMissingWarehouse(entry.name)} 
-                  disabled={wizard.categorySyncing} 
-                  className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-800 transition hover:bg-amber-100 disabled:opacity-40"
-                >
-                  إنشاء
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <WarehouseChoicePanel
+        wizard={wizard}
+        title="مخازن التوزيع من الملف"
+        helper="لكل مخزن من الملف: أنشئه واستخدمه، غيّر اسمه قبل الإنشاء، أو اربطه بمخزن موجود في النظام."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {wizard.duplicateGroups.slice(0, 8).map((group) => {

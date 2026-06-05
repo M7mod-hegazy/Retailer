@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-06-04T17:59:50.625Z",
+  "triggerType": "pre-restore",
+  "label": "auto safety before restore",
+  "appVersion": "1.0.0",
+  "db": {
+    "fileName": "retailer-backup-2026-06-04T17-59-50-625Z.db",
+    "sizeBytes": 659456
+  },
+  "recordCounts": {
+    "items": 0,
+    "customers": 1,
+    "suppliers": 0,
+    "invoices": 0,
+    "invoice_lines": 0,
+    "purchases": 0,
+    "purchase_orders": 0,
+    "payments": 0,
+    "shifts": 0,
+    "stock_movements": 0,
+    "expenses": 0,
+    "revenues": 0,
+    "quotations": 0
+  },
+  "images": {
+    "count": 2,
+    "totalSizeBytes": 869548,
+    "manifest": [
+      {
+        "name": "1777488721757-6f3itxhapip.jpeg",
+        "hash": "938ae334369a937869e6e140fa2e13ec66c483dcbf46f87e133465f90a33da80",
+        "ext": ".jpeg",
+        "sizeBytes": 685731
+      },
+      {
+        "name": "1777543528822-hbkr723ch4k.png",
+        "hash": "621745e5e52f14d5635aee8d20db0170230e29bfd7e5e9f1ed3d05c2275a0ba5",
+        "ext": ".png",
+        "sizeBytes": 183817
+      }
+    ]
+  },
+  "keepForever": false
+}

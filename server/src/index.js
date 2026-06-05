@@ -1,8 +1,7 @@
 require("dotenv").config();
-const cron = require("node-cron");
 const { createApp } = require("./app");
 const { initDb, getDb } = require("./config/database");
-const { performBackup } = require("./services/backupService");
+const { startAutoBackupJob } = require("./jobs/autoBackup");
 const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob } = require("./jobs/notificationJobs");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const logger = require("./config/logger");
@@ -80,20 +79,9 @@ function startServer() {
     const server = app.listen(port, host, () => {
       logger.info({ message: "Server started", host, port });
 
-      // Auto-backup cron: every day at 11:59 PM
-      cron.schedule("59 23 * * *", () => {
-        try {
-          const settings = getDb()
-            .prepare("SELECT auto_backup_enabled FROM settings WHERE id = 1")
-            .get();
-          if (settings?.auto_backup_enabled) {
-            logger.info("Running auto-backup...");
-            performBackup();
-          }
-        } catch (e) {
-          logger.error("Auto-backup failed:", e);
-        }
-      });
+      // Auto-backup: runs daily at the configured time (settings.auto_backup_time),
+      // skips while a shift is open. See jobs/autoBackup.js.
+      startAutoBackupJob();
 
       startNotificationJobs();
       startAuditLogCleanupJob();

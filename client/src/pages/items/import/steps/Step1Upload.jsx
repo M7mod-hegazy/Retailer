@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Sparkles, Upload } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileSpreadsheet, Sparkles, Upload } from "lucide-react";
 
 export default function Step1Upload({ wizard, goNext }) {
   const [fakeLoading, setFakeLoading] = useState(false);
@@ -174,14 +174,6 @@ export default function Step1Upload({ wizard, goNext }) {
 
         {/* Footnote Options */}
         <div className="mt-8 flex flex-col items-center gap-3.5">
-          <button
-            type="button"
-            onClick={wizard.downloadImportTemplate}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-md transition-all duration-200 hover:bg-slate-800 hover:shadow-lg active:scale-[0.97]"
-          >
-            <Download className="h-4.5 w-4.5" /> تحميل قالب استيراد فارغ
-          </button>
-          
           <p className="text-[10px] font-semibold leading-relaxed text-slate-400 text-center max-w-md">
             يرجى التأكد من أن الملف يحتوي على صف العناوين في السطر الأول. سيقوم النظام بمطابقة أعمدة الجدول تلقائياً بالخطوة التالية.
           </p>

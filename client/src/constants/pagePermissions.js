@@ -85,7 +85,7 @@ export const PAGE_PERMISSIONS = {
   payments: { label: 'المدفوعات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   notifications: { label: 'الإشعارات', actions: ['view', 'edit'] },
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view', 'add'] },
-  backup: { label: 'النسخ الاحتياطي', actions: ['view', 'create', 'restore'] },
+  backup: { label: 'النسخ الاحتياطي', actions: ['view', 'create', 'restore', 'export', 'empty'] },
   updates: { label: 'التحديثات', actions: ['view'] },
   history: { label: 'سجل النشاط', actions: ['view'] },
 };

@@ -120,6 +120,7 @@ export function mappingConfidence(headers, mapping) {
 }
 
 export function parseMappedRows(rows, headerIndex, mapping) {
+  const stockColumnIndex = Number(Object.entries(mapping).find(([, field]) => field === "stock_quantity")?.[0] ?? -1);
   return rows.slice(headerIndex + 1).map((row, rowIndex) => {
     const parsed = { __rowNumber: headerIndex + rowIndex + 2 };
     Object.entries(mapping).forEach(([columnIndex, field]) => {
@@ -130,15 +131,23 @@ export function parseMappedRows(rows, headerIndex, mapping) {
       if (field === "stock_quantity") {
         const quantity = parseQuantityWithUnit(value);
         parsed.stock_quantity = quantity.quantity;
-        if (quantity.unitName && !parsed.unit_name) {
-          parsed.unit_name = quantity.unitName;
-          parsed.__inferredUnitName = quantity.unitName;
+        const unitName = quantity.unitName || inferUnitNearStock(row, Number(columnIndex), mapping);
+        if (unitName && !parsed.unit_name) {
+          parsed.unit_name = unitName;
+          parsed.__inferredUnitName = unitName;
         }
         parsed.__rawStockQuantity = String(value ?? "").trim();
         return;
       }
       parsed[field] = NUMBER_FIELDS.has(field) ? parseNumber(value) : String(value ?? "").trim();
     });
+    if (!parsed.unit_name && stockColumnIndex >= 0) {
+      const unitName = inferUnitNearStock(row, stockColumnIndex, mapping);
+      if (unitName) {
+        parsed.unit_name = unitName;
+        parsed.__inferredUnitName = unitName;
+      }
+    }
     const hasName = String(parsed.name || "").trim();
     const hasCode = String(parsed.code || "").trim();
     const hasBarcode = String(parsed.barcode || "").trim();
@@ -155,6 +164,24 @@ export function parseQuantityWithUnit(value) {
     quantity: parseNumber(match[1]),
     unitName: String(match[2] || "").trim(),
   };
+}
+
+function inferUnitNearStock(row, stockColumnIndex, mapping) {
+  const mappedIndexes = new Set(Object.keys(mapping).map((index) => Number(index)));
+  const candidates = [stockColumnIndex + 1, stockColumnIndex - 1];
+  for (const index of candidates) {
+    if (index < 0 || mappedIndexes.has(index)) continue;
+    const text = String(fixMojibake(row?.[index] ?? "")).trim();
+    if (looksLikeUnitText(text)) return text;
+  }
+  return "";
+}
+
+function looksLikeUnitText(value) {
+  const text = String(value ?? "").trim();
+  if (!text || text.length > 28) return false;
+  if (/[-+]?\d/.test(text)) return false;
+  return /[\p{L}]/u.test(text);
 }
 
 export function parseNumber(value) {

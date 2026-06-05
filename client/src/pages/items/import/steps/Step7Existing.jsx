@@ -2,6 +2,32 @@ import React from "react";
 import StepTable from "../StepTable";
 
 export default function Step7Existing({ wizard }) {
+  const actionCounts = wizard.exactExistingRows.reduce(
+    (counts, row) => {
+      const action = wizard.rowAction(row);
+      return { ...counts, [action]: (counts[action] || 0) + 1 };
+    },
+    { update: 0, warehouse_stock: 0, skip: 0 }
+  );
+  const bulkActions = [
+    {
+      action: "update",
+      label: "تحديث كل الموجود",
+      helper: "يغير بيانات الصنف ويضبط المخزون حسب الصف.",
+    },
+    {
+      action: "warehouse_stock",
+      label: "استلام مخزون فقط",
+      helper: "لا يغير بيانات الصنف، ويحدث الكمية في المخزن فقط.",
+    },
+    {
+      action: "skip",
+      label: "تخطي كل الموجود",
+      helper: "لا يكتب أي تغيير لهذه الصفوف عند التنفيذ.",
+    },
+  ];
+  const numberText = (value) => Number(value || 0).toLocaleString("ar-EG");
+
   return (
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
@@ -20,28 +46,37 @@ export default function Step7Existing({ wizard }) {
         </div>
 
         <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4.5 shadow-inner">
-          <button 
-            type="button" 
-            onClick={() => wizard.applyExistingRowsAction("update")} 
-            className="w-full rounded-xl bg-slate-900 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
-          >
-            تحديث كل الموجود
-          </button>
-          <div className="text-[10px] font-bold text-slate-400 font-title text-center leading-normal">يغير بيانات الصنف ويحدث المخزون حسب الصف.</div>
-          <button 
-            type="button" 
-            onClick={() => wizard.applyExistingRowsAction("skip")} 
-            className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98]"
-          >
-            تخطي كل الموجود
-          </button>
-          <div className="text-[10px] font-bold text-slate-400 font-title text-center leading-normal">لا يكتب أي تغيير لهذه الصفوف عند التنفيذ.</div>
+          {bulkActions.map((item) => {
+            const active = actionCounts[item.action] === wizard.exactExistingRows.length && wizard.exactExistingRows.length > 0;
+            return (
+              <div key={item.action} className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => wizard.applyExistingRowsAction(item.action)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-black transition-all duration-200 active:scale-[0.98] ${
+                    active
+                      ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                      : "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ${active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"}`}>
+                    {actionCounts[item.action] || 0}
+                  </span>
+                </button>
+                <div className="px-1 text-center text-[10px] font-bold leading-normal text-slate-400 font-title">{item.helper}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <div className="grid gap-3.5">
         {wizard.exactExistingRows.slice(0, 6).map((row) => {
           const action = wizard.rowAction(row);
+          const currentStock = wizard.currentStockForRow?.(row) ?? Number(row.__existing?.stock_quantity || 0);
+          const fileStock = Number(row.stock_quantity || 0);
+          const targetWarehouse = wizard.warehouseNameForRow?.(row) || "المخزن المختار";
           return (
             <div key={row.__rowNumber} className="rounded-2xl border border-sky-200 bg-sky-50/50 p-5 shadow-sm transition hover:shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -62,8 +97,22 @@ export default function Step7Existing({ wizard }) {
                   </select>
                 </div>
               </div>
+              <div className="mt-4 grid gap-2 md:grid-cols-3">
+                <div className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5 shadow-sm">
+                  <div className="text-[10px] font-black text-slate-400">المخزون الحالي في النظام</div>
+                  <div className="mt-1 text-lg font-black text-slate-900 font-display">{numberText(currentStock)}</div>
+                </div>
+                <div className="rounded-xl border border-sky-100 bg-white px-3.5 py-2.5 shadow-sm">
+                  <div className="text-[10px] font-black text-sky-600">كمية الملف</div>
+                  <div className="mt-1 text-lg font-black text-sky-950 font-display">{numberText(fileStock)}</div>
+                </div>
+                <div className="rounded-xl border border-emerald-100 bg-white px-3.5 py-2.5 shadow-sm">
+                  <div className="text-[10px] font-black text-emerald-700">سيتم ضبط مخزون</div>
+                  <div className="mt-1 truncate text-sm font-black text-emerald-950 font-display">{targetWarehouse} إلى {numberText(fileStock)}</div>
+                </div>
+              </div>
               <div className="mt-4 grid gap-2 md:grid-cols-2">
-                {wizard.changePreviewForRow(row).slice(0, 5).map((message, index) => (
+                {wizard.changePreviewForRow(row).slice(0, 6).map((message, index) => (
                   <div key={index} className="rounded-xl bg-white/95 border border-slate-100 px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-sm leading-normal">
                     {message}
                   </div>

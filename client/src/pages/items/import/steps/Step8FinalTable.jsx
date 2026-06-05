@@ -5,7 +5,7 @@ export default function Step8FinalTable({ wizard }) {
   return (
     <StepTable
       wizard={wizard}
-      rows={wizard.filteredRows}
+      rows={wizard.sortedEditableRows}
       columns={wizard.orderedFields}
       title="الجدول النهائي القابل للتعديل"
       helper="ابحث في المشكلات، عدل الخلايا مباشرة، غير الإجراء لكل صف، واحذف أو استعد أي صف قبل المعاينة."

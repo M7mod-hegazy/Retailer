@@ -38,7 +38,7 @@ const PAGE_PERMISSIONS = {
   payments: { label: 'المدفوعات', actions: ['view','add','edit','delete','print'] },
   notifications: { label: 'الإشعارات', actions: ['view','edit'] },
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view','add'] },
-  backup: { label: 'النسخ الاحتياطي', actions: ['view','create','restore'] },
+  backup: { label: 'النسخ الاحتياطي', actions: ['view','create','restore','export','empty'] },
 };
 
 // Default permissions for new user role (POS only)

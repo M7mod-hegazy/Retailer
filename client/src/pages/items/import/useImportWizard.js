@@ -135,7 +135,7 @@ function validateRowsForApp(rows, mapping, units, categories, warehouses, option
       issues.push({ rowNumber: row.__rowNumber, field: "code", severity: "warning", message: "صيغة SKU غير واضحة. استخدم رقم الفئة ثم نقطة ثم رقم الصنف." });
     }
     const existingSkuItem = sku ? options.existingSkuByCode?.get(normalizeKey(sku.code)) : null;
-    if (existingSkuItem && normalizeKey(existingSkuItem.name) !== normalizeKey(row.name)) {
+    if (existingSkuItem && !row.__allowSkuTakeover && row.__skuConflictAction !== "skip" && row.__skuConflictAction !== "stock_current" && row.__skuConflictAction !== "insert_original_code" && normalizeKey(existingSkuItem.name) !== normalizeKey(row.name)) {
       issues.push({ rowNumber: row.__rowNumber, field: "code", severity: "error", message: `SKU ${sku.code} مستخدم لصنف آخر: ${existingSkuItem.name}.` });
     }
     if (String(row.unit_name || "").trim() && !hasOption(units, row.unit_name)) {
@@ -178,12 +178,37 @@ function warehouseNameExists(warehouses, name) {
 export function duplicateGroupsForRows(rows) {
   const groups = new Map();
   rows.forEach((row) => {
+    if (row.__skuConflictAction === "skip" || row.__skuConflictAction === "stock_current" || row.__skuConflictAction === "insert_original_code") return;
     const key = duplicateKeyForRow(row);
     if (!key) return;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(row);
   });
   return [...groups.values()].filter((group) => group.length > 1);
+}
+
+function skuConflictGroupsForRows(rows, existingItems = []) {
+  const existingByCode = new Map((existingItems || []).map((item) => [normalizeKey(item.code), item]).filter(([code]) => code));
+  const byCode = new Map();
+  rows.forEach((row) => {
+    if (row.__skuConflictAction === "skip" || row.__skuConflictAction === "stock_current") return;
+    const code = String(row.code || "").trim();
+    const key = normalizeKey(code);
+    if (!key) return;
+    if (!byCode.has(key)) byCode.set(key, { code, rows: [], names: new Map(), existing: existingByCode.get(key) || null });
+    const entry = byCode.get(key);
+    entry.rows.push(row);
+    const nameKey = normalizeKey(row.name);
+    if (nameKey && !entry.names.has(nameKey)) entry.names.set(nameKey, String(row.name || "").trim());
+  });
+  return [...byCode.values()]
+    .map((entry) => {
+      const nameList = [...entry.names.values()];
+      const fileNameConflict = nameList.length > 1;
+      const systemNameConflict = Boolean(entry.existing) && entry.rows.some((row) => !row.__allowSkuTakeover && row.__skuConflictAction !== "stock_current" && normalizeKey(row.name) !== normalizeKey(entry.existing.name));
+      return { ...entry, nameList, fileNameConflict, systemNameConflict };
+    })
+    .filter((entry) => entry.fileNameConflict || entry.systemNameConflict);
 }
 
 function policyForDuplicateKey(key, defaultPolicy, policyByKey) {
@@ -196,6 +221,10 @@ function applyDuplicatePolicies(rows, defaultPolicy, policyByKey) {
   const distributed = new Map();
   const output = [];
   rows.forEach((row) => {
+    if (row.__skuConflictAction === "skip" || row.__skuConflictAction === "stock_current") {
+      output.push({ ...row, __duplicatePolicy: "keep" });
+      return;
+    }
     const key = duplicateKeyForRow(row);
     const policy = duplicateKeys.has(key) ? policyForDuplicateKey(key, defaultPolicy, policyByKey) : "keep";
     if (policy === "warehouse") {
@@ -314,16 +343,31 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     [parsedRows, removedRows, rowOverrides],
   );
   const duplicateGroups = useMemo(() => duplicateGroupsForRows(editableRows), [editableRows]);
+  const fileSkuConflicts = useMemo(() => skuConflictGroupsForRows(editableRows, databaseItems || []), [databaseItems, editableRows]);
+  const skuConflictIssues = useMemo(() => fileSkuConflicts.flatMap((conflict) => {
+    const details = [];
+    if (conflict.fileNameConflict) details.push(`نفس الكود مستخدم لأسماء مختلفة داخل الملف: ${conflict.nameList.join(" / ")}`);
+    if (conflict.systemNameConflict) details.push(`الكود موجود في النظام باسم: ${conflict.existing?.name}`);
+    return conflict.rows.map((row) => ({
+      rowNumber: row.__rowNumber,
+      field: "code",
+      severity: "error",
+      message: `تعارض SKU ${conflict.code}. ${details.join("، ")}.`,
+    }));
+  }), [fileSkuConflicts]);
   const duplicateRowNumbers = useMemo(() => new Set(duplicateGroups.flatMap((group) => group.map((row) => row.__rowNumber))), [duplicateGroups]);
   const workingRows = useMemo(() => applyDuplicatePolicies(editableRows, duplicateMode, duplicatePolicies), [duplicateMode, duplicatePolicies, editableRows]);
   const warehouseRequiredRows = useMemo(() => new Set(), []);
   const hasSourceStores = useMemo(() => editableRows.some((row) => String(row.store_name || "").trim()), [editableRows]);
   const validationIssues = useMemo(
-    () => validateRowsForApp(workingRows, mapping, allUnits, systemCategories, allWarehouses, {
+    () => [
+      ...validateRowsForApp(workingRows, mapping, allUnits, systemCategories, allWarehouses, {
       existingSkuByCode: new Map((databaseItems || []).map((item) => [normalizeKey(item.code), item]).filter(([code]) => code)),
       requireExplicitWarehouse: warehouseRequiredRows,
-    }),
-    [allUnits, allWarehouses, databaseItems, mapping, systemCategories, warehouseRequiredRows, workingRows],
+      }),
+      ...skuConflictIssues,
+    ],
+    [allUnits, allWarehouses, databaseItems, mapping, skuConflictIssues, systemCategories, warehouseRequiredRows, workingRows],
   );
   const blockingIssues = useMemo(() => validationIssues.filter((issue) => issue.severity === "error"), [validationIssues]);
   const analyzedRows = useMemo(() => analyzeRows(workingRows, databaseItems || []), [databaseItems, workingRows]);
@@ -340,6 +384,28 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     });
     return [...byName.values()];
   }, [allUnits, workingRows]);
+  const fileUnitOptions = useMemo(() => {
+    const byName = new Map();
+    workingRows.forEach((row) => {
+      const name = String(row.__inferredUnitName || row.unit_name || "").trim();
+      if (!name) return;
+      const key = normalizeKey(name);
+      if (!byName.has(key)) {
+        byName.set(key, {
+          name,
+          rows: [],
+          sample: row.__rawStockQuantity || row.stock_quantity || "",
+          exists: hasOption(allUnits, name),
+          inferred: 0,
+        });
+      }
+      const entry = byName.get(key);
+      entry.rows.push(row.__rowNumber);
+      if (row.__inferredUnitName) entry.inferred += 1;
+      entry.exists = entry.exists || hasOption(allUnits, name);
+    });
+    return [...byName.values()].sort((a, b) => b.rows.length - a.rows.length);
+  }, [allUnits, workingRows]);
   const missingWarehouses = useMemo(() => {
     const byName = new Map();
     parsedRows.forEach((row) => {
@@ -351,6 +417,33 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     });
     return [...byName.values()];
   }, [allWarehouses, parsedRows]);
+  const fileWarehouseOptions = useMemo(() => {
+    const byName = new Map();
+    editableRows.forEach((row) => {
+      const name = String(row.store_name || row.warehouse_name || "").trim();
+      if (!name) return;
+      const key = normalizeKey(name);
+      if (!byName.has(key)) {
+        const match = findWarehouse(allWarehouses, { ...row, warehouse_id: "" });
+        byName.set(key, {
+          name,
+          rows: [],
+          quantity: 0,
+          exists: Boolean(match),
+          warehouseId: match?.id || "",
+        });
+      }
+      const entry = byName.get(key);
+      entry.rows.push(row.__rowNumber);
+      entry.quantity += Number(row.stock_quantity || 0);
+      if (!entry.exists) {
+        const match = findWarehouse(allWarehouses, { ...row, warehouse_id: "" });
+        entry.exists = Boolean(match);
+        entry.warehouseId = match?.id || entry.warehouseId;
+      }
+    });
+    return [...byName.values()].sort((a, b) => b.rows.length - a.rows.length);
+  }, [allWarehouses, editableRows]);
   const orderedFields = useMemo(() => {
     const visibleMappedFields = Object.values(mapping).filter((field) => field && (field !== "store_name" || hasSourceStores));
     const tableHelperFields = [
@@ -384,6 +477,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     uniqueProducts: new Set(editableRows.map(duplicateKeyForRow).filter(Boolean)).size,
     importRows: workingRows.length,
     duplicateGroups: duplicateGroups.length,
+    skuConflicts: fileSkuConflicts.length,
     storageSplitRows: editableRows.length - workingRows.length,
     exactExistingRows: exactExistingRows.length,
     readyRows: counts.ready || 0,
@@ -394,7 +488,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     errors: blockingIssues.length,
     warnings: validationIssues.length - blockingIssues.length,
     removedRows: removedRows.size,
-  }), [blockingIssues.length, counts, duplicateGroups.length, editableRows, exactExistingRows.length, fileName, headers, mapping, parsedRows.length, removedRows.size, validationIssues.length, workingRows.length]);
+  }), [blockingIssues.length, counts, duplicateGroups.length, editableRows, exactExistingRows.length, fileName, fileSkuConflicts.length, headers, mapping, parsedRows.length, removedRows.size, validationIssues.length, workingRows.length]);
   const missingSkuCategories = useMemo(() => {
     const byPrefix = new Map();
     workingRows.forEach((row) => {
@@ -695,6 +789,13 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     applyValueToRows("unit_name", value, rowsForScope("unit_name", "invalid"), "الوحدة", "unit-invalid");
   }
 
+  function applyFileUnitChoice(sourceName, targetUnitName = sourceName) {
+    const key = normalizeKey(sourceName);
+    const rows = workingRows.filter((row) => normalizeKey(row.__inferredUnitName || row.unit_name) === key);
+    if (!rows.length) return;
+    applyValueToRows("unit_name", targetUnitName, rows, `وحدة الملف: ${targetUnitName}`, `file-unit-${key}`);
+  }
+
   function applyQuickWarehouseFix() {
     const value = quickWarehouseValue || defaultWarehouse(allWarehouses)?.id || allWarehouses[0]?.id || "";
     if (!value) return toast.error("لا توجد مخازن متاحة في النظام");
@@ -705,6 +806,17 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     const value = quickWarehouseValue || defaultWarehouse(allWarehouses)?.id || allWarehouses[0]?.id || "";
     if (!value) return toast.error("لا توجد مخازن متاحة في النظام");
     applyValueToRows("warehouse_id", value, workingRows, "المخزن", "warehouse-all");
+  }
+
+  function rowsForSourceWarehouse(sourceName) {
+    const key = normalizeKey(sourceName);
+    return editableRows.filter((row) => normalizeKey(row.store_name || row.warehouse_name) === key);
+  }
+
+  function applyFileWarehouseChoice(sourceName, warehouseId, label = "المخزن") {
+    const rows = rowsForSourceWarehouse(sourceName);
+    if (!warehouseId || !rows.length) return;
+    applyValueToRows("warehouse_id", warehouseId, rows, label, `file-warehouse-${normalizeKey(sourceName)}`);
   }
 
   async function createMissingUnit(name) {
@@ -741,6 +853,14 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     }
   }
 
+  async function createAndApplyUnit(sourceName, createName = sourceName) {
+    const created = await createMissingUnit(createName);
+    if (created?.name) {
+      applyFileUnitChoice(sourceName, created.name);
+    }
+    return created;
+  }
+
   async function createMissingWarehouse(name) {
     const warehouseName = String(name || "").trim();
     if (!warehouseName) return null;
@@ -772,6 +892,14 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
       // eslint-disable-next-line no-await-in-loop
       await createMissingWarehouse(entry.name);
     }
+  }
+
+  async function createAndApplyWarehouse(sourceName, createName = sourceName) {
+    const created = await createMissingWarehouse(createName);
+    if (created?.id) {
+      applyFileWarehouseChoice(sourceName, created.id, `مخزن الملف: ${createName}`);
+    }
+    return created;
   }
 
   function sourceRowsForProduct(row) {
@@ -826,7 +954,14 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
       });
       return next;
     });
-    setLastAppliedFix({ key: `existing-${action}-${Date.now()}`, label: action === "update" ? "تحديث كل الموجود" : "تخطي كل الموجود", count: exactExistingRows.length });
+    const label = action === "update" ? "تحديث كل الموجود" : action === "warehouse_stock" ? "استلام مخزون كل الموجود فقط" : "تخطي كل الموجود";
+    setLastAppliedFix({ key: `existing-${action}-${Date.now()}`, label, count: exactExistingRows.length });
+    toast.success(`تم تطبيق ${label} على ${exactExistingRows.length} صف`);
+  }
+
+  function currentStockForRow(row) {
+    const existing = row.__existing || findExactExistingProduct(databaseItems || [], row);
+    return Number(existing?.stock_quantity ?? existing?.quantity ?? 0);
   }
 
   function warehouseNameForRow(row) {
@@ -841,7 +976,11 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     const sku = parseSkuCode(row.code);
     const category = sku ? categoryBySkuPrefix(systemCategories, sku.prefix) : null;
     if (action === "skip") return ["لن يتم تغيير هذا الصنف."];
-    if (action === "warehouse_stock") return [`سيتم ضبط مخزون ${warehouseNameForRow(row)} بكمية ${Number(row.stock_quantity || 0)}.`];
+    if (action === "warehouse_stock") return [
+      `المخزون الحالي للصنف في النظام: ${currentStockForRow(row)}.`,
+      `كمية الملف لـ ${warehouseNameForRow(row)}: ${Number(row.stock_quantity || 0)}.`,
+      `بعد التنفيذ سيتم ضبط مخزون ${warehouseNameForRow(row)} إلى ${Number(row.stock_quantity || 0)}.`,
+    ];
     if (!existing) {
       messages.push("سيتم إنشاء صنف جديد.");
       if (category) messages.push(`الفئة من SKU: ${category.name}.`);
@@ -869,7 +1008,9 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
       messages.push(`الفئة ستصبح: [${category.sku_prefix}] ${category.name}.`);
     }
     if (row.stock_quantity !== undefined && row.stock_quantity !== "") {
-      messages.push(`سيتم ضبط مخزون ${warehouseNameForRow(row)} إلى ${Number(row.stock_quantity || 0)}.`);
+      messages.push(`المخزون الحالي للصنف في النظام: ${currentStockForRow(row)}.`);
+      messages.push(`كمية الملف لـ ${warehouseNameForRow(row)}: ${Number(row.stock_quantity || 0)}.`);
+      messages.push(`بعد التنفيذ سيتم ضبط مخزون ${warehouseNameForRow(row)} إلى ${Number(row.stock_quantity || 0)}.`);
     }
     if (!messages.length) messages.push("لا توجد فروق واضحة، وسيتم فقط تأكيد الربط الحالي.");
     return messages;
@@ -903,6 +1044,9 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
   }
 
   function rowAction(row) {
+    if (row.__skuConflictAction === "skip") return "skip";
+    if (row.__skuConflictAction === "stock_current") return "warehouse_stock";
+    if (row.__skuConflictAction === "insert_original_code") return "insert";
     if (actions[row.__rowNumber]) return actions[row.__rowNumber];
     if (findExactExistingProduct(databaseItems || [], row)) return "update";
     const policy = row.__duplicatePolicy || policyForDuplicateKey(duplicateKeyForRow(row), duplicateMode, duplicatePolicies);
@@ -944,6 +1088,93 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     toast.success(`تم تعيين أكواد ${codelessRows.length} صف`);
   }
 
+  function applySkuConflictPlan(plans) {
+    const resolutionMap = new Map(plans.map((entry) => [normalizeKey(entry.code), entry]));
+    const targetConflicts = fileSkuConflicts.filter((conflict) => resolutionMap.has(normalizeKey(conflict.code)));
+    const rowsToChange = targetConflicts.flatMap((conflict) => {
+      const plan = resolutionMap.get(normalizeKey(conflict.code));
+      return conflict.rows.filter((row) => row.__rowNumber !== plan?.keepRowNumber && (plan?.otherActions?.[row.__rowNumber] || plan?.otherAction || "new_code") === "new_code");
+    });
+    const rowsToChangeSet = new Set(rowsToChange.map((row) => row.__rowNumber));
+    const used = new Set([
+      ...(databaseItems || []).map((item) => parseSkuCode(item.code)?.code || String(item.code || "").trim()).filter(Boolean),
+      ...editableRows.filter((row) => !rowsToChangeSet.has(row.__rowNumber)).map((row) => parseSkuCode(row.code)?.code || String(row.code || "").trim()).filter(Boolean),
+    ]);
+    const nextGeneratedCode = (basePrefix) => {
+      let sequence = 1;
+      let nextCode = `${basePrefix}.${sequence}`;
+      while (used.has(nextCode)) {
+        sequence += 1;
+        nextCode = `${basePrefix}.${sequence}`;
+      }
+      used.add(nextCode);
+      return nextCode;
+    };
+    setRowOverrides((prev) => {
+      const next = { ...prev };
+      targetConflicts.forEach((conflict) => {
+        const resolution = resolutionMap.get(normalizeKey(conflict.code));
+        const parsed = parseSkuCode(conflict.code);
+        const basePrefix = parsed?.prefix || missingSkuCategories[0]?.prefix || categories?.[0]?.sku_prefix || "1";
+        const movedExistingCode = resolution.currentHandling === "move_current_code" && conflict.existing ? nextGeneratedCode(basePrefix) : "";
+        conflict.rows.forEach((row) => {
+          if (row.__rowNumber === resolution.keepRowNumber) {
+            next[row.__rowNumber] = {
+              ...(next[row.__rowNumber] || {}),
+              __allowSkuTakeover: Boolean(resolution.allowTakeover),
+              __skuConflictAction: resolution.currentHandling === "move_current_code" ? "insert_original_code" : undefined,
+              __moveExistingToCode: movedExistingCode || undefined,
+            };
+            return;
+          }
+          let otherAction = resolution.otherActions?.[row.__rowNumber] || resolution.otherAction || "new_code";
+          if (resolution.currentHandling === "move_current_code" && otherAction === "stock_current") otherAction = "new_code";
+          if (otherAction === "skip") {
+            next[row.__rowNumber] = { ...(next[row.__rowNumber] || {}), __skuConflictAction: "skip", __allowSkuTakeover: false };
+            return;
+          }
+          if (otherAction === "stock_current") {
+            next[row.__rowNumber] = { ...(next[row.__rowNumber] || {}), __skuConflictAction: "stock_current", __allowSkuTakeover: false };
+            return;
+          }
+          const nextCode = nextGeneratedCode(basePrefix);
+          next[row.__rowNumber] = { ...(next[row.__rowNumber] || {}), code: nextCode, __skuConflictAction: "new_code", __allowSkuTakeover: false };
+        });
+      });
+      return next;
+    });
+    toast.success(`تم تعيين أكواد جديدة لـ ${rowsToChange.length} صف متعارض`);
+  }
+
+  function resolveSkuConflicts(resolutions) {
+    applySkuConflictPlan(resolutions.map((entry) => ({ ...entry, otherAction: entry.otherAction || "new_code" })));
+  }
+
+  function defaultSkuConflictKeepRow(conflict, mode = "system") {
+    if (mode === "system" && conflict.existing) {
+      return conflict.rows.find((row) => normalizeKey(row.name) === normalizeKey(conflict.existing.name)) || null;
+    }
+    return conflict.rows[0];
+  }
+
+  function resolveSkuConflict(code, keepRowNumber, allowTakeover = false) {
+    applySkuConflictPlan([{ code, keepRowNumber, allowTakeover, otherAction: "new_code" }]);
+  }
+
+  function resolveAllSkuConflicts(mode = "system") {
+    resolveSkuConflicts(fileSkuConflicts.map((conflict) => {
+      const keepRow = defaultSkuConflictKeepRow(conflict, mode);
+      const allowTakeover = Boolean(conflict.existing && normalizeKey(keepRow?.name) !== normalizeKey(conflict.existing.name));
+      return { code: conflict.code, keepRowNumber: keepRow?.__rowNumber, allowTakeover };
+    }).filter((entry) => entry.keepRowNumber));
+  }
+
+  function assignNewCodesForSkuConflict(code) {
+    const conflict = fileSkuConflicts.find((entry) => normalizeKey(entry.code) === normalizeKey(code));
+    const keepRow = conflict ? defaultSkuConflictKeepRow(conflict, "system") : null;
+    if (keepRow) resolveSkuConflict(code, keepRow.__rowNumber, false);
+  }
+
   function decorateRowWithSkuCategory(row, categoryList = systemCategories) {
     const category = categoryForSku(categoryList, row);
     return {
@@ -982,9 +1213,24 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     }
   }
 
-  const buildSubmitRows = useCallback((categoryList) => analyzedRows
-    .filter((row) => row.__status !== "invalid")
-    .flatMap((row) => {
+  const buildSubmitRows = useCallback((categoryList) => {
+    const moveExistingRows = analyzedRows
+      .filter((row) => row.__skuConflictAction === "insert_original_code" && row.__moveExistingToCode && row.__existing?.id)
+      .map((row) => ({
+        action: "update",
+        match_field: "code",
+        existing_id: row.__existing.id,
+        payload: {
+          ...row.__existing,
+          code: row.__moveExistingToCode,
+          stock_quantity: undefined,
+        },
+        source_row: row.__rowNumber,
+      }));
+
+    const normalRows = analyzedRows
+      .filter((row) => row.__status !== "invalid")
+      .flatMap((row) => {
       if (row.__duplicatePolicy === "warehouse" && Array.isArray(row.__warehouseDistribution)) {
         return row.__warehouseDistribution.map((item) => {
           const warehouseId = explicitWarehouseId(allWarehouses, item);
@@ -1008,7 +1254,10 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
         source_row: row.__rowNumber,
       }];
     })
-    .filter((row) => row.action !== "skip"), [allUnits, allWarehouses, analyzedRows, selectedCategoryId]);
+    .filter((row) => row.action !== "skip");
+
+    return [...moveExistingRows, ...normalRows];
+  }, [allUnits, allWarehouses, analyzedRows, selectedCategoryId]);
 
   const runImport = useCallback(async ({ dryRun, confirmDuplicate = false } = {}) => {
     setError("");
@@ -1095,8 +1344,14 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     BULK_FIELDS,
     actionLabel,
     analyzedRows,
+    applySkuConflictPlan,
+    assignNewCodesForSkuConflict,
+    resolveAllSkuConflicts,
+    resolveSkuConflict,
     applyDuplicatePolicyToAll,
     applyExistingRowsAction,
+    applyFileUnitChoice,
+    applyFileWarehouseChoice,
     applyQuickUnitFix,
     applyQuickWarehouseFix,
     applyQuickWarehouseToAll,
@@ -1112,10 +1367,13 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     changePreviewForRow,
     clearSelectedRows,
     codelessRows,
+    currentStockForRow,
     createAllMissingUnits,
     createAllMissingWarehouses,
+    createAndApplyUnit,
     createMissingUnit,
     createMissingWarehouse,
+    createAndApplyWarehouse,
     defaultWarehouse,
     downloadImportTemplate,
     dragActive,
@@ -1129,6 +1387,9 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     explicitWarehouseId,
     fileInputRef,
     fileName,
+    fileSkuConflicts,
+    fileUnitOptions,
+    fileWarehouseOptions,
     filterCounts,
     filteredRows,
     getColumnWidth,
@@ -1201,6 +1462,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     validationIssues,
     validationReturn,
     warehouseErrorRows,
+    warehouseNameForRow,
     warehouses: allWarehouses,
     workingRows,
   };
