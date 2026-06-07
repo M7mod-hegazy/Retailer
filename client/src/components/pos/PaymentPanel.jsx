@@ -41,6 +41,8 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
   const [printOpen, setPrintOpen] = useState(false);
   const [printInvoice, setPrintInvoice] = useState(null);
   const [dueDate, setDueDate] = useState(getDefaultDueDate);
+  const [waPhone, setWaPhone] = useState("");
+  const [waMarketing, setWaMarketing] = useState(false);
 
   const totals = getTotals();
   const isEmpty = lines.length === 0;
@@ -68,6 +70,23 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
       const response = await api.post("/api/invoices", payload);
       setMessage(`تم حفظ الفاتورة بنجاح`);
       setTimeout(() => setMessage(""), 3000);
+
+      // Enqueue WhatsApp receipt if phone was provided
+      if (waPhone.trim()) {
+        const invoiceData = response.data.data || {};
+        const receiptText = `🧾 فاتورة #${invoiceData.invoice_no || "—"}\nالإجمالي: ${Number(totals.total || 0).toFixed(2)} ج.م\nشكراً لتعاملك معنا 🌟`;
+        api.post("/api/whatsapp/find-or-create-customer", { phone: waPhone.trim(), marketing_opt_in: waMarketing })
+          .then(r => api.post("/api/whatsapp/enqueue", {
+            recipient_phone: waPhone.trim(),
+            customer_id: r.data?.data?.id || null,
+            kind: "receipt",
+            payload: { text: receiptText },
+          }))
+          .catch(() => {});
+        setWaPhone("");
+        setWaMarketing(false);
+      }
+
       if (printAfter) {
         setPrintInvoice({
           ...(response.data.data || {}),
@@ -179,6 +198,33 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
             <MultiPaymentInput totalAmount={totals.total} value={payments} onChange={setPayments} />
           ) : (
             <span style={{ color: 'var(--text-muted)' }}>تفاصيل الدفع: {paymentLabels[paymentType]} يتم تجهيزها.</span>
+          )}
+        </div>
+      )}
+
+      {/* WhatsApp receipt field */}
+      {!isEmpty && (
+        <div style={{ marginBottom: '14px', padding: '10px', background: 'var(--bg-overlay)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>
+            📱 واتساب — إرسال الفاتورة (اختياري)
+          </label>
+          <input
+            type="tel"
+            value={waPhone}
+            onChange={e => setWaPhone(e.target.value)}
+            placeholder="01xxxxxxxxx"
+            style={{
+              width: '100%', padding: '7px 10px', fontSize: '13px', boxSizing: 'border-box',
+              border: '1px solid var(--border-normal)', borderRadius: '8px',
+              background: 'var(--bg-input)', color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)', outline: 'none',
+            }}
+          />
+          {waPhone.trim() && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={waMarketing} onChange={e => setWaMarketing(e.target.checked)} />
+              موافق على استلام العروض والتنبيهات
+            </label>
           )}
         </div>
       )}

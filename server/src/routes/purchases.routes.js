@@ -523,6 +523,16 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           reference_type: "purchase",
           reference_id: purchaseId,
         });
+
+        // FEFO batch capture: insert into item_batches when expiry_date is provided for tracked items
+        if (line.expiry_date) {
+          const trackRow = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+          if (trackRow?.track_expiry) {
+            db.prepare(
+              "INSERT INTO item_batches (item_id, warehouse_id, batch_no, expiry_date, quantity, cost_price, source) VALUES (?, ?, ?, ?, ?, ?, 'purchase')"
+            ).run(line.item_id, warehouseId, line.batch_no || null, line.expiry_date, qty, cost);
+          }
+        }
       }
 
       // WACC replay after all lines are inserted (always-recompute pattern)

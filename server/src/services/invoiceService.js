@@ -6,6 +6,7 @@ const { assertCanWriteForDate, normalizeDate } = require("./dailySessionService"
 const { getSnapshotCosts } = require("./waccService");
 const { captureInvoiceLineOverrides } = require("./overrideTrackingService");
 const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
+const { captureLeadFromSale } = require("./leadCapture");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -273,6 +274,23 @@ function createInvoice(payload) {
         reference_type: "invoice",
         reference_id: inv.lastInsertRowid,
       });
+
+      // FEFO batch deduction for items with expiry tracking
+      const batchItem = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+      if (batchItem?.track_expiry) {
+        let remaining = line.quantity;
+        const batches = db.prepare(
+          `SELECT id, quantity FROM item_batches
+           WHERE item_id = ? AND warehouse_id = ? AND quantity > 0 AND expiry_date IS NOT NULL
+           ORDER BY expiry_date ASC`
+        ).all(line.item_id, line.warehouse_id || 1);
+        for (const batch of batches) {
+          if (remaining <= 0) break;
+          const consume = Math.min(remaining, batch.quantity);
+          db.prepare("UPDATE item_batches SET quantity = quantity - ? WHERE id = ?").run(consume, batch.id);
+          remaining -= consume;
+        }
+      }
     }
 
     // Capture master_price_at_time for override tracking
@@ -430,6 +448,9 @@ function createInvoice(payload) {
         earnPointsForInvoice(payload.customer_id, inv.lastInsertRowid, earnedPoints, payload.user_id || null);
       }
     }
+
+    // Capture an anonymous walk-in WhatsApp number as a lead (best-effort, never blocks the sale).
+    captureLeadFromSale(db, payload, normalizedLines);
 
     return getInvoiceWithLines(inv.lastInsertRowid);
   });

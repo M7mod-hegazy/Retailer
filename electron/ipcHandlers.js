@@ -2,8 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const { ipcMain, app, dialog, BrowserWindow, nativeImage } = require("electron");
 const { execFileSync, execSync } = require("child_process");
-const { closeDb, getDbPath, initDb } = require("../server/src/config/database");
+const { closeDb, getDbPath, initDb, getDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
+const waEngine = require("./whatsapp/engine");
 
 function safeDbPath() {
   return process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
@@ -129,6 +130,63 @@ function setupIpc(window) {
     return { success };
   });
 
+  // List installed printers so the user can pick a per-document device in settings.
+  ipcMain.handle("print:list-printers", async () => {
+    try {
+      const printers = await window.webContents.getPrintersAsync();
+      return {
+        success: true,
+        printers: (printers || []).map((p) => ({
+          name: p.name,
+          displayName: p.displayName || p.name,
+          isDefault: !!p.isDefault,
+          status: p.status,
+        })),
+      };
+    } catch (error) {
+      return { success: false, error: error.message, printers: [] };
+    }
+  });
+
+  // Silent print: render the provided HTML in a hidden window and send it straight
+  // to the configured printer (no OS dialog). Returns { success:false } so the
+  // renderer can fall back to the dialog-based iframe path when this fails.
+  ipcMain.handle("print:silent", async (_event, payload = {}) => {
+    const { html = "", deviceName = "", copies = 1 } = payload;
+    if (!html) return { success: false, error: "no_html" };
+    const os = require("os");
+    const tmpFile = path.join(os.tmpdir(), `retailer-print-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
+    let printWin = null;
+    try {
+      fs.writeFileSync(tmpFile, html, "utf8");
+      printWin = new BrowserWindow({
+        show: false,
+        webPreferences: { offscreen: false, javascript: false, sandbox: true },
+      });
+      await printWin.loadFile(tmpFile);
+      // Allow fonts/images/layout to settle before printing.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const result = await new Promise((resolve) => {
+        printWin.webContents.print(
+          {
+            silent: true,
+            printBackground: true,
+            deviceName: deviceName || undefined,
+            copies: Math.max(1, Number(copies) || 1),
+            margins: { marginType: "none" },
+          },
+          (success, failureReason) => resolve({ success, failureReason }),
+        );
+      });
+      return { success: !!result.success, error: result.success ? null : (result.failureReason || "print_failed") };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      if (printWin && !printWin.isDestroyed()) printWin.destroy();
+      try { fs.unlinkSync(tmpFile); } catch { /* ignore temp cleanup errors */ }
+    }
+  });
+
   ipcMain.handle("maintenance:status", async () => {
     const uninstallerPath = resolveUninstallerPath();
     return {
@@ -184,6 +242,43 @@ function setupIpc(window) {
     });
     return result;
   });
+
+  // ─── WhatsApp IPC ─────────────────────────────────────────────────────────
+  waEngine.setDbProvider(getDb);
+
+  ipcMain.handle("wa:status", () => waEngine.getStatus());
+
+  ipcMain.handle("wa:link", async () => {
+    try { await waEngine.connect(); return { success: true }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle("wa:unlink", async () => {
+    try { await waEngine.disconnect(); return { success: true }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle("wa:send", async (_event, payload = {}) => {
+    try {
+      const { phone, text, imageBase64, caption } = payload;
+      const jid = waEngine.normalizePhone(phone);
+      if (!jid) return { success: false, error: "invalid phone" };
+      if (imageBase64) {
+        await waEngine.sendImage(jid, Buffer.from(imageBase64, "base64"), caption || "");
+      } else {
+        await waEngine.sendText(jid, text || "");
+      }
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
+
+  // Push WA status changes to renderer
+  waEngine.onStatusChange((state) => {
+    window.webContents.send("wa:status-update", state);
+  });
+
+  // Auto-connect if auth exists
+  waEngine.connect().catch(() => {});
 }
 
 module.exports = { setupIpc };

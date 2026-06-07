@@ -150,6 +150,17 @@ function createReturn(invoiceId, payload) {
         reference_type: "sales_return",
         reference_id: returnId,
       });
+
+      // FEFO batch restore: add returned qty to newest-expiry dated batch
+      const batchItem = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+      if (batchItem?.track_expiry) {
+        const newestBatch = db.prepare(
+          "SELECT id FROM item_batches WHERE item_id = ? AND warehouse_id = ? AND expiry_date IS NOT NULL ORDER BY expiry_date DESC LIMIT 1"
+        ).get(line.item_id, line.warehouse_id);
+        if (newestBatch) {
+          db.prepare("UPDATE item_batches SET quantity = quantity + ? WHERE id = ?").run(line.quantity, newestBatch.id);
+        }
+      }
     }
     captureSalesReturnLineOverrides(createdReturnLines, db);
 
@@ -227,6 +238,17 @@ function createGeneralReturn(payload) {
       genReturnLines.push({ id: grr.lastInsertRowid });
 
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: Number(line.quantity), movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
+
+      // FEFO batch restore for standalone returns
+      const batchItem2 = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+      if (batchItem2?.track_expiry) {
+        const newestBatch2 = db.prepare(
+          "SELECT id FROM item_batches WHERE item_id = ? AND warehouse_id = ? AND expiry_date IS NOT NULL ORDER BY expiry_date DESC LIMIT 1"
+        ).get(line.item_id, warehouseId);
+        if (newestBatch2) {
+          db.prepare("UPDATE item_batches SET quantity = quantity + ? WHERE id = ?").run(Number(line.quantity), newestBatch2.id);
+        }
+      }
     }
     captureSalesReturnLineOverrides(genReturnLines, db);
 

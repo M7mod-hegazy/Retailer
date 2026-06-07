@@ -19,7 +19,7 @@ export default function ItemFormModal({ editItem, onSaved }) {
     min_stock: "", max_stock: "",
     description: "",
     is_service: false, is_active: true,
-    tax_exempt: false,
+    tax_exempt: false, track_expiry: false,
   });
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -46,6 +46,7 @@ export default function ItemFormModal({ editItem, onSaved }) {
         is_service: editItem.is_service || false,
         is_active: editItem.is_active !== false,
         tax_exempt: editItem.tax_exempt || false,
+        track_expiry: editItem.track_expiry === 1 || editItem.track_expiry === true,
       });
     }
   }, [editItem]);
@@ -119,6 +120,7 @@ export default function ItemFormModal({ editItem, onSaved }) {
         <Checkbox label="خدمة (غير مخزنية)" checked={form.is_service} onChange={v => set("is_service", v)} />
         <Checkbox label="نشط" checked={form.is_active} onChange={v => set("is_active", v)} />
         <Checkbox label="معفى من الضريبة" checked={form.tax_exempt} onChange={v => set("tax_exempt", v)} />
+        <Checkbox label="تتبع تواريخ الانتهاء (FEFO)" checked={form.track_expiry} onChange={v => set("track_expiry", v)} />
       </div>
 
       <div className="flex gap-3 pt-2">

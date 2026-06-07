@@ -6,6 +6,7 @@ const { REPORT_REGISTRY, getSource, getSourceClassifications } = require("../rep
 const { buildColumnsFromRows } = require("../reports/helpers");
 const { getReportColumns, getReportTitle, normalizeStructuredReport } = require("../reports/columns");
 const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("../services/exportService");
+const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
 
@@ -392,6 +393,100 @@ router.get("/payment-type-options", requirePagePermission("reports", "view"), (_
     }
 
     res.json({ success: true, data: options });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Items currently below their minimum stock quantity (used by dashboard + suggested PO)
+router.get("/low-stock", requirePagePermission("reports", "view"), (_req, res) => {
+  try {
+    const db = getDb();
+    const items = db.prepare(`
+      SELECT i.id, i.name, i.code AS item_code, i.min_stock_qty, i.purchase_price,
+             COALESCE(SUM(sl.quantity), 0) AS quantity,
+             (
+               SELECT p.supplier_id FROM purchase_lines pl
+               JOIN purchases p ON p.id = pl.purchase_id
+               WHERE pl.item_id = i.id AND p.supplier_id IS NOT NULL
+                 AND COALESCE(p.status,'active') NOT IN ('cancelled','voided')
+               ORDER BY p.created_at DESC LIMIT 1
+             ) AS last_supplier_id,
+             (
+               SELECT s.name FROM purchase_lines pl
+               JOIN purchases p ON p.id = pl.purchase_id
+               JOIN suppliers s ON s.id = p.supplier_id
+               WHERE pl.item_id = i.id AND p.supplier_id IS NOT NULL
+                 AND COALESCE(p.status,'active') NOT IN ('cancelled','voided')
+               ORDER BY p.created_at DESC LIMIT 1
+             ) AS last_supplier_name
+      FROM items i
+      LEFT JOIN stock_levels sl ON sl.item_id = i.id
+      WHERE i.is_active = 1 AND COALESCE(i.min_stock_qty, 0) > 0
+      GROUP BY i.id
+      HAVING quantity <= i.min_stock_qty
+      ORDER BY (i.min_stock_qty - quantity) DESC
+    `).all();
+    res.json({ success: true, data: items });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Margin alerts (items whose WACC > sale_price)
+router.get("/margin-alerts", requirePagePermission("reports", "view"), (_req, res) => {
+  try {
+    const db = getDb();
+    const items = db.prepare(`
+      SELECT i.id, i.name, i.code AS item_code, i.sale_price,
+             COALESCE(sl.wacc, i.purchase_price, 0) AS cost
+      FROM items i
+      LEFT JOIN (
+        SELECT item_id, AVG(wacc) AS wacc FROM stock_levels GROUP BY item_id
+      ) sl ON sl.item_id = i.id
+      WHERE i.is_active = 1 AND i.sale_price > 0
+        AND COALESCE(sl.wacc, i.purchase_price, 0) >= i.sale_price
+      ORDER BY (COALESCE(sl.wacc, i.purchase_price, 0) - i.sale_price) DESC
+      LIMIT 20
+    `).all();
+    res.json({ success: true, data: items });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Items expiring within 30 days (for FEFO dashboard alert)
+router.get("/expiring-soon", requirePagePermission("reports", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const days = Math.max(1, Math.min(365, Number(req.query.days || 30)));
+    const items = db.prepare(`
+      SELECT ib.id, ib.item_id, ib.batch_no, ib.expiry_date, ib.quantity, ib.warehouse_id,
+             i.name AS item_name, i.code AS item_code,
+             w.name AS warehouse_name,
+             julianday(ib.expiry_date) - julianday('now') AS days_remaining
+      FROM item_batches ib
+      JOIN items i ON i.id = ib.item_id
+      LEFT JOIN warehouses w ON w.id = ib.warehouse_id
+      WHERE ib.quantity > 0
+        AND ib.expiry_date IS NOT NULL
+        AND ib.expiry_date <= date('now', '+' || ? || ' days')
+        AND ib.expiry_date >= date('now')
+      ORDER BY ib.expiry_date ASC
+      LIMIT 50
+    `).all(days);
+    res.json({ success: true, data: items });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Sales summary grouped by date (used by AnalyticsPage chart)
+router.get("/sales-summary", requirePagePermission("reports", "view"), (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const data = getSalesSummary(start_date || null, end_date || null);
+    res.json({ success: true, data });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

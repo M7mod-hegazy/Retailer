@@ -6,6 +6,7 @@ import {
   Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2,
 } from "lucide-react";
 import api from "../../services/api";
+import { printContent, getPrinterForPageSize } from "../../services/printService";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintDesigner from "./designer/PrintDesigner";
 import { familyForSize } from "./layout/layoutModel";
@@ -254,43 +255,12 @@ export default function PrintPreviewModal({
   };
 
   function buildIframeAndPrint(contentHtml, pageSizeStr, afterPrint) {
-    const cleaned = contentHtml.replace(/@page\s*\{[^}]*\}/g, "");
-    const iframe = document.createElement("iframe");
-    iframe.setAttribute("title", "print-frame");
-    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
-    document.body.appendChild(iframe);
-    const idoc = iframe.contentWindow.document;
-    idoc.open();
-    idoc.write(`<!DOCTYPE html>
-<html dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <title>${operationLabel || "طباعة"}</title>
-  <style>
-    @page { size: ${pageSizeStr}; margin: 0; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Tajawal", "Noto Sans Arabic", system-ui, sans-serif;
-      direction: rtl; text-align: center;
-      color: #0f172a; background: #fff;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 4px 6px; text-align: center; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    img { max-width: 100%; height: auto; }
-    .rpt-page-outer { page-break-inside: avoid; }
-  </style>
-</head>
-<body>${cleaned}</body>
-</html>`);
-    idoc.close();
-    iframe.contentWindow.focus();
-    requestAnimationFrame(() => {
-      iframe.contentWindow.print();
-      // Run save callback after print dialog closes (creation mode)
-      if (afterPrint) afterPrint();
-      setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
+    printContent({
+      contentHtml,
+      pageSizeStr,
+      deviceName: getPrinterForPageSize(pageSizeStr),
+      title: operationLabel || "طباعة",
+      afterPrint,
     });
   }
 

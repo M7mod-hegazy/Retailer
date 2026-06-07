@@ -43,6 +43,11 @@ export default function DataGrid({
   virtualized = false,
   height = 500,
 }) {
+  const getRowKey = useCallback((row, idx) => {
+    if (typeof rowKey === "function") return rowKey(row, idx);
+    return row[rowKey] ?? idx;
+  }, [rowKey]);
+
   const defaultWidths = {};
   columns.forEach((c) => (defaultWidths[c.id] = c.width || 120));
 
@@ -58,8 +63,7 @@ export default function DataGrid({
   const startWidth = useRef(0);
 
   const onResizeStart = (e, key) => {
-    e.preventDefault();
-    e.stopPropagation();
+    if (e.cancelable !== false) { e.preventDefault(); e.stopPropagation(); }
     resizingCol.current = key;
     startX.current = e.clientX;
     startWidth.current = colWidths[key] || 100;
@@ -111,8 +115,8 @@ export default function DataGrid({
   const useVirtual = virtualized && sortedData.length > VIRTUALIZE_THRESHOLD;
 
   // Sync horizontal scroll between header and list
-  const handleScroll = useCallback(({ scrollLeft }) => {
-    if (scrollRef.current) scrollRef.current.scrollLeft = scrollLeft;
+  const handleScroll = useCallback(({ scrollOffset }) => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollOffset;
   }, []);
 
   const handleHeaderScroll = useCallback((e) => {
@@ -196,7 +200,7 @@ export default function DataGrid({
         </thead>
         <tbody>
           {sortedData.map((row, i) => (
-            <React.Fragment key={row[rowKey] || i}>
+            <React.Fragment key={getRowKey(row, i)}>
               <tr
                 onClick={() => onRowClick?.(row)}
                 className={`group border-b border-slate-100 hover:bg-slate-50 transition-colors bg-white ${rowClass(row)} ${onRowClick ? "cursor-pointer" : ""}`}

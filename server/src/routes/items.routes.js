@@ -535,8 +535,8 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
   const info = getDb()
     .prepare(
       `INSERT INTO items
-       (code, sku_sequence, name, name_en, barcode, category_id, unit_id, sale_price, wholesale_price, purchase_price, tax_rate, item_type, description, is_active, min_stock_qty)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (code, sku_sequence, name, name_en, barcode, category_id, unit_id, sale_price, wholesale_price, purchase_price, tax_rate, item_type, description, is_active, min_stock_qty, track_expiry)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       sku.code,
@@ -554,6 +554,7 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
       payload.description || null,
       payload.is_active === false ? 0 : 1,
       0,
+      payload.track_expiry ? 1 : 0,
     );
 
   const imageUrls = normalizeImageUrls(payload);
@@ -627,7 +628,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
 
   db.prepare(
       `UPDATE items
-       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, updated_at = CURRENT_TIMESTAMP
+       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
     )
     .run(
@@ -646,6 +647,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
       payload.description ?? existing.description,
       payload.is_active === undefined ? existing.is_active : payload.is_active === false ? 0 : 1,
       Number(payload.min_stock_qty ?? existing.min_stock_qty ?? 0),
+      payload.track_expiry === undefined ? (existing.track_expiry || 0) : payload.track_expiry ? 1 : 0,
       id,
     );
 

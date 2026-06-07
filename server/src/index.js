@@ -2,7 +2,7 @@ require("dotenv").config();
 const { createApp } = require("./app");
 const { initDb, getDb } = require("./config/database");
 const { startAutoBackupJob } = require("./jobs/autoBackup");
-const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob } = require("./jobs/notificationJobs");
+const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob, startBirthdayJob } = require("./jobs/notificationJobs");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const logger = require("./config/logger");
 
@@ -86,6 +86,7 @@ function startServer() {
       startNotificationJobs();
       startAuditLogCleanupJob();
       startOverdueDebtsJob();
+      startBirthdayJob();
 
       // Server is ready — resolve the promise
       resolve(server);

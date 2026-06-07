@@ -8,6 +8,21 @@ export default function CustomersListPage() {
   const navigate = useNavigate();
 
   return (
+    <>
+      {/* WA walk-in contacts redirect banner */}
+      <div className="mx-4 mt-4 mb-0 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-3">
+        <span className="text-xl shrink-0">📱</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-green-800">جهات الاتصال المسجلة عبر واتساب (تسجيل سريع من نقطة البيع)</p>
+          <p className="text-[11px] font-bold text-green-600 mt-0.5">هذه الجهات لا تظهر في القائمة أدناه — يمكن عرضها من تبويب واتساب في الإعدادات</p>
+        </div>
+        <button
+          onClick={() => navigate("/settings?tab=whatsapp")}
+          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-[12px] font-black text-white hover:bg-green-700 transition-all active:scale-95"
+        >
+          عرض جهات واتساب ←
+        </button>
+      </div>
     <SimpleCrudPage
       pageKey="customers"
       title="العملاء"
@@ -43,5 +58,6 @@ export default function CustomersListPage() {
       })}
       onRowClick={(row) => navigate(`/definitions/customers/${row.id}`)}
     />
+    </>
   );
 }

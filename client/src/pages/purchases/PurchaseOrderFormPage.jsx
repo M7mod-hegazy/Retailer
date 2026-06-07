@@ -19,7 +19,7 @@ import {
   Save
 } from "lucide-react";
 import api from "../../services/api";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import DataGrid from "../../components/ui/DataGrid";
 import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
@@ -39,11 +39,13 @@ function resolveImageUrl(u) {
 
 export default function PurchaseOrderFormPage() {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
   const ITEM_PAGE = 20;
 
   // --- Data States ---
   const [lines, setLines] = useState([]);
+  const [items, setItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [units, setUnits] = useState([]);
   const [stockLevels, setStockLevels] = useState({});
@@ -102,15 +104,43 @@ export default function PurchaseOrderFormPage() {
 
   // --- Init ---
   useEffect(() => {
-    api.get("/api/suppliers").then(r => setSuppliers(r.data.data || [])).catch(() => {});
-    api.get("/api/units").then(r => setUnits(r.data.data || [])).catch(() => {});
-    api.get("/api/stock/levels").then(r => {
+    const prefill = location.state?.prefill;
+    Promise.all([
+      api.get("/api/suppliers"),
+      api.get("/api/units"),
+      api.get("/api/stock/levels"),
+      api.get("/api/items?limit=5000"),
+    ]).then(([suppRes, unitRes, stockRes, itemsRes]) => {
+      setItems(itemsRes.data?.data || []);
+      const suppList = suppRes.data.data || [];
+      setSuppliers(suppList);
+      setUnits(unitRes.data.data || []);
       const grouped = {};
-      (r.data.data || []).forEach(row => {
+      (stockRes.data.data || []).forEach(row => {
         if (!grouped[row.item_id]) grouped[row.item_id] = 0;
         grouped[row.item_id] += row.quantity;
       });
       setStockLevels(grouped);
+
+      // Apply navigation-state prefill (e.g. from suggested PO)
+      if (prefill) {
+        if (prefill.supplier_id) {
+          const s = suppList.find(x => String(x.id) === String(prefill.supplier_id));
+          if (s) { setSupplier(s); setSupplierQuery(s.name); }
+        }
+        if (prefill.notes) setNotes(prefill.notes);
+        if (Array.isArray(prefill.lines) && prefill.lines.length) {
+          setLines(prefill.lines.map(l => ({
+            item_id: l.item_id,
+            name: l.name,
+            code: l.code || "",
+            quantity: l.quantity,
+            unit_cost: l.unit_cost || 0,
+            unit_id: l.unit_id || null,
+            total: (l.quantity) * (l.unit_cost || 0),
+          })));
+        }
+      }
     }).catch(() => {});
   }, []);
 

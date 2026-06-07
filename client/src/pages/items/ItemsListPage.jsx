@@ -95,6 +95,7 @@ function exportCsv(items, categoryName) {
 const EMPTY_DRAFT = {
   code: "", name: "", barcode: "", purchase_price: "", sale_price: "",
   wholesale_price: "", unit_id: "", min_stock_qty: "", image_urls_text: "",
+  track_expiry: false,
 };
 
 const DENSITY_CLS = { compact: "py-1.5", normal: "py-2.5", spacious: "py-4" };
@@ -491,6 +492,7 @@ export default function ItemsListPage() {
           min_stock_qty: String(row.min_stock_qty ?? ""),
           image_urls_text: Array.isArray(row.image_urls) ? row.image_urls.join(", ") : "",
           is_active: row.is_active !== 0,
+          track_expiry: row.track_expiry === 1 || row.track_expiry === true,
         };
       });
       return next;
@@ -670,6 +672,7 @@ export default function ItemsListPage() {
           min_stock_qty: String(row.min_stock_qty ?? ""),
           image_urls_text: Array.isArray(row.image_urls) ? row.image_urls.join(", ") : "",
           is_active: row.is_active !== 0,
+          track_expiry: row.track_expiry === 1 || row.track_expiry === true,
         };
       });
       return next;
@@ -728,6 +731,7 @@ export default function ItemsListPage() {
       unit_id: d.unit_id ? Number(d.unit_id) : null,
       image_urls: parseImageUrls(d.image_urls_text),
       is_active: d.is_active !== false,
+      track_expiry: d.track_expiry ? 1 : 0,
     };
   }
 
@@ -964,7 +968,7 @@ export default function ItemsListPage() {
     );
   }
 
-  const COLS = 14;
+  const COLS = 15;
 
   return (
     <div className="standard-page-container font-sans flex flex-col gap-6 pb-32" dir="rtl">
@@ -1101,6 +1105,12 @@ export default function ItemsListPage() {
                    </th>
                    <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">صورة</th>
                    <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">نشط</th>
+                   <th className="w-16 px-1 py-3 text-center" title="تتبع تواريخ الانتهاء — فعّل لكل صنف حساس">
+                     <div className="flex flex-col items-center gap-0.5">
+                       <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">FEFO</span>
+                       <span className="text-[9px] font-bold text-slate-400 leading-none">صلاحية</span>
+                     </div>
+                   </th>
                    <SortTh label="الكود" sortKey="code" sortConfig={sortConfig} onSort={toggleSort} resizableKey="code" width={colWidths.code} onResizeStart={onResizeStart} />
                    <SortTh label="الاسم / المواصفات" sortKey="name" sortConfig={sortConfig} onSort={toggleSort} resizableKey="name" width={colWidths.name} onResizeStart={onResizeStart} />
                    <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>
@@ -1149,7 +1159,7 @@ export default function ItemsListPage() {
                    if (item.__gap) {
                      return (
                        <tr key={item.id} className="bg-violet-50/60">
-                         <td colSpan={3} className="px-3 py-2 text-center text-[11px] font-black text-violet-500">فراغ SKU</td>
+                         <td colSpan={4} className="px-3 py-2 text-center text-[11px] font-black text-violet-500">فراغ SKU</td>
                          <td className="px-4 py-2 border-l border-violet-100">
                            <span className="font-mono text-2sm font-black text-violet-700">{item.code}</span>
                          </td>
@@ -1220,6 +1230,25 @@ export default function ItemsListPage() {
                        </td>
                        <td className="px-1 py-1 text-center border-l border-slate-100">
                           {!isDeleted && <ActiveToggle active={d.is_active !== false && d.is_active !== 0} onToggle={() => toggleActive(item)} />}
+                       </td>
+                       <td className="px-1 py-1 text-center border-l border-slate-100">
+                          {!isDeleted && (
+                            <button type="button"
+                              title={d.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
+                              onClick={() => { updateDraft(item.id, "track_expiry", !d.track_expiry); }}
+                              className={`flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md transition-colors cursor-pointer border
+                                ${d.track_expiry
+                                  ? "bg-orange-50 border-orange-200 hover:bg-orange-100"
+                                  : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}>
+                              <div className={`relative inline-flex h-[18px] w-[34px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors shadow-sm
+                                ${d.track_expiry ? "bg-orange-400" : "bg-slate-300"}`} dir="ltr">
+                                <span className={`inline-block h-[11px] w-[11px] transform rounded-full bg-white shadow-md transition-transform ${d.track_expiry ? "translate-x-[15px]" : "translate-x-0.5"}`} />
+                              </div>
+                              <span className={`text-[8px] font-black leading-none ${d.track_expiry ? "text-orange-600" : "text-slate-400"}`}>
+                                {d.track_expiry ? "مفعّل" : "موقف"}
+                              </span>
+                            </button>
+                          )}
                        </td>
                        <td className="px-4 py-1 border-l border-slate-100">
                           <span className="font-mono text-2sm font-black text-slate-400 tracking-tighter">{item.code || "—"}</span>
@@ -1332,6 +1361,20 @@ export default function ItemsListPage() {
                <tfoot className="sticky bottom-0 z-20 bg-slate-100 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] border-t border-slate-200">
                   <tr className="bg-white">
                      <td colSpan="3" className="px-2 text-[11px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد</td>
+                     <td className="px-1 py-1 text-center border-l border-slate-100">
+                       <button type="button"
+                         title={newRow.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
+                         onClick={() => setNewRow((prev) => ({ ...prev, track_expiry: !prev.track_expiry }))}
+                         className={`flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md transition-colors cursor-pointer border
+                           ${newRow.track_expiry ? "bg-orange-50 border-orange-200 hover:bg-orange-100" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}>
+                         <div className={`relative inline-flex h-[18px] w-[34px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors shadow-sm ${newRow.track_expiry ? "bg-orange-400" : "bg-slate-300"}`} dir="ltr">
+                           <span className={`inline-block h-[11px] w-[11px] transform rounded-full bg-white shadow-md transition-transform ${newRow.track_expiry ? "translate-x-[15px]" : "translate-x-0.5"}`} />
+                         </div>
+                         <span className={`text-[8px] font-black leading-none ${newRow.track_expiry ? "text-orange-600" : "text-slate-400"}`}>
+                           {newRow.track_expiry ? "مفعّل" : "موقف"}
+                         </span>
+                       </button>
+                     </td>
                      <td className="px-2">
                         <div className="flex items-center justify-center gap-1">
                           <span className={`font-mono text-[11px] font-black tracking-tighter ${newRow.code ? "text-violet-700" : "text-slate-400 opacity-60"}`}>{nextCodePreview}</span>

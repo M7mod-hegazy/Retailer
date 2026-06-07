@@ -240,7 +240,7 @@ export default function PurchaseFormPage() {
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "" });
+  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "", expiryDate: "", batchNo: "" });
   // Lock toggles: true = update master price on save (🔒), false = this invoice only (🔓)
   const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
   const [profitModalOpen, setProfitModalOpen] = useState(false);
@@ -606,6 +606,7 @@ export default function PurchaseFormPage() {
           update_master_wholesale_price: stagingLocks.wholesale,
         });
       }
+      const tracksExpiry = selectedItem.track_expiry === 1 || selectedItem.track_expiry === true;
       return [...prev, {
         item_id: selectedItem.id,
         name: selectedItem.name,
@@ -624,11 +625,14 @@ export default function PurchaseFormPage() {
         update_master_purchase_price: stagingLocks.purchase,
         update_master_sale_price:     stagingLocks.sale,
         update_master_wholesale_price: stagingLocks.wholesale,
+        track_expiry: tracksExpiry,
+        expiry_date: tracksExpiry ? (staging.expiryDate || null) : null,
+        batch_no: tracksExpiry ? (staging.batchNo || null) : null,
       }];
     });
     setSelectedItem(null);
     setItemQuery("");
-    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: s.warehouseId, unitId: "" }));
+    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: s.warehouseId, unitId: "", expiryDate: "", batchNo: "" }));
     setTimeout(() => { itemInputRef.current?.focus(); itemInputRef.current?.select(); }, 50);
   }
 
@@ -752,6 +756,8 @@ export default function PurchaseFormPage() {
         update_master_purchase_price:  l.update_master_purchase_price  !== false,
         update_master_sale_price:      l.update_master_sale_price      !== false,
         update_master_wholesale_price: l.update_master_wholesale_price !== false,
+        expiry_date: l.expiry_date || null,
+        batch_no: l.batch_no || null,
       })),
     };
   }
@@ -1269,6 +1275,27 @@ export default function PurchaseFormPage() {
                   </div>
                 </div>
 
+                {/* Expiry / batch inputs — only shown for items with track_expiry */}
+                {selectedItem && (selectedItem.track_expiry === 1 || selectedItem.track_expiry === true) && (
+                  <div className="flex flex-col gap-1 col-span-full mt-1 p-2 rounded-sm border border-blue-200 bg-blue-50/60">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">تتبع الانتهاء (FEFO)</p>
+                    <div className="flex gap-2">
+                      <div className="flex flex-col gap-0.5 flex-1">
+                        <label className="text-[11px] font-bold text-slate-600">تاريخ الانتهاء</label>
+                        <input type="date" value={staging.expiryDate}
+                          onChange={e => setStaging(s => ({ ...s, expiryDate: e.target.value }))}
+                          className="w-full h-[33px] border border-slate-300 rounded-sm px-2 text-[12px] font-mono bg-white outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="flex flex-col gap-0.5 flex-1">
+                        <label className="text-[11px] font-bold text-slate-600">رقم الدفعة (اختياري)</label>
+                        <input type="text" value={staging.batchNo} placeholder="BATCH-001"
+                          onChange={e => setStaging(s => ({ ...s, batchNo: e.target.value }))}
+                          className="w-full h-[33px] border border-slate-300 rounded-sm px-2 text-[12px] font-mono bg-white outline-none focus:border-blue-500" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Add button */}
                 <button ref={addBtnRef} onClick={addLine}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
@@ -1461,6 +1488,17 @@ export default function PurchaseFormPage() {
                     </div>
                   );
                 } },
+              { id: "expiry_date", header: "انتهاء", width: 125, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                render: (l, i) => {
+                  if (!l.track_expiry) return <div className="h-[40px] flex items-center justify-center text-slate-200 text-[10px] select-none">—</div>;
+                  return (
+                    <input type="date" value={l.expiry_date || ""} disabled={isLocked}
+                      onChange={(e) => updateLineField(i, "expiry_date", e.target.value)}
+                      className="w-full h-[40px] text-[11px] font-mono font-bold text-center bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50 text-slate-700 disabled:cursor-not-allowed"
+                    />
+                  );
+                }
+              },
               { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100",
                 render: (l) => Number(l.total).toLocaleString("en-US", { minimumFractionDigits: 2 }) },
               { id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",

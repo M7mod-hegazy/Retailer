@@ -15,7 +15,8 @@ import PaymentMethodsReportTemplate from "../../components/print/templates/Payme
 import PrintDesigner from "../../components/print/designer/PrintDesigner";
 import { familyForSize } from "../../components/print/layout/layoutModel";
 import { PrintThermalDoc, PrintA4Doc } from "../../components/print/PrintDoc";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Printer as PrinterIcon } from "lucide-react";
+import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap } from "../../services/printService";
 
 // Mock invoice for the live preview of invoice-style docs — rendered through the
 // shared block library so the preview matches print AND the Designer layout.
@@ -1189,6 +1190,7 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
             اضغط على حجم لمعاينته ← وحفظه كافتراضي لهذا المستند
           </div>
         </div>
+
         {[["receipt_header", "رأس المستند"], ["receipt_footer", "تذييل المستند"], ["watermark_text", "نص الطابع المائي"]].map(([key, labelText]) => (
           <label key={key} className="block space-y-1">
             <span className="text-[11px] font-black text-slate-600">{labelText}</span>
@@ -1294,6 +1296,8 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   const [previewTab, setPreviewTab] = useState(get(settings, "receipt_width"));
   const [activeDocType, setActiveDocType] = useState("global");
   const [docSettings, setDocSettings] = useState({});
+  const [printers, setPrinters] = useState([]);
+  const [sizePrinterMap, setSizePrinterMap] = useState(() => getPrinterSizeMap());
   // Pan & Zoom
   const [viewZoom, setViewZoom] = useState(0.6);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -1305,6 +1309,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
     api.get("/api/print-settings-per-doc")
       .then((r) => setDocSettings(r.data.data || {}))
       .catch(() => {});
+    listPrinters().then(setPrinters);
   }, []);
 
   async function saveDocSettings(docType, nextSettings) {
@@ -1314,6 +1319,12 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
     } catch {
       toast.error("خطأ في الحفظ");
     }
+  }
+
+  function handleSizePrinterChange(size, printerName) {
+    const next = { ...sizePrinterMap, [size]: printerName };
+    setSizePrinterMap(next);
+    setPrinterSizeMap(next);
   }
 
   const hover  = useCallback((k) => setHovered(k), []);
@@ -1407,6 +1418,50 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
 
       {/* ── Controls (right in RTL) — scrolls internally ── */}
       <div className="flex-1 min-w-0 overflow-y-auto pr-4 space-y-10" style={{ paddingBottom: "2rem" }}>
+
+        {/* Printer assignment per paper size */}
+        <section>
+          <SectionLabel icon={PrinterIcon} title="الطباعة الفورية — اختر طابعة لكل حجم" hint="اختر طابعة ← عند الضغط على طباعة يُرسل المستند مباشرة للطابعة بدون أي نوافذ أو خطوات إضافية" />
+          {!isElectronPrint() ? (
+            <div className="mb-3 flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
+              <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
+              هذه الميزة تعمل فقط داخل تطبيق سطح المكتب (.exe) — قائمة الطابعات المتصلة بجهازك ستظهر هنا عند فتح التطبيق
+            </div>
+          ) : printers.length === 0 ? (
+            <div className="mb-3 flex items-center gap-2 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
+              <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
+              جارٍ تحميل الطابعات المتصلة بجهازك...
+            </div>
+          ) : (
+            <div className="mb-3 flex items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">
+              <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
+              تم اكتشاف {printers.length} طابعة متصلة — اختر طابعة لكل حجم لتفعيل الطباعة الفورية
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { size: "58mm", label: "58mm", sub: "رول حراري صغير" },
+              { size: "80mm", label: "80mm", sub: "رول حراري قياسي" },
+              { size: "A5",   label: "A5",   sub: "نصف صفحة" },
+              { size: "A4",   label: "A4",   sub: "ورقة كاملة" },
+            ].map(({ size, label, sub }) => (
+              <div key={size} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-black text-white">{label}</span>
+                  <span className="text-[11px] font-bold text-slate-500">{sub}</span>
+                </div>
+                <StyledSelect
+                  value={sizePrinterMap[size] || ""}
+                  onChange={(e) => handleSizePrinterChange(size, e.target.value)}
+                  options={[
+                    { value: "", label: isElectronPrint() && printers.length > 0 ? "— بدون تعيين (ستظهر نافذة الطباعة) —" : "— بدون تعيين —" },
+                    ...printers.map(p => ({ value: p.name, label: `🖨 ${p.displayName || p.name}${p.isDefault ? " (الافتراضية)" : ""}` })),
+                  ]}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* Paper */}
         <section>

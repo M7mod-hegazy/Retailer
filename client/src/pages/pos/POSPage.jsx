@@ -63,6 +63,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import PermissionGate from "../../components/ui/PermissionGate";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
+import QuickAddLeadPopover from "./QuickAddLeadPopover";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
@@ -523,6 +524,10 @@ export default function POSPage() {
   const [profitDisplayMode, setProfitDisplayMode]        = useState("pct");
   const [advancedSearchOpen, setAdvancedSearchOpen]     = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen]     = useState(false);
+  // Optional WhatsApp number for anonymous sales → auto-captured as a lead on sale completion
+  const [waLeadPhone, setWaLeadPhone]                   = useState("");
+  const [waLeadName, setWaLeadName]                     = useState("");
+  const [quickAddOpen, setQuickAddOpen]                 = useState(false);
   const [customerInfoOpen, setCustomerInfoOpen]         = useState(false);
   const [supervisorOverrideOpen, setSupervisorOverrideOpen] = useState(false);
   const [pendingSave, setPendingSave] = useState(null);
@@ -1157,6 +1162,8 @@ export default function POSPage() {
     setCustomer(null);
     setCustomerQuery("");
     setCustomerLookupOpen(false);
+    setWaLeadPhone("");
+    setWaLeadName("");
   }
 
   function handleSelectItem(item) {
@@ -1367,6 +1374,10 @@ export default function POSPage() {
         created_at: invoiceCreatedAt || undefined,
         customer_id: customer?.id || null,
         seller_id: sellerId ? Number(sellerId) : null,
+        // Auto-capture a walk-in WhatsApp number as a lead (only for anonymous sales)
+        lead_capture: (!customer?.id && waLeadPhone.trim())
+          ? { phone: waLeadPhone.trim(), name: waLeadName.trim() || null }
+          : null,
         increase: Number(increase || 0),
         lines: lines.map((l) => ({
           item_id:      l.item_id,
@@ -1712,15 +1723,13 @@ export default function POSPage() {
           {/* Right Sidebar (Customer, Summary, Payment) */}
           <aside className="w-[400px] shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in">
             {/* Customer Card */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                    <User className="h-3.5 w-3.5 text-slate-500" />
-                  </div>
-                  <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</h3>
-                </div>
+                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</h3>
                 <div className="flex items-center gap-1">
+                  <button onClick={() => setQuickAddOpen(true)} title="إضافة رقم واتساب سريع" className="flex h-6 items-center gap-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors px-2 text-[10px] font-black">
+                    <span>📱</span> رقم سريع
+                  </button>
                   <button onClick={() => setCustomerCreateOpen(true)} title="إنشاء عميل جديد" className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -1781,6 +1790,20 @@ export default function POSPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+              {/* Optional WhatsApp number → auto-saved as a lead on sale completion (anonymous sale only) */}
+              {!customer?.id && (
+                <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-green-100 bg-green-50/50 px-2.5 py-1.5">
+                  <span className="text-sm shrink-0">📱</span>
+                  <input
+                    type="tel"
+                    dir="ltr"
+                    value={waLeadPhone}
+                    onChange={(e) => setWaLeadPhone(e.target.value)}
+                    placeholder="واتساب (اختياري) — يُحفظ مع البيع"
+                    className="flex-1 min-w-0 bg-transparent text-[12px] font-bold text-slate-700 outline-none placeholder:text-green-600/60 placeholder:font-normal text-right"
+                  />
                 </div>
               )}
             </div>
@@ -3020,6 +3043,7 @@ export default function POSPage() {
           onClose={() => setCustomerCreateOpen(false)}
           onCreated={(customer) => { setCustomers((prev) => [customer, ...prev]); setCustomer(customer); setCustomerQuery(customer.name); }}
         />
+        <QuickAddLeadPopover open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
         <CustomerInfoModal
           open={customerInfoOpen}
           customerId={customer?.id}
@@ -3306,6 +3330,9 @@ export default function POSPage() {
                   <SearchDropdown items={customerResults} activeIndex={activeCustomerIndex} emptyLabel="ابحث عن عميل..." onPick={(c) => { setCustomer(c); setCustomerQuery(c.name); setCustomerLookupOpen(false); }} />
                 )}
               </div>
+              <button onClick={() => setQuickAddOpen(true)} title="إضافة رقم واتساب سريع" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-green-300 bg-green-50 text-green-600 hover:border-green-500 hover:bg-green-100 transition-colors shadow-sm text-base">
+                📱
+              </button>
               <button onClick={() => setCustomerCreateOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-800 hover:text-slate-800 transition-colors shadow-sm">
                 <Plus className="h-4 w-4" />
               </button>
@@ -3344,6 +3371,20 @@ export default function POSPage() {
                     {c.name}
                   </button>
                 ))}
+              </div>
+            )}
+            {/* Optional WhatsApp number → auto-saved as a lead on sale completion (anonymous sale only) */}
+            {!customer?.id && (
+              <div className="flex items-center gap-2 mt-1 rounded-lg border border-green-100 bg-green-50/50 px-2.5 py-1.5">
+                <span className="text-sm shrink-0">📱</span>
+                <input
+                  type="tel"
+                  dir="ltr"
+                  value={waLeadPhone}
+                  onChange={(e) => setWaLeadPhone(e.target.value)}
+                  placeholder="واتساب (اختياري) — يُحفظ مع البيع"
+                  className="flex-1 min-w-0 bg-transparent text-[12px] font-bold text-slate-700 outline-none placeholder:text-green-600/60 placeholder:font-normal text-right"
+                />
               </div>
             )}
           </div>
@@ -3852,6 +3893,8 @@ export default function POSPage() {
         onClose={() => setCustomerCreateOpen(false)}
         onCreated={(customer) => { setCustomers((prev) => [customer, ...prev]); setCustomer(customer); setCustomerQuery(customer.name); }}
       />
+
+      <QuickAddLeadPopover open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
       <CustomerInfoModal
         open={customerInfoOpen}

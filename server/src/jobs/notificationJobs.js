@@ -13,13 +13,27 @@ function scanAndCreateNotifications() {
     .all()
     .filter((item) => Number(item.quantity) <= Number(item.min_stock_qty));
 
-  lowStockItems.slice(0, 5).forEach((item) => {
-    NotificationModel.create({
-      title: "⚠️ مخزون منخفض",
-      body: `📦 ${item.name} — الكمية: ${item.quantity} (الحد الأدنى: ${item.min_stock_qty})`,
-      type: "warning",
-      link: "/stock",
-    });
+  if (lowStockItems.length === 0) return;
+
+  // Roll up into a single notification so the every-30-min scan never spams the
+  // user with one notification per item. Dedupe per day like scanOverdueDebts.
+  const today = new Date().toISOString().slice(0, 10);
+  const alreadyNotified = db
+    .prepare(
+      `SELECT id FROM notifications
+       WHERE title LIKE '%مخزون منخفض%' AND date(created_at) = date(?)`,
+    )
+    .get(today);
+  if (alreadyNotified) return;
+
+  const count = lowStockItems.length;
+  const sample = lowStockItems.slice(0, 3).map((i) => i.name).join("، ");
+  const more = count > 3 ? ` و${count - 3} أصناف أخرى` : "";
+  NotificationModel.create({
+    title: "⚠️ مخزون منخفض",
+    body: `📦 ${count} ${count === 1 ? "صنف" : "أصناف"} تحت الحد الأدنى: ${sample}${more}`,
+    type: "warning",
+    link: "/stock",
   });
 }
 
@@ -91,6 +105,42 @@ function startOverdueDebtsJob() {
   return cron.schedule("0 8 * * *", scanOverdueDebts, { scheduled: true });
 }
 
+function scanBirthdays() {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const monthDay = today.slice(5); // MM-DD
+
+  const customers = db.prepare(`
+    SELECT id, name, phone FROM customers
+    WHERE birthday IS NOT NULL
+      AND strftime('%m-%d', birthday) = ?
+      AND marketing_opt_in = 1
+      AND (whatsapp_opt_out IS NULL OR whatsapp_opt_out = 0)
+      AND phone IS NOT NULL AND phone != ''
+  `).all(monthDay);
+
+  if (customers.length === 0) return;
+
+  const template = db.prepare("SELECT body FROM message_templates WHERE kind='birthday'").get();
+  const body = template?.body || "كل عام وأنت بخير {name} 🎂";
+  const shopName = (() => { try { return db.prepare("SELECT company_name FROM settings WHERE id=1").get()?.company_name || ""; } catch { return ""; } })();
+
+  const ins = db.prepare("INSERT INTO wa_outbox (recipient_phone, customer_id, kind, payload) VALUES (?,?,?,?)");
+  for (const c of customers) {
+    const already = db.prepare(
+      "SELECT id FROM wa_outbox WHERE customer_id=? AND kind='birthday' AND date(created_at)=date(?)"
+    ).get(c.id, today);
+    if (already) continue;
+
+    const text = body.replace(/\{name\}/g, c.name || "").replace(/\{shop\}/g, shopName);
+    ins.run(c.phone, c.id, "birthday", JSON.stringify({ text }));
+  }
+}
+
+function startBirthdayJob() {
+  return cron.schedule("0 9 * * *", scanBirthdays, { scheduled: true });
+}
+
 module.exports = {
   scanAndCreateNotifications,
   startNotificationJobs,
@@ -98,4 +148,6 @@ module.exports = {
   startAuditLogCleanupJob,
   scanOverdueDebts,
   startOverdueDebtsJob,
+  scanBirthdays,
+  startBirthdayJob,
 };

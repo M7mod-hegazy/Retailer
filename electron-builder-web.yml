@@ -1,13 +1,16 @@
-appId: com.elhegazi.retailer
-productName: ElHegazi Retailer
-executableName: ElHegazi-Retailer
+appId: com.elhegazi.retailer.web
+productName: ElHegazi Retailer Web
+executableName: ElHegazi-Retailer-Web
 copyright: Copyright (c) 2026
+
+# Use the web entry point (opens browser + tray) instead of the windowed app.
+extraMetadata:
+  main: electron/web-main.js
 
 files:
   - electron/**/*
   - client/dist/**/*
   - server/**/*
-  - shared/**/*
   - package.json
   - "!server/data/**"
   - "!server/**/__tests__/**"
@@ -26,12 +29,8 @@ win:
     - target: nsis
       arch:
         - x64
-        - ia32
 
 artifactName: ${productName}-${version}-${arch}.exe
-
-linux:
-  icon: electron/assets
 
 nsis:
   oneClick: false
@@ -40,9 +39,8 @@ nsis:
   perMachine: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: ElHegazi Retailer
+  shortcutName: ElHegazi Retailer Web
 
-# Use prebuilt native binaries (better-sqlite3) instead of compiling from source.
-# Compiling would require Visual Studio Build Tools; prebuilds exist for both x64 and ia32.
+# Use prebuilt native binaries instead of compiling from source.
 buildDependenciesFromSource: false
 npmRebuild: true

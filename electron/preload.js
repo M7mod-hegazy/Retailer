@@ -2,12 +2,13 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const allowedChannels = {
   backup: ["backup:create", "backup:restore"],
-  print: ["print:receipt", "print:preview"],
+  print: ["print:receipt", "print:preview", "print:silent", "print:list-printers"],
   dialogs: ["dialog:open-file", "dialog:save-file"],
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
   updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error"],
   app: ["app:set-icon"],
   server: ["server:status"],
+  wa: ["wa:status", "wa:link", "wa:unlink", "wa:send", "wa:status-update"],
 };
 
 const api = {

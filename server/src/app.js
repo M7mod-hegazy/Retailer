@@ -49,6 +49,8 @@ const installmentsRoutes = require("./routes/installments.routes");
 const posDraftsRoutes = require("./routes/posDrafts");
 const posRoutes = require("./routes/pos.routes");
 const pricingRoutes = require("./routes/pricing.routes");
+const whatsappRoutes = require("./routes/whatsapp.routes");
+const leadsRoutes = require("./routes/leads.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 function createApp() {
@@ -121,6 +123,8 @@ function createApp() {
   app.use("/api/pos-drafts", posDraftsRoutes);
   app.use("/api/pos", posRoutes);
   app.use("/api/pricing", pricingRoutes);
+  app.use("/api/whatsapp", whatsappRoutes);
+  app.use("/api/leads", leadsRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");

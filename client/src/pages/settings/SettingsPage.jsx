@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -13,6 +14,7 @@ import PrintingSettingsPanel from "./PrintingSettingsPanel";
 import PermissionGate from "../../components/ui/PermissionGate";
 import FontSettingsTab from "./FontSettingsTab";
 import { applyFontSettings } from "../../utils/fontSettings";
+import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
 
 const tabs = [
   { id: "identity", label: "هوية التطبيق", hint: "اسم الشركة والشعار وبيانات الفرع" },
@@ -20,6 +22,7 @@ const tabs = [
   { id: "financial", label: "المالية والضرائب", hint: "العملة والضريبة وحدود الخصم وهوامش الربح" },
   { id: "printing", label: "الطباعة", hint: "مقاسات الإيصال ومعاينة القوالب" },
   { id: "appearance", label: "المظهر", hint: "الخطوط وحجم النص ونمط الأرقام" },
+  { id: "whatsapp", label: "واتساب", hint: "ربط حساب واتساب وإرسال الرسائل للعملاء" },
   { id: "maintenance", label: "النسخ الاحتياطي والبيانات", hint: "إنشاء واستعادة وتصدير النسخ وتفريغ قاعدة البيانات" },
   { id: "help", label: "المساعدة", hint: "الدليل السريع ومراجع الدعم" },
 ];
@@ -116,7 +119,8 @@ function isDirty(original, current) {
 export default function SettingsPage() {
   usePageTour("settings");
   const { i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState("identity");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "identity");
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -593,6 +597,10 @@ export default function SettingsPage() {
 
             {activeTab === "appearance" && (
               <FontSettingsTab settings={settings} onChange={handleChange} />
+            )}
+
+            {activeTab === "whatsapp" && (
+              <WhatsAppSettingsTab />
             )}
 
             {activeTab === "maintenance" && (

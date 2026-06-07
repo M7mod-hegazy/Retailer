@@ -828,6 +828,7 @@ export default function CustomerAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("normal"); // "normal" | "fast" (walk_in_wa)
   const [selected, setSelected] = useState(null);
 
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "movements");
@@ -1012,7 +1013,13 @@ export default function CustomerAccountsPage() {
     setTimeout(() => setCopiedBadge(null), 2000);
   };
 
+  const isFast = (c) => c.capture_source === "walk_in_wa";
+  const fastCount = customers.filter(isFast).length;
+  const normalCount = customers.length - fastCount;
+
   const filtered = customers.filter(c => {
+    // View mode gate: normal customers vs fast WhatsApp contacts
+    if (viewMode === "fast" ? !isFast(c) : isFast(c)) return false;
     const q = search.toLowerCase();
     const matchesSearch = !q || c.name?.toLowerCase().includes(q) || c.phone?.includes(q) || c.code?.toLowerCase().includes(q);
     if (!matchesSearch) return false;
@@ -1072,6 +1079,34 @@ export default function CustomerAccountsPage() {
           </div>
         </div>
 
+        {/* ── Customer type toggle: normal vs fast WhatsApp contacts ── */}
+        <div className="mx-4 mt-3 mb-0 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { setViewMode("normal"); setSelected(null); }}
+            className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all active:scale-[0.98] ${
+              viewMode === "normal"
+                ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            <Users className="h-4 w-4 stroke-[2.5px]" />
+            العملاء
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${viewMode === "normal" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>{normalCount}</span>
+          </button>
+          <button
+            onClick={() => { setViewMode("fast"); setSelected(null); }}
+            className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all active:scale-[0.98] ${
+              viewMode === "fast"
+                ? "border-green-600 bg-green-600 text-white shadow-sm"
+                : "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+            }`}
+          >
+            <span className="text-sm leading-none">📱</span>
+            واتساب سريع
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${viewMode === "fast" ? "bg-white/20 text-white" : "bg-green-100 text-green-700"}`}>{fastCount}</span>
+          </button>
+        </div>
+
         {/* ── Net Balance Typographic Summary ── */}
         <div data-help="balance-card" className="mx-4.5 mt-4 mb-2.5 bg-slate-100/65 border border-slate-200/50 rounded-2xl p-4.5 transition-all duration-300">
           <div className="flex justify-between items-center mb-1.5">
@@ -1111,8 +1146,13 @@ export default function CustomerAccountsPage() {
             <div className="py-20 text-center text-2sm font-bold text-slate-400 animate-pulse">جاري تحميل القائمة...</div>
           ) : filtered.length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-              <Users className="h-9 w-9 text-slate-300 opacity-60" />
-              <p className="text-2sm font-bold text-slate-400">لا يوجد عملاء مطابقين للبحث</p>
+              {viewMode === "fast" ? <span className="text-3xl opacity-70">📱</span> : <Users className="h-9 w-9 text-slate-300 opacity-60" />}
+              <p className="text-2sm font-bold text-slate-400">
+                {search ? "لا يوجد نتائج مطابقة للبحث" : viewMode === "fast" ? "لا توجد جهات واتساب سريعة بعد" : "لا يوجد عملاء"}
+              </p>
+              {viewMode === "fast" && !search && (
+                <p className="text-[11px] font-bold text-slate-350 max-w-[220px]">تُسجّل تلقائياً من زر واتساب السريع في نقطة البيع</p>
+              )}
             </div>
           ) : filtered.map((c, index) => {
             const b = Number(c.opening_balance || 0);

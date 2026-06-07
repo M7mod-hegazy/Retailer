@@ -67,7 +67,7 @@ router.post("/login", (req, res, next) => {
   if (devEmail && devPassword && normalizedUsername === devEmail && normalizedPassword === devPassword) {
     const devToken = require("jsonwebtoken").sign(
       { sub: "__dev__", role: "dev", username: devEmail },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "super_secret_jwt_key_12345",
       { expiresIn: "8h" }
     );
     return res.json({ success: true, data: { token: devToken, user: { id: "__dev__", username: devEmail, role: "dev", page_permissions: null, can_view_updates: true } } });
