@@ -22,7 +22,7 @@
     "kill:retailer-processes": "node ./electron/scripts/kill-retailer-processes.js",
     "license:keygen": "node tools/license-signer/keygen.js",
     "sign": "node tools/license-signer/sign-license.js",
-    "sign:gui": "electron tools/license-signer/signer-gui/main.js",
+    "sign:gui": "cross-env ELECTRON_RUN_AS_NODE= electron tools/license-signer/signer-gui/main.js",
     "node:rebuild": "npm rebuild better-sqlite3",
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3"

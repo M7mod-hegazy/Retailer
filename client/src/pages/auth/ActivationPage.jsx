@@ -5,7 +5,6 @@ import {
   Copy,
   Check,
   QrCode,
-  Hash,
   FileKey,
   Loader2,
   ShieldAlert,
@@ -26,7 +25,6 @@ export default function ActivationPage({ status, onActivated }) {
   const { t } = useTranslation();
   const [info, setInfo] = useState(null);
   const [showQr, setShowQr] = useState(false);
-  const [showShort, setShowShort] = useState(false);
   const [copied, setCopied] = useState(false);
   const [blob, setBlob] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -136,7 +134,6 @@ export default function ActivationPage({ status, onActivated }) {
   }
 
   const machineCode = info?.machineCode || info?.hardwareId || "";
-  const shortCode = info?.machineCode || "";
 
   if (success) {
     return (
@@ -159,9 +156,10 @@ export default function ActivationPage({ status, onActivated }) {
 
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center bg-[#f4f6f8] text-slate-800 font-sans p-6"
+      className="fixed inset-0 overflow-y-auto bg-[#f4f6f8] text-slate-800 font-sans"
       dir="rtl"
     >
+      <div className="flex min-h-full items-center justify-center p-6">
       <div className="w-full max-w-[560px] bg-white rounded-[2rem] border border-slate-200/70 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.10)] p-8 md:p-10">
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-8">
@@ -207,14 +205,6 @@ export default function ActivationPage({ status, onActivated }) {
               <QrCode className="w-4 h-4" />
               {t("license.showQr")}
             </button>
-            <button
-              type="button"
-              onClick={() => setShowShort((v) => !v)}
-              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 hover:text-emerald-700 transition-colors"
-            >
-              <Hash className="w-4 h-4" />
-              {t("license.shortCode")}
-            </button>
           </div>
 
           {showQr && info?.qrDataUrl ? (
@@ -224,12 +214,6 @@ export default function ActivationPage({ status, onActivated }) {
                 alt={t("license.machineCode")}
                 className="w-44 h-44 rounded-xl border border-slate-200 bg-white p-2"
               />
-            </div>
-          ) : null}
-
-          {showShort ? (
-            <div className="mt-4 text-center font-mono text-base tracking-[0.3em] text-slate-700" dir="ltr">
-              {shortCode}
             </div>
           ) : null}
 
@@ -297,6 +281,7 @@ export default function ActivationPage({ status, onActivated }) {
         <p className="text-center text-slate-400 text-[13px] font-semibold mt-6">
           {t("license.contact")}
         </p>
+      </div>
       </div>
     </div>
   );

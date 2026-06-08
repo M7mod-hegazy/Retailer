@@ -12,7 +12,10 @@
 // You can also override at runtime with the RETAILER_LICENSE_PUBKEY env var
 // (handy for tests / staged builds).
 
-const PUBLIC_KEY_PEM = ``; // <-- keygen overwrites this line's value
+const PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAiZPgMUK9AXEl9mjWpEDPTxgZUavDUZUvss83F0J0Ka8=
+-----END PUBLIC KEY-----
+`; // <-- keygen overwrites this line's value
 
 function getPublicKeyPem() {
   const fromEnv = process.env.RETAILER_LICENSE_PUBKEY;

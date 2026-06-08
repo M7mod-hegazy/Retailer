@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
 <title>ElHegazi License Signer</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,6 +36,17 @@
   .linkbtn { margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
   .warn { margin-top: 14px; padding: 12px; border-radius: 10px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-weight:600; display:none; }
   .warn.show { display:block; }
+  .listhead { display:flex; align-items:center; justify-content:space-between; margin: 26px 0 10px; }
+  .listhead h2 { font-size: 15px; font-weight: 800; }
+  .listhead .count { font-size: 12px; color:#64748b; font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #eef2f7; }
+  th { color:#64748b; text-transform:uppercase; font-size:10px; letter-spacing:.05em; }
+  td.mono { font-family: ui-monospace, monospace; color:#334155; }
+  .empty { color:#94a3b8; font-size:13px; padding:14px 0; }
+  .pill { font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; background:#ecfdf5; color:#047857; }
+  .pill.sub { background:#eff6ff; color:#1d4ed8; }
+  .pill.trial { background:#fff7ed; color:#c2410c; }
 </style>
 </head>
 <body>
@@ -74,6 +85,20 @@
     <div class="result" id="result"></div>
   </div>
 
+  <div class="listhead">
+    <h2>Issued licenses</h2>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="card" style="padding:6px 0;">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Shop</th><th>Machine</th><th>Type</th><th>Date</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none; padding-left:14px;">No licenses issued yet.</div>
+  </div>
+
 <script>
   const $ = (id) => document.getElementById(id);
   let lastKeyPath = null;
@@ -83,7 +108,37 @@
     $("warn").classList.toggle("show", !s.keysExist);
     $("genBtn").disabled = !s.keysExist;
   }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function typePill(rec) {
+    if (rec.features === "trial") return '<span class="pill trial">Trial</span>';
+    if (rec.expiresAt) return '<span class="pill sub">Sub · ' + escapeHtml(rec.expiresAt) + '</span>';
+    return '<span class="pill">Perpetual</span>';
+  }
+
+  async function refreshList() {
+    const rows = await window.signerAPI.list();
+    $("count").textContent = rows.length ? rows.length + " total" : "";
+    $("empty").style.display = rows.length ? "none" : "block";
+    $("rows").innerHTML = rows.map((r) => {
+      const machine = String(r.hardwareId || "").slice(0, 8).toUpperCase();
+      const date = (r.issuedAt || "").slice(0, 10);
+      return '<tr>' +
+        '<td class="mono">' + escapeHtml(r.licenseId) + '</td>' +
+        '<td>' + escapeHtml(r.issuedTo || "—") + '</td>' +
+        '<td class="mono">' + escapeHtml(machine) + '…</td>' +
+        '<td>' + typePill(r) + '</td>' +
+        '<td>' + escapeHtml(date) + '</td>' +
+      '</tr>';
+    }).join("");
+  }
+
   refreshStatus();
+  refreshList();
 
   $("keygenBtn").addEventListener("click", async () => {
     const r = await window.signerAPI.keygen();
@@ -121,6 +176,7 @@
         '<button class="linkbtn" id="openBtn">Open folder</button>' +
         '<code>' + r.blob + '</code>';
       $("openBtn").addEventListener("click", () => window.signerAPI.openFolder(lastKeyPath));
+      refreshList();
     } else {
       box.classList.add("err");
       box.innerHTML = '<h3>✖ ' + r.error + '</h3>';

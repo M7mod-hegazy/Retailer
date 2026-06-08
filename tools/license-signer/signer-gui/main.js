@@ -7,7 +7,7 @@
 
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
-const { generate, keysExist, runKeygen } = require("../signEngine");
+const { generate, keysExist, runKeygen, readRegistry } = require("../signEngine");
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -19,13 +19,25 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
   });
   win.setMenuBarVisibility(false);
+
+  // Surface any preload failure in the terminal so it is debuggable.
+  win.webContents.on("preload-error", (_e, preloadPath, error) => {
+    console.error("PRELOAD ERROR:", preloadPath, error);
+  });
+
   win.loadFile(path.join(__dirname, "index.html"));
 }
 
 ipcMain.handle("signer:status", () => ({ keysExist: keysExist() }));
+
+ipcMain.handle("signer:list", () => {
+  // Newest first.
+  return readRegistry().slice().reverse();
+});
 
 ipcMain.handle("signer:keygen", () => {
   try {
