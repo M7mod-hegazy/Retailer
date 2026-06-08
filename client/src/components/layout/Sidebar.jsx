@@ -229,12 +229,8 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                   <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180 text-zinc-900" : "text-zinc-400"}`} />
                 </button>
 
-                <div
-                  className={`grid transition-all duration-200 ease-out ${
-                    isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
+                {isExpanded && (
+                  <div>
                     <div className="flex flex-col relative pr-6 pl-2 py-1">
                       <div className="absolute right-[18px] top-2 bottom-2 w-[2px] bg-zinc-100 rounded-full" />
                       {(() => {
@@ -262,7 +258,7 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
                       })()}
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}

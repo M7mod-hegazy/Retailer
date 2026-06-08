@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, LockKeyhole, Radar, ShieldAlert, ShieldCheck, Wallet, Zap, Barcode, Receipt, CreditCard, ShoppingCart, Tag, Calculator, Banknote, Eye, EyeOff } from "lucide-react";
-import api from "../../services/api";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Eye, EyeOff, LogIn, Loader2, X, Monitor, Zap, Wallet, ShieldCheck, Barcode, Receipt, CreditCard, ShoppingCart, Tag, Banknote, Calculator, Radar, LockKeyhole, CheckCircle2, ShieldAlert, Settings2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuthStore } from "../../stores/authStore";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { usePerformanceStore, applyToDOM } from "../../stores/performanceStore";
+import api from "../../services/api";
+import PerformanceSettings from "../../components/ui/PerformanceSettings";
 
 const highlights = [
   {
@@ -40,6 +45,13 @@ export default function LoginPage() {
   const [feedback, setFeedback] = useState({ type: "idle", message: "" });
   const [focusedField, setFocusedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPerf, setShowPerf] = useState(false);
+  const perfPreset = usePerformanceStore((s) => s.preset);
+  const perfSettings = usePerformanceStore((s) => s.settings);
+
+  useEffect(() => {
+    applyToDOM(perfPreset, perfSettings);
+  }, [perfPreset, perfSettings]);
 
   useEffect(() => {
     if (feedback.type !== "success") return undefined;
@@ -262,11 +274,45 @@ export default function LoginPage() {
                     <p className="text-sm font-bold leading-relaxed">{feedback.message}</p>
                   </div>
                 )}
+
+                {/* Performance settings toggle */}
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPerf(true)}
+                    className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors"
+                  >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Graphics
+                  </button>
+                </div>
               </form>
             </div>
             
             {/* Form Bottom Footnote */}
             <p className="text-center text-slate-400 text-sm font-semibold mt-8 drop-shadow-sm">الجلسة محلية وآمنة. تم اعتماد مظهر موحد للنظام بالكامل.</p>
+
+            {/* Performance Settings Modal */}
+            {showPerf && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={() => setShowPerf(false)}>
+                <div
+                  className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-slate-200 shadow-2xl p-6"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-black text-slate-900">إعدادات الرسوميات والأداء</h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowPerf(false)}
+                      className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <PerformanceSettings />
+                </div>
+              </div>
+            )}
           </div>
           
         </div>

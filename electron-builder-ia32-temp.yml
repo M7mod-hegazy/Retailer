@@ -39,4 +39,4 @@ nsis:
   shortcutName: ElHegazi Retailer
 
 buildDependenciesFromSource: false
-npmRebuild: false
+npmRebuild: true

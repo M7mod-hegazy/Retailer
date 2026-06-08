@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -15,6 +15,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import FontSettingsTab from "./FontSettingsTab";
 import { applyFontSettings } from "../../utils/fontSettings";
 import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
+import PerformanceSettings from "../../components/ui/PerformanceSettings";
 
 const tabs = [
   { id: "identity", label: "هوية التطبيق", hint: "اسم الشركة والشعار وبيانات الفرع" },
@@ -22,6 +23,7 @@ const tabs = [
   { id: "financial", label: "المالية والضرائب", hint: "العملة والضريبة وحدود الخصم وهوامش الربح" },
   { id: "printing", label: "الطباعة", hint: "مقاسات الإيصال ومعاينة القوالب" },
   { id: "appearance", label: "المظهر", hint: "الخطوط وحجم النص ونمط الأرقام" },
+  { id: "performance", label: "الرسوميات والأداء", hint: "إعدادات الرسوميات والأداء لأنظمة التشغيل البطيئة" },
   { id: "whatsapp", label: "واتساب", hint: "ربط حساب واتساب وإرسال الرسائل للعملاء" },
   { id: "maintenance", label: "النسخ الاحتياطي والبيانات", hint: "إنشاء واستعادة وتصدير النسخ وتفريغ قاعدة البيانات" },
   { id: "help", label: "المساعدة", hint: "الدليل السريع ومراجع الدعم" },
@@ -597,6 +599,10 @@ export default function SettingsPage() {
 
             {activeTab === "appearance" && (
               <FontSettingsTab settings={settings} onChange={handleChange} />
+            )}
+
+            {activeTab === "performance" && (
+              <PerformanceSettings />
             )}
 
             {activeTab === "whatsapp" && (

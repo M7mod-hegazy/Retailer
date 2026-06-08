@@ -116,9 +116,14 @@ export default function Topbar() {
   const breadcrumbs = useBreadcrumbs(location.pathname, dynamicBreadcrumb);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
+    let id = null;
+    const start = () => { if (id == null) { fetchNotifications(); id = setInterval(fetchNotifications, 60000); } };
+    const stop = () => { if (id != null) { clearInterval(id); id = null; } };
+    // Pause notification polling while the window is hidden, resume on focus.
+    const onVisibility = () => { document.hidden ? stop() : start(); };
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [fetchNotifications]);
 
   useEffect(() => {

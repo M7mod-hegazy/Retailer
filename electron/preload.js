@@ -9,6 +9,7 @@ const allowedChannels = {
   app: ["app:set-icon"],
   server: ["server:status"],
   wa: ["wa:status", "wa:link", "wa:unlink", "wa:send", "wa:status-update"],
+  license: ["license:getStatus", "license:getHardwareId", "license:submit"],
 };
 
 const api = {

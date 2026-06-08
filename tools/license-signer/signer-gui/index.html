@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+<title>ElHegazi License Signer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f4f6f8; color: #0f172a;
+    padding: 28px; font-size: 14px;
+  }
+  h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .sub { color: #64748b; font-size: 13px; margin-bottom: 22px; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(15,23,42,.05); }
+  label { display: block; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #475569; margin: 14px 0 6px; }
+  input[type=text], input[type=date] {
+    width: 100%; padding: 11px 12px; border: 2px solid #e2e8f0; border-radius: 10px;
+    font-size: 14px; font-family: inherit; outline: none;
+  }
+  input:focus { border-color: #059669; }
+  .row { display: flex; gap: 18px; align-items: center; margin-top: 8px; }
+  .radio { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+  button.primary {
+    width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: 12px;
+    background: #059669; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer;
+  }
+  button.primary:hover { background: #047857; }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .result { margin-top: 18px; padding: 16px; border-radius: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; display: none; }
+  .result.show { display: block; }
+  .result.err { background: #fef2f2; border-color: #fecaca; }
+  .result h3 { font-size: 14px; margin-bottom: 6px; }
+  .result code { display: block; word-break: break-all; font-size: 11px; color: #334155; margin-top: 8px; background:#fff; padding:8px; border-radius:8px; border:1px solid #e2e8f0; }
+  .linkbtn { margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+  .warn { margin-top: 14px; padding: 12px; border-radius: 10px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-weight:600; display:none; }
+  .warn.show { display:block; }
+</style>
+</head>
+<body>
+  <h1>License Signer</h1>
+  <div class="sub">ElHegazi Retailer — seller tool. Paste the customer's machine code, then Generate.</div>
+
+  <div class="warn" id="warn">
+    No keypair found. Click below to create one (one-time).
+    <button class="linkbtn" id="keygenBtn">Generate keypair</button>
+  </div>
+
+  <div class="card">
+    <label for="fingerprint">Machine code</label>
+    <input type="text" id="fingerprint" placeholder="7F3A-9C21-..." autocomplete="off" />
+
+    <label for="name">Shop / customer name</label>
+    <input type="text" id="name" placeholder="Ahmed Market" autocomplete="off" />
+
+    <label>License type</label>
+    <div class="row">
+      <span class="radio"><input type="radio" name="type" value="perpetual" checked /> Perpetual</span>
+      <span class="radio"><input type="radio" name="type" value="subscription" /> Subscription</span>
+    </div>
+
+    <div id="expiryWrap" style="display:none;">
+      <label for="expires">Expires on</label>
+      <input type="date" id="expires" />
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <span class="radio"><input type="checkbox" id="isTrial" /> Mark as trial</span>
+    </div>
+
+    <button class="primary" id="genBtn">Generate license.key</button>
+
+    <div class="result" id="result"></div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let lastKeyPath = null;
+
+  async function refreshStatus() {
+    const s = await window.signerAPI.status();
+    $("warn").classList.toggle("show", !s.keysExist);
+    $("genBtn").disabled = !s.keysExist;
+  }
+  refreshStatus();
+
+  $("keygenBtn").addEventListener("click", async () => {
+    const r = await window.signerAPI.keygen();
+    if (r.ok) { alert("Keypair created at:\n" + r.privateKeyPath + "\n\nBack this up and rebuild the app."); refreshStatus(); }
+    else alert("Failed: " + r.error);
+  });
+
+  document.querySelectorAll('input[name=type]').forEach((el) =>
+    el.addEventListener("change", () => {
+      const sub = document.querySelector('input[name=type]:checked').value === "subscription";
+      $("expiryWrap").style.display = sub ? "block" : "none";
+    }),
+  );
+
+  $("genBtn").addEventListener("click", async () => {
+    const fingerprint = $("fingerprint").value.trim();
+    const name = $("name").value.trim();
+    if (!fingerprint) { alert("Enter the machine code."); return; }
+    const sub = document.querySelector('input[name=type]:checked').value === "subscription";
+    const expiresAt = sub ? ($("expires").value || null) : null;
+    const features = $("isTrial").checked ? "trial" : "full";
+
+    $("genBtn").disabled = true;
+    const r = await window.signerAPI.generate({ fingerprint, name, expiresAt, features });
+    $("genBtn").disabled = false;
+
+    const box = $("result");
+    box.classList.add("show");
+    if (r.ok) {
+      lastKeyPath = r.keyPath;
+      box.classList.remove("err");
+      box.innerHTML =
+        '<h3>✔ Saved license.key (' + r.licenseId + (r.expiresAt ? ', expires ' + r.expiresAt : ', perpetual') + ')</h3>' +
+        '<div>' + r.keyPath + '</div>' +
+        '<button class="linkbtn" id="openBtn">Open folder</button>' +
+        '<code>' + r.blob + '</code>';
+      $("openBtn").addEventListener("click", () => window.signerAPI.openFolder(lastKeyPath));
+    } else {
+      box.classList.add("err");
+      box.innerHTML = '<h3>✖ ' + r.error + '</h3>';
+    }
+  });
+</script>
+</body>
+</html>

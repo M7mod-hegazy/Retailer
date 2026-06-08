@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { usePerformanceStore } from "../../stores/performanceStore";
 import {
   Plus,
   Download,
@@ -70,16 +71,33 @@ export default function SimpleCrudPage({
   searchKeys,
   pageKey
 }) {
+  const PAGE_SIZE = 100;
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
+  const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState(() => searchParams.get("q") || "");
+  const [searchTerm, setSearchTerm] = useState(() => (searchParams.get("q") || "").trim());
   const [editingRow, setEditingRow] = useState(null);
   const [form, setForm] = useState(() => createInitialState(fields));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [permDenied, setPermDenied] = useState(false);
   const canAdd = usePermission(pageKey, 'add');
   const canEdit = usePermission(pageKey, 'edit');
+  const reduceMotion = usePerformanceStore((s) => !s.settings.animations || s.settings.reduceMotion);
+
+  // Refs let the memoized column cells read fresh values (search text, the row
+  // being edited, the latest handlers) without rebuilding the column defs on
+  // every keystroke — which previously re-rendered the whole table.
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  const editingRef = useRef(editingRow);
+  editingRef.current = editingRow;
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const startEditRef = useRef(() => {});
+  const handleDeleteRef = useRef(() => {});
 
   useEffect(() => {
     if (searchParams.has("q")) {
@@ -87,16 +105,34 @@ export default function SimpleCrudPage({
     }
   }, []);
 
-  async function loadRows() {
-    setLoading(true);
-    try {
-      const response = await api.get(endpoint);
-      setRows(response.data.data || []);
-    } catch { toast.error("تعذر تحميل البيانات"); }
-    finally { setLoading(false); }
-  }
+  // Debounce the search box into the value sent to the server.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchTerm(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
-  useEffect(() => { loadRows(); }, [endpoint]);
+  const loadRows = useCallback(async (append = false) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const offset = append ? rowsRef.current.length : 0;
+      const response = await api.get(endpoint, {
+        params: { limit: PAGE_SIZE, offset, search: searchTerm || undefined },
+      });
+      const data = response.data?.data || [];
+      setMeta(response.data?.meta || null);
+      setRows((prev) => (append ? [...prev, ...data] : data));
+    } catch { toast.error("تعذر تحميل البيانات"); }
+    finally {
+      if (append) setLoadingMore(false); else setLoading(false);
+    }
+  }, [endpoint, searchTerm]);
+
+  useEffect(() => { loadRows(false); }, [loadRows]);
+
+  // The endpoint is server-paginated only if it returns paging meta; otherwise
+  // we fall back to the previous client-side behaviour (small definition lists).
+  const serverPaginated = !!(meta && meta.total != null && meta.limit != null);
+  const hasMore = serverPaginated && rows.length < meta.total;
 
   const columns = useMemo(() => {
     const cols = [
@@ -114,7 +150,7 @@ export default function SimpleCrudPage({
           <span className={`text-sm font-bold text-slate-800 ${col.key === 'code' ? 'font-mono' : ''}`}>
             {col.render
               ? col.render(info.getValue(), info.row.original)
-              : <Highlight text={String(info.getValue() ?? '-')} query={query} />}
+              : <Highlight text={String(info.getValue() ?? '-')} query={queryRef.current} />}
           </span>
         ),
       })),
@@ -129,8 +165,8 @@ export default function SimpleCrudPage({
                 <PermissionGate page={pageKey} action="edit">
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
-                    className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                    onClick={(e) => { e.stopPropagation(); startEditRef.current(info.row.original); }}
+                    className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRef.current?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
                   >
                     <Edit3 className="h-4 w-4" />
                   </motion.button>
@@ -138,8 +174,8 @@ export default function SimpleCrudPage({
               ) : (
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                  onClick={(e) => { e.stopPropagation(); startEditRef.current(info.row.original); }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRef.current?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
                 >
                   <Edit3 className="h-4 w-4" />
                 </motion.button>
@@ -150,7 +186,7 @@ export default function SimpleCrudPage({
                 <PermissionGate page={pageKey} action="delete">
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteRef.current(info.row.original.id); }}
                     className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -159,7 +195,7 @@ export default function SimpleCrudPage({
               ) : (
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteRef.current(info.row.original.id); }}
                   className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -171,7 +207,7 @@ export default function SimpleCrudPage({
       }
     ];
     return cols;
-  }, [columnDefs, query, editingRow]);
+  }, [columnDefs]);
 
   function startCreate() {
     setEditingRow(null);
@@ -192,10 +228,14 @@ export default function SimpleCrudPage({
       } else {
         toast.success("تم الحذف بنجاح");
       }
-      loadRows();
+      loadRows(false);
       if (editingRow?.id === id) startCreate();
     } catch { toast.error("فشل الحذف - السجل مرتبط ببيانات أخرى"); }
   }
+
+  // Keep the refs the memoized table cells call pointed at the latest handlers.
+  startEditRef.current = startEdit;
+  handleDeleteRef.current = handleDelete;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -214,7 +254,7 @@ export default function SimpleCrudPage({
         toast.success("تمت الإضافة");
       }
       startCreate();
-      loadRows();
+      loadRows(false);
     } catch { toast.error("فشل الحفظ"); }
     finally { setIsSubmitting(false); }
   }
@@ -228,12 +268,15 @@ export default function SimpleCrudPage({
         {/* Base Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]" />
         
-        {/* Cinematic Shimmer Sweep */}
-        <motion.div 
-          animate={{ x: ["-150%", "200%"] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12 mix-blend-overlay"
-        />
+        {/* Cinematic Shimmer Sweep — skipped in reduced-motion mode so it
+            stops repainting forever on low-end machines. */}
+        {!reduceMotion && (
+          <motion.div
+            animate={{ x: ["-150%", "200%"] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12 mix-blend-overlay"
+          />
+        )}
         
         {/* Center Spotlight / Vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_50%_40%,transparent_0%,rgba(250,250,250,0.95)_100%)]" />
@@ -332,14 +375,26 @@ export default function SimpleCrudPage({
             transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-8 bg-white/95 backdrop-blur-3xl rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
           >
-            <DataTable 
-              columns={columns} 
-              data={rows} 
-              globalFilter={query}
+            <DataTable
+              columns={columns}
+              data={rows}
+              globalFilter={serverPaginated ? "" : query}
               setGlobalFilter={setQuery}
               loading={loading}
               onRowClick={startEdit}
             />
+            {hasMore && (
+              <div className="flex justify-center pt-5">
+                <button
+                  type="button"
+                  onClick={() => loadRows(true)}
+                  disabled={loadingMore}
+                  className="flex items-center gap-2 h-11 px-6 rounded-xl text-sm font-black text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all shadow-sm border border-slate-200 disabled:opacity-50"
+                >
+                  {loadingMore ? "جاري التحميل..." : `تحميل المزيد — ${rows.length} من ${meta.total}`}
+                </button>
+              </div>
+            )}
           </motion.div>
 
           {/* Form Container (30%) */}

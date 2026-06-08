@@ -1,0 +1,7 @@
+# NEVER commit issued-license data or generated artifacts.
+registry.json
+out/
+
+# The private key lives in ~/.retailer-keys, never here — but guard anyway.
+*.pem
+license-private*

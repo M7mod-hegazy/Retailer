@@ -2666,3 +2666,123 @@ html[data-theme="global"] {
     transform: translateX(4px);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PERFORMANCE MODES — Graphics Settings
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Image quality ── */
+.perf-img-high img {
+  image-rendering: auto;
+}
+.perf-img-medium img {
+  image-rendering: auto;
+  filter: saturate(0.92) contrast(0.95);
+}
+.perf-img-low img {
+  image-rendering: crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  filter: none !important;
+}
+
+/* ── Smooth scroll ── */
+.perf-smooth-scroll {
+  scroll-behavior: smooth;
+}
+.perf-no-smooth-scroll {
+  scroll-behavior: auto !important;
+}
+
+/* ── FPS overlay visibility ── */
+.perf-fps-on .perf-fps-overlay {
+  display: flex !important;
+}
+.perf-fps-overlay {
+  display: none;
+}
+
+/* ── Particles / orbs off (the `particles` toggle) ── */
+.perf-no-orbs .login-bg__orb,
+.perf-no-orbs .login-bg__grain,
+.perf-no-orbs .login-bg__mesh,
+.perf-no-orbs .auth-bg__orb,
+.perf-no-orbs .auth-bg__gradient,
+.perf-no-orbs [class*="orb"],
+.perf-no-orbs [class*="particle"] {
+  display: none !important;
+}
+
+/* ── Reduce motion (the `reduceMotion` toggle + OS preference) ──
+   Stops entrance animations, hover transforms and the slow ambient
+   float/spin/drift loops, without touching colours or layout. */
+.perf-reduce-motion .login-pillar,
+.perf-reduce-motion .login-animate-up,
+.perf-reduce-motion .page-wrapper {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.perf-reduce-motion .btn:hover,
+.perf-reduce-motion .kpi-card:hover,
+.perf-reduce-motion .card:hover,
+.perf-reduce-motion [class*="hover:"] {
+  transform: none !important;
+}
+
+.perf-reduce-motion [style*="animation"],
+.perf-reduce-motion .animate-\[float_10s_ease-in-out_infinite\],
+.perf-reduce-motion .animate-\[subtle-drift_4s_ease-in-out_infinite\],
+.perf-reduce-motion .animate-\[spin_50s_linear_infinite\],
+.perf-reduce-motion .animate-\[spin_40s_reverse_linear_infinite\] {
+  animation: none !important;
+}
+
+/* ── Master animations kill-switch (for the `animations` toggle) ── */
+.perf-no-animations *,
+.perf-no-animations *::before,
+.perf-no-animations *::after {
+  animation: none !important;
+  animation-duration: 0ms !important;
+  animation-delay: 0ms !important;
+  transition-property: none !important;
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+}
+
+/* Entrance elements start at opacity:0 and rely on an animation to appear —
+   force them visible so killing animations never hides content. */
+.perf-no-animations .login-animate-up,
+.perf-no-animations .login-pillar,
+.perf-no-animations .page-wrapper {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* ── Individual toggle classes ── */
+.perf-no-blur *,
+.perf-no-blur *::before,
+.perf-no-blur *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.perf-no-shadows *,
+.perf-no-shadows *::before,
+.perf-no-shadows *::after {
+  box-shadow: none !important;
+}
+
+.perf-sidebar-no-anim .sidebar-inner,
+.perf-sidebar-no-anim [class*="sidebar"] {
+  transition: none !important;
+  animation: none !important;
+}
+
+.perf-no-page-transition .page-wrapper,
+.perf-no-page-transition [class*="page-enter"],
+.perf-no-page-transition [class*="page-exit"] {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}

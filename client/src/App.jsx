@@ -1,5 +1,7 @@
-import React, { Suspense, lazy, useEffect } from "react";
+import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { MotionConfig } from "framer-motion";
+import { usePerformanceStore } from "./stores/performanceStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppShell from "./components/layout/AppShell";
 import ServerDownOverlay from "./components/ServerDownOverlay";
@@ -15,6 +17,7 @@ const NotFoundPage = lazy(() => import("./pages/error/NotFoundPage"));
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const ActivationPage = lazy(() => import("./pages/auth/ActivationPage"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
 const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
 const FinanceWorkspacePage = lazy(() => import("./pages/workspaces/FinanceWorkspacePage"));
@@ -101,8 +104,58 @@ function AuthGuard({ children }) {
   return children;
 }
 
+// Offline license gate. Asks the Electron main process (the crypto source of
+// truth) whether this PC is activated, before any app UI renders. When run
+// outside Electron (browser-only dev) or before the seller has configured a
+// signing key, licensing is not enforced so development is never blocked.
+function LicenseGate({ children }) {
+  const [state, setState] = useState({ loading: true, activated: true, status: null });
+
+  const check = useCallback(async () => {
+    const api = typeof window !== "undefined" ? window.electronAPI : null;
+    if (!api) {
+      setState({ loading: false, activated: true, status: null });
+      return;
+    }
+    try {
+      const status = await api.invoke("license:getStatus");
+      // Not-configured (no embedded key yet) and gate errors fail OPEN so a
+      // bug or un-set-up build never bricks a paying customer.
+      const activated =
+        !!status.activated ||
+        status.reason === "not_configured" ||
+        status.reason === "gate_error";
+      setState({ loading: false, activated, status });
+    } catch (_e) {
+      setState({ loading: false, activated: true, status: null });
+    }
+  }, []);
+
+  useEffect(() => {
+    check();
+  }, [check]);
+
+  if (state.loading) return <FullPageLoader />;
+  if (!state.activated) {
+    return (
+      <Suspense fallback={<FullPageLoader />}>
+        <ActivationPage status={state.status} onActivated={check} />
+      </Suspense>
+    );
+  }
+  return children;
+}
+
 export default function App() {
   const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError } = useUpdateStore();
+
+  // Bind framer-motion (JS-driven animations) to the performance settings.
+  // The CSS perf classes only affect CSS animations; framer-motion animates via
+  // requestAnimationFrame, so without this the "low" preset and the reduceMotion
+  // toggle could not calm entrance animations or `repeat: Infinity` effects.
+  const perfAnimations = usePerformanceStore((s) => s.settings.animations);
+  const perfReduceMotion = usePerformanceStore((s) => s.settings.reduceMotion);
+  const reduceMotion = !perfAnimations || perfReduceMotion;
 
   useEffect(() => {
     const cleanups = [
@@ -118,7 +171,9 @@ export default function App() {
   }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError]);
 
   return (
+    <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
     <Suspense fallback={<FullPageLoader />}>
+      <LicenseGate>
       <ServerDownOverlay />
       <Toaster position="top-left" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} />
       <ScreenLock />
@@ -225,6 +280,8 @@ export default function App() {
             }
           />
         </Routes>
+      </LicenseGate>
       </Suspense>
+    </MotionConfig>
     );
   }

@@ -4,7 +4,7 @@ const { ipcMain, app, dialog, BrowserWindow, nativeImage } = require("electron")
 const { execFileSync, execSync } = require("child_process");
 const { closeDb, getDbPath, initDb, getDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
-const waEngine = require("./whatsapp/engine");
+
 
 function safeDbPath() {
   return process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
@@ -243,42 +243,73 @@ function setupIpc(window) {
     return result;
   });
 
-  // ─── WhatsApp IPC ─────────────────────────────────────────────────────────
-  waEngine.setDbProvider(getDb);
+  // ─── WhatsApp IPC (lazy loaded) ──────────────────────────────────────────
+  let waEngine = null;
 
-  ipcMain.handle("wa:status", () => waEngine.getStatus());
+  function getWA() {
+    if (!waEngine) {
+      waEngine = require("./whatsapp/engine");
+      waEngine.setDbProvider(getDb);
+      waEngine.onStatusChange((state) => {
+        window.webContents.send("wa:status-update", state);
+      });
+    }
+    return waEngine;
+  }
+
+  ipcMain.handle("wa:status", () => getWA().getStatus());
 
   ipcMain.handle("wa:link", async () => {
-    try { await waEngine.connect(); return { success: true }; }
+    try { await getWA().connect(); return { success: true }; }
     catch (e) { return { success: false, error: e.message }; }
   });
 
   ipcMain.handle("wa:unlink", async () => {
-    try { await waEngine.disconnect(); return { success: true }; }
+    try { await getWA().disconnect(); return { success: true }; }
     catch (e) { return { success: false, error: e.message }; }
   });
 
   ipcMain.handle("wa:send", async (_event, payload = {}) => {
     try {
       const { phone, text, imageBase64, caption } = payload;
-      const jid = waEngine.normalizePhone(phone);
+      const engine = getWA();
+      const jid = engine.normalizePhone(phone);
       if (!jid) return { success: false, error: "invalid phone" };
       if (imageBase64) {
-        await waEngine.sendImage(jid, Buffer.from(imageBase64, "base64"), caption || "");
+        await engine.sendImage(jid, Buffer.from(imageBase64, "base64"), caption || "");
       } else {
-        await waEngine.sendText(jid, text || "");
+        await engine.sendText(jid, text || "");
       }
       return { success: true };
     } catch (e) { return { success: false, error: e.message }; }
   });
 
-  // Push WA status changes to renderer
-  waEngine.onStatusChange((state) => {
-    window.webContents.send("wa:status-update", state);
+  // ─── Offline license gate ────────────────────────────────────────────────
+  const licenseGate = require("./licenseGate");
+
+  ipcMain.handle("license:getStatus", () => {
+    try {
+      return licenseGate.getStatus();
+    } catch (e) {
+      return { activated: false, reason: "gate_error", error: e.message };
+    }
   });
 
-  // Auto-connect if auth exists
-  waEngine.connect().catch(() => {});
+  ipcMain.handle("license:getHardwareId", async () => {
+    try {
+      return await licenseGate.getActivationInfo();
+    } catch (e) {
+      return { configured: false, hardwareId: null, error: e.message };
+    }
+  });
+
+  ipcMain.handle("license:submit", (_event, payload = {}) => {
+    try {
+      return licenseGate.submitActivation(payload);
+    } catch (e) {
+      return { ok: false, reason: "gate_error", error: e.message };
+    }
+  });
 }
 
 module.exports = { setupIpc };

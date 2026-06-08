@@ -586,6 +586,7 @@ export default function POSPage() {
   // The banner only appears when the local server is genuinely unreachable.
   useEffect(() => {
     let alive = true;
+    let id = null;
     const check = async () => {
       try {
         await api.get("/api/health", { timeout: 2000 });
@@ -594,9 +595,14 @@ export default function POSPage() {
         if (alive) setIsOffline(true);
       }
     };
-    check();
-    const id = setInterval(check, 5000);
-    return () => { alive = false; clearInterval(id); };
+    const start = () => { if (id == null) { check(); id = setInterval(check, 5000); } };
+    const stop = () => { if (id != null) { clearInterval(id); id = null; } };
+    // Pause polling while the window is hidden/minimised, resume (and re-check
+    // immediately) when it becomes visible again.
+    const onVisibility = () => { document.hidden ? stop() : start(); };
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { alive = false; stop(); document.removeEventListener("visibilitychange", onVisibility); };
   }, []);
 
   // Restore active cart and held invoices from DB on mount.
