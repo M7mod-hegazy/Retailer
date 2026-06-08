@@ -231,6 +231,9 @@ export default function ActivationPage({ status, onActivated }) {
           <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">
             {t("license.activateSection")}
           </div>
+          <p className="text-[13px] text-emerald-700 font-semibold mb-3 leading-relaxed">
+            {t("license.filePreferred")}
+          </p>
           <textarea
             value={blob}
             onChange={(e) => setBlob(e.target.value)}

@@ -32,8 +32,11 @@
   .result.show { display: block; }
   .result.err { background: #fef2f2; border-color: #fecaca; }
   .result h3 { font-size: 14px; margin-bottom: 6px; }
-  .result code { display: block; word-break: break-all; font-size: 11px; color: #334155; margin-top: 8px; background:#fff; padding:8px; border-radius:8px; border:1px solid #e2e8f0; }
-  .linkbtn { margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+  .result code { display: block; word-break: break-all; font-size: 11px; color: #334155; margin-top: 8px; background:#fff; padding:8px; border-radius:8px; border: 1px solid #e2e8f0; }
+  .result .hint { margin-top: 10px; font-size: 12px; color: #475569; line-height: 1.5; }
+  .result .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .linkbtn { background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+  .meta { font-size: 12px; color: #64748b; margin-top: 6px; }
   .warn { margin-top: 14px; padding: 12px; border-radius: 10px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-weight:600; display:none; }
   .warn.show { display:block; }
   .listhead { display:flex; align-items:center; justify-content:space-between; margin: 26px 0 10px; }
@@ -170,12 +173,24 @@
     if (r.ok) {
       lastKeyPath = r.keyPath;
       box.classList.remove("err");
+      const code = r.activationCode || r.blob;
       box.innerHTML =
         '<h3>✔ Saved license.key (' + r.licenseId + (r.expiresAt ? ', expires ' + r.expiresAt : ', perpetual') + ')</h3>' +
-        '<div>' + r.keyPath + '</div>' +
-        '<button class="linkbtn" id="openBtn">Open folder</button>' +
-        '<code>' + r.blob + '</code>';
+        '<div class="meta">' + r.keyPath + ' · ' + code.length + ' chars</div>' +
+        '<div class="hint"><strong>Best for offline PCs:</strong> copy <code>license.key</code> to a USB stick, or send the QR image. Typing the code is only a fallback.</div>' +
+        '<div class="actions">' +
+          '<button class="linkbtn" id="openBtn">Open folder</button>' +
+          '<button class="linkbtn" id="copyFileBtn">Copy license.key path</button>' +
+          '<button class="linkbtn" id="copyCodeBtn">Copy activation code</button>' +
+        '</div>' +
+        '<code id="activationCode">' + code + '</code>';
       $("openBtn").addEventListener("click", () => window.signerAPI.openFolder(lastKeyPath));
+      $("copyFileBtn").addEventListener("click", () => window.signerAPI.copyText(r.keyPath));
+      $("copyCodeBtn").addEventListener("click", async () => {
+        await window.signerAPI.copyText(code);
+        $("copyCodeBtn").textContent = "Copied";
+        window.setTimeout(() => { $("copyCodeBtn").textContent = "Copy activation code"; }, 1500);
+      });
       refreshList();
     } else {
       box.classList.add("err");

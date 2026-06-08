@@ -20,6 +20,7 @@
     "windows:harden-acl": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/harden-windows-policy.ps1",
     "bootstrap": "npm install --workspaces",
     "kill:retailer-processes": "node ./electron/scripts/kill-retailer-processes.js",
+    "installer:art": "node ./electron/scripts/make-installer-art.js",
     "license:keygen": "node tools/license-signer/keygen.js",
     "sign": "node tools/license-signer/sign-license.js",
     "sign:gui": "cross-env ELECTRON_RUN_AS_NODE= electron tools/license-signer/signer-gui/main.js",

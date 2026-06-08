@@ -6,7 +6,7 @@
 // identical everywhere.
 
 const crypto = require("crypto");
-const { decodeToken, canonicalBytes } = require("./tokenCodec");
+const { decodeToken } = require("./tokenCodec");
 const { getPublicKeyPem } = require("./publicKey");
 
 // Tolerate small backwards clock jitter (NTP corrections, DST) before treating
@@ -45,8 +45,9 @@ function verifyToken(blob, options = {}) {
 
   let payload;
   let signatureB64;
+  let signedBytes;
   try {
-    ({ payload, signatureB64 } = decodeToken(blob));
+    ({ payload, signatureB64, signedBytes } = decodeToken(blob));
   } catch (_e) {
     return fail(REASONS.MALFORMED);
   }
@@ -59,7 +60,7 @@ function verifyToken(blob, options = {}) {
     const publicKey = crypto.createPublicKey(publicKeyPem);
     signatureOk = crypto.verify(
       null,
-      canonicalBytes(payload),
+      signedBytes,
       publicKey,
       Buffer.from(signatureB64, "base64"),
     );

@@ -5,7 +5,7 @@
 //
 // Never bundled into the customer app — this is a seller-only tool.
 
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, clipboard } = require("electron");
 const path = require("path");
 const { generate, keysExist, runKeygen, readRegistry } = require("../signEngine");
 
@@ -62,6 +62,7 @@ ipcMain.handle("signer:generate", async (_event, payload = {}) => {
       keyPath: result.keyPath,
       qrPath: result.qrPath,
       blob: result.blob,
+      activationCode: result.activationCode,
       expiresAt: result.payload.expiresAt,
     };
   } catch (e) {
@@ -71,6 +72,11 @@ ipcMain.handle("signer:generate", async (_event, payload = {}) => {
 
 ipcMain.handle("signer:openFolder", (_event, filePath) => {
   if (filePath) shell.showItemInFolder(filePath);
+  return { ok: true };
+});
+
+ipcMain.handle("signer:copyText", (_event, text) => {
+  clipboard.writeText(String(text || ""));
   return { ok: true };
 });
 

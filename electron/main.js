@@ -4,8 +4,29 @@ const { createTray, destroyTray } = require("./tray");
 const { buildMenu } = require("./menuBuilder");
 const { setupIpc } = require("./ipcHandlers");
 const { startEmbeddedServer, stopEmbeddedServer } = require("./serverManager");
+const { ensurePackagedEnv } = require("./ensurePackagedEnv");
+const { logError, getLogPath } = require("./crashLogger");
+const { showErrorScreen } = require("./errorScreen");
 
 const isDev = !app.isPackaged;
+
+// ── Global last-resort error capture ───────────────────────────────────────
+// On older Windows (e.g. Win7 via a compatibility shim) the renderer can die
+// silently. Capture everything so the user always sees *something* readable
+// and we always leave a log file behind for support.
+process.on("uncaughtException", (err) => {
+  logError("uncaughtException (main process)", err);
+  try {
+    showErrorScreen({
+      title: "خطأ غير متوقع في البرنامج",
+      detail: (err && err.stack) || String(err),
+    });
+  } catch (_e) {}
+});
+
+process.on("unhandledRejection", (reason) => {
+  logError("unhandledRejection (main process)", reason);
+});
 if (process.platform === "win32") {
   app.setAppUserModelId("com.elhegazi.retailer");
 }
@@ -81,6 +102,13 @@ function createSplashWindow() {
   splashWindow.once("ready-to-show", () => splashWindow.show());
 }
 
+function destroySplash() {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.destroy();
+    splashWindow = null;
+  }
+}
+
 function loadWindowState() {
   try {
     const stateFile = path.join(app.getPath("userData"), "window-state.json");
@@ -125,6 +153,45 @@ function createMainWindow() {
     },
   });
 
+  // ── Renderer failure capture ─────────────────────────────────────────────
+  // Any of these used to result in a silent blank window. Now they log and
+  // render a visible error screen so failures are diagnosable on the customer
+  // machine (especially Win7 under the compatibility shim).
+  let shownReady = false;
+
+  const wc = mainWindow.webContents;
+
+  wc.on("did-fail-load", (_e, errorCode, errorDescription, validatedURL) => {
+    // -3 = ERR_ABORTED (e.g. an in-app navigation was cancelled) — not a crash.
+    if (errorCode === -3) return;
+    const detail = `did-fail-load\ncode: ${errorCode}\ndesc: ${errorDescription}\nurl: ${validatedURL}`;
+    logError("Renderer did-fail-load", new Error(detail));
+    destroySplash();
+    showErrorScreen({
+      title: "فشل تحميل واجهة البرنامج",
+      friendly: "تعذّر تحميل واجهة التطبيق. قد تكون ملفات البرنامج ناقصة أو غير متوافقة مع نظام التشغيل.",
+      detail,
+    });
+  });
+
+  wc.on("render-process-gone", (_e, details) => {
+    const detail = `render-process-gone\nreason: ${details && details.reason}\nexitCode: ${details && details.exitCode}`;
+    logError("Renderer process gone", new Error(detail));
+    destroySplash();
+    showErrorScreen({
+      title: "توقّف عرض البرنامج بشكل مفاجئ",
+      friendly: "انهارت عملية عرض الواجهة. غالباً بسبب توافق نظام التشغيل (Windows 7) أو تعريف كرت الشاشة.",
+      detail,
+    });
+  });
+
+  // Forward renderer console errors into the log file for remote diagnosis.
+  wc.on("console-message", (_e, level, message, line, sourceId) => {
+    if (level >= 3) {
+      logError("Renderer console error", new Error(`${message}\n  at ${sourceId}:${line}`));
+    }
+  });
+
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (isDev && devUrl) {
     mainWindow.loadURL(devUrl);
@@ -134,7 +201,26 @@ function createMainWindow() {
     );
   }
 
+  // Watchdog: if the window never becomes ready (stuck render pipeline), don't
+  // leave the user staring at a frozen splash — surface a readable error.
+  const readyWatchdog = setTimeout(() => {
+    if (!shownReady) {
+      logError(
+        "ready-to-show watchdog timeout",
+        new Error("Main window did not become ready within 20s — renderer likely failed to paint."),
+      );
+      destroySplash();
+      showErrorScreen({
+        title: "لم تُفتح واجهة البرنامج",
+        friendly: "استغرق تحميل الواجهة وقتاً طويلاً ولم تظهر. قد يكون النظام غير متوافق أو تعريف كرت الشاشة بحاجة لتحديث.",
+        detail: "Main window 'ready-to-show' did not fire within 20 seconds.",
+      });
+    }
+  }, 20000);
+
   mainWindow.once("ready-to-show", () => {
+    shownReady = true;
+    clearTimeout(readyWatchdog);
     // Destroy splash before showing main window
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.destroy();
@@ -192,12 +278,7 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
-    if (!process.env.DB_PATH) {
-      const programDataRoot = process.env.ProgramData || app.getPath("appData");
-      const appRoot = path.join(programDataRoot, "ElHegaziRetailer");
-      process.env.DB_PATH = path.join(appRoot, "data", "retailer.db");
-      process.env.UPLOADS_DIR = appRoot;
-    }
+    if (!isDev) ensurePackagedEnv();
 
     // Show splash immediately so the user sees feedback
     createSplashWindow();
@@ -209,15 +290,18 @@ if (!gotTheLock) {
         await startEmbeddedServer();
       }
     } catch (err) {
-      // Server failed to start — show error and quit
-      if (splashWindow && !splashWindow.isDestroyed()) {
-        splashWindow.destroy();
-      }
-      dialog.showErrorBox(
-        "خطأ في تشغيل البرنامج",
-        `فشل تشغيل الخادم الداخلي:\n\n${err.message}\n\nيرجى إعادة المحاولة أو التواصل مع الدعم الفني.`,
-      );
-      app.quit();
+      // Server failed to start — log it, show a readable error screen, and keep
+      // it open (don't instantly quit) so the user can read/copy the details.
+      logError("Embedded server failed to start", err);
+      destroySplash();
+      const win = showErrorScreen({
+        title: "فشل تشغيل الخادم الداخلي",
+        friendly: "تعذّر بدء تشغيل قاعدة البيانات أو الخادم الداخلي للبرنامج.",
+        detail: (err && err.stack) || (err && err.message) || String(err),
+      });
+      // Quit once the user closes the error window.
+      if (win) win.on("closed", () => app.quit());
+      else app.quit();
       return;
     }
 

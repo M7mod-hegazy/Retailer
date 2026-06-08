@@ -14,7 +14,7 @@ files:
   - "!**/*.map"
 
 directories:
-  output: release
+  output: release/win7-build-x64
 
 asar: true
 asarUnpack:
@@ -26,12 +26,8 @@ win:
     - target: nsis
       arch:
         - x64
-        - ia32
 
-artifactName: ${productName}-${version}-${arch}.exe
-
-linux:
-  icon: electron/assets
+artifactName: 2_INSTALL_SECOND_ElHegazi-Retailer-x64.exe
 
 nsis:
   oneClick: false
@@ -42,7 +38,9 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: ElHegazi Retailer
   menuCategory: ElHegazi
-  runAfterFinish: true
+  # Do NOT auto-launch on Win7: the compatibility shim flag must be enabled on
+  # the exe first (see WIN7-TEST/STEPS.txt), otherwise it would crash on finish.
+  runAfterFinish: false
   deleteAppDataOnUninstall: false
   installerIcon: electron/assets/icon.ico
   uninstallerIcon: electron/assets/icon.ico
@@ -56,7 +54,5 @@ nsis:
     - ar_SA
     - en_US
 
-# Use prebuilt native binaries (better-sqlite3) instead of compiling from source.
-# Compiling would require Visual Studio Build Tools; prebuilds exist for both x64 and ia32.
 buildDependenciesFromSource: false
 npmRebuild: true

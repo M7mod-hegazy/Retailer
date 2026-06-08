@@ -4,7 +4,13 @@
 const crypto = require("crypto");
 const { signLicense, generateKeyPair } = require("../../shared/licensing/signLicense");
 const { verifyToken, REASONS } = require("../../shared/licensing/verifyLicense");
-const { decodeToken, encodeToken } = require("../../shared/licensing/tokenCodec");
+const {
+  canonicalize,
+  decodeToken,
+  encodeToken,
+  encodeTokenV2,
+  formatActivationCode,
+} = require("../../shared/licensing/tokenCodec");
 
 const HW = "a".repeat(32); // this machine's fingerprint
 const OTHER_HW = "b".repeat(32);
@@ -50,10 +56,39 @@ describe("verifyToken", () => {
   test("rejects a tampered payload (signature no longer matches)", () => {
     const { payload, signatureB64 } = decodeToken(sign());
     payload.features = "enterprise"; // tamper
-    const forged = encodeToken(payload, signatureB64);
+    const forged = encodeTokenV2(payload, Buffer.from(signatureB64, "base64"));
     const res = verifyToken(forged, opts());
     expect(res.valid).toBe(false);
     expect(res.reason).toBe(REASONS.BAD_SIGNATURE);
+  });
+
+  test("new licenses use the shorter RTL2 format", () => {
+    const blob = sign();
+    expect(blob.startsWith("RTL2.")).toBe(true);
+    expect(blob.length).toBeLessThan(220);
+  });
+
+  test("accepts legacy RTL1 licenses", () => {
+    const payload = {
+      v: 1,
+      hardwareId: HW,
+      issuedTo: "Legacy Shop",
+      licenseId: "L-000099",
+      issuedAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: null,
+      features: "full",
+    };
+    const privateKey = crypto.createPrivateKey(keys.privateKeyPem);
+    const signature = crypto.sign(null, Buffer.from(canonicalize(payload), "utf8"), privateKey);
+    const rtl1 = encodeToken(payload, signature.toString("base64"));
+    const res = verifyToken(rtl1, opts());
+    expect(res.valid).toBe(true);
+  });
+
+  test("accepts activation codes with optional dash grouping", () => {
+    const blob = formatActivationCode(sign());
+    const res = verifyToken(blob, opts());
+    expect(res.valid).toBe(true);
   });
 
   test("rejects a license signed by a different (attacker) key", () => {

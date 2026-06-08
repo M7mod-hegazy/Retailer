@@ -10,6 +10,7 @@
 const { app, Tray, Menu, shell, dialog, nativeImage } = require("electron");
 const path = require("path");
 const { startEmbeddedServer, stopEmbeddedServer } = require("./serverManager");
+const { ensurePackagedEnv } = require("./ensurePackagedEnv");
 
 const PORT = Number(process.env.PORT || 5000);
 const URL = `http://127.0.0.1:${PORT}`;
@@ -43,12 +44,7 @@ if (!gotTheLock) {
   app.on("second-instance", () => shell.openExternal(URL));
 
   app.whenReady().then(async () => {
-    if (!process.env.DB_PATH) {
-      const programDataRoot = process.env.ProgramData || app.getPath("appData");
-      const appRoot = path.join(programDataRoot, "ElHegaziRetailer");
-      process.env.DB_PATH = path.join(appRoot, "data", "retailer.db");
-      process.env.UPLOADS_DIR = appRoot;
-    }
+    ensurePackagedEnv();
 
     try {
       await startEmbeddedServer();

@@ -14,6 +14,7 @@ const path = require("path");
 const QRCode = require("qrcode");
 
 const { signLicense, generateKeyPair, normalizeFingerprint } = require("../../shared/licensing/signLicense");
+const { formatActivationCode } = require("../../shared/licensing/tokenCodec");
 
 // Private key lives outside the repo so it can never be committed by accident.
 const KEYS_DIR = process.env.RETAILER_KEYS_DIR || path.join(os.homedir(), ".retailer-keys");
@@ -134,7 +135,14 @@ async function generate({ fingerprint, name, expiresAt = null, features = "full"
   });
   writeRegistry(registry);
 
-  return { blob, licenseId: id, keyPath, qrPath, payload };
+  return {
+    blob,
+    activationCode: formatActivationCode(blob),
+    licenseId: id,
+    keyPath,
+    qrPath,
+    payload,
+  };
 }
 
 module.exports = {

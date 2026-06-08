@@ -5,7 +5,11 @@
 // app — it is only invoked from tools/license-signer/ on the seller's PC.
 
 const crypto = require("crypto");
-const { PAYLOAD_VERSION, canonicalBytes, encodeToken } = require("./tokenCodec");
+const {
+  PAYLOAD_VERSION_V2,
+  canonicalBytes,
+  encodeTokenV2,
+} = require("./tokenCodec");
 
 // Generate a fresh Ed25519 keypair. The PRIVATE key is the seller's secret and
 // must be stored outside the repo; the PUBLIC key gets embedded in the app.
@@ -41,7 +45,7 @@ function signLicense({
   if (!privateKeyPem) throw new Error("missing_private_key");
 
   const payload = {
-    v: PAYLOAD_VERSION,
+    v: PAYLOAD_VERSION_V2,
     hardwareId,
     issuedTo: String(issuedTo || "").trim() || null,
     licenseId: String(licenseId || "").trim() || null,
@@ -51,9 +55,10 @@ function signLicense({
   };
 
   const privateKey = crypto.createPrivateKey(privateKeyPem);
+  const message = canonicalBytes(payload);
   // Ed25519 requires the algorithm argument to be null.
-  const signature = crypto.sign(null, canonicalBytes(payload), privateKey);
-  const blob = encodeToken(payload, signature.toString("base64"));
+  const signature = crypto.sign(null, message, privateKey);
+  const blob = encodeTokenV2(payload, signature);
 
   return { blob, payload };
 }

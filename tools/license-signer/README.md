@@ -31,7 +31,14 @@ npm run sign:gui
 ```
 
 Both write `out/<shop>/license.key` (+ a QR) and append to `registry.json`.
-Send `license.key` back to the customer; they load it on the activation screen.
+
+**Delivering to the customer (especially offline PCs):**
+
+1. **USB / file** — send `license.key`; the customer picks it on the activation screen. Easiest.
+2. **QR image** — send `license.png`; scan or transfer the image.
+3. **Paste code** — shorter `RTL2` activation code (~170 chars). Dashes/spaces are ignored.
+
+Old `RTL1` licenses still work if you issued them before the compact format.
 
 ## Files
 
