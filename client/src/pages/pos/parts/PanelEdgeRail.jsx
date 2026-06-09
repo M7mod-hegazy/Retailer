@@ -1,31 +1,56 @@
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Receipt } from "lucide-react";
 
 /**
- * Thin vertical bar that sits on the inner edge of the POS invoice panel.
- * Doubles as a drag-to-resize grip (when expanded) and hosts the collapse/expand
- * toggle. `panelSide` is which side of the screen the panel occupies so the
- * chevron points the right way ("right" in list view, "left" in grid view).
+ * Control that sits on the inner edge of the POS invoice panel.
+ *
+ * - Expanded: a clearly grabbable vertical grip (drag to resize the panel) with a
+ *   collapse button at the top.
+ * - Collapsed: a distinct dark, labeled tab ("لوحة الفاتورة") so it is visually
+ *   unmistakable from the global navigation sidebar's plain chevron tab.
+ *
+ * `panelSide` is which side of the screen the panel occupies so the chevrons point
+ * the right way ("right" in list view, "left" in grid view).
  */
 export default function PanelEdgeRail({ collapsed, onToggle, onResizeStart, panelSide = "right" }) {
-  const CollapseIcon = panelSide === "right" ? ChevronRight : ChevronLeft;
   const ExpandIcon = panelSide === "right" ? ChevronLeft : ChevronRight;
-  const Icon = collapsed ? ExpandIcon : CollapseIcon;
+  const CollapseIcon = panelSide === "right" ? ChevronRight : ChevronLeft;
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        title="إظهار لوحة الفاتورة"
+        className="group relative z-30 shrink-0 self-stretch w-11 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white hover:bg-slate-800 transition-colors"
+      >
+        <ExpandIcon className="h-5 w-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+        <span className="flex items-center gap-2 [writing-mode:vertical-rl] rotate-180 text-[11px] font-black tracking-wider">
+          <Receipt className="h-3.5 w-3.5 text-emerald-400" />
+          لوحة الفاتورة
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div
-      onMouseDown={collapsed ? undefined : onResizeStart}
-      title={collapsed ? "إظهار لوحة الفاتورة" : "اسحب لتغيير عرض اللوحة"}
-      className={`relative z-30 shrink-0 w-2.5 self-stretch bg-white border-x border-slate-100 ${collapsed ? "" : "cursor-col-resize hover:bg-emerald-50"}`}
+      onMouseDown={onResizeStart}
+      title="اسحب لتغيير عرض اللوحة"
+      className="group relative z-30 shrink-0 self-stretch w-4 flex flex-col items-center bg-slate-50 border-x border-slate-200 cursor-col-resize hover:bg-emerald-50 transition-colors"
     >
       <button
         type="button"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        title={collapsed ? "إظهار لوحة الفاتورة" : "طي لوحة الفاتورة"}
-        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-1/2 flex h-12 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-800 transition-colors"
+        title="طي لوحة الفاتورة"
+        className="mt-2.5 flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-800 transition-colors"
       >
-        <Icon className="h-3.5 w-3.5" />
+        <CollapseIcon className="h-4 w-4" />
       </button>
+      <span className="my-auto flex items-center justify-center text-slate-300 group-hover:text-emerald-500 transition-colors pointer-events-none">
+        <GripVertical className="h-5 w-5" />
+      </span>
     </div>
   );
 }
