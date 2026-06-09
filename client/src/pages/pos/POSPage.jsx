@@ -2,12 +2,8 @@
 import {
   AlertTriangle,
   ArrowDownCircle,
-  ArrowUpDown,
   Banknote,
-  ChevronLeft,
   ChevronDown,
-  ChevronRight,
-  ChevronUp,
   CreditCard,
   Gift,
   Image as ImageIcon,
@@ -16,7 +12,6 @@ import {
   Minus,
   PackageCheck,
   PauseCircle,
-  PlayCircle,
   Plus,
   Printer,
   Receipt,
@@ -64,6 +59,10 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import QuickAddLeadPopover from "./QuickAddLeadPopover";
+import GalleryModal from "./parts/GalleryModal";
+import HeldDropdown from "./parts/HeldDropdown";
+import FieldLabel from "./parts/FieldLabel";
+import SortTh from "./parts/SortTh";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
@@ -77,95 +76,6 @@ function resolveImageUrl(u) {
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
-
-function GalleryModal({ open, onClose, images, idx, setIdx, zoom, setZoom }) {
-  if (!open || !images.length) return null;
-  const current = images[idx];
-  return (
-    <Modal open={open} onClose={onClose} title="معاينة الصورة" size="lg">
-      <div className="flex flex-col items-center gap-3 p-3 bg-slate-900 rounded-lg" style={{ minHeight: 320 }}>
-        <div
-          className="flex items-center justify-center w-full overflow-hidden rounded-md"
-          style={{ minHeight: 260, maxHeight: "60vh" }}
-        >
-          <img
-            src={current}
-            alt="product"
-            style={{
-              transform: `scale(${zoom})`,
-              transition: "transform 0.2s ease",
-              maxWidth: "100%",
-              maxHeight: "60vh",
-              objectFit: "contain",
-            }}
-            className="rounded-md"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap justify-center">
-          <button
-            type="button"
-            onClick={() => { setIdx(i => Math.max(0, i - 1)); setZoom(1); }}
-            disabled={idx === 0}
-            className="p-2 rounded-full bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom(z => parseFloat(Math.max(0.5, z - 0.25).toFixed(2)))}
-            className="px-3 py-1.5 rounded-sm bg-slate-700 text-white text-2sm font-bold hover:bg-slate-600 transition-colors"
-          >
-            -
-          </button>
-          <span className="text-white text-[11px] font-mono w-10 text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            type="button"
-            onClick={() => setZoom(z => parseFloat(Math.min(4, z + 0.25).toFixed(2)))}
-            className="px-3 py-1.5 rounded-sm bg-slate-700 text-white text-2sm font-bold hover:bg-slate-600 transition-colors"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom(1)}
-            className="px-3 py-1.5 rounded-sm bg-slate-600 text-slate-300 text-[11px] font-bold hover:bg-slate-500 transition-colors"
-          >
-            100%
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIdx(i => Math.min(images.length - 1, i + 1)); setZoom(1); }}
-            disabled={idx === images.length - 1}
-            className="p-2 rounded-full bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        </div>
-
-        {images.length > 1 && (
-          <div className="flex gap-2 flex-wrap justify-center">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => { setIdx(i); setZoom(1); }}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                  i === idx ? "bg-white" : "bg-slate-600 hover:bg-slate-400"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-        {images.length > 1 && (
-          <span className="text-slate-400 text-[11px] font-mono">{idx + 1} / {images.length}</span>
-        )}
-      </div>
-    </Modal>
-  );
-}
 
 function formatMoney(value) {
   return Number(value || 0).toLocaleString("en-US", {
@@ -196,45 +106,6 @@ function toDateInput(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
-function HeldDropdown({ heldInvoices, onResume, onDiscard, onClose }) {
-  if (!heldInvoices.length) return null;
-  return (
-    <div className="absolute left-0 right-0 top-full z-50 mt-2 min-w-[320px] overflow-hidden rounded-xl border border-amber-200 bg-white shadow-[0_12px_48px_-8px_rgba(0,0,0,0.2)]">
-      <div className="max-h-[300px] overflow-y-auto p-2 custom-scrollbar">
-        {heldInvoices.map((h) => (
-          <div key={h.id} className="flex items-center gap-3 rounded-xl px-4 py-3.5 hover:bg-amber-50 transition-colors border-b border-slate-100 last:border-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-              <PauseCircle className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-slate-800 truncate">{h.customer?.name || "زبون نقدي"}</span>
-                <span className="font-mono text-sm font-black text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">{h.linesCount} أصناف</span>
-                <span className="text-[11px] text-slate-400 font-mono">{formatArabicDateTime(new Date(h.heldAt))}</span>
-              </div>
-            </div>
-            <div className="flex gap-1.5 shrink-0">
-              <PermissionGate page="pos" action="hold">
-                <button onClick={() => { onResume(h.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-[0.98]" title="استئناف">
-                  <PlayCircle className="h-5 w-5" />
-                </button>
-              </PermissionGate>
-              <PermissionGate page="pos" action="void">
-                <button onClick={() => onDiscard(h.id)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all active:scale-[0.98]" title="حذف">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </PermissionGate>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const WALK_IN_CUSTOMER = { id: null, name: "زبون نقدي", phone: "", opening_balance: 0 };
 const DEFAULT_WAREHOUSE = { id: "default", name: "المخزن الرئيسي" };
 
@@ -255,45 +126,6 @@ const PAYMENT_STATUS_LABELS = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function FieldLabel({ step, children, isActive }) {
-  return (
-    <div className="flex items-center gap-1.5 mb-1.5">
-      {step && (
-        <span className={`inline-flex h-[18px] w-[18px] items-center justify-center border text-[9px] font-black leading-none shrink-0 transition-all duration-150 ${
-          isActive ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-zinc-700 text-zinc-500"
-        }`}>
-          {step}
-        </span>
-      )}
-      <span className={`text-[11px] font-black uppercase tracking-[0.12em] leading-none transition-colors ${isActive ? "text-emerald-400" : "text-zinc-500"}`}>{children}</span>
-    </div>
-  );
-}
-
-
-
-function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resizableKey, className = "" }) {
-  const active = sortConfig.key === sortKey;
-  return (
-    <th
-      className={`relative select-none px-2 py-2 text-right text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors ${className}`}
-      style={{ width: width ? `${width}px` : undefined, minWidth: width ? `${width}px` : undefined, maxWidth: width ? `${width}px` : undefined }}
-    >
-      <div className="inline-flex items-center gap-1 cursor-pointer" onClick={() => onSort && onSort(sortKey)}>
-        {label}
-        {onSort && (active
-          ? sortConfig.dir === "asc" ? <ChevronUp className="h-3 w-3 text-slate-900" /> : <ChevronDown className="h-3 w-3 text-slate-900" />
-          : <ArrowUpDown className="h-3 w-3 opacity-20" />)}
-      </div>
-      {resizableKey && onResizeStart && (
-        <div
-          onMouseDown={(e) => onResizeStart(e, resizableKey)}
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-slate-400 z-10 transition-colors"
-        />
-      )}
-    </th>
-  );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
