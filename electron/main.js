@@ -5,10 +5,38 @@ const { buildMenu } = require("./menuBuilder");
 const { setupIpc } = require("./ipcHandlers");
 const { startEmbeddedServer, stopEmbeddedServer } = require("./serverManager");
 const { ensurePackagedEnv } = require("./ensurePackagedEnv");
-const { logError, getLogPath } = require("./crashLogger");
+const { logError, getLogPath, resolveLogDir } = require("./crashLogger");
 const { showErrorScreen } = require("./errorScreen");
 
 const isDev = !app.isPackaged;
+
+// ── Win7 / legacy-GPU stability + NATIVE crash capture ─────────────────────
+// The Windows "has stopped working" (WER) dialog comes from a *native* crash
+// that happens before any JS error handler can run. Two mitigations:
+//   1) Disable GPU / hardware acceleration. An instant crash on launch under a
+//      Win7 compatibility shim is most often the Chromium GPU process failing
+//      against old/unsupported display drivers. Forcing software rendering
+//      (SwiftShader) avoids it.
+//   2) Capture native minidumps + Chromium logs so even a hard crash leaves a
+//      readable trace next to our normal log file.
+try {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+  app.commandLine.appendSwitch("in-process-gpu");
+
+  const diagDir = resolveLogDir();
+  try { app.setPath("crashDumps", diagDir); } catch (_e) {}
+  const { crashReporter } = require("electron");
+  crashReporter.start({ submitURL: "", uploadToServer: false, compress: false });
+
+  // Chromium's own log — records GPU/ANGLE init failures that explain the crash.
+  app.commandLine.appendSwitch("enable-logging");
+  app.commandLine.appendSwitch("log-file", path.join(diagDir, "chrome-debug.log"));
+  logError("startup", new Error(`Diagnostic build starting. Logs -> ${diagDir}`));
+} catch (e) {
+  logError("diagnostic/GPU setup failed", e);
+}
 
 // ── Global last-resort error capture ───────────────────────────────────────
 // On older Windows (e.g. Win7 via a compatibility shim) the renderer can die

@@ -1,4 +1,4 @@
-const { BrowserWindow } = require("electron");
+const { BrowserWindow, dialog } = require("electron");
 const { getLogPath } = require("./crashLogger");
 
 let errorWindow = null;
@@ -161,6 +161,17 @@ function showErrorScreen(opts = {}) {
     detail: opts.detail || "Unknown error",
     logPath: getLogPath(),
   };
+
+  // Native Win32 message box FIRST. This does not use Chromium at all, so it
+  // stays readable even when the renderer can't paint (the exact Win7 case
+  // where the HTML error window shows up black). This is the error text the
+  // user can actually read and screenshot.
+  try {
+    dialog.showErrorBox(
+      data.title,
+      `${data.friendly}\n\n${data.detail}\n\nLog file:\n${data.logPath}`,
+    );
+  } catch (_e) {}
 
   try {
     if (errorWindow && !errorWindow.isDestroyed()) {
