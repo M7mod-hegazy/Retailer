@@ -24,9 +24,10 @@ export default function PosStickyTotalBar({
   onPrimary,
   primaryLabel = "طباعة ومراجعة",
   maxWidth = 1100,
+  forceShow = false,
 }) {
   const narrow = useIsNarrowViewport(maxWidth);
-  if (!narrow || !itemCount) return null;
+  if ((!narrow && !forceShow) || !itemCount) return null;
 
   return (
     <div

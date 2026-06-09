@@ -63,6 +63,8 @@ import GalleryModal from "./parts/GalleryModal";
 import HeldDropdown from "./parts/HeldDropdown";
 import FieldLabel from "./parts/FieldLabel";
 import SortTh from "./parts/SortTh";
+import PanelEdgeRail from "./parts/PanelEdgeRail";
+import { useIsNarrowViewport } from "../../hooks/useIsNarrowViewport";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
@@ -252,6 +254,49 @@ export default function POSPage() {
   const [activeMultiPayments, setActiveMultiPayments] = useState([]);
   const [multiModalOpen, setMultiModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState("detailed");
+
+  // ── Invoice panel (customer + summary + payment) width / collapse control ──────
+  // Per-machine prefs, like the rest of the layout. The panel auto-collapses on
+  // narrow/square screens; the user can still expand it for the session, and when
+  // collapsed the sticky total bar keeps the due total + primary action visible.
+  const POS_PANEL_WIDTH_KEY = "retailer.pos.panelWidth";
+  const POS_PANEL_COLLAPSED_KEY = "retailer.pos.panelCollapsed";
+  const [panelWidth, setPanelWidth] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem(POS_PANEL_WIDTH_KEY)); return (typeof v === "number" && v >= 320 && v <= 620) ? v : 400; } catch { return 400; }
+  });
+  const [panelCollapsed, setPanelCollapsed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(POS_PANEL_COLLAPSED_KEY)) === true; } catch { return false; }
+  });
+  const [panelManualOpen, setPanelManualOpen] = useState(false);
+  const panelNarrow = useIsNarrowViewport(1100);
+  const panelEffectiveCollapsed = panelManualOpen ? false : (panelCollapsed || panelNarrow);
+  useEffect(() => { try { localStorage.setItem(POS_PANEL_WIDTH_KEY, JSON.stringify(panelWidth)); } catch {} }, [panelWidth]);
+  useEffect(() => { try { localStorage.setItem(POS_PANEL_COLLAPSED_KEY, JSON.stringify(panelCollapsed)); } catch {} }, [panelCollapsed]);
+  const collapsePanel = useCallback(() => { setPanelManualOpen(false); setPanelCollapsed(true); }, []);
+  const expandPanel = useCallback(() => { setPanelManualOpen(true); setPanelCollapsed(false); }, []);
+  const togglePanel = useCallback(() => { (panelEffectiveCollapsed ? expandPanel : collapsePanel)(); }, [panelEffectiveCollapsed, expandPanel, collapsePanel]);
+  const panelResizingRef = useRef(false);
+  const startPanelResize = useCallback((e, edge /* 'left' | 'right' */) => {
+    e.preventDefault();
+    panelResizingRef.current = true;
+    const startX = e.clientX;
+    const startW = panelWidth;
+    document.body.classList.add("cursor-col-resize", "select-none");
+    const onMove = (mv) => {
+      if (!panelResizingRef.current) return;
+      const raw = mv.clientX - startX;
+      const delta = edge === "left" ? -raw : raw;
+      setPanelWidth(Math.min(620, Math.max(320, startW + delta)));
+    };
+    const onUp = () => {
+      panelResizingRef.current = false;
+      document.body.classList.remove("cursor-col-resize", "select-none");
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [panelWidth]);
   const [multiCash, setMultiCash] = useState("");
   const [multiCredit, setMultiCredit] = useState("");
   const [customPayMethods, setCustomPayMethods] = useState([]);
@@ -1355,6 +1400,7 @@ export default function POSPage() {
           errorCount={blockingErrorCount}
           disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
           onPrimary={() => setPrintPreview(true)}
+          forceShow={panelEffectiveCollapsed}
         />
         {staleHeldAlert && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
@@ -1474,7 +1520,10 @@ export default function POSPage() {
         <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
           
           {/* Right Sidebar (Customer, Summary, Payment) */}
-          <aside className="w-[400px] shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in">
+          <aside
+            style={panelEffectiveCollapsed ? undefined : { width: panelWidth }}
+            className={`shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in ${panelEffectiveCollapsed ? "hidden" : ""}`}
+          >
             {/* Customer Card */}
             <div className="shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -1984,6 +2033,12 @@ export default function POSPage() {
             </div>
           </aside>
 
+          <PanelEdgeRail
+            collapsed={panelEffectiveCollapsed}
+            onToggle={togglePanel}
+            onResizeStart={(e) => startPanelResize(e, "left")}
+            panelSide="right"
+          />
 
           {/* Main Content (Entry & Grid) */}
           <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
@@ -2825,6 +2880,7 @@ export default function POSPage() {
         errorCount={blockingErrorCount}
         disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
         onPrimary={() => setPrintPreview(true)}
+        forceShow={panelEffectiveCollapsed}
       />
       {staleHeldAlert && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
@@ -3040,8 +3096,18 @@ export default function POSPage() {
         </div>
 
 
+        <PanelEdgeRail
+          collapsed={panelEffectiveCollapsed}
+          onToggle={togglePanel}
+          onResizeStart={(e) => startPanelResize(e, "right")}
+          panelSide="left"
+        />
+
         {/* ── Right Column: Fixed Invoice Panel (~35%) ── */}
-        <div className="flex flex-col flex-1 max-w-[560px] min-w-[480px] bg-white shadow-[-2px_0_20px_-5px_rgba(0,0,0,0.07)] z-20 overflow-y-auto custom-scrollbar animate-fade-in">
+        <div
+          style={panelEffectiveCollapsed ? undefined : { width: panelWidth }}
+          className={`flex flex-col shrink-0 bg-white shadow-[-2px_0_20px_-5px_rgba(0,0,0,0.07)] z-20 overflow-y-auto custom-scrollbar animate-fade-in ${panelEffectiveCollapsed ? "hidden" : ""}`}
+        >
           
           {/* Top Panel: Customer & Actions */}
           <div className="flex flex-col shrink-0 border-b border-slate-100 bg-[#f8fafb] px-3 pt-4 pb-3 gap-2.5">
