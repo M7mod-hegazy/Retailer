@@ -16,6 +16,7 @@ import FontSettingsTab from "./FontSettingsTab";
 import { applyFontSettings } from "../../utils/fontSettings";
 import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
+import { useUiStore } from "../../stores/uiStore";
 
 const tabs = [
   { id: "identity", label: "هوية التطبيق", hint: "اسم الشركة والشعار وبيانات الفرع" },
@@ -129,6 +130,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [isRTL, setIsRTL] = useState(document.documentElement.dir === "rtl");
   const [printPreview, setPrintPreview] = useState(false);
+  const posAutoRail = useUiStore((s) => s.posAutoRail);
+  const setPosAutoRail = useUiStore((s) => s.setPosAutoRail);
   const originalRef = useRef({});
   const autoSaveTimer = useRef(null);
   const settingsRef   = useRef({});
@@ -408,6 +411,20 @@ export default function SettingsPage() {
                       </button>
                     </div>
                     <p className="mt-2 text-[11px] font-bold text-slate-400">يحدد العرض الذي يظهر للمستخدم عند فتح شاشة البيع لأول مرة</p>
+                  </div>
+
+                  <div className="mt-6">
+                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">تصغير القائمة الجانبية في نقطة البيع</h4>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={posAutoRail}
+                      onClick={() => setPosAutoRail(!posAutoRail)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${posAutoRail ? "bg-emerald-500" : "bg-slate-300"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${posAutoRail ? "-translate-x-6" : "-translate-x-1"}`} />
+                    </button>
+                    <p className="mt-2 text-[11px] font-bold text-slate-400">عند التفعيل، تُطوى القائمة الجانبية تلقائياً إلى شريط أيقونات داخل شاشة البيع لإتاحة مساحة أكبر (يمكن توسيعها يدوياً وقت الحاجة). إعداد خاص بهذا الجهاز.</p>
                   </div>
                 </section>
 

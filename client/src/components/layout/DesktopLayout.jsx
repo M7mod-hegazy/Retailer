@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import { useUiStore } from '../../stores/uiStore';
 import { ChevronLeft } from 'lucide-react';
 
 const MIN_WIDTH = 150;
@@ -50,9 +52,25 @@ function useLocalStorageState(key, defaultValue) {
 export default function DesktopLayout({ children, branding }) {
   const [sidebarMode, setSidebarMode] = useLocalStorageState(MODE_KEY, readInitialMode());
   const [sidebarWidth, setSidebarWidth] = useLocalStorageState('retailer.sidebar.width', DEFAULT_WIDTH);
+  const location = useLocation();
+  const posAutoRail = useUiStore((s) => s.posAutoRail);
   const draggingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
+
+  // Auto-rail: on the POS page (with the opt-in setting on) the sidebar collapses
+  // to the icon rail without touching the persisted user preference. The user can
+  // still expand it for the duration of the visit via posOverride.
+  const onPos = location.pathname.startsWith('/pos');
+  const autoRailActive = onPos && posAutoRail;
+  const [posOverride, setPosOverride] = useState(null);
+  useEffect(() => { if (!autoRailActive) setPosOverride(null); }, [autoRailActive]);
+
+  const effectiveMode = autoRailActive ? (posOverride ?? 'rail') : sidebarMode;
+  const handleSetMode = useCallback((m) => {
+    if (autoRailActive) setPosOverride(m);
+    else setSidebarMode(m);
+  }, [autoRailActive, setSidebarMode]);
 
   const handleResizeMouseDown = useCallback((e) => {
     e.preventDefault();
@@ -85,17 +103,17 @@ export default function DesktopLayout({ children, branding }) {
     };
   }, [setSidebarWidth]);
 
-  const isHidden = sidebarMode === 'hidden';
-  const isRail = sidebarMode === 'rail';
+  const isHidden = effectiveMode === 'hidden';
+  const isRail = effectiveMode === 'rail';
 
   return (
     <div className="flex h-screen bg-[#F4F4F5] text-zinc-900 font-sans overflow-hidden selection:bg-emerald-200" dir="rtl">
 
       {!isHidden && (
         <Sidebar
-          mode={sidebarMode}
+          mode={effectiveMode}
           width={isRail ? RAIL_WIDTH : sidebarWidth}
-          onSetMode={setSidebarMode}
+          onSetMode={handleSetMode}
           onResizeMouseDown={isRail ? undefined : handleResizeMouseDown}
           branding={branding}
         />
@@ -103,7 +121,7 @@ export default function DesktopLayout({ children, branding }) {
 
       {isHidden && (
         <button
-          onClick={() => setSidebarMode('full')}
+          onClick={() => handleSetMode('full')}
           className="fixed right-0 top-1/2 -translate-y-1/2 z-50 h-12 w-5 bg-white border border-zinc-200 border-r-0 rounded-l-lg shadow-md flex items-center justify-center hover:bg-zinc-50 transition-colors"
           title="إظهار القائمة"
         >
