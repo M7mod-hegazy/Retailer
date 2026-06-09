@@ -22,11 +22,11 @@ export default function PanelEdgeRail({ collapsed, onToggle, onResizeStart, pane
         type="button"
         onClick={onToggle}
         title="إظهار لوحة الفاتورة"
-        className="group relative z-30 shrink-0 self-stretch w-11 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white hover:bg-slate-800 transition-colors"
+        className="group relative z-30 shrink-0 self-stretch w-11 flex flex-col items-center justify-center gap-3 bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
       >
-        <ExpandIcon className="h-5 w-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+        <ExpandIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />
         <span className="flex items-center gap-2 [writing-mode:vertical-rl] rotate-180 text-[11px] font-black tracking-wider">
-          <Receipt className="h-3.5 w-3.5 text-emerald-400" />
+          <Receipt className="h-3.5 w-3.5" />
           لوحة الفاتورة
         </span>
       </button>

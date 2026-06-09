@@ -1394,12 +1394,20 @@ export default function POSPage() {
         <BarcodeListener />
         <PosStickyTotalBar
           total={totals.total}
+          subtotal={totals.subtotal}
+          discount={discount}
+          increase={increase}
           itemCount={lines.length}
           quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
+          customerName={customer?.name}
+          paymentLabel={PAYMENT_TYPES.find((p) => p.type === paymentType)?.label}
           hasErrors={hasBlockingErrors && !stockOnlyErrors}
           errorCount={blockingErrorCount}
           disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-          onPrimary={() => setPrintPreview(true)}
+          saving={isSaving}
+          onPrint={() => setPrintPreview(true)}
+          onSave={() => saveInvoice(false)}
+          onExpand={expandPanel}
           forceShow={panelEffectiveCollapsed}
         />
         {staleHeldAlert && (
@@ -2874,12 +2882,20 @@ export default function POSPage() {
       <BarcodeListener />
       <PosStickyTotalBar
         total={totals.total}
+        subtotal={totals.subtotal}
+        discount={discount}
+        increase={increase}
         itemCount={lines.length}
         quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
+        customerName={customer?.name}
+        paymentLabel={PAYMENT_TYPES.find((p) => p.type === paymentType)?.label}
         hasErrors={hasBlockingErrors && !stockOnlyErrors}
         errorCount={blockingErrorCount}
         disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-        onPrimary={() => setPrintPreview(true)}
+        saving={isSaving}
+        onPrint={() => setPrintPreview(true)}
+        onSave={() => saveInvoice(false)}
+        onExpand={expandPanel}
         forceShow={panelEffectiveCollapsed}
       />
       {staleHeldAlert && (
