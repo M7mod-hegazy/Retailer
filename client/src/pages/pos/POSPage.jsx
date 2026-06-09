@@ -1397,21 +1397,69 @@ export default function POSPage() {
           subtotal={totals.subtotal}
           discount={discount}
           increase={increase}
+          discountMode={invoiceDiscountMode}
+          onDiscountModeChange={setInvoiceDiscountMode}
+          increaseMode={invoiceIncreaseMode}
+          onIncreaseModeChange={setInvoiceIncreaseMode}
           itemCount={lines.length}
           quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
           customerName={customer?.name}
+          customerId={customer?.id}
+          customerBalance={displayBalance}
+          displayBalance={displayBalance}
           paymentType={paymentType}
           paymentTypes={PAYMENT_TYPES}
           hasErrors={hasBlockingErrors && !stockOnlyErrors}
           errorCount={blockingErrorCount}
           disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
+          isSaving={isSaving}
           canHold={lines.length > 0}
           onDiscountChange={(v) => setDiscount(Math.min(Math.max(0, Number(v || 0)), totals.subtotal))}
+          onIncreaseChange={(v) => setIncrease(Math.max(0, Number(v || 0)))}
           onPaymentChange={setPaymentType}
           onHold={handleHold}
           onPrint={() => setPrintPreview(true)}
           onSave={() => saveInvoice(false)}
+          onSaveOnly={() => setSaveConfirmOpen(true)}
+          onCancel={() => setCancelModalOpen(true)}
           onExpand={expandPanel}
+          onNewInvoice={() => setNewInvoiceModalOpen(true)}
+          onCustomerLookup={() => setCustomerLookupOpen(true)}
+          onCustomerCreate={() => setCustomerCreateOpen(true)}
+          onCustomerClear={() => { setCustomer(null); setCustomerQuery(""); setPaymentType("cash"); }}
+          onCustomerInfo={() => setCustomerInfoOpen(true)}
+          quickCustomers={customers.slice(0, 3)}
+          onCustomerQuickSelect={(c) => { setCustomer(c); setCustomerQuery(c.name); }}
+          amountReceived={amountReceived}
+          onAmountReceivedChange={setAmountReceived}
+          banks={banks}
+          selectedBankId={selectedBankId}
+          onBankChange={setSelectedBankId}
+          amountPaid={amountPaid}
+          onAmountPaidChange={setAmountPaid}
+          installmentDueDate={installmentDueDate}
+          onInstallmentDueDateChange={setInstallmentDueDate}
+          multiCash={multiCash}
+          onMultiCashChange={setMultiCash}
+          multiCredit={multiCredit}
+          onMultiCreditChange={setMultiCredit}
+          heldInvoices={heldInvoices}
+          heldDropdownOpen={heldDropdownOpen}
+          onHeldToggle={() => setHeldDropdownOpen((v) => !v)}
+          onResumeHeld={(id) => { if (lines.length) holdCurrentInvoice(); resumeHeldInvoice(id); setHeldDropdownOpen(false); }}
+          onDiscardHeld={discardHeldInvoice}
+          onCloseHeld={() => setHeldDropdownOpen(false)}
+          customerQuery={customerQuery}
+          onCustomerQueryChange={setCustomerQuery}
+          customerLookupOpen={customerLookupOpen}
+          onCustomerLookupOpenChange={setCustomerLookupOpen}
+          activeCustomerIndex={activeCustomerIndex}
+          customerResults={customerResults}
+          onCustomerPick={handlePickCustomer}
+          onCustomerKeyDown={handleCustomerKeyDown}
+          customPayMethods={customPayMethods}
+          multiCustomAmounts={multiCustomAmounts}
+          onMultiCustomAmountChange={(id, value) => setMultiCustomAmounts(prev => ({...prev, [id]: value}))}
           forceShow={panelEffectiveCollapsed}
         />
         {staleHeldAlert && (
@@ -1529,7 +1577,10 @@ export default function POSPage() {
           </div>
         </header>
 
-        <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
+        <main
+          className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden"
+          style={{ paddingBottom: "calc(1rem + var(--pos-bottom-bar-h, 0px))" }}
+        >
           
           {/* Right Sidebar (Customer, Summary, Payment) */}
           <aside
@@ -2889,21 +2940,69 @@ export default function POSPage() {
         subtotal={totals.subtotal}
         discount={discount}
         increase={increase}
+        discountMode={invoiceDiscountMode}
+        onDiscountModeChange={setInvoiceDiscountMode}
+        increaseMode={invoiceIncreaseMode}
+        onIncreaseModeChange={setInvoiceIncreaseMode}
         itemCount={lines.length}
         quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
         customerName={customer?.name}
+        customerId={customer?.id}
+        customerBalance={displayBalance}
+        displayBalance={displayBalance}
         paymentType={paymentType}
         paymentTypes={PAYMENT_TYPES}
         hasErrors={hasBlockingErrors && !stockOnlyErrors}
         errorCount={blockingErrorCount}
         disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
+        isSaving={isSaving}
         canHold={lines.length > 0}
         onDiscountChange={(v) => setDiscount(Math.min(Math.max(0, Number(v || 0)), totals.subtotal))}
+        onIncreaseChange={(v) => setIncrease(Math.max(0, Number(v || 0)))}
         onPaymentChange={setPaymentType}
         onHold={handleHold}
         onPrint={() => setPrintPreview(true)}
         onSave={() => saveInvoice(false)}
+        onSaveOnly={() => setSaveConfirmOpen(true)}
+        onCancel={() => setCancelModalOpen(true)}
         onExpand={expandPanel}
+        onNewInvoice={() => setNewInvoiceModalOpen(true)}
+        onCustomerLookup={() => setCustomerLookupOpen(true)}
+        onCustomerCreate={() => setCustomerCreateOpen(true)}
+        onCustomerClear={() => { setCustomer(null); setCustomerQuery(""); setPaymentType("cash"); }}
+        onCustomerInfo={() => setCustomerInfoOpen(true)}
+        quickCustomers={customers.slice(0, 3)}
+        onCustomerQuickSelect={(c) => { setCustomer(c); setCustomerQuery(c.name); }}
+        amountReceived={amountReceived}
+        onAmountReceivedChange={setAmountReceived}
+        banks={banks}
+        selectedBankId={selectedBankId}
+        onBankChange={setSelectedBankId}
+        amountPaid={amountPaid}
+        onAmountPaidChange={setAmountPaid}
+        installmentDueDate={installmentDueDate}
+        onInstallmentDueDateChange={setInstallmentDueDate}
+        multiCash={multiCash}
+        onMultiCashChange={setMultiCash}
+        multiCredit={multiCredit}
+        onMultiCreditChange={setMultiCredit}
+        heldInvoices={heldInvoices}
+        heldDropdownOpen={heldDropdownOpen}
+        onHeldToggle={() => setHeldDropdownOpen((v) => !v)}
+        onResumeHeld={(id) => { if (lines.length) holdCurrentInvoice(); resumeHeldInvoice(id); setHeldDropdownOpen(false); }}
+        onDiscardHeld={discardHeldInvoice}
+        onCloseHeld={() => setHeldDropdownOpen(false)}
+        customerQuery={customerQuery}
+        onCustomerQueryChange={setCustomerQuery}
+        customerLookupOpen={customerLookupOpen}
+        onCustomerLookupOpenChange={setCustomerLookupOpen}
+        activeCustomerIndex={activeCustomerIndex}
+        customerResults={customerResults}
+        onCustomerPick={handlePickCustomer}
+        onCustomerKeyDown={handleCustomerKeyDown}
+        customPayMethods={customPayMethods}
+        multiCustomAmounts={multiCustomAmounts}
+        onMultiCustomAmountChange={(id, value) => setMultiCustomAmounts(prev => ({...prev, [id]: value}))}
         forceShow={panelEffectiveCollapsed}
       />
       {staleHeldAlert && (
@@ -2916,6 +3015,11 @@ export default function POSPage() {
               حسناً
             </button>
           </div>
+        </div>
+      )}
+      {isOffline && (
+        <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-2sm font-black tracking-wide text-white shrink-0 z-50">
+          تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
         </div>
       )}
       {isOffline && (
@@ -2968,6 +3072,7 @@ export default function POSPage() {
       {/* Main content */}
       <div
         className="flex min-h-0 flex-1 transition-all flex-row relative"
+        style={{ paddingBottom: "var(--pos-bottom-bar-h, 0px)" }}
       >
         {/* ── Left Column: Grid & Search (~65%) ── */}
         <div className="flex flex-col flex-[1.8] bg-[#f8fafb] border-l border-slate-100 overflow-hidden min-w-0">
