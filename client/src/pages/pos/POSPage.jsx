@@ -43,6 +43,7 @@ import {
 import api from "../../services/api";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 import BarcodeListener from "../../components/pos/BarcodeListener";
+import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -1609,6 +1610,15 @@ export default function POSPage() {
     return (
       <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden animate-fade-in" dir="rtl">
         <BarcodeListener />
+        <PosStickyTotalBar
+          total={totals.total}
+          itemCount={lines.length}
+          quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
+          hasErrors={hasBlockingErrors && !stockOnlyErrors}
+          errorCount={blockingErrorCount}
+          disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
+          onPrimary={() => setPrintPreview(true)}
+        />
         {staleHeldAlert && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
@@ -3070,6 +3080,15 @@ export default function POSPage() {
   return (
     <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden" dir="rtl">
       <BarcodeListener />
+      <PosStickyTotalBar
+        total={totals.total}
+        itemCount={lines.length}
+        quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
+        hasErrors={hasBlockingErrors && !stockOnlyErrors}
+        errorCount={blockingErrorCount}
+        disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
+        onPrimary={() => setPrintPreview(true)}
+      />
       {staleHeldAlert && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
