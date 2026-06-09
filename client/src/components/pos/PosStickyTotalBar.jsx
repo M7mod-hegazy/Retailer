@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, Printer, Save, PanelRightOpen, User, CircleDollarSign } from "lucide-react";
+import { AlertTriangle, Printer, Save, PanelRightOpen, User, PauseCircle } from "lucide-react";
 import { useIsNarrowViewport } from "../../hooks/useIsNarrowViewport";
 
 function formatMoney(value, digits = 2) {
@@ -7,7 +7,7 @@ function formatMoney(value, digits = 2) {
 }
 
 function Stat({ label, value, tone = "default" }) {
-  const toneCls = tone === "discount" ? "text-rose-600" : tone === "add" ? "text-blue-600" : "text-slate-800";
+  const toneCls = tone === "add" ? "text-blue-600" : "text-slate-800";
   return (
     <div className="flex flex-col items-center leading-none shrink-0">
       <span className={`font-mono text-sm font-black ${toneCls}`}>{value}</span>
@@ -19,10 +19,9 @@ function Stat({ label, value, tone = "default" }) {
 /**
  * Compact, info-rich action bar shown at the bottom of the POS work area when the
  * invoice panel is collapsed (or the viewport is narrow). It mirrors the panel's
- * essentials — customer, counts, subtotal/discount, due total — and exposes the
- * primary controls (expand panel, save, print/review) in a single low-profile row.
- *
- * Styled as a light glass bar to match the app's Topbar / overall light theme.
+ * essentials and key controls in a single low-profile, light-glass row:
+ *   readouts — customer, item/qty, subtotal, fees, due total
+ *   controls — editable discount, payment-type select, hold, save, print, expand
  * Renders nothing on wide screens when the panel is open.
  */
 export default function PosStickyTotalBar({
@@ -33,11 +32,15 @@ export default function PosStickyTotalBar({
   itemCount,
   quantityCount,
   customerName,
-  paymentLabel,
+  paymentType,
+  paymentTypes = [],
   hasErrors = false,
   errorCount = 0,
   disabled = false,
-  saving = false,
+  canHold = false,
+  onDiscountChange,
+  onPaymentChange,
+  onHold,
   onPrint,
   onSave,
   onExpand,
@@ -53,7 +56,7 @@ export default function PosStickyTotalBar({
       dir="rtl"
       className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white/90 backdrop-blur-xl shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.15)]"
     >
-      <div className="flex items-center gap-3 px-3 py-2 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-2.5 px-3 py-2 overflow-x-auto scrollbar-none">
         {/* Expand panel */}
         {onExpand && (
           <button
@@ -77,29 +80,62 @@ export default function PosStickyTotalBar({
 
         <div className="h-9 w-px bg-slate-200 shrink-0" />
 
-        {/* Stats */}
+        {/* Readouts */}
         <Stat label="صنف" value={itemCount} />
         {quantityCount != null && <Stat label="كمية" value={quantityCount} />}
         {subtotal != null && <Stat label="فرعي" value={formatMoney(subtotal, 0)} />}
-        {discount > 0 && <Stat label="خصم" value={`-${formatMoney(discount, 0)}`} tone="discount" />}
         {increase > 0 && <Stat label="رسوم" value={`+${formatMoney(increase, 0)}`} tone="add" />}
 
-        {/* Customer + payment chips */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-600 max-w-[140px]">
-            <User className="h-3 w-3 text-slate-400 shrink-0" />
-            <span className="truncate">{customerName || "زبون نقدي"}</span>
-          </span>
-          {paymentLabel && (
-            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-600">
-              <CircleDollarSign className="h-3 w-3 text-slate-400 shrink-0" />
-              {paymentLabel}
-            </span>
-          )}
-        </div>
+        {/* Editable discount */}
+        {onDiscountChange && (
+          <label className="flex flex-col items-center leading-none shrink-0">
+            <input
+              type="number"
+              min="0"
+              value={discount || ""}
+              onChange={(e) => onDiscountChange(e.target.value)}
+              placeholder="0"
+              className="w-16 rounded-lg border border-rose-200 bg-rose-50/50 px-2 py-1 text-center text-sm font-black text-rose-700 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all"
+            />
+            <span className="text-[9px] font-bold text-rose-500 mt-1">خصم</span>
+          </label>
+        )}
+
+        {/* Payment type */}
+        {onPaymentChange && paymentTypes.length > 0 && (
+          <label className="flex flex-col items-center leading-none shrink-0">
+            <select
+              value={paymentType}
+              onChange={(e) => onPaymentChange(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-[7px] text-[11px] font-black text-slate-700 outline-none focus:border-slate-400 transition-all"
+            >
+              {paymentTypes.map((p) => (
+                <option key={p.type} value={p.type}>{p.label}</option>
+              ))}
+            </select>
+            <span className="text-[9px] font-bold text-slate-400 mt-1">الدفع</span>
+          </label>
+        )}
+
+        {/* Customer chip */}
+        <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-600 max-w-[140px] shrink-0">
+          <User className="h-3 w-3 text-slate-400 shrink-0" />
+          <span className="truncate">{customerName || "زبون نقدي"}</span>
+        </span>
 
         {/* Actions */}
         <div className="mr-auto flex items-center gap-2 shrink-0">
+          {onHold && (
+            <button
+              type="button"
+              onClick={onHold}
+              disabled={!canHold}
+              title="تعليق الفاتورة"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all disabled:opacity-40 active:scale-[0.98]"
+            >
+              <PauseCircle className="h-5 w-5" />
+            </button>
+          )}
           {onSave && (
             <button
               type="button"

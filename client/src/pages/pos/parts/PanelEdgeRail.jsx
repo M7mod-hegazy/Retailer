@@ -37,20 +37,22 @@ export default function PanelEdgeRail({ collapsed, onToggle, onResizeStart, pane
     <div
       onMouseDown={onResizeStart}
       title="اسحب لتغيير عرض اللوحة"
-      className="group relative z-30 shrink-0 self-stretch w-4 flex flex-col items-center bg-slate-50 border-x border-slate-200 cursor-col-resize hover:bg-emerald-50 transition-colors"
+      className="group relative z-30 shrink-0 self-stretch w-5 flex items-center justify-center bg-slate-50 border-x border-slate-200 cursor-col-resize hover:bg-emerald-50 transition-colors"
     >
+      {/* grip dots signal the strip is draggable to resize */}
+      <span className="pointer-events-none absolute top-3 text-slate-300 group-hover:text-emerald-400 transition-colors"><GripVertical className="h-4 w-4" /></span>
+      <span className="pointer-events-none absolute bottom-3 text-slate-300 group-hover:text-emerald-400 transition-colors"><GripVertical className="h-4 w-4" /></span>
+
+      {/* clear, centered collapse toggle */}
       <button
         type="button"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         title="طي لوحة الفاتورة"
-        className="mt-2.5 flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-800 transition-colors"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-colors"
       >
         <CollapseIcon className="h-4 w-4" />
       </button>
-      <span className="my-auto flex items-center justify-center text-slate-300 group-hover:text-emerald-500 transition-colors pointer-events-none">
-        <GripVertical className="h-5 w-5" />
-      </span>
     </div>
   );
 }

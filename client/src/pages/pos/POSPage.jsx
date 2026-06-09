@@ -1400,11 +1400,15 @@ export default function POSPage() {
           itemCount={lines.length}
           quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
           customerName={customer?.name}
-          paymentLabel={PAYMENT_TYPES.find((p) => p.type === paymentType)?.label}
+          paymentType={paymentType}
+          paymentTypes={PAYMENT_TYPES}
           hasErrors={hasBlockingErrors && !stockOnlyErrors}
           errorCount={blockingErrorCount}
           disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-          saving={isSaving}
+          canHold={lines.length > 0}
+          onDiscountChange={(v) => setDiscount(Math.min(Math.max(0, Number(v || 0)), totals.subtotal))}
+          onPaymentChange={setPaymentType}
+          onHold={handleHold}
           onPrint={() => setPrintPreview(true)}
           onSave={() => saveInvoice(false)}
           onExpand={expandPanel}
@@ -2888,11 +2892,15 @@ export default function POSPage() {
         itemCount={lines.length}
         quantityCount={lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0)}
         customerName={customer?.name}
-        paymentLabel={PAYMENT_TYPES.find((p) => p.type === paymentType)?.label}
+        paymentType={paymentType}
+        paymentTypes={PAYMENT_TYPES}
         hasErrors={hasBlockingErrors && !stockOnlyErrors}
         errorCount={blockingErrorCount}
         disabled={!lines.length || isSaving || (hasBlockingErrors && !stockOnlyErrors)}
-        saving={isSaving}
+        canHold={lines.length > 0}
+        onDiscountChange={(v) => setDiscount(Math.min(Math.max(0, Number(v || 0)), totals.subtotal))}
+        onPaymentChange={setPaymentType}
+        onHold={handleHold}
         onPrint={() => setPrintPreview(true)}
         onSave={() => saveInvoice(false)}
         onExpand={expandPanel}
