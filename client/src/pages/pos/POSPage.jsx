@@ -29,7 +29,6 @@ import {
   User,
   Wallet,
   X,
-  LogOut,
   TrendingUp,
   Clock,
   Filter,
@@ -293,100 +292,6 @@ function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resi
         />
       )}
     </th>
-  );
-}
-
-// Custom navigation guard — works with BrowserRouter (no data router needed)
-function useNavGuard(shouldBlock) {
-  const [showModal, setShowModal] = useState(false);
-  const pendingNavRef = useRef(null);
-  const proceedingRef = useRef(false);
-
-  useEffect(() => {
-    if (!shouldBlock) return;
-
-    const origPush    = window.history.pushState.bind(window.history);
-    const origReplace = window.history.replaceState.bind(window.history);
-
-    window.history.pushState = (state, unused, url) => {
-      if (proceedingRef.current) { origPush(state, unused, url); return; }
-      const target = typeof url === "string" ? url : (url?.toString() ?? "");
-      const current = window.location.pathname + window.location.search;
-      if (target === current || target === window.location.href) { origPush(state, unused, url); return; }
-      pendingNavRef.current = () => { origPush(state, unused, url); window.dispatchEvent(new PopStateEvent("popstate", { state })); };
-      setShowModal(true);
-    };
-
-    window.history.replaceState = (state, unused, url) => {
-      if (proceedingRef.current) { origReplace(state, unused, url); return; }
-      origReplace(state, unused, url);
-    };
-
-    const handlePop = () => {
-      if (proceedingRef.current) return;
-      origPush(null, "", window.location.href); // push back current to cancel pop
-      pendingNavRef.current = () => { window.history.go(-1); };
-      setShowModal(true);
-    };
-
-    window.addEventListener("popstate", handlePop);
-
-    return () => {
-      window.history.pushState    = origPush;
-      window.history.replaceState = origReplace;
-      window.removeEventListener("popstate", handlePop);
-    };
-  }, [shouldBlock]);
-
-  function proceed() {
-    setShowModal(false);
-    const nav = pendingNavRef.current;
-    pendingNavRef.current = null;
-    if (nav) { proceedingRef.current = true; nav(); proceedingRef.current = false; }
-  }
-
-  function cancel() {
-    setShowModal(false);
-    pendingNavRef.current = null;
-  }
-
-  return { showModal, proceed, cancel };
-}
-
-function NavLockModal({ onProceed, onCancel }) {
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[420px] rounded-md border border-slate-200 bg-white shadow-2xl" dir="rtl">
-        <div className="border-b border-slate-100 bg-slate-950 px-6 py-4 rounded-t-md">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/20">
-              <AlertTriangle className="h-5 w-5 text-rose-400" />
-            </div>
-            <div>
-              <p className="text-sm font-black text-white">تحذير — فاتورة جارية</p>
-              <p className="text-[11px] text-slate-400 font-bold">لديك أصناف في السلة لم تحفظ بعد</p>
-            </div>
-          </div>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <p className="text-sm font-bold text-slate-600 leading-relaxed">
-            إذا غادرت الصفحة الآن ستفقد الفاتورة الحالية. هل تريد المتابعة؟
-          </p>
-          <div className="flex gap-3">
-            <button onClick={onCancel}
-              className="flex-1 rounded-sm border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50 transition-colors">
-              البقاء في الصفحة
-            </button>
-            <button onClick={onProceed}
-              className="flex-1 rounded-sm border border-rose-600 bg-rose-600 px-4 py-2.5 text-sm font-black text-white hover:bg-rose-700 transition-colors">
-              <span className="flex items-center justify-center gap-2">
-                <LogOut className="h-4 w-4" /> المغادرة والتخلي
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
