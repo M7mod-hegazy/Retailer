@@ -3,9 +3,28 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { ChevronLeft } from 'lucide-react';
 
-const MIN_WIDTH = 160;
+const MIN_WIDTH = 150;
 const MAX_WIDTH = 420;
 const DEFAULT_WIDTH = 220;
+const RAIL_WIDTH = 64;
+
+const MODE_KEY = 'retailer.sidebar.mode';
+const LEGACY_HIDDEN_KEY = 'retailer.sidebar.hidden';
+const VALID_MODES = ['full', 'rail', 'hidden'];
+
+// Resolve the initial sidebar mode, migrating from the legacy boolean `hidden` flag.
+function readInitialMode() {
+  try {
+    const stored = localStorage.getItem(MODE_KEY);
+    if (stored !== null) {
+      const parsed = JSON.parse(stored);
+      if (VALID_MODES.includes(parsed)) return parsed;
+    }
+    const legacy = localStorage.getItem(LEGACY_HIDDEN_KEY);
+    if (legacy !== null) return JSON.parse(legacy) ? 'hidden' : 'full';
+  } catch {}
+  return 'full';
+}
 
 function useLocalStorageState(key, defaultValue) {
   const [state, setState] = useState(() => {
@@ -29,7 +48,7 @@ function useLocalStorageState(key, defaultValue) {
 }
 
 export default function DesktopLayout({ children, branding }) {
-  const [sidebarHidden, setSidebarHidden] = useLocalStorageState('retailer.sidebar.hidden', false);
+  const [sidebarMode, setSidebarMode] = useLocalStorageState(MODE_KEY, readInitialMode());
   const [sidebarWidth, setSidebarWidth] = useLocalStorageState('retailer.sidebar.width', DEFAULT_WIDTH);
   const draggingRef = useRef(false);
   const startXRef = useRef(0);
@@ -66,21 +85,25 @@ export default function DesktopLayout({ children, branding }) {
     };
   }, [setSidebarWidth]);
 
+  const isHidden = sidebarMode === 'hidden';
+  const isRail = sidebarMode === 'rail';
+
   return (
     <div className="flex h-screen bg-[#F4F4F5] text-zinc-900 font-sans overflow-hidden selection:bg-emerald-200" dir="rtl">
 
-      {!sidebarHidden && (
+      {!isHidden && (
         <Sidebar
-          width={sidebarWidth}
-          onHide={() => setSidebarHidden(true)}
-          onResizeMouseDown={handleResizeMouseDown}
+          mode={sidebarMode}
+          width={isRail ? RAIL_WIDTH : sidebarWidth}
+          onSetMode={setSidebarMode}
+          onResizeMouseDown={isRail ? undefined : handleResizeMouseDown}
           branding={branding}
         />
       )}
 
-      {sidebarHidden && (
+      {isHidden && (
         <button
-          onClick={() => setSidebarHidden(false)}
+          onClick={() => setSidebarMode('full')}
           className="fixed right-0 top-1/2 -translate-y-1/2 z-50 h-12 w-5 bg-white border border-zinc-200 border-r-0 rounded-l-lg shadow-md flex items-center justify-center hover:bg-zinc-50 transition-colors"
           title="إظهار القائمة"
         >

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  ChevronDown, Search, LogOut, Settings, Radar, PanelRightClose, ShoppingBag,
+  ChevronDown, Search, LogOut, Settings, Radar, PanelRightClose, PanelRightOpen, ChevronsRight, ShoppingBag,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
@@ -63,7 +63,7 @@ function SidebarItem({ item, location, updateAvailable, categoryCount }) {
   );
 }
 
-export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) {
+export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouseDown, branding }) {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -95,6 +95,96 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
   const handleModuleClick = useCallback((moduleId) => {
     setActiveAccordion((prev) => (prev === moduleId ? null : moduleId));
   }, []);
+
+  // ── Rail (icon-only) mode ──────────────────────────────────────────────────
+  if (mode === "rail") {
+    const isPathActive = (path) => location.pathname === path || (location.pathname.startsWith(path) && path !== "/");
+    return (
+      <aside
+        data-app-sidebar="true"
+        data-sidebar-mode="rail"
+        className="relative z-40 flex shrink-0 h-screen flex-col items-center border-l border-zinc-200/60 bg-white py-3"
+        style={{ width }}
+        dir="rtl"
+      >
+        {/* Header: logo + expand */}
+        <div className="flex flex-col items-center gap-2 pb-3 border-b border-zinc-100 w-full">
+          {branding?.logoUrl && branding?.showOnSidebar ? (
+            <img src={branding.logoUrl} alt={branding?.title || "Logo"} className="h-9 w-9 rounded-xl object-contain bg-white" />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-950 text-emerald-400">
+              <Radar strokeWidth={2} className="h-5 w-5" />
+            </div>
+          )}
+          <button
+            onClick={() => onSetMode?.("full")}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+            title="توسيع القائمة"
+          >
+            <PanelRightOpen className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Icons */}
+        <nav className="flex-1 overflow-y-auto scrollbar-none w-full flex flex-col items-center gap-1.5 py-3">
+          {visiblePrimary.map((item) => {
+            const active = isPathActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                title={item.label}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
+                  active ? "bg-zinc-950 text-emerald-400 shadow-sm" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                }`}
+              >
+                <item.icon strokeWidth={active ? 2 : 1.5} className="h-[18px] w-[18px]" />
+                {item.pageKey === "updates" && updateAvailable && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+                )}
+              </Link>
+            );
+          })}
+
+          <div className="my-1.5 h-px w-7 bg-zinc-100" />
+
+          {filteredModules.map((module) => {
+            const active = module.items.some((item) => isPathActive(item.path));
+            return (
+              <button
+                key={module.id}
+                onClick={() => { setActiveAccordion(module.id); onSetMode?.("full"); }}
+                title={module.title}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
+                  active ? "bg-zinc-50 text-emerald-600" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900"
+                }`}
+              >
+                <module.icon strokeWidth={1.5} className="h-[18px] w-[18px]" />
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Footer: settings, hide */}
+        <div className="flex flex-col items-center gap-1.5 pt-3 border-t border-zinc-100 w-full">
+          <Link
+            to="/settings"
+            title="الإعدادات"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 transition-colors"
+          >
+            <Settings strokeWidth={1.5} className="h-4 w-4" />
+          </Link>
+          <button
+            onClick={() => onSetMode?.("hidden")}
+            title="إخفاء القائمة"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -128,13 +218,22 @@ export default function Sidebar({ width, onHide, onResizeMouseDown, branding }) 
             <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mt-1 truncate">{branding?.subtitle || "إدارة التجزئة"}</div>
           </div>
         </div>
-        <button
-          onClick={onHide}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
-          title="إخفاء القائمة"
-        >
-          <PanelRightClose className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={() => onSetMode?.("rail")}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+            title="تصغير إلى شريط الأيقونات"
+          >
+            <PanelRightClose className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => onSetMode?.("hidden")}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+            title="إخفاء القائمة"
+          >
+            <ChevronsRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5 scrollbar-none">

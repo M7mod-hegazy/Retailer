@@ -92,7 +92,7 @@ Extend `DesktopLayout.jsx` from a 2-state (full/hidden) to a 3-state model:
 - Persist `retailer.sidebar.mode` ∈ `{ 'full', 'rail', 'hidden' }` (migrate the existing `retailer.sidebar.hidden` boolean).
 - **Rail (~56px):** module icons only; click/hover flyout for sub-items. Keep drag-resize for `full` (min lowered toward ~150).
 - **Auto-rail on `/pos`:** opt-in setting (`pos_auto_rail`, default off). When on, entering `/pos` switches to rail and restores the prior mode on leaving.
-- **Command palette (Ctrl+K):** global fuzzy nav reusing the sidebar's existing search/permission filter, so the sidebar can stay collapsed and users still jump anywhere.
+- **Command palette: DROPPED.** A full Ctrl+K global search already exists (`pages/search/GlobalSearchPage.jsx` via `useUiStore.openGlobalSearch`, bound in `Topbar.jsx:141`). It already searches pages/items/customers/invoices/etc. and navigates. Building a second palette would conflict and duplicate. The rail mode relies on this existing palette for fast navigation while collapsed.
 
 ## Data flow
 
