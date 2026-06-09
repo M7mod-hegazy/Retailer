@@ -106,27 +106,64 @@ export default function DesktopLayout({ children, branding }) {
   const isHidden = effectiveMode === 'hidden';
   const isRail = effectiveMode === 'rail';
 
+  // Hover-to-peek: when the sidebar is collapsed (rail) or hidden, hovering it
+  // floats the full sidebar as an overlay without shifting the layout. A small
+  // close delay prevents flicker when moving between the rail/tab and the overlay.
+  const [peek, setPeek] = useState(false);
+  const peekTimer = useRef(null);
+  const openPeek = useCallback(() => { clearTimeout(peekTimer.current); setPeek(true); }, []);
+  const closePeek = useCallback(() => { clearTimeout(peekTimer.current); peekTimer.current = setTimeout(() => setPeek(false), 140); }, []);
+  useEffect(() => () => clearTimeout(peekTimer.current), []);
+  useEffect(() => { if (effectiveMode === 'full') setPeek(false); }, [effectiveMode]);
+
   return (
     <div className="flex h-screen bg-[#F4F4F5] text-zinc-900 font-sans overflow-hidden selection:bg-emerald-200" dir="rtl">
 
       {!isHidden && (
-        <Sidebar
-          mode={effectiveMode}
-          width={isRail ? RAIL_WIDTH : sidebarWidth}
-          onSetMode={handleSetMode}
-          onResizeMouseDown={isRail ? undefined : handleResizeMouseDown}
-          branding={branding}
-        />
+        <div
+          onMouseEnter={isRail ? openPeek : undefined}
+          onMouseLeave={isRail ? closePeek : undefined}
+          className="flex shrink-0"
+        >
+          <Sidebar
+            mode={effectiveMode}
+            width={isRail ? RAIL_WIDTH : sidebarWidth}
+            onSetMode={handleSetMode}
+            onResizeMouseDown={isRail ? undefined : handleResizeMouseDown}
+            branding={branding}
+          />
+        </div>
       )}
 
+      {/* Hidden: distinct re-open tab near the top (hover to peek the full menu) */}
       {isHidden && (
         <button
           onClick={() => handleSetMode('full')}
-          className="fixed right-0 top-1/2 -translate-y-1/2 z-50 h-12 w-5 bg-white border border-zinc-200 border-r-0 rounded-l-lg shadow-md flex items-center justify-center hover:bg-zinc-50 transition-colors"
+          onMouseEnter={openPeek}
+          onMouseLeave={closePeek}
+          className="group fixed right-0 top-24 z-50 flex flex-col items-center gap-2 rounded-l-xl border border-r-0 border-zinc-200 bg-white px-1.5 py-3 shadow-md hover:bg-zinc-50 transition-colors"
           title="إظهار القائمة"
         >
-          <ChevronLeft className="h-3 w-3 text-zinc-500" />
+          <ChevronLeft className="h-3.5 w-3.5 text-zinc-500 group-hover:text-zinc-800 transition-colors" />
+          <span className="[writing-mode:vertical-rl] text-[10px] font-black tracking-wider text-zinc-500 group-hover:text-zinc-800 transition-colors">القائمة</span>
         </button>
+      )}
+
+      {/* Hover-peek overlay: floats the full sidebar over content without shifting it */}
+      {peek && (isRail || isHidden) && (
+        <div
+          onMouseEnter={openPeek}
+          onMouseLeave={closePeek}
+          className="fixed right-0 top-0 z-[55] h-screen shadow-2xl animate-fade-in"
+          style={{ width: sidebarWidth }}
+        >
+          <Sidebar
+            mode="full"
+            width={sidebarWidth}
+            onSetMode={(m) => { setPeek(false); handleSetMode(m); }}
+            branding={branding}
+          />
+        </div>
       )}
 
       <div className="flex-1 flex flex-col min-w-0 h-screen relative overflow-hidden bg-[#F4F4F5]">
