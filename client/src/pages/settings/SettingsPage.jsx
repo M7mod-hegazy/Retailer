@@ -521,11 +521,11 @@ export default function SettingsPage() {
                     ]} />
                     <DenseSelect
                       label="تفعيل الضريبة"
-                      value={Number(settings.tax_enabled ?? 1)}
+                      value={Number(settings.tax_enabled ?? 0)}
                       onChange={(e) => handleChange("tax_enabled", Number(e.target.value))}
                       options={[{ value: 1, label: "مفعّل" }, { value: 0, label: "غير مفعّل" }]}
                     />
-                    {Number(settings.tax_enabled ?? 1) === 1 && (
+                    {Number(settings.tax_enabled ?? 0) === 1 && (
                       <>
                         <DenseSelect label="نوع الضريبة الافتراضي" value={settings.tax_type || "none"} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
                           {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
