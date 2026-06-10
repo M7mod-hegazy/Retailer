@@ -19,6 +19,7 @@ export const ACTION_LABELS = {
   create: "إنشاء",
   restore: "استعادة",
   import_undo: "التراجع عن الاستيراد",
+  edit_tax_rate: "تعديل نسبة الضريبة",
 };
 
 export const ACTION_DESCRIPTIONS = {
@@ -42,11 +43,12 @@ export const ACTION_DESCRIPTIONS = {
   create: "إنشاء نسخ احتياطية جديدة",
   restore: "استعادة النظام من نسخة احتياطية",
   import_undo: "التراجع عن عملية استيراد الأصناف خلال 24 ساعة",
+  edit_tax_rate: "تعديل نسبة الضريبة على الفواتير",
 };
 
 export const PAGE_PERMISSIONS = {
   owner_statement: { label: 'تقرير صاحب المحل', actions: ['view', 'save', 'lock', 'print'] },
-  pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print', 'profit'] },
+  pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print', 'profit', 'edit_tax_rate'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -103,5 +105,5 @@ export const ROLE_PRESETS = {
 
 // Ordered list of all unique actions across all pages (for matrix column headers)
 const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
-const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate'];
 export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

@@ -73,4 +73,11 @@ function requirePagePermission(page, action) {
   };
 }
 
-module.exports = { requirePermission, requirePagePermission };
+function userHasPagePermission(user, page, action) {
+  if (!user) return false;
+  if (user.role === "dev" || user.role === "admin") return true;
+  const perms = getUserPermissions(user);
+  return perms[page]?.includes(action) ?? false;
+}
+
+module.exports = { requirePermission, requirePagePermission, userHasPagePermission };

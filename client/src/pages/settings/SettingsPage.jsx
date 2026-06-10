@@ -519,10 +519,20 @@ export default function SettingsPage() {
                     <DenseSelect label="كسور العملة" value={settings.decimal_places ?? 2} onChange={(e) => handleChange("decimal_places", Number(e.target.value))} options={[
                       {value: 0, label: "0"}, {value: 2, label: "2"}, {value: 3, label: "3"}
                     ]} />
-                    <DenseSelect label="نوع الضريبة الافتراضي" value={settings.tax_type || "none"} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
-                      {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
-                    ]} />
-                    <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
+                    <DenseSelect
+                      label="تفعيل الضريبة"
+                      value={Number(settings.tax_enabled ?? 1)}
+                      onChange={(e) => handleChange("tax_enabled", Number(e.target.value))}
+                      options={[{ value: 1, label: "مفعّل" }, { value: 0, label: "غير مفعّل" }]}
+                    />
+                    {Number(settings.tax_enabled ?? 1) === 1 && (
+                      <>
+                        <DenseSelect label="نوع الضريبة الافتراضي" value={settings.tax_type || "none"} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
+                          {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
+                        ]} />
+                        <DenseInput label="نسبة الضريبة (%)" type="number" step="0.01" value={settings.tax_rate || 0} onChange={(e) => handleChange("tax_rate", e.target.value)} />
+                      </>
+                    )}
                   </div>
                 </section>
 

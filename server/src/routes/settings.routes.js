@@ -89,6 +89,7 @@ const COLUMN_META = {
   tax_id_font_size: "int",
   auto_backup_enabled: "bool",
   discount_cap_enabled: "bool",
+  tax_enabled: "bool",
   logo_on_invoices: "bool", logo_on_receipts: "bool",
   logo_on_sidebar: "bool", logo_on_reports: "bool",
 };
