@@ -40,6 +40,7 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
     const rows = db.prepare(`
       SELECT i.id, i.invoice_no, i.subtotal, i.discount, i.increase, i.total,
              i.payment_type, i.status, i.created_at, i.amount_received,
+             i.notes, i.tax_enabled, i.tax_rate, i.tax_amount, i.tax_type,
              i.amended_by, i.amendment_of,
              (SELECT invoice_no FROM invoices WHERE id = i.amendment_of) AS amendment_of_no,
              (SELECT invoice_no FROM invoices WHERE id = i.amended_by)   AS amended_by_no,
@@ -190,7 +191,7 @@ router.get("/returns/:id", requirePagePermission("sales_returns", "view"), (req,
 
 router.post("/general-return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
-    const result = createGeneralReturn({ ...req.body, user_id: req.user?.id || req.body.user_id || null });
+    const result = createGeneralReturn({ ...req.body, user_id: req.user?.id || req.body.user_id || null, _user: req.user });
     req.audit("create", "sales_return", { id: result?.id }, `↩️ تم إنشاء مرتجع مبيعات عام #${result?.id}`, result?.id ? `/pos/sales-returns/${result.id}` : null);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
@@ -207,7 +208,7 @@ router.post("/returns/:id/cancel", requirePagePermission("sales_returns", "delet
 
 router.put("/returns/:id", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
   try {
-    const result = editSalesReturn(Number(req.params.id), req.body || {}, req.user?.id || req.body?.user_id || null);
+    const result = editSalesReturn(Number(req.params.id), { ...(req.body || {}), _user: req.user }, req.user?.id || req.body?.user_id || null);
     req.audit("edit", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
@@ -372,7 +373,7 @@ router.get("/:id", requirePagePermission("pos", "view"), (req, res, next) => {
 router.put("/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
   try {
     const userId = req.user?.id ? Number(req.user.id) : null;
-    const result = editInvoice(Number(req.params.id), req.body, userId);
+    const result = editInvoice(Number(req.params.id), { ...(req.body || {}), _user: req.user }, userId);
     req.audit("edit", "invoice", { id: Number(req.params.id) }, `🧾 تم تعديل فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (e) { next(e); }
@@ -383,7 +384,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const resolvedUserId = rawUserId && Number.isInteger(Number(rawUserId))
     ? Number(rawUserId)
     : (() => { try { return getDb().prepare("SELECT id FROM users WHERE is_active = 1 ORDER BY id ASC LIMIT 1").get()?.id || null; } catch (_) { return null; } })();
-  const payload = { ...(req.body || {}), user_id: resolvedUserId };
+  const payload = { ...(req.body || {}), user_id: resolvedUserId, _user: req.user };
   const invoice = createInvoice(payload);
   const invoiceAuditId = req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
   // Notify on large invoice (total > 1000)
@@ -475,7 +476,7 @@ router.delete("/:id", requirePagePermission("pos", "void"), (req, res, next) => 
 
 router.put("/:id/amend", requirePagePermission("pos", "edit"), (req, res, next) => {
   try {
-    const result = amendInvoice(Number(req.params.id), req.body, req.user?.id);
+    const result = amendInvoice(Number(req.params.id), { ...(req.body || {}), _user: req.user }, req.user?.id);
     req.audit("amend", "invoice", { original_id: Number(req.params.id), new_id: result?.id }, `🧾 تم تعديل (أمندمنت) فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     res.json({ success: true, data: result });
   } catch (err) {

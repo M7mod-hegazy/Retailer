@@ -52,6 +52,9 @@ function buildQuotationPayload(payload = {}) {
     expires_at: payload.expires_at || null,
     lines,
     total,
+    tax_enabled: payload.tax_enabled,
+    tax_rate: payload.tax_rate,
+    _user: payload._user,
   };
 }
 
@@ -85,7 +88,7 @@ router.get("/:id", requirePagePermission("quotations", "view"), (req, res, next)
 
 router.post("/", requirePagePermission("quotations", "add"), (req, res, next) => {
   try {
-    const created = QuotationModel.create(buildQuotationPayload(req.body || {}));
+    const created = QuotationModel.create(buildQuotationPayload({ ...(req.body || {}), _user: req.user }));
     req.audit("create", "quotations", { id: created.id }, `📋 تم إنشاء عرض سعر`);
     res.status(201).json({ success: true, data: created });
   } catch (error) {
@@ -106,7 +109,7 @@ router.put("/:id", requirePagePermission("quotations", "edit"), (req, res, next)
       error.status = 409;
       throw error;
     }
-    const updated = QuotationModel.update(req.params.id, buildQuotationPayload(req.body || {}));
+    const updated = QuotationModel.update(req.params.id, buildQuotationPayload({ ...(req.body || {}), _user: req.user }));
     req.audit("update", "quotations", { id: req.params.id }, `📋 تم تعديل عرض سعر`);
     res.json({ success: true, data: updated });
   } catch (error) {
@@ -186,7 +189,7 @@ router.post("/:id/convert-to-invoice", requirePagePermission("quotations", "add"
     const invoiceId = db.transaction(() => {
       const invoice = db
         .prepare(
-          "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, total, payment_type, status) VALUES (?, ?, ?, ?, ?, 'credit', 'unpaid')",
+          "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, total, payment_type, status, notes, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, 'credit', 'unpaid', ?, ?, ?, ?, ?)",
         )
         .run(
           invoiceNumber,
@@ -194,6 +197,11 @@ router.post("/:id/convert-to-invoice", requirePagePermission("quotations", "add"
           quotation.lines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unit_price || 0), 0),
           quotation.lines.reduce((sum, line) => sum + Number(line.discount_amount || 0), 0),
           Number(quotation.total || 0),
+          quotation.notes || null,
+          quotation.tax_enabled || 0,
+          quotation.tax_rate || 0,
+          quotation.tax_amount || 0,
+          quotation.tax_type || null,
         );
 
       const insertLine = db.prepare(

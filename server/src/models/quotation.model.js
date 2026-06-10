@@ -50,16 +50,27 @@ function create(payload = {}) {
   const db = getDb();
   const lines = Array.isArray(payload.lines) ? payload.lines : [];
   const tx = db.transaction(() => {
+    const { resolveTax } = require('../utils/salesTax');
+    const taxResult = resolveTax(db, {
+      requestedEnabled: payload.tax_enabled,
+      requestedRate: payload.tax_rate,
+      base: Number(payload.total || 0),
+      user: payload._user,
+    });
     const result = db
       .prepare(
-        "INSERT INTO quotations (customer_id, total, status, notes, expires_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO quotations (customer_id, total, status, notes, expires_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         payload.customer_id || null,
-        Number(payload.total || 0),
+        taxResult.total,
         payload.status || "draft",
         payload.notes || null,
         payload.expires_at || null,
+        taxResult.tax_enabled,
+        taxResult.tax_rate,
+        taxResult.tax_amount,
+        taxResult.tax_type,
       );
 
     const quotationId = result.lastInsertRowid;
@@ -91,16 +102,28 @@ function update(id, payload = {}) {
   const db = getDb();
   const lines = Array.isArray(payload.lines) ? payload.lines : [];
   const tx = db.transaction(() => {
+    const { resolveTax } = require('../utils/salesTax');
+    const taxResult = resolveTax(db, {
+      requestedEnabled: payload.tax_enabled,
+      requestedRate: payload.tax_rate,
+      base: Number(payload.total || 0),
+      user: payload._user,
+    });
     db.prepare(
       `UPDATE quotations
-       SET customer_id = ?, total = ?, status = ?, notes = ?, expires_at = ?
+       SET customer_id = ?, total = ?, status = ?, notes = ?, expires_at = ?,
+           tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?
        WHERE id = ?`,
     ).run(
       payload.customer_id || null,
-      Number(payload.total || 0),
+      taxResult.total,
       payload.status || "draft",
       payload.notes || null,
       payload.expires_at || null,
+      taxResult.tax_enabled,
+      taxResult.tax_rate,
+      taxResult.tax_amount,
+      taxResult.tax_type,
       id,
     );
 

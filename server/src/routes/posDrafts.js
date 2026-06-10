@@ -24,21 +24,24 @@ router.get("/", (req, res) => {
 // POST /api/pos-drafts
 router.post("/", (req, res) => {
   const db = getDb();
-  const { type = "held", lines, customer, discount, increase, payment_type } = req.body;
+  const { type = "held", lines, customer, discount, increase, payment_type, notes, tax_enabled, tax_rate } = req.body;
   try {
     if (type === "active") {
       db.prepare("DELETE FROM pos_drafts WHERE type = 'active'").run();
     }
     const result = db.prepare(`
-      INSERT INTO pos_drafts (type, lines_json, customer_json, discount, increase, payment_type, held_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO pos_drafts (type, lines_json, customer_json, discount, increase, payment_type, held_at, notes, tax_enabled, tax_rate)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?)
     `).run(
       type,
       JSON.stringify(lines || []),
       customer ? JSON.stringify(customer) : null,
       Number(discount || 0),
       Number(increase || 0),
-      payment_type || "cash"
+      payment_type || "cash",
+      notes || null,
+      tax_enabled !== undefined ? tax_enabled : null,
+      tax_rate !== undefined ? tax_rate : null
     );
     res.json({ data: { id: result.lastInsertRowid } });
   } catch (err) {

@@ -206,7 +206,15 @@ function createInvoice(payload) {
     // Persist all invoice-level reductions in `discount` so subtotal − discount + increase
     // reconciles against line-level discounts left on the lines themselves.
     const discount = headerDiscount + promotionDiscount;
-    const total = Math.max(0, lineNet - headerDiscount - promotionDiscount + increaseAmount);
+    const base = Math.max(0, lineNet - headerDiscount - promotionDiscount + increaseAmount);
+    const { resolveTax } = require('../utils/salesTax');
+    const taxResult = resolveTax(db, {
+      requestedEnabled: payload.tax_enabled,
+      requestedRate: payload.tax_rate,
+      base,
+      user: payload._user,
+    });
+    const total = taxResult.total;
     const paymentType = payload.payment_type || "cash";
     const multiPaid = paymentType === "multi" && Array.isArray(payload.payments)
       ? payload.payments.reduce((sum, line) => sum + Number(line.amount || 0), 0)
@@ -222,7 +230,7 @@ function createInvoice(payload) {
 
     const inv = db
       .prepare(
-        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         invoiceNo,
@@ -236,6 +244,11 @@ function createInvoice(payload) {
         payload.seller_id ? Number(payload.seller_id) : null,
         payload.user_id ? Number(payload.user_id) : null,
         amountReceived,
+        payload.notes || null,
+        taxResult.tax_enabled,
+        taxResult.tax_rate,
+        taxResult.tax_amount,
+        taxResult.tax_type,
       );
 
     db.prepare("UPDATE invoices SET created_at = ? WHERE id = ?")
@@ -722,7 +735,18 @@ function editInvoice(invoiceId, payload, userId) {
     const discount = headerDiscount + promotionDiscount;
     const increase = Number(payload.increase ?? invoice.increase ?? 0);
     // Match create path / client: net of per-line discounts and promotions.
-    const newTotal = Math.max(0, lineNet - headerDiscount - promotionDiscount + increase);
+    const base = Math.max(0, lineNet - headerDiscount - promotionDiscount + increase);
+    const { resolveTax } = require('../utils/salesTax');
+    // Inherit tax from existing row if client didn't send tax fields (so unrelated edits don't retro-tax old invoices)
+    const taxEnabled = payload.tax_enabled !== undefined ? payload.tax_enabled : invoice.tax_enabled;
+    const taxRate = payload.tax_rate !== undefined ? payload.tax_rate : invoice.tax_rate;
+    const taxResult = resolveTax(db, {
+      requestedEnabled: taxEnabled,
+      requestedRate: taxRate,
+      base,
+      user: payload._user,
+    });
+    const newTotal = taxResult.total;
     const newPaymentType = payload.payment_type || oldPaymentType;
     const newCustomerId = payload.customer_id ?? oldCustomerId;
     const amountPaid = Number(payload.amount_paid ?? invoice.amount_received ?? newTotal);
@@ -779,13 +803,18 @@ function editInvoice(invoiceId, payload, userId) {
     db.prepare(`
       UPDATE invoices SET customer_id = ?, subtotal = ?, discount = ?, increase = ?, total = ?,
         payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = CURRENT_TIMESTAMP,
-        updated_by = ?
+        updated_by = ?, notes = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?
       WHERE id = ?
     `).run(
       newCustomerId, subtotal, discount, increase, newTotal,
       newPaymentType, amountReceived, newStatus,
       payload.seller_id ? Number(payload.seller_id) : invoice.seller_id,
       userId || null,
+      payload.notes !== undefined ? (payload.notes || null) : (invoice.notes || null),
+      taxResult.tax_enabled,
+      taxResult.tax_rate,
+      taxResult.tax_amount,
+      taxResult.tax_type,
       invoiceId,
     );
 
@@ -861,6 +890,17 @@ function amendInvoice(invoiceId, payload, userId) {
   // Create replacement invoice (createInvoice opens its own transaction — better-sqlite3 nests via savepoints)
   const newPayload = { ...payload };
   delete newPayload.reason;
+
+  // carry forward tax snapshot from original unless client explicitly sets new tax_enabled/rate
+  if (newPayload.tax_enabled === undefined) {
+    newPayload.tax_enabled = original.tax_enabled;
+    newPayload.tax_rate = original.tax_rate;
+  }
+  // carry forward notes from original unless client sets them
+  if (newPayload.notes === undefined) newPayload.notes = original.notes;
+  // pass user through for permission checks
+  newPayload._user = payload._user;
+
   const newInvoice = createInvoice(newPayload);
 
   // Link original → new and new → original

@@ -98,24 +98,44 @@ function createReturn(invoiceId, payload) {
     }
 
     const { discount, increase, total: adjTotal } = applyReturnAdjustment(total, payload);
+
+    // Inherit tax from parent invoice snapshot (direct calculation — no settings read,
+    // so rate changes after original sale don't affect linked returns)
+    const { round2 } = require('../utils/salesTax');
+    let taxFields = { tax_enabled: 0, tax_rate: 0, tax_amount: 0, tax_type: null };
+    let finalTotal = adjTotal;
+    if (Number(invoice.tax_enabled)) {
+      const parentRate = Number(invoice.tax_rate || 0);
+      const parentType = invoice.tax_type;
+      if (parentType === 'exclusive') {
+        const tax_amount = round2(adjTotal * parentRate / 100);
+        taxFields = { tax_enabled: 1, tax_rate: parentRate, tax_amount, tax_type: parentType };
+        finalTotal = round2(adjTotal + tax_amount);
+      } else if (parentType === 'inclusive') {
+        const tax_amount = round2(adjTotal * parentRate / (100 + parentRate));
+        taxFields = { tax_enabled: 1, tax_rate: parentRate, tax_amount, tax_type: parentType };
+        // inclusive: total stays the same
+      }
+    }
+
     const refundMethod = payload.refund_method || "cash_back";
-    const cashAmt = refundMethod === "cash_back" ? adjTotal
+    const cashAmt = refundMethod === "cash_back" ? finalTotal
       : refundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
       : 0;
-    const creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? adjTotal
-      : refundMethod === "split" ? Math.max(0, adjTotal - cashAmt)
+    const creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? finalTotal
+      : refundMethod === "split" ? Math.max(0, finalTotal - cashAmt)
       : 0;
 
     const docNo = generateDocNumber('sales_return');
     const result = db
       .prepare(
-        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, reason, refund_method, cash_amount, credit_amount, notes, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, reason, refund_method, cash_amount, credit_amount, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
       )
       .run(
         docNo,
         invoiceId,
         invoice.customer_id || null,
-        adjTotal,
+        finalTotal,
         discount,
         increase,
         payload.reason || null,
@@ -125,6 +145,10 @@ function createReturn(invoiceId, payload) {
         payload.notes || null,
         payload.user_id || null,
         `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+        taxFields.tax_enabled,
+        taxFields.tax_rate,
+        taxFields.tax_amount,
+        taxFields.tax_type,
       );
 
     const returnId = result.lastInsertRowid;
@@ -206,17 +230,26 @@ function createGeneralReturn(payload) {
     for (const line of lines) subtotal += Number(line.quantity) * Number(line.unit_price);
     const { discount, increase, total } = applyReturnAdjustment(subtotal, payload);
 
+    const { resolveTax } = require('../utils/salesTax');
+    const taxResult = resolveTax(db, {
+      requestedEnabled: payload.tax_enabled,
+      requestedRate: payload.tax_rate,
+      base: total,
+      user: payload._user,
+    });
+    const finalTotal = taxResult.total;
+
     const genRefundMethod = refund_method || 'cash_back';
-    const genCashAmt = genRefundMethod === 'cash_back' ? total
+    const genCashAmt = genRefundMethod === 'cash_back' ? finalTotal
       : genRefundMethod === 'split' ? Math.max(0, Number(payload.cash_amount || 0))
       : 0;
-    const genCreditAmt = (genRefundMethod === 'credit_note' || genRefundMethod === 'store_credit') ? total
-      : genRefundMethod === 'split' ? Math.max(0, total - genCashAmt)
+    const genCreditAmt = (genRefundMethod === 'credit_note' || genRefundMethod === 'store_credit') ? finalTotal
+      : genRefundMethod === 'split' ? Math.max(0, finalTotal - genCashAmt)
       : 0;
 
     const ret = db.prepare(
-      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'))"
-    ).run(docNo, customer_id || null, total, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null);
+      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'), ?, ?, ?, ?)"
+    ).run(docNo, customer_id || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null, taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
 
     const returnId = ret.lastInsertRowid;
 
@@ -260,7 +293,7 @@ function createGeneralReturn(payload) {
       db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(genCreditAmt, customer_id);
     }
 
-    return { id: returnId, doc_no: docNo, total };
+    return { id: returnId, doc_no: docNo, total: finalTotal };
   })();
 }
 
@@ -477,14 +510,47 @@ function editSalesReturn(returnId, payload, userId) {
       increase: payload.increase ?? sr.increase,
       supervisor_override: payload.supervisor_override,
     });
+
+    // Tax computation: linked returns use stored snapshot; standalone returns use resolveTax
+    const { round2, resolveTax } = require('../utils/salesTax');
+    let newTaxFields = { tax_enabled: 0, tax_rate: 0, tax_amount: 0, tax_type: null };
+    let finalAdjTotal = newAdjTotal;
+
+    if (sr.invoice_id) {
+      // Linked return: use stored tax snapshot
+      const snapshotRate = Number(sr.tax_rate || 0);
+      const snapshotType = sr.tax_type;
+      if (Number(sr.tax_enabled) || (snapshotRate > 0 && snapshotType)) {
+        if (snapshotType === 'exclusive') {
+          const tax_amount = round2(newAdjTotal * snapshotRate / 100);
+          newTaxFields = { tax_enabled: 1, tax_rate: snapshotRate, tax_amount, tax_type: snapshotType };
+          finalAdjTotal = round2(newAdjTotal + tax_amount);
+        } else if (snapshotType === 'inclusive') {
+          const tax_amount = round2(newAdjTotal * snapshotRate / (100 + snapshotRate));
+          newTaxFields = { tax_enabled: 1, tax_rate: snapshotRate, tax_amount, tax_type: snapshotType };
+          // finalAdjTotal unchanged (inclusive)
+        }
+      }
+    } else {
+      // Standalone return: resolveTax
+      const taxResult = resolveTax(db, {
+        requestedEnabled: payload.tax_enabled !== undefined ? payload.tax_enabled : sr.tax_enabled,
+        requestedRate: payload.tax_rate !== undefined ? payload.tax_rate : null,
+        base: newAdjTotal,
+        user: payload._user,
+      });
+      newTaxFields = { tax_enabled: taxResult.tax_enabled, tax_rate: taxResult.tax_rate, tax_amount: taxResult.tax_amount, tax_type: taxResult.tax_type };
+      finalAdjTotal = taxResult.total;
+    }
+
     const newRefundMethod = payload.refund_method || sr.refund_method;
     const newTreasuryId = payload.treasury_id || sr.treasury_id;
     const newCustomerId = payload.customer_id || sr.customer_id;
-    const newCashAmt = newRefundMethod === "cash_back" ? newAdjTotal
+    const newCashAmt = newRefundMethod === "cash_back" ? finalAdjTotal
       : newRefundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
       : 0;
-    const newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? newAdjTotal
-      : newRefundMethod === "split" ? Math.max(0, newAdjTotal - newCashAmt)
+    const newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? finalAdjTotal
+      : newRefundMethod === "split" ? Math.max(0, finalAdjTotal - newCashAmt)
       : 0;
     if (newCashAmt > 0) {
       const tId = newTreasuryId || editDefaultTId;
@@ -496,8 +562,8 @@ function editSalesReturn(returnId, payload, userId) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(newAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, returnId);
+      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, returnId);
 
     // 7. Recalculate linked invoice status
     if (sr.invoice_id) {
