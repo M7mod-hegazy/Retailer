@@ -960,12 +960,20 @@ export default function ItemsListPage() {
           <h2 className="text-[20px] font-black text-slate-900">لم يتم تعريف أقسام الأصناف</h2>
           <p className="text-sm font-bold text-slate-500 max-w-[300px]">يجب إنشاء فئة رئيسية واحدة على الأقل قبل البدء بتعريف الأصناف الفردية</p>
         </div>
-        <button 
-           onClick={() => setNewCategoryOpen(true)}
-           className="flex items-center gap-2 rounded-sm bg-slate-800 px-8 py-3 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-95"
-        >
-           <Plus className="h-4 w-4" /> إنشاء فئة جديدة الآن
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+             onClick={() => setNewCategoryOpen(true)}
+             className="flex items-center gap-2 rounded-sm bg-slate-800 px-8 py-3 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-95"
+          >
+             <Plus className="h-4 w-4" /> إنشاء فئة جديدة الآن
+          </button>
+          <button
+             onClick={() => navigate("/definitions/items/import")}
+             className="flex items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-8 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100 transition-all active:scale-95"
+          >
+             <Upload className="h-4 w-4" /> استيراد من Excel
+          </button>
+        </div>
         <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md">
           <form onSubmit={createCategory} className="space-y-4 p-4">
             <div className="space-y-2">
@@ -1132,12 +1140,12 @@ export default function ItemsListPage() {
                    </th>
                    <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">صورة</th>
                    <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">نشط</th>
-                   <th className="w-16 px-1 py-3 text-center" title="تتبع تواريخ الانتهاء — فعّل لكل صنف حساس">
-                     <div className="flex flex-col items-center gap-0.5">
-                       <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">FEFO</span>
-                       <span className="text-[9px] font-bold text-slate-400 leading-none">صلاحية</span>
-                     </div>
-                   </th>
+                    <th className="w-16 px-1 py-3 text-center" title="تتبع تواريخ الانتهاء — فعّل لكل صنف حساس">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">FEFO</span>
+                        <span className="text-[9px] font-bold text-slate-400 leading-none">انتهاء</span>
+                      </div>
+                    </th>
                    <SortTh label="الكود" sortKey="code" sortConfig={sortConfig} onSort={toggleSort} resizableKey="code" width={colWidths.code} onResizeStart={onResizeStart} />
                    <SortTh label="الاسم / المواصفات" sortKey="name" sortConfig={sortConfig} onSort={toggleSort} resizableKey="name" width={colWidths.name} onResizeStart={onResizeStart} />
                    <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>

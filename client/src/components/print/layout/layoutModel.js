@@ -49,6 +49,7 @@ export const SHOW_KEY = {
   discount: "show_discount_line",
   tax: "show_tax",
   payments: "show_payment_details",
+  notes: "show_notes",
   footer_text: "show_footer",
   qr: "show_qr",
 };

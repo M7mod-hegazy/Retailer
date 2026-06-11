@@ -22,6 +22,7 @@ import SalesReturnTodayModal from "../../components/sales/SalesReturnTodayModal"
 import InvoicePickerTodayModal from "../../components/sales/InvoicePickerTodayModal";
 import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { usePermission } from "../../hooks/usePermission";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -249,6 +250,8 @@ export default function SalesReturnFormPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
   const [returnNotes, setReturnNotes] = useState("");
+  const [taxEnabled, setTaxEnabled] = useState(null); // standalone returns only; null = follow settings (default ON)
+  const [taxRate, setTaxRate] = useState(null);       // null = settings rate; number = privileged override
 
   const itemInputRef = useRef(null);
   const stagingWHRef = useRef(null);
@@ -296,12 +299,53 @@ export default function SalesReturnFormPage() {
   const discountCapEnabled = useAppSettingsStore(s => Number(s.settings?.discount_cap_enabled ?? 1) !== 0);
   const discountExceedsCap = discountCapEnabled && (Number(headerDiscount) || 0) > subtotal * (maxDiscountPercent / 100);
 
+  const appSettings = useAppSettingsStore(s => s.settings);
+  const canEditTaxRate = usePermission("pos", "edit_tax_rate");
+  const taxFeatureOn = Number(appSettings?.tax_enabled ?? 0) === 1
+    && (appSettings?.tax_type === "inclusive" || appSettings?.tax_type === "exclusive");
+
+  // Mirrors server math (display only — server is authoritative):
+  // linked returns inherit the parent invoice's snapshot; standalone returns follow settings.
+  const taxInfo = useMemo(() => {
+    const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
+    const none = { applied: false, rate: 0, type: null, amount: 0, finalTotal: total, inherited: mode === "invoice" };
+    const fromSnapshot = (src, inherited) => {
+      const rate = Number(src.tax_rate || 0);
+      const type = src.tax_type;
+      if (type === "exclusive") {
+        const amount = r2(total * rate / 100);
+        return { applied: true, rate, type, amount, finalTotal: r2(total + amount), inherited };
+      }
+      if (type === "inclusive") {
+        return { applied: true, rate, type, amount: r2(total * rate / (100 + rate)), finalTotal: total, inherited };
+      }
+      return none;
+    };
+    if (mode === "invoice") {
+      const src = (loadedInvoice && Number(loadedInvoice.tax_enabled)) ? loadedInvoice
+        : (isEditMode && rawEditData && Number(rawEditData.tax_enabled)) ? rawEditData : null;
+      return src ? fromSnapshot(src, true) : none;
+    }
+    // standalone: explicit toggle wins; edit mode keeps the saved snapshot type/rate as base
+    const enabled = taxEnabled == null
+      ? (isEditMode && rawEditData ? Number(rawEditData.tax_enabled) === 1 : taxFeatureOn)
+      : Boolean(Number(taxEnabled));
+    if (!enabled) return none;
+    const snapType = (isEditMode && rawEditData?.tax_type) ? rawEditData.tax_type : appSettings?.tax_type;
+    const rate = taxRate != null ? Number(taxRate)
+      : (isEditMode && rawEditData?.tax_rate != null ? Number(rawEditData.tax_rate) : Number(appSettings?.tax_rate || 0));
+    return fromSnapshot({ tax_rate: rate, tax_type: snapType }, false);
+  }, [mode, loadedInvoice, isEditMode, rawEditData, total, taxFeatureOn, taxEnabled, taxRate, appSettings]);
+
+  // What actually leaves the treasury / lands on the customer balance.
+  const refundTotal = taxInfo.finalTotal;
+
   const returnCreditEffect = useMemo(() => {
-    if (!total) return 0;
-    if (refundMethod === "store_credit") return total;
-    if (refundMethod === "split") return Math.max(0, total - (Number(splitCashAmount) || 0));
+    if (!refundTotal) return 0;
+    if (refundMethod === "store_credit") return refundTotal;
+    if (refundMethod === "split") return Math.max(0, refundTotal - (Number(splitCashAmount) || 0));
     return 0;
-  }, [refundMethod, total, splitCashAmount]);
+  }, [refundMethod, refundTotal, splitCashAmount]);
 
   // In edit mode, the DB balance already has the ORIGINAL return's credit effect applied.
   // We compute the NET change so we never double-count.
@@ -358,6 +402,8 @@ export default function SalesReturnFormPage() {
       if (sr.refund_method === "split") setSplitCashAmount(String(sr.cash_amount || ""));
       setReason(sr.reason || "other");
       setReturnNotes(sr.notes || "");
+      if (sr.tax_enabled !== undefined && sr.tax_enabled !== null) setTaxEnabled(Number(sr.tax_enabled) ? 1 : 0);
+      if (sr.tax_rate != null && Number(sr.tax_enabled)) setTaxRate(Number(sr.tax_rate));
       setHeaderDiscount(Number(sr.discount || 0));
       setHeaderIncrease(Number(sr.increase || 0));
       setAdjustmentTouched(true); // saved values — do not auto-recompute over the user's data
@@ -658,13 +704,19 @@ export default function SalesReturnFormPage() {
       increase: Number(headerIncrease) || 0,
       supervisor_override: supervisorOverride,
       notes: returnNotes || null,
+      // tax: linked returns inherit server-side from the parent — send nothing;
+      // standalone returns send the toggle (and rate only when overridden)
+      ...(mode === "direct" && taxFeatureOn ? {
+        tax_enabled: taxEnabled == null ? 1 : (Number(taxEnabled) ? 1 : 0),
+        ...(taxRate != null ? { tax_rate: Number(taxRate) } : {}),
+      } : {}),
     };
     setIsSaving(true); setMessage({ text: "", type: "" });
     try {
       const savedDocNo = docNo;
       const successData = {
         docNo: savedDocNo,
-        total,
+        total: refundTotal,
         discount: Number(headerDiscount) || 0,
         increase: Number(headerIncrease) || 0,
         refundMethod,
@@ -1057,9 +1109,46 @@ export default function SalesReturnFormPage() {
                     الخصم يتجاوز {maxDiscountPercent}% — موافقة المشرف
                   </label>
                 )}
+                {/* Tax: linked returns inherit the parent invoice snapshot (read-only); standalone returns get a toggle */}
+                {taxInfo.inherited && taxInfo.applied && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
+                      ضريبة موروثة من الفاتورة ({taxInfo.rate}%{taxInfo.type === "inclusive" ? " شاملة" : ""})
+                    </span>
+                    <span className="text-sm font-black font-mono text-indigo-700">{taxInfo.type === "exclusive" ? "+ " : ""}{formatMoney(taxInfo.amount)} ج.م</span>
+                  </div>
+                )}
+                {mode === "direct" && taxFeatureOn && (
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="flex cursor-pointer items-center gap-1.5 text-2sm font-bold text-indigo-600 shrink-0">
+                      <input
+                        type="checkbox"
+                        className="accent-indigo-600"
+                        disabled={isLocked}
+                        checked={taxEnabled == null ? taxInfo.applied : Boolean(Number(taxEnabled))}
+                        onChange={e => setTaxEnabled(e.target.checked ? 1 : 0)}
+                      />
+                      الضريبة{appSettings?.tax_type === "inclusive" ? " (شاملة)" : ""}
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {canEditTaxRate ? (
+                        <input
+                          type="number" min="0" max="100" step="0.01"
+                          disabled={isLocked}
+                          value={taxRate != null ? taxRate : (isEditMode && rawEditData?.tax_rate != null ? Number(rawEditData.tax_rate) : Number(appSettings?.tax_rate || 0))}
+                          onChange={e => setTaxRate(e.target.value === "" ? null : Number(e.target.value))}
+                          className="w-16 rounded-lg border border-indigo-200 bg-white px-2 py-1 text-center text-sm font-black font-mono text-indigo-700 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 disabled:opacity-60"
+                        />
+                      ) : (
+                        <span className="text-2sm font-black text-indigo-500">{taxInfo.rate}%</span>
+                      )}
+                      <span className="text-sm font-black font-mono text-indigo-700">{taxInfo.applied ? `${taxInfo.type === "exclusive" ? "+ " : ""}${formatMoney(taxInfo.amount)}` : "—"} ج.م</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t border-emerald-200/60 pt-2 mt-0.5">
                   <span className="text-2sm font-black text-emerald-700">صافي المرتجع</span>
-                  <span className="text-[16px] font-black text-emerald-800">{formatMoney(total)} ج.م</span>
+                  <span className="text-[16px] font-black text-emerald-800">{formatMoney(refundTotal)} ج.م</span>
                 </div>
               </div>
             )}
@@ -1084,12 +1173,12 @@ export default function SalesReturnFormPage() {
                   );
                 })}
               </div>
-              {refundMethod === "split" && total > 0 && (
+              {refundMethod === "split" && refundTotal > 0 && (
                 <div className="flex flex-col gap-1 rounded-xl border border-indigo-200 bg-indigo-50/50 p-3">
                   <label className="text-[11px] font-bold text-indigo-600">المبلغ النقدي</label>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number" min="0" max={total} step="0.01"
+                      type="number" min="0" max={refundTotal} step="0.01"
                       value={splitCashAmount}
                       onChange={e => setSplitCashAmount(e.target.value)}
                       className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-bold text-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
@@ -1099,7 +1188,7 @@ export default function SalesReturnFormPage() {
                   </div>
                   <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                     <span>رصيد حساب</span>
-                    <span className="font-bold text-indigo-600">{formatMoney(Math.max(0, total - (Number(splitCashAmount) || 0)))} ج.م</span>
+                    <span className="font-bold text-indigo-600">{formatMoney(Math.max(0, refundTotal - (Number(splitCashAmount) || 0)))} ج.م</span>
                   </div>
                 </div>
               )}
@@ -1132,14 +1221,17 @@ export default function SalesReturnFormPage() {
             {/* Notes */}
             <div className="flex flex-col gap-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">ملاحظات</label>
-              <textarea
-                rows={2}
-                value={returnNotes}
-                onChange={e => setReturnNotes(e.target.value)}
-                disabled={isLocked}
-                placeholder="ملاحظة اختيارية على المرتجع…"
-                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-              />
+              {isLocked ? (
+                <p className="text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{returnNotes || "—"}</p>
+              ) : (
+                <textarea
+                  rows={2}
+                  value={returnNotes}
+                  onChange={e => setReturnNotes(e.target.value)}
+                  placeholder="ملاحظة اختيارية على المرتجع…"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition-all"
+                />
+              )}
             </div>
 
             {/* Action buttons — mirrors header */}
@@ -1226,7 +1318,7 @@ export default function SalesReturnFormPage() {
                 <span className="text-[11px] font-bold text-emerald-300">سيتم استرداد</span>
                 <span className="text-[11px] text-emerald-400">المبلغ المُعاد للعميل</span>
               </div>
-              <span className="text-[20px] font-black text-white">{formatMoney(total)} ج.م</span>
+              <span className="text-[20px] font-black text-white">{formatMoney(refundTotal)} ج.م</span>
             </div>
           </div>
         </aside>
@@ -1607,7 +1699,7 @@ export default function SalesReturnFormPage() {
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex flex-col gap-1">
               <p className="text-sm font-black text-slate-800">هل أنت متأكد من حفظ هذا المرتجع؟</p>
-              <p className="text-2sm text-slate-600">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة إجمالية <span className="font-black text-emerald-700">{formatMoney(total)} ج.م</span> وتحديث المخزون والحسابات.</p>
+              <p className="text-2sm text-slate-600">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة إجمالية <span className="font-black text-emerald-700">{formatMoney(refundTotal)} ج.م</span> وتحديث المخزون والحسابات.</p>
             </div>
           </div>
           <div className="flex gap-3 justify-end">

@@ -11,7 +11,7 @@ function vat(startDate, endDate, opts = {}) {
     SELECT
       i.tax_rate,
       i.tax_type,
-      SUM(CASE WHEN i.tax_type = 'exclusive' THEN i.total - i.tax_amount ELSE i.total END) AS taxable_sales,
+      SUM(i.total - COALESCE(i.tax_amount, 0)) AS taxable_sales,
       SUM(COALESCE(i.tax_amount, 0)) AS vat_amount,
       COUNT(DISTINCT i.id) AS invoice_count
     FROM invoices i
@@ -27,7 +27,28 @@ function vat(startDate, endDate, opts = {}) {
 }
 
 function outputVat(startDate, endDate, opts = {}) {
-  return vat(startDate, endDate, opts);
+  // Same data as vat() but with the column names/metrics the output-vat report
+  // catalog declares (taxable_amount + customer_count).
+  const db = getDb();
+  const params = [];
+  const { customer_id } = opts;
+  const custClause = customer_id ? " AND i.customer_id = ?" : "";
+  return db.prepare(`
+    SELECT
+      i.tax_rate,
+      SUM(i.total - COALESCE(i.tax_amount, 0)) AS taxable_amount,
+      SUM(COALESCE(i.tax_amount, 0)) AS vat_amount,
+      COUNT(DISTINCT i.id) AS invoice_count,
+      COUNT(DISTINCT i.customer_id) AS customer_count
+    FROM invoices i
+    WHERE i.status != 'cancelled'
+      AND COALESCE(i.tax_enabled, 0) = 1
+      AND COALESCE(i.tax_amount, 0) > 0
+      ${addDateFilter("i.created_at", startDate, endDate, params)}
+      ${custClause}
+    GROUP BY i.tax_rate
+    ORDER BY i.tax_rate DESC
+  `).all(...params, ...(customer_id ? [customer_id] : []));
 }
 
 function inputVat(startDate, endDate, opts = {}) {

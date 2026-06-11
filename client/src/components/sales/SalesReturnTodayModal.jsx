@@ -145,6 +145,11 @@ function ReturnPreviewModal({ ret, onClose }) {
               )}
             </div>
           )}
+          {(detail || ret).notes && (
+            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
+              <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{(detail || ret).notes}
+            </div>
+          )}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">

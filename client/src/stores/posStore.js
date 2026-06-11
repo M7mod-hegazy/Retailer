@@ -18,9 +18,9 @@ function computeTax(base, taxEnabled, taxRate, settings) {
   const featureOn = Number(settings?.tax_enabled ?? 0) === 1
     && (settings?.tax_type === 'inclusive' || settings?.tax_type === 'exclusive');
   if (!featureOn) return { taxAmount: 0, total: base };
-  const enabled = taxEnabled === null ? true : Boolean(taxEnabled);
+  const enabled = taxEnabled == null ? true : Boolean(Number(taxEnabled));
   if (!enabled) return { taxAmount: 0, total: base };
-  const rate = taxRate !== null ? Number(taxRate) : Number(settings?.tax_rate || 0);
+  const rate = taxRate != null && Number.isFinite(Number(taxRate)) ? Number(taxRate) : Number(settings?.tax_rate || 0);
   if (settings?.tax_type === 'exclusive') {
     const taxAmount = Math.round((base * rate / 100 + Number.EPSILON) * 100) / 100;
     return { taxAmount, total: Math.round((base + taxAmount + Number.EPSILON) * 100) / 100 };
@@ -204,8 +204,8 @@ export const usePosStore = create(
             increase: state.increase,
             payment_type: state.paymentType,
             notes: state.invoiceNotes || null,
-            tax_enabled: state.taxEnabled,
-            tax_rate: state.taxRate,
+            tax_enabled: state.taxEnabled == null ? null : (Number(state.taxEnabled) ? 1 : 0),
+            tax_rate: state.taxRate == null ? null : Number(state.taxRate),
           });
           set({ _activeDraftDbId: res.data?.data?.id || null });
         } catch (_) {}
@@ -264,8 +264,8 @@ export const usePosStore = create(
           increase: slot.increase,
           payment_type: slot.paymentType,
           notes: slot.notes || null,
-          tax_enabled: slot.taxEnabled,
-          tax_rate: slot.taxRate,
+          tax_enabled: slot.taxEnabled == null ? null : (Number(slot.taxEnabled) ? 1 : 0),
+          tax_rate: slot.taxRate == null ? null : Number(slot.taxRate),
         }).then((res) => {
           const dbId = res.data?.data?.id;
           if (dbId) {

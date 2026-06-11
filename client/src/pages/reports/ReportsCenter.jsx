@@ -27,6 +27,7 @@ const SOURCE_CAT_MAP = {
   cheques: "treasury",
   "profit-loader": "sales",
   "net-profit": "accounts",
+  expiry: "inventory",
 };
 
 const CLS_ARABIC = {
@@ -209,6 +210,13 @@ export default function ReportsCenter() {
       params.set("cost_method", costMethod);
       const qs = params.toString();
       navigate(`/reports/owner-statement${qs ? `?${qs}` : ""}`);
+      return;
+    }
+    if (source.id === "expiry") {
+      if (workspaceFilters.warehouse_id) params.set("warehouse_id", workspaceFilters.warehouse_id);
+      if (workspaceFilters.item_id) params.set("item_id", workspaceFilters.item_id);
+      const qs = params.toString();
+      navigate(`/reports/expiry-report${qs ? `?${qs}` : ""}`);
       return;
     }
     if (scope.type !== "all" && scope.values?.[0]) {

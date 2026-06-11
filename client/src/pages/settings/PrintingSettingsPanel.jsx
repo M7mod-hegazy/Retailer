@@ -17,6 +17,7 @@ import { familyForSize } from "../../components/print/layout/layoutModel";
 import { PrintThermalDoc, PrintA4Doc } from "../../components/print/PrintDoc";
 import { Maximize2, Printer as PrinterIcon } from "lucide-react";
 import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap } from "../../services/printService";
+import { getHint as fmHint } from "../../utils/fieldMeta";
 
 // Mock invoice for the live preview of invoice-style docs — rendered through the
 // shared block library so the preview matches print AND the Designer layout.
@@ -71,6 +72,7 @@ const DEFAULTS = {
   show_cashier_name: true, show_customer_name: true, show_tax: true,
   show_footer: true, show_qr: true, show_logo: true,
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
+  show_notes: true,
   show_phone: true, show_address: true, show_tax_id: true,
   address_position: "top",
   show_branch: true, show_invoice_date: true, show_barcode_line: false,
@@ -135,7 +137,7 @@ const VISUAL_FIELDS = new Set([
   "show_logo", "show_branch", "show_address", "show_phone", "show_tax_id",
   "show_invoice_date", "show_customer_name", "show_cashier_name",
   "show_subtotal", "show_discount_line", "show_tax", "show_payment_details",
-  "show_footer", "show_qr", "show_barcode_line", "header_section", "show_item_code",
+  "show_notes", "show_footer", "show_qr", "show_barcode_line", "header_section", "show_item_code",
   "address_font_size", "address_alignment", "tax_id_font_size", "tax_id_alignment",
 ]);
 
@@ -184,11 +186,6 @@ function ControlField({ label, hint, fieldKey, hovered, onHover, onLeave, childr
           )}
         </span>
         {children}
-        {(function() {
-          const def = DEFAULTS[fieldKey];
-          const cur = onChange ? undefined : null; // badge only useful with onChange
-          return null;
-        })()}
       </label>
     </div>
   );
@@ -1341,19 +1338,25 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
     }
   };
 
-  const cf = (key, label, hint, children) => (
-    <div key={key}>
-      <ControlField label={label} hint={hint} fieldKey={key} hovered={hovered} onHover={hover} onLeave={leave}>
-        {children}
-      </ControlField>
-    </div>
-  );
+  const cf = (key, label, hint, children) => {
+    const autoHint = hint ?? fmHint(key);
+    return (
+      <div key={key}>
+        <ControlField label={label} hint={autoHint} fieldKey={key} hovered={hovered} onHover={hover} onLeave={leave}>
+          {children}
+        </ControlField>
+      </div>
+    );
+  };
 
-  const tog = (key, label, hint) => (
-    <div key={key}>
-      <ToggleSwitch checked={get(s, key) !== false} onChange={(v) => onChange(key, v)} label={label} hint={hint} fieldKey={key} hovered={hovered} onHover={hover} onLeave={leave} />
-    </div>
-  );
+  const tog = (key, label, hint) => {
+    const autoHint = hint ?? fmHint(key);
+    return (
+      <div key={key}>
+        <ToggleSwitch checked={get(s, key) !== false} onChange={(v) => onChange(key, v)} label={label} hint={autoHint} fieldKey={key} hovered={hovered} onHover={hover} onLeave={leave} />
+      </div>
+    );
+  };
 
   // Reset view when changing tabs
   const switchPreviewTab = (v) => {
@@ -1565,6 +1568,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             {tog("show_discount_line",   "سطر الخصم",        "إجمالي الخصومات")}
             {tog("show_tax",             "سطر الضريبة",      "مبلغ الضريبة")}
             {tog("show_payment_details", "طريقة الدفع",      "نقد / بنك / شبكة")}
+            {tog("show_notes",           "ملاحظات الفاتورة", "الملاحظة المسجلة على المستند")}
             {tog("show_footer",          "التذييل النصي",    "رسالة الشكر")}
             {tog("show_qr",              "رمز QR",           "رمز التحقق")}
             {tog("show_barcode_line",    "باركود المنتج",    "لكل صنف")}

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, RotateCcw, Eye, Loader2, Building2, FileText, MapPin, Plus, X } from 'lucide-react';
+import { Upload, RotateCcw, Eye, Loader2, Building2, FileText, MapPin, Plus, X, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { getMeta, getHint, getPlaceholder } from '../../utils/fieldMeta';
 
 export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
   const [logoPreview, setLogoPreview] = useState(settings.logo_url || null);
@@ -38,16 +39,48 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
     if (fileRef.current) fileRef.current.value = '';
   }, [onChange, lang]);
 
-  function DenseInput({ label, required, ...props }) {
+  function InfoTip({ text }) {
+    if (!text) return null;
+    return (
+      <span className="group relative cursor-help shrink-0">
+        <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
+        <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+          {text}
+          <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+        </div>
+      </span>
+    );
+  }
+
+  function DenseInput({ label, required, metaKey, ...props }) {
+    const hint = metaKey ? getHint(metaKey, lang) : null;
+    const placeholder = metaKey ? getPlaceholder(metaKey, lang) : null;
+    const meta = metaKey ? getMeta(metaKey) : null;
+    const isCriticalEmpty = meta?.critical && (
+      props.value === undefined || props.value === null || props.value === "" ||
+      (meta.defaultValue !== undefined && meta.defaultValue !== null && meta.defaultValue !== "" && props.value === meta.defaultValue)
+    );
     return (
       <label className="block space-y-1 focus-within:text-slate-900 text-slate-500 transition-colors">
         <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
           {label}
           {required && <span className="text-rose-500">*</span>}
+          {hint && <InfoTip text={hint} />}
+          {isCriticalEmpty && (
+            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
+              مطلوب
+            </span>
+          )}
         </span>
         <input
           {...props}
-          className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
+          data-field-key={metaKey}
+          placeholder={props.placeholder || placeholder}
+          className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal ${
+            isCriticalEmpty
+              ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
+              : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+          }`}
         />
       </label>
     );
@@ -139,15 +172,15 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
           <DenseInput
             label={lang === 'ar' ? 'اسم التطبيق (رئيسي)' : 'App Name'}
+            metaKey="app_name"
             value={settings.app_name || ''}
             onChange={(e) => onChange?.('app_name', e.target.value)}
-            placeholder={lang === 'ar' ? 'إلهيجازي للتجزئة' : 'ElHegazi Retailer'}
           />
           <DenseInput
             label={lang === 'ar' ? 'الاسم الفرعي (يظهر تحته)' : 'Sub-title'}
+            metaKey="app_subtitle"
             value={settings.app_subtitle || ''}
             onChange={(e) => onChange?.('app_subtitle', e.target.value)}
-            placeholder={lang === 'ar' ? 'نظام إدارة المبيعات' : 'Sales Management'}
           />
         </div>
       </section>
@@ -171,23 +204,27 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <DenseInput
             label={lang === 'ar' ? 'اسم الشركة (عربي)' : 'Company Name (Arabic)'}
+            metaKey="company_name"
             required
             value={settings.company_name || ''}
             onChange={(e) => onChange('company_name', e.target.value)}
           />
           <DenseInput
             label={lang === 'ar' ? 'اسم الشركة (إنجليزي)' : 'Company Name (English)'}
+            metaKey="company_name_en"
             value={settings.company_name_en || ''}
             onChange={(e) => onChange('company_name_en', e.target.value)}
           />
           <DenseInput
             label={lang === 'ar' ? 'اسم الفرع' : 'Branch Name'}
+            metaKey="branch_name"
             required
             value={settings.branch_name || ''}
             onChange={(e) => onChange('branch_name', e.target.value)}
           />
           <DenseInput
             label={lang === 'ar' ? 'كود الفرع' : 'Branch Code'}
+            metaKey="branch_code"
             value={settings.branch_code || ''}
             onChange={(e) => onChange('branch_code', e.target.value)}
           />
@@ -213,11 +250,13 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <DenseInput
             label={lang === 'ar' ? 'السجل التجاري' : 'Commercial Register'}
+            metaKey="commercial_register"
             value={settings.commercial_register || ''}
             onChange={(e) => onChange('commercial_register', e.target.value)}
           />
           <DenseInput
             label={lang === 'ar' ? 'الرقم الضريبي' : 'VAT Number'}
+            metaKey="vat_number"
             value={settings.vat_number || ''}
             onChange={(e) => onChange('vat_number', e.target.value)}
           />
@@ -253,6 +292,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                 <div className="flex-1">
                   <textarea
                     value={pair.address}
+                    data-field-key={i === 0 ? "address" : undefined}
                     onChange={(e) => {
                       if (i === 0) {
                         onChange("address", e.target.value);
@@ -271,6 +311,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                   <input
                     type="text"
                     value={pair.phone}
+                    data-field-key={i === 0 ? "phone" : undefined}
                     onChange={(e) => {
                       if (i === 0) {
                         onChange("phone", e.target.value);

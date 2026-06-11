@@ -462,27 +462,101 @@ router.get("/margin-alerts", requirePagePermission("reports", "view"), (_req, re
   }
 });
 
-// Items expiring within 30 days (for FEFO dashboard alert)
+// Expiry tracking dashboard data — includes expired, critical, warning, valid
 router.get("/expiring-soon", requirePagePermission("reports", "view"), (req, res) => {
   try {
     const db = getDb();
-    const days = Math.max(1, Math.min(365, Number(req.query.days || 30)));
+    const lookahead = Math.max(1, Math.min(365, Number(req.query.days || 30)));
+    const status = req.query.status || "all"; // all | expired | critical | warning | valid
+    const warehouseId = req.query.warehouse_id ? Number(req.query.warehouse_id) : null;
+    const search = req.query.search || "";
+
+    let conditions = [`ib.quantity > 0`, `ib.expiry_date IS NOT NULL`];
+    let params = [];
+
+    if (status === "expired") {
+      conditions.push(`ib.expiry_date < date('now')`);
+    } else if (status === "critical") {
+      conditions.push(`ib.expiry_date BETWEEN date('now') AND date('now', '+7 days')`);
+    } else if (status === "warning") {
+      conditions.push(`ib.expiry_date BETWEEN date('now', '+7 days') AND date('now', '+14 days')`);
+    } else if (status === "valid") {
+      conditions.push(`ib.expiry_date > date('now', '+14 days')`);
+      conditions.push(`ib.expiry_date <= date('now', '+' || ? || ' days')`);
+      params.push(lookahead);
+    } else {
+      // all: include expired + future within lookahead
+      conditions.push(`ib.expiry_date <= date('now', '+' || ? || ' days')`);
+      params.push(lookahead);
+    }
+
+    if (warehouseId) {
+      conditions.push(`ib.warehouse_id = ?`);
+      params.push(warehouseId);
+    }
+
+    if (search) {
+      conditions.push(`(i.name LIKE ? OR i.code LIKE ? OR ib.batch_no LIKE ?)`);
+      const s = `%${search}%`;
+      params.push(s, s, s);
+    }
+
+    const whereClause = conditions.join(" AND ");
+
     const items = db.prepare(`
       SELECT ib.id, ib.item_id, ib.batch_no, ib.expiry_date, ib.quantity, ib.warehouse_id,
+             ib.cost_price,
              i.name AS item_name, i.code AS item_code,
+             i.category_id, i.track_expiry,
              w.name AS warehouse_name,
-             julianday(ib.expiry_date) - julianday('now') AS days_remaining
+             ROUND(julianday(ib.expiry_date) - julianday('now'), 0) AS days_remaining
       FROM item_batches ib
       JOIN items i ON i.id = ib.item_id
       LEFT JOIN warehouses w ON w.id = ib.warehouse_id
-      WHERE ib.quantity > 0
-        AND ib.expiry_date IS NOT NULL
-        AND ib.expiry_date <= date('now', '+' || ? || ' days')
-        AND ib.expiry_date >= date('now')
+      WHERE ${whereClause}
       ORDER BY ib.expiry_date ASC
-      LIMIT 50
-    `).all(days);
-    res.json({ success: true, data: items });
+      LIMIT 100
+    `).all(...params);
+
+    // Summary stats
+    const trackedCount = db.prepare(`SELECT COUNT(*) AS cnt FROM items WHERE track_expiry = 1`).get();
+    const trackedWithoutBatches = db.prepare(`
+      SELECT COUNT(*) AS cnt FROM items i
+      WHERE i.track_expiry = 1
+        AND NOT EXISTS (SELECT 1 FROM item_batches ib WHERE ib.item_id = i.id AND ib.expiry_date IS NOT NULL)
+    `).get();
+
+    const stats = {
+      total_batches: 0,
+      total_quantity: 0,
+      expired: 0,
+      critical: 0,
+      warning: 0,
+      valid: 0,
+      expired_qty: 0,
+      critical_qty: 0,
+      tracked_items: trackedCount.cnt || 0,
+      tracked_without_batches: trackedWithoutBatches.cnt || 0,
+    };
+
+    const enriched = items.map(b => {
+      const dr = Number(b.days_remaining);
+      let batchStatus = "valid";
+      if (dr < 0) batchStatus = "expired";
+      else if (dr <= 7) batchStatus = "critical";
+      else if (dr <= 14) batchStatus = "warning";
+
+      stats.total_batches++;
+      stats.total_quantity += Number(b.quantity);
+      if (batchStatus === "expired") { stats.expired++; stats.expired_qty += Number(b.quantity); }
+      else if (batchStatus === "critical") { stats.critical++; stats.critical_qty += Number(b.quantity); }
+      else if (batchStatus === "warning") stats.warning++;
+      else stats.valid++;
+
+      return { ...b, batch_status: batchStatus };
+    });
+
+    res.json({ success: true, data: enriched, stats });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

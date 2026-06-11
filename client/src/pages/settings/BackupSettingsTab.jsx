@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { UploadCloud, Eraser, HardDrive, Clock, Folder, Loader2, Save, History } from "lucide-react";
+import { UploadCloud, Eraser, HardDrive, Clock, Folder, Loader2, Save, History, Info } from "lucide-react";
+import { getHint, getPlaceholder } from "../../utils/fieldMeta";
 import api from "../../services/api";
 import { usePermission } from "../../hooks/usePermission";
 import BackupPreviewModal from "./backup/BackupPreviewModal";
@@ -8,6 +9,19 @@ import RestoreBrowser from "./backup/RestoreBrowser";
 import RestoreConfirmModal from "./backup/RestoreConfirmModal";
 import EmptyDatabaseDialog from "./backup/EmptyDatabaseDialog";
 import { pickFolder, pickSavePath, isDesktop, formatBytes } from "./backup/helpers";
+
+function InfoTip({ text }) {
+  if (!text) return null;
+  return (
+    <span className="group relative cursor-help shrink-0">
+      <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
+      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+        {text}
+        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+      </div>
+    </span>
+  );
+}
 
 function Card({ tone = "slate", icon, title, desc, children }) {
   const toneMap = {
@@ -179,8 +193,11 @@ export default function BackupSettingsTab() {
             <Clock className="h-4 w-4 text-slate-500" /> النسخ التلقائي
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            <label className="flex items-center justify-between rounded-sm border border-slate-200 px-3 py-2">
-              <span className="text-[11px] font-bold text-slate-600">تفعيل النسخ اليومي</span>
+            <label className="flex items-center justify-between rounded-sm border border-slate-200 px-3 py-2 group">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+                تفعيل النسخ اليومي
+                <InfoTip text={getHint("auto_backup_enabled")} />
+              </span>
               <input
                 type="checkbox"
                 checked={Boolean(settings.auto_backup_enabled)}
@@ -188,8 +205,11 @@ export default function BackupSettingsTab() {
                 className="h-4 w-4 accent-slate-900"
               />
             </label>
-            <label className="rounded-sm border border-slate-200 px-3 py-2">
-              <span className="mb-1 block text-[11px] font-bold text-slate-500">وقت النسخة اليومية</span>
+            <label className="rounded-sm border border-slate-200 px-3 py-2 group">
+              <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-slate-500">
+                وقت النسخة اليومية
+                <InfoTip text={getHint("auto_backup_time")} />
+              </span>
               <input
                 type="time"
                 value={settings.auto_backup_time || "02:00"}
@@ -197,8 +217,11 @@ export default function BackupSettingsTab() {
                 className="w-full text-sm font-black text-slate-800 outline-none"
               />
             </label>
-            <div className="rounded-sm border border-slate-200 px-3 py-2">
-              <span className="mb-1 block text-[11px] font-bold text-slate-500">مجلد الحفظ</span>
+            <div className="rounded-sm border border-slate-200 px-3 py-2 group">
+              <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-slate-500">
+                مجلد الحفظ
+                <InfoTip text={getHint("auto_backup_path")} />
+              </span>
               <div className="flex items-center gap-2">
                 <input
                   type="text"

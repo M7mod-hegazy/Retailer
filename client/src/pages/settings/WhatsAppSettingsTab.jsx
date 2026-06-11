@@ -1,10 +1,23 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Smartphone, Link, Unlink, RefreshCw, CheckCircle, AlertCircle, Clock,
-  MessageSquare, Users, Send, ChevronDown, ChevronUp, Wifi, WifiOff, Zap
+  MessageSquare, Users, Send, ChevronDown, ChevronUp, Wifi, WifiOff, Zap, Info
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+
+function InfoTip({ text }) {
+  if (!text) return null;
+  return (
+    <span className="group relative cursor-help shrink-0">
+      <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
+      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+        {text}
+        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+      </div>
+    </span>
+  );
+}
 
 const TEMPLATE_LABELS = { receipt: "إيصال الشراء", birthday: "عيد الميلاد", debt: "تذكير الدين" };
 const TEMPLATE_HINTS = {
@@ -273,10 +286,11 @@ export default function WhatsAppSettingsTab() {
           <div className="space-y-5 pt-3">
             {["receipt", "birthday", "debt"].map(kind => (
               <div key={kind} className="space-y-2">
-                <div>
+                <div className="flex items-center gap-1.5">
                   <p className="text-sm font-black text-slate-800">{TEMPLATE_LABELS[kind]}</p>
-                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">{TEMPLATE_HINTS[kind]}</p>
+                  <InfoTip text={TEMPLATE_HINTS[kind]} />
                 </div>
+                <p className="text-[11px] font-bold text-slate-400 mt-0.5">{TEMPLATE_HINTS[kind]}</p>
                 <textarea rows={3} value={templates[kind] || ""}
                   onChange={e => setTemplates(t => ({ ...t, [kind]: e.target.value }))}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:bg-white resize-none transition-colors"

@@ -40,8 +40,9 @@ router.post("/", (req, res) => {
       Number(increase || 0),
       payment_type || "cash",
       notes || null,
-      tax_enabled !== undefined ? tax_enabled : null,
-      tax_rate !== undefined ? tax_rate : null
+      // better-sqlite3 cannot bind booleans — normalize to 0/1/null (null = follow settings on resume)
+      tax_enabled == null ? null : (Number(tax_enabled) ? 1 : 0),
+      Number.isFinite(Number(tax_rate)) && tax_rate != null ? Number(tax_rate) : null
     );
     res.json({ data: { id: result.lastInsertRowid } });
   } catch (err) {

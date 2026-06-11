@@ -258,6 +258,14 @@ export default function PurchaseReturnDetailPage() {
               </tfoot>
             </table>
           </section>
+
+          {/* Notes */}
+          {doc.notes && (
+            <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[11px] font-bold text-slate-400 mb-1">ملاحظات</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{doc.notes}</p>
+            </section>
+          )}
         </div>
 
         {timeline.length > 1 && (

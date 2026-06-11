@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle } from "lucide-react";
+import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle, TrendingUp } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useNotificationStore } from "../../stores/notificationStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -237,6 +237,28 @@ export default function Topbar() {
             <span className="hidden md:block text-xs font-bold text-zinc-400 group-hover:text-zinc-600 transition-colors">بحث</span>
             <kbd className="hidden md:inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-mono font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded">Ctrl+K</kbd>
           </button>
+
+          {/* Profit Toggle — only on POS page */}
+          {location.pathname.startsWith("/pos") && (() => {
+            const showProfit = (() => { try { return localStorage.getItem("retailer.pos.showProfit") === "true"; } catch { return false; } })();
+            return (
+              <button
+                onClick={() => {
+                  const next = !showProfit;
+                  try { localStorage.setItem("retailer.pos.showProfit", String(next)); } catch {}
+                  window.dispatchEvent(new CustomEvent("pos:toggleProfit", { detail: { show: next } }));
+                }}
+                title={showProfit ? "إخفاء عمود الربح" : "إظهار عمود الربح"}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
+                  showProfit
+                    ? "bg-emerald-600 text-white shadow-lg"
+                    : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+                }`}
+              >
+                <TrendingUp strokeWidth={2} className="h-4.5 w-4.5" />
+              </button>
+            );
+          })()}
 
           {/* Help Button — toggles tour for this page on/off */}
           {hasHelpContent && (

@@ -40,6 +40,11 @@ export default function AnalyticsPage() {
   const [lowStock, setLowStock] = useState([]);
   const [belowMargin, setBelowMargin] = useState([]);
   const [expiringSoon, setExpiringSoon] = useState([]);
+  const [expiryStats, setExpiryStats] = useState(null);
+  const [expiryStatusFilter, setExpiryStatusFilter] = useState("all");
+  const [expirySearch, setExpirySearch] = useState("");
+  const [expiryWarehouseId, setExpiryWarehouseId] = useState("");
+  const [warehouses, setWarehouses] = useState([]);
   const [topItems, setTopItems] = useState([]);
   const [allTopItems, setAllTopItems] = useState([]);
   const [topCategories, setTopCategories] = useState([]);
@@ -69,14 +74,15 @@ export default function AnalyticsPage() {
     async function loadDashboard() {
       setLoading(true);
       try {
-        const [summaryRes, stockRes, expensesRes, revenuesRes, topCategoriesRes, marginRes, expiringRes] = await Promise.all([
+        const [summaryRes, stockRes, expensesRes, revenuesRes, topCategoriesRes, marginRes, expiringRes, whRes] = await Promise.all([
           api.get("/api/dashboard"),
           api.get("/api/reports/low-stock"),
           api.get("/api/expenses"),
           api.get("/api/revenues"),
           api.get("/api/reports/run/sales-by-category?start_date=" + new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]),
           api.get("/api/reports/margin-alerts").catch(() => ({ data: { data: [] } })),
-          api.get("/api/reports/expiring-soon").catch(() => ({ data: { data: [] } })),
+          api.get("/api/reports/expiring-soon").catch(() => ({ data: { data: [] }, stats: null })),
+          api.get("/api/warehouses").catch(() => ({ data: { data: [] } })),
         ]);
 
         setSummary(summaryRes.data?.data || zeroSummary);
@@ -84,7 +90,9 @@ export default function AnalyticsPage() {
         setLowStock(stockRes.data?.data?.slice(0, 5) || []);
         setTopCategories(topCategoriesRes.data?.data?.slice(0, 4) || []);
         setBelowMargin(marginRes.data?.data?.slice(0, 5) || []);
-        setExpiringSoon(expiringRes.data?.data?.slice(0, 5) || []);
+        setExpiringSoon(expiringRes.data?.data || []);
+        setExpiryStats(expiringRes.data?.stats || null);
+        setWarehouses(whRes.data?.data || []);
 
         const todayIso = new Date().toISOString().slice(0, 10);
         const expenseTotal = (expensesRes.data?.data || [])
@@ -131,6 +139,21 @@ export default function AnalyticsPage() {
     }
     loadItems();
   }, [itemsRange, itemsSort, itemsDateMode, itemsCustomDates]);
+
+  // Fetch Expiry Data Dynamic
+  useEffect(() => {
+    async function loadExpiry() {
+      const params = new URLSearchParams();
+      params.set("days", "90");
+      if (expiryStatusFilter !== "all") params.set("status", expiryStatusFilter);
+      if (expiryWarehouseId) params.set("warehouse_id", expiryWarehouseId);
+      if (expirySearch.trim()) params.set("search", expirySearch.trim());
+      const res = await api.get(`/api/reports/expiring-soon?${params}`).catch(() => ({ data: { data: [], stats: null } }));
+      setExpiringSoon(res.data?.data || []);
+      setExpiryStats(res.data?.stats || null);
+    }
+    loadExpiry();
+  }, [expiryStatusFilter, expiryWarehouseId, expirySearch]);
 
   // Fetch Chart Dynamic  
   useEffect(() => {
@@ -216,12 +239,12 @@ export default function AnalyticsPage() {
         
         {/* Abstract Metrics Ribbon */}
         <div data-help="stats-cards" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <BentoMetric title="مبيعات اليوم" value={<CurrencyDisplay value={summary.todaySales} />} icon={TrendingUp} theme="dark" />
-          <BentoMetric title="مبيعات الأسبوع" value={<CurrencyDisplay value={summary.weekSales} />} icon={Activity} />
-          <BentoMetric title="صافي الخزنة اليوم" value={<CurrencyDisplay value={netToday} />} icon={Wallet} trend={netToday >= 0 ? "up" : "down"} />
-          <BentoMetric title="إيرادات منفصلة" value={<CurrencyDisplay value={todayRevenues} />} icon={ArrowDownToLine} />
-          <BentoMetric title="مصروفات اليوم" value={<CurrencyDisplay value={todayExpenses} />} icon={ArrowUpFromLine} />
-          <BentoMetric title="نواقص مستعجلة" value={lowStock.length} icon={AlertTriangle} theme={lowStock.length > 0 ? "alert" : "default"} />
+          <BentoMetric title="مبيعات اليوم" value={<CurrencyDisplay value={summary.todaySales} />} icon={TrendingUp} theme="dark" hint="إجمالي المبيعات المحققة اليوم حتى اللحظة — يشمل الفواتير المكتملة فقط" />
+          <BentoMetric title="مبيعات الأسبوع" value={<CurrencyDisplay value={summary.weekSales} />} icon={Activity} hint="إجمالي مبيعات الأيام السبعة الأخيرة — قارنها بيوم أمس لقياس الأداء الأسبوعي" />
+          <BentoMetric title="صافي الخزنة اليوم" value={<CurrencyDisplay value={netToday} />} icon={Wallet} trend={netToday >= 0 ? "up" : "down"} hint="مبيعات اليوم + الإيرادات الإضافية — المصروفات = صافي التدفق النقدي اليومي" />
+          <BentoMetric title="إيرادات منفصلة" value={<CurrencyDisplay value={todayRevenues} />} icon={ArrowDownToLine} hint="إيرادات إضافية خارج المبيعات مثل إيجارات أو استردادات — تُسجل من شاشة الإيرادات" />
+          <BentoMetric title="مصروفات اليوم" value={<CurrencyDisplay value={todayExpenses} />} icon={ArrowUpFromLine} hint="مصروفات التشغيل اليومية — مشتريات نقدية، إيجار، رواتب، وغيرها" />
+          <BentoMetric title="نواقص مستعجلة" value={lowStock.length} icon={AlertTriangle} theme={lowStock.length > 0 ? "alert" : "default"} hint="الأصناف التي وصلت أو تجاوزت الحد الأدنى للمخزون — تحتاج إعادة طلب" />
         </div>
 
         {/* Central Dashboard - Asymmetrical split */}
@@ -659,51 +682,212 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Expiring Soon (FEFO) — always visible */}
+        {/* Expiry Tracking Dashboard — Fully rebuilt */}
         <div className="rounded-[28px] bg-white/70 backdrop-blur-xl border border-amber-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 flex flex-col gap-5">
+          {/* Header */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-[20px] bg-amber-100/50 text-amber-600 flex items-center justify-center border border-amber-100">
               <Clock className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h2 className="text-[18px] font-black text-slate-900 tracking-tight">تتبع تواريخ الانتهاء (30 يوم القادمة)</h2>
+              <h2 className="text-[18px] font-black text-slate-900 tracking-tight">
+                تتبع تواريخ الانتهاء (FEFO)
+                {expiryStats?.tracked_items > 0 && (
+                  <span className="mr-2 text-[13px] font-bold text-slate-400">· {expiryStats.tracked_items} صنف مُفعّل</span>
+                )}
+              </h2>
               <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                الأصناف التي فُعّل عليها تتبع FEFO — فعّل التتبع على كل صنف من قاعدة البيانات
+                رصد شامل لصلاحية الأصناف — منتهية، حرجة، وتحذيرية
               </p>
             </div>
+            <Link to="/reports/expiry-report" className="text-[11px] font-black text-indigo-600 hover:underline shrink-0">
+              تقرير انتهاء الصلاحية ←
+            </Link>
           </div>
+
+          {/* Summary Stats Cards */}
+          {expiryStats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-[16px] bg-red-50/70 border border-red-200/50 p-3 flex flex-col items-center">
+                <span className="text-[22px] font-black text-red-700 leading-none">{expiryStats.expired}</span>
+                <span className="text-[10px] font-bold text-red-500 mt-1">منتهية</span>
+                {expiryStats.expired_qty > 0 && (
+                  <span className="text-[9px] font-bold text-red-400">{expiryStats.expired_qty} وحدة</span>
+                )}
+              </div>
+              <div className="rounded-[16px] bg-orange-50/70 border border-orange-200/50 p-3 flex flex-col items-center">
+                <span className="text-[22px] font-black text-orange-700 leading-none">{expiryStats.critical}</span>
+                <span className="text-[10px] font-bold text-orange-500 mt-1">حرجة (≤٧ أيام)</span>
+                {expiryStats.critical_qty > 0 && (
+                  <span className="text-[9px] font-bold text-orange-400">{expiryStats.critical_qty} وحدة</span>
+                )}
+              </div>
+              <div className="rounded-[16px] bg-amber-50/70 border border-amber-200/50 p-3 flex flex-col items-center">
+                <span className="text-[22px] font-black text-amber-700 leading-none">{expiryStats.warning}</span>
+                <span className="text-[10px] font-bold text-amber-500 mt-1">تحذير (١٤ يوم)</span>
+              </div>
+              <div className="rounded-[16px] bg-emerald-50/70 border border-emerald-200/50 p-3 flex flex-col items-center">
+                <span className="text-[22px] font-black text-emerald-700 leading-none">{expiryStats.valid}</span>
+                <span className="text-[10px] font-bold text-emerald-500 mt-1">ساري</span>
+                <span className="text-[9px] font-bold text-emerald-400">{expiryStats.total_quantity} إجمالي الوحدات</span>
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Tabs */}
+            <div className="flex p-0.5 bg-slate-100 rounded-[12px] gap-0.5">
+              {[
+                { key: "all", label: "الكل" },
+                { key: "expired", label: "منتهي" },
+                { key: "critical", label: "حرج" },
+                { key: "warning", label: "تحذير" },
+                { key: "valid", label: "ساري" },
+              ].map(tab => (
+                <button key={tab.key}
+                  onClick={() => setExpiryStatusFilter(tab.key)}
+                  className={`px-3 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${
+                    expiryStatusFilter === tab.key
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Warehouse filter */}
+            <select value={expiryWarehouseId}
+              onChange={e => setExpiryWarehouseId(e.target.value)}
+              className="text-[11px] font-bold bg-white border border-slate-200 rounded-[10px] px-2 py-1.5 outline-none text-slate-600 cursor-pointer">
+              <option value="">كل المخازن</option>
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+
+            {/* Search */}
+            <div className="flex-1 min-w-[150px]">
+              <input type="text" value={expirySearch}
+                onChange={e => setExpirySearch(e.target.value)}
+                placeholder="بحث بالاسم أو الكود أو الدفعة..."
+                className="w-full text-[11px] bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 outline-none text-slate-700 placeholder:text-slate-300 font-bold" />
+            </div>
+
+            {(expiryStatusFilter !== "all" || expiryWarehouseId || expirySearch) && (
+              <button onClick={() => { setExpiryStatusFilter("all"); setExpiryWarehouseId(""); setExpirySearch(""); }}
+                className="text-[10px] font-black text-slate-400 hover:text-slate-600 px-2 py-1">
+                إعادة تعيين
+              </button>
+            )}
+          </div>
+
+          {/* Items List */}
           {expiringSoon.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 rounded-[20px] border border-dashed border-amber-200 bg-amber-50/30">
               <Package className="w-8 h-8 text-amber-300 mb-3" />
-              <span className="text-sm font-black text-slate-500">لا توجد دفعات منتهية الصلاحية قريباً</span>
-              <span className="text-[11px] font-bold text-slate-400 mt-1 text-center max-w-xs">
-                فعّل تتبع الانتهاء على أصناف التاريخ الحساسة ثم سجّل مشترياتها مع تاريخ الانتهاء
+              <span className="text-sm font-black text-slate-500">
+                {expiryStatusFilter !== "all"
+                  ? "لا توجد دفعات في هذا التصنيف"
+                  : expiryStats?.tracked_items > 0
+                    ? `${expiryStats.tracked_items} صنف مفعّل عليه التتبع — ولا توجد دفعات منتهية قريباً`
+                    : "لا توجد دفعات مسجلة"}
               </span>
+              <span className="text-[11px] font-bold text-slate-400 mt-1 text-center max-w-xs">
+                {expiryStatusFilter !== "all"
+                  ? "حاول تغيير الفلتر أو المخزن"
+                  : expiryStats?.tracked_without_batches > 0
+                    ? `${expiryStats.tracked_without_batches} صنف مفعّل عليها التتبع ولكن لم تسجّل مشترياتها بعد مع تواريخ الانتهاء — اشترِ هذه الأصناف وحدّد تاريخ الصلاحية`
+                    : "فعّل تتبع الانتهاء على أصناف التاريخ الحساسة ثم سجّل مشترياتها مع تاريخ الانتهاء"}
+              </span>
+              {expiryStats?.tracked_without_batches > 0 && (
+                <Link to="/reports/expiry-report" className="mt-4 text-[11px] font-black text-indigo-600 hover:underline">
+                  فتح تقرير انتهاء الصلاحية ←
+                </Link>
+              )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {expiringSoon.map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-[20px] border border-amber-100 bg-amber-50/40 p-4">
-                  <div className="flex flex-col min-w-0">
-                    {b.item_code && <span className="font-mono text-[11px] text-slate-400">{b.item_code}</span>}
-                    <span className="font-bold text-slate-800 text-sm">{b.item_name}</span>
-                    {b.batch_no && <span className="font-mono text-[11px] text-slate-500">دفعة: {b.batch_no}</span>}
-                    {b.warehouse_name && <span className="text-[11px] text-slate-400">{b.warehouse_name}</span>}
+            <div className="space-y-2 max-h-[500px] overflow-y-auto scrollbar-thin pr-1">
+              {expiringSoon.map((b) => {
+                const dr = Number(b.days_remaining);
+                const pct = dr < 0 ? 100 : Math.max(2, Math.min(100, ((30 - dr) / 30) * 100));
+                const statusBg = b.batch_status === "expired" ? "bg-red-50/60 border-red-200" :
+                  b.batch_status === "critical" ? "bg-orange-50/60 border-orange-200" :
+                  b.batch_status === "warning" ? "bg-amber-50/60 border-amber-200" :
+                  "bg-emerald-50/30 border-emerald-100";
+                const barColor = b.batch_status === "expired" ? "bg-red-400" :
+                  b.batch_status === "critical" ? "bg-orange-400" :
+                  b.batch_status === "warning" ? "bg-amber-400" :
+                  "bg-emerald-400";
+                const badgeCls = b.batch_status === "expired" ? "bg-red-100 text-red-700 ring-red-200" :
+                  b.batch_status === "critical" ? "bg-orange-100 text-orange-700 ring-orange-200" :
+                  b.batch_status === "warning" ? "bg-amber-100 text-amber-700 ring-amber-200" :
+                  "bg-emerald-100 text-emerald-700 ring-emerald-200";
+
+                return (
+                  <div key={b.id} className={`flex flex-col gap-1.5 rounded-[16px] border p-3 ${statusBg} transition-all hover:shadow-sm`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <Link to={`/items?search=${encodeURIComponent(b.item_name)}`}
+                            className="font-bold text-slate-800 text-sm hover:text-indigo-600 transition-colors truncate">
+                            {b.item_name}
+                          </Link>
+                          {b.batch_no && (
+                            <span className="font-mono text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                              {b.batch_no}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {b.item_code && (
+                            <span className="font-mono text-[10px] text-slate-400">{b.item_code}</span>
+                          )}
+                          {b.warehouse_name && (
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{b.warehouse_name}</span>
+                          )}
+                          <span className="text-[10px] font-bold text-slate-500">{b.quantity} وحدة</span>
+                          <span className="text-[10px] font-bold text-slate-400">{b.expiry_date}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className={`inline-flex items-center justify-center h-7 px-3 rounded-full text-2sm font-black ring-1 ${badgeCls}`}>
+                          {dr < 0 ? `منذ ${Math.abs(dr)} يوم` : `${Math.round(dr)} يوم`}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 bg-slate-200/60 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${barColor}`}
+                        style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`inline-flex items-center justify-center h-7 px-3 rounded-full text-2sm font-black ring-1 ${
-                      Number(b.days_remaining) <= 7
-                        ? "bg-red-100 text-red-700 ring-red-200"
-                        : Number(b.days_remaining) <= 14
-                        ? "bg-orange-100 text-orange-700 ring-orange-200"
-                        : "bg-amber-100 text-amber-700 ring-amber-200"
-                    }`}>
-                      {Math.round(b.days_remaining)} يوم
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400">{b.quantity} وحدة · {b.expiry_date}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+
+          {/* Info banner: tracked items without any batches */}
+          {expiryStats?.tracked_without_batches > 0 && (
+            <div className="rounded-[14px] bg-indigo-50/60 border border-indigo-200/50 p-3 flex items-center gap-2">
+              <span className="text-[10px] font-bold text-indigo-500 shrink-0">ℹ</span>
+              <span className="text-[11px] font-bold text-indigo-700">
+                {expiryStats.tracked_without_batches} صنف مفعّل عليها تتبع الصلاحية ولكن لا توجد مشتريات مسجّلة لها مع تواريخ انتهاء.
+                اشترِ هذه الأصناف وحدّد تاريخ الصلاحية لكل صنف لبدء التتبع الفعلي.
+              </span>
+            </div>
+          )}
+
+          {/* Footer with totals */}
+          {expiryStats && expiringSoon.length > 0 && (
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400">
+                إجمالي {expiryStats.total_batches} دفعة — {expiryStats.total_quantity} وحدة
+              </span>
+              <span className="text-[10px] font-bold text-slate-300">
+                {expiringSoon.length} معروض
+              </span>
             </div>
           )}
         </div>
@@ -910,7 +1094,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
 // HELPER COMPONENTS
 // -------------------------------------------------------------
 
-function BentoMetric({ title, value, icon: Icon, theme = "default", trend }) {
+function BentoMetric({ title, value, icon: Icon, theme = "default", trend, hint }) {
   const THEMES = {
     default: "bg-white border-white text-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.03)]",
     dark: "bg-slate-900 border-slate-800 text-white shadow-[0_8px_30px_rgba(15,23,42,0.6)]",
@@ -921,13 +1105,22 @@ function BentoMetric({ title, value, icon: Icon, theme = "default", trend }) {
   const isDark = theme === "dark";
 
   return (
-    <div className={`relative overflow-hidden rounded-[24px] border p-5 transition-all hover:scale-[1.02] duration-300 ${currentTheme}`}>
+    <div className={`relative overflow-hidden rounded-[24px] border p-5 transition-all hover:scale-[1.02] hover:shadow-lg duration-300 group cursor-default ${currentTheme}`}>
+      {hint && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block pointer-events-none">
+          {hint}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+        </div>
+      )}
       <div className="flex flex-col gap-4">
         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10 text-white' : theme === 'alert' ? 'bg-red-100/50 text-red-600' : 'bg-slate-50 text-slate-500'}`}>
            <Icon className="w-5 h-5" />
         </div>
         <div>
-           <div className={`text-2sm font-bold mb-1 ${isDark ? 'text-slate-400' : theme === 'alert' ? 'text-red-700/70' : 'text-slate-500'}`}>{title}</div>
+           <div className={`flex items-center gap-1.5 text-2sm font-bold mb-1 ${isDark ? 'text-slate-400' : theme === 'alert' ? 'text-red-700/70' : 'text-slate-500'}`}>
+             {title}
+             {hint && <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />}
+           </div>
            <div className={`text-[20px] lg:text-[22px] font-black tracking-tight leading-none ${isDark ? 'text-white' : theme === 'alert' ? 'text-red-900' : 'text-slate-900'}`}>
              {value}
            </div>

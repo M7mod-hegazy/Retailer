@@ -56,6 +56,7 @@ function create(payload = {}) {
       requestedRate: payload.tax_rate,
       base: Number(payload.total || 0),
       user: payload._user,
+      existing: payload._existingTax,
     });
     const result = db
       .prepare(
@@ -103,11 +104,13 @@ function update(id, payload = {}) {
   const lines = Array.isArray(payload.lines) ? payload.lines : [];
   const tx = db.transaction(() => {
     const { resolveTax } = require('../utils/salesTax');
+    const existing = db.prepare("SELECT tax_enabled, tax_rate, tax_type FROM quotations WHERE id = ?").get(id);
     const taxResult = resolveTax(db, {
       requestedEnabled: payload.tax_enabled,
       requestedRate: payload.tax_rate,
       base: Number(payload.total || 0),
       user: payload._user,
+      existing,
     });
     db.prepare(
       `UPDATE quotations

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle } from "lucide-react";
+import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
@@ -8,6 +8,8 @@ import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motio
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
+import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
+import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
 
 // ─── Tooltips ────────────────────────────────────────────────────────────────
 const TOOLTIPS = {
@@ -29,6 +31,7 @@ const TOOLTIPS = {
   cheques: "الشيكات الصادرة والواردة",
   items: "تعريف المنتجات والباركود",
   categories: "أقسام المنتجات والمجموعات",
+  item_operations: "سجل حركة الأصناف والمخزون — إدخال وإخراج وتحويلات",
   bulk_price_update: "تعديل أسعار المنتجات",
   stock_transfer: "تحويل البضاعة بين المخازن",
   physical_count: "الجرد الفعلي وتسوية الأرصدة",
@@ -407,17 +410,25 @@ export default function DashboardPage() {
 
   const [noItems, setNoItems] = useState(null);
   const [checkingEmpty, setCheckingEmpty] = useState(true);
+  const [settings, setSettings] = useState({});
+  const missingCritical = findMissingCritical(settings, "ar");
+  const showBanner = !checkingEmpty && (missingCritical.length > 0 || noItems);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       api.get("/api/categories"),
       api.get("/api/items"),
-    ]).then(([catsRes, itemsRes]) => {
+      api.get("/api/settings"),
+    ]).then(([catsRes, itemsRes, settingsRes]) => {
       if (cancelled) return;
       const cats = Array.isArray(catsRes.data?.data) ? catsRes.data.data : [];
       const items = Array.isArray(itemsRes.data?.data) ? itemsRes.data.data : [];
       setNoItems(cats.length === 0 || items.length === 0);
+      const data = settingsRes.data?.data;
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        setSettings(data);
+      }
     }).catch(() => {
       if (!cancelled) setNoItems(false);
     }).finally(() => {
@@ -483,7 +494,7 @@ export default function DashboardPage() {
               <motion.div key={item.path} variants={FADE_UP}>
                 {isPOS ? (
                   <div className={`group relative flex items-stretch rounded-[2rem] transition-all duration-500 overflow-hidden bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-2`}>
-                    <Link to={item.path} className="flex flex-1 items-center gap-6 p-6 min-w-0">
+                    <Link to={item.path} title={TOOLTIPS[item.pageKey] || item.label} className="flex flex-1 items-center gap-6 p-6 min-w-0">
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-black/20 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
                         <item.icon className="h-7 w-7" strokeWidth={1.5} />
                       </div>
@@ -508,6 +519,7 @@ export default function DashboardPage() {
                 ) : (
                   <Link
                     to={item.path}
+                    title={TOOLTIPS[item.pageKey] || item.label}
                     className="group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden bg-white/5 border border-white/10 hover:bg-white/10 hover:-translate-y-2 backdrop-blur-xl"
                   >
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-white/10 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
@@ -529,6 +541,17 @@ export default function DashboardPage() {
           })}
         </motion.div>
       </div>
+
+      {/* Critical settings warning */}
+      {!checkingEmpty && (
+        <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
+          <CriticalSettingsWarning
+            settings={settings}
+            onNavigate={(key) => navigate(`/settings?tab=${fieldKeyToTab(key)}&field=${key}`)}
+            lang="ar"
+          />
+        </div>
+      )}
 
       {/* Empty items banner */}
       {!checkingEmpty && noItems && (
@@ -555,7 +578,7 @@ export default function DashboardPage() {
       )}
 
       {/* Command center */}
-      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 -mt-10 relative z-20 pb-20">
+      <div className={`max-w-7xl mx-auto w-full px-6 md:px-12 relative z-20 pb-20 ${showBanner ? "mt-6" : "-mt-10"}`}>
 
         {/* Quick-action legend */}
         <div className="flex items-center gap-2 mb-5">

@@ -13,12 +13,15 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
 
   const subtotal = lines.reduce((s, l) => s + (l.unit_price * l.quantity), 0);
   const totalDiscount = lines.reduce((s, l) => s + (l.discount_amount || 0), 0);
-  // Use invoice snapshot tax if available, else fall back to settings-based derivation.
-  const taxAmount = Number(invoice.tax_amount) > 0
-    ? Number(invoice.tax_amount)
+  // Snapshot fields are authoritative: tax_amount 0 means no tax was charged (no phantom
+  // tax line). Settings-based derivation only for ad-hoc objects with no stored total.
+  const hasTaxSnapshot = invoice.tax_amount !== undefined || invoice.tax_enabled !== undefined;
+  const hasStoredTotal = invoice.total !== undefined && invoice.total !== null;
+  const taxAmount = hasTaxSnapshot ? (Number(invoice.tax_amount) || 0)
+    : hasStoredTotal ? 0
     : (() => { const tr = settings.tax_rate || 0; const tt = settings.tax_type || "none"; return tt === "none" ? 0 : (subtotal - totalDiscount) * (tr / 100); })();
-  const taxRate = Number(invoice.tax_amount) > 0 ? Number(invoice.tax_rate || 0) : (settings.tax_rate || 0);
-  const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal - totalDiscount + taxAmount;
+  const taxRate = hasTaxSnapshot ? (Number(invoice.tax_rate) || 0) : hasStoredTotal ? 0 : (settings.tax_rate || 0);
+  const grandTotal = hasStoredTotal ? Number(invoice.total) : subtotal - totalDiscount + taxAmount;
 
   const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
   const change = paid - grandTotal;

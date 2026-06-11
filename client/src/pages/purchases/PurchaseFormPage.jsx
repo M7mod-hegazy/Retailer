@@ -170,6 +170,12 @@ function PurchasePreviewModal({ purchase, onClose }) {
               </div>
             )}
           </div>
+          {(detail || purchase).notes && (
+            <div className="rounded-sm border border-slate-200 bg-amber-50/40 px-4 py-3">
+              <p className="text-[11px] font-bold text-slate-500 mb-1">ملاحظات</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{(detail || purchase).notes}</p>
+            </div>
+          )}
         </>
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
@@ -259,6 +265,7 @@ export default function PurchaseFormPage() {
 
   const [discount, setDiscount] = useState(0);
   const [increase, setIncrease] = useState(0);
+  const [purchaseNotes, setPurchaseNotes] = useState("");
   const [invoiceDiscountMode, setInvoiceDiscountMode] = useState("flat");
   const [invoiceIncreaseMode, setInvoiceIncreaseMode] = useState("flat");
 
@@ -461,6 +468,7 @@ export default function PurchaseFormPage() {
       setEditOriginalSupplierId(p.supplier_id || null);
       setDiscount(Math.max(0, Number(p.discount || 0)));
       setIncrease(Math.max(0, Number(p.increase || 0)));
+      setPurchaseNotes(p.notes || "");
       if (p.supplier_id) {
         api.get(`/api/suppliers/${p.supplier_id}`).then(sr => {
           const s = sr.data.data;
@@ -743,6 +751,7 @@ export default function PurchaseFormPage() {
       date: docDate,
       discount,
       increase,
+      notes: purchaseNotes || null,
       payment_method: paymentMode,
       payments,
       lines: lines.map(l => ({
@@ -1688,9 +1697,74 @@ export default function PurchaseFormPage() {
             </div>
           )}
 
+          {/* Invoice note */}
+          <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+            <label className="mb-2 flex items-center justify-between text-[11px] font-black text-slate-400 uppercase tracking-widest">
+              <span>ملاحظات</span>
+              {Boolean(purchaseNotes && purchaseNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
+            </label>
+            {isLocked ? (
+              <p className="text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{purchaseNotes || "—"}</p>
+            ) : (
+              <textarea
+                rows={2}
+                value={purchaseNotes}
+                onChange={(e) => setPurchaseNotes(e.target.value)}
+                placeholder="ملاحظة اختيارية تُحفظ مع فاتورة الشراء…"
+                className="w-full resize-none rounded-sm border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all"
+              />
+            )}
+          </div>
+
           {/* Payment Method */}
-          <div data-help="payment-section" className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
-            <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
+          {isLocked ? (
+            <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
+              {paymentMode === "cash" && (
+                <div className="flex items-center gap-3 rounded-sm border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-800 text-white"><Banknote className="h-4 w-4" /></div>
+                  <span className="text-2sm font-black text-slate-700">نقدي</span>
+                </div>
+              )}
+              {paymentMode === "multi" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-sm border border-emerald-200 bg-emerald-50 p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-emerald-600 text-white"><Layers className="h-4 w-4" /></div>
+                    <span className="text-2sm font-black text-emerald-700">متعدد</span>
+                  </div>
+                  {paymentMethods.filter(m => Number(multiAmounts[m.id] || 0) > 0).map(m => (
+                    <div key={m.id} className="flex items-center justify-between rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
+                      <span className="text-2sm font-bold text-slate-600">{m.name}</span>
+                      <span className="font-mono text-2sm font-black text-slate-800">{formatMoney(Number(multiAmounts[m.id] || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {["credit", "future_due"].includes(paymentMode) && (
+                <div className="flex items-center gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-amber-500 text-white"><Wallet className="h-4 w-4" /></div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2sm font-black text-amber-700">{SUPPLIER_METHODS.find(m => m.id === paymentMode)?.label || paymentMode}</span>
+                    {paymentMode === "credit" && <span className="text-2sm font-black text-amber-600">+{formatMoney(creditEffect)}</span>}
+                  </div>
+                </div>
+              )}
+              {supplier && creditEffect > 0 && lines.length > 0 && (
+                <div className="mt-3 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2.5 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-amber-700">الإضافة لرصيد {supplier.name}</span>
+                    <span className="font-mono font-black text-amber-700">+{formatMoney(creditEffect)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
+                    <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
+                    <span className="font-mono font-black text-amber-600">{formatMoney(supplierBalanceAfter)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div data-help="payment-section" className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
 
             <button onClick={() => handleSelectPayment("cash")}
               className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "cash" ? "border-slate-800 bg-slate-50 shadow-sm" : "border-slate-200 hover:bg-slate-50"}`}>
@@ -1789,6 +1863,7 @@ export default function PurchaseFormPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* Bottom Action Buttons */}
           {!isLocked && (
@@ -2282,7 +2357,7 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* Purchase Preview Modal */}
-      <Modal open={todayPurchPreviewOpen} onClose={() => setTodayPurchPreviewOpen(false)} title="معاينة الفاتورة">
+      <Modal open={todayPurchPreviewOpen} onClose={() => setTodayPurchPreviewOpen(false)} title="معاينة الفاتورة" maxWidth="max-w-4xl">
         {todayPurchPreviewInvoice ? <PurchasePreviewModal purchase={todayPurchPreviewInvoice} onClose={() => setTodayPurchPreviewOpen(false)} /> : null}
       </Modal>
 

@@ -1,4 +1,4 @@
-import { TrendingUp, Package, Wallet, Receipt, FileText, Shield, ClipboardList, FileImage, FileSpreadsheet, Printer, Layers, RotateCcw, Truck, Users, UserCheck, CalendarCheck, Percent, LineChart, Search, ClipboardCheck } from "lucide-react";
+import { TrendingUp, Package, Wallet, Receipt, FileText, Shield, ClipboardList, FileImage, FileSpreadsheet, Printer, Layers, RotateCcw, Truck, Users, UserCheck, CalendarCheck, Percent, LineChart, Search, ClipboardCheck, Clock } from "lucide-react";
 
 export const CATEGORIES = [
   { id: "sales",     label: "المبيعات",   icon: TrendingUp, color: "var(--success-DEFAULT,#10b981)" },
@@ -29,6 +29,7 @@ export const SOURCES = [
   { id: "treasury",        label: "الخزينة",             icon: Wallet,        color: "#06b6d4" },
   { id: "profit-loader",   label: "محمل ربح المبيعات",  icon: Percent,       color: "#d946ef" },
   { id: "net-profit",      label: "صافي الربح",          icon: LineChart,     color: "#1e40af" },
+  { id: "expiry",          label: "انتهاء الصلاحية",     icon: Clock,         color: "#d97706" },
   { id: "owner-statement", label: "لوحة صاحب المحل",     icon: ClipboardCheck,color: "#0f172a" },
 ];
 
@@ -173,6 +174,7 @@ export const PREVIEW_COLUMNS = {
   "profit-loader": [{k:"item_code",l:"كود الصنف",t:"text"},{k:"item_name",l:"الصنف",t:"text"},{k:"revenue",l:"الإيراد",t:"cur"},{k:"cost",l:"التكلفة",t:"cur"},{k:"profit_margin",l:"الربح",t:"cur"},{k:"margin_percent",l:"% الربح",t:"percent"}],
   "net-profit": [{k:"label",l:"البيان",t:"text"},{k:"amount",l:"المبلغ",t:"cur"},{k:"pct",l:"%",t:"percent"}],
   users:      [{k:"full_name",l:"المستخدم",t:"text"},{k:"role",l:"الصلاحية",t:"text"},{k:"status",l:"الحالة",t:"text"},{k:"last_login",l:"آخر دخول",t:"date"}],
+  expiry:     [{k:"item_code",l:"كود الصنف",t:"text"},{k:"item_name",l:"الصنف",t:"text"},{k:"batch_no",l:"الدفعة",t:"text"},{k:"quantity",l:"الكمية",t:"num"},{k:"expiry_date",l:"تاريخ الانتهاء",t:"date"},{k:"days_until_expiry",l:"الأيام المتبقية",t:"num"},{k:"expiry_status",l:"الحالة",t:"text"}],
 };
 
 export const GHOST_ROWS = {
@@ -243,6 +245,11 @@ export const GHOST_ROWS = {
   users: [
     {full_name:"محمد السيد",role:"مدير",status:"نشط",last_login:"٠٤/٠٥ ٠٩:١٥"},
     {full_name:"سارة الحسن",role:"كاشير",status:"نشط",last_login:"٠٤/٠٥ ٠٨:٣٠"},
+  ],
+  expiry: [
+    {item_code:"SKU-001",item_name:"حليب مجفف",batch_no:"B-2401",quantity:"٤٥",expiry_date:"٢٠٢٦/٠٧/١٥",days_until_expiry:"٣٤",expiry_status:"ساري"},
+    {item_code:"SKU-042",item_name:"جبنة شيدر",batch_no:"B-2389",quantity:"١٢",expiry_date:"٢٠٢٦/٠٥/٠١",days_until_expiry:"-١١",expiry_status:"منتهي"},
+    {item_code:"SKU-107",item_name:"عصير طازج",batch_no:"B-2408",quantity:"٨٠",expiry_date:"٢٠٢٦/٠٦/٢٠",days_until_expiry:"٩",expiry_status:"ينتهي قريباً"},
   ],
 };
 
@@ -315,6 +322,11 @@ export const FILTER_DIMENSIONS = {
     { key: "item_id", type: "lookup", entity: "product", label: "المنتج" },
   ],
   "net-profit": [],
+  expiry: [
+    { key: "item_id", type: "lookup", entity: "product", label: "المنتج" },
+    { key: "warehouse_id", type: "lookup", entity: "warehouse", label: "المخزن" },
+    { key: "category_id", type: "lookup", entity: "category", label: "فئة المنتجات" },
+  ],
   "owner-statement": [],
   treasury: [],
   installments: [],
@@ -440,5 +452,8 @@ export const CLASSIFICATIONS = {
     { id: "by-category", label_key: "cls_net_by_category", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id"] },
     { id: "by-customer", label_key: "cls_net_by_customer", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [] },
     { id: "by-period", label_key: "cls_net_by_period", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [] },
+  ],
+  expiry: [
+    { id: "tracking", label_key: "cls_item_expiry", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id", "item_id"] },
   ],
 };

@@ -532,12 +532,14 @@ function editSalesReturn(returnId, payload, userId) {
         }
       }
     } else {
-      // Standalone return: resolveTax
+      // Standalone return: resolveTax inherits enabled/rate/type from the stored row
+      // when the payload doesn't specify them (no silent re-rating at current settings).
       const taxResult = resolveTax(db, {
-        requestedEnabled: payload.tax_enabled !== undefined ? payload.tax_enabled : sr.tax_enabled,
-        requestedRate: payload.tax_rate !== undefined ? payload.tax_rate : null,
+        requestedEnabled: payload.tax_enabled,
+        requestedRate: payload.tax_rate,
         base: newAdjTotal,
         user: payload._user,
+        existing: sr,
       });
       newTaxFields = { tax_enabled: taxResult.tax_enabled, tax_rate: taxResult.tax_rate, tax_amount: taxResult.tax_amount, tax_type: taxResult.tax_type };
       finalAdjTotal = taxResult.total;

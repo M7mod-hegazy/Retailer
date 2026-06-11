@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import api from "../../services/api";
 import { useSound } from "../../hooks/useSound";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 
 export default function BarcodeListener() {
-  const { playBeep } = useSound();
+  const posVoiceEnabled = useAppSettingsStore((s) => s.settings.pos_voice_enabled);
+  const { playBeep } = useSound(posVoiceEnabled);
 
   useEffect(() => {
     let buffer = "";

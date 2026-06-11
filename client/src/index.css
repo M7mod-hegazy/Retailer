@@ -2797,3 +2797,13 @@ html[data-theme="global"] {
   opacity: 1 !important;
   transform: none !important;
 }
+
+/* ─── Critical field highlight animation ─── */
+@keyframes critical-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.15); }
+}
+.critical-field-highlight {
+  animation: critical-pulse 1s ease-in-out 3;
+  border-radius: 4px;
+}

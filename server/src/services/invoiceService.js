@@ -213,6 +213,7 @@ function createInvoice(payload) {
       requestedRate: payload.tax_rate,
       base,
       user: payload._user,
+      existing: payload._existingTax,
     });
     const total = taxResult.total;
     const paymentType = payload.payment_type || "cash";
@@ -737,14 +738,14 @@ function editInvoice(invoiceId, payload, userId) {
     // Match create path / client: net of per-line discounts and promotions.
     const base = Math.max(0, lineNet - headerDiscount - promotionDiscount + increase);
     const { resolveTax } = require('../utils/salesTax');
-    // Inherit tax from existing row if client didn't send tax fields (so unrelated edits don't retro-tax old invoices)
-    const taxEnabled = payload.tax_enabled !== undefined ? payload.tax_enabled : invoice.tax_enabled;
-    const taxRate = payload.tax_rate !== undefined ? payload.tax_rate : invoice.tax_rate;
+    // `existing` makes resolveTax inherit enabled/rate/type from the stored row when the
+    // payload doesn't specify them, without tripping the custom-rate permission check.
     const taxResult = resolveTax(db, {
-      requestedEnabled: taxEnabled,
-      requestedRate: taxRate,
+      requestedEnabled: payload.tax_enabled,
+      requestedRate: payload.tax_rate,
       base,
       user: payload._user,
+      existing: invoice,
     });
     const newTotal = taxResult.total;
     const newPaymentType = payload.payment_type || oldPaymentType;
@@ -891,13 +892,13 @@ function amendInvoice(invoiceId, payload, userId) {
   const newPayload = { ...payload };
   delete newPayload.reason;
 
-  // carry forward tax snapshot from original unless client explicitly sets new tax_enabled/rate
-  if (newPayload.tax_enabled === undefined) {
-    newPayload.tax_enabled = original.tax_enabled;
-    newPayload.tax_rate = original.tax_rate;
-  }
+  // carry forward the tax snapshot via resolveTax's `existing` inheritance —
+  // `== null` matters: JSON cannot carry undefined, clients send null for "unspecified"
+  newPayload._existingTax = original;
+  if (newPayload.tax_enabled == null) delete newPayload.tax_enabled;
+  if (newPayload.tax_rate == null) delete newPayload.tax_rate;
   // carry forward notes from original unless client sets them
-  if (newPayload.notes === undefined) newPayload.notes = original.notes;
+  if (newPayload.notes == null) newPayload.notes = original.notes;
   // pass user through for permission checks
   newPayload._user = payload._user;
 

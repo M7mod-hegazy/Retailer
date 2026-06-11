@@ -186,6 +186,7 @@ export default function PurchaseReturnFormPage() {
   const [splitCashAmount, setSplitCashAmount] = useState("");
   const [reason, setReason] = useState("other");
   const [reasonOther, setReasonOther] = useState("");
+  const [returnNotes, setReturnNotes] = useState("");
 
   // Header-level خصم/زيادة on the return document (mirrors purchase discount/increase).
   // For from-order returns these are pro-rated from the original purchase until the user edits them.
@@ -338,6 +339,7 @@ export default function PurchaseReturnFormPage() {
       setSettlementType(pr.settlement_type || "account");
       if (pr.settlement_type === "split") setSplitCashAmount(String(pr.cash_amount || ""));
       setReason(pr.reason || "other");
+      setReturnNotes(pr.notes || "");
       setHeaderDiscount(Number(pr.discount || 0));
       setHeaderIncrease(Number(pr.increase || 0));
       setAdjustmentTouched(true); // saved values — do not auto-recompute over the user's data
@@ -644,6 +646,7 @@ export default function PurchaseReturnFormPage() {
       discount: Number(headerDiscount) || 0,
       increase: Number(headerIncrease) || 0,
       supervisor_override: supervisorOverride,
+      notes: returnNotes || null,
     };
     setIsSaving(true); setMessage({ text: "", type: "" });
     try {
@@ -1107,6 +1110,22 @@ export default function PurchaseReturnFormPage() {
                       className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-medium text-slate-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 shadow-sm transition-all" />
                   )}
                 </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">ملاحظات</label>
+              {isLocked ? (
+                <p className="text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{returnNotes || "—"}</p>
+              ) : (
+                <textarea
+                  rows={2}
+                  value={returnNotes}
+                  onChange={e => setReturnNotes(e.target.value)}
+                  placeholder="ملاحظة اختيارية على المرتجع…"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100 transition-all"
+                />
               )}
             </div>
 

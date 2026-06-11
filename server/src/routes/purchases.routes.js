@@ -463,10 +463,11 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(payload.supplier_id)
         : null;
       const result = db
-        .prepare("INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .prepare("INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .run(docNo, payload.supplier_id || null, total, discount, increase, paymentMethod,
              `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
-             payload.user_id || req.user?.id || null);
+             payload.user_id || req.user?.id || null,
+             payload.notes || null);
 
       const purchaseId = result.lastInsertRowid;
 
@@ -855,8 +856,10 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       const newTotal = Math.max(0, lineSum - editDiscount + editIncrease);
 
       // 4. Update purchase header (incl. payment_method + supplier) BEFORE applying financials
-      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?")
-        .run(newTotal, editDiscount, editIncrease, newPaymentMethod, newSupplierId, userId, purchase.id);
+      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ?, notes = ? WHERE id = ?")
+        .run(newTotal, editDiscount, editIncrease, newPaymentMethod, newSupplierId, userId,
+             req.body.notes !== undefined ? (req.body.notes || null) : (purchase.notes || null),
+             purchase.id);
 
       // 5. Apply the new payment method's financial effects (handles method switches + multi)
       applyPurchaseFinancials(db, {
@@ -1020,10 +1023,11 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
 
       const createdDate = normalizeDate(payload.created_at || new Date().toISOString().slice(0, 10));
       const newResult = db.prepare(
-        "INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, amendment_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, amendment_of, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
       ).run(newDocNo, payload.supplier_id || original.supplier_id || null, newTotal, amendDiscount, amendIncrease, paymentMethod,
             `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
-            payload.user_id || req.user?.id || null, original.id);
+            payload.user_id || req.user?.id || null, original.id,
+            payload.notes !== undefined ? (payload.notes || null) : (original.notes || null));
 
       const newPurchaseId = newResult.lastInsertRowid;
 

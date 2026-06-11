@@ -36,11 +36,20 @@ export function computeTotals(invoice = {}, s = {}) {
   const headerIncrease = Number(invoice.increase) || 0;
   const totalDiscount = lines.reduce((sum, l) => sum + (Number(l.discount_amount) || 0), 0) + headerDiscount;
 
-  // Use invoice snapshot tax fields if present; fall back to settings-based derivation for live preview.
+  // Documents that carry tax snapshot fields are authoritative — tax_amount 0 means
+  // "no tax was charged", NOT "derive from settings" (otherwise untaxed invoices would
+  // print a phantom tax line). Stored docs without the fields (purchases, legacy
+  // objects) that still carry a stored total get no derived tax either; the
+  // settings-based derivation remains only for ad-hoc preview objects with no total.
+  const hasTaxSnapshot = invoice.tax_amount !== undefined || invoice.tax_enabled !== undefined;
+  const hasStoredTotal = invoice.total !== undefined && invoice.total !== null;
   let taxAmount, taxRate;
-  if (Number(invoice.tax_amount) > 0) {
-    taxAmount = Number(invoice.tax_amount);
-    taxRate = Number(invoice.tax_rate || 0);
+  if (hasTaxSnapshot) {
+    taxAmount = Number(invoice.tax_amount) || 0;
+    taxRate = Number(invoice.tax_rate) || 0;
+  } else if (hasStoredTotal) {
+    taxAmount = 0;
+    taxRate = 0;
   } else {
     taxRate = parseFloat(g(s, "tax_rate") || 0);
     taxAmount = g(s, "show_tax") !== false ? (subtotal - totalDiscount) * (taxRate / 100) : 0;

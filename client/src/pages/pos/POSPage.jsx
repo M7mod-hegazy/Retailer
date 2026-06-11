@@ -52,11 +52,12 @@ import InvoiceProfitModal from "../../components/pos/InvoiceProfitModal";
 import DataGrid from "../../components/ui/DataGrid";
 import { usePageTour } from "../../hooks/usePageTour";
 import { usePosStore, computeTax } from "../../stores/posStore";
-import InvoiceNoteButton from "./parts/InvoiceNoteButton";
 import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useNavigate, useLocation } from "react-router-dom";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePermission } from "../../hooks/usePermission";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import QuickAddLeadPopover from "./QuickAddLeadPopover";
@@ -139,7 +140,8 @@ export default function POSPage() {
   const user = useAuthStore((state) => state.user);
   const { permissions } = useAuthStore();
   const canOverridePrice = user?.role === "dev" || user?.role === "admin" || (Array.isArray(permissions?.pos) && permissions.pos.includes("override_price"));
-  const { playBeep } = useSound();
+  const posVoiceEnabled = useAppSettingsStore((s) => s.settings.pos_voice_enabled);
+  const { playBeep } = useSound(posVoiceEnabled);
 
   // POS store
   const lines             = usePosStore((s) => s.lines);
@@ -171,6 +173,7 @@ export default function POSPage() {
   const setInvoiceNotes = usePosStore((s) => s.setInvoiceNotes);
   const setTaxEnabled   = usePosStore((s) => s.setTaxEnabled);
   const setTaxRate      = usePosStore((s) => s.setTaxRate);
+  const canEditTaxRate  = usePermission("pos", "edit_tax_rate");
 
   // Hold / تعليق
   const [heldDropdownOpen, setHeldDropdownOpen] = useState(false);
@@ -260,7 +263,21 @@ export default function POSPage() {
   const [selectedTreasuryId, setSelectedTreasuryId] = useState("");
   const [activeMultiPayments, setActiveMultiPayments] = useState([]);
   const [multiModalOpen, setMultiModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState("detailed");
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem("retailer.pos.viewMode") || "list"; } catch { return "list"; }
+  });
+  useEffect(() => { try { localStorage.setItem("retailer.pos.viewMode", viewMode); } catch {} }, [viewMode]);
+
+  // Profit column: permission + toggle (synced with Topbar via localStorage + custom event)
+  const canViewProfit = usePermission("pos", "profit");
+  const [showProfitColumn, setShowProfitColumn] = useState(() => {
+    try { return localStorage.getItem("retailer.pos.showProfit") === "true"; } catch { return false; }
+  });
+  useEffect(() => {
+    const handler = (e) => setShowProfitColumn(e.detail.show);
+    window.addEventListener("pos:toggleProfit", handler);
+    return () => window.removeEventListener("pos:toggleProfit", handler);
+  }, []);
 
   // ── Invoice panel (customer + summary + payment) width / collapse control ──────
   // Per-machine prefs, like the rest of the layout. The panel auto-collapses on
@@ -700,8 +717,13 @@ export default function POSPage() {
 
   // ── Derived ──────────────────────────────────────────────────────────────────
 
-  const totals             = getTotals();
-  const taxCalc            = computeTax(totals.base, taxEnabled, taxRate, storeSettings);
+  const baseTotals         = getTotals();
+  const taxCalc            = computeTax(baseTotals.base, taxEnabled, taxRate, storeSettings);
+  // totals.total is tax-inclusive from here on — amount_paid, change, credit remaining,
+  // multi-payment validation, and every display all key off this one object.
+  const totals             = { ...baseTotals, taxAmount: taxCalc.taxAmount, total: taxCalc.total };
+  const taxFeatureOn       = Number(storeSettings?.tax_enabled ?? 0) === 1
+    && (storeSettings?.tax_type === 'inclusive' || storeSettings?.tax_type === 'exclusive');
   const paidAmountNumber   = Number(amountPaid || 0);
   const creditRemaining    = Math.max(0, totals.total - Math.max(0, paidAmountNumber));
   const changeAmount       = Math.max(0, Number(amountReceived || 0) - totals.total);
@@ -1200,9 +1222,13 @@ export default function POSPage() {
         ] : [],
         allow_loss_sale:    hasBelowCost || Boolean(opts.allowLoss),
         supervisor_override: Boolean(opts.supervisorOverride),
-        notes: invoiceNotes || null,
-        tax_enabled: taxEnabled,
-        tax_rate: taxRate,
+        notes: invoiceNotes ?? "",
+        // Only send tax fields when the feature is on; normalize so the server never
+        // sees raw null/boolean state. tax_rate only when the user actually overrode it.
+        ...(taxFeatureOn ? {
+          tax_enabled: taxEnabled == null ? 1 : (Number(taxEnabled) ? 1 : 0),
+          ...(taxRate != null ? { tax_rate: Number(taxRate) } : {}),
+        } : {}),
       };
       let response;
       if (amendInvoiceId) {
@@ -1561,7 +1587,6 @@ export default function POSPage() {
                 <option key={emp.id} value={emp.id}>{emp.name}</option>
               ))}
             </select>
-            <InvoiceNoteButton />
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -1797,6 +1822,42 @@ export default function POSPage() {
                   </div>
                 </div>
 
+                {taxFeatureOn && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" /> الضريبة{storeSettings?.tax_type === "inclusive" ? " (شاملة)" : ""}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="flex flex-1 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50/50 px-3 py-2 transition-all">
+                        <input
+                          type="checkbox"
+                          className="accent-indigo-600"
+                          checked={taxEnabled == null ? true : Boolean(Number(taxEnabled))}
+                          onChange={(e) => setTaxEnabled(e.target.checked ? 1 : 0)}
+                        />
+                        <span className="flex-1 text-center font-mono text-sm font-black text-indigo-900">
+                          {(taxEnabled == null || Number(taxEnabled)) ? formatMoney(taxCalc.taxAmount) : "—"}
+                        </span>
+                      </label>
+                      {canEditTaxRate ? (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <input
+                            type="number" min="0" max="100" step="0.01"
+                            value={taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}
+                            onChange={(e) => setTaxRate(e.target.value === "" ? null : Number(e.target.value))}
+                            className="h-[40px] w-16 rounded-lg border border-indigo-200 bg-indigo-50/50 px-2 text-center text-sm font-black text-indigo-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                          />
+                          <span className="text-2sm font-black text-slate-400">%</span>
+                        </div>
+                      ) : (
+                        <span className="flex h-[40px] shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-2sm font-black text-slate-500">
+                          {taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="h-px bg-slate-100 my-1" />
 
                 <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
@@ -1994,6 +2055,21 @@ export default function POSPage() {
                   })()}
                 </div>
               )}
+            </div>
+
+            {/* Invoice note */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <label className="mb-2 flex items-center justify-between text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                <span>ملاحظة الفاتورة</span>
+                {Boolean(invoiceNotes && invoiceNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
+              </label>
+              <textarea
+                rows={2}
+                value={invoiceNotes}
+                onChange={(e) => setInvoiceNotes(e.target.value)}
+                placeholder="ملاحظة اختيارية تُحفظ مع الفاتورة وتظهر على الإيصال…"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all"
+              />
             </div>
 
             {/* Customer detail when selected */}
@@ -2616,7 +2692,7 @@ export default function POSPage() {
                   cellClass: "text-center text-[11px] font-bold text-slate-600 border-l border-slate-100 px-1",
                   render: (l) => l.unit_name || "أساسية"
                 },
-                {
+                ...(canViewProfit && showProfitColumn ? [{
                   id: "profit_pct", header: "الربح", width: 90, sortable: false,
                   headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
                   render: (l) => {
@@ -2646,7 +2722,7 @@ export default function POSPage() {
                       </div>
                     );
                   }
-                },
+                }] : []),
                 {
                   id: "total", header: "الإجمالي", width: 110, sortable: true,
                   headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100",
@@ -2964,6 +3040,8 @@ export default function POSPage() {
       <PosStickyTotalBar
         total={totals.total}
         subtotal={totals.subtotal}
+        activeTaxRate={taxCalc.taxAmount > 0 ? (taxRate != null ? Number(taxRate) : Number(storeSettings?.tax_rate || 0)) : 0}
+        hasNotes={Boolean(invoiceNotes && invoiceNotes.trim())}
         discount={discount}
         increase={increase}
         discountMode={invoiceDiscountMode}
@@ -3131,7 +3209,6 @@ export default function POSPage() {
                   <option key={emp.id} value={emp.id}>{emp.name}</option>
                 ))}
               </select>
-              <InvoiceNoteButton />
             </div>
             <div className="flex items-center gap-3">
               <div className="flex-1">
@@ -3259,21 +3336,21 @@ export default function POSPage() {
           panelSide="left"
         />
 
-        {/* ── Right Column: Fixed Invoice Panel (~35%) ── */}
-        <div
-          style={panelEffectiveCollapsed ? undefined : { width: panelWidth }}
-          className={`flex flex-col shrink-0 bg-white shadow-[-2px_0_20px_-5px_rgba(0,0,0,0.07)] z-20 overflow-y-auto custom-scrollbar animate-fade-in ${panelEffectiveCollapsed ? "hidden" : ""}`}
-        >
-          
-          {/* Top Panel: Customer & Actions */}
-          <div className="flex flex-col shrink-0 border-b border-slate-100 bg-[#f8fafb] px-3 pt-4 pb-3 gap-2.5">
-            {/* Meta Row */}
-            <div className="flex items-center justify-between text-[11px] font-black text-slate-500 uppercase tracking-widest px-1">
-              <div className="flex items-center gap-1.5">
-                <Receipt className="w-3.5 h-3.5 text-slate-400" />
-                <span className="font-mono text-[11px] font-black bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-600">{invoiceIsActive ? (docNo || invoiceNumber) : "—"}</span>
-              </div>
-              <div className="flex items-center gap-2">
+          {/* ── Right Column: Fixed Invoice Panel (~35%) ── */}
+          <div
+            style={panelEffectiveCollapsed ? undefined : { width: panelWidth }}
+            className={`flex flex-col shrink-0 min-w-0 bg-slate-50/80 shadow-[-2px_0_25px_-8px_rgba(0,0,0,0.08)] z-20 overflow-y-auto custom-scrollbar animate-fade-in gap-3 p-3 ${panelEffectiveCollapsed ? "hidden" : ""}`}
+          >
+            
+            {/* Top Panel: Customer & Actions */}
+            <div className="flex flex-col shrink-0 min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm gap-2.5">
+              {/* Meta Row */}
+              <div className="flex items-center justify-between text-[11px] font-black text-slate-500 uppercase tracking-widest px-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Receipt className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                  <span className="font-mono text-[11px] font-black bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-600 truncate max-w-[120px]">{invoiceIsActive ? (docNo || invoiceNumber) : "—"}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
                 <PermissionGate page="pos" action="profit">
                   <button onClick={() => setProfitModalOpen(true)} className="hover:text-emerald-600 transition-colors" title="الربح المتوقع">
                     <TrendingUp className="w-3.5 h-3.5" />
@@ -3327,16 +3404,16 @@ export default function POSPage() {
               )}
             </div>
             {customer?.id && (
-              <div className="flex items-center gap-2 mt-1">
-                <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm">
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm whitespace-nowrap">
                   {amendContext ? "قبل التعديل: " : "الرصيد: "}{formatMoney(displayBalance)}
                 </div>
                 {creditEffect > 0 && lines.length > 0 && (
                   <>
-                    <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm">
+                    <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm whitespace-nowrap">
                       {paymentType === "installments" ? "الإضافة للأقساط: " : paymentType === "multi" ? "الإضافة للآجل: " : "الإضافة للرصيد: "}+{formatMoney(creditEffect)}
                     </div>
-                    <div className="text-[11px] font-black text-rose-700 bg-rose-100/50 border border-rose-200 px-2 py-1 rounded-sm">
+                    <div className="text-[11px] font-black text-rose-700 bg-rose-100/50 border border-rose-200 px-2 py-1 rounded-sm whitespace-nowrap">
                       {paymentType === "installments" ? "بعد الأقساط: " : paymentType === "multi" ? "بعد الآجل: " : "بعد الفاتورة: "}{formatMoney(displayBalance + creditEffect)}
                     </div>
                   </>
@@ -3374,18 +3451,27 @@ export default function POSPage() {
           </div>
 
           {/* Cart List */}
-          <div className="shrink-0 p-3 bg-[#f8fafb] relative">
+            <div className="shrink-0 min-w-0 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm relative">
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+                <ShoppingCart className="h-3.5 w-3.5 text-indigo-600" />
+              </div>
+              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest truncate">الأصناف المضافة</h3>
+              {lines.length > 0 && (
+                <span className="mr-auto flex items-center justify-center h-5 min-w-[20px] rounded-full bg-indigo-100 px-1.5 text-[10px] font-black text-indigo-700">{lines.length}</span>
+              )}
+            </div>
             {saveSuccess && <InvoiceSaveSuccess invoiceNumber={saveSuccess.invoiceNumber} total={saveSuccess.total} payments={saveSuccess.payments} customerName={saveSuccess.customerName} customerNewBalance={saveSuccess.customerNewBalance} discount={saveSuccess.discount} increase={saveSuccess.increase} onDismiss={onDismissSaveSuccess} />}
             {lines.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center opacity-40">
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-sm mb-5">
-                  <ShoppingCart className="h-10 w-10 text-slate-300" />
+              <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 mb-4">
+                  <ShoppingCart className="h-8 w-8 text-slate-300" />
                 </div>
-                <span className="text-[15px] font-black tracking-widest text-slate-500">الفاتورة فارغة</span>
-                <span className="mt-1.5 text-2sm font-bold text-slate-400">اضغط على الأصناف لإضافتها</span>
+                <span className="text-sm font-black tracking-widest text-slate-500">الفاتورة فارغة</span>
+                <span className="mt-1 text-2sm font-bold text-slate-400">اضغط على الأصناف لإضافتها</span>
               </div>
             ) : (
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-2.5 max-h-[35vh] overflow-y-auto custom-scrollbar pl-0.5">
                 {lines.map((line, idx) => {
                   const isExceedingStock = Number(line.quantity || 0) > Number(line.stock_quantity || 0);
                   const lineTotal = Math.max(0, Number(line.quantity || 0) * Number(line.unit_price || 0) - Number(line.line_discount || 0));
@@ -3420,8 +3506,8 @@ export default function POSPage() {
                         </button>
                       </div>
 
-                      {/* Row 2: stepper + discount + price — all on one line */}
-                      <div className="flex items-center justify-between gap-2 pr-2">
+                       {/* Row 2: stepper + discount + price — wraps on narrow panels */}
+                      <div className="flex items-center justify-between gap-2 pr-2 flex-wrap">
                         {/* Left group: stepper + discount */}
                         <div className="flex items-center gap-2 min-w-0">
                           {/* Stepper */}
@@ -3533,83 +3619,116 @@ export default function POSPage() {
           </div>
 
           {/* Bottom Totals & Payments */}
-          <div data-help="payment-section" className="shrink-0 flex flex-col border-t border-slate-200 bg-white shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] z-30 animate-fade-in">
+          <div data-help="payment-section" className="shrink-0 flex flex-col gap-3 animate-fade-in">
             {/* Totals Summary */}
-            <div className="flex flex-col px-4 py-3 bg-slate-900 gap-1.5 border-b border-slate-800">
-              <div className="flex items-center justify-between text-2sm">
-                <span className="font-bold text-slate-400">الفرعي</span>
-                <span className="font-mono font-black text-slate-200">{formatMoney(totals.subtotal)}</span>
-              </div>
-              <div data-help="discount-field" className="flex items-center justify-between text-2sm gap-2">
-                <span className="font-bold text-slate-400 shrink-0">خصم إضافي</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="0"
-                    value={invoiceDiscountMode === "pct"
-                      ? (totals.subtotal > 0 ? parseFloat(((discount / totals.subtotal) * 100).toFixed(2)) : 0)
-                      : discount}
-                    onChange={(e) => {
-                      const v = Math.max(0, Number(e.target.value || 0));
-                      if (invoiceDiscountMode === "pct") {
-                        setDiscount(Math.min(parseFloat(((v / 100) * totals.subtotal).toFixed(4)), totals.subtotal));
-                      } else {
-                        setDiscount(Math.min(v, totals.subtotal));
-                      }
-                    }}
-                    className="w-20 rounded-sm border border-slate-700 bg-slate-800 px-2 py-0.5 text-right font-mono text-2sm font-black text-white outline-none focus:border-slate-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setInvoiceDiscountMode((m) => m === "pct" ? "flat" : "pct")}
-                    className={`px-1.5 py-0.5 rounded-sm text-[11px] font-black border transition-colors shrink-0
-                      ${invoiceDiscountMode === "pct"
-                        ? "bg-rose-800 border-rose-600 text-rose-200"
-                        : "border-slate-600 bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
-                  >
-                    {invoiceDiscountMode === "pct" ? "%" : "ج"}
-                  </button>
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-1.5 mb-3">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                  <Receipt className="h-3.5 w-3.5 text-slate-500" />
                 </div>
+                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ملخص الفاتورة</h3>
               </div>
-              <div className="flex items-center justify-between text-2sm gap-2">
-                <span className="font-bold text-slate-400 shrink-0">إضافة / رسوم</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="0"
-                    value={invoiceIncreaseMode === "pct"
-                      ? (totals.subtotal > 0 ? parseFloat(((increase / totals.subtotal) * 100).toFixed(2)) : 0)
-                      : increase}
-                    onChange={(e) => {
-                      const v = Math.max(0, Number(e.target.value || 0));
-                      if (invoiceIncreaseMode === "pct") {
-                        setIncrease(parseFloat(((v / 100) * totals.subtotal).toFixed(4)));
-                      } else {
-                        setIncrease(v);
-                      }
-                    }}
-                    className="w-20 rounded-sm border border-blue-700 bg-blue-900/40 px-2 py-0.5 text-right font-mono text-2sm font-black text-blue-200 outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setInvoiceIncreaseMode((m) => m === "pct" ? "flat" : "pct")}
-                    className={`px-1.5 py-0.5 rounded-sm text-[11px] font-black border transition-colors shrink-0
-                      ${invoiceIncreaseMode === "pct"
-                        ? "bg-blue-800 border-blue-600 text-blue-200"
-                        : "border-blue-700 bg-blue-800/40 text-blue-300 hover:bg-blue-700/60"}`}
-                  >
-                    {invoiceIncreaseMode === "pct" ? "%" : "ج"}
-                  </button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
+                  <span className="text-sm font-black font-mono text-slate-800">{formatMoney(totals.subtotal)}</span>
                 </div>
-              </div>
-              <div className="border-t border-slate-700 mt-1 pt-1.5 flex items-center justify-between">
-                <span className="text-2sm font-black text-slate-300 uppercase tracking-widest">الإجمالي المطلوب</span>
-                <span className="font-mono text-[34px] font-black text-emerald-400 leading-none drop-shadow-md">{formatMoney(totals.total)}</span>
+                <div data-help="discount-field" className="flex items-center justify-between gap-2 rounded-lg bg-rose-50/50 px-3 py-2">
+                  <span className="text-2sm font-bold text-rose-600 shrink-0">خصم إضافي</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="0"
+                      value={invoiceDiscountMode === "pct"
+                        ? (totals.subtotal > 0 ? parseFloat(((discount / totals.subtotal) * 100).toFixed(2)) : 0)
+                        : discount}
+                      onChange={(e) => {
+                        const v = Math.max(0, Number(e.target.value || 0));
+                        if (invoiceDiscountMode === "pct") {
+                          setDiscount(Math.min(parseFloat(((v / 100) * totals.subtotal).toFixed(4)), totals.subtotal));
+                        } else {
+                          setDiscount(Math.min(v, totals.subtotal));
+                        }
+                      }}
+                      className="w-16 rounded-lg border border-rose-200 bg-white px-2 py-1 text-center font-mono text-2sm font-black text-rose-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceDiscountMode((m) => m === "pct" ? "flat" : "pct")}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-black border transition-all shrink-0
+                        ${invoiceDiscountMode === "pct"
+                          ? "bg-rose-100 border-rose-300 text-rose-700 shadow-sm"
+                          : "border-rose-200 bg-white text-rose-500 hover:bg-rose-50"}`}
+                    >
+                      {invoiceDiscountMode === "pct" ? "%" : "ج"}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-blue-50/50 px-3 py-2">
+                  <span className="text-2sm font-bold text-blue-600 shrink-0">إضافة / رسوم</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="0"
+                      value={invoiceIncreaseMode === "pct"
+                        ? (totals.subtotal > 0 ? parseFloat(((increase / totals.subtotal) * 100).toFixed(2)) : 0)
+                        : increase}
+                      onChange={(e) => {
+                        const v = Math.max(0, Number(e.target.value || 0));
+                        if (invoiceIncreaseMode === "pct") {
+                          setIncrease(parseFloat(((v / 100) * totals.subtotal).toFixed(4)));
+                        } else {
+                          setIncrease(v);
+                        }
+                      }}
+                      className="w-16 rounded-lg border border-blue-200 bg-white px-2 py-1 text-center font-mono text-2sm font-black text-blue-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceIncreaseMode((m) => m === "pct" ? "flat" : "pct")}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-black border transition-all shrink-0
+                        ${invoiceIncreaseMode === "pct"
+                          ? "bg-blue-100 border-blue-300 text-blue-700 shadow-sm"
+                          : "border-blue-200 bg-white text-blue-500 hover:bg-blue-50"}`}
+                    >
+                      {invoiceIncreaseMode === "pct" ? "%" : "ج"}
+                    </button>
+                  </div>
+                </div>
+                {taxFeatureOn && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg bg-indigo-50/50 px-3 py-2">
+                    <label className="flex cursor-pointer items-center gap-1.5 font-bold text-indigo-600 shrink-0 text-2sm">
+                      <input type="checkbox" className="accent-indigo-500"
+                        checked={taxEnabled == null ? true : Boolean(Number(taxEnabled))}
+                        onChange={(e) => setTaxEnabled(e.target.checked ? 1 : 0)}
+                      />
+                      الضريبة{storeSettings?.tax_type === "inclusive" ? " (شاملة)" : ""}
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {canEditTaxRate ? (
+                        <input type="number" min="0" max="100" step="0.01"
+                          value={taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}
+                          onChange={(e) => setTaxRate(e.target.value === "" ? null : Number(e.target.value))}
+                          className="w-14 rounded-lg border border-indigo-200 bg-white px-1.5 py-1 text-center font-mono text-2sm font-black text-indigo-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                        />
+                      ) : (
+                        <span className="font-mono text-2sm font-black text-indigo-600">{taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}%</span>
+                      )}
+                      <span className="font-mono font-black text-indigo-600">
+                        {(taxEnabled == null || Number(taxEnabled)) ? formatMoney(taxCalc.taxAmount) : "—"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="h-px bg-slate-100 my-1" />
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-sm font-black text-slate-700">الإجمالي المطلوب</span>
+                  <span className="font-mono text-[28px] font-black text-emerald-600 leading-none">{formatMoney(totals.total)}</span>
+                </div>
               </div>
             </div>
             {/* Payment Methods */}
-            <div className="flex flex-col p-3 gap-3 bg-white">
-              <div className="grid grid-cols-5 gap-1.5">
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
+              <div className="grid grid-cols-5 gap-1 auto-rows-auto min-w-0">
                 {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, desc, Icon }) => {
                   const isWalkIn = !customer || customer.id === null;
                   const isDisabled = isWalkIn && (type === "credit" || type === "installments" || type === "bank_transfer");
@@ -3628,7 +3747,7 @@ export default function POSPage() {
                       type="button"
                       onClick={() => !isDisabled && setPaymentType(type)}
                       disabled={isDisabled}
-                      className={`flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-[11px] font-black transition-all
+                      className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border py-1.5 px-0.5 text-[10px] font-black transition-all min-w-0
                         ${isActive
                           ? `${c.activeBg} text-white border-transparent shadow-sm`
                           : isDisabled
@@ -3636,10 +3755,10 @@ export default function POSPage() {
                             : `${c.bg} ${c.text} ${c.border} hover:shadow-sm hover:-translate-y-px bg-white`}`}
                       title={isDisabled ? "متاح للعملاء المسجلين فقط" : label}
                     >
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">{label}</span>
-                      <span className={`text-[8.5px] font-medium leading-tight text-center mt-0.5 transition-colors duration-150 px-1 ${
-                        isActive ? "text-white/80" : "text-slate-400"
+                      <Icon className="h-3 w-3 shrink-0" />
+                      <span className="truncate w-full text-center leading-tight">{label}</span>
+                      <span className={`text-[7.5px] font-medium leading-tight text-center transition-colors duration-150 w-full truncate ${
+                        isActive ? "text-white/70" : "text-slate-400"
                       }`}>{desc}</span>
                     </button>
                   );
@@ -3647,16 +3766,6 @@ export default function POSPage() {
               </div>
 
               {/* Dynamic Payment Input */}
-              {paymentType === "cash" && (
-                <div className="flex gap-2 items-center">
-                  <input type="number" min="0" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="المبلغ المستلم..." className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
-                  {Number(amountReceived) > 0 && (
-                    <div className={`rounded-lg px-3 py-2.5 text-2sm font-black shrink-0 ${Number(amountReceived) - totals.total >= 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
-                      الباقي: {formatMoney(Math.abs(Number(amountReceived) - totals.total))}
-                    </div>
-                  )}
-                </div>
-              )}
               {paymentType === "bank_transfer" && (
                 <div className="rounded-xl bg-blue-50/50 border border-blue-100 p-3">
                   <label className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5 mb-1.5">
@@ -3669,58 +3778,60 @@ export default function POSPage() {
                 </div>
               )}
               {paymentType === "credit" && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-[11px] text-amber-800 font-bold flex items-center gap-2">
-                  <Wallet className="w-4 h-4 shrink-0 text-amber-600" />
-                  <span>سيتم إضافة {formatMoney(totals.total)} لرصيد {customer?.name || "العميل"}</span>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2.5 text-[11px] text-amber-800 font-bold flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                  <span className="truncate">سيتم إضافة {formatMoney(totals.total)} لرصيد {customer?.name || "العميل"}</span>
                 </div>
               )}
               {paymentType === "installments" && (
-                <div className="flex flex-col gap-2.5 rounded-xl bg-violet-50/50 border border-violet-100 p-4">
+                <div className="flex flex-col gap-2 rounded-xl bg-violet-50/50 border border-violet-100 p-3">
                   <div className="text-[11px] font-black text-violet-700 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" /> إعداد الأقساط
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">دفعة مقدم:</span>
-                    <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-sm font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[11px] font-bold text-slate-500 shrink-0">دفعة:</span>
+                      <input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0" className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[11px] font-bold text-slate-500 shrink-0">الاستحقاق:</span>
+                      <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-600 w-20 shrink-0 whitespace-nowrap">تاريخ القسط:</span>
-                    <input type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                  </div>
-                  <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-3 py-1.5 text-center border border-violet-200">المتبقي كأقساط: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))}</div>
+                  <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-2 py-1 text-center border border-violet-200 truncate">المتبقي كأقساط: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))}</div>
                 </div>
               )}
               {paymentType === "multi" && (
-                <div className="flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
+                <div className="flex flex-col gap-2 rounded-xl bg-slate-50/60 border border-slate-200 p-3">
                   <div className="text-[11px] font-black text-slate-600 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                   </div>
-                  <div className="flex flex-col divide-y divide-slate-100">
-                    <div className="flex items-center gap-3 py-2 first:pt-0">
-                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug">💵 نقدي</span>
-                      <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
-                        className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-2sm font-bold text-slate-600 shrink-0">💵 نقدي</span>
+                      <input type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0"
+                        className="w-16 shrink-0 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     </div>
                     {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
-                      <div key={m.id} className="flex items-center gap-3 py-2">
-                        <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
-                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
-                          className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                      <div key={m.id} className="flex items-center gap-1.5 min-w-0">
+                        <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 truncate">{m.icon} {m.name}</span>
+                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0"
+                          className="w-16 shrink-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                       </div>
                     ))}
-                    <div className="flex items-center gap-3 py-2 last:pb-0">
-                      <span className={`flex-1 min-w-0 text-2sm font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`flex-1 min-w-0 text-2sm font-bold truncate ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
                       <input type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
-                        placeholder={customer?.id ? "0.00" : "اختر عميل..."}
+                        placeholder={customer?.id ? "0" : "—"}
                         disabled={!customer?.id}
-                        className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                        className={`w-16 shrink-0 rounded-lg px-2 py-1 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
                     </div>
                   </div>
                   {(() => {
                     const entered = (Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0);
                     const balanced = Math.abs(entered - totals.total) < 0.01;
                     return (
-                      <div className={`flex items-center justify-between rounded-lg px-3 py-2 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                      <div className={`flex items-center justify-between rounded-lg px-2 py-1.5 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
                         <span>المُدخل</span>
                         <span className="font-mono">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
                       </div>
@@ -3730,6 +3841,20 @@ export default function POSPage() {
               )}
 
               {/* Main Actions */}
+              {/* Invoice note */}
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>ملاحظة الفاتورة</span>
+                  {Boolean(invoiceNotes && invoiceNotes.trim()) && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="توجد ملاحظة" />}
+                </label>
+                <textarea
+                  rows={2}
+                  value={invoiceNotes}
+                  onChange={(e) => setInvoiceNotes(e.target.value)}
+                  placeholder="ملاحظة اختيارية تُحفظ مع الفاتورة…"
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 px-2.5 py-1.5 text-2sm font-medium text-slate-800 outline-none focus:border-amber-300 focus:ring-1 focus:ring-amber-100 transition-all"
+                />
+              </div>
               <div className="flex flex-col gap-2 mt-1">
                 <PermissionGate page="pos" action="print">
                   <button type="button" onClick={() => setPrintPreview(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-4 text-[15px] font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}>
@@ -3967,6 +4092,15 @@ export default function POSPage() {
             code: l.code || "",
           })),
           payments: lastSavedInvoice.payments || [{ method: lastSavedInvoice.paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[lastSavedInvoice.paymentType] || lastSavedInvoice.paymentType, amount: lastSavedInvoice.totals?.total }],
+          // snapshot fields — print blocks read these instead of recomputing from settings
+          notes: lastSavedInvoice.notes || null,
+          discount: Number(lastSavedInvoice.discount || 0) + Number(lastSavedInvoice.promotionDiscount || 0),
+          increase: Number(lastSavedInvoice.increase || 0),
+          total: lastSavedInvoice.totals?.total,
+          tax_enabled: Number(lastSavedInvoice.tax_amount || 0) > 0 ? 1 : 0,
+          tax_amount: Number(lastSavedInvoice.tax_amount || 0),
+          tax_rate: Number(lastSavedInvoice.tax_rate || 0),
+          tax_type: lastSavedInvoice.tax_type || null,
         } : {
           invoice_no: invoiceNumber,
           created_at: new Date().toISOString(),
@@ -3984,6 +4118,15 @@ export default function POSPage() {
             ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ] : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[paymentType] || paymentType, amount: totals.total }],
+          // live (unsaved) preview — mirror what the server will store
+          notes: invoiceNotes || null,
+          discount: Number(discount || 0) + Number(promotionDiscount || 0),
+          increase: Number(increase || 0),
+          total: totals.total,
+          tax_enabled: taxCalc.taxAmount > 0 ? 1 : 0,
+          tax_amount: taxCalc.taxAmount,
+          tax_rate: taxCalc.taxAmount > 0 ? (taxRate != null ? Number(taxRate) : Number(storeSettings?.tax_rate || 0)) : 0,
+          tax_type: taxCalc.taxAmount > 0 ? (storeSettings?.tax_type || null) : null,
         }}
         settings={storeSettings}
         operationLabel="فاتورة مبيعات نقدية"

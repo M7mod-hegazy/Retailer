@@ -1,5 +1,6 @@
-export function useSound() {
+export function useSound(enabled = false) {
   const playBeep = () => {
+    if (!enabled) return;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = ctx.createOscillator();
     oscillator.frequency.value = 880;

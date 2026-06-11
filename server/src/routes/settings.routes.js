@@ -39,6 +39,7 @@ function ensurePrintColumns() {
   add("show_invoice_date",  "INTEGER DEFAULT 1");
   add("show_barcode_line",  "INTEGER DEFAULT 0");
   add("show_item_code",     "INTEGER DEFAULT 1");
+  add("show_notes",         "INTEGER DEFAULT 1");
   add("header_font_size",   "INTEGER DEFAULT 16");
   add("body_font_size",     "INTEGER DEFAULT 11");
   add("footer_font_size",   "INTEGER DEFAULT 10");
@@ -63,6 +64,7 @@ function ensurePrintColumns() {
   add("number_font_family",  "TEXT DEFAULT 'Outfit'");
   add("number_font_scale",   "TEXT DEFAULT 'normal'");
   add("numeral_style",       "TEXT DEFAULT 'western'");
+  add("pos_voice_enabled",   "INTEGER DEFAULT 0");
   // Log summary to help debug any persistence issues
   if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
 }
@@ -90,6 +92,7 @@ const COLUMN_META = {
   auto_backup_enabled: "bool",
   discount_cap_enabled: "bool",
   tax_enabled: "bool",
+  pos_voice_enabled: "bool",
   logo_on_invoices: "bool", logo_on_receipts: "bool",
   logo_on_sidebar: "bool", logo_on_reports: "bool",
 };

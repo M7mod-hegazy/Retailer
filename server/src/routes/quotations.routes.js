@@ -158,7 +158,12 @@ router.post("/:id/duplicate", requirePagePermission("quotations", "add"), (req, 
         description: l.description,
         line_total: l.line_total,
       })),
-      total: original.total,
+      // stored total is tax-inclusive for exclusive tax — pass the pre-tax base so
+      // resolveTax doesn't compound tax on duplication; _existingTax inherits the
+      // original's enabled/rate/type snapshot without a permission check
+      total: Number(original.total || 0) - (original.tax_type === 'exclusive' ? Number(original.tax_amount || 0) : 0),
+      _existingTax: original,
+      _user: req.user,
     });
     req.audit("create", "quotations", { id: clone.id }, `📋 تم تكرار عرض سعر`);
     res.status(201).json({ success: true, data: clone });
