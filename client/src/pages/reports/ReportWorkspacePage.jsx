@@ -75,6 +75,7 @@ function prettifyLabel(rawKey) {
     warehouse_id: "المخزن", warehouse_name: "اسم المخزن", warehouse: "المخزن",
     supplier_id: "المورد", customer_id: "العميل", cashier_id: "الكاشير",
     category_id: "التصنيف", item_category: "تصنيف الصنف",
+    ref_no: "رقم المستند", debit: "مدين", credit: "دائن", running_balance: "الرصيد الجاري",
   };
   return labels[key] || rawKey;
 }

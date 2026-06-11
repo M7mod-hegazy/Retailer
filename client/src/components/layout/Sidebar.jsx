@@ -54,9 +54,9 @@ function SidebarItem({ item, location, updateAvailable, categoryCount }) {
       </div>
       {item.path === "/definitions/items" && categoryCount !== null && (
         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none ${
-          isItemActive ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-700"
+          isItemActive ? "bg-zinc-900 text-white" : categoryCount === 0 ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300" : "bg-zinc-200 text-zinc-700"
         }`}>
-          {categoryCount}
+          {categoryCount === 0 ? "فارغ" : categoryCount}
         </span>
       )}
     </Link>

@@ -466,7 +466,7 @@ export default function SimpleCrudPage({
                           required={field.required}
                           value={form[field.name]}
                           onChange={(e) => setForm(prev => ({ ...prev, [field.name]: e.target.value }))}
-                          className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
+                          className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none shadow-sm border ${
                             editingRow
                               ? 'text-amber-950 border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-amber-300'
                               : 'text-zinc-900 border-slate-200 focus:border-zinc-400 placeholder:text-slate-300'

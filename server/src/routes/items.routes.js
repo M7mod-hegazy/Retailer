@@ -1594,6 +1594,97 @@ router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, r
   }
 });
 
+router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const { rules, inline_overrides, reason = "" } = req.body;
+    if ((!rules || !rules.length) && (!inline_overrides || !inline_overrides.length)) {
+      return res.status(400).json({ success: false, message: "يجب إضافة قاعدة أو تعديل يدوي واحد على الأقل" });
+    }
+
+    const operationId = `BPU-BATCH-${Date.now()}`;
+    const changedBy = req.user?.name || req.user?.username || "غير محدد";
+    let totalChanges = 0;
+    const appliedRules = [];
+
+    const insertHistory = db.prepare(
+      `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by, source, batch_metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'batch_update', ?)`
+    );
+
+    const run = db.transaction(() => {
+      if (rules) {
+        for (const rule of rules) {
+          const { item_ids, price_field, direction, adjustment_type, adjustment_value } = rule;
+          if (!Array.isArray(item_ids) || !item_ids.length) continue;
+          const field = resolvePriceField(price_field);
+          const v = Math.abs(Number(adjustment_value || 0));
+          if (v === 0) continue;
+
+          const placeholders = item_ids.map(() => "?").join(",");
+          const items = db.prepare(`SELECT id, ${field} as old_price FROM items WHERE id IN (${placeholders})`).all(...item_ids);
+
+          let ruleChanges = 0;
+          for (const item of items) {
+            const newPrice = calcNewPrice(item.old_price, direction, adjustment_type, v);
+            if (newPrice === item.old_price) continue;
+            insertHistory.run(item.id, field, item.old_price, newPrice, adjustment_type, v, reason, operationId, changedBy, null);
+            db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`).run(newPrice, item.id);
+            ruleChanges++;
+            totalChanges++;
+          }
+
+          appliedRules.push({
+            price_field,
+            direction,
+            adjustment_type,
+            adjustment_value: v,
+            items_count: ruleChanges,
+          });
+        }
+      }
+
+      if (inline_overrides) {
+        for (const o of inline_overrides) {
+          const { item_id, price_field, adjustment_type, adjustment_value, direction, new_price } = o;
+          const field = resolvePriceField(price_field);
+          const item = db.prepare(`SELECT id, ${field} as old_price FROM items WHERE id = ?`).get(item_id);
+          if (!item) continue;
+
+          let newPrice, adjType, adjValue, dir;
+          if (new_price !== undefined) {
+            newPrice = Math.max(0, Math.round(Number(new_price) * 100) / 100);
+            const diff = newPrice - item.old_price;
+            dir = diff >= 0 ? "up" : "down";
+            adjType = "fixed";
+            adjValue = Math.abs(diff);
+          } else {
+            dir = direction || "up";
+            adjType = adjustment_type || "fixed";
+            adjValue = Math.abs(Number(adjustment_value || 0));
+            if (adjValue === 0) continue;
+            newPrice = calcNewPrice(item.old_price, dir, adjType, adjValue);
+          }
+          if (newPrice === item.old_price) continue;
+          insertHistory.run(item_id, field, item.old_price, newPrice, adjType, adjValue, reason, operationId, changedBy, null);
+          db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`).run(newPrice, item_id);
+          totalChanges++;
+        }
+      }
+
+      if (appliedRules.length > 0) {
+        const meta = JSON.stringify({ rules: appliedRules, inline_count: inline_overrides ? inline_overrides.length : 0 });
+        db.prepare(`UPDATE price_history SET batch_metadata = ? WHERE operation_id = ?`).run(meta, operationId);
+      }
+    });
+    run();
+
+    res.json({ success: true, changes: totalChanges, operation_id: operationId, batch_rules: appliedRules });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/bulk-price-rollback", requirePagePermission("items", "add"), (req, res, next) => {
   const db = getDb();
   try {
@@ -1620,8 +1711,11 @@ router.get("/bulk-price-history", requirePagePermission("items", "view"), (req, 
   const db = getDb();
   try {
     const rows = db.prepare(`
-      SELECT operation_id, field, adjustment_type, adjustment_value, reason, changed_by,
-             COUNT(*) as items_count, MIN(changed_at) as changed_at
+      SELECT operation_id,
+             CASE WHEN MAX(batch_metadata) IS NOT NULL THEN 'batch' ELSE field END as field,
+             adjustment_type, adjustment_value, reason, changed_by,
+             COUNT(*) as items_count, MIN(changed_at) as changed_at,
+             MAX(batch_metadata) as batch_metadata
       FROM price_history
       GROUP BY operation_id
       ORDER BY changed_at DESC
@@ -1638,7 +1732,8 @@ router.get("/bulk-price-history/:operationId/items", requirePagePermission("item
   try {
     const rows = db.prepare(`
       SELECT ph.item_id, ph.field, ph.old_value, ph.new_value, ph.adjustment_type, ph.adjustment_value,
-             i.name AS item_name, i.code AS item_code, i.barcode, c.name AS category_name
+             i.name AS item_name, i.code AS item_code, i.barcode, c.name AS category_name,
+             ph.batch_metadata, ph.source
       FROM price_history ph
       LEFT JOIN items i ON i.id = ph.item_id
       LEFT JOIN item_categories c ON c.id = i.category_id

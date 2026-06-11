@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download } from "lucide-react";
+import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
@@ -405,6 +405,27 @@ export default function DashboardPage() {
   const canView = usePermissionFilter();
   const [quickModal, setQuickModal] = useState(null); // 'expense' | 'revenue' | 'withdrawal'
 
+  const [noItems, setNoItems] = useState(null);
+  const [checkingEmpty, setCheckingEmpty] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      api.get("/api/categories"),
+      api.get("/api/items"),
+    ]).then(([catsRes, itemsRes]) => {
+      if (cancelled) return;
+      const cats = Array.isArray(catsRes.data?.data) ? catsRes.data.data : [];
+      const items = Array.isArray(itemsRes.data?.data) ? itemsRes.data.data : [];
+      setNoItems(cats.length === 0 || items.length === 0);
+    }).catch(() => {
+      if (!cancelled) setNoItems(false);
+    }).finally(() => {
+      if (!cancelled) setCheckingEmpty(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey));
   const visibleModules = NAV_MODULES.map((module) => ({
     ...module,
@@ -508,6 +529,30 @@ export default function DashboardPage() {
           })}
         </motion.div>
       </div>
+
+      {/* Empty items banner */}
+      {!checkingEmpty && noItems && (
+        <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
+          <div className="rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-amber-200/20 backdrop-blur-sm">
+            <div className="flex items-center gap-5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                <Package className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-amber-900">لم يتم إضافة أي أصناف بعد</h3>
+                <p className="mt-1 text-sm font-bold text-amber-700">ابدأ بتعريف الأصناف والمنتجات لتشغيل المخزون والمبيعات</p>
+              </div>
+            </div>
+            <Link
+              to="/definitions/items"
+              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-amber-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-amber-700/20 transition-all duration-200 hover:bg-amber-800 hover:shadow-xl active:scale-95"
+            >
+              <Plus className="h-4.5 w-4.5" />
+              إضافة الأصناف الآن
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Command center */}
       <div className="max-w-7xl mx-auto w-full px-6 md:px-12 -mt-10 relative z-20 pb-20">

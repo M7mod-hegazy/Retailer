@@ -10,10 +10,27 @@ function computeTotals(lines, discount, increase) {
     (sum, line) => sum + line.quantity * line.unit_price - Number(line.line_discount || 0),
     0,
   );
-  const total = Math.max(0, subtotal - Number(discount || 0) + Number(increase || 0));
-  return { subtotal, total };
+  const base = Math.max(0, subtotal - Number(discount || 0) + Number(increase || 0));
+  return { subtotal, base, total: base };
 }
 
+function computeTax(base, taxEnabled, taxRate, settings) {
+  const featureOn = Number(settings?.tax_enabled ?? 0) === 1
+    && (settings?.tax_type === 'inclusive' || settings?.tax_type === 'exclusive');
+  if (!featureOn) return { taxAmount: 0, total: base };
+  const enabled = taxEnabled === null ? true : Boolean(taxEnabled);
+  if (!enabled) return { taxAmount: 0, total: base };
+  const rate = taxRate !== null ? Number(taxRate) : Number(settings?.tax_rate || 0);
+  if (settings?.tax_type === 'exclusive') {
+    const taxAmount = Math.round((base * rate / 100 + Number.EPSILON) * 100) / 100;
+    return { taxAmount, total: Math.round((base + taxAmount + Number.EPSILON) * 100) / 100 };
+  } else {
+    const taxAmount = Math.round((base * rate / (100 + rate) + Number.EPSILON) * 100) / 100;
+    return { taxAmount, total: base };
+  }
+}
+
+export { computeTax };
 export const usePosStore = create(
   persist(
     (set, get) => ({
@@ -24,6 +41,9 @@ export const usePosStore = create(
       promotionDiscount: 0,
       appliedPromotions: [],
       paymentType: "cash",
+      invoiceNotes: "",
+      taxEnabled: null,
+      taxRate: null,
       search: "",
       activeCategory: "all",
       heldInvoices: [],
@@ -118,6 +138,9 @@ export const usePosStore = create(
       setDiscount: (discount) => set({ discount: Number(discount || 0) }),
       setIncrease: (increase) => set({ increase: Math.max(0, Number(increase || 0)) }),
       setPaymentType: (paymentType) => set({ paymentType }),
+      setInvoiceNotes: (invoiceNotes) => set({ invoiceNotes }),
+      setTaxEnabled: (taxEnabled) => set({ taxEnabled }),
+      setTaxRate: (taxRate) => set({ taxRate }),
       setSearch: (search) => set({ search }),
       setActiveCategory: (activeCategory) => set({ activeCategory }),
       loadDraftsFromDB: async () => {
@@ -139,6 +162,9 @@ export const usePosStore = create(
             promotionDiscount: 0,
             appliedPromotions: [],
             paymentType: d.payment_type,
+            notes: d.notes || "",
+            taxEnabled: d.tax_enabled !== undefined ? d.tax_enabled : null,
+            taxRate: d.tax_rate !== undefined ? d.tax_rate : null,
           }));
           if (active) {
             set({
@@ -147,6 +173,9 @@ export const usePosStore = create(
               discount: active.discount,
               increase: active.increase,
               paymentType: active.payment_type,
+              invoiceNotes: active.notes || "",
+              taxEnabled: active.tax_enabled !== undefined ? active.tax_enabled : null,
+              taxRate: active.tax_rate !== undefined ? active.tax_rate : null,
               heldInvoices: heldSlots,
               _activeDraftDbId: active.id,
             });
@@ -174,6 +203,9 @@ export const usePosStore = create(
             discount: state.discount,
             increase: state.increase,
             payment_type: state.paymentType,
+            notes: state.invoiceNotes || null,
+            tax_enabled: state.taxEnabled,
+            tax_rate: state.taxRate,
           });
           set({ _activeDraftDbId: res.data?.data?.id || null });
         } catch (_) {}
@@ -206,6 +238,9 @@ export const usePosStore = create(
           promotionDiscount: state.promotionDiscount,
           appliedPromotions: state.appliedPromotions,
           paymentType: state.paymentType,
+          notes: state.invoiceNotes || "",
+          taxEnabled: state.taxEnabled,
+          taxRate: state.taxRate,
         };
         set({
           heldInvoices: [slot, ...state.heldInvoices].slice(0, 4),
@@ -216,6 +251,9 @@ export const usePosStore = create(
           promotionDiscount: 0,
           appliedPromotions: [],
           paymentType: "cash",
+          invoiceNotes: "",
+          taxEnabled: null,
+          taxRate: null,
         });
         // Save held invoice to DB and clear active draft
         api.post("/api/pos-drafts", {
@@ -225,6 +263,9 @@ export const usePosStore = create(
           discount: slot.discount,
           increase: slot.increase,
           payment_type: slot.paymentType,
+          notes: slot.notes || null,
+          tax_enabled: slot.taxEnabled,
+          tax_rate: slot.taxRate,
         }).then((res) => {
           const dbId = res.data?.data?.id;
           if (dbId) {
@@ -259,13 +300,16 @@ export const usePosStore = create(
           promotionDiscount: held.promotionDiscount,
           appliedPromotions: held.appliedPromotions,
           paymentType: held.paymentType,
+          invoiceNotes: held.notes || "",
+          taxEnabled: held.taxEnabled !== undefined ? held.taxEnabled : null,
+          taxRate: held.taxRate !== undefined ? held.taxRate : null,
         });
       },
       clear: () => {
         if (promotionEvaluateTimer) clearTimeout(promotionEvaluateTimer);
         promotionEvaluateTimer = null;
         promotionEvaluateSeq += 1;
-        set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", search: "", activeCategory: "all" });
+        set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", invoiceNotes: "", taxEnabled: null, taxRate: null, search: "", activeCategory: "all" });
       },
       getTotals: () => computeTotals(
         get().lines,
@@ -276,14 +320,17 @@ export const usePosStore = create(
     {
       name: "pos-crash-recovery-storage", 
       storage: createJSONStorage(() => localStorage), 
-      partialize: (state) => ({ 
-        lines: state.lines, 
-        customer: state.customer, 
-        discount: state.discount, 
+      partialize: (state) => ({
+        lines: state.lines,
+        customer: state.customer,
+        discount: state.discount,
         increase: state.increase,
         promotionDiscount: state.promotionDiscount,
         appliedPromotions: state.appliedPromotions,
         paymentType: state.paymentType,
+        invoiceNotes: state.invoiceNotes,
+        taxEnabled: state.taxEnabled,
+        taxRate: state.taxRate,
         heldInvoices: state.heldInvoices,
       }),
     }

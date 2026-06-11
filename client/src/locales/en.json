@@ -253,5 +253,9 @@
   "updates.install_on_next_restart": "Install on Next Restart",
   "users.can_view_updates": "View Updates Permission",
   "audit_retention_days": "Activity Log Retention",
-  "days": "days"
+  "days": "days",
+  "invoice_note": "Invoice Note",
+  "invoice_note_placeholder": "Add a note to the invoice…",
+  "tax_enabled": "Enable Tax",
+  "edit_tax_rate": "Edit Tax Rate"
 }

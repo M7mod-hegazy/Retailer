@@ -42,6 +42,7 @@ import Highlight from "../../components/ui/Highlight";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 const ItemExportModal = React.lazy(() => import("./ItemExportModal"));
+const ItemQuickAddModal = React.lazy(() => import("./ItemFormModal"));
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
 
@@ -376,6 +377,7 @@ export default function ItemsListPage() {
   const [showDeleted, setShowDeleted]     = useState(false);
   const [showSkuGaps, setShowSkuGaps]     = useState(false);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -438,6 +440,9 @@ export default function ItemsListPage() {
   };
 
   const nameInputRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const bottomScrollRef = useRef(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
 
   // ── loaders ──────────────────────────────────────────────────────────────
 
@@ -578,6 +583,17 @@ export default function ItemsListPage() {
     if (!showSkuGaps || !skuGapRows.length) return displayItems.rows;
     return [...displayItems.rows, ...skuGapRows].sort((a, b) => String(a.code || "").localeCompare(String(b.code || ""), "ar", { numeric: true }));
   }, [displayItems.rows, showSkuGaps, skuGapRows]);
+
+  // Measure table scrollable width for bottom scrollbar sync
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const measure = () => setTableScrollWidth(el.scrollWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tableRows]);
 
   const selectedItemsForExport = useMemo(
     () => items.filter((item) => selectedIds.has(item.id)),
@@ -996,10 +1012,18 @@ export default function ItemsListPage() {
             </div>
             <PermissionGate page="items" action="add">
             <button
+               onClick={() => setQuickAddOpen(true)}
+               className="flex h-[42px] items-center gap-2 rounded-sm bg-slate-900 border border-slate-800 px-4 text-sm font-black text-white hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
+            >
+               <Plus className="h-3.5 w-3.5" /> إضافة صنف
+            </button>
+            </PermissionGate>
+            <PermissionGate page="items" action="add">
+            <button
                onClick={() => setNewCategoryOpen(true)}
                className="flex h-[42px] items-center gap-2 rounded-sm bg-slate-100 border border-slate-200 px-4 text-sm font-black text-slate-600 hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
             >
-               <Plus className="h-3.5 w-3.5" /> فئة جديدة
+               <Shapes className="h-3.5 w-3.5" /> فئة جديدة
             </button>
             </PermissionGate>
             <PermissionGate page="items" action="add">
@@ -1093,9 +1117,12 @@ export default function ItemsListPage() {
            </div>
          )}
 
-         {/* Items Table Workspace */}
-         <div className="max-h-[70vh] overflow-auto scrollbar-thin">
-           <table className="w-max border-collapse table-fixed text-right min-w-full">
+          {/* Items Table Workspace */}
+          <div className="flex flex-col" style={{ maxHeight: '70vh' }}>
+            <div ref={scrollContainerRef}
+              onScroll={() => { if (bottomScrollRef.current) bottomScrollRef.current.scrollLeft = scrollContainerRef.current?.scrollLeft || 0; }}
+              className="overflow-auto scrollbar-thin flex-1">
+            <table className="w-max border-collapse table-fixed text-right min-w-full">
              <thead className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-sm">
                 <tr className="border-b border-slate-200 shadow-sm">
                    {/* drag + checkbox merged */}
@@ -1430,9 +1457,16 @@ export default function ItemsListPage() {
                   </tr>
                </tfoot>
              )}
-           </table>
-         </div>
-      </div>
+            </table>
+            </div>
+            <div ref={bottomScrollRef}
+              onScroll={() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = bottomScrollRef.current?.scrollLeft || 0; }}
+              className="overflow-x-auto overflow-y-hidden h-3 bg-slate-50 border-t border-slate-200 scrollbar-thin cursor-pointer"
+            >
+              <div style={{ width: Math.max(tableScrollWidth, 1), height: 1 }} />
+            </div>
+          </div>
+       </div>
 
       {/* Floating UI Elements */}
       <SaveAllBar count={dirtyRows.size} onSaveAll={saveAll} onDiscard={discardAll} />
@@ -1466,6 +1500,16 @@ export default function ItemsListPage() {
             filteredItems={displayItems.rows}
             selectedItems={selectedItemsForExport}
             selectedCategoryName={selectedCategory?.name}
+          />
+        </React.Suspense>
+      )}
+      {quickAddOpen && (
+        <React.Suspense fallback={null}>
+          <ItemQuickAddModal
+            onSaved={() => {
+              setQuickAddOpen(false);
+              loadItems(selectedCatId, search, showDeleted);
+            }}
           />
         </React.Suspense>
       )}

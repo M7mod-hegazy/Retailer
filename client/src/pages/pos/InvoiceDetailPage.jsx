@@ -158,6 +158,8 @@ export default function InvoiceDetailPage() {
           discount: invoice.discount || 0,
           increase: invoice.increase || 0,
           notes: invoice.notes,
+          tax_enabled: invoice.tax_enabled,
+          tax_rate: invoice.tax_rate,
           orig_balance_effect: invoice.debt_remaining || 0,
           invoice_no: invoice.invoice_no,
           created_at: invoice.created_at,
@@ -334,6 +336,12 @@ export default function InvoiceDetailPage() {
                   <span className="font-black font-mono text-emerald-600">+ {fmt(invoice.increase)}</span>
                 </div>
               )}
+              {Number(invoice.tax_amount) > 0 && (
+                <div className="flex justify-between text-2sm">
+                  <span className="font-bold text-slate-500">ضريبة ({invoice.tax_rate}%)</span>
+                  <span className="font-black font-mono text-indigo-600">+ {fmt(invoice.tax_amount)}</span>
+                </div>
+              )}
               <div className="h-px bg-slate-100" />
               <div className="rounded-sm bg-slate-900 p-4 text-center text-white">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">الإجمالي</div>
@@ -355,6 +363,14 @@ export default function InvoiceDetailPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {invoice.notes && (
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+              <h3 className="mb-2 text-[11px] font-black text-slate-400 uppercase tracking-widest">ملاحظات</h3>
+              <p className="text-2sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{invoice.notes}</p>
             </div>
           )}
 

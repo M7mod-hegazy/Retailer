@@ -19,6 +19,7 @@ import { reportsApi } from "../../services/reports";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ReportPrintTemplate from "./templates/ReportPrintTemplate";
+import AccountStatementLedger from "./templates/AccountStatementLedger";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
@@ -51,6 +52,7 @@ const CLS_ARABIC = {
   "cls_supplier_aging": "تقادم ذمم الموردين",
   "cls_supplier_purchases": "سجل المشتريات",
   "cls_supplier_returns": "سجل المرتجعات",
+  "cls_supplier_reliability": "موثوقية الموردين",
   "cls_customer_statement": "كشف حساب العميل",
   "cls_customer_aging": "تقادم ذمم العملاء",
   "cls_top_customers": "أفضل العملاء",
@@ -108,6 +110,13 @@ const CLS_ARABIC = {
   "by-supplier": "حسب المورد",
   "by-customer": "حسب العميل",
   "supplier-pricing": "تسعير الموردين",
+  "reliability": "موثوقية الموردين",
+  "purchases": "سجل المشتريات",
+  "returns": "سجل المرتجعات",
+  "aging": "تقادم الذمم",
+  "top-customers": "أفضل العملاء",
+  "collection-efficiency": "كفاءة التحصيل",
+  "loyalty": "ولاء العملاء",
   "income-statement": "قائمة الدخل",
   "by-period": "حسب الفترة",
   "health": "صحة الأرباح",
@@ -119,6 +128,27 @@ const CLS_ARABIC = {
   "card": "بطاقة",
   "credit": "آجل",
   "wallet": "محفظة",
+  // Lookup/select filter label_keys (avoid raw English leaking into filter labels)
+  "supplier": "المورد",
+  "customer": "العميل",
+  "product": "الصنف",
+  "category": "الفئة",
+  "user": "المستخدم",
+  "warehouse": "المخزن",
+  "cashier": "الكاشير",
+  "role": "الصلاحية",
+  "action": "الإجراء",
+  "payment_type": "طريقة الدفع",
+  "movement_type": "نوع الحركة",
+  "in": "وارد",
+  "out": "صادر",
+  "transfer": "تحويل",
+  "admin": "مدير النظام",
+  "manager": "مدير",
+  "pending": "معلق",
+  "cleared": "محصّل",
+  "bounced": "مرتجع",
+  "replaced": "مستبدل",
 };
 
 function a(key) { return CLS_ARABIC[key] || key; }
@@ -126,7 +156,7 @@ const ID_TO_NAME_COLUMNS = new Set(["warehouse_id", "supplier_id", "customer_id"
 
 const ARABIC_COL_LABELS = {
   id: "#", date: "التاريخ", created_at: "تاريخ الإنشاء", updated_at: "تاريخ التحديث",
-  invoice_no: "رقم الفاتورة", doc_no: "رقم المستند", reference_no: "المرجع",
+  invoice_no: "رقم الفاتورة", doc_no: "رقم المستند", reference_no: "المرجع", ref_no: "رقم المستند",
   customer_name: "العميل", customer_id: "العميل", supplier_name: "المورد", supplier_id: "المورد",
   item_name: "الصنف", item_code: "كود الصنف", item_id: "الصنف", barcode: "الباركود",
   category_name: "الفئة", category_id: "الفئة",
@@ -154,6 +184,7 @@ const ARABIC_COL_LABELS = {
   tax_rate: "نسبة الضريبة", tax_amount: "قيمة الضريبة", vat_amount: "ضريبة القيمة المضافة",
   role: "الصلاحية", username: "اسم المستخدم", last_login: "آخر دخول",
   action: "الإجراء", resource: "المورد",
+  debit: "مدين", credit: "دائن", running_balance: "الرصيد الجاري", line_total: "إجمالي السطر",
   aging_0_30: "0-30 يوم", aging_31_60: "31-60 يوم", aging_61_90: "61-90 يوم", aging_90_plus: "أكثر من 90 يوم",
   weekday_name: "اليوم", hour_slot: "الساعة",
   stock_status: "حالة المخزون", reorder_level: "حد إعادة الطلب", current_stock: "المخزون الحالي",
@@ -161,6 +192,16 @@ const ARABIC_COL_LABELS = {
 };
 const NOTE_KEYS = new Set(["notes", "note", "description", "cancel_reason", "reason"]);
 function arColLabel(key) { return ARABIC_COL_LABELS[key] || key; }
+
+const TYPE_LABELS = {
+  invoice: "فاتورة",
+  payment: "دفع",
+  sales_return: "مرتجع مبيعات",
+  purchase: "مشتريات",
+  purchase_return: "مرتجع مشتريات",
+  adjustment: "تسوية",
+  item: "صنف",
+};
 
 function formatDate(date) {
   return date.toISOString().slice(0, 10);
@@ -215,6 +256,44 @@ function TableSkeleton({ colCount = 6 }) {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Shown for supplier/customer statements before a party is picked: a clear CTA
+// plus a faded ghost preview of the ledger so the user knows what they'll get.
+function StatementEmptyPreview({ partyType }) {
+  const label = partyType === "customer" ? "اختر عميلاً لعرض كشف الحساب" : "اختر مورداً لعرض كشف الحساب";
+  const ghostRows = [
+    { d: "رصيد أول المدة", a: "—", tone: "bg-amber-100/70" },
+    { d: "فاتورة", a: "مدين", tone: "bg-blue-100/60" },
+    { d: "أصناف الفاتورة", a: "", tone: "bg-zinc-100/60", indent: true },
+    { d: "دفعة", a: "دائن", tone: "bg-emerald-100/60" },
+    { d: "مرتجع", a: "دائن", tone: "bg-rose-100/60" },
+    { d: "الإجمالي / رصيد الحركة", a: "", tone: "bg-zinc-300/60" },
+  ];
+  return (
+    <div dir="rtl" className="flex flex-col items-center justify-center flex-1 py-16 px-6 bg-zinc-50/40">
+      <div className="h-14 w-14 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center text-emerald-500 mb-4 shadow-sm">
+        <FileText size={26} />
+      </div>
+      <h3 className="text-[17px] font-black text-zinc-800 mb-1">{label}</h3>
+      <p className="text-sm text-zinc-500 mb-7 max-w-md text-center">
+        ابحث عن {partyType === "customer" ? "العميل" : "المورد"} من حقل الفلتر بالأعلى لعرض كشف حساب تفصيلي بكل الحركات والأصناف.
+      </p>
+      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden opacity-70 pointer-events-none select-none">
+        <div className="grid grid-cols-2 text-[11px] font-bold">
+          <div className="bg-zinc-800 text-zinc-300 px-3 py-2">{partyType === "customer" ? "العميل" : "المورد"}</div>
+          <div className="bg-zinc-100 text-zinc-400 px-3 py-2 text-left">{partyType === "customer" ? "كود العميل" : "كود المورد"}</div>
+        </div>
+        {ghostRows.map((r, i) => (
+          <div key={i} className={`flex items-center gap-3 px-3 py-2.5 border-t border-zinc-100 ${r.tone} ${r.indent ? "pr-10" : ""}`}>
+            <div className="h-2.5 w-2.5 rounded-full bg-zinc-300/80" />
+            <div className="h-2.5 rounded bg-zinc-300/70" style={{ width: r.indent ? "40%" : "55%" }} />
+            <div className="ml-auto h-2.5 w-16 rounded bg-zinc-300/60" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -343,6 +422,11 @@ export default function SourceWorkspacePage() {
     return classifications.find((c) => c.id === classificationId) || null;
   }, [classifications, classificationId]);
 
+  // Supplier/customer account statements get a dedicated ledger renderer instead
+  // of the generic DataGrid, and need the full (un-paginated) transaction set.
+  const isStatement = classificationId === "statement" && (sourceKey === "suppliers" || sourceKey === "customers");
+  const statementPartyType = sourceKey === "customers" ? "customer" : "supplier";
+
   // Local state
   const today = useMemo(() => new Date(), []);
   const defaultFrom = useMemo(() => fmtDate(new Date(today.getFullYear(), today.getMonth(), 1)), [today]);
@@ -421,6 +505,7 @@ export default function SourceWorkspacePage() {
     else if (scope.type === "customer" && scope.values?.length) params.customer_id = scope.values[0];
     else if (scope.type === "supplier" && scope.values?.length) params.supplier_id = scope.values[0];
     if (debouncedQ) params.q = debouncedQ;
+    if (isStatement) { params.page = 1; params.pageSize = 5000; } // ledger needs every row
     setAppliedParams(params);
   }, [filterSignature]);
 
@@ -452,6 +537,8 @@ export default function SourceWorkspacePage() {
   const currentPageSize = result?.pageSize || 50;
   const totalPages = Math.max(1, Math.ceil(totalRows / currentPageSize));
   const serverTotals = result?.totals || {};
+  const summary = result?.summary || null;
+  const partySelected = !!(filters.supplier_id || filters.customer_id);
 
   // Normalize columns
   const allColumns = useMemo(() => {
@@ -502,12 +589,13 @@ export default function SourceWorkspacePage() {
 
   // When print template measures exact rows/page, update workspace pagination immediately
   const handleRowsPerPage = useCallback((measured) => {
+    if (isStatement) return; // ledger needs the full row set; don't shrink to a print page
     setMeasuredPrintRowsPerPage(measured);
     setAppliedParams((prev) => {
       if (prev.pageSize === measured) return prev;
       return { ...prev, page: 1, pageSize: measured };
     });
-  }, []);
+  }, [isStatement]);
 
   // Reset measurement when column set changes (different report = different row heights)
   useEffect(() => {
@@ -517,6 +605,7 @@ export default function SourceWorkspacePage() {
   // Keep pageSize in sync with print rows-per-page estimate as visible columns change;
   // the measured value (from DOM) takes over once the user opens print preview
   useEffect(() => {
+    if (isStatement) return; // statement ledger fetches all rows; never shrink pageSize
     if (visibleColumns.length === 0) return;
     if (measuredPrintRowsPerPage !== null) return; // measured value already in use
     const printPageSize = calcPrintRowsPerPage(visibleColumns);
@@ -633,6 +722,53 @@ export default function SourceWorkspacePage() {
 
   const chartType = useMemo(() => suggestChartType(allColumns), [allColumns]);
   const { data: chartData, xKey, yKey } = useMemo(() => prepareChartData(rows, allColumns, chartType), [rows, allColumns, chartType]);
+
+  const hasItemsRows = useMemo(() => rows.some(r => r._items?.length > 0), [rows]);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const toggleExpand = useCallback((rowId) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  }, []);
+  const renderItemExpandedRow = useCallback((row, idx) => {
+    if (!hasItemsRows) return null;
+    const rowId = row.id ?? idx;
+    if (!expandedRows.has(rowId) || !row._items?.length) return null;
+    return (
+      <tr key={`exp-${rowId}`}>
+        <td colSpan={displayColumns.length} className="bg-zinc-50/80 p-0">
+          <div className="border-b border-zinc-200 mx-4" />
+          <div className="py-2 px-6">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="text-zinc-500 font-bold border-b border-zinc-200">
+                  <th className="text-right py-1.5 px-2">الصنف</th>
+                  <th className="text-right py-1.5 px-2">الكود</th>
+                  <th className="text-right py-1.5 px-2">الكمية</th>
+                  <th className="text-right py-1.5 px-2">سعر الوحدة</th>
+                  <th className="text-right py-1.5 px-2">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {row._items.map((item, i) => (
+                  <tr key={i} className="border-b border-zinc-100 last:border-0">
+                    <td className="py-1.5 px-2 text-zinc-800 font-medium">{item.item_name}</td>
+                    <td className="py-1.5 px-2 text-zinc-500 font-mono text-left" dir="ltr">{item.code || item.barcode || "-"}</td>
+                    <td className="py-1.5 px-2 text-zinc-700 tabular-nums">{item.quantity}</td>
+                    <td className="py-1.5 px-2 text-zinc-700 tabular-nums text-left" dir="ltr">{Number(item.unit_price).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    <td className="py-1.5 px-2 text-zinc-800 tabular-nums font-bold text-left" dir="ltr">{Number(item.line_total).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+    );
+  }, [hasItemsRows, expandedRows, displayColumns.length]);
 
   const invalidRange = clsDef?.supportsDates && filters.from > filters.to;
 
@@ -941,6 +1077,17 @@ export default function SourceWorkspacePage() {
       <div className="bg-white rounded-[24px] border border-zinc-200 shadow-sm flex flex-col relative">
         {isLoading ? (
           <TableSkeleton colCount={Math.min(visibleColumns.length || 6, 8)} />
+        ) : isStatement && !partySelected ? (
+          <StatementEmptyPreview partyType={statementPartyType} />
+        ) : isStatement && activeTab === "table" ? (
+          <div className="p-4 md:p-6">
+            <AccountStatementLedger
+              rows={rows}
+              summary={summary || {}}
+              partyType={statementPartyType}
+              period={{ from: appliedParams.start_date, to: appliedParams.end_date }}
+            />
+          </div>
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center py-24 bg-zinc-50/50">
             <div className="h-16 w-16 rounded-3xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-300 mb-4 shadow-sm"><Search size={28} /></div>
@@ -1016,33 +1163,58 @@ export default function SourceWorkspacePage() {
               transition={{ duration: 0.2 }}
             >
               <DataGrid
-                columns={displayColumns.map((c) => ({
+                columns={displayColumns.map((c, colIdx) => ({
                   ...c,
                   width: c.width || (c.type === "date" ? 90 : c.type === "cur" ? 130 : c.type === "num" ? 80 : c.type === "code" ? 110 : c.type === "percent" ? 80 : (c.key?.includes("name") || c.key?.includes("item") || c.key?.includes("label") || c.key?.includes("description") ? 220 : 140)),
-                  render: ID_TO_NAME_COLUMNS.has(c.id)
+                  render: c.id === "type"
                     ? (row) => {
-                        const nameKey = c.id.replace("_id", "_name");
-                        const displayName = row[nameKey] || row[c.id];
-                        if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
-                        return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
+                        const raw = row[c.id];
+                        return <span className="text-sm font-medium text-zinc-700">{TYPE_LABELS[raw] || raw || "-"}</span>;
                       }
-                    : c.type === "cur" || c.type === "num" || c.type === "percent" || c.type === "money" || c.type === "number"
+                    : ID_TO_NAME_COLUMNS.has(c.id)
                       ? (row) => {
-                          const val = row[c.id];
-                          if (val == null || val === "") return <span className="text-zinc-300">—</span>;
-                          const num = Number(val);
-                          if (isNaN(num)) return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
-                          const suffix = c.type === "percent" ? "%" : "";
-                          return (
-                            <span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
-                              {num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
-                            </span>
-                          );
+                          const nameKey = c.id.replace("_id", "_name");
+                          const displayName = row[nameKey] || row[c.id];
+                          if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
+                          return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
                         }
-                      : undefined,
+                      : c.type === "cur" || c.type === "num" || c.type === "percent" || c.type === "money" || c.type === "number"
+                        ? (row) => {
+                            const val = row[c.id];
+                            if (val == null || val === "") return <span className="text-zinc-300">—</span>;
+                            const num = Number(val);
+                            if (isNaN(num)) return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
+                            const suffix = c.type === "percent" ? "%" : "";
+                            return (
+                              <span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                                {num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
+                              </span>
+                            );
+                          }
+                        : colIdx === 0 && hasItemsRows
+                          ? (row, idx) => {
+                              const rowId = row.id ?? idx;
+                              const hasItems = row._items?.length > 0;
+                              const isExpanded = expandedRows.has(rowId);
+                              const raw = row[c.id];
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  {hasItems ? (
+                                    <button onClick={(e) => { e.stopPropagation(); toggleExpand(rowId); }}
+                                      className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors">
+                                      <ChevronDown size={13} className={`text-zinc-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+                                  ) : <span className="w-5 shrink-0" />}
+                                  <span className="text-sm font-medium text-zinc-700 truncate">{raw != null ? String(raw) : "-"}</span>
+                                </div>
+                              );
+                            }
+                          : undefined,
                 }))}
                 data={rows}
                 rowKey="id"
+                renderExpandedRow={renderItemExpandedRow}
+                rowClass={(row) => row._is_item ? "bg-zinc-50/50" : ""}
               />
               {/* Totals Bar */}
               {rows.length > 0 && Object.keys(columnTotals).length > 0 && (
@@ -1126,21 +1298,37 @@ export default function SourceWorkspacePage() {
           printPriority: c.printPriority,
         }))}
         totalRows={printAllData?.total || totalRows}
-        renderContent={(s) => (
-          <ReportPrintTemplate
-            rows={printAllData?.data || rows}
-            columns={visibleColumns}
-            noteColumns={allColumns.filter((c) => c.isNote)}
-            title={`${sourceDef?.label || ''} - ${a(classificationId)}`}
-            filters={filters}
-            settings={s}
-            totals={columnTotals}
-            currentPage={s.currentPage || 1}
-            onPageCount={s.onPageCount}
-            onRowsPerPage={handleRowsPerPage}
-            forcedRowsPerPage={appliedParams.pageSize}
-          />
-        )}
+        renderContent={(s) => {
+          const summary = printAllData?.summary || {};
+          const partyName = summary.customer_name || summary.supplier_name || "";
+          const openingBal = summary.opening_balance;
+          const subtitleParts = [];
+          if (partyName) subtitleParts.push(partyName);
+          if (openingBal != null) subtitleParts.push(`الرصيد الافتتاحي: ${Number(openingBal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
+          const computedSubtitle = subtitleParts.length ? subtitleParts.join(" | ") : undefined;
+          return (
+            <ReportPrintTemplate
+              rows={printAllData?.data || rows}
+              columns={visibleColumns}
+              noteColumns={allColumns.filter((c) => c.isNote)}
+              title={`${sourceDef?.label || ''} - ${a(classificationId)}`}
+              subtitle={computedSubtitle}
+              filters={filters}
+              settings={s}
+              totals={columnTotals}
+              currentPage={s.currentPage || 1}
+              onPageCount={s.onPageCount}
+              onRowsPerPage={handleRowsPerPage}
+              forcedRowsPerPage={appliedParams.pageSize}
+              statement={isStatement ? {
+                rows: printAllData?.data || rows,
+                summary: printAllData?.summary || summary || {},
+                partyType: statementPartyType,
+                period: { from: appliedParams.start_date, to: appliedParams.end_date },
+              } : null}
+            />
+          );
+        }}
       />
 
       {/* PDF Export Dialog */}

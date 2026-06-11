@@ -239,7 +239,7 @@ export default function SalesReturnDetailPage() {
                 ))}
               </tbody>
               <tfoot className="border-t-2 border-slate-200 bg-slate-50">
-                {(Number(doc.discount) > 0 || Number(doc.increase) > 0) && (
+                {(Number(doc.discount) > 0 || Number(doc.increase) > 0 || Number(doc.tax_amount) > 0) && (
                   <>
                     <tr>
                       <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
@@ -255,6 +255,12 @@ export default function SalesReturnDetailPage() {
                       <tr>
                         <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-emerald-700">زيادة على المرتجع</td>
                         <td className="px-4 py-1.5 text-left font-bold text-emerald-700">+ {fmt(doc.increase)} ج.م</td>
+                      </tr>
+                    )}
+                    {Number(doc.tax_amount) > 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-indigo-600">ضريبة ({doc.tax_rate}%)</td>
+                        <td className="px-4 py-1.5 text-left font-bold text-indigo-600">+ {fmt(doc.tax_amount)} ج.م</td>
                       </tr>
                     )}
                   </>

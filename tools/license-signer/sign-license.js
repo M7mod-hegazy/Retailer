@@ -60,7 +60,7 @@ async function main() {
     console.log(`✔ Signed license  (id: ${result.licenseId}, ${kind}, features: ${result.payload.features})`);
     console.log(`✔ Wrote: ${result.keyPath}`);
     console.log(`✔ Wrote QR:  ${result.qrPath}`);
-    const { formatActivationCode } = require("../../shared/licensing/tokenCodec");
+    const { formatActivationCode } = require("./shared/tokenCodec");
     const code = result.activationCode || formatActivationCode(result.blob);
     console.log(`\nSend license.key (best) or license.png QR to the customer.`);
     console.log(`Activation code (${code.length} chars, paste fallback):\n${code}`);

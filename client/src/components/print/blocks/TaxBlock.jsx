@@ -3,7 +3,12 @@ import { g, computeTotals } from "./blockUtils";
 
 export default function TaxBlock({ invoice = {}, settings: s, family }) {
   if (g(s, "show_tax") === false) return null;
-  const { taxAmount, taxRate } = computeTotals(invoice, s);
+  // Prefer invoice snapshot over recomputed value.
+  const snapshotAmount = Number(invoice.tax_amount || 0);
+  const snapshotRate = Number(invoice.tax_rate || 0);
+  const { taxAmount: computedAmount, taxRate: computedRate } = computeTotals(invoice, s);
+  const taxAmount = snapshotAmount > 0 ? snapshotAmount : computedAmount;
+  const taxRate = snapshotAmount > 0 ? snapshotRate : computedRate;
   if (taxAmount <= 0) return null;
   const currency = g(s, "currency_symbol");
   if (family === "page") {

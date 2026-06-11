@@ -6,6 +6,10 @@
 // Never bundled into the customer app — this is a seller-only tool.
 
 const { app, BrowserWindow, ipcMain, shell, clipboard } = require("electron");
+
+// Disable GPU acceleration — prevents crash on machines with incompatible GPU/sandbox.
+// This app is a simple form; no GPU needed.
+app.disableHardwareAcceleration();
 const path = require("path");
 const { generate, keysExist, runKeygen, readRegistry } = require("../signEngine");
 

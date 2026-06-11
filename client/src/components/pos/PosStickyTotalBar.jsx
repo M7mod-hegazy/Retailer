@@ -54,6 +54,8 @@ export default function PosStickyTotalBar({
   primaryLabel = "طباعة ومراجعة",
   maxWidth = 1100,
   forceShow = false,
+  activeTaxRate = 0,
+  hasNotes = false,
 }) {
   const narrow = useIsNarrowViewport(maxWidth);
   const searchRef = useRef(null);
@@ -303,6 +305,14 @@ export default function PosStickyTotalBar({
               {formatMoney(total)}
             </span>
             <span className="text-[9px] font-bold text-zinc-400">ج.م</span>
+            {activeTaxRate > 0 && (
+              <span className="rounded bg-blue-100 px-1 py-0.5 text-[8px] font-black text-blue-700">
+                +{activeTaxRate}%
+              </span>
+            )}
+            {hasNotes && (
+              <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" title="توجد ملاحظة" />
+            )}
           </div>
 
           <div className="flex items-center gap-1 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100 shrink-0">

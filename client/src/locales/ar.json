@@ -253,5 +253,9 @@
   "updates.install_on_next_restart": "تثبيت عند إعادة التشغيل",
   "users.can_view_updates": "صلاحية عرض التحديثات",
   "audit_retention_days": "مدة حفظ سجل النشاط",
-  "days": "يوم"
+  "days": "يوم",
+  "invoice_note": "ملاحظة الفاتورة",
+  "invoice_note_placeholder": "أضف ملاحظة على الفاتورة…",
+  "tax_enabled": "تفعيل الضريبة",
+  "edit_tax_rate": "تعديل نسبة الضريبة"
 }

@@ -65,6 +65,9 @@ export default function QuotationFormPage() {
   const [cart, setCart] = useState([]);
   const [notes, setNotes] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [appSettings, setAppSettings] = useState(null);
+  const [taxEnabled, setTaxEnabled] = useState(null);
+  const [taxRate, setTaxRate] = useState(null);
   
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -80,10 +83,12 @@ export default function QuotationFormPage() {
     Promise.all([
       api.get("/api/customers"),
       api.get("/api/items"),
-      editId ? api.get(`/api/quotations/${editId}`) : null
-    ]).then(([cust, itm, edit]) => {
+      editId ? api.get(`/api/quotations/${editId}`) : null,
+      api.get("/api/settings"),
+    ]).then(([cust, itm, edit, settingsRes]) => {
       setCustomers(cust.data.data || []);
       setItems(itm.data.data || []);
+      setAppSettings(settingsRes.data.data || null);
       if (edit) {
         const q = edit.data.data;
         setSelectedCustomer(cust.data.data.find(c => c.id === q.customer_id));
@@ -97,6 +102,8 @@ export default function QuotationFormPage() {
         })));
         setNotes(q.notes || "");
         setExpiresAt(q.expires_at || "");
+        if (q.tax_enabled !== undefined) setTaxEnabled(q.tax_enabled ? 1 : 0);
+        if (q.tax_rate !== undefined && q.tax_rate !== null) setTaxRate(Number(q.tax_rate));
       }
     }).finally(() => setLoading(false));
   }, [editId]);
@@ -151,8 +158,24 @@ export default function QuotationFormPage() {
   const totals = useMemo(() => {
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const discount = cart.reduce((acc, i) => acc + Number(i.discount || 0), 0);
-    return { subtotal, discount, total: subtotal - discount };
-  }, [cart]);
+    const base = Math.max(0, subtotal - discount);
+    const taxFeatureOn = Number(appSettings?.tax_enabled ?? 0) === 1
+      && (appSettings?.tax_type === 'inclusive' || appSettings?.tax_type === 'exclusive');
+    let taxAmount = 0, total = base;
+    if (taxFeatureOn) {
+      const enabled = taxEnabled === null ? true : Boolean(taxEnabled);
+      if (enabled) {
+        const rate = taxRate !== null ? Number(taxRate) : Number(appSettings?.tax_rate || 0);
+        if (appSettings?.tax_type === 'exclusive') {
+          taxAmount = Math.round((base * rate / 100 + Number.EPSILON) * 100) / 100;
+          total = Math.round((base + taxAmount + Number.EPSILON) * 100) / 100;
+        } else {
+          taxAmount = Math.round((base * rate / (100 + rate) + Number.EPSILON) * 100) / 100;
+        }
+      }
+    }
+    return { subtotal, discount, base, taxAmount, total, taxFeatureOn };
+  }, [cart, appSettings, taxEnabled, taxRate]);
 
   async function handleSave() {
     if (!selectedCustomer) return alert("يرجى اختيار عميل");
@@ -164,6 +187,8 @@ export default function QuotationFormPage() {
         customer_id: selectedCustomer.id,
         notes,
         expires_at: expiresAt || null,
+        tax_enabled: taxEnabled,
+        tax_rate: taxRate,
         lines: cart.map(i => ({
           item_id: i.id,
           quantity: i.qty,
@@ -419,6 +444,22 @@ export default function QuotationFormPage() {
                      <span>إجمالي الخصم</span>
                      <span>-{formatMoney(totals.discount)}</span>
                   </div>
+                  {totals.taxFeatureOn && (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={taxEnabled === null ? true : Boolean(taxEnabled)}
+                          onChange={e => setTaxEnabled(e.target.checked ? 1 : 0)}
+                          className="accent-indigo-600"
+                        />
+                        <span className="text-2sm font-bold text-indigo-600">
+                          ضريبة ({taxRate !== null ? taxRate : Number(appSettings?.tax_rate || 0)}%)
+                        </span>
+                      </div>
+                      <span className="text-2sm font-black text-indigo-600">+{formatMoney(totals.taxAmount)}</span>
+                    </div>
+                  )}
                   <div className="h-px bg-slate-200" />
                   <div className="flex items-center justify-between">
                      <span className="text-sm font-black text-slate-800 uppercase tracking-tight">الصافي النهائي</span>

@@ -6,7 +6,7 @@ const allowedChannels = {
   dialogs: ["dialog:open-file", "dialog:save-file"],
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
   updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error"],
-  app: ["app:set-icon"],
+  app: ["app:set-icon", "get:api-url"],
   server: ["server:status"],
   wa: ["wa:status", "wa:link", "wa:unlink", "wa:send", "wa:status-update"],
   license: ["license:getStatus", "license:getHardwareId", "license:submit"],
@@ -15,6 +15,9 @@ const allowedChannels = {
 const api = {
   getVersion() {
     return ipcRenderer.invoke("system:get-version");
+  },
+  getApiUrl() {
+    return ipcRenderer.invoke("get:api-url");
   },
   minimize() {
     ipcRenderer.send("window:minimize");

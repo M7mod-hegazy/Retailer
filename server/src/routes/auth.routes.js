@@ -106,7 +106,7 @@ router.post("/login", (req, res, next) => {
   req.audit("login", "auth", { username: user.username }, `👤 تسجيل دخول: ${user.username}`);
 
   const token = issueToken(user);
-  return res.json({ success: true, data: { token, user: { id: user.id, username: user.username, role: user.role, page_permissions: user.page_permissions, can_view_updates: Boolean(user.can_view_updates) } } });
+  return res.json({ success: true, data: { token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role, page_permissions: user.page_permissions, can_view_updates: Boolean(user.can_view_updates) } } });
 });
 
 router.post("/change-password", authRequired, (req, res, next) => {

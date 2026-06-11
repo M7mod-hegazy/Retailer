@@ -158,6 +158,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
 
   // Step 3
   const [reason, setReason] = useState("");
+  const [returnNotes, setReturnNotes] = useState("");
   const [refundMethod, setRefundMethod] = useState("cash_back");
   const [purchaseSettlement, setPurchaseSettlement] = useState("account");
   const [submitting, setSubmitting] = useState(false);
@@ -195,6 +196,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
       setSelectedDoc(null);
       setSelected({});
       setReason("");
+      setReturnNotes("");
       setRefundMethod("cash_back");
       setPurchaseSettlement("account");
       setPreviewDoc(null);
@@ -300,9 +302,10 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
     try {
       const docId = selectedDoc.id;
       const body = isSales
-        ? { reason, refund_method: refundMethod, lines: selectedLines.map(({ quantity, line }) => ({ invoice_line_id: line.id, quantity })) }
+        ? { reason, notes: returnNotes || null, refund_method: refundMethod, lines: selectedLines.map(({ quantity, line }) => ({ invoice_line_id: line.id, quantity })) }
         : {
             reason,
+            notes: returnNotes || null,
             settlement_type: purchaseSettlement,
             treasury_id: purchaseSettlement === "cash" ? Number(selectedTreasury || 1) : null,
             lines: selectedLines.map(({ quantity, line }) => ({ purchase_line_id: line.id, quantity })),
@@ -770,6 +773,16 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                     )}
                   </div>
                 )}
+                <div>
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">ملاحظات (اختياري)</label>
+                  <textarea
+                    rows={2}
+                    value={returnNotes}
+                    onChange={e => setReturnNotes(e.target.value)}
+                    placeholder="ملاحظة على المرتجع…"
+                    className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 focus:border-slate-400 focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           )}

@@ -56,47 +56,55 @@ function ensureDefaultsExist() {
   }
 }
 
-function startServer() {
+function tryListen(app, port, host) {
   return new Promise((resolve, reject) => {
+    const server = app.listen(port, host, () => resolve(server));
+    server.on("error", reject);
+  });
+}
+
+async function startServer() {
+  try {
+    initDb(process.env.DB_PATH);
+    ensureSystemOwnerAccount();
+    ensureDefaultsExist();
+  } catch (err) {
+    throw new Error(`Database init failed: ${err.message}`);
+  }
+
+  let app;
+  try {
+    app = createApp();
+  } catch (err) {
+    throw new Error(`App creation failed: ${err.message}`);
+  }
+
+  const host = process.env.HOST || "127.0.0.1";
+  const startPort = Number(process.env.PORT || 5000);
+  const maxAttempts = 20;
+
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const port = startPort + attempt;
     try {
-      initDb(process.env.DB_PATH);
-      ensureSystemOwnerAccount();
-      ensureDefaultsExist();
-    } catch (err) {
-      return reject(new Error(`Database init failed: ${err.message}`));
-    }
-
-    let app;
-    try {
-      app = createApp();
-    } catch (err) {
-      return reject(new Error(`App creation failed: ${err.message}`));
-    }
-
-    const host = process.env.HOST || "127.0.0.1";
-    const port = Number(process.env.PORT || 5000);
-
-    const server = app.listen(port, host, () => {
+      const server = await tryListen(app, port, host);
+      process.env.ACTUAL_PORT = String(port);
       logger.info({ message: "Server started", host, port });
 
-      // Auto-backup: runs daily at the configured time (settings.auto_backup_time),
-      // skips while a shift is open. See jobs/autoBackup.js.
       startAutoBackupJob();
-
       startNotificationJobs();
       startAuditLogCleanupJob();
       startOverdueDebtsJob();
       startBirthdayJob();
 
-      // Server is ready — resolve the promise
-      resolve(server);
-    });
+      return server;
+    } catch (err) {
+      if (err.code !== "EADDRINUSE") throw err;
+      lastErr = err;
+    }
+  }
 
-    server.on("error", (err) => {
-      logger.error("Server failed to start:", err);
-      reject(err);
-    });
-  });
+  throw lastErr || new Error(`No available port found after ${maxAttempts} attempts`);
 }
 
 // Allow running directly: node server/src/index.js

@@ -95,7 +95,7 @@
   <div class="card" style="padding:6px 0;">
     <table>
       <thead>
-        <tr><th>ID</th><th>Shop</th><th>Machine</th><th>Type</th><th>Date</th></tr>
+        <tr><th>ID</th><th>Shop</th><th>Machine</th><th>License Key</th><th>Type</th><th>Date</th></tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
@@ -130,10 +130,13 @@
     $("rows").innerHTML = rows.map((r) => {
       const machine = String(r.hardwareId || "").slice(0, 8).toUpperCase();
       const date = (r.issuedAt || "").slice(0, 10);
+      const key = r.blob || "";
+      const keyTrunc = key.length > 18 ? key.slice(0, 15) + "…" : key;
       return '<tr>' +
         '<td class="mono">' + escapeHtml(r.licenseId) + '</td>' +
         '<td>' + escapeHtml(r.issuedTo || "—") + '</td>' +
-        '<td class="mono">' + escapeHtml(machine) + '…</td>' +
+        '<td class="mono">' + escapeHtml(machine) + '</td>' +
+        '<td class="mono" style="cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Click to copy full key" onclick="navigator.clipboard.writeText(\'' + escapeHtml(key) + '\').then(()=>{let t=this;t.textContent=\'Copied!\';setTimeout(()=>t.textContent=\'' + escapeHtml(keyTrunc) + '\',1200)">' + escapeHtml(keyTrunc) + '</td>' +
         '<td>' + typePill(r) + '</td>' +
         '<td>' + escapeHtml(date) + '</td>' +
       '</tr>';

@@ -70,6 +70,8 @@ export default function CategoriesPage() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  const isFirstCategory = categories.length === 0;
+
   // ── category CRUD ──
   function openAddCategory() {
     const used = categories.map((cat) => Number(cat.sku_prefix)).filter(Number.isFinite);
@@ -330,7 +332,7 @@ export default function CategoriesPage() {
             className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
           >
             <Plus className="h-4 w-4" />
-            إضافة قسم جديد
+            {isFirstCategory ? "إنشاء القسم الأول (فئة 1)" : "إضافة قسم جديد"}
           </button>
           </PermissionGate>
         </div>
@@ -397,7 +399,7 @@ export default function CategoriesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" dir="rtl">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <h3 className="mb-4 text-[18px] font-black text-slate-800">
-              {catModal.mode === "edit" ? "تعديل القسم" : "إضافة قسم جديد"}
+              {catModal.mode === "edit" ? "تعديل القسم" : isFirstCategory ? "إضافة القسم الأول (الفئة 1)" : `إضافة قسم جديد — الفئة ${String(Number(catDraft.sku_prefix) || categories.length + 1)}`}
             </h3>
             <form onSubmit={submitCategory} className="space-y-4">
               <div>
@@ -446,7 +448,7 @@ export default function CategoriesPage() {
                   disabled={saving}
                   className="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                 >
-                  {saving ? "جاري الحفظ…" : catModal.mode === "edit" ? "حفظ التعديلات" : "إنشاء القسم"}
+                  {saving ? "جاري الحفظ…" : catModal.mode === "edit" ? "حفظ التعديلات" : isFirstCategory ? "إنشاء القسم الأول" : "إنشاء القسم"}
                 </button>
               </div>
             </form>

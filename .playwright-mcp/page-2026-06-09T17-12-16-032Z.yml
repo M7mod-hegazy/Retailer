@@ -1,0 +1,73 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic:
+      - generic:
+        - img
+      - generic:
+        - img
+      - generic:
+        - img
+      - generic:
+        - img
+      - generic:
+        - img
+      - generic:
+        - img
+      - generic:
+        - img
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - img [ref=e9]
+          - generic [ref=e16]: ElHegazi POS Framework
+        - generic [ref=e17]:
+          - heading "الحجازي" [level=1] [ref=e18]
+          - heading "منظومة التجزئة الذكية" [level=2] [ref=e19]
+          - paragraph [ref=e20]: نظام نقاط بيع صُمم خصيصاً للسرعة القصوى، دقة العمليات المحاسبية، وتوفير بيئة تشغيلية آمنة ومريحة لكل فروعك.
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - img [ref=e24]
+            - generic [ref=e26]:
+              - heading "نقطة بيع أسرع" [level=3] [ref=e27]
+              - paragraph [ref=e28]: إدخال واضح بدون خطوات زائدة، مع تركيز على السرعة داخل الفاتورة.
+          - generic [ref=e29]:
+            - img [ref=e31]
+            - generic [ref=e34]:
+              - heading "تحكم مالي مباشر" [level=3] [ref=e35]
+              - paragraph [ref=e36]: المبيعات، الخزائن، وحركة التحصيل في نفس السياق وبنفس اللغة البصرية.
+          - generic [ref=e37]:
+            - img [ref=e39]
+            - generic [ref=e42]:
+              - heading "أمان تشغيلي ثابت" [level=3] [ref=e43]
+              - paragraph [ref=e44]: صلاحيات واضحة، تتبع أدق، وتجربة متسقة لكل فروعك.
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - img [ref=e49]
+            - generic [ref=e53]: Secure Sign-in
+            - heading "تسجيل الدخول" [level=2] [ref=e54]
+            - paragraph [ref=e55]: أدخل بياناتك لبدء جلسة عمل جديدة داخل النظام.
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic:
+                - generic: ID
+              - textbox "اسم المستخدم" [ref=e58]
+            - generic [ref=e59]:
+              - generic:
+                - generic: PW
+              - textbox "••••••••" [ref=e60]
+              - button "إظهار كلمة المرور" [ref=e62] [cursor=pointer]:
+                - img [ref=e63]
+            - button "دخول النظام" [ref=e67] [cursor=pointer]:
+              - generic [ref=e70]: دخول النظام
+            - button "Graphics" [ref=e72] [cursor=pointer]:
+              - img [ref=e73]
+              - text: Graphics
+        - paragraph [ref=e76]: الجلسة محلية وآمنة. تم اعتماد مظهر موحد للنظام بالكامل.
+  - generic [ref=e78]:
+    - heading "الحجازي" [level=1] [ref=e79]
+    - generic [ref=e80]:
+      - generic [ref=e81]: ELHEGAZI RETAILER
+      - generic [ref=e82]: •
+      - generic [ref=e83]: 60%
+    - generic [ref=e84]: الخطوة ٠٢ // الاتصال بقاعدة البيانات المحلية...

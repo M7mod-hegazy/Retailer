@@ -7,9 +7,12 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
   const payments = invoice.payments || [];
   const currency = settings.currency_symbol || "ر.س";
   const subtotal = lines.reduce((sum, line) => sum + Number(line.unit_price || 0) * Number(line.quantity || 0), 0);
+  const taxAmount = Number(invoice.tax_amount || 0);
+  const taxRate = Number(invoice.tax_rate || 0);
+  const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal;
   const paid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-  const change = paid - subtotal;
-  const remaining = subtotal - paid;
+  const change = paid - grandTotal;
+  const remaining = grandTotal - paid;
   const extraAddresses = (() => { try { return JSON.parse(settings.additional_addresses || '[]'); } catch { return []; } })();
   const extraPhones = (() => { try { return JSON.parse(settings.additional_phones || '[]'); } catch { return []; } })();
   const addressAtBottom = settings.address_position === 'bottom';
@@ -75,10 +78,21 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
         </div>
       ))}
       <div style={{ borderTop: "1px dashed #000", margin: "6px 0" }} />
+      {taxAmount > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+          <span>ضريبة ({taxRate}%)</span>
+          <span>{currency} {taxAmount.toFixed(2)}</span>
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
         <span>الإجمالي</span>
-        <span>{currency} {subtotal.toFixed(2)}</span>
+        <span>{currency} {grandTotal.toFixed(2)}</span>
       </div>
+      {invoice.notes && (
+        <div style={{ marginTop: "4px", paddingTop: "4px", borderTop: "1px dashed #ccc", fontSize: "9px" }}>
+          <span style={{ fontWeight: "bold" }}>ملاحظات: </span>{invoice.notes}
+        </div>
+      )}
       {payments.length > 0 && (
         <div style={{ borderTop: "1px dashed #000", margin: "6px 0", paddingTop: "4px" }}>
           <div style={{ fontWeight: "bold" }}>وسائل الدفع:</div>

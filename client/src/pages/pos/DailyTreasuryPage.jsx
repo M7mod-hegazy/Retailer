@@ -311,6 +311,8 @@ export default function DailyTreasuryPage() {
   const [activeEquationRowId, setActiveEquationRowId] = useState(null);
   const [clickedTxId, setClickedTxId] = useState(null);
   const [txAffects, setTxAffects] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
 
   // Money count modal
   const [moneyOpen, setMoneyOpen] = useState(false);
@@ -449,6 +451,7 @@ export default function DailyTreasuryPage() {
   useEffect(() => { loadMethodTotals(); }, [loadMethodTotals]);
   useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
+  useEffect(() => { setCurrentPage(1); }, [activeTab, globalAmountSearch, txSearch, txSort, showCancelled]);
 
   // Load invoice/return details when viewing a transaction
   useEffect(() => {
@@ -570,6 +573,10 @@ export default function DailyTreasuryPage() {
   }
 
   const sortedTransactions = transactions;
+  const totalPages = Math.ceil(sortedTransactions.length / ITEMS_PER_PAGE);
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
+  const startIdx = (safePage - 1) * ITEMS_PER_PAGE;
+  const paginatedTransactions = sortedTransactions.slice(startIdx, startIdx + ITEMS_PER_PAGE);
   const txTotal = sortedTransactions.reduce((s, t) => s + Number(t.cash_effect ?? t.amount ?? 0), 0);
   const draftDiscrepancy = actualCash !== "" ? Number(actualCash || 0) - Number(expected || 0) : null;
   const cashIn = Number(summary?.cash_in || 0);
@@ -1444,6 +1451,7 @@ export default function DailyTreasuryPage() {
                           <span className="text-sm font-black">لا توجد حركات مسجلة في هذا التبويب</span>
                         </div>
                       ) : (
+                        <>
                         <table className="w-full text-center border-collapse [&_td]:align-middle">
                           <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
                             <tr className="border-b border-slate-200">
@@ -1456,7 +1464,7 @@ export default function DailyTreasuryPage() {
                           </thead>
                           <tbody className="divide-y divide-slate-200/70">
                             <AnimatePresence>
-                              {sortedTransactions.map((t) => (
+                              {paginatedTransactions.map((t) => (
                                 <motion.tr
                                   key={t.id}
                                   layout
@@ -1563,6 +1571,37 @@ export default function DailyTreasuryPage() {
                             </tr>
                           </tfoot>
                         </table>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50" dir="ltr">
+                            <div className="text-[11px] font-bold text-slate-400">
+                              {startIdx + 1}–{Math.min(startIdx + ITEMS_PER_PAGE, sortedTransactions.length)} من {sortedTransactions.length}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={safePage <= 1}
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 font-black text-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                              >‹</button>
+                              {(() => {
+                                const pages = [];
+                                for (let i = Math.max(1, safePage - 2); i <= Math.min(totalPages, safePage + 2); i++) pages.push(i);
+                                return pages.map((p) => (
+                                  <button
+                                    key={p}
+                                    onClick={() => setCurrentPage(p)}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-zinc-900 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                                  >{p}</button>
+                                ));
+                              })()}
+                              <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={safePage >= totalPages}
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 font-black text-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                              >›</button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                       )}
                     </div>
                   </div>

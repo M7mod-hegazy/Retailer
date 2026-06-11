@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { AlertTriangle, CheckCircle2, Database, RefreshCcw, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Database, RefreshCcw, Loader2, Info } from "lucide-react";
 
 function actionLabel(action) {
   const labels = {
@@ -11,6 +11,33 @@ function actionLabel(action) {
     warning: "تحذير",
   };
   return labels[action] || action || "تغيير";
+}
+
+const WARNING_MESSAGES = {
+  sale_below_purchase: "سعر البيع أقل من سعر الشراء (هامش ربح سلبي)",
+  price_below_cost: "سعر البيع أقل من التكلفة",
+  high_discount: "خصم مرتفع جداً مقارنة بسعر البيع",
+  negative_stock: "سيؤدي إلى مخزون سالب",
+  low_margin: "هامش الربح منخفض جداً",
+  duplicate_code: "كود SKU مكرر في النظام",
+  missing_barcode: "الباركود مفقود",
+  price_mismatch: "تباين في السعر مقارنة بالسجلات السابقة",
+  quantity_zero: "الكمية صفر",
+};
+
+function formatWarning(warning) {
+  if (typeof warning === "string") return warning;
+  if (warning?.message) return warning.message;
+  if (warning?.code) {
+    const base = WARNING_MESSAGES[warning.code] || `تحذير: ${warning.code}`;
+    const parts = [base];
+    if (warning.row) parts.push(`(الصف ${warning.row})`);
+    if (warning.rowNumber) parts.push(`(الصف ${warning.rowNumber})`);
+    if (warning.detail) parts.push(warning.detail);
+    if (warning.field) parts.push(`— ${warning.field}`);
+    return parts.join(" ");
+  }
+  return JSON.stringify(warning);
 }
 
 function previewTitle(item) {
@@ -81,9 +108,10 @@ export default function Step9Preview({ wizard, goToStepId }) {
         <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm backdrop-blur-sm animate-in fade-in duration-300">
           <h3 className="text-base font-black text-amber-900 font-display">تحذيرات المعاينة</h3>
           <div className="mt-3 grid gap-2.5">
-            {warnings.slice(0, 6).map((warning, index) => (
-              <div key={index} className="rounded-xl border border-amber-200/60 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm leading-normal">
-                {typeof warning === "string" ? warning : warning.message || JSON.stringify(warning)}
+            {warnings.slice(0, 20).map((warning, index) => (
+              <div key={index} className="rounded-xl border border-amber-200/60 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm leading-normal flex items-start gap-3">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <span>{formatWarning(warning)}</span>
               </div>
             ))}
           </div>

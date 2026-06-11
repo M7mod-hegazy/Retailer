@@ -60,7 +60,7 @@ const SearchInput = forwardRef(function SearchInput({
           sz.input,
           'font-medium text-slate-800',
           'placeholder:text-slate-300 placeholder:font-normal',
-          'outline-none transition-all duration-150',
+          'outline-none duration-150',
           'hover:border-slate-300 hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]',
           'focus:border-emerald-400 focus:ring-[3px] focus:ring-emerald-400/12 focus:shadow-[0_0_0_3px_rgba(52,211,153,0.12)]',
           inputClassName,

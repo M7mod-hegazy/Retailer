@@ -2,11 +2,36 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../stores/authStore";
 
+let resolvedBaseUrl = null;
+
+async function resolveBaseUrl() {
+  if (resolvedBaseUrl) return resolvedBaseUrl;
+  if (typeof window !== "undefined" && window.electronAPI?.getApiUrl) {
+    try {
+      resolvedBaseUrl = await window.electronAPI.getApiUrl();
+      return resolvedBaseUrl;
+    } catch (_) {}
+  }
+  resolvedBaseUrl = import.meta.env.VITE_API_URL || window.location.origin || "http://127.0.0.1:5000";
+  return resolvedBaseUrl;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000"),
+  baseURL: "http://127.0.0.1:5000",
 });
 
 let isRedirectingToLogin = false;
+
+let baseUrlResolved = false;
+
+api.interceptors.request.use(async (config) => {
+  if (!baseUrlResolved) {
+    config.baseURL = await resolveBaseUrl();
+    api.defaults.baseURL = config.baseURL;
+    baseUrlResolved = true;
+  }
+  return config;
+});
 
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;

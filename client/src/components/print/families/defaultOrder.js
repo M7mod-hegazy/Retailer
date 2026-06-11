@@ -4,6 +4,6 @@ const COMMON = [
   "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
   "doc_number", "doc_date", "customer", "cashier",
   "items_table", "subtotal", "discount", "tax", "grand_total", "payments",
-  "footer_text", "qr",
+  "notes", "footer_text", "qr",
 ];
 export const DEFAULT_ORDER = { roll: [...COMMON], page: [...COMMON] };

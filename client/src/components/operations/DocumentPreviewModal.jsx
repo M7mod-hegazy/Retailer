@@ -229,10 +229,12 @@ function financialBreakdown(doc, docType) {
   const subtotal = Number(doc.subtotal || 0);
   const discount = Number(doc.discount || 0);
   const increase = Number(doc.increase || 0);
+  const taxAmount = Number(doc.tax_amount || 0);
   const total = Number(doc.total || 0);
   if (subtotal > 0 && subtotal !== total) out.push({ label: "المجموع قبل الخصم", value: money(subtotal) });
   if (discount > 0) out.push({ label: "خصم الفاتورة", value: money(discount), tone: "amber" });
   if (increase > 0) out.push({ label: "زيادة الفاتورة", value: money(increase) });
+  if (taxAmount > 0) out.push({ label: `ضريبة (${doc.tax_rate || 0}%)`, value: money(taxAmount), tone: "indigo" });
   if (out.length) out.push({ label: "الإجمالي النهائي", value: money(total), tone: "indigo" });
   return out;
 }

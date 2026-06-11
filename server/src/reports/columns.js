@@ -1,3 +1,15 @@
+const REPORT_DESCRIPTIONS = {
+  // ── تقارير العملاء ──
+  "ar-aging": "يعرض توزيع الذمم المدينة على العملاء حسب فترات التقادم (0-30، 31-60، 61-90، +90 يوماً) مع إجمالي المستحق والمتأخر، لتحديد العملاء المتعثرة ذممهم ومتابعة التحصيل.",
+  "top-customers": "يكشف عن أهم العملاء من حيث إجمالي المبيعات وصافيها مع هامش الربح ومتوسط الفاتورة، لتمكين استراتيجيات البيع والولاء للعملاء الأكثر ربحية.",
+  "collection-efficiency": "يحلل كفاءة تحصيل المستحقات لكل عميل من خلال إجمالي الفواتير والمحصل والمستحق ونسبة التحصيل، لقياس أداء إدارة الائتمان والتنبؤ بالتدفق النقدي.",
+  "customer-loyalty": "يقيس ولاء العملاء من خلال تواتر الشراء الشهري ومتوسط قيمة الفاتورة ونسبة الخصم والمرتجعات، لتحديد العملاء المخلصين ومنحهم أولوية في العروض والحوافز.",
+
+  // ── تقارير الموردين ──
+  "ap-aging": "يعرض توزيع الذمم الدائنة على الموردين حسب فترات التقادم (0-30، 31-60، 61-90، +90 يوماً) مع إجمالي المستحق، لإدارة السيولة النقدية وتحديد أولويات السداد.",
+  "supplier-reliability": "يقيم موثوقية الموردين بناءً على نسبة المرتجعات ومتوسط أيام السداد وتشتت الأسعار وتكرار الطلبات، لاختيار الموردين الأفضل أداءً والأكثر استقراراً في التسعير.",
+};
+
 const REPORT_TITLES = {
   "daily-sales": "الملخص اليومي للمبيعات",
   "detailed-sales": "المبيعات التفصيلية",
@@ -15,14 +27,11 @@ const REPORT_TITLES = {
   "count-sheet": "كشف الجرد",
   "reorder": "إعادة الطلب",
   "expiry": "تواريخ الصلاحية",
-  "ar-aging": "أعمار مديونية العملاء",
-  "ap-aging": "أعمار مديونية الموردين",
   "profit-loss": "الأرباح والخسائر",
   "cash-flow": "التدفق النقدي",
   "treasury": "الخزائن والبنوك",
   "vat": "ضريبة القيمة المضافة",
   "customer-statement": "كشف حساب عميل",
-  "top-customers": "أفضل العملاء",
   "shift-history": "سجل الورديات",
   "audit-log": "سجل التدقيق",
   "gross-net-sales": "إجمالي وصافي المبيعات",
@@ -38,7 +47,6 @@ const REPORT_TITLES = {
   "supplier-pricing": "أسعار الموردين",
   "inventory-aging": "أعمار المخزون",
   "dead-stock": "المخزون الراكد",
-  "collection-efficiency": "كفاءة التحصيل",
   "supplier-statement": "كشف حساب مورد",
   "cash-consistency": "مطابقة النقدية",
   "payment-method-flow": "تدفق وسائل الدفع",
@@ -54,9 +62,6 @@ const REPORT_TITLES = {
   "sales-returns-by-customer": "مرتجعات المبيعات حسب العميل",
   "purchase-returns-summary": "ملخص مرتجعات المشتريات",
   "purchase-returns-by-supplier": "مرتجعات المشتريات حسب المورد",
-  "customer-loyalty": "ولاء العملاء",
-  "supplier-purchases-history": "سجل مشتريات المورد",
-  "supplier-returns-history": "سجل مرتجعات المورد",
   "daily-sessions": "جلسات الخزينة اليومية",
   "withdrawals-report": "تقرير السحوبات",
   "expense-summary": "ملخص المصروفات",
@@ -90,10 +95,14 @@ const REPORT_TITLES = {
   "margin-drift": "تغير الهامش والتكلفة",
   "inventory-turnover": "دوران المخزون وأيام التغطية",
   "cashier-override-impact": "أثر تجاوزات الكاشير",
-  "customer-profitability": "ربحية العملاء",
-  "supplier-reliability": "أداء الموردين",
   "stock-adjustment-audit": "تدقيق تسويات المخزون",
   "daily-owner-snapshot": "لقطة صاحب المحل اليومية",
+  "ar-aging": "تقادم ذمم العملاء",
+  "ap-aging": "تقادم ذمم الموردين",
+  "top-customers": "أفضل العملاء",
+  "collection-efficiency": "كفاءة التحصيل",
+  "customer-loyalty": "ولاء العملاء",
+  "supplier-reliability": "موثوقية الموردين",
 };
 
 const AR_LABELS = {
@@ -217,6 +226,8 @@ const AR_LABELS = {
   opening_balance: "الرصيد الافتتاحي",
   closing_balance: "الرصيد الختامي",
   running_balance: "الرصيد الجاري",
+  debit: "مدين",
+  credit: "دائن",
   opening_cash: "النقدية الافتتاحية",
   closing_cash: "النقدية الختامية",
   expected_cash: "النقدية المتوقعة",
@@ -571,6 +582,30 @@ const AR_LABELS = {
   value_share_pct: "نسبة من قيمة المخزون %",
   avg_return_value: "متوسط قيمة المرتجع",
   net_flow: "صافي التدفق",
+  frequency_monthly: "معدل الشراء شهرياً",
+  days_since_last_purchase: "أيام منذ آخر شراء",
+  first_invoice_date: "أول تاريخ شراء",
+  last_collection_date: "آخر تاريخ تحصيل",
+  partially_paid_count: "عدد المسدد جزئياً",
+  fully_paid_count: "عدد المسدد بالكامل",
+  total_sales: "إجمالي المبيعات",
+  net_sales: "صافي المبيعات",
+  return_rate_percent: "نسبة المرتجعات %",
+  avg_payment_days: "متوسط أيام السداد",
+  repeat_items: "الأصناف المتكررة",
+  avg_price_spread_percent: "تشتت الأسعار %",
+  overdue_amount: "المبلغ المتأخر",
+  collection_rate: "نسبة التحصيل %",
+  days_to_collect: "أيام التحصيل",
+  total_billed: "إجمالي الفواتير",
+  items_per_invoice: "أصناف لكل فاتورة",
+  avg_discount_percent: "متوسط الخصم %",
+  margin_percent: "هامش الربح %",
+  gross_profit: "مجمل الربح",
+  total_cost: "إجمالي التكلفة",
+  returns_total: "إجمالي المرتجعات",
+  invoice_count: "عدد الفواتير",
+  purchase_count: "عدد المشتريات",
 };
 
 // Column order per report. Re-synced to the actual SQL output keys of each query
@@ -622,19 +657,10 @@ const REPORT_COLUMN_KEYS = {
   "stock-adjustment-audit": ["date", "item_code", "item_name", "category_name", "warehouse_name", "qty_change", "before_qty", "after_qty", "cost_basis", "value_impact", "reason", "created_by", "id"],
 
   // ── Accounts ──
-  "ar-aging": ["customer_name", "phone", "invoice_count", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_invoice_date", "customer_id"],
-  "ap-aging": ["supplier_name", "phone", "purchase_count", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_purchase_date", "supplier_id"],
   "profit-loss": ["section", "label", "amount", "pct"],
-  "customer-statement": ["ref_no", "date", "type", "amount", "status", "running_balance"],
-  "top-customers": ["customer_name", "phone", "invoice_count", "gross_spent", "returns_amount", "total_spent", "avg_order_value", "last_purchase_date", "loyalty_points", "loyalty_tier", "customer_id"],
-  "collection-efficiency": ["customer_name", "total_invoices", "total_billed", "collected", "outstanding", "collection_rate", "days_to_collect", "customer_id"],
-  "supplier-statement": ["ref_no", "date", "type", "amount", "status", "running_balance"],
-  "customer-loyalty": ["customer_name", "phone", "loyalty_points", "loyalty_tier", "gross_spent", "returns_amount", "total_spent", "invoice_count", "last_purchase_date"],
-  "customer-profitability": ["customer_name", "phone", "invoice_count", "gross_revenue", "avg_invoice_value", "returns_amount", "net_revenue", "cost", "gross_profit", "margin_percent", "return_rate_percent", "days_since_last_purchase", "customer_id"],
+  "customer-statement": ["date", "description", "debit", "credit", "running_balance", "item_name", "quantity", "unit_price", "line_total", "item_code"],
+  "supplier-statement": ["date", "description", "debit", "credit", "running_balance", "item_name", "quantity", "unit_price", "line_total", "item_code"],
   "daily-owner-snapshot": ["period_start", "period_end", "invoice_count", "selling_total", "total_discount", "additions_amount", "gross_sales", "returns_amount", "net_sales", "cogs", "gross_profit", "expenses", "other_revenues", "withdrawals", "net_profit", "overdue_receivables_count", "low_stock_alerts_count"],
-  "supplier-purchases-history": ["purchase_no", "date", "supplier_name", "total", "status", "payment_type", "item_count", "created_by"],
-  "supplier-returns-history": ["return_ref", "date", "supplier_name", "return_discount", "return_increase", "return_total", "reason", "refund_method", "items_returned"],
-  "supplier-reliability": ["supplier_name", "phone", "purchase_count", "total_purchases", "return_count", "total_returns", "return_rate_percent", "avg_payment_days", "repeat_items", "avg_price_spread_percent", "last_purchase_date", "supplier_id"],
 
   // ── Treasury ──
   "cash-flow": ["date", "type", "total"],
@@ -700,6 +726,16 @@ const REPORT_COLUMN_KEYS = {
 
   // ── Sales analytics ──
   "cashier-override-impact": ["cashier", "override_count", "price_downs", "price_ups", "estimated_revenue_impact", "avg_diff_pct", "discount_invoice_count", "total_header_discount", "avg_discount_pct", "cashier_id"],
+
+  // ── Customer Reports ──
+  "ar-aging": ["customer_name", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_invoice_date", "phone", "invoice_count"],
+  "top-customers": ["customer_name", "total_sales", "net_sales", "gross_profit", "margin_percent", "avg_invoice_value", "invoice_count", "last_invoice_date", "phone", "returns_total", "total_cost"],
+  "collection-efficiency": ["customer_name", "total_billed", "collected", "collection_rate", "outstanding", "invoice_count", "partially_paid_count", "fully_paid_count"],
+  "customer-loyalty": ["customer_name", "total_sales", "invoice_count", "avg_invoice_value", "frequency_monthly", "items_per_invoice", "avg_discount_percent", "returns_total", "last_invoice_date", "phone", "first_invoice_date", "days_since_last_purchase"],
+
+  // ── Supplier Reports ──
+  "ap-aging": ["supplier_name", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_purchase_date", "phone", "purchase_count"],
+  "supplier-reliability": ["supplier_name", "total_purchases", "purchase_count", "return_rate_percent", "avg_payment_days", "avg_price_spread_percent", "total_returns", "return_count", "last_purchase_date", "phone", "repeat_items"],
 };
 
 // Extra analytics columns per report: shipped with the data and toggleable from the
@@ -722,16 +758,21 @@ const REPORT_EXTRA_KEYS = {
   "slow-moving": new Set(["potential_profit"]),
   "warehouse-levels": new Set(["value_share_pct"]),
   "warehouse-levels-summary": new Set(["value_share_pct"]),
-  "ar-aging": new Set(["overdue_amount"]),
-  "ap-aging": new Set(["overdue_amount"]),
-  "customer-profitability": new Set(["avg_invoice_value"]),
   "vat-filing-summary": new Set(["net_vat"]),
   "expenses-by-category": new Set(["pct_of_total"]),
   "revenues-by-category": new Set(["pct_of_total"]),
   "bank-summary": new Set(["net_flow"]),
+  "customer-statement": new Set(["amount", "item_code", "barcode"]),
+  "supplier-statement": new Set(["amount", "item_code", "barcode"]),
   "profit-by-customer": new Set(["avg_invoice_value"]),
   "profit-by-period": new Set(["margin_percent", "avg_invoice_value"]),
   "profit-by-category": new Set(["avg_unit_price", "avg_unit_cost"]),
+  "ar-aging": new Set(["phone", "invoice_count"]),
+  "ap-aging": new Set(["phone", "purchase_count"]),
+  "top-customers": new Set(["phone", "returns_total", "total_cost"]),
+  "collection-efficiency": new Set(["partially_paid_count", "fully_paid_count"]),
+  "supplier-reliability": new Set(["phone", "repeat_items"]),
+  "customer-loyalty": new Set(["phone", "first_invoice_date", "days_since_last_purchase"]),
 };
 
 const CODE_KEYS = new Set(["id", "item_code", "code", "sku", "barcode", "invoice_no", "purchase_no", "ref_no", "return_ref", "reference_id", "shift_id", "user_id", "warehouse_id", "batch_no", "section"]);
@@ -808,7 +849,7 @@ function orderKeys(keys, slug) {
 function getReportColumns(slug, rows = []) {
   const rowKeys = Object.keys(rows?.[0] || {});
   const catalogKeys = REPORT_COLUMN_KEYS[slug] || [];
-  const keys = rowKeys.length ? orderKeys(rowKeys, slug) : catalogKeys;
+  const keys = rowKeys.length ? orderKeys(rowKeys, slug).filter(k => !k.startsWith('_')) : catalogKeys;
   const extras = REPORT_EXTRA_KEYS[slug];
   let coreIndex = 0;
   return keys.map((key) => {
@@ -819,6 +860,10 @@ function getReportColumns(slug, rows = []) {
 
 function getReportTitle(slug, fallback = "") {
   return REPORT_TITLES[slug] || fallback || slug;
+}
+
+function getReportDescription(slug) {
+  return REPORT_DESCRIPTIONS[slug] || "";
 }
 
 function normalizeStructuredReport(data) {
@@ -852,8 +897,10 @@ function normalizeStructuredReport(data) {
 module.exports = {
   REPORT_COLUMN_KEYS,
   REPORT_TITLES,
+  REPORT_DESCRIPTIONS,
   labelForKey,
   getReportColumns,
   getReportTitle,
+  getReportDescription,
   normalizeStructuredReport,
 };

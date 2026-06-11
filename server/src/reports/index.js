@@ -13,6 +13,7 @@ const installments = require("./queries/installments");
 const warehouses = require("./queries/warehouses");
 const employees = require("./queries/employees");
 const profit = require("./queries/profit");
+const customers = require("./queries/customers");
 
 const dispatcher = {
   // Sales
@@ -63,18 +64,19 @@ const dispatcher = {
   "stock-adjustment-audit": inventory.stockAdjustmentAuditReport,
 
   // Accounts
-  "ar-aging": accounts.arAging,
-  "ap-aging": accounts.apAging,
   "profit-loss": accounts.profitLoss,
   "customer-statement": accounts.customerStatement,
-  "top-customers": accounts.topCustomers,
-  "collection-efficiency": accounts.collectionEfficiency,
   "supplier-statement": accounts.supplierStatement,
-  "customer-loyalty": accounts.customerLoyalty,
-  "customer-profitability": accounts.customerProfitabilityReport,
   "daily-owner-snapshot": accounts.dailyOwnerSnapshot,
-  "supplier-purchases-history": accounts.supplierPurchasesHistory,
-  "supplier-returns-history": accounts.supplierReturnsHistory,
+  "ar-aging": accounts.arAging,
+  "ap-aging": accounts.apAging,
+
+  // Customers
+  "top-customers": customers.topCustomers,
+  "collection-efficiency": customers.collectionEfficiency,
+  "customer-loyalty": customers.customerLoyalty,
+
+  // Purchases (supplier reports)
   "supplier-reliability": purchases.supplierReliabilityReport,
 
   // Treasury

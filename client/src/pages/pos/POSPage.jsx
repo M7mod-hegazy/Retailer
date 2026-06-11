@@ -51,7 +51,8 @@ import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import InvoiceProfitModal from "../../components/pos/InvoiceProfitModal";
 import DataGrid from "../../components/ui/DataGrid";
 import { usePageTour } from "../../hooks/usePageTour";
-import { usePosStore } from "../../stores/posStore";
+import { usePosStore, computeTax } from "../../stores/posStore";
+import InvoiceNoteButton from "./parts/InvoiceNoteButton";
 import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -164,6 +165,12 @@ export default function POSPage() {
   const loadDraftsFromDB        = usePosStore((s) => s.loadDraftsFromDB);
   const syncActiveCartToDB      = usePosStore((s) => s.syncActiveCartToDB);
   const clearActiveDraftFromDB  = usePosStore((s) => s.clearActiveDraftFromDB);
+  const invoiceNotes    = usePosStore((s) => s.invoiceNotes);
+  const taxEnabled      = usePosStore((s) => s.taxEnabled);
+  const taxRate         = usePosStore((s) => s.taxRate);
+  const setInvoiceNotes = usePosStore((s) => s.setInvoiceNotes);
+  const setTaxEnabled   = usePosStore((s) => s.setTaxEnabled);
+  const setTaxRate      = usePosStore((s) => s.setTaxRate);
 
   // Hold / تعليق
   const [heldDropdownOpen, setHeldDropdownOpen] = useState(false);
@@ -511,6 +518,9 @@ export default function POSPage() {
     if (prefill.payment_type) setPaymentType(prefill.payment_type);
     if (prefill.discount) setDiscount(prefill.discount);
     if (prefill.increase) setIncrease(prefill.increase);
+    setInvoiceNotes(prefill.notes || "");
+    if (prefill.tax_enabled !== undefined) setTaxEnabled(prefill.tax_enabled ? 1 : 0);
+    if (prefill.tax_rate !== undefined && prefill.tax_rate !== null) setTaxRate(Number(prefill.tax_rate));
     (prefill.lines || []).forEach(l => addLine({
       id: l.item_id,
       name: l.item_name,
@@ -691,6 +701,7 @@ export default function POSPage() {
   // ── Derived ──────────────────────────────────────────────────────────────────
 
   const totals             = getTotals();
+  const taxCalc            = computeTax(totals.base, taxEnabled, taxRate, storeSettings);
   const paidAmountNumber   = Number(amountPaid || 0);
   const creditRemaining    = Math.max(0, totals.total - Math.max(0, paidAmountNumber));
   const changeAmount       = Math.max(0, Number(amountReceived || 0) - totals.total);
@@ -1189,6 +1200,9 @@ export default function POSPage() {
         ] : [],
         allow_loss_sale:    hasBelowCost || Boolean(opts.allowLoss),
         supervisor_override: Boolean(opts.supervisorOverride),
+        notes: invoiceNotes || null,
+        tax_enabled: taxEnabled,
+        tax_rate: taxRate,
       };
       let response;
       if (amendInvoiceId) {
@@ -1197,14 +1211,18 @@ export default function POSPage() {
         const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
         const receiptSnap = {
           invoice_no: savedNo, date: new Date(), lines: [...lines],
-          customer: customer ? { ...customer } : null, totals: { ...totals },
+          customer: customer ? { ...customer } : null, totals: { ...totals, taxAmount: taxCalc.taxAmount, total: taxCalc.total },
           discount, increase, promotionDiscount: 0, appliedPromotions: [],
           seller: employees.find((emp) => String(emp.id) === String(sellerId)) || null,
           paymentType, amountReceived: Number(amountReceived || 0),
           cashier: user?.name || "الكاشير",
           storeName: storeSettings.company_name || "المتجر",
           storeAddress: storeSettings.address || "",
-          payments: [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank_transfer: "بنك", multi: "متعدد" }[paymentType] || paymentType, amount: totals.total }],
+          payments: [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank_transfer: "بنك", multi: "متعدد" }[paymentType] || paymentType, amount: taxCalc.total }],
+          notes: invoiceNotes || null,
+          tax_amount: savedData?.tax_amount ?? taxCalc.taxAmount,
+          tax_rate: savedData?.tax_rate ?? taxCalc.taxRate ?? 0,
+          tax_type: savedData?.tax_type ?? storeSettings?.tax_type ?? null,
         };
         setLastSavedInvoice(receiptSnap);
         setSaveSuccess({
@@ -1237,9 +1255,10 @@ export default function POSPage() {
         const nameMap = { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" };
         return [{ method: paymentType, method_name: nameMap[paymentType] || paymentType, amount: totals.total }];
       };
+      const _savedInvoiceData = response.data?.data;
       const receiptSnap = {
         invoice_no: savedInvoiceNo, date: new Date(), lines: [...lines],
-        customer: customer ? { ...customer } : null, totals: { ...totals },
+        customer: customer ? { ...customer } : null, totals: { ...totals, taxAmount: taxCalc.taxAmount, total: taxCalc.total },
         discount, increase, promotionDiscount, appliedPromotions: [...(appliedPromotions || [])],
         seller: employees.find((emp) => String(emp.id) === String(sellerId)) || null,
         paymentType, amountReceived: Number(amountReceived || 0),
@@ -1247,6 +1266,10 @@ export default function POSPage() {
         storeName: storeSettings.company_name || "المتجر",
         storeAddress: storeSettings.address || "",
         payments: buildPaymentsSnap(),
+        notes: invoiceNotes || null,
+        tax_amount: _savedInvoiceData?.tax_amount ?? taxCalc.taxAmount,
+        tax_rate: _savedInvoiceData?.tax_rate ?? taxCalc.taxRate ?? 0,
+        tax_type: _savedInvoiceData?.tax_type ?? storeSettings?.tax_type ?? null,
       };
       setLastSavedInvoice(receiptSnap);
       const outstandingAdded =
@@ -1461,6 +1484,8 @@ export default function POSPage() {
           multiCustomAmounts={multiCustomAmounts}
           onMultiCustomAmountChange={(id, value) => setMultiCustomAmounts(prev => ({...prev, [id]: value}))}
           forceShow={panelEffectiveCollapsed}
+          activeTaxRate={taxCalc.taxAmount > 0 ? (taxRate !== null ? Number(taxRate) : Number(storeSettings?.tax_rate || 0)) : 0}
+          hasNotes={Boolean(invoiceNotes && invoiceNotes.trim())}
         />
         {staleHeldAlert && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
@@ -1536,6 +1561,7 @@ export default function POSPage() {
                 <option key={emp.id} value={emp.id}>{emp.name}</option>
               ))}
             </select>
+            <InvoiceNoteButton />
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -3105,6 +3131,7 @@ export default function POSPage() {
                   <option key={emp.id} value={emp.id}>{emp.name}</option>
                 ))}
               </select>
+              <InvoiceNoteButton />
             </div>
             <div className="flex items-center gap-3">
               <div className="flex-1">

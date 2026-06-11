@@ -1,11 +1,12 @@
 ﻿import React, { useEffect, useState } from "react";
 import api from "../../services/api";
-import { usePosStore } from "../../stores/posStore";
+import { usePosStore, computeTax } from "../../stores/posStore";
 import { queueOfflineInvoice } from "../../services/offlineSync";
 import { Printer, Save, Trash2, Clock, PauseCircle, PlayCircle } from "lucide-react";
 import CurrencyDisplay from "../ui/CurrencyDisplay";
 import MultiPaymentInput from "../payment/MultiPaymentInput";
 import PrintPreviewModal from "../print/PrintPreviewModal";
+import PermissionGate from "../ui/PermissionGate";
 
 const paymentLabels = {
   cash: "نقدي",
@@ -30,10 +31,16 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
   const paymentType = usePosStore((state) => state.paymentType);
   const setPaymentType = usePosStore((state) => state.setPaymentType);
   const getTotals = usePosStore((state) => state.getTotals);
+  const invoiceNotes = usePosStore((s) => s.invoiceNotes);
+  const taxEnabled = usePosStore((s) => s.taxEnabled);
+  const taxRate = usePosStore((s) => s.taxRate);
+  const setTaxEnabled = usePosStore((s) => s.setTaxEnabled);
+  const setTaxRate = usePosStore((s) => s.setTaxRate);
   const clear = usePosStore((state) => state.clear);
   const [message, setMessage] = useState("");
   const [treasuries, setTreasuries] = useState([]);
   const [banks, setBanks] = useState([]);
+  const [appSettings, setAppSettings] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({
     treasury_id: "", bank_id: "", split_cash_amount: "", split_bank_amount: "",
   });
@@ -44,16 +51,22 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
   const [waPhone, setWaPhone] = useState("");
   const [waMarketing, setWaMarketing] = useState(false);
 
-  const totals = getTotals();
+  const baseTotals = getTotals();
+  const taxCalc = computeTax(baseTotals.base, taxEnabled, taxRate, appSettings);
+  const totals = { ...baseTotals, taxAmount: taxCalc.taxAmount, total: taxCalc.total };
+  const taxFeatureOn = Number(appSettings?.tax_enabled ?? 0) === 1
+    && (appSettings?.tax_type === 'inclusive' || appSettings?.tax_type === 'exclusive');
   const isEmpty = lines.length === 0;
 
   useEffect(() => {
     api.get("/api/treasuries").then((response) => setTreasuries(response.data.data || [])).catch(() => setTreasuries([]));
     api.get("/api/banks").then((response) => setBanks(response.data.data || [])).catch(() => setBanks([]));
+    api.get("/api/settings").then((r) => setAppSettings(r.data?.data || null)).catch(() => {});
   }, []);
 
   async function saveInvoice(printAfter = false) {
-    const increase = usePosStore.getState().increase;
+    const state = usePosStore.getState();
+    const increase = state.increase;
     const payload = {
       customer_id: customer?.id || null, lines, discount, promotion_discount: promotionDiscount,
       increase,
@@ -64,6 +77,11 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
       split_cash_amount: Number(paymentDetails.split_cash_amount || 0),
       split_bank_amount: Number(paymentDetails.split_bank_amount || 0),
       payments: paymentType === "multi" ? payments.map((p) => ({ method_id: p.method_id, method_name: p.method_name, amount: Number(p.amount || 0) })) : [],
+      notes: state.invoiceNotes || null,
+      ...(taxFeatureOn ? {
+        tax_enabled: state.taxEnabled === false ? 0 : 1,
+        ...(state.taxRate !== null ? { tax_rate: state.taxRate } : {}),
+      } : {}),
     };
 
     try {
@@ -140,6 +158,38 @@ export default function PaymentPanel({ onHold, heldCount, onResume, heldInvoices
           />
         </div>
       </div>
+
+      {/* Tax Row */}
+      {taxFeatureOn && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={taxEnabled !== false}
+                onChange={(e) => setTaxEnabled(e.target.checked ? null : false)}
+                style={{ marginInlineEnd: '4px' }}
+              />
+              ضريبة ({appSettings?.tax_type === 'inclusive' ? 'شاملة' : 'غير شاملة'})
+            </label>
+            <PermissionGate page="pos" action="edit_tax_rate">
+              <input
+                type="number"
+                min="0" max="100" step="0.01"
+                value={taxRate !== null ? taxRate : (appSettings?.tax_rate || 0)}
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+                style={{ width: '50px', padding: '2px 4px', fontSize: '11px', border: '1px solid var(--border-normal)', borderRadius: '4px', textAlign: 'center' }}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>%</span>
+            </PermissionGate>
+            {!(taxEnabled === false) && taxCalc.taxAmount > 0 && (
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                +{taxCalc.taxAmount.toFixed(2)}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Grand Total */}
       <div style={{

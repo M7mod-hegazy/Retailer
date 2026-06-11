@@ -10,6 +10,7 @@ export const DEFAULTS = {
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
   show_phone: true, show_address: true, show_tax_id: true,
   show_branch: true, show_invoice_date: true,
+  show_notes: true,
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
   address_font_size: 9, address_alignment: "right",
   tax_id_font_size: 9, tax_id_alignment: "right",
@@ -30,14 +31,23 @@ export function parseJsonArray(v) {
 
 export function computeTotals(invoice = {}, s = {}) {
   const lines = invoice.lines || [];
-  const taxRate = parseFloat(g(s, "tax_rate") || 0);
   const subtotal = lines.reduce((sum, l) => sum + ((Number(l.unit_price) || Number(l.unit_cost) || 0) * Number(l.quantity)), 0);
-  // Header-level خصم/زيادة (e.g. on returns) — 0 for documents that don't pass them.
   const headerDiscount = Number(invoice.discount) || 0;
   const headerIncrease = Number(invoice.increase) || 0;
   const totalDiscount = lines.reduce((sum, l) => sum + (Number(l.discount_amount) || 0), 0) + headerDiscount;
-  const taxAmount = g(s, "show_tax") !== false ? (subtotal - totalDiscount) * (taxRate / 100) : 0;
-  const grandTotal = subtotal - totalDiscount + taxAmount + headerIncrease;
+
+  // Use invoice snapshot tax fields if present; fall back to settings-based derivation for live preview.
+  let taxAmount, taxRate;
+  if (Number(invoice.tax_amount) > 0) {
+    taxAmount = Number(invoice.tax_amount);
+    taxRate = Number(invoice.tax_rate || 0);
+  } else {
+    taxRate = parseFloat(g(s, "tax_rate") || 0);
+    taxAmount = g(s, "show_tax") !== false ? (subtotal - totalDiscount) * (taxRate / 100) : 0;
+  }
+
+  // Use invoice.total as authoritative if present (handles exclusive vs inclusive correctly).
+  const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal - totalDiscount + taxAmount + headerIncrease;
   const paid = (invoice.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   return { subtotal, totalDiscount, totalIncrease: headerIncrease, taxAmount, grandTotal, paid, change: paid - grandTotal, taxRate };
 }

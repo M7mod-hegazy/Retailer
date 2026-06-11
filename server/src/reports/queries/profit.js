@@ -97,6 +97,8 @@ function profitByCustomer(startDate, endDate, opts = {}) {
       SUM(i.discount) AS total_discount,
       SUM(i.increase) AS additions_amount,
       SUM(i.total) AS revenue,
+      COALESCE(SUM(i.tax_amount), 0) AS total_tax,
+      SUM(i.total) - COALESCE(SUM(i.tax_amount), 0) AS net_revenue,
       COALESCE(SUM(il_agg.total_cost), 0) AS cost,
       COALESCE(SUM(ret.return_revenue), 0) AS returns_amount,
       SUM(i.total)
@@ -130,6 +132,8 @@ function profitByPeriod(startDate, endDate, opts = {}) {
       SUM(i.discount) AS total_discount,
       SUM(i.increase) AS additions_amount,
       SUM(i.total) AS revenue,
+      COALESCE(SUM(i.tax_amount), 0) AS total_tax,
+      SUM(i.total) - COALESCE(SUM(i.tax_amount), 0) AS net_revenue,
       COALESCE(SUM(il_agg.total_cost), 0) AS cost_of_goods_sold,
       COALESCE(SUM(ret.return_revenue), 0) AS returns_amount,
       SUM(i.total)

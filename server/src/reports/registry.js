@@ -198,12 +198,14 @@ const REPORT_REGISTRY = {
       { id: "statement", label_key: "cls_supplier_statement", detailedQuery: "supplier-statement", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
         { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier", required: true },
       ], multiSelectFilters: [] },
-      { id: "aging", label_key: "cls_supplier_aging", detailedQuery: null, summaryQuery: "ap-aging", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
+      { id: "aging", label_key: "cls_supplier_aging", detailedQuery: "ap-aging", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
         { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
       ], multiSelectFilters: [] },
-      { id: "purchases-history", label_key: "cls_supplier_purchases", detailedQuery: "supplier-purchases-history", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
-      { id: "returns-history", label_key: "cls_supplier_returns", detailedQuery: "supplier-returns-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
-      { id: "supplier-reliability", label_key: "cls_supplier_reliability", detailedQuery: "supplier-reliability", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
+      { id: "purchases", label_key: "cls_supplier_purchases", detailedQuery: "purchases-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"], filters: [
+        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+      ], multiSelectFilters: [] },
+      { id: "returns", label_key: "cls_supplier_returns", detailedQuery: "purchase-returns-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
+      { id: "reliability", label_key: "cls_supplier_reliability", detailedQuery: "supplier-reliability", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
         { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
       ], multiSelectFilters: [] },
     ],
@@ -212,17 +214,16 @@ const REPORT_REGISTRY = {
       { id: "statement", label_key: "cls_customer_statement", detailedQuery: "customer-statement", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer", required: true },
       ], multiSelectFilters: [] },
-      { id: "aging", label_key: "cls_customer_aging", detailedQuery: null, summaryQuery: "ar-aging", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
+      { id: "aging", label_key: "cls_customer_aging", detailedQuery: "ar-aging", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
       ], multiSelectFilters: [] },
-      { id: "top-customers", label_key: "cls_top_customers", detailedQuery: "top-customers", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
+      { id: "top-customers", label_key: "cls_top_customers", detailedQuery: "top-customers", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
       ], multiSelectFilters: [] },
-      { id: "collection", label_key: "cls_collection_efficiency", detailedQuery: "collection-efficiency", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
+      { id: "collection-efficiency", label_key: "cls_collection_efficiency", detailedQuery: "collection-efficiency", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
       ], multiSelectFilters: [] },
-      { id: "loyalty", label_key: "cls_customer_loyalty", detailedQuery: "customer-loyalty", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
-      { id: "customer-profitability", label_key: "cls_customer_profitability", detailedQuery: "customer-profitability", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [
+      { id: "loyalty", label_key: "cls_customer_loyalty", detailedQuery: "customer-loyalty", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
       ], multiSelectFilters: [] },
     ],
@@ -420,16 +421,16 @@ const slugSourceMap = {
   "inventory-turnover": "items",
   "stock-adjustment-audit": "warehouses",
   // Accounts
-  "ar-aging": "customers",
-  "ap-aging": "suppliers",
   "profit-loss": "net-profit",
   "customer-statement": "customers",
+  "supplier-statement": "suppliers",
+  "daily-owner-snapshot": "net-profit",
+  "ar-aging": "customers",
+  "ap-aging": "suppliers",
   "top-customers": "customers",
   "collection-efficiency": "customers",
-  "supplier-statement": "suppliers",
-  "customer-profitability": "customers",
+  "customer-loyalty": "customers",
   "supplier-reliability": "suppliers",
-  "daily-owner-snapshot": "net-profit",
   // Treasury
   "cash-flow": "treasury",
   "treasury": "treasury",
@@ -490,16 +491,16 @@ const clsMap = {
   "item-lifecycle": { classification: "item-lifecycle", dataMode: "detailed" },
   "inventory-turnover": { classification: "inventory-turnover", dataMode: "detailed" },
   "stock-adjustment-audit": { classification: "stock-adjustment-audit", dataMode: "detailed" },
-  "ar-aging": { classification: "aging", dataMode: "summary" },
-  "ap-aging": { classification: "aging", dataMode: "summary" },
   "profit-loss": { classification: "income-statement", dataMode: "summary" },
   "customer-statement": { classification: "statement", dataMode: "detailed" },
-  "top-customers": { classification: "top-customers", dataMode: "detailed" },
-  "collection-efficiency": { classification: "collection", dataMode: "detailed" },
   "supplier-statement": { classification: "statement", dataMode: "detailed" },
-  "customer-profitability": { classification: "customer-profitability", dataMode: "detailed" },
-  "supplier-reliability": { classification: "supplier-reliability", dataMode: "detailed" },
   "daily-owner-snapshot": { classification: "daily-owner-snapshot", dataMode: "summary" },
+  "ar-aging": { classification: "aging", dataMode: "detailed" },
+  "ap-aging": { classification: "aging", dataMode: "detailed" },
+  "top-customers": { classification: "top-customers", dataMode: "detailed" },
+  "collection-efficiency": { classification: "collection-efficiency", dataMode: "detailed" },
+  "customer-loyalty": { classification: "loyalty", dataMode: "detailed" },
+  "supplier-reliability": { classification: "reliability", dataMode: "detailed" },
   "cash-flow": { classification: "cash-flow", dataMode: "detailed" },
   "treasury": { classification: "balances", dataMode: "summary" },
   "cash-consistency": { classification: "reconciliation", dataMode: "detailed" },
@@ -637,21 +638,9 @@ REPORT_REGISTRY.reports = [
     { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
   ]},
   // Accounts
-  { id: "R18", cat: "accounts", slug: "ar-aging", title_key: "r18_title", desc_key: "r18_desc", supportsDates: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
-    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-  ]},
-  { id: "R19", cat: "accounts", slug: "ap-aging", title_key: "r19_title", desc_key: "r19_desc", supportsDates: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
-    { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-  ]},
   { id: "R20", cat: "accounts", slug: "profit-loss", title_key: "r20_title", desc_key: "r20_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"] },
   { id: "R24", cat: "accounts", slug: "customer-statement", title_key: "r24_title", desc_key: "r24_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer", required: true },
-  ]},
-  { id: "R25", cat: "accounts", slug: "top-customers", title_key: "r25_title", desc_key: "r25_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
-    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-  ]},
-  { id: "R42", cat: "accounts", slug: "collection-efficiency", title_key: "r42_title", desc_key: "r42_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
-    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
   ]},
   { id: "R43", cat: "accounts", slug: "supplier-statement", title_key: "r43_title", desc_key: "r43_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier", required: true },
@@ -717,18 +706,32 @@ REPORT_REGISTRY.reports = [
   { id: "R61", cat: "sales", slug: "cashier-override-impact", title_key: "r61_title", desc_key: "r61_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "cashier_id", type: "lookup", label_key: "cashier", entity: "user" },
   ]},
-  { id: "R62", cat: "accounts", slug: "customer-profitability", title_key: "r62_title", desc_key: "r62_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
-    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-  ]},
-  { id: "R63", cat: "purchases", slug: "supplier-reliability", title_key: "r63_title", desc_key: "r63_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
-    { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-  ]},
   { id: "R64", cat: "inventory", slug: "stock-adjustment-audit", title_key: "r64_title", desc_key: "r64_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
     { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
     { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
   ]},
   { id: "R65", cat: "accounts", slug: "daily-owner-snapshot", title_key: "r65_title", desc_key: "r65_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"] },
+  // ── Customer Reports ──
+  { id: "R66", cat: "accounts", slug: "ar-aging", title_key: "r66_title", desc_key: "r66_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+  ]},
+  { id: "R67", cat: "accounts", slug: "top-customers", title_key: "r67_title", desc_key: "r67_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+  ]},
+  { id: "R68", cat: "accounts", slug: "collection-efficiency", title_key: "r68_title", desc_key: "r68_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+  ]},
+  { id: "R69", cat: "accounts", slug: "customer-loyalty", title_key: "r69_title", desc_key: "r69_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+  ]},
+  // ── Supplier Reports ──
+  { id: "R70", cat: "accounts", slug: "ap-aging", title_key: "r70_title", desc_key: "r70_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+  ]},
+  { id: "R71", cat: "accounts", slug: "supplier-reliability", title_key: "r71_title", desc_key: "r71_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+  ]},
 ];
 
 function getSource(sourceKey) {

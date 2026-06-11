@@ -4,7 +4,7 @@ const { getDb } = require("../config/database");
 const { listRows, listRowsBySource } = require("../reports/index");
 const { REPORT_REGISTRY, getSource, getSourceClassifications } = require("../reports/registry");
 const { buildColumnsFromRows } = require("../reports/helpers");
-const { getReportColumns, getReportTitle, normalizeStructuredReport } = require("../reports/columns");
+const { getReportColumns, getReportTitle, getReportDescription, normalizeStructuredReport } = require("../reports/columns");
 const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("../services/exportService");
 const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
@@ -111,7 +111,7 @@ function hydrateReportDefinition(report) {
   return {
     ...report,
     title: getReportTitle(report.slug, report.title || report.title_key),
-    desc: report.desc || "",
+    desc: getReportDescription(report.slug) || report.desc || "",
     columns: getReportColumns(report.slug),
   };
 }
@@ -172,6 +172,7 @@ router.get("/run/:slug", requirePagePermission("reports", "view"), (req, res, ne
       pageSize: ps,
       totals,
       title: getReportTitle(slug, reportDef.title_key),
+      desc: getReportDescription(slug),
     });
   } catch (error) {
     next(error);
@@ -308,6 +309,7 @@ router.get("/source/:sourceKey/run", requirePagePermission("reports", "view"), (
     const columns = getReportColumns(clsDef.detailedQuery || clsDef.summaryQuery, rows.length ? rows : paginated);
     const totals = computeTotals(rows, columns);
 
+    const querySlug = clsDef.detailedQuery || clsDef.summaryQuery;
     res.json({
       success: true,
       data: paginated,
@@ -318,7 +320,8 @@ router.get("/source/:sourceKey/run", requirePagePermission("reports", "view"), (
       page: p,
       pageSize: ps,
       totals,
-      title: getReportTitle(clsDef.detailedQuery || clsDef.summaryQuery, classification),
+      title: getReportTitle(querySlug, classification),
+      desc: getReportDescription(querySlug),
       source: sourceKey,
       classification,
       dataMode: mode,
@@ -334,7 +337,11 @@ router.get("/source/:sourceKey/classifications", requirePagePermission("reports"
   const source = getSource(sourceKey);
   if (!source) return res.status(404).json({ success: false, message: `Source '${sourceKey}' not found` });
   const classes = getSourceClassifications(sourceKey);
-  res.json({ success: true, data: { source, classifications: classes } });
+  const enriched = classes.map((c) => ({
+    ...c,
+    desc: getReportDescription(c.detailedQuery || c.summaryQuery || ""),
+  }));
+  res.json({ success: true, data: { source, classifications: enriched } });
 });
 
 // GET /api/reports/payment-type-options — dynamic payment type filter options

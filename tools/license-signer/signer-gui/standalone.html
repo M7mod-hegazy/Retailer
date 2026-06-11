@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ElHegazi License Signer — Portable</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f4f6f8; color: #0f172a;
+  padding: 28px; font-size: 14px; max-width: 600px; margin: 0 auto;
+}
+h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+.sub { color: #64748b; font-size: 13px; margin-bottom: 22px; }
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(15,23,42,.05); }
+label { display: block; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #475569; margin: 14px 0 6px; }
+input[type=text], input[type=date], input[type=file] {
+  width: 100%; padding: 11px 12px; border: 2px solid #e2e8f0; border-radius: 10px;
+  font-size: 14px; font-family: inherit; outline: none;
+}
+input:focus { border-color: #059669; }
+.row { display: flex; gap: 18px; align-items: center; margin-top: 8px; }
+.radio { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+button.primary {
+  width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: 12px;
+  background: #059669; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer;
+}
+button.primary:hover { background: #047857; }
+button.primary:disabled { opacity: .5; cursor: not-allowed; }
+button.secondary {
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; padding: 8px 12px; font-weight: 700; cursor: pointer;
+}
+.result { margin-top: 18px; padding: 16px; border-radius: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; display: none; }
+.result.show { display: block; }
+.result.err { background: #fef2f2; border-color: #fecaca; }
+.result h3 { font-size: 14px; margin-bottom: 6px; }
+.result code { display: block; word-break: break-all; font-size: 11px; color: #334155; margin-top: 8px; background:#fff; padding:8px; border-radius:8px; border: 1px solid #e2e8f0; max-height: 200px; overflow: auto; }
+.result .hint { margin-top: 10px; font-size: 12px; color: #475569; line-height: 1.5; }
+.result .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.meta { font-size: 12px; color: #64748b; margin-top: 6px; }
+.warn { margin-top: 14px; padding: 12px; border-radius: 10px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-weight:600; display:none; }
+.warn.show { display:block; }
+.warn.good { background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
+.keyinfo { font-size: 12px; color: #475569; margin: 8px 0 4px; font-family: ui-monospace, monospace; word-break: break-all; }
+</style>
+</head>
+<body>
+  <h1>License Signer</h1>
+  <div class="sub">ElHegazi Retailer — portable. Runs entirely in your browser; no install needed.</div>
+
+  <div class="card">
+    <label for="keyFile">Private key (PEM file)</label>
+    <input type="file" id="keyFile" accept=".pem" />
+    <div class="keyinfo" id="keyStatus">No key loaded.</div>
+
+    <label for="fingerprint">Machine code</label>
+    <input type="text" id="fingerprint" placeholder="7F3A-9C21-..." autocomplete="off" />
+
+    <label for="name">Shop / customer name</label>
+    <input type="text" id="name" placeholder="Ahmed Market" autocomplete="off" />
+
+    <label>License type</label>
+    <div class="row">
+      <span class="radio"><input type="radio" name="type" value="perpetual" checked /> Perpetual</span>
+      <span class="radio"><input type="radio" name="type" value="subscription" /> Subscription</span>
+    </div>
+
+    <div id="expiryWrap" style="display:none;">
+      <label for="expires">Expires on</label>
+      <input type="date" id="expires" />
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <span class="radio"><input type="checkbox" id="isTrial" /> Mark as trial</span>
+    </div>
+
+    <button class="primary" id="genBtn" disabled>Select private key first</button>
+
+    <div class="result" id="result"></div>
+  </div>
+
+<script>
+const PAYLOAD_VERSION_V2 = 2;
+
+/* ---- Token encoding (browser port of tokenCodec.js) ---- */
+function parseLicenseNumber(id) {
+  const m = String(id || "").match(/(\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+
+function parseExpiresAt(expiresAt) {
+  if (!expiresAt) return 0;
+  const r = String(expiresAt).trim();
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(r) ? new Date(r + "T23:59:59.999Z") : new Date(r);
+  return isFinite(d) ? Math.floor(d.getTime() / 1000) : 0;
+}
+
+function packMessage(payload) {
+  const hw = hexToBytes(String(payload.hardwareId || "").toLowerCase());
+  if (hw.length !== 16) throw new Error("invalid_hardwareId");
+
+  const nameBytes = new TextEncoder().encode(String(payload.issuedTo || "")).slice(0, 32);
+  const licenseNum = parseLicenseNumber(payload.licenseId);
+  const issuedAt = Math.floor(Date.parse(payload.issuedAt) / 1000);
+  const expiresAt = parseExpiresAt(payload.expiresAt);
+  const features = String(payload.features) === "trial" ? 1 : 0;
+
+  const buf = new Uint8Array(31 + nameBytes.length);
+  buf[0] = PAYLOAD_VERSION_V2;
+  buf.set(hw, 1);
+  buf[17] = (licenseNum >> 24) & 0xff;
+  buf[18] = (licenseNum >> 16) & 0xff;
+  buf[19] = (licenseNum >> 8) & 0xff;
+  buf[20] = licenseNum & 0xff;
+  buf[21] = (issuedAt >> 24) & 0xff;
+  buf[22] = (issuedAt >> 16) & 0xff;
+  buf[23] = (issuedAt >> 8) & 0xff;
+  buf[24] = issuedAt & 0xff;
+  buf[25] = (expiresAt >> 24) & 0xff;
+  buf[26] = (expiresAt >> 16) & 0xff;
+  buf[27] = (expiresAt >> 8) & 0xff;
+  buf[28] = expiresAt & 0xff;
+  buf[29] = features;
+  buf[30] = nameBytes.length;
+  buf.set(nameBytes, 31);
+  return buf;
+}
+
+function hexToBytes(hex) {
+  const b = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) b[i / 2] = parseInt(hex.substr(i, 2), 16);
+  return b;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function base64UrlFromBytes(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function formatLicenseId(num) {
+  return "L-" + String(num).padStart(6, "0");
+}
+
+function formatActivationCode(blob) {
+  const dot = blob.indexOf(".");
+  if (dot === -1) return blob;
+  const prefix = blob.slice(0, dot + 1);
+  const body = blob.slice(dot + 1);
+  const groups = body.match(/.{1,5}/g) || [];
+  return prefix + groups.join("-");
+}
+
+/* ---- PEM parsing ---- */
+function pemToDer(pem) {
+  const lines = pem.split("\n");
+  let base64 = "";
+  for (const line of lines) {
+    const t = line.trim();
+    if (t && !t.startsWith("-----")) base64 += t;
+  }
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function derToPem(der, label) {
+  let b64 = "";
+  for (let i = 0; i < der.length; i++) b64 += String.fromCharCode(der[i]);
+  b64 = btoa(b64).match(/.{1,64}/g) || [];
+  return "-----BEGIN " + label + "-----\n" + b64.join("\n") + "\n-----END " + label + "-----";
+}
+
+/* ---- Ed25519 signing via Web Crypto API ---- */
+async function importPrivateKey(pem) {
+  const der = pemToDer(pem);
+  return await crypto.subtle.importKey(
+    "pkcs8", der.buffer, { name: "Ed25519" }, false, ["sign"]
+  );
+}
+
+async function signLicenseToken({ fingerprint, issuedTo, licenseId, privateKeyPem, expiresAt, features, issuedAt }) {
+  const hardwareId = String(fingerprint || "").toLowerCase().replace(/[^0-9a-f]/g, "");
+  if (!hardwareId || hardwareId.length < 16) throw new Error("Invalid machine code");
+
+  const now = issuedAt || new Date().toISOString();
+  const payload = {
+    v: PAYLOAD_VERSION_V2,
+    hardwareId,
+    issuedTo: String(issuedTo || "").trim() || null,
+    licenseId: String(licenseId || "").trim() || null,
+    issuedAt: now,
+    expiresAt: expiresAt ? String(expiresAt) : null,
+    features: String(features || "full"),
+  };
+
+  const message = packMessage(payload);
+  const privateKey = await importPrivateKey(privateKeyPem);
+  const signature = new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, privateKey, message));
+
+  const wire = new Uint8Array(message.length + 64);
+  wire.set(message);
+  wire.set(signature, message.length);
+  const token = "RTL2." + base64UrlFromBytes(wire);
+
+  return { token, payload, message, signature };
+}
+
+/* ---- Generate keypair (optional) ---- */
+async function generateKeyPair() {
+  const keyPair = await crypto.subtle.generateKey(
+    { name: "Ed25519" }, true, ["sign", "verify"]
+  );
+  const pubDer = new Uint8Array(await crypto.subtle.exportKey("spki", keyPair.publicKey));
+  const privDer = new Uint8Array(await crypto.subtle.exportKey("pkcs8", keyPair.privateKey));
+  return {
+    publicKeyPem: derToPem(pubDer, "PUBLIC KEY"),
+    privateKeyPem: derToPem(privDer, "PRIVATE KEY"),
+  };
+}
+
+/* ---- DOM ---- */
+const $ = (id) => document.getElementById(id);
+let loadedPrivateKeyPem = null;
+let licenseCounter = 0;
+
+function loadKeyFromStorage() {
+  try {
+    const saved = localStorage.getItem("licenseSignerPrivateKey");
+    if (saved) {
+      loadedPrivateKeyPem = saved;
+      $("keyStatus").textContent = "Key loaded from browser storage.";
+      $("genBtn").disabled = false;
+      $("genBtn").textContent = "Generate license.key";
+    }
+  } catch (_) {}
+}
+
+loadKeyFromStorage();
+
+$("keyFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  if (!text.includes("PRIVATE KEY")) {
+    $("keyStatus").textContent = "Not a valid private key file (missing PRIVATE KEY header).";
+    return;
+  }
+  loadedPrivateKeyPem = text;
+  $("keyStatus").textContent = "Loaded: " + file.name + " (" + text.length + " chars)";
+  $("genBtn").disabled = false;
+  $("genBtn").textContent = "Generate license.key";
+
+  // Save to localStorage for next time
+  try { localStorage.setItem("licenseSignerPrivateKey", text); } catch (_) {}
+});
+
+document.querySelectorAll('input[name=type]').forEach((el) =>
+  el.addEventListener("change", () => {
+    const sub = document.querySelector('input[name=type]:checked').value === "subscription";
+    $("expiryWrap").style.display = sub ? "block" : "none";
+  }),
+);
+
+$("genBtn").addEventListener("click", async () => {
+  const fingerprint = $("fingerprint").value.trim();
+  const name = $("name").value.trim();
+  if (!fingerprint) { alert("Enter the machine code."); return; }
+  if (!loadedPrivateKeyPem) { alert("Load your private key first."); return; }
+
+  const sub = document.querySelector('input[name=type]:checked').value === "subscription";
+  const expiresAt = sub ? ($("expires").value || null) : null;
+  const features = $("isTrial").checked ? "trial" : "full";
+
+  licenseCounter++;
+  const licenseId = formatLicenseId(licenseCounter);
+
+  $("genBtn").disabled = true;
+  $("genBtn").textContent = "Signing...";
+
+  try {
+    const result = await signLicenseToken({
+      fingerprint,
+      issuedTo: name,
+      licenseId,
+      privateKeyPem: loadedPrivateKeyPem,
+      expiresAt,
+      features,
+    });
+
+    const box = $("result");
+    box.classList.remove("err");
+    box.classList.add("show");
+
+    const kind = result.payload.expiresAt
+      ? "expires " + result.payload.expiresAt
+      : "perpetual";
+    const code = formatActivationCode(result.token);
+
+    box.innerHTML =
+      '<h3>License signed (' + licenseId + ', ' + kind + ', ' + result.payload.features + ')</h3>' +
+      '<div class="meta">' + result.token.length + ' chars total</div>' +
+      '<div class="hint">Download the .key file and copy it to the customer PC. Or copy the activation code below.</div>' +
+      '<div class="actions">' +
+        '<button class="secondary" id="dlBtn">Download license.key</button>' +
+        '<button class="secondary" id="copyBtn">Copy activation code</button>' +
+      '</div>' +
+      '<code>' + code + '</code>';
+
+    $("dlBtn").addEventListener("click", () => {
+      const slug = String(name || "license").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "license";
+      const blob = new Blob([result.token], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = slug + "-license.key";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    $("copyBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(code).then(() => {
+        $("copyBtn").textContent = "Copied!";
+        setTimeout(() => { $("copyBtn").textContent = "Copy activation code"; }, 1500);
+      });
+    });
+
+  } catch (err) {
+    const box = $("result");
+    box.classList.add("err", "show");
+    box.innerHTML = '<h3>Error: ' + err.message + '</h3>';
+  }
+
+  $("genBtn").disabled = false;
+  $("genBtn").textContent = "Generate license.key";
+});
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import AccountStatementLedger from "./AccountStatementLedger";
 
 function safeText(value) {
   if (value == null) return "";
@@ -150,7 +151,9 @@ export default function ReportPrintTemplate({
   onPageCount,
   onRowsPerPage,
   forcedRowsPerPage,   // parent passes measured value so hidden print container uses same count
+  statement,           // when set → render the dedicated account-statement ledger
 }) {
+  const stmtMode = !!statement;
   const accent = settings.accent_color || "#0f172a";
   const currency = settings.currency_symbol || "";
   const template = settings.template || "A4";
@@ -222,8 +225,8 @@ export default function ReportPrintTemplate({
   }, [forcedRowsPerPage, pageRows.length, visibleColumns.length, pageSizeMM.height, marginMM]);
 
   useLayoutEffect(() => {
-    if (onPageCount) onPageCount(totalPrintPages);
-  }, [totalPrintPages, onPageCount]);
+    if (onPageCount) onPageCount(stmtMode ? 1 : totalPrintPages);
+  }, [totalPrintPages, onPageCount, stmtMode]);
 
   const isThermal = template === "58mm" || template === "80mm";
 
@@ -276,6 +279,44 @@ export default function ReportPrintTemplate({
 
   // Thermal paper has no fixed height (continuous roll)
   const fixedPageHeight = isThermal ? undefined : `${pageSizeMM.height}mm`;
+
+  // ── Account statement ledger: single continuous flow, CSS-driven page breaks ──
+  if (stmtMode) {
+    return (
+      <div
+        dir="rtl"
+        className="rpt-page-outer"
+        style={{
+          background: "#fff",
+          color: "#0f172a",
+          padding: `${marginTopMM}mm ${marginMM}mm ${marginMM}mm ${marginMM}mm`,
+          fontFamily: printFont,
+          width: `${pageSizeMM.width}mm`,
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          fontSize: bodyFontSize,
+        }}
+      >
+        {logoEl}
+        {companyInfoEl}
+        <div style={{ textAlign: "center", margin: "2mm 0 3mm", borderBottom: `2px solid ${accent}`, paddingBottom: "2mm" }}>
+          <div style={{ fontWeight: 900, fontSize: headerFontSize, color: accent }}>{safeText(title)}</div>
+          {(statement.period?.from || statement.period?.to) && (
+            <div style={{ fontSize: bodyFontSize, color: "#475569", marginTop: "1mm" }}>
+              عن الفترة من {statement.period?.from || "البداية"} إلى {statement.period?.to || "الآن"}
+            </div>
+          )}
+        </div>
+        <AccountStatementLedger
+          rows={statement.rows}
+          summary={statement.summary}
+          partyType={statement.partyType}
+        />
+        <style>{`@media print { .rpt-page-outer { width: auto; } tr { break-inside: avoid; } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -411,56 +452,95 @@ export default function ReportPrintTemplate({
               </tr>
             </thead>
             <tbody ref={tbodyRef}>
-              {pageRows.map((row, idx) => (
-                <tr
-                  key={row?.id ?? idx}
-                  style={{
-                    background: idx % 2 === 0 ? "#f8fafc" : "#fff",
-                    borderBottom: isThermal ? "1px dashed #e2e8f0" : "1px solid #e2e8f0",
-                  }}
-                >
-                  {visibleColumns.map((column) => {
-                    const key = column.key || column.id;
-                    // If column is an _id field, try to show the _name counterpart
-                    const nameKey = key.endsWith("_id") ? key.replace("_id", "_name") : null;
-                    const value = nameKey && row?.[nameKey] != null ? row[nameKey] : (row?.[key]);
-                    const numeric = isNumericLike(value);
-                    const isCode =
-                      column.type === "code" ||
-                      ["item_code", "code", "sku", "barcode", "invoice_no", "reference_id"].includes(key);
-                    const content =
-                      isCode
-                        ? safeText(value)
-                        : column.type === "date" || key === "date" || key.endsWith("_date")
-                          ? formatDateEG(value)
-                          : numeric
-                            ? `${column.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${column.type === "percent" ? "%" : ""}`
-                            : safeText(value);
+              {pageRows.flatMap((row, idx) => {
+                const mainRow = (
+                  <tr
+                    key={row?.id ?? idx}
+                    style={{
+                      background: idx % 2 === 0 ? "#f8fafc" : "#fff",
+                      borderBottom: isThermal ? "1px dashed #e2e8f0" : "1px solid #e2e8f0",
+                    }}
+                  >
+                    {visibleColumns.map((column) => {
+                      const key = column.key || column.id;
+                      // If column is an _id field, try to show the _name counterpart
+                      const nameKey = key.endsWith("_id") ? key.replace("_id", "_name") : null;
+                      const value = nameKey && row?.[nameKey] != null ? row[nameKey] : (row?.[key]);
+                      const numeric = isNumericLike(value);
+                      const isCode =
+                        column.type === "code" ||
+                        ["item_code", "code", "sku", "barcode", "invoice_no", "reference_id"].includes(key);
+                      const content =
+                        isCode
+                          ? safeText(value)
+                          : column.type === "date" || key === "date" || key.endsWith("_date")
+                            ? formatDateEG(value)
+                            : numeric
+                              ? `${column.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${column.type === "percent" ? "%" : ""}`
+                              : safeText(value);
 
-                    const isTextWrap = column.type === "text" || column.type === "name" ||
-                      ["name","item_name","customer_name","supplier_name","description","label","category_name","warehouse_name","cashier","full_name"].includes(key);
-                    return (
-                      <td
-                        key={key}
-                        style={{
-                          padding: isThermal ? "2px 3px" : "3px 5px",
-                          textAlign: "center",
-                          color: "#0f172a",
-                          fontFamily: isCode ? "monospace" : undefined,
-                          direction: isCode ? "ltr" : undefined,
-                          whiteSpace: "normal",
-                          wordBreak: "break-word",
-                          overflow: "hidden",
-                          fontSize: tableFontSize,
-                        }}
-                        title={String(value ?? "")}
-                      >
-                        {content || "-"}
-                      </td>
+                      const isTextWrap = column.type === "text" || column.type === "name" ||
+                        ["name","item_name","customer_name","supplier_name","description","label","category_name","warehouse_name","cashier","full_name"].includes(key);
+                      return (
+                        <td
+                          key={key}
+                          style={{
+                            padding: isThermal ? "2px 3px" : "3px 5px",
+                            textAlign: "center",
+                            color: "#0f172a",
+                            fontFamily: isCode ? "monospace" : undefined,
+                            direction: isCode ? "ltr" : undefined,
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            overflow: "hidden",
+                            fontSize: tableFontSize,
+                          }}
+                          title={String(value ?? "")}
+                        >
+                          {content || "-"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+                const rows = [mainRow];
+                if (row._items?.length > 0) {
+                  row._items.forEach((item, i) => {
+                    rows.push(
+                      <tr key={`${row?.id ?? idx}-item-${i}`}
+                        style={{ background: "#f1f5f9", borderBottom: "1px dashed #e2e8f0" }}>
+                        {visibleColumns.map((column, colIdx) => {
+                          const key = column.key || column.id;
+                          let display = "";
+                          if (colIdx === 0) {
+                            display = `└ ${item.item_name || ""}`;
+                          } else if (key === "quantity" || key === "qty") {
+                            display = item.quantity != null ? String(item.quantity) : "";
+                          } else if (key === "unit_price" || key === "price") {
+                            display = item.unit_price != null ? Number(item.unit_price).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "";
+                          } else if (key === "line_total" || key === "total" || key === "amount") {
+                            display = item.line_total != null ? Number(item.line_total).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "";
+                          }
+                          return (
+                            <td key={key}
+                              style={{
+                                padding: isThermal ? "1px 3px" : "2px 5px",
+                                textAlign: colIdx === 0 ? "right" : "center",
+                                color: "#475569",
+                                fontSize: `calc(${tableFontSize} - 1px)`,
+                                whiteSpace: "normal",
+                                wordBreak: "break-word",
+                              }}>
+                              {display || ""}
+                            </td>
+                          );
+                        })}
+                      </tr>
                     );
-                  })}
-                </tr>
-              ))}
+                  });
+                }
+                return rows;
+              })}
             </tbody>
           </table>
 

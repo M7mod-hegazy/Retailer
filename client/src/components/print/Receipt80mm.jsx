@@ -10,13 +10,15 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
   const lines = invoice.lines || [];
   const payments = invoice.payments || [];
   const currency = settings.currency_symbol || "ر.س";
-  const taxRate = settings.tax_rate || 0;
-  const taxType = settings.tax_type || "none";
 
   const subtotal = lines.reduce((s, l) => s + (l.unit_price * l.quantity), 0);
   const totalDiscount = lines.reduce((s, l) => s + (l.discount_amount || 0), 0);
-  const taxAmount = taxType === "none" ? 0 : (subtotal - totalDiscount) * (taxRate / 100);
-  const grandTotal = subtotal - totalDiscount + taxAmount;
+  // Use invoice snapshot tax if available, else fall back to settings-based derivation.
+  const taxAmount = Number(invoice.tax_amount) > 0
+    ? Number(invoice.tax_amount)
+    : (() => { const tr = settings.tax_rate || 0; const tt = settings.tax_type || "none"; return tt === "none" ? 0 : (subtotal - totalDiscount) * (tr / 100); })();
+  const taxRate = Number(invoice.tax_amount) > 0 ? Number(invoice.tax_rate || 0) : (settings.tax_rate || 0);
+  const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal - totalDiscount + taxAmount;
 
   const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
   const change = paid - grandTotal;
@@ -143,7 +145,7 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
             <span>- {currency} {totalDiscount.toFixed(2)}</span>
           </div>
         )}
-        {taxType !== "none" && taxAmount > 0 && (
+        {taxAmount > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>الضريبة ({taxRate}%):</span>
             <span>{currency} {taxAmount.toFixed(2)}</span>
@@ -179,6 +181,16 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
           </div>
         )}
       </div>
+
+      {invoice.notes && (
+        <>
+          <div style={{ borderTop: "1px dashed #000", margin: "6px 0" }} />
+          <div style={{ fontSize: "10px" }}>
+            <div style={{ fontWeight: "bold", marginBottom: "2px" }}>ملاحظات:</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{invoice.notes}</div>
+          </div>
+        </>
+      )}
 
       <div style={{ borderTop: "1px dashed #000", margin: "6px 0" }} />
 

@@ -9,12 +9,13 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
   const lines = invoice.lines || [];
   const payments = invoice.payments || [];
   const currency = settings.currency_symbol || "ر.س";
-  const taxRate = settings.tax_rate || 0;
-  const taxType = settings.tax_type || "none";
   const subtotal = lines.reduce((s, l) => s + (l.unit_price * l.quantity), 0);
   const totalDiscount = lines.reduce((s, l) => s + (l.discount_amount || 0), 0);
-  const taxAmount = taxType === "none" ? 0 : (subtotal - totalDiscount) * (taxRate / 100);
-  const grandTotal = subtotal - totalDiscount + taxAmount;
+  const taxAmount = Number(invoice.tax_amount) > 0
+    ? Number(invoice.tax_amount)
+    : (() => { const tr = settings.tax_rate || 0; const tt = settings.tax_type || "none"; return tt === "none" ? 0 : (subtotal - totalDiscount) * (tr / 100); })();
+  const taxRate = Number(invoice.tax_amount) > 0 ? Number(invoice.tax_rate || 0) : (settings.tax_rate || 0);
+  const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal - totalDiscount + taxAmount;
   const paid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const change = paid - grandTotal;
   const remaining = grandTotal - paid;
@@ -113,7 +114,7 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
                 <td style={{ textAlign: "left", color: "red" }}>- {totalDiscount.toFixed(2)} {currency}</td>
               </tr>
             )}
-            {taxType !== "none" && (
+            {taxAmount > 0 && (
               <tr>
                 <td style={{ padding: "4px 12px" }}>الضريبة ({taxRate}%):</td>
                 <td style={{ textAlign: "left" }}>{taxAmount.toFixed(2)} {currency}</td>
@@ -142,6 +143,14 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
               {remaining > 0.01 && <tr><td style={{ padding: "4px 12px", fontWeight: "bold", color: "#dc2626" }}>المتبقي</td><td style={{ padding: "4px 12px", textAlign: "left", fontWeight: "bold", color: "#dc2626" }}>{remaining.toFixed(2)} {currency}</td></tr>}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Notes */}
+      {invoice.notes && (
+        <div style={{ marginBottom: "16px", padding: "10px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "4px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b", marginBottom: "4px" }}>ملاحظات:</div>
+          <div style={{ fontSize: "12px", color: "#334155", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{invoice.notes}</div>
         </div>
       )}
 

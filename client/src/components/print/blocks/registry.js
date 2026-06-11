@@ -20,6 +20,7 @@ import QrBlock from "./QrBlock";
 import CustomTextBlock from "./CustomTextBlock";
 import DividerBlock from "./DividerBlock";
 import SpacerBlock from "./SpacerBlock";
+import NotesBlock from "./NotesBlock";
 
 const ALL = ["roll", "page"];
 
@@ -41,6 +42,7 @@ export const BLOCK_REGISTRY = {
   tax:                 { component: TaxBlock,               label: "الضريبة",        group: "money",    families: ALL },
   grand_total:         { component: GrandTotalBlock,        label: "المستحق",        group: "money",    families: ALL },
   payments:            { component: PaymentsBlock,          label: "تفاصيل الدفع",   group: "money",    families: ALL },
+  notes:               { component: NotesBlock,             label: "ملاحظات الفاتورة", group: "foot",   families: ALL },
   footer_text:         { component: FooterTextBlock,        label: "نص التذييل",     group: "foot",     families: ALL },
   qr:                  { component: QrBlock,                label: "رمز QR",         group: "foot",     families: ALL },
   custom_text:         { component: CustomTextBlock,        label: "نص مخصص",        group: "inserted", families: ALL },

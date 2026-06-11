@@ -3,8 +3,12 @@ import { create } from "zustand";
 const persisted =
   typeof window !== "undefined" ? JSON.parse(window.localStorage.getItem("retailer.auth") || "null") : null;
 
+const initialUser = persisted?.user
+  ? { ...persisted.user, name: persisted.user.name || persisted.user.full_name || persisted.user.username }
+  : null;
+
 export const useAuthStore = create((set) => ({
-  user: persisted?.user || null,
+  user: initialUser,
   token: persisted?.token || null,
   permissions: persisted?.permissions || {},
   setSession: ({ user, token }) =>
@@ -13,10 +17,12 @@ export const useAuthStore = create((set) => ({
         ? JSON.parse(user.page_permissions)
         : {};
 
+      const enrichedUser = { ...user, name: user.full_name || user.username };
+
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("retailer.auth", JSON.stringify({ user, token, permissions }));
+        window.localStorage.setItem("retailer.auth", JSON.stringify({ user: enrichedUser, token, permissions }));
       }
-      return { user, token, permissions };
+      return { user: enrichedUser, token, permissions };
     }),
   logout: () =>
     set(() => {

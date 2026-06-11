@@ -23,7 +23,8 @@ try {
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch("disable-gpu");
   app.commandLine.appendSwitch("disable-gpu-compositing");
-  app.commandLine.appendSwitch("in-process-gpu");
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("force-swiftshader");
 
   const diagDir = resolveLogDir();
   try { app.setPath("crashDumps", diagDir); } catch (_e) {}
@@ -380,8 +381,15 @@ if (!gotTheLock) {
     });
   });
 
-  app.on("before-quit", () => {
+  app.on("before-quit", async () => {
     app.isQuitting = true;
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        await mainWindow.webContents.executeJavaScript(
+          'window.localStorage.removeItem("retailer.auth");',
+        );
+      }
+    } catch (_) {}
     destroyTray();
     stopEmbeddedServer().catch(() => {});
   });

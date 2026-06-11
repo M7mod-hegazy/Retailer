@@ -46,6 +46,11 @@ function setupIpc(window) {
 
   ipcMain.handle("system:get-version", () => app.getVersion());
 
+  ipcMain.handle("get:api-url", () => {
+    const port = process.env.ACTUAL_PORT || "5000";
+    return `http://127.0.0.1:${port}`;
+  });
+
   ipcMain.handle("app:set-icon", async (_event, payload = {}) => {
     const logoUrl = String(payload.logo_url || "").trim();
     try {

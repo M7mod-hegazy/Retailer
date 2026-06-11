@@ -494,7 +494,7 @@ textarea {
     padding: 0.625rem 0.875rem;
     color: var(--text-primary);
     font-size: 0.9375rem;
-    transition: all var(--duration-fast) ease;
+    transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, background var(--duration-fast) ease;
   }
   
   .input::placeholder {
@@ -542,6 +542,17 @@ textarea {
     color: var(--primary);
     background: var(--bg-surface);
   }
+}
+
+/* ── Input transition safety net ────────────────────────────────────────
+   On software-rendered Chromium (Win7 VxKex + SwiftShader), transitioning
+   `outline` via `transition: all` causes focus instability — inputs lose
+   focus after gaining it, or accept only 1 keystroke before losing focus.
+   Never transition `outline` or other layout properties on form controls. */
+input,
+textarea,
+select {
+  transition-property: border-color, box-shadow, background !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

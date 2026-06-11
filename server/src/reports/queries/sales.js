@@ -15,6 +15,8 @@ function dailySales(startDate, endDate, opts = {}) {
       SUM(i.discount) AS total_discount,
       SUM(i.increase) AS additions_amount,
       SUM(i.total) AS gross_sales,
+      COALESCE(SUM(i.tax_amount), 0) AS total_tax,
+      SUM(i.total) - COALESCE(SUM(i.tax_amount), 0) AS net_total,
       COALESCE(SUM(il_agg.total_cost), 0) AS total_cost,
       COALESCE(SUM(ret.return_total), 0) AS returns_amount,
       COALESCE(SUM(ret.return_count), 0) AS returns_count,
@@ -68,6 +70,9 @@ function detailedSales(startDate, endDate, opts = {}) {
       i.customer_id,
       i.payment_type, i.status,
       i.subtotal, i.discount, i.increase AS additions_amount, i.total,
+      COALESCE(i.tax_amount, 0) AS tax_amount,
+      i.tax_rate, i.tax_type,
+      i.total - COALESCE(i.tax_amount, 0) AS net_total,
       COUNT(il.id) AS item_count,
       CASE WHEN i.payment_type = 'multi' THEN (
         SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), ' / ')

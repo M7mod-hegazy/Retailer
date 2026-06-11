@@ -1,0 +1,56 @@
+appId: com.elhegazi.retailer
+productName: ElHegazi Retailer
+executableName: ElHegazi-Retailer
+copyright: Copyright (c) 2026
+
+files:
+  - electron/**/*
+  - client/dist/**/*
+  - server/**/*
+  - shared/**/*
+  - package.json
+  - "!server/data/**"
+  - "!server/**/__tests__/**"
+  - "!**/*.map"
+
+directories:
+  output: release/win11
+
+asar: true
+asarUnpack:
+  - "**/*.node"
+
+win:
+  icon: electron/assets/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+artifactName: ElHegazi-Retailer-Win11-${version}-x64.exe
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  perMachine: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: ElHegazi Retailer
+  menuCategory: ElHegazi
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  installerIcon: electron/assets/icon.ico
+  uninstallerIcon: electron/assets/icon.ico
+  installerHeaderIcon: electron/assets/icon.ico
+  installerSidebar: electron/assets/installerSidebar.bmp
+  uninstallerSidebar: electron/assets/installerSidebar.bmp
+  installerHeader: electron/assets/installerHeader.bmp
+  multiLanguageInstaller: true
+  displayLanguageSelector: true
+  installerLanguages:
+    - ar_SA
+    - en_US
+
+buildDependenciesFromSource: false
+npmRebuild: true

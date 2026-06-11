@@ -2,6 +2,402 @@ const { getDb } = require("../../config/database");
 const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
 const { getProfitLoss } = require("../../services/reportService");
 
+function flattenItemsIntoRows(rows) {
+  const result = [];
+  for (const row of rows) {
+    const hasItems = row._items && row._items.length > 0;
+    if (hasItems) {
+      const summaryRow = { ...row, _has_items: true };
+      delete summaryRow._items;
+      result.push(summaryRow);
+      for (const item of row._items) {
+        result.push({
+          _is_item: true,
+          type: "item",
+          date: row.date,
+          ref_no: row.ref_no,
+          item_name: item.item_name,
+          item_code: item.code || null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          barcode: item.barcode || null,
+          debit: null,
+          credit: null,
+          running_balance: null,
+          amount: null,
+          status: null,
+        });
+      }
+    } else {
+      result.push(row);
+    }
+  }
+  return result;
+}
+
+function profitLoss(startDate, endDate, opts = {}) {
+  const result = getProfitLoss(startDate, endDate);
+  if (!result || Array.isArray(result)) return result || [];
+  return [{
+    label: "الإيرادات",
+    amount: result.revenue,
+    pct: 100,
+    section: "revenue",
+  }, {
+    label: "الخصومات",
+    amount: result.discounts,
+    pct: result.revenue > 0 ? Math.round((result.discounts / result.revenue) * 100) : 0,
+    section: "revenue",
+  }, {
+    label: "تكلفة البضاعة المباعة",
+    amount: result.cost_of_goods_sold,
+    pct: result.revenue > 0 ? Math.round((result.cost_of_goods_sold / result.revenue) * 100) : 0,
+    section: "cogs",
+  }, {
+    label: "إجمالي الربح",
+    amount: result.gross_profit,
+    pct: result.revenue > 0 ? Math.round((result.gross_profit / result.revenue) * 100) : 0,
+    section: "gross_profit",
+  }, {
+    label: "المصروفات",
+    amount: result.expenses,
+    pct: result.revenue > 0 ? Math.round((result.expenses / result.revenue) * 100) : 0,
+    section: "expenses",
+  }, {
+    label: "صافي الربح",
+    amount: result.net_profit,
+    pct: result.revenue > 0 ? Math.round((result.net_profit / result.revenue) * 100) : 0,
+    section: "net_profit",
+  }];
+}
+
+// Build a human-readable Arabic description for a ledger transaction.
+function statementDescription(txn) {
+  const ref = txn.ref_no ? ` رقم ${txn.ref_no}` : "";
+  const orig = txn.orig_ref ? ` — أصل فاتورة ${txn.orig_ref}` : "";
+  switch (txn.type) {
+    case "invoice": return `فاتورة مبيعات${ref}`;
+    case "purchase": return `فاتورة شراء${ref}`;
+    case "sales_return": return `مرتجع مبيعات${ref}${orig}`;
+    case "purchase_return": return `مرتجع مشتريات${ref}${orig}`;
+    case "payment": {
+      const base = txn._party === "supplier" ? "دفعة إلى مورد" : "دفعة محصلة";
+      return txn.ref_no ? `${base}${ref}` : base;
+    }
+    case "adjustment": return txn.note && String(txn.note).trim() ? String(txn.note).trim() : "تسوية يدوية للرصيد";
+    default: return txn.ref_no || "";
+  }
+}
+
+/**
+ * Shared statement assembler.
+ *
+ * `opening_balance` on customers/suppliers is the LIVE current balance (it is
+ * mutated by every transaction), NOT a historical opening. So we reconstruct the
+ * true opening by back-computation:
+ *   trueOpening   = liveBalance − Σ(all txns ever)
+ *   periodOpening = trueOpening + Σ(txns strictly before `startDate`)   // رصيد أول المدة
+ *   periodClosing = periodOpening + Σ(in-period txns)                   // رصيد الحركة
+ * When `endDate` is today, periodClosing reconciles to the live balance.
+ *
+ * `txns` must include EVERY transaction (no date filter), ordered ASC by datetime,
+ * each shaped { ref_id, ref_no, datetime, date, type, amount, status, note?, orig_ref? }.
+ * Rows are enriched with their `_items` from `itemsByKey` (keyed by `type:ref_id`).
+ */
+function assembleStatement({ name, code, liveBalance, txns, itemsByKey, startDate, endDate, partyType }) {
+  const totalAll = txns.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+  const trueOpening = Number(liveBalance || 0) - totalAll;
+  const periodOpening = trueOpening + txns.reduce((acc, t) => {
+    if (startDate && t.date < startDate) return acc + Number(t.amount || 0);
+    return acc;
+  }, 0);
+
+  const inPeriod = txns.filter((t) => {
+    if (startDate && t.date < startDate) return false;
+    if (endDate && t.date > endDate) return false;
+    return true;
+  });
+
+  let running = periodOpening;
+  let totalDebit = 0;
+  let totalCredit = 0;
+  const rows = inPeriod.map((txn) => {
+    const amt = Number(txn.amount || 0);
+    running += amt;
+    if (amt > 0) totalDebit += amt; else totalCredit += -amt;
+    const row = {
+      ref_no: txn.ref_no,
+      date: txn.date,
+      datetime: txn.datetime,
+      type: txn.type,
+      description: statementDescription({ ...txn, _party: partyType }),
+      amount: amt,
+      debit: amt > 0 ? amt : 0,
+      credit: amt < 0 ? -amt : 0,
+      status: txn.status,
+      running_balance: running,
+      // Document-level financials so item totals reconcile with the ledger amount
+      // (general discount/increase) and any cash-settled portion is visible.
+      doc_discount: txn.doc_discount != null ? Number(txn.doc_discount) : null,
+      doc_increase: txn.doc_increase != null ? Number(txn.doc_increase) : null,
+      doc_total: txn.doc_total != null ? Number(txn.doc_total) : null,
+      affects_balance: Math.abs(amt) > 0.005,
+    };
+    const items = itemsByKey[`${txn.type}:${txn.ref_id}`];
+    if (items && items.length) row._items = items;
+    return row;
+  });
+  const flatRows = flattenItemsIntoRows(rows);
+  return {
+    opening_balance: periodOpening,
+    closing_balance: running,
+    total_debit: totalDebit,
+    total_credit: totalCredit,
+    transactions: flatRows,
+    party_name: name,
+    party_code: code,
+  };
+}
+
+function customerStatementV2(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const customerId = opts.customer_id;
+  if (!customerId) return [];
+  const customer = db.prepare("SELECT name, code, COALESCE(opening_balance, 0) AS opening_balance FROM customers WHERE id = ?").get(customerId);
+  if (!customer) return [];
+
+  // All account transactions ever (no date filter) — back-computation needs the
+  // full history. The DEBIT side is the on-account (آجل) portion recorded in
+  // ajal_debts.original_amount (cash sales never touch the account balance), so
+  // this set's running sum reconciles to the live `opening_balance`.
+  const txns = db.prepare(`
+    SELECT i.id AS ref_id, i.invoice_no AS ref_no, i.created_at AS datetime, DATE(i.created_at) AS date,
+      'invoice' AS type, SUM(ad.original_amount) AS amount, i.status, NULL AS note, NULL AS orig_ref,
+      i.discount AS doc_discount, i.increase AS doc_increase, i.total AS doc_total
+    FROM ajal_debts ad
+    JOIN invoices i ON i.id = ad.invoice_id
+    WHERE ad.party_type = 'customer' AND ad.customer_id = ?
+      AND ad.source_type = 'invoice' AND ad.status != 'voided'
+    GROUP BY i.id
+    UNION ALL
+    SELECT sr.id, sr.doc_no, sr.created_at, DATE(sr.created_at),
+      'sales_return', -COALESCE(sr.credit_amount, 0), sr.status, NULL, inv.invoice_no,
+      sr.discount, sr.increase, sr.total
+    FROM sales_returns sr
+    LEFT JOIN invoices inv ON inv.id = sr.invoice_id
+    WHERE sr.customer_id = ? AND sr.status = 'active'
+    UNION ALL
+    SELECT p.id, p.reference_number, p.created_at, DATE(p.created_at),
+      'payment', -p.amount, 'paid', p.notes, NULL,
+      NULL, NULL, NULL
+    FROM payments p
+    WHERE p.party_type = 'customer' AND p.party_id = ?
+    UNION ALL
+    SELECT n.id, NULL, n.created_at, DATE(n.created_at),
+      'adjustment', COALESCE(n.amount, 0), 'adjustment', n.note, NULL,
+      NULL, NULL, NULL
+    FROM customer_notes n
+    WHERE n.customer_id = ? AND n.type = 'adjustment'
+    ORDER BY datetime ASC
+  `).all(customerId, customerId, customerId, customerId);
+
+  const itemsByKey = {};
+  const invoiceIds = txns.filter(t => t.type === 'invoice').map(t => t.ref_id);
+  if (invoiceIds.length > 0) {
+    const ph = invoiceIds.map(() => '?').join(',');
+    db.prepare(`
+      SELECT il.invoice_id AS doc_id, il.quantity, il.unit_price, il.line_total,
+        COALESCE(it.name, '') AS item_name, it.code, it.barcode
+      FROM invoice_lines il LEFT JOIN items it ON it.id = il.item_id
+      WHERE il.invoice_id IN (${ph})
+    `).all(...invoiceIds).forEach(l => {
+      const k = `invoice:${l.doc_id}`;
+      (itemsByKey[k] || (itemsByKey[k] = [])).push({ item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, line_total: l.line_total, code: l.code, barcode: l.barcode });
+    });
+  }
+  const returnIds = txns.filter(t => t.type === 'sales_return').map(t => t.ref_id);
+  if (returnIds.length > 0) {
+    const ph = returnIds.map(() => '?').join(',');
+    db.prepare(`
+      SELECT srl.sales_return_id AS doc_id, srl.quantity, srl.unit_price, srl.line_total,
+        COALESCE(it.name, srl.item_name_ar, '') AS item_name, it.code, it.barcode
+      FROM sales_return_lines srl LEFT JOIN items it ON it.id = srl.item_id
+      WHERE srl.sales_return_id IN (${ph})
+    `).all(...returnIds).forEach(l => {
+      const k = `sales_return:${l.doc_id}`;
+      (itemsByKey[k] || (itemsByKey[k] = [])).push({ item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, line_total: l.line_total, code: l.code, barcode: l.barcode });
+    });
+  }
+
+  const result = assembleStatement({
+    name: customer.name, code: customer.code, liveBalance: customer.opening_balance,
+    txns, itemsByKey, startDate, endDate, partyType: 'customer',
+  });
+  // Backward-compatible alias kept alongside the generic party_name.
+  return { ...result, customer_name: customer.name };
+}
+
+function supplierStatementV2(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const supplierId = opts.supplier_id;
+  if (!supplierId) return [];
+  const supplier = db.prepare("SELECT name, code, COALESCE(opening_balance, 0) AS opening_balance FROM suppliers WHERE id = ?").get(supplierId);
+  if (!supplier) return [];
+
+  // DEBIT side = on-account (آجل) portion from ajal_debts.original_amount; cash
+  // purchases never touch the supplier balance. This reconciles to the live
+  // `opening_balance` (verified against base_opening_balance).
+  const txns = db.prepare(`
+    SELECT pur.id AS ref_id, pur.doc_no AS ref_no, pur.created_at AS datetime, DATE(pur.created_at) AS date,
+      'purchase' AS type, SUM(ad.original_amount) AS amount, pur.status, NULL AS note, NULL AS orig_ref,
+      pur.discount AS doc_discount, pur.increase AS doc_increase, pur.total AS doc_total
+    FROM ajal_debts ad
+    JOIN purchases pur ON pur.id = ad.invoice_id
+    WHERE ad.party_type = 'supplier' AND ad.supplier_id = ?
+      AND ad.source_type = 'purchase' AND ad.status != 'voided'
+    GROUP BY pur.id
+    UNION ALL
+    SELECT pr.id, pr.doc_no, pr.created_at, DATE(pr.created_at),
+      'purchase_return', -COALESCE(pr.credit_amount, 0), pr.status, NULL, pur.doc_no,
+      pr.discount, pr.increase, pr.total
+    FROM purchase_returns pr
+    LEFT JOIN purchases pur ON pur.id = pr.purchase_id
+    WHERE pr.supplier_id = ? AND pr.status = 'active'
+    UNION ALL
+    SELECT p.id, p.reference_number, p.created_at, DATE(p.created_at),
+      'payment', -p.amount, 'paid', p.notes, NULL,
+      NULL, NULL, NULL
+    FROM payments p
+    WHERE p.party_type = 'supplier' AND p.party_id = ?
+    UNION ALL
+    SELECT n.id, NULL, n.created_at, DATE(n.created_at),
+      'adjustment', COALESCE(n.amount, 0), 'adjustment', n.note, NULL,
+      NULL, NULL, NULL
+    FROM supplier_notes n
+    WHERE n.supplier_id = ? AND n.type = 'adjustment'
+    ORDER BY datetime ASC
+  `).all(supplierId, supplierId, supplierId, supplierId);
+
+  const itemsByKey = {};
+  const purchaseIds = txns.filter(t => t.type === 'purchase').map(t => t.ref_id);
+  if (purchaseIds.length > 0) {
+    const ph = purchaseIds.map(() => '?').join(',');
+    db.prepare(`
+      SELECT pl.purchase_id AS doc_id, pl.quantity, pl.unit_cost AS unit_price, pl.line_total,
+        COALESCE(it.name, '') AS item_name, it.code, it.barcode
+      FROM purchase_lines pl LEFT JOIN items it ON it.id = pl.item_id
+      WHERE pl.purchase_id IN (${ph})
+    `).all(...purchaseIds).forEach(l => {
+      const k = `purchase:${l.doc_id}`;
+      (itemsByKey[k] || (itemsByKey[k] = [])).push({ item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, line_total: l.line_total, code: l.code, barcode: l.barcode });
+    });
+  }
+  const returnIds = txns.filter(t => t.type === 'purchase_return').map(t => t.ref_id);
+  if (returnIds.length > 0) {
+    const ph = returnIds.map(() => '?').join(',');
+    db.prepare(`
+      SELECT prl.purchase_return_id AS doc_id, prl.quantity, prl.unit_price, prl.line_total,
+        COALESCE(it.name, prl.item_name_ar, '') AS item_name, it.code, it.barcode
+      FROM purchase_return_lines prl LEFT JOIN items it ON it.id = prl.item_id
+      WHERE prl.purchase_return_id IN (${ph})
+    `).all(...returnIds).forEach(l => {
+      const k = `purchase_return:${l.doc_id}`;
+      (itemsByKey[k] || (itemsByKey[k] = [])).push({ item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, line_total: l.line_total, code: l.code, barcode: l.barcode });
+    });
+  }
+
+  const result = assembleStatement({
+    name: supplier.name, code: supplier.code, liveBalance: supplier.opening_balance,
+    txns, itemsByKey, startDate, endDate, partyType: 'supplier',
+  });
+  return { ...result, supplier_name: supplier.name };
+}
+
+function dailyOwnerSnapshot(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const invoiceParams = [];
+  const returnParams = [];
+  const expenseParams = [];
+  const revenueParams = [];
+  const withdrawalParams = [];
+  const costCol = getCostColumn(opts.cost_method);
+  const returnCostCol = getReturnCostColumn(opts.cost_method);
+  const sales = db.prepare(`
+    SELECT COALESCE(SUM(i.total), 0) AS revenue,
+      COALESCE(SUM(i.subtotal), 0) AS selling_total,
+      COALESCE(SUM(i.discount), 0) AS discounts,
+      COALESCE(SUM(i.increase), 0) AS additions_amount,
+      COALESCE(SUM(cost_agg.cogs), 0) AS cogs,
+      COUNT(DISTINCT i.id) AS invoice_count
+    FROM invoices i
+    LEFT JOIN (
+      SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS cogs
+      FROM invoice_lines il
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
+      GROUP BY il.invoice_id
+    ) cost_agg ON cost_agg.invoice_id = i.id
+    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
+  `).get(...invoiceParams);
+  const returns = db.prepare(`
+    SELECT COALESCE(SUM(sr.total), 0) AS returns_amount,
+      COALESCE(SUM(srl.quantity * ${returnCostCol}), 0) AS return_cost,
+      COUNT(DISTINCT sr.id) AS return_count
+    FROM sales_returns sr
+    LEFT JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+    LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+    LEFT JOIN items it ON it.id = srl.item_id
+    WHERE sr.status = 'active' ${addDateFilter("sr.created_at", startDate, endDate, returnParams)}
+  `).get(...returnParams);
+  const expenses = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
+    WHERE 1=1 ${addDateFilter("created_at", startDate, endDate, expenseParams)}
+  `).get(...expenseParams).total;
+  const revenues = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS total FROM revenues
+    WHERE 1=1 ${addDateFilter("created_at", startDate, endDate, revenueParams)}
+  `).get(...revenueParams).total;
+  const withdrawals = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS total FROM withdrawals
+    WHERE 1=1 ${addDateFilter("created_at", startDate, endDate, withdrawalParams)}
+  `).get(...withdrawalParams).total;
+  const overdue = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM ajal_debts
+    WHERE source_type = 'invoice' AND status NOT IN ('paid', 'voided')
+      AND due_date IS NOT NULL AND DATE(due_date) < DATE('now')
+  `).get().count;
+  const lowStock = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM items it
+    JOIN stock_levels sl ON sl.item_id = it.id
+    WHERE it.deleted_at IS NULL AND COALESCE(sl.quantity, 0) <= COALESCE(it.min_stock_qty, 0)
+  `).get().count;
+  const netSales = Number(sales.revenue || 0) - Number(returns.returns_amount || 0);
+  const grossProfit = netSales - Number(sales.cogs || 0) + Number(returns.return_cost || 0);
+  const netProfit = grossProfit + Number(revenues || 0) - Number(expenses || 0) - Number(withdrawals || 0);
+  return [{
+    period_start: startDate || null,
+    period_end: endDate || null,
+    invoice_count: sales.invoice_count,
+    selling_total: sales.selling_total,
+    total_discount: sales.discounts,
+    additions_amount: sales.additions_amount,
+    gross_sales: sales.revenue,
+    returns_amount: returns.returns_amount,
+    net_sales: netSales,
+    cogs: sales.cogs,
+    gross_profit: grossProfit,
+    expenses,
+    other_revenues: revenues,
+    withdrawals,
+    net_profit: netProfit,
+    overdue_receivables_count: overdue,
+    low_stock_alerts_count: lowStock,
+  }];
+}
+
 function arAging(startDate, endDate, opts = {}) {
   const db = getDb();
   const { customer_id } = opts;
@@ -106,527 +502,11 @@ function apAging(startDate, endDate, opts = {}) {
   `).all(...params, ...(supplier_id ? [supplier_id] : []));
 }
 
-function profitLoss(startDate, endDate, opts = {}) {
-  const result = getProfitLoss(startDate, endDate);
-  if (!result || Array.isArray(result)) return result || [];
-  return [{
-    label: "الإيرادات",
-    amount: result.revenue,
-    pct: 100,
-    section: "revenue",
-  }, {
-    label: "الخصومات",
-    amount: result.discounts,
-    pct: result.revenue > 0 ? Math.round((result.discounts / result.revenue) * 100) : 0,
-    section: "revenue",
-  }, {
-    label: "تكلفة البضاعة المباعة",
-    amount: result.cost_of_goods_sold,
-    pct: result.revenue > 0 ? Math.round((result.cost_of_goods_sold / result.revenue) * 100) : 0,
-    section: "cogs",
-  }, {
-    label: "إجمالي الربح",
-    amount: result.gross_profit,
-    pct: result.revenue > 0 ? Math.round((result.gross_profit / result.revenue) * 100) : 0,
-    section: "gross_profit",
-  }, {
-    label: "المصروفات",
-    amount: result.expenses,
-    pct: result.revenue > 0 ? Math.round((result.expenses / result.revenue) * 100) : 0,
-    section: "expenses",
-  }, {
-    label: "صافي الربح",
-    amount: result.net_profit,
-    pct: result.revenue > 0 ? Math.round((result.net_profit / result.revenue) * 100) : 0,
-    section: "net_profit",
-  }];
-}
-
-function customerStatement(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const customerId = opts.customer_id;
-  if (!customerId) return [];
-  const customer = db.prepare("SELECT name, COALESCE(opening_balance, 0) AS opening_balance FROM customers WHERE id = ?").get(customerId);
-  if (!customer) return [];
-  const params = [];
-  const txns = db.prepare(`
-    SELECT i.invoice_no AS ref_no, DATE(i.created_at) AS date,
-      'فاتورة' AS type, i.total AS amount, i.status
-    FROM invoices i
-    WHERE i.customer_id = ? AND i.status != 'cancelled'
-      ${addDateFilter("i.created_at", startDate, endDate, params)}
-    UNION ALL
-    SELECT p.reference_number AS ref_no, DATE(p.created_at) AS date,
-      'دفعة' AS type, -p.amount AS amount, 'paid' AS status
-    FROM payments p
-    WHERE p.party_type = 'customer' AND p.party_id = ?
-      ${addDateFilter("p.created_at", startDate, endDate, [])}
-    ORDER BY date ASC
-  `).all(customerId, ...params, customerId);
-  let running = customer.opening_balance;
-  const rows = txns.map(t => {
-    running += Number(t.amount);
-    return { ...t, running_balance: running };
-  });
-  return {
-    customer_name: customer.name,
-    opening_balance: customer.opening_balance,
-    closing_balance: running,
-    transactions: rows,
-  };
-}
-
-function topCustomers(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  const { customer_id } = opts;
-  return db.prepare(`
-    SELECT COALESCE(c.name, 'نقدي') AS customer_name,
-      c.phone,
-      c.id AS customer_id,
-      COUNT(i.id) AS invoice_count,
-      SUM(i.total) AS total_spent,
-      ROUND(AVG(i.total), 2) AS avg_order_value,
-      MAX(DATE(i.created_at)) AS last_purchase_date,
-      c.loyalty_points, c.loyalty_tier
-    FROM invoices i
-    LEFT JOIN customers c ON c.id = i.customer_id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
-      ${customer_id ? " AND c.id = ?" : ""}
-    GROUP BY c.id
-    ORDER BY total_spent DESC
-  `).all(...params, ...(customer_id ? [customer_id] : []));
-}
-
-function collectionEfficiency(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  const { customer_id } = opts;
-  return db.prepare(`
-    SELECT c.name AS customer_name,
-      c.id AS customer_id,
-      COUNT(DISTINCT i.id) AS total_invoices,
-      SUM(i.total) AS total_billed,
-      SUM(CASE WHEN i.status = 'paid' THEN i.total ELSE 0 END) AS collected,
-      SUM(CASE WHEN i.status != 'paid' THEN i.total ELSE 0 END) AS outstanding,
-      CASE WHEN SUM(i.total) > 0
-        THEN ROUND((SUM(CASE WHEN i.status = 'paid' THEN i.total ELSE 0 END) / SUM(i.total)) * 100, 1)
-        ELSE 0 END AS collection_rate,
-      ROUND(AVG(CASE WHEN i.status = 'paid' AND i.paid_at IS NOT NULL THEN julianday(i.paid_at) - julianday(i.created_at) ELSE NULL END), 1) AS days_to_collect
-    FROM customers c
-    LEFT JOIN invoices i ON i.customer_id = c.id AND i.status != 'cancelled'
-      AND DATE(i.created_at) >= ? AND DATE(i.created_at) <= ?
-    WHERE 1=1 ${customer_id ? " AND c.id = ?" : ""}
-    GROUP BY c.id
-    HAVING total_billed > 0
-    ORDER BY collection_rate ASC
-  `).all(startDate || "", endDate || "", ...(customer_id ? [customer_id] : []));
-}
-
-function supplierStatement(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const supplierId = opts.supplier_id;
-  if (!supplierId) return [];
-  const supplier = db.prepare("SELECT name, COALESCE(opening_balance, 0) AS opening_balance FROM suppliers WHERE id = ?").get(supplierId);
-  if (!supplier) return [];
-  const params = [];
-  const txns = db.prepare(`
-    SELECT p.doc_no AS ref_no, DATE(p.created_at) AS date,
-      'مشتريات' AS type, p.total AS amount, p.status
-    FROM purchases p
-    WHERE p.supplier_id = ? AND p.status != 'cancelled'
-      ${addDateFilter("p.created_at", startDate, endDate, params)}
-    ORDER BY date ASC
-  `).all(supplierId, ...params);
-  let running = supplier.opening_balance;
-  const rows = txns.map(t => {
-    running += Number(t.amount);
-    return { ...t, running_balance: running };
-  });
-  return {
-    supplier_name: supplier.name,
-    opening_balance: supplier.opening_balance,
-    closing_balance: running,
-    transactions: rows,
-  };
-}
-
-function customerLoyalty(startDate, endDate, opts = {}) {
-  const db = getDb();
-  return db.prepare(`
-    SELECT c.name AS customer_name, c.phone,
-      COALESCE(c.loyalty_points, 0) AS loyalty_points,
-      COALESCE(c.loyalty_tier, 'عادي') AS loyalty_tier,
-      COALESCE(SUM(i.total), 0) AS total_spent,
-      COUNT(i.id) AS invoice_count,
-      MAX(DATE(i.created_at)) AS last_purchase_date
-    FROM customers c
-    LEFT JOIN invoices i ON i.customer_id = c.id AND i.status != 'cancelled'
-    GROUP BY c.id
-    ORDER BY loyalty_points DESC
-  `).all();
-}
-
-function supplierPurchasesHistory(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  const { supplier_id } = opts;
-  return db.prepare(`
-    SELECT p.doc_no AS purchase_no, DATE(p.created_at) AS date,
-      s.name AS supplier_name,
-      p.total, p.status, p.payment_method AS payment_type,
-      COUNT(pl.id) AS item_count,
-      u.full_name AS created_by
-    FROM purchases p
-    JOIN suppliers s ON s.id = p.supplier_id
-    LEFT JOIN purchase_lines pl ON pl.purchase_id = p.id
-    LEFT JOIN users u ON u.id = p.created_by
-    WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
-      ${supplier_id ? " AND p.supplier_id = ?" : ""}
-    GROUP BY p.id
-    ORDER BY p.created_at DESC
-  `).all(...params, ...(supplier_id ? [supplier_id] : []));
-}
-
-function supplierReturnsHistory(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  const { supplier_id } = opts;
-  return db.prepare(`
-    SELECT pr.doc_no AS return_ref, DATE(pr.created_at) AS date,
-      s.name AS supplier_name,
-      pr.discount AS return_discount, pr.increase AS return_increase,
-      pr.total AS return_total, pr.reason, pr.refund_method,
-      COUNT(prl.id) AS items_returned
-    FROM purchase_returns pr
-    JOIN suppliers s ON s.id = pr.supplier_id
-    LEFT JOIN purchase_return_lines prl ON prl.purchase_return_id = pr.id
-    WHERE pr.status = 'active' ${addDateFilter("pr.created_at", startDate, endDate, params)}
-      ${supplier_id ? " AND pr.supplier_id = ?" : ""}
-    GROUP BY pr.id
-    ORDER BY pr.created_at DESC
-  `).all(...params, ...(supplier_id ? [supplier_id] : []));
-}
-
-function customerStatementV2(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const customerId = opts.customer_id;
-  if (!customerId) return [];
-  const customer = db.prepare("SELECT name, COALESCE(opening_balance, 0) AS opening_balance FROM customers WHERE id = ?").get(customerId);
-  if (!customer) return [];
-
-  const invoiceParams = [];
-  const returnParams = [];
-  const paymentParams = [];
-  const txns = db.prepare(`
-    SELECT i.invoice_no AS ref_no, DATE(i.created_at) AS date,
-      'invoice' AS type, i.total AS amount, i.status
-    FROM invoices i
-    WHERE i.customer_id = ? AND i.status != 'cancelled'
-      ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
-    UNION ALL
-    SELECT sr.doc_no AS ref_no, DATE(sr.created_at) AS date,
-      'sales_return' AS type, -sr.total AS amount, sr.status
-    FROM sales_returns sr
-    WHERE sr.customer_id = ? AND sr.status = 'active'
-      ${addDateFilter("sr.created_at", startDate, endDate, returnParams)}
-    UNION ALL
-    SELECT p.reference_number AS ref_no, DATE(p.created_at) AS date,
-      'payment' AS type, -p.amount AS amount, 'paid' AS status
-    FROM payments p
-    WHERE p.party_type = 'customer' AND p.party_id = ?
-      ${addDateFilter("p.created_at", startDate, endDate, paymentParams)}
-    ORDER BY date ASC
-  `).all(
-    customerId,
-    ...invoiceParams,
-    customerId,
-    ...returnParams,
-    customerId,
-    ...paymentParams,
-  );
-
-  let running = Number(customer.opening_balance || 0);
-  const rows = txns.map((txn) => {
-    running += Number(txn.amount || 0);
-    return { ...txn, running_balance: running };
-  });
-  return {
-    customer_name: customer.name,
-    opening_balance: customer.opening_balance,
-    closing_balance: running,
-    transactions: rows,
-  };
-}
-
-function topCustomersV2(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const invoiceParams = [];
-  const returnParams = [];
-  const { customer_id } = opts;
-  return db.prepare(`
-    SELECT COALESCE(c.name, 'cash') AS customer_name,
-      c.phone,
-      c.id AS customer_id,
-      COUNT(i.id) AS invoice_count,
-      COALESCE(SUM(i.total), 0) AS gross_spent,
-      COALESCE(MAX(ret.returns_amount), 0) AS returns_amount,
-      COALESCE(SUM(i.total), 0) - COALESCE(MAX(ret.returns_amount), 0) AS total_spent,
-      ROUND(AVG(i.total), 2) AS avg_order_value,
-      MAX(DATE(i.created_at)) AS last_purchase_date,
-      c.loyalty_points, c.loyalty_tier
-    FROM invoices i
-    LEFT JOIN customers c ON c.id = i.customer_id
-    LEFT JOIN (
-      SELECT customer_id, COALESCE(SUM(total), 0) AS returns_amount
-      FROM sales_returns
-      WHERE status = 'active' ${addDateFilter("created_at", startDate, endDate, returnParams)}
-      GROUP BY customer_id
-    ) ret ON ret.customer_id = c.id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
-      ${customer_id ? " AND c.id = ?" : ""}
-    GROUP BY c.id
-    ORDER BY total_spent DESC
-  `).all(...returnParams, ...invoiceParams, ...(customer_id ? [customer_id] : []));
-}
-
-function collectionEfficiencyV2(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  const { customer_id } = opts;
-  return db.prepare(`
-    WITH invoice_scope AS (
-      SELECT i.id, i.customer_id, i.total, i.status, i.amount_received, i.paid_at, i.created_at
-      FROM invoices i
-      WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
-    ),
-    invoice_debt AS (
-      SELECT d.invoice_id,
-        COALESCE(SUM(MAX(0, COALESCE(d.original_amount, 0) - COALESCE(d.paid_amount, 0))), 0) AS outstanding
-      FROM ajal_debts d
-      WHERE d.source_type = 'invoice' AND d.status != 'voided'
-      GROUP BY d.invoice_id
-    ),
-    invoice_balances AS (
-      SELECT s.*,
-        CASE
-          WHEN idb.invoice_id IS NOT NULL THEN idb.outstanding
-          WHEN s.status = 'paid' THEN 0
-          ELSE MAX(0, COALESCE(s.total, 0) - COALESCE(s.amount_received, 0))
-        END AS outstanding_amount
-      FROM invoice_scope s
-      LEFT JOIN invoice_debt idb ON idb.invoice_id = s.id
-    )
-    SELECT c.name AS customer_name,
-      c.id AS customer_id,
-      COUNT(DISTINCT ib.id) AS total_invoices,
-      COALESCE(SUM(ib.total), 0) AS total_billed,
-      COALESCE(SUM(MAX(0, COALESCE(ib.total, 0) - COALESCE(ib.outstanding_amount, 0))), 0) AS collected,
-      COALESCE(SUM(ib.outstanding_amount), 0) AS outstanding,
-      CASE WHEN COALESCE(SUM(ib.total), 0) > 0
-        THEN ROUND((COALESCE(SUM(MAX(0, COALESCE(ib.total, 0) - COALESCE(ib.outstanding_amount, 0))), 0) / SUM(ib.total)) * 100, 1)
-        ELSE 0 END AS collection_rate,
-      ROUND(AVG(CASE WHEN ib.status = 'paid' AND ib.paid_at IS NOT NULL THEN julianday(ib.paid_at) - julianday(ib.created_at) ELSE NULL END), 1) AS days_to_collect
-    FROM customers c
-    LEFT JOIN invoice_balances ib ON ib.customer_id = c.id
-    WHERE 1=1 ${customer_id ? " AND c.id = ?" : ""}
-    GROUP BY c.id
-    HAVING total_billed > 0
-    ORDER BY collection_rate ASC
-  `).all(...params, ...(customer_id ? [customer_id] : []));
-}
-
-function customerLoyaltyV2(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const invoiceParams = [];
-  const returnParams = [];
-  return db.prepare(`
-    SELECT c.name AS customer_name, c.phone,
-      COALESCE(c.loyalty_points, 0) AS loyalty_points,
-      COALESCE(c.loyalty_tier, '') AS loyalty_tier,
-      COALESCE(inv.gross_spent, 0) AS gross_spent,
-      COALESCE(ret.returns_amount, 0) AS returns_amount,
-      COALESCE(inv.gross_spent, 0) - COALESCE(ret.returns_amount, 0) AS total_spent,
-      COALESCE(inv.invoice_count, 0) AS invoice_count,
-      inv.last_purchase_date
-    FROM customers c
-    LEFT JOIN (
-      SELECT customer_id,
-        COALESCE(SUM(total), 0) AS gross_spent,
-        COUNT(id) AS invoice_count,
-        MAX(DATE(created_at)) AS last_purchase_date
-      FROM invoices
-      WHERE status != 'cancelled' ${addDateFilter("created_at", startDate, endDate, invoiceParams)}
-      GROUP BY customer_id
-    ) inv ON inv.customer_id = c.id
-    LEFT JOIN (
-      SELECT customer_id, COALESCE(SUM(total), 0) AS returns_amount
-      FROM sales_returns
-      WHERE status = 'active' ${addDateFilter("created_at", startDate, endDate, returnParams)}
-      GROUP BY customer_id
-    ) ret ON ret.customer_id = c.id
-    ORDER BY loyalty_points DESC
-  `).all(...invoiceParams, ...returnParams);
-}
-
-function customerProfitabilityReport(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const invoiceParams = [];
-  const returnParams = [];
-  const { customer_id } = opts;
-  const costCol = getCostColumn(opts.cost_method);
-  const returnCostCol = getReturnCostColumn(opts.cost_method);
-  return db.prepare(`
-    SELECT COALESCE(c.name, 'cash') AS customer_name,
-      c.phone,
-      c.id AS customer_id,
-      COALESCE(inv.invoice_count, 0) AS invoice_count,
-      COALESCE(inv.revenue, 0) AS gross_revenue,
-      ROUND(COALESCE(inv.revenue, 0) * 1.0 / NULLIF(inv.invoice_count, 0), 2) AS avg_invoice_value,
-      COALESCE(ret.returns_amount, 0) AS returns_amount,
-      COALESCE(inv.revenue, 0) - COALESCE(ret.returns_amount, 0) AS net_revenue,
-      COALESCE(inv.cost, 0) - COALESCE(ret.return_cost, 0) AS cost,
-      COALESCE(inv.revenue, 0) - COALESCE(ret.returns_amount, 0)
-        - COALESCE(inv.cost, 0) + COALESCE(ret.return_cost, 0) AS gross_profit,
-      CASE WHEN COALESCE(inv.revenue, 0) - COALESCE(ret.returns_amount, 0) > 0
-        THEN ROUND(((COALESCE(inv.revenue, 0) - COALESCE(ret.returns_amount, 0)
-          - COALESCE(inv.cost, 0) + COALESCE(ret.return_cost, 0))
-          / (COALESCE(inv.revenue, 0) - COALESCE(ret.returns_amount, 0))) * 100, 1)
-        ELSE 0 END AS margin_percent,
-      CASE WHEN COALESCE(inv.revenue, 0) > 0
-        THEN ROUND(COALESCE(ret.returns_amount, 0) / inv.revenue * 100, 1)
-        ELSE 0 END AS return_rate_percent,
-      CAST(julianday('now') - julianday(inv.last_purchase_date) AS INTEGER) AS days_since_last_purchase
-    FROM customers c
-    LEFT JOIN (
-      SELECT i.customer_id,
-        COUNT(DISTINCT i.id) AS invoice_count,
-        SUM(i.total) AS revenue,
-        SUM(cost_agg.cost) AS cost,
-        MAX(DATE(i.created_at)) AS last_purchase_date
-      FROM invoices i
-      LEFT JOIN (
-        SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS cost
-        FROM invoice_lines il
-        ${itemsCostJoin("il")}
-        ${stockCostJoin("il")}
-        GROUP BY il.invoice_id
-      ) cost_agg ON cost_agg.invoice_id = i.id
-      WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
-      GROUP BY i.customer_id
-    ) inv ON inv.customer_id = c.id
-    LEFT JOIN (
-      SELECT sr.customer_id,
-        SUM(sr.total) AS returns_amount,
-        SUM(srl.quantity * ${returnCostCol}) AS return_cost
-      FROM sales_returns sr
-      JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
-      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
-      LEFT JOIN items it ON it.id = srl.item_id
-      WHERE sr.status = 'active' ${addDateFilter("sr.created_at", startDate, endDate, returnParams)}
-      GROUP BY sr.customer_id
-    ) ret ON ret.customer_id = c.id
-    WHERE (COALESCE(inv.invoice_count, 0) > 0 OR COALESCE(ret.returns_amount, 0) > 0)
-      ${customer_id ? " AND c.id = ?" : ""}
-    ORDER BY gross_profit DESC
-  `).all(...invoiceParams, ...returnParams, ...(customer_id ? [customer_id] : []));
-}
-
-function dailyOwnerSnapshot(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const invoiceParams = [];
-  const returnParams = [];
-  const expenseParams = [];
-  const revenueParams = [];
-  const withdrawalParams = [];
-  const costCol = getCostColumn(opts.cost_method);
-  const returnCostCol = getReturnCostColumn(opts.cost_method);
-  const sales = db.prepare(`
-    SELECT COALESCE(SUM(i.total), 0) AS revenue,
-      COALESCE(SUM(i.subtotal), 0) AS selling_total,
-      COALESCE(SUM(i.discount), 0) AS discounts,
-      COALESCE(SUM(i.increase), 0) AS additions_amount,
-      COALESCE(SUM(cost_agg.cogs), 0) AS cogs,
-      COUNT(DISTINCT i.id) AS invoice_count
-    FROM invoices i
-    LEFT JOIN (
-      SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS cogs
-      FROM invoice_lines il
-      ${itemsCostJoin("il")}
-      ${stockCostJoin("il")}
-      GROUP BY il.invoice_id
-    ) cost_agg ON cost_agg.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invoiceParams)}
-  `).get(...invoiceParams);
-  const returns = db.prepare(`
-    SELECT COALESCE(SUM(sr.total), 0) AS returns_amount,
-      COALESCE(SUM(srl.quantity * ${returnCostCol}), 0) AS return_cost,
-      COUNT(DISTINCT sr.id) AS return_count
-    FROM sales_returns sr
-    LEFT JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
-    LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
-    LEFT JOIN items it ON it.id = srl.item_id
-    WHERE sr.status = 'active' ${addDateFilter("sr.created_at", startDate, endDate, returnParams)}
-  `).get(...returnParams);
-  const expenses = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
-    WHERE 1=1 ${addDateFilter("created_at", startDate, endDate, expenseParams)}
-  `).get(...expenseParams).total;
-  const revenues = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) AS total FROM revenues
-    WHERE 1=1 ${addDateFilter("created_at", startDate, endDate, revenueParams)}
-  `).get(...revenueParams).total;
-  const withdrawals = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) AS total FROM withdrawals
-    WHERE 1=1 ${addDateFilter("created_at", startDate, endDate, withdrawalParams)}
-  `).get(...withdrawalParams).total;
-  const overdue = db.prepare(`
-    SELECT COUNT(*) AS count
-    FROM ajal_debts
-    WHERE source_type = 'invoice' AND status NOT IN ('paid', 'voided')
-      AND due_date IS NOT NULL AND DATE(due_date) < DATE('now')
-  `).get().count;
-  const lowStock = db.prepare(`
-    SELECT COUNT(*) AS count
-    FROM items it
-    JOIN stock_levels sl ON sl.item_id = it.id
-    WHERE it.deleted_at IS NULL AND COALESCE(sl.quantity, 0) <= COALESCE(it.min_stock_qty, 0)
-  `).get().count;
-  const netSales = Number(sales.revenue || 0) - Number(returns.returns_amount || 0);
-  const grossProfit = netSales - Number(sales.cogs || 0) + Number(returns.return_cost || 0);
-  const netProfit = grossProfit + Number(revenues || 0) - Number(expenses || 0) - Number(withdrawals || 0);
-  return [{
-    period_start: startDate || null,
-    period_end: endDate || null,
-    invoice_count: sales.invoice_count,
-    selling_total: sales.selling_total,
-    total_discount: sales.discounts,
-    additions_amount: sales.additions_amount,
-    gross_sales: sales.revenue,
-    returns_amount: returns.returns_amount,
-    net_sales: netSales,
-    cogs: sales.cogs,
-    gross_profit: grossProfit,
-    expenses,
-    other_revenues: revenues,
-    withdrawals,
-    net_profit: netProfit,
-    overdue_receivables_count: overdue,
-    low_stock_alerts_count: lowStock,
-  }];
-}
-
 module.exports = {
   arAging,
   apAging,
   profitLoss,
   customerStatement: customerStatementV2,
-  topCustomers: topCustomersV2,
-  collectionEfficiency: collectionEfficiencyV2,
-  supplierStatement,
-  customerLoyalty: customerLoyaltyV2,
-  customerProfitabilityReport,
+  supplierStatement: supplierStatementV2,
   dailyOwnerSnapshot,
-  supplierPurchasesHistory,
-  supplierReturnsHistory,
 };

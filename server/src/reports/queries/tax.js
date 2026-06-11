@@ -1,112 +1,92 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
 
+// Sales-side tax report: group invoices by their stored tax_rate snapshot.
 function vat(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { customer_id } = opts;
-  return db.prepare(`
-    SELECT it.tax_rate,
-      SUM(il.line_total) AS taxable_sales,
-      SUM(il.line_total * it.tax_rate / 100) AS vat_amount,
+  const custClause = customer_id ? " AND i.customer_id = ?" : "";
+  const rows = db.prepare(`
+    SELECT
+      i.tax_rate,
+      i.tax_type,
+      SUM(CASE WHEN i.tax_type = 'exclusive' THEN i.total - i.tax_amount ELSE i.total END) AS taxable_sales,
+      SUM(COALESCE(i.tax_amount, 0)) AS vat_amount,
       COUNT(DISTINCT i.id) AS invoice_count
-    FROM invoice_lines il
-    JOIN invoices i ON i.id = il.invoice_id
-    JOIN items it ON it.id = il.item_id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
-      ${customer_id ? " AND i.customer_id = ?" : ""}
-    GROUP BY it.tax_rate
-    ORDER BY it.tax_rate DESC
+    FROM invoices i
+    WHERE i.status != 'cancelled'
+      AND COALESCE(i.tax_enabled, 0) = 1
+      AND COALESCE(i.tax_amount, 0) > 0
+      ${addDateFilter("i.created_at", startDate, endDate, params)}
+      ${custClause}
+    GROUP BY i.tax_rate, i.tax_type
+    ORDER BY i.tax_rate DESC
   `).all(...params, ...(customer_id ? [customer_id] : []));
+  return rows;
 }
 
 function outputVat(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  const { customer_id } = opts;
-  return db.prepare(`
-    SELECT it.tax_rate,
-      SUM(il.line_total) AS taxable_amount,
-      SUM(il.line_total * it.tax_rate / 100) AS vat_amount,
-      COUNT(DISTINCT i.id) AS invoice_count,
-      COUNT(DISTINCT i.customer_id) AS customer_count
-    FROM invoice_lines il
-    JOIN invoices i ON i.id = il.invoice_id
-    JOIN items it ON it.id = il.item_id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
-      ${customer_id ? " AND i.customer_id = ?" : ""}
-    GROUP BY it.tax_rate
-    ORDER BY it.tax_rate DESC
-  `).all(...params, ...(customer_id ? [customer_id] : []));
+  return vat(startDate, endDate, opts);
 }
 
 function inputVat(startDate, endDate, opts = {}) {
-  const db = getDb();
-  const params = [];
-  return db.prepare(`
-    SELECT it.tax_rate,
-      SUM(pl.line_total) AS taxable_amount,
-      SUM(pl.line_total * it.tax_rate / 100) AS vat_amount,
-      COUNT(DISTINCT p.id) AS purchase_count,
-      COUNT(DISTINCT p.supplier_id) AS supplier_count
-    FROM purchase_lines pl
-    JOIN purchases p ON p.id = pl.purchase_id
-    JOIN items it ON it.id = pl.item_id
-    WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
-    GROUP BY it.tax_rate
-    ORDER BY it.tax_rate DESC
-  `).all(...params);
+  // Purchases do not currently track invoice-level tax; return empty.
+  return [];
 }
 
 function vatFilingSummary(startDate, endDate, opts = {}) {
   const db = getDb();
+  const params1 = [], params2 = [];
   const { customer_id } = opts;
   const custClause = customer_id ? " AND i.customer_id = ?" : "";
   const custVals = customer_id ? [customer_id] : [];
-  const invParams1 = [], invParams2 = [], prchParams1 = [], prchParams2 = [];
-  return db.prepare(`
-    SELECT *, (output_vat - input_vat) AS net_vat FROM (
-    SELECT
-      (SELECT COALESCE(SUM(il.line_total), 0)
-       FROM invoice_lines il
-       JOIN invoices i ON i.id = il.invoice_id
-       JOIN items it ON it.id = il.item_id
-       WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invParams1)} ${custClause}) AS sales_total,
-      (SELECT COALESCE(SUM(il.line_total * it.tax_rate / 100), 0)
-       FROM invoice_lines il
-       JOIN invoices i ON i.id = il.invoice_id
-       JOIN items it ON it.id = il.item_id
-       WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, invParams2)} ${custClause}) AS output_vat,
-      (SELECT COALESCE(SUM(pl.line_total), 0)
-       FROM purchase_lines pl
-       JOIN purchases p ON p.id = pl.purchase_id
-       JOIN items it ON it.id = pl.item_id
-       WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, prchParams1)}) AS purchases_total,
-      (SELECT COALESCE(SUM(pl.line_total * it.tax_rate / 100), 0)
-       FROM purchase_lines pl
-       JOIN purchases p ON p.id = pl.purchase_id
-       JOIN items it ON it.id = pl.item_id
-       WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, prchParams2)}) AS input_vat
-    )
-  `).all(...invParams1, ...custVals, ...invParams2, ...custVals, ...prchParams1, ...prchParams2);
+
+  const salesTotal = db.prepare(`
+    SELECT COALESCE(SUM(i.total), 0) AS v
+    FROM invoices i
+    WHERE i.status != 'cancelled'
+      ${addDateFilter("i.created_at", startDate, endDate, params1)}
+      ${custClause}
+  `).get(...params1, ...custVals)?.v || 0;
+
+  const outputVatTotal = db.prepare(`
+    SELECT COALESCE(SUM(i.tax_amount), 0) AS v
+    FROM invoices i
+    WHERE i.status != 'cancelled'
+      AND COALESCE(i.tax_enabled, 0) = 1
+      ${addDateFilter("i.created_at", startDate, endDate, params2)}
+      ${custClause}
+  `).get(...params2, ...custVals)?.v || 0;
+
+  return [{
+    sales_total: salesTotal,
+    output_vat: outputVatTotal,
+    purchases_total: 0,
+    input_vat: 0,
+    net_vat: outputVatTotal,
+  }];
 }
 
 function returnsTaxEffect(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { customer_id } = opts;
+  const custClause = customer_id ? " AND sr.customer_id = ?" : "";
   return db.prepare(`
-    SELECT sr.doc_no AS return_ref,
+    SELECT
+      sr.doc_no AS return_ref,
       DATE(sr.created_at) AS date,
       sr.total AS return_amount,
       sr.customer_id,
-      ROUND(SUM(srl.line_total * COALESCE(it.tax_rate, 0) / 100) * sr.total / NULLIF(SUM(srl.line_total), 0), 2) AS vat_reversed,
+      COALESCE(sr.tax_amount, 0) AS vat_reversed,
       COUNT(srl.id) AS items_returned
     FROM sales_returns sr
     JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
-    LEFT JOIN items it ON it.id = srl.item_id
-    WHERE sr.status = 'active' ${addDateFilter("sr.created_at", startDate, endDate, params)}
-      ${customer_id ? " AND sr.customer_id = ?" : ""}
+    WHERE sr.status = 'active'
+      AND COALESCE(sr.tax_amount, 0) > 0
+      ${addDateFilter("sr.created_at", startDate, endDate, params)}
+      ${custClause}
     GROUP BY sr.id
     ORDER BY sr.created_at DESC
   `).all(...params, ...(customer_id ? [customer_id] : []));

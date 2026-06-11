@@ -56,6 +56,7 @@ const CLS_ARABIC = {
   "cls_supplier_aging": "تقادم ذمم الموردين",
   "cls_supplier_purchases": "سجل المشتريات",
   "cls_supplier_returns": "سجل المرتجعات",
+  "cls_supplier_reliability": "موثوقية الموردين",
   "cls_customer_statement": "كشف حساب العميل",
   "cls_customer_aging": "تقادم ذمم العملاء",
   "cls_top_customers": "أفضل العملاء",

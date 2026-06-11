@@ -16,7 +16,7 @@
           <div class="orbit-dot" id="orbit-dot"></div>
           
           <!-- Symmetrical Central Schematic HUD -->
-          <svg class="splash-svg-logo" viewBox="0 0 32 32" fill="none" stroke="#ffffff">
+          <svg class="splash-svg-logo" viewBox="0 0 32 32" fill="none" stroke="currentColor">
             <!-- Group 0: Files (Folder/Document) -->
             <g id="g-files" class="blueprint-group active">
               <path class="draw-path" d="M6,4 L18,4 L26,12 L26,28 L6,28 Z" stroke-width="1.2" stroke-linejoin="round"/>
@@ -57,19 +57,46 @@
           <span class="splash-dot-divider">•</span>
           <span class="splash-percentage" id="splash-percentage">0%</span>
         </div>
-        
+
+        <div class="splash-progress-track">
+          <div class="splash-progress-fill" id="splash-progress-fill"></div>
+        </div>
+
         <div class="splash-status" id="splash-status">جاري تهيئة ملفات النظام...</div>
       </div>
     </div>
 
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap');
+
+      @keyframes blob-drift {
+        0%, 100% { transform: scale(1) translate(0, 0); }
+        40%       { transform: scale(1.06) translate(12px, -10px); }
+        70%       { transform: scale(0.95) translate(-8px, 12px); }
+      }
+
+      @keyframes orbit-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+
+      @keyframes bar-fill {
+        from { transform: scaleX(0); }
+        to   { transform: scaleX(1); }
+      }
+
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
       body, html {
         margin: 0;
         padding: 0;
-        background: #050505;
+        background: #eef2f7;
         height: 100vh;
         overflow: hidden;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: 'Tajawal', system-ui, sans-serif;
       }
 
       #root {
@@ -77,13 +104,10 @@
         height: 100%;
       }
 
+      /* ── Aurora background ── */
       .splash-container {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: #050505;
+        inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -92,62 +116,115 @@
         direction: rtl;
         will-change: opacity, transform;
         transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+
+        background:
+          radial-gradient(ellipse 90% 70% at 5%  10%,  rgba(5,  150, 105, 0.18) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 80% at 95% 95%,  rgba(56, 189, 248, 0.12) 0%, transparent 55%),
+          radial-gradient(ellipse 60% 55% at 85% 5%,   rgba(16, 185, 129, 0.14) 0%, transparent 50%),
+          radial-gradient(ellipse 55% 50% at 10% 90%,  rgba(99, 102, 241, 0.07) 0%, transparent 50%),
+          #f0f4f8;
+      }
+
+      /* Slow-drifting dot grid */
+      .splash-container::before {
+        content: '';
+        position: absolute;
+        inset: -10%;
+        background-image: radial-gradient(circle, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+        background-size: 24px 24px;
+        pointer-events: none;
+        animation: blob-drift 16s ease-in-out infinite;
       }
 
       .splash-container.fade-out {
         opacity: 0;
-        transform: scale(0.975);
+        transform: scale(0.97);
         pointer-events: none;
       }
 
+      /* ── Frosted-glass content card ── */
       .splash-center {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        padding: 44px 60px 40px;
+        background: rgba(255, 255, 255, 0.62);
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        border-radius: 32px;
+        box-shadow:
+          0 2px 0   0   rgba(255, 255, 255, 0.8) inset,
+          0 8px 32px    rgba(15,  23,  42,  0.08),
+          0 32px 64px   rgba(5,  150, 105,  0.06);
+        animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
-      /* Logo and Orbit Path */
+      /* ── Icon ring ── */
       .logo-orbit-container {
         position: relative;
-        width: 120px;
-        height: 120px;
+        width: 110px;
+        height: 110px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 32px;
+        margin-bottom: 28px;
       }
 
+      /* Outer emerald ring – always visible */
       .orbit-path {
         position: absolute;
-        width: 90px;
-        height: 90px;
-        border: 1px dashed rgba(255, 255, 255, 0.05);
+        width: 96px;
+        height: 96px;
+        border: 1.5px solid rgba(5, 150, 105, 0.2);
         border-radius: 50%;
         pointer-events: none;
       }
 
-      .orbit-dot {
+      /* Spinning arc */
+      .orbit-path::after {
+        content: '';
         position: absolute;
-        width: 3.5px;
-        height: 3.5px;
-        background: #ffffff;
+        inset: -1.5px;
         border-radius: 50%;
-        box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
-        will-change: transform;
+        border: 1.5px solid transparent;
+        border-top-color: #059669;
+        border-right-color: rgba(5, 150, 105, 0.35);
+        animation: orbit-spin 2.4s linear infinite;
       }
 
+      /* Soft inner glow disc */
+      .logo-orbit-container::before {
+        content: '';
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        background: radial-gradient(circle, rgba(5, 150, 105, 0.12) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        animation: blob-drift 8s ease-in-out infinite alternate;
+      }
+
+      /* Orbit dot hidden — replaced by spinning arc above */
+      .orbit-dot { display: none; }
+
+      /* ── SVG Icon ── */
       .splash-svg-logo {
-        width: 48px;
-        height: 48px;
+        width: 56px;
+        height: 56px;
+        color: #059669;
+        position: relative;
+        z-index: 1;
       }
 
-      /* Symmetrical Morphing Blueprint Groups */
       .blueprint-group {
         opacity: 0;
-        transform: scale(0.85);
+        transform: scale(0.8);
         transform-origin: center center;
-        transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
         pointer-events: none;
       }
 
@@ -157,97 +234,101 @@
       }
 
       .draw-path {
-        stroke: #ffffff;
+        stroke: #059669;
         stroke-linecap: round;
         stroke-linejoin: round;
         will-change: stroke-dashoffset;
       }
 
-      /* Typography */
+      /* ── Typography ── */
       .splash-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #ffffff;
-        margin: 0 0 6px 0;
-        letter-spacing: 0.05em;
+        font-size: 22px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 4px 0;
+        letter-spacing: 0.01em;
         text-align: center;
-        opacity: 0.95;
+        font-family: 'Tajawal', sans-serif;
       }
 
       .splash-subtitle-row {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        margin-bottom: 20px;
+        gap: 10px;
+        margin-bottom: 24px;
       }
 
       .splash-subtitle {
         font-size: 9.5px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.35);
-        letter-spacing: 0.2em;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
+        font-family: 'Outfit', sans-serif;
       }
 
       .splash-dot-divider {
-        font-size: 8px;
-        color: rgba(255, 255, 255, 0.15);
+        font-size: 7px;
+        color: #cbd5e1;
       }
 
       .splash-percentage {
-        font-size: 10.5px;
-        font-family: monospace;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.6);
-        letter-spacing: 0.05em;
+        font-size: 9.5px;
+        font-family: 'Outfit', monospace;
+        font-weight: 700;
+        color: #059669;
+        letter-spacing: 0.06em;
+      }
+
+      /* ── Thin progress bar ── */
+      .splash-progress-track {
+        width: 160px;
+        height: 2.5px;
+        background: rgba(15, 23, 42, 0.07);
+        border-radius: 99px;
+        overflow: hidden;
+        margin-bottom: 14px;
+      }
+
+      .splash-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #059669, #34d399);
+        border-radius: 99px;
+        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 6px rgba(5, 150, 105, 0.5);
       }
 
       .splash-status {
         font-size: 11px;
-        font-weight: 400;
-        color: rgba(255, 255, 255, 0.4);
+        font-weight: 500;
+        color: #94a3b8;
         text-align: center;
-        min-height: 20px;
+        min-height: 18px;
         transition: opacity 0.25s ease;
+        font-family: 'Tajawal', sans-serif;
+        letter-spacing: 0.01em;
       }
     </style>
 
     <script>
       (function() {
-        const percentTxt = document.getElementById('splash-percentage');
-        const statusTxt = document.getElementById('splash-status');
-        
+        const percentTxt   = document.getElementById('splash-percentage');
+        const statusTxt    = document.getElementById('splash-status');
+        const progressFill = document.getElementById('splash-progress-fill');
+
         // Steps milestones
         const steps = [
-          { target: 25, ar: "الخطوة ٠١ // جاري تهيئة ملفات النظام...", groupId: "g-files" },
-          { target: 60, ar: "الخطوة ٠٢ // الاتصال بقاعدة البيانات المحلية...", groupId: "g-db" },
-          { target: 85, ar: "الخطوة ٠٣ // التحقق من ترخيص التشغيل والأمان...", groupId: "g-sec" },
-          { target: 100, ar: "الخطوة ٠٤ // جاري تشغيل واجهة المعاملات...", groupId: "g-logo" }
+          { target: 25,  ar: "الخطوة ٠١ // جاري تهيئة ملفات النظام...",          groupId: "g-files" },
+          { target: 60,  ar: "الخطوة ٠٢ // الاتصال بقاعدة البيانات المحلية...",  groupId: "g-db"    },
+          { target: 85,  ar: "الخطوة ٠٣ // التحقق من ترخيص التشغيل والأمان...", groupId: "g-sec"   },
+          { target: 100, ar: "الخطوة ٠٤ // جاري تشغيل واجهة المعاملات...",       groupId: "g-logo"  }
         ];
 
         let currentPercent = 0;
         let currentStepIdx = 0;
         let isPaused = false;
-        
-        // 1. Math-based Kinetic Orbit Dot Animation (60FPS)
-        let angle = 0;
-        let orbitSpeed = 0.035;
-        
-        function animateOrbit() {
-          angle -= orbitSpeed;
-          
-          // Radius of dashed orbit is 45px
-          const x = Math.cos(angle) * 45;
-          const y = Math.sin(angle) * 45;
-          
-          const dot = document.getElementById('orbit-dot');
-          if (dot) {
-            dot.style.transform = `translate(${x}px, ${y}px)`;
-          }
-          requestAnimationFrame(animateOrbit);
-        }
-        animateOrbit();
 
         // 2. High-performance dynamic SVG blueprint drawing engine
         function drawGroupSVG(groupId) {
@@ -256,15 +337,16 @@
           
           const paths = group.querySelectorAll('.draw-path');
           paths.forEach(p => {
-            // Measure or fallback
+            // Measure or fallback — getTotalLength throws on non-rendered elements
             let length = 80;
-            if (p.getTotalLength) {
-              length = p.getTotalLength();
-            } else {
+            try {
+              if (p.getTotalLength) length = p.getTotalLength();
+            } catch (_) {
               const tag = p.tagName.toLowerCase();
-              if (tag === 'rect') length = 96;
-              if (tag === 'ellipse') length = 38;
-              if (tag === 'circle') length = 32;
+              if (tag === 'rect')    length = 96;
+              else if (tag === 'ellipse') length = 38;
+              else if (tag === 'circle')  length = 32;
+              else if (tag === 'line')    length = 30;
             }
             
             p.style.strokeDasharray = length;
@@ -336,6 +418,7 @@
           currentPercent = Math.min(100, currentPercent + increment);
           
           if (percentTxt) percentTxt.textContent = currentPercent + '%';
+          if (progressFill) progressFill.style.width = currentPercent + '%';
 
           const tickTime = Math.floor(Math.random() * 25) + 30; // variable tick
           setTimeout(update, tickTime);

@@ -248,6 +248,7 @@ export default function SalesReturnFormPage() {
   const [printPreview, setPrintPreview] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
+  const [returnNotes, setReturnNotes] = useState("");
 
   const itemInputRef = useRef(null);
   const stagingWHRef = useRef(null);
@@ -356,6 +357,7 @@ export default function SalesReturnFormPage() {
       setRefundMethod(sr.refund_method || "cash_back");
       if (sr.refund_method === "split") setSplitCashAmount(String(sr.cash_amount || ""));
       setReason(sr.reason || "other");
+      setReturnNotes(sr.notes || "");
       setHeaderDiscount(Number(sr.discount || 0));
       setHeaderIncrease(Number(sr.increase || 0));
       setAdjustmentTouched(true); // saved values — do not auto-recompute over the user's data
@@ -655,6 +657,7 @@ export default function SalesReturnFormPage() {
       discount: Number(headerDiscount) || 0,
       increase: Number(headerIncrease) || 0,
       supervisor_override: supervisorOverride,
+      notes: returnNotes || null,
     };
     setIsSaving(true); setMessage({ text: "", type: "" });
     try {
@@ -1124,6 +1127,19 @@ export default function SalesReturnFormPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Notes */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">ملاحظات</label>
+              <textarea
+                rows={2}
+                value={returnNotes}
+                onChange={e => setReturnNotes(e.target.value)}
+                disabled={isLocked}
+                placeholder="ملاحظة اختيارية على المرتجع…"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              />
             </div>
 
             {/* Action buttons — mirrors header */}

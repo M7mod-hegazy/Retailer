@@ -16,6 +16,9 @@
     "start:quick": "npm run build --prefix client && electron .",
     "build": "npm run build --prefix client",
     "dist": "npm run electron:rebuild && electron-builder --win",
+    "dist:win11": "npm run electron:rebuild && electron-builder --win --config electron-builder-x64-win11.yml",
+    "dist:win7": "npm run electron:rebuild && electron-builder --win --config electron-builder-x64-win7.yml",
+    "dist:win7:ia32": "electron-rebuild -f -w better-sqlite3 -a ia32 && electron-builder --win --config electron-builder-ia32-win7.yml",
     "windows:configure-users": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/configure-local-users.ps1",
     "windows:harden-acl": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/harden-windows-policy.ps1",
     "bootstrap": "npm install --workspaces",
@@ -25,8 +28,8 @@
     "sign": "node tools/license-signer/sign-license.js",
     "sign:gui": "cross-env ELECTRON_RUN_AS_NODE= electron tools/license-signer/signer-gui/main.js",
     "node:rebuild": "npm rebuild better-sqlite3",
-    "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
-    "postinstall": "electron-rebuild -f -w better-sqlite3"
+    "electron:rebuild": "electron-rebuild -f -w better-sqlite3 -a x64",
+    "postinstall": "electron-rebuild -f -w better-sqlite3 -a x64"
   },
   "repository": {
     "type": "git",

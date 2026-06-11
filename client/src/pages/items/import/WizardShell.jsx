@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Database, Loader2 } from "lucide-react";
 import Step1Upload from "./steps/Step1Upload";
 import Step2Columns from "./steps/Step2Columns";
 import FixStep from "./steps/FixStep";
@@ -99,6 +99,15 @@ export default function WizardShell({ wizard }) {
       setTransition(null);
     }, copy.duration);
   }
+
+  // ── Auto-redirect to done on successful import ─────────────────────────
+  const prevResultRef = useRef(wizard.result);
+  useEffect(() => {
+    if (!prevResultRef.current && wizard.result) {
+      setActiveStep("done");
+    }
+    prevResultRef.current = wizard.result;
+  }, [wizard.result]);
 
   // ── Validation ───────────────────────────────────────────────────────────
   const validationStatus = useMemo(() => {
@@ -319,6 +328,26 @@ export default function WizardShell({ wizard }) {
               }`}
             >
               التالي <ChevronLeft className="h-5 w-5" />
+            </button>
+          </div>
+        ) : currentStep.id === "preview" ? (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveStep("final")}
+              disabled={wizard.loading || Boolean(transition)}
+              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 disabled:opacity-40"
+            >
+              رجوع للجدول
+            </button>
+            <button
+              type="button"
+              onClick={() => wizard.runImport({ dryRun: false })}
+              disabled={!wizard.preview || wizard.loading || Boolean(transition)}
+              className="inline-flex items-center gap-2.5 rounded-xl bg-emerald-700 px-6 py-3 text-sm font-black text-white shadow-md shadow-emerald-700/10 transition-all duration-200 hover:bg-emerald-800 hover:shadow-lg active:scale-95 disabled:opacity-40"
+            >
+              <Database className="h-4.5 w-4.5" />
+              {wizard.loading ? "جاري التنفيذ..." : "تنفيذ فعلي الآن"}
             </button>
           </div>
         ) : (
