@@ -49,7 +49,10 @@ function SidebarItem({ item, location, updateAvailable, categoryCount }) {
         )}
         <span className="text-[11.5px] truncate">{item.label}</span>
         {item.pageKey === "updates" && updateAvailable && (
-          <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 leading-none">
+            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+            جديد
+          </span>
         )}
       </div>
       {item.path === "/definitions/items" && categoryCount !== null && (
@@ -140,7 +143,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
               >
                 <item.icon strokeWidth={active ? 2 : 1.5} className="h-[18px] w-[18px]" />
                 {item.pageKey === "updates" && updateAvailable && (
-                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+                  <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white animate-ping" />
                 )}
               </Link>
             );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
+import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
@@ -322,6 +322,8 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         className={`group block relative h-full rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
           active
             ? "bg-zinc-950 text-white shadow-xl shadow-zinc-900/20"
+            : item.pageKey === "updates" && updateAvailable
+            ? "bg-white border-2 border-emerald-300 shadow-[0_0_30px_-8px_rgba(16,185,129,0.15)] hover:shadow-[0_0_40px_-8px_rgba(16,185,129,0.25)] hover:-translate-y-0.5"
             : "bg-white border border-zinc-200/50 hover:border-transparent hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:z-10"
         }`}
       >
@@ -391,7 +393,10 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         </div>
 
         {item.pageKey === "updates" && updateAvailable && (
-          <span className="absolute top-6 left-6 h-3 w-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-pulse" />
+          <div className="absolute top-5 left-5 flex items-center gap-1.5 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-emerald-500/30 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            تحديث
+          </div>
         )}
       </Link>
     </motion.div>
@@ -414,8 +419,9 @@ export default function DashboardPage() {
   const missingCritical = findMissingCritical(settings, "ar");
   const showBanner = !checkingEmpty && (missingCritical.length > 0 || noItems);
 
-  useEffect(() => {
+  const fetchDashboardData = useCallback(() => {
     let cancelled = false;
+    setCheckingEmpty(true);
     Promise.all([
       api.get("/api/categories"),
       api.get("/api/items"),
@@ -436,6 +442,19 @@ export default function DashboardPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const cancel = fetchDashboardData();
+    return cancel;
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    function onFocus() {
+      fetchDashboardData();
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchDashboardData]);
 
   const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey));
   const visibleModules = NAV_MODULES.map((module) => ({
@@ -480,7 +499,11 @@ export default function DashboardPage() {
               <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-1">
                 مرحباً بك، <span className="text-emerald-400">{user?.name?.split(" ")[0] || "مدير"}</span>
               </h1>
-              <p className="text-sm font-bold text-zinc-400">نظام إدارة الموارد ونقاط البيع المتكامل</p>
+              <p className="text-sm font-bold text-zinc-400">
+                {settings.company_name || settings.branch_name
+                  ? `${settings.company_name || ""} ${settings.company_name && settings.branch_name ? "—" : ""} ${settings.branch_name || ""}`
+                  : "نظام إدارة الموارد ونقاط البيع المتكامل"}
+              </p>
             </div>
           </div>
         </header>
@@ -542,6 +565,30 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
+      {/* Update available banner */}
+      {updateAvailable && (
+        <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
+          <div className="rounded-[2rem] border-2 border-emerald-200 bg-emerald-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-emerald-200/20 backdrop-blur-sm">
+            <div className="flex items-center gap-5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                <ArrowDownCircle className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-emerald-900">تحديث جديد متاح!</h3>
+                <p className="mt-1 text-sm font-bold text-emerald-700">إصدار جديد من النظام متاح للتحميل. انتقل إلى صفحة التحديثات للتثبيت.</p>
+              </div>
+            </div>
+            <Link
+              to="/updates"
+              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-emerald-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-700/20 transition-all duration-200 hover:bg-emerald-800 hover:shadow-xl active:scale-95"
+            >
+              <ArrowUpRight className="h-4.5 w-4.5" />
+              الانتقال للتحديثات
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Critical settings warning */}
       {!checkingEmpty && (
         <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
@@ -578,7 +625,7 @@ export default function DashboardPage() {
       )}
 
       {/* Command center */}
-      <div className={`max-w-7xl mx-auto w-full px-6 md:px-12 relative z-20 pb-20 ${showBanner ? "mt-6" : "-mt-10"}`}>
+      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 relative z-20 pb-20 mt-6">
 
         {/* Quick-action legend */}
         <div className="flex items-center gap-2 mb-5">

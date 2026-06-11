@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowDownCircle,
   Banknote,
+  Building2,
   ChevronDown,
   CreditCard,
   Gift,
@@ -3194,6 +3195,12 @@ export default function POSPage() {
                   value={new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
                   className="w-[120px] rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-mono font-bold text-slate-400 cursor-default text-center select-none disabled:opacity-70"
                 />
+              )}
+              {storeSettings.branch_name && (
+                <div className="flex items-center gap-1.5 rounded-sm border border-emerald-200 bg-emerald-50 px-2 py-1">
+                  <Building2 className="h-3 w-3 text-emerald-500" />
+                  <span className="text-[11px] font-bold text-emerald-700 max-w-[100px] truncate">{storeSettings.branch_name}</span>
+                </div>
               )}
               <div className="flex items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-50 px-2 py-1">
                 <User className="h-3 w-3 text-slate-400" />

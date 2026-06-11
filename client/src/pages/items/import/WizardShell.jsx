@@ -16,7 +16,7 @@ function makeSteps(wizard) {
     { id: "upload", title: "اختيار الملف", helper: "ابدأ بملف Excel أو CSV واضح العناوين.", always: true, Component: Step1Upload },
     { id: "columns", title: "ربط الأعمدة", helper: "راجع كل عمود من الملف واربطه بحقل النظام المناسب.", always: true, Component: Step2Columns },
     { id: "warehouses", title: "تحديد المخازن", helper: "أنشئ مخازن الملف الناقصة أو اختر مخزن النظام الذي سيستلم الكمية.", isApplicable: () => wizard.warehouseErrorRows.length > 0, Component: (props) => <FixStep {...props} type="warehouse" /> },
-    { id: "units", title: "تحديد الوحدات", helper: "أنشئ وحدات الملف الناقصة أو حولها إلى وحدات موجودة داخل النظام.", isApplicable: () => wizard.unitErrorRows.length > 0, Component: (props) => <FixStep {...props} type="unit" /> },
+    { id: "units", title: "تحديد الوحدات", helper: "أنشئ وحدات الملف الناقصة أو حولها إلى وحدات موجودة داخل النظام، أو اختر وحدة افتراضية لكل الصفوف.", always: true, Component: (props) => <FixStep {...props} type="unit" /> },
     { id: "categories", title: "الفئات والأكواد", helper: "راجع بادئات SKU وأنشئ الفئات الناقصة أو عين أكوادا للصفوف الفارغة.", isApplicable: () => wizard.missingSkuCategories.length > 0 || wizard.codelessRows.length > 0, Component: Step5Categories },
     { id: "sku-conflicts", title: "تعارضات SKU", helper: "اختر أي صف يحتفظ بالكود عندما يظهر نفس SKU لأكثر من صنف.", isApplicable: () => wizard.fileSkuConflicts.length > 0, Component: StepSkuConflicts },
     { id: "duplicates", title: "تكرارات المخزون", helper: "اختر دمج الكميات أو توزيعها على المخازن لكل منتج مكرر.", isApplicable: () => wizard.duplicateGroups.length > 0, Component: Step6Duplicates },

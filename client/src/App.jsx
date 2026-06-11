@@ -5,7 +5,7 @@ import { usePerformanceStore } from "./stores/performanceStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppShell from "./components/layout/AppShell";
 import ServerDownOverlay from "./components/ServerDownOverlay";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
 import ScreenLock from "./components/auth/ScreenLock";
 import GlobalSearchPage from "./pages/search/GlobalSearchPage";
@@ -89,6 +89,7 @@ const BankOperationsPage = lazy(() => import("./pages/operations/BankOperationsP
 const ExpenseCategoriesPage = lazy(() => import("./pages/definitions/ExpenseCategoriesPage"));
 const CustomerAccountsPage = lazy(() => import("./pages/accounts/CustomerAccountsPage"));
 const SupplierAccountsPage = lazy(() => import("./pages/accounts/SupplierAccountsPage"));
+const AccountImportPage = lazy(() => import("./pages/accounts/import/AccountImportPage"));
 const UpdatesPage = lazy(() => import("./pages/updates/UpdatesPage"));
 const HistoryPage = lazy(() => import("./pages/history/HistoryPage"));
 
@@ -160,10 +161,24 @@ export default function App() {
 
   useEffect(() => {
     const cleanups = [
-      window.electronAPI?.on('update:available', (info) => setAvailable(info)),
+      window.electronAPI?.on('update:available', (info) => {
+        setAvailable(info);
+        toast.success("يتوفر تحديث جديد للنظام!", {
+          icon: "⬇️",
+          style: { background: "#ecfdf5", color: "#064e3b", border: "1px solid #a7f3d0", fontWeight: 700 },
+          duration: 6000,
+        });
+      }),
       window.electronAPI?.on('update:not-available', () => setNotAvailable()),
       window.electronAPI?.on('update:progress', (p) => setProgress(p)),
-      window.electronAPI?.on('update:downloaded', (info) => setDownloaded(info)),
+      window.electronAPI?.on('update:downloaded', (info) => {
+        setDownloaded(info);
+        toast.success("تم تحميل التحديث! أعد التشغيل للتثبيت.", {
+          icon: "✅",
+          style: { background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", fontWeight: 700 },
+          duration: 8000,
+        });
+      }),
       window.electronAPI?.on('update:error', (e) => setError(e)),
     ];
     return () => {
@@ -242,6 +257,8 @@ export default function App() {
                     <Route path="payments/new" element={<PermissionRoute page="payments"><PaymentFormPage /></PermissionRoute>} />
                     <Route path="accounts/customers" element={<PermissionRoute page="customer_accounts"><CustomerAccountsPage /></PermissionRoute>} />
                     <Route path="accounts/suppliers" element={<PermissionRoute page="supplier_accounts"><SupplierAccountsPage /></PermissionRoute>} />
+                    <Route path="accounts/customers/import" element={<PermissionRoute page="customer_accounts"><AccountImportPage entityType="customers" /></PermissionRoute>} />
+                    <Route path="accounts/suppliers/import" element={<PermissionRoute page="supplier_accounts"><AccountImportPage entityType="suppliers" /></PermissionRoute>} />
                     <Route path="operations/ajal-tracker" element={<Navigate to="/accounts/customers" replace />} />
                     <Route path="operations/cheques" element={<PermissionRoute page="cheques"><ChequesPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<Navigate to="/operations/payment-methods" replace />} />

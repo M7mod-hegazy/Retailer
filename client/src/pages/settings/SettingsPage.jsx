@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info } from "lucide-react";
+import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -333,9 +333,6 @@ export default function SettingsPage() {
       originalRef.current = JSON.parse(JSON.stringify(settings));
       toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully");
       applyFontSettings(settings);
-      if (window.electronAPI?.invoke) {
-        window.electronAPI.invoke("app:set-icon", { logo_url: settings.logo_url || "" }).catch(() => {});
-      }
     } catch {
       toast.error(isRTL ? "فشل حفظ الإعدادات" : "Failed to save settings");
     } finally {
@@ -449,31 +446,33 @@ export default function SettingsPage() {
          </div>
 
          {/* Content Area */}
-         <div className="p-6 md:p-8 overflow-y-auto w-full">
+          <div className="p-6 md:p-8 overflow-y-auto w-full">
+            {/* Critical settings warning — visible on every tab for live feedback */}
+            <div className={activeTab !== "identity" ? "mb-6" : ""}>
+              <CriticalSettingsWarning
+                settings={settings}
+                onNavigate={(key) => {
+                  const tab = fieldKeyToTab(key);
+                  handleTabClick(tab);
+                  setTimeout(() => {
+                    const el = document.querySelector(`[data-field-key="${key}"]`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: "smooth", block: "center" });
+                      el.classList.add("ring-2", "ring-amber-400", "rounded-sm");
+                      el.closest("label")?.classList.add("critical-field-highlight");
+                      setTimeout(() => {
+                        el.classList.remove("ring-2", "ring-amber-400", "rounded-sm");
+                        el.closest("label")?.classList.remove("critical-field-highlight");
+                      }, 3000);
+                    }
+                  }, 500);
+                }}
+                lang={isRTL ? "ar" : "en"}
+              />
+            </div>
+
             {activeTab === "identity" && (
-              <div className="space-y-6">
-                <CriticalSettingsWarning
-                  settings={settings}
-                  onNavigate={(key) => {
-                    const tab = fieldKeyToTab(key);
-                    handleTabClick(tab);
-                    setTimeout(() => {
-                      const el = document.querySelector(`[data-field-key="${key}"]`);
-                      if (el) {
-                        el.scrollIntoView({ behavior: "smooth", block: "center" });
-                        el.classList.add("ring-2", "ring-amber-400", "rounded-sm");
-                        el.closest("label")?.classList.add("critical-field-highlight");
-                        setTimeout(() => {
-                          el.classList.remove("ring-2", "ring-amber-400", "rounded-sm");
-                          el.closest("label")?.classList.remove("critical-field-highlight");
-                        }, 3000);
-                      }
-                    }, 500);
-                  }}
-                  lang={isRTL ? "ar" : "en"}
-                />
-                <AppIdentityTab settings={settings} onChange={handleChange} onSave={handleSubmit} lang={isRTL ? "ar" : "en"} />
-              </div>
+              <AppIdentityTab settings={settings} onChange={handleChange} onSave={handleSubmit} lang={isRTL ? "ar" : "en"} />
             )}
 
             {activeTab === "general" && (
@@ -576,6 +575,50 @@ export default function SettingsPage() {
                     </button>
                     <p className="mt-2 text-[11px] font-bold text-slate-400">عند التفعيل، يُصدر النظام صوت تنبيه (بييب) عند إضافة صنف إلى الفاتورة أو مسح باركود. يُفضّل إيقافه في البيئات الهادئة.</p>
                   </div>
+                </section>
+
+                {/* Smart Lock */}
+                <section>
+                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-violet-600 text-white">
+                      <Lock className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">قفل الشاشة الذكي</h3>
+                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+                        قفل الشاشة تلقائياً بعد فترة من عدم النشاط لحماية الجلسة
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">تفعيل القفل الذكي</h4>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={Boolean(v(settings, "smart_lock_enabled"))}
+                      onClick={() => handleChange("smart_lock_enabled", v(settings, "smart_lock_enabled") ? 0 : 1)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${v(settings, "smart_lock_enabled") ? "bg-emerald-500" : "bg-slate-300"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${v(settings, "smart_lock_enabled") ? "-translate-x-6" : "-translate-x-1"}`} />
+                    </button>
+                    <p className="mt-2 text-[11px] font-bold text-slate-400">عند التفعيل، يُقفل النظام تلقائياً بعد فترة من عدم استخدام لوحة المفاتيح أو الفأرة أو اللمس</p>
+                  </div>
+
+                  <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 max-w-lg mt-6">
+                    <DenseInput
+                      label="مدة عدم النشاط (دقائق)"
+                      metaKey="smart_lock_timeout_minutes"
+                      type="number"
+                      min={1}
+                      max={999}
+                      value={v(settings, "smart_lock_timeout_minutes")}
+                      onChange={(e) => handleChange("smart_lock_timeout_minutes", Number(e.target.value))}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] font-bold text-slate-400 leading-relaxed max-w-lg">
+                    عدد الدقائق التي يمكن أن يبقى فيها النظام دون استخدام قبل أن يُقفل تلقائياً. القيمة الافتراضية: 15 دقيقة
+                  </p>
                 </section>
 
                 {/* Alerts */}

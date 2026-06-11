@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ChevronDown, Calendar, Clock, HardDrive, Image as ImageIcon,
+  ChevronDown, Calendar, Clock, HardDrive, Image as ImageIcon, Tag,
   RotateCcw, Download, Loader2, FolderOpen, AlertTriangle,
 } from "lucide-react";
 import api from "../../../services/api";
@@ -41,6 +41,11 @@ function SnapshotRow({ snap, onRestore, onExport, busy, perms }) {
           {snap.imageCount != null && (
             <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
               <ImageIcon className="h-3 w-3" /> {snap.imageCount}
+            </span>
+          )}
+          {snap.appVersion && (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
+              <Tag className="h-3 w-3" /> v{snap.appVersion}
             </span>
           )}
         </div>

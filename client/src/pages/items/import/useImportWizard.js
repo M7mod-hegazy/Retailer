@@ -630,9 +630,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
       if (parsed.rows.length < 2) {
         throw new Error("الملف لا يحتوي على بيانات كافية.");
       }
-      if (parsed.rows.length > 1001) {
-        throw new Error("الحد الأقصى للملف هو 1000 صنف.");
-      }
+
       const detected = detectHeaderRow(parsed.rows);
       const nextMapping = detectColumnHeaders(parsed.rows[detected.index] || []);
       const parsedDataRows = parseMappedRows(parsed.rows, detected.index, nextMapping);

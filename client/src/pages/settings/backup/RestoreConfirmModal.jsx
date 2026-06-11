@@ -36,6 +36,7 @@ export default function RestoreConfirmModal({ open, snapshot, onClose, onConfirm
             <div>التاريخ: <span className="text-slate-800">{formatDateTime(snapshot.createdAt)}</span></div>
             <div>الحجم: <span className="text-slate-800">{formatBytes(snapshot.sizeBytes)}</span></div>
             {snapshot.label && <div>الوصف: <span className="text-slate-800">“{snapshot.label}”</span></div>}
+            {snapshot.appVersion && <div>إصدار النظام: <span className="text-slate-800">v{snapshot.appVersion}</span></div>}
             {snapshot.legacy && <div className="text-rose-600">نسخة قديمة — لا تحتوي على الصور.</div>}
           </div>
         )}

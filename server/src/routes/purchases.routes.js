@@ -195,7 +195,11 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   const allowedSort = ["created_at", "total", "doc_no", "payment_method", "supplier_name"];
   const safeSort = allowedSort.includes(sort) ? sort : "created_at";
   const safeDir = dir === "asc" ? "ASC" : "DESC";
-  const conditions = ["p.status != 'cancelled' AND p.status != 'voided'"];
+  const conditions = [
+    "p.status != 'cancelled' AND p.status != 'voided'",
+    // Hide import opening-balance purchases (OB-IMPORT-*): inventory-valuation rows, not real spend.
+    "COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%'",
+  ];
   const params = [];
   if (user_id) { conditions.push("p.created_by = ?"); params.push(user_id); }
   if (search) {

@@ -26,6 +26,6 @@ function fileFilter(_req, file, cb) {
   cb(null, allowed.includes(file.mimetype));
 }
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
 module.exports = { upload, getUploadsDir };

@@ -362,6 +362,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
           LEFT JOIN suppliers s ON s.id = p.supplier_id
           LEFT JOIN users u ON u.id = p.created_by
           WHERE date(p.created_at) = ? AND COALESCE(p.status, '') NOT IN ('voided', 'cancelled')
+            AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%'
             AND (? = '' OR p.doc_no LIKE ? OR s.name LIKE ? OR CAST(p.total AS TEXT) LIKE ?)
         `,
         params: [targetDate, search, like, like, like],

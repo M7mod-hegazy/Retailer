@@ -2,11 +2,17 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { partyTxnSum } = require("../services/partyBalanceService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 router.use(auditMutation);
+
+function base64ToBuffer(b64) {
+  if (!b64) return null;
+  return Buffer.from(b64, 'base64');
+}
 
 function ensureNotesSchema(db) {
   try {
@@ -182,6 +188,135 @@ router.post("/:id/notes", requirePagePermission("suppliers", "add"), (req, res) 
     .run(req.params.id, note, req.user?.id || null);
   const newNote = getDb().prepare("SELECT n.*, u.username as user_name FROM supplier_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
   res.status(201).json({ success: true, data: newNote });
+});
+
+router.post("/import", requirePagePermission("suppliers", "add"), (req, res) => {
+  const { rows, file_name, file_mime, file_base64 } = req.body || {};
+  if (!Array.isArray(rows) || !rows.length) {
+    return res.status(400).json({ success: false, message: "لا توجد صفوف للاستيراد" });
+  }
+  const db = getDb();
+  let inserted = 0, updated = 0, skipped = 0;
+  const batchRows = [];
+
+  try {
+    db.transaction(() => {
+      for (const row of rows) {
+        const name = String(row.name || "").trim();
+        if (!name) { skipped++; continue; }
+
+        if (row.action === "insert") {
+          const info = db.prepare(
+            `INSERT INTO suppliers (name, phone, addresses, opening_balance, is_active) VALUES (?, ?, ?, ?, 1)`
+          ).run(name, row.phone || null, row.address || null, Number(row.opening_balance || 0));
+          batchRows.push({ entity_id: info.lastInsertRowid, action: "insert", prior_json: null });
+          inserted++;
+        } else if (row.action === "update" && row.existing_id) {
+          const prior = db.prepare("SELECT * FROM suppliers WHERE id = ?").get(Number(row.existing_id));
+          if (!prior) { skipped++; continue; }
+          // Treat the imported value as the TRUE opening and reconcile so existing
+          // activity is preserved: live = importedOpening + Σ(transactions). For a
+          // supplier with no transactions this is a plain overwrite. Overwriting the
+          // live balance directly would corrupt statements/aging/payables.
+          const importedOpening = Number(row.opening_balance || 0);
+          const reconciledBalance = importedOpening + partyTxnSum(db, "supplier", Number(row.existing_id));
+          db.prepare(
+            `UPDATE suppliers SET name=?, phone=?, addresses=?, opening_balance=? WHERE id=?`
+          ).run(name, row.phone || null, row.address || null, reconciledBalance, Number(row.existing_id));
+          batchRows.push({ entity_id: Number(row.existing_id), action: "update", prior_json: JSON.stringify(prior) });
+          updated++;
+        } else {
+          skipped++;
+        }
+      }
+
+      const fileBlob = base64ToBuffer(file_base64);
+      const batchInfo = db.prepare(
+        `INSERT INTO account_import_batches (entity_type, file_name, file_mime, file_blob, inserted, updated, skipped, created_by)
+         VALUES ('suppliers', ?, ?, ?, ?, ?, ?, ?)`
+      ).run(file_name || null, file_mime || null, fileBlob, inserted, updated, skipped, req.user?.id || null);
+
+      const batchId = batchInfo.lastInsertRowid;
+      const insertRow = db.prepare(
+        `INSERT INTO account_import_batch_rows (batch_id, entity_id, action, prior_json) VALUES (?, ?, ?, ?)`
+      );
+      for (const r of batchRows) {
+        insertRow.run(batchId, r.entity_id, r.action, r.prior_json);
+      }
+
+      req.audit("create", "suppliers", {}, `📥 استيراد ${inserted} مورد جديد، تحديث ${updated}`);
+      res.status(201).json({ success: true, data: { batch_id: batchId, inserted, updated, skipped } });
+    })();
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+router.get("/import/batches", requirePagePermission("suppliers", "view"), (req, res) => {
+  try {
+    const batches = getDb().prepare(`
+      SELECT b.id, b.file_name, b.inserted, b.updated, b.skipped, b.status, b.created_at, b.undone_at,
+             u.username AS user_name
+      FROM account_import_batches b
+      LEFT JOIN users u ON u.id = b.created_by
+      WHERE b.entity_type = 'suppliers'
+      ORDER BY b.created_at DESC
+      LIMIT 50
+    `).all();
+    res.json({ success: true, data: batches });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+router.get("/import/batches/:id/file", requirePagePermission("suppliers", "view"), (req, res) => {
+  try {
+    const row = getDb().prepare("SELECT file_name, file_mime, file_blob FROM account_import_batches WHERE id = ? AND entity_type = 'suppliers'").get(Number(req.params.id));
+    if (!row || !row.file_blob) return res.status(404).json({ success: false, message: "الملف غير متاح" });
+    const fileName = encodeURIComponent(row.file_name || `import-${req.params.id}.xlsx`);
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${fileName}`);
+    res.setHeader("Content-Type", row.file_mime || "application/octet-stream");
+    res.send(row.file_blob);
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+router.post("/import/batches/:id/undo", requirePagePermission("suppliers", "import_undo"), (req, res) => {
+  const db = getDb();
+  try {
+    const batchId = Number(req.params.id);
+    const batch = db.prepare("SELECT * FROM account_import_batches WHERE id = ? AND entity_type = 'suppliers'").get(batchId);
+    if (!batch) return res.status(404).json({ success: false, message: "العملية غير موجودة" });
+    if (batch.status !== "active") return res.status(409).json({ success: false, reason: "already_undone" });
+    const ageHours = db.prepare("SELECT (julianday('now') - julianday(?)) * 24 AS h").get(batch.created_at)?.h;
+    if (ageHours > 24) return res.status(409).json({ success: false, reason: "expired" });
+
+    const snaps = db.prepare("SELECT * FROM account_import_batch_rows WHERE batch_id = ?").all(batchId);
+    const insertedIds = snaps.filter(s => s.action === "insert").map(s => s.entity_id);
+
+    // Block if any inserted supplier has transactions
+    for (const id of insertedIds) {
+      const hasActivity =
+        db.prepare("SELECT COUNT(*) AS c FROM purchases WHERE supplier_id = ?").get(id)?.c > 0 ||
+        db.prepare("SELECT COUNT(*) AS c FROM payments WHERE supplier_id = ?").get(id)?.c > 0 ||
+        db.prepare("SELECT COUNT(*) AS c FROM purchase_receipts WHERE supplier_id = ?").get(id)?.c > 0;
+      if (hasActivity) return res.status(409).json({ success: false, reason: "activity", detail: `supplier ${id} has transactions` });
+    }
+
+    db.transaction(() => {
+      // Restore updated rows
+      for (const s of snaps.filter(s => s.action === "update")) {
+        const prior = JSON.parse(s.prior_json || "{}");
+        db.prepare("UPDATE suppliers SET name=?, phone=?, addresses=?, opening_balance=? WHERE id=?")
+          .run(prior.name, prior.phone, prior.addresses, prior.opening_balance, s.entity_id);
+      }
+      // Delete inserted rows
+      for (const id of insertedIds) {
+        db.prepare("DELETE FROM suppliers WHERE id = ?").run(id);
+      }
+      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=CURRENT_TIMESTAMP, undone_by=? WHERE id=?")
+        .run(req.user?.id || null, batchId);
+    })();
+
+    res.json({ success: true, data: { batch_id: batchId, status: "undone" } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 module.exports = router;

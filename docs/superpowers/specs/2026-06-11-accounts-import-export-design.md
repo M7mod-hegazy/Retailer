@@ -15,8 +15,8 @@ Add bulk import (Excel/CSV) and history/undo to the Customers and Suppliers list
 
 | Route | Component | Purpose |
 |---|---|---|
-| `/definitions/customers/import` | `AccountImportPage` (entityType="customers") | Customers import wizard |
-| `/definitions/suppliers/import` | `AccountImportPage` (entityType="suppliers") | Suppliers import wizard |
+| `/accounts/customers/import` | `AccountImportPage` (entityType="customers") | Customers import wizard |
+| `/accounts/suppliers/import` | `AccountImportPage` (entityType="suppliers") | Suppliers import wizard |
 
 `AccountImportPage` is a single shared component parameterized by `entityType`. It mirrors the structure of `ItemImportPage` (Upload tab + History tab).
 
@@ -24,10 +24,13 @@ Add bulk import (Excel/CSV) and history/undo to the Customers and Suppliers list
 
 ## 3. Navigation Entry Points
 
-`SimpleCrudPage` receives a new optional prop `importPath: string`. When provided, an "استيراد" button (Upload icon) is rendered next to the existing "تصدير السجلات" button in the top action bar.
+The import and export buttons live in the **sidebar header** of `CustomerAccountsPage` and `SupplierAccountsPage` — the pages the user actually uses (at `/accounts/customers` and `/accounts/suppliers`).
 
-- `CustomersListPage` passes `importPath="/definitions/customers/import"`
-- `SuppliersListPage` passes `importPath="/definitions/suppliers/import"`
+**Placement:** Two small icon-only buttons added next to the existing "+ عميل جديد" / "+ مورد جديد" button:
+- Upload icon → navigates to the import page (`useNavigate`)
+- Download icon → triggers an inline CSV export of the current loaded list (same `exportToCSV` utility already used in `SimpleCrudPage`)
+
+Both buttons are wrapped in `PermissionGate` (import requires `add` permission, export requires `print` permission, same as the existing export in `SimpleCrudPage`).
 
 ---
 
@@ -204,11 +207,10 @@ Reuses existing page permissions:
 - `electron/migrations/NNN_account_import_tables.js`
 
 ### Modified files
-- `client/src/components/crud/SimpleCrudPage.jsx` — add optional `importPath` prop
-- `client/src/pages/customers/CustomersListPage.jsx` — pass `importPath`
-- `client/src/pages/suppliers/SuppliersListPage.jsx` — pass `importPath`
-- `client/src/utils/excelImportExport.js` — add `ACCOUNT_FIELDS`
-- `client/src/App.jsx` (or router file) — add two new import routes
+- `client/src/pages/accounts/CustomerAccountsPage.jsx` — add import + export buttons to sidebar header
+- `client/src/pages/accounts/SupplierAccountsPage.jsx` — add import + export buttons to sidebar header
+- `client/src/utils/excelImportExport.js` — add `ACCOUNT_FIELDS`, make `detectColumnHeaders`/`detectHeaderRow` accept optional `fields` param
+- `client/src/App.jsx` — add two new import routes
 - `server/src/routes/customers.routes.js` — add import/history/undo endpoints
 - `server/src/routes/suppliers.routes.js` — add import/history/undo endpoints
 - `client/src/locales/ar.json` + `en.json` — new translation keys

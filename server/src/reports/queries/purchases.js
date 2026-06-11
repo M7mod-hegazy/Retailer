@@ -17,7 +17,7 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by
     LEFT JOIN purchase_lines pl ON pl.purchase_id = p.id
-    WHERE 1=1 ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE 1=1 AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
@@ -49,7 +49,7 @@ function purchaseSummary(startDate, endDate, opts = {}) {
       SUM(p.total) AS total_purchases,
       ROUND(AVG(p.total), 2) AS avg_order_value
     FROM purchases p
-    WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
@@ -74,7 +74,7 @@ function detailedPurchases(startDate, endDate, opts = {}) {
     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by
     LEFT JOIN purchase_lines pl ON pl.purchase_id = p.id
-    WHERE 1=1 ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE 1=1 AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
@@ -114,7 +114,7 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
         ${addDateFilter("pr.created_at", startDate, endDate, params)}
       GROUP BY pr.supplier_id
     ) pr ON pr.supplier_id = s.id
-    WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
     GROUP BY s.id
     ORDER BY total_purchases DESC
@@ -152,7 +152,7 @@ function purchasesByItem(startDate, endDate, opts = {}) {
         ${supplier_id ? " AND pr.supplier_id = ?" : ""}
       GROUP BY prl.item_id
     ) ret ON ret.item_id = it.id
-    WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
@@ -202,7 +202,7 @@ function supplierPricing(startDate, endDate, opts = {}) {
     JOIN purchases p ON p.id = pl.purchase_id
     JOIN suppliers s ON s.id = p.supplier_id
     JOIN items it ON it.id = pl.item_id
-    WHERE p.status != 'cancelled' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
     ORDER BY it.name, p.created_at DESC

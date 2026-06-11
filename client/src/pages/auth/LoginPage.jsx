@@ -46,8 +46,22 @@ export default function LoginPage() {
   const [focusedField, setFocusedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPerf, setShowPerf] = useState(false);
+  const [customerBranding, setCustomerBranding] = useState({ logo_url: null, company_name: "", branch_name: "" });
   const perfPreset = usePerformanceStore((s) => s.preset);
   const perfSettings = usePerformanceStore((s) => s.settings);
+
+  useEffect(() => {
+    api.get("/api/settings").then((res) => {
+      const data = res.data?.data || {};
+      setCustomerBranding({
+        logo_url: data.logo_url || null,
+        company_name: data.company_name || "",
+        branch_name: data.branch_name || "",
+        app_name: data.app_name || "",
+        app_subtitle: data.app_subtitle || "",
+      });
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     applyToDOM(perfPreset, perfSettings);
@@ -129,21 +143,39 @@ export default function LoginPage() {
           
           {/* LEFT: Branding & Typography */}
           <div className="flex flex-col space-y-8 order-2 lg:order-1 relative z-20">
-            {/* Logo / Badge */}
-            <div className="flex items-center space-x-3 space-x-reverse w-max bg-white/80 border border-white px-5 py-2.5 rounded-full backdrop-blur-xl shadow-[0_4px_16px_rgba(5,150,105,0.06)] group cursor-default">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-50 flex items-center justify-center border border-emerald-200/60 shadow-inner animate-[subtle-drift_4s_ease-in-out_infinite] group-hover:scale-110 transition-transform duration-500">
-                <Radar className="w-4 h-4 text-emerald-600" />
+            {/* Shop Branding — customer logo + company name (if set) */}
+            {customerBranding.logo_url || customerBranding.company_name ? (
+              <div className="flex items-center space-x-3 space-x-reverse w-max bg-white/80 border border-white px-5 py-2.5 rounded-full backdrop-blur-xl shadow-[0_4px_16px_rgba(5,150,105,0.06)] group cursor-default">
+                {customerBranding.logo_url ? (
+                  <img src={customerBranding.logo_url} alt="" className="w-8 h-8 rounded-full object-contain border border-slate-200" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-50 flex items-center justify-center border border-emerald-200/60 shadow-inner">
+                    <Radar className="w-4 h-4 text-emerald-600" />
+                  </div>
+                )}
+                <div className="flex flex-col">
+                  <span className="text-2sm font-black tracking-[0.2em] text-emerald-800 uppercase leading-tight">{customerBranding.company_name || "ElHegazi POS"}</span>
+                  {customerBranding.branch_name && (
+                    <span className="text-[10px] font-bold text-slate-500 tracking-wider">{customerBranding.branch_name}</span>
+                  )}
+                </div>
               </div>
-              <span className="text-2sm font-black tracking-[0.2em] text-emerald-800 uppercase" style={{ fontFamily: 'var(--font-number)' }}>ElHegazi POS Framework</span>
-            </div>
+            ) : (
+              <div className="flex items-center space-x-3 space-x-reverse w-max bg-white/80 border border-white px-5 py-2.5 rounded-full backdrop-blur-xl shadow-[0_4px_16px_rgba(5,150,105,0.06)] group cursor-default">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-50 flex items-center justify-center border border-emerald-200/60 shadow-inner animate-[subtle-drift_4s_ease-in-out_infinite] group-hover:scale-110 transition-transform duration-500">
+                  <Radar className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-2sm font-black tracking-[0.2em] text-emerald-800 uppercase" style={{ fontFamily: 'var(--font-number)' }}>ElHegazi POS Framework</span>
+              </div>
+            )}
 
             {/* Massive Brand Showcase */}
             <div className="space-y-4 pt-2">
               <h1 className="text-6xl md:text-7xl lg:text-[86px] font-black leading-[1.3] text-slate-900 drop-shadow-sm">
-                الحجازي
+                {customerBranding.app_name || "الحجازي"}
               </h1>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 drop-shadow-sm pb-2 leading-[1.5]">
-                منظومة التجزئة الذكية
+                {customerBranding.app_subtitle || "منظومة التجزئة الذكية"}
               </h2>
               <p className="text-lg md:text-xl text-slate-500 max-w-lg leading-[1.8] font-medium mt-4">
                 نظام نقاط بيع صُمم خصيصاً للسرعة القصوى، دقة العمليات المحاسبية، وتوفير بيئة تشغيلية آمنة ومريحة لكل فروعك.
@@ -174,8 +206,13 @@ export default function LoginPage() {
             <div className="relative bg-white/95 backdrop-blur-3xl border-t border-l border-white border-r border-b border-slate-200/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.08),0_0_1px_1px_rgba(15,23,42,0.03)]">
               
               <div className="flex flex-col mb-10 text-right">
-                <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100/80 rounded-[1.25rem] text-emerald-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_12px_rgba(5,150,105,0.08)] mb-6 animate-[subtle-drift_4s_ease-in-out_infinite_reverse]">
-                  <LockKeyhole className="w-8 h-8 stroke-[2px]" />
+                <div className="flex items-center gap-3 mb-6">
+                  {customerBranding.logo_url && (
+                    <img src={customerBranding.logo_url} alt="" className="w-10 h-10 rounded-xl object-contain border border-slate-200" />
+                  )}
+                  <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100/80 rounded-[1.25rem] text-emerald-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_12px_rgba(5,150,105,0.08)] animate-[subtle-drift_4s_ease-in-out_infinite_reverse]">
+                    <LockKeyhole className="w-8 h-8 stroke-[2px]" />
+                  </div>
                 </div>
                 <div className="text-[11px] font-black text-emerald-500 tracking-[0.2em] uppercase mb-3">Secure Sign-in</div>
                 <h2 className="text-[32px] font-black text-slate-900 tracking-tight mb-2 leading-tight">تسجيل الدخول</h2>

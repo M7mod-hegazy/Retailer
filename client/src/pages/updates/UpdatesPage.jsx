@@ -85,7 +85,7 @@ export default function UpdatesPage() {
   const [lastCheckedAt, setLastCheckedAt] = useState(Date.now() - 86400000); 
 
   useEffect(() => {
-    window.electronAPI?.invoke?.("system:get-version").then((v) => {
+    window.electronAPI?.getVersion?.().then((v) => {
       if (v) setCurrentVersion(v);
     });
   }, []);

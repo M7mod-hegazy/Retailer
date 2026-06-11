@@ -131,7 +131,7 @@ export default function Step1Upload({ wizard, goNext }) {
               {/* Supported Files Info Badges */}
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono tracking-wide">xlsx / xls / csv</span>
-                <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono tracking-wide">حتى 1000 صنف</span>
+                <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono tracking-wide">غير محدود</span>
                 <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">معالجة فورية</span>
               </div>
             </>

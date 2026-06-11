@@ -65,6 +65,8 @@ function ensurePrintColumns() {
   add("number_font_scale",   "TEXT DEFAULT 'normal'");
   add("numeral_style",       "TEXT DEFAULT 'western'");
   add("pos_voice_enabled",   "INTEGER DEFAULT 0");
+  add("smart_lock_enabled", "INTEGER DEFAULT 1");
+  add("smart_lock_timeout_minutes", "INTEGER DEFAULT 15");
   // Log summary to help debug any persistence issues
   if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
 }
@@ -93,6 +95,8 @@ const COLUMN_META = {
   discount_cap_enabled: "bool",
   tax_enabled: "bool",
   pos_voice_enabled: "bool",
+  smart_lock_enabled: "bool",
+  smart_lock_timeout_minutes: "int",
   logo_on_invoices: "bool", logo_on_receipts: "bool",
   logo_on_sidebar: "bool", logo_on_reports: "bool",
 };

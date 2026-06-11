@@ -1574,6 +1574,14 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             {tog("show_barcode_line",    "باركود المنتج",    "لكل صنف")}
             {tog("show_item_code",       "كود المنتج (SKU)",  "رمز الصنف في جدول الأصناف")}
           </div>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">ظهور الشعار في المستندات</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {tog("logo_on_invoices", "فواتير A4/A5", "شعار الشركة في فواتير A4")}
+              {tog("logo_on_receipts", "إيصالات حرارية", "شعار الشركة في إيصالات 58/80mm")}
+              {tog("logo_on_reports", "تقارير", "شعار الشركة في رأس التقارير")}
+            </div>
+          </div>
         </section>
 
         {/* Custom Text Blocks */}

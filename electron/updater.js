@@ -1,48 +1,67 @@
-const { autoUpdater } = require("electron-updater");
-const { dialog } = require("electron");
+let autoUpdater = null;
+
+try {
+  autoUpdater = require("electron-updater").autoUpdater;
+} catch {
+  // electron-updater not available (e.g. dev mode)
+}
+
+let _mainWindow = null;
 
 function setupAutoUpdater(mainWindow) {
+  _mainWindow = mainWindow;
+
+  if (!autoUpdater) return;
+
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-available", (info) => {
-    dialog
-      .showMessageBox(mainWindow, {
-        type: "info",
-        title: "تحديث متاح",
-        message: `يتوفر إصدار جديد (${info.version}). هل تريد تنزيله الآن؟`,
-        buttons: ["تنزيل", "لاحقاً"],
-        defaultId: 0,
-      })
-      .then((result) => {
-        if (result.response === 0) {
-          autoUpdater.downloadUpdate();
-        }
-      });
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send("update:available", info);
+    }
   });
 
-  autoUpdater.on("update-downloaded", () => {
-    dialog
-      .showMessageBox(mainWindow, {
-        type: "info",
-        title: "تم التنزيل",
-        message: "تم تنزيل التحديث. سيتم تثبيته عند إعادة التشغيل.",
-        buttons: ["إعادة التشغيل الآن", "لاحقاً"],
-        defaultId: 0,
-      })
-      .then((result) => {
-        if (result.response === 0) {
-          autoUpdater.quitAndInstall();
-        }
-      });
+  autoUpdater.on("update-not-available", () => {
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send("update:not-available");
+    }
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send("update:progress", progress);
+    }
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send("update:downloaded", info);
+    }
   });
 
   autoUpdater.on("error", (err) => {
-    console.error("Auto-updater error:", err.message);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send("update:error", { message: err.message });
+    }
   });
 
-  // Check for updates silently on app start
   autoUpdater.checkForUpdates().catch(() => {});
 }
 
-module.exports = { setupAutoUpdater };
+function checkForUpdates() {
+  if (!autoUpdater || !_mainWindow) return;
+  autoUpdater.checkForUpdates().catch(() => {});
+}
+
+function downloadUpdate() {
+  if (!autoUpdater || !_mainWindow) return;
+  autoUpdater.downloadUpdate().catch(() => {});
+}
+
+function quitAndInstall() {
+  if (!autoUpdater) return;
+  autoUpdater.quitAndInstall();
+}
+
+module.exports = { setupAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall };

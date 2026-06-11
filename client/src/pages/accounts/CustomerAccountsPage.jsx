@@ -5,7 +5,7 @@ import {
   Users, Search, Plus, X, Phone, AlertTriangle, SlidersHorizontal,
   MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
   ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
-  Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle
+  Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle, Upload, Download
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -1045,12 +1045,51 @@ export default function CustomerAccountsPage() {
               </div>
               <h1 className="text-[13.5px] font-black text-slate-800 tracking-tight">حسابات العملاء</h1>
             </div>
-            <PermissionGate page="customer_accounts" action="add">
-              <button onClick={() => setShowCreate(true)}
-                className="flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3.5 text-[11px] font-black text-white shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer">
-                <Plus className="h-3.8 w-3.8 stroke-[3px]" /> عميل جديد
-              </button>
-            </PermissionGate>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <PermissionGate page="customer_accounts" action="add">
+                  <button
+                    onClick={() => navigate("/accounts/customers/import")}
+                    className="flex h-8 w-8 items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 active:scale-[0.95] transition-all duration-200 cursor-pointer"
+                    title="استيراد من Excel"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                  </button>
+                </PermissionGate>
+                <div className="w-px h-4 bg-slate-200 shrink-0" />
+                <PermissionGate page="customer_accounts" action="print">
+                  <button
+                    onClick={() => {
+                      const rows = customers.map(c => [c.name, c.phone || "", c.addresses || "", Number(c.opening_balance || 0)]);
+                      const header = ["الاسم", "الهاتف", "العنوان", "الرصيد الافتتاحي"];
+                      const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+                      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "customers.csv";
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 active:scale-[0.95] transition-all duration-200 cursor-pointer"
+                    title="تصدير CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </PermissionGate>
+              </div>
+              <PermissionGate page="customer_accounts" action="add">
+                <button onClick={() => setShowCreate(true)}
+                  className="flex h-9 items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-4 text-xs font-black text-white shadow-[0_2px_10px_rgba(59,130,246,0.4)] hover:shadow-[0_4px_14px_rgba(59,130,246,0.5)] active:scale-[0.96] transition-all duration-200 cursor-pointer whitespace-nowrap">
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white/20">
+                    <Plus className="h-3 w-3 stroke-[3.5px]" />
+                  </span>
+                  عميل جديد
+                </button>
+              </PermissionGate>
+            </div>
           </div>
 
           <div data-help="search-bar" className="relative">

@@ -51,36 +51,8 @@ function setupIpc(window) {
     return `http://127.0.0.1:${port}`;
   });
 
-  ipcMain.handle("app:set-icon", async (_event, payload = {}) => {
-    const logoUrl = String(payload.logo_url || "").trim();
-    try {
-      const { updateTrayIcon } = require("./tray");
-      if (!logoUrl) {
-        const defaultIcon = path.join(__dirname, "assets", process.platform === "win32" ? "icon.ico" : "icon.png");
-        const defaultTray = path.join(__dirname, "assets", "tray-icon.png");
-        const defaultImage = nativeImage.createFromPath(defaultIcon);
-        const trayImage = nativeImage.createFromPath(defaultTray);
-        const wins = BrowserWindow.getAllWindows();
-        wins.forEach((w) => { if (!w.isDestroyed()) w.setIcon(defaultImage); });
-        updateTrayIcon(trayImage);
-        return { success: true, reset: true };
-      }
-      const filename = path.basename(logoUrl);
-      const uploadsDir = process.env.UPLOADS_DIR
-        ? path.join(process.env.UPLOADS_DIR, "uploads")
-        : path.join(__dirname, "../../uploads");
-      const logoPath = path.join(uploadsDir, filename);
-      if (!fs.existsSync(logoPath)) return { success: false, error: "file_not_found" };
-      const image = nativeImage.createFromPath(logoPath);
-      if (image.isEmpty()) return { success: false, error: "invalid_image" };
-      const trayImage = image.resize({ width: 32, height: 32, quality: "best" });
-      const wins = BrowserWindow.getAllWindows();
-      wins.forEach((w) => { if (!w.isDestroyed()) w.setIcon(image); });
-      updateTrayIcon(trayImage);
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+  ipcMain.handle("app:set-icon", async () => {
+    return { success: true };
   });
 
   ipcMain.on("window:minimize", () => window.minimize());
@@ -314,6 +286,24 @@ function setupIpc(window) {
     } catch (e) {
       return { ok: false, reason: "gate_error", error: e.message };
     }
+  });
+
+  // ─── Update IPC ──────────────────────────────────────────────────────────
+  const updater = require("./updater");
+
+  ipcMain.handle("update:check", () => {
+    updater.checkForUpdates();
+    return { success: true };
+  });
+
+  ipcMain.handle("update:download", () => {
+    updater.downloadUpdate();
+    return { success: true };
+  });
+
+  ipcMain.handle("update:install-now", () => {
+    updater.quitAndInstall();
+    return { success: true };
   });
 }
 

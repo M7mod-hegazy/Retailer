@@ -5,7 +5,7 @@ const allowedChannels = {
   print: ["print:receipt", "print:preview", "print:silent", "print:list-printers"],
   dialogs: ["dialog:open-file", "dialog:save-file"],
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
-  updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error"],
+  updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error", "update:check", "update:download", "update:install-now"],
   app: ["app:set-icon", "get:api-url"],
   server: ["server:status"],
   wa: ["wa:status", "wa:link", "wa:unlink", "wa:send", "wa:status-update"],

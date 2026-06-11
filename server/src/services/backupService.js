@@ -75,7 +75,14 @@ function resolveBackupRoot(db) {
 
 function readAppVersion() {
   try {
-    const pkg = require(path.join(process.cwd(), "package.json"));
+    try {
+      const { app } = require("electron");
+      if (app?.getVersion) {
+        const v = app.getVersion();
+        if (v) return v;
+      }
+    } catch {}
+    const pkg = require(path.join(__dirname, "..", "..", "..", "package.json"));
     return pkg.version || "unknown";
   } catch {
     return "unknown";

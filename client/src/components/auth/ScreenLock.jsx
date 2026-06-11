@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Lock } from "lucide-react";
+import { Lock, Building2 } from "lucide-react";
 import api from "../../services/api";
 import { useAuthStore } from "../../stores/authStore";
-import { SESSION_TIMEOUT_MS } from "../../constants/config";
 
 const LOCK_STATE_KEY = "retailer.screen_lock_state.v1";
+const SETTINGS_CACHE_KEY = "retailer.screen_lock_settings.v1";
 const EXCLUDED_ROUTES = ["/login"];
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000;
 
 function isExcludedRoute(pathname) {
   return EXCLUDED_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -15,7 +16,7 @@ function isExcludedRoute(pathname) {
 
 function readLockState() {
   try {
-    const rawState = localStorage.getItem(LOCK_STATE_KEY);
+    const rawState = sessionStorage.getItem(LOCK_STATE_KEY);
     if (!rawState) return { locked: false, lastActivity: Date.now() };
 
     const parsed = JSON.parse(rawState);
@@ -23,18 +24,18 @@ function readLockState() {
       locked: Boolean(parsed?.locked),
       lastActivity: Number(parsed?.lastActivity) || Date.now(),
     };
-  } catch (_error) {
+  } catch {
     return { locked: false, lastActivity: Date.now() };
   }
 }
 
 function writeLockState(nextState) {
-  localStorage.setItem(LOCK_STATE_KEY, JSON.stringify(nextState));
+  sessionStorage.setItem(LOCK_STATE_KEY, JSON.stringify(nextState));
 }
 
-function computeShouldLock() {
+function computeShouldLock(timeoutMs) {
   const state = readLockState();
-  return state.locked || Date.now() - state.lastActivity >= SESSION_TIMEOUT_MS;
+  return state.locked || Date.now() - state.lastActivity >= timeoutMs;
 }
 
 export default function ScreenLock() {
@@ -47,19 +48,47 @@ export default function ScreenLock() {
     return !isExcludedRoute(location.pathname);
   }, [location.pathname, token]);
 
-  // Initialize synchronously from localStorage to prevent flash of unlocked content on reload
-  const [isLocked, setIsLocked] = useState(() => computeShouldLock());
+  const [settings, setSettings] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(SETTINGS_CACHE_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return { smart_lock_enabled: 1, smart_lock_timeout_minutes: 15 };
+  });
+  const [shopName, setShopName] = useState("");
+
+  const timeoutMs = settings.smart_lock_enabled
+    ? (settings.smart_lock_timeout_minutes || 15) * 60 * 1000
+    : Infinity;
+
+  const [isLocked, setIsLocked] = useState(() => {
+    if (!settings.smart_lock_enabled) return false;
+    return computeShouldLock(DEFAULT_TIMEOUT_MS);
+  });
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // On mount and whenever eligibility changes, re-evaluate lock state.
-  // Only clear the persisted lock when the user has no token (logout).
-  // Do NOT clear it merely because we're on an excluded route — that would
-  // allow a bypass by navigating to /login while locked.
+  useEffect(() => {
+    let cancelled = false;
+    api.get("/api/settings").then((res) => {
+      if (cancelled) return;
+      const data = res.data?.data;
+      if (data) {
+        const s = {
+          smart_lock_enabled: Number(data.smart_lock_enabled ?? 1),
+          smart_lock_timeout_minutes: Number(data.smart_lock_timeout_minutes ?? 15),
+        };
+        setSettings(s);
+        setShopName(data.company_name || data.app_name || "");
+        try { sessionStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(s)); } catch {}
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (!token) {
-      // Logged out — reset everything
       setIsLocked(false);
       setPassword("");
       setError(false);
@@ -67,13 +96,15 @@ export default function ScreenLock() {
       return;
     }
 
-    if (!isEligible) {
-      // On an excluded route but still authenticated — keep lock state intact,
-      // just don't show the overlay here
+    if (!isEligible) return;
+
+    if (!settings.smart_lock_enabled) {
+      setIsLocked(false);
+      writeLockState({ locked: false, lastActivity: Date.now() });
       return;
     }
 
-    const shouldLock = computeShouldLock();
+    const shouldLock = computeShouldLock(timeoutMs);
     if (shouldLock) {
       setIsLocked(true);
       const current = readLockState();
@@ -82,11 +113,10 @@ export default function ScreenLock() {
       setIsLocked(false);
       writeLockState({ locked: false, lastActivity: Date.now() });
     }
-  }, [isEligible, token]);
+  }, [isEligible, token, settings, timeoutMs]);
 
-  // Activity tracking and idle-lock polling
   useEffect(() => {
-    if (!isEligible) return undefined;
+    if (!isEligible || !settings.smart_lock_enabled) return undefined;
 
     const recordActivity = () => {
       if (isLocked) return;
@@ -95,14 +125,13 @@ export default function ScreenLock() {
 
     const checkIdle = () => {
       if (isLocked) return;
-      if (computeShouldLock()) {
+      if (computeShouldLock(timeoutMs)) {
         const current = readLockState();
         writeLockState({ locked: true, lastActivity: current.lastActivity });
         setIsLocked(true);
       }
     };
 
-    // Also check immediately when the page becomes visible (tab switch / Electron restore)
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") checkIdle();
     };
@@ -116,27 +145,24 @@ export default function ScreenLock() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(intervalId);
     };
-  }, [isEligible, isLocked]);
+  }, [isEligible, isLocked, settings.smart_lock_enabled, timeoutMs]);
 
-  // Cross-tab sync via storage events
   useEffect(() => {
     if (!isEligible) return undefined;
 
     const syncFromStorage = (event) => {
       if (event.key !== LOCK_STATE_KEY) return;
       const current = readLockState();
-      // Also re-check elapsed time in case the other tab didn't write locked:true yet
-      const shouldLock = current.locked || Date.now() - current.lastActivity >= SESSION_TIMEOUT_MS;
+      const shouldLock = current.locked || Date.now() - current.lastActivity >= timeoutMs;
       setIsLocked(shouldLock);
     };
 
     window.addEventListener("storage", syncFromStorage);
     return () => window.removeEventListener("storage", syncFromStorage);
-  }, [isEligible]);
+  }, [isEligible, timeoutMs]);
 
-  // Electron: listen for system resume (wake from sleep) to force lock immediately
   useEffect(() => {
-    if (!isEligible) return undefined;
+    if (!isEligible || !settings.smart_lock_enabled) return undefined;
     if (!window.electronAPI?.onSystemResume) return undefined;
 
     const unsubscribe = window.electronAPI.onSystemResume(() => {
@@ -145,7 +171,7 @@ export default function ScreenLock() {
     });
 
     return () => unsubscribe?.();
-  }, [isEligible]);
+  }, [isEligible, settings.smart_lock_enabled]);
 
   const handleUnlock = async (event) => {
     event.preventDefault();
@@ -162,34 +188,36 @@ export default function ScreenLock() {
       } else {
         setError(true);
       }
-    } catch (_error) {
+    } catch {
       setError(true);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Show lock overlay whenever locked, regardless of current route,
-  // as long as the user is authenticated
   if (!token || !isLocked) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-slate-50/70 px-4 text-slate-800 backdrop-blur-[32px] transition-all duration-700">
       
-      {/* Avant-Garde Background Mesh (Light Mode) */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-emerald-400/20 rounded-full blur-[140px] pointer-events-none opacity-80" />
       <div className="absolute top-1/2 left-1/2 translate-x-[-10%] translate-y-[-60%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none opacity-60" />
 
-      {/* Main Glass Card */}
       <div className="relative z-10 w-full max-w-[440px] rounded-[40px] bg-white/70 p-12 text-center shadow-[0_24px_80px_-12px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-3xl border border-white/50">
         
-        {/* Glow-infused Icon */}
         <div className="mx-auto flex h-24 w-24 relative items-center justify-center rounded-[32px] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 shadow-[0_8px_30px_-6px_rgba(16,185,129,0.15)]">
           <div className="absolute inset-0 rounded-[32px] bg-emerald-400/20 blur-xl mix-blend-multiply" />
           <Lock className="relative z-10 h-10 w-10" strokeWidth={1.5} />
         </div>
 
-        <h2 className="mt-8 text-[32px] font-black tracking-tight text-slate-900 drop-shadow-sm">النظام مقفل</h2>
+        {shopName && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm font-bold text-emerald-700">
+            <Building2 className="h-4 w-4" />
+            <span>{shopName}</span>
+          </div>
+        )}
+
+        <h2 className="mt-6 text-[32px] font-black tracking-tight text-slate-900 drop-shadow-sm">النظام مقفل</h2>
         <p className="mt-3 text-sm font-medium leading-relaxed text-slate-500">
           حماية الجلسة نشطة. أدخل كلمة المرور<br />للمتابعة من حيث توقفت.
         </p>
@@ -233,11 +261,9 @@ export default function ScreenLock() {
               <span>فتح النظام</span>
             )}
             
-            {/* Hover reflection */}
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
           </button>
 
-          {/* Logout Option */}
           <button
             type="button"
             onClick={() => {

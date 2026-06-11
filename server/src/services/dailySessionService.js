@@ -171,6 +171,7 @@ function cashBreakdown(db, dateText, session) {
       SELECT SUM(total) FROM purchases
       WHERE date(created_at) = ? AND payment_method = 'cash'
         AND COALESCE(status, '') NOT IN ('voided', 'cancelled')
+        AND COALESCE(is_opening_balance, 0) = 0 AND COALESCE(doc_no, '') NOT LIKE 'OB-%'
     ), 0) + COALESCE((
       SELECT SUM(pp.amount)
       FROM purchase_payments pp
@@ -479,6 +480,7 @@ function liveOpeningBalance(db, dateText) {
       SELECT SUM(total) FROM purchases
       WHERE date(created_at) > ? AND date(created_at) < ? AND payment_method = 'cash'
         AND COALESCE(status,'') NOT IN ('voided','cancelled')
+        AND COALESCE(is_opening_balance, 0) = 0 AND COALESCE(doc_no, '') NOT LIKE 'OB-%'
     ),0) + COALESCE((
       SELECT SUM(pp.amount)
       FROM purchase_payments pp

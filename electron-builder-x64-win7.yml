@@ -27,7 +27,7 @@ win:
       arch:
         - x64
 
-artifactName: 2_INSTALL_SECOND_ElHegazi-Retailer-x64.exe
+artifactName: "2_INSTALL_SECOND_ElHegazi-Retailer-x64-v${version}.exe"
 
 nsis:
   oneClick: false
@@ -53,6 +53,11 @@ nsis:
   installerLanguages:
     - ar_SA
     - en_US
+
+publish:
+  provider: generic
+  url: "${UPDATE_SERVER_URL:-}"
+  channel: latest
 
 buildDependenciesFromSource: false
 npmRebuild: true

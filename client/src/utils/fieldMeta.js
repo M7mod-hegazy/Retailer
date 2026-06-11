@@ -113,6 +113,19 @@ const FIELD_META = {
     defaultValue: 1,
     group: "display",
   },
+  smart_lock_enabled: {
+    label: { ar: "قفل الشاشة الذكي", en: "Smart Lock" },
+    hint: { ar: "قفل الشاشة تلقائياً بعد فترة من عدم النشاط لحماية الجلسة", en: "Auto-lock the screen after inactivity to protect your session" },
+    defaultValue: 1,
+    group: "display",
+  },
+  smart_lock_timeout_minutes: {
+    label: { ar: "مدة عدم النشاط (دقائق)", en: "Inactivity Timeout (minutes)" },
+    hint: { ar: "عدد الدقائق قبل قفل الشاشة تلقائياً", en: "Minutes of inactivity before auto-lock" },
+    defaultValue: 15,
+    min: 1, max: 999,
+    group: "display",
+  },
 
   // ─── Held Invoice Alerts ──────────────────────────────────────────
   held_yellow_hours: {

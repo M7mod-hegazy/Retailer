@@ -18,7 +18,7 @@ const UNIT_SUFFIX_PATTERN = /^\s*([-+]?\d+(?:[.,]\d+)?)\s*([^\d.,+-].*?)?\s*$/;
 
 export const ITEM_FIELDS = [
   { key: "code", label: "الكود", aliases: ["code", "sku", "item code", "codenumberofmode", "كود", "الكود", "رقم الصنف"] },
-  { key: "name", label: "اسم الصنف", required: true, aliases: ["name", "text64", "product name", "item name", "اسم", "الاسم", "اسم الصنف", "اسم المنتج"] },
+  { key: "name", label: "اسم الصنف", required: true, aliases: ["name", "text64", "product name", "item name", "اسم", "الاسم", "اسم الصنف", "اسم المنتج", "الصنف"] },
   { key: "name_en", label: "الاسم الإنجليزي", aliases: ["english name", "name en", "name_en", "الاسم الانجليزي", "الاسم الإنجليزي"] },
   { key: "barcode", label: "الباركود", aliases: ["barcode", "bar code", "باركود", "الباركود"] },
   { key: "store_name", label: "المخزن", aliases: ["nameofstore", "store", "store name", "warehouse", "warehouse name", "المخزن", "اسم المخزن"] },
@@ -37,6 +37,13 @@ export const ITEM_FIELDS = [
   { key: "image_urls", label: "الصور", aliases: ["images", "image urls", "image", "صور", "الصور"] },
 ];
 
+export const ACCOUNT_FIELDS = [
+  { key: 'name', label: 'الاسم', required: true, aliases: ['name', 'resources', 'اسم', 'الاسم', 'اسم العميل', 'اسم المورد'] },
+  { key: 'phone', label: 'الهاتف', aliases: ['phone', 'mobile', 'هاتف', 'جوال', 'موبايل'] },
+  { key: 'address', label: 'العنوان', aliases: ['address', 'عنوان', 'العنوان'] },
+  { key: 'opening_balance', label: 'الرصيد الافتتاحي', aliases: ['raseed', 'balance', 'رصيد', 'الرصيد', 'رصيد افتتاحي', 'الرصيد الافتتاحي', 'opening balance'] },
+];
+
 export const EXPORT_FIELDS = ITEM_FIELDS.filter((field) => field.key !== "image_urls").concat([
   { key: "primary_image_url", label: "الصورة الرئيسية" },
 ]);
@@ -45,6 +52,7 @@ function normalizeText(value) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .replace(/ـ/g, "")
     .replace(/[إأآا]/g, "ا")
     .replace(/[ىي]/g, "ي")
     .replace(/[ة]/g, "ه")
@@ -82,23 +90,23 @@ export async function parseExcelFile(file) {
   };
 }
 
-export function detectHeaderRow(rows) {
+export function detectHeaderRow(rows, fields = ITEM_FIELDS) {
   const max = Math.min(rows.length, 8);
   let best = { index: 0, score: 0 };
   for (let index = 0; index < max; index += 1) {
-    const mapping = detectColumnHeaders(rows[index] || []);
+    const mapping = detectColumnHeaders(rows[index] || [], fields);
     const score = Object.values(mapping).filter(Boolean).length;
     if (score > best.score) best = { index, score };
   }
   return best;
 }
 
-export function detectColumnHeaders(headers) {
+export function detectColumnHeaders(headers, fields = ITEM_FIELDS) {
   const mapping = {};
   headers.forEach((header, index) => {
     const normalizedHeader = normalizeText(header);
     if (!normalizedHeader) return;
-    const match = ITEM_FIELDS.find((field) => field.aliases.some((alias) => {
+    const match = fields.find((field) => field.aliases.some((alias) => {
       const normalizedAlias = normalizeText(alias);
       if (!normalizedAlias) return false;
       if (normalizedAlias === normalizedHeader) return true;

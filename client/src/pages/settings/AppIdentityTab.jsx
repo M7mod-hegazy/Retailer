@@ -1,25 +1,113 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, RotateCcw, Eye, Loader2, Building2, FileText, MapPin, Plus, X, Info } from 'lucide-react';
+import { Upload, RotateCcw, Eye, Loader2, Building2, FileText, MapPin, Plus, X, Info, Sidebar, ImageDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { getMeta, getHint, getPlaceholder } from '../../utils/fieldMeta';
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const size = file.size;
+    let quality, maxDim;
+    if (size <= 500 * 1024) {
+      resolve(file);
+      return;
+    } else if (size > 5 * 1024 * 1024) {
+      quality = 0.4; maxDim = 400;
+    } else if (size > 2 * 1024 * 1024) {
+      quality = 0.6; maxDim = 600;
+    } else {
+      quality = 0.8; maxDim = 800;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round(height * maxDim / width);
+          width = maxDim;
+        } else {
+          width = Math.round(width * maxDim / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (!blob) return reject(new Error('Canvas toBlob failed'));
+        resolve(new File([blob], file.name, { type: file.type }));
+      }, file.type, quality);
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    const reader = new FileReader();
+    reader.onload = (e) => { img.src = e.target.result; };
+    reader.onerror = () => reject(new Error('FileReader failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function InfoTip({ text }) {
+  if (!text) return null;
+  return (
+    <span className="group relative cursor-help shrink-0">
+      <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
+      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+        {text}
+        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+      </div>
+    </span>
+  );
+}
+
+function DenseInput({ label, required, metaKey, lang = 'ar', ...props }) {
+  const hint = metaKey ? getHint(metaKey, lang) : null;
+  const placeholder = metaKey ? getPlaceholder(metaKey, lang) : null;
+  const meta = metaKey ? getMeta(metaKey) : null;
+  const isCriticalEmpty = meta?.critical && (
+    props.value === undefined || props.value === null || props.value === "" ||
+    (meta.defaultValue !== undefined && meta.defaultValue !== null && meta.defaultValue !== "" && props.value === meta.defaultValue)
+  );
+  return (
+    <label className="block space-y-1 focus-within:text-slate-900 text-slate-500 transition-colors">
+      <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
+        {label}
+        {required && <span className="text-rose-500">*</span>}
+        {hint && <InfoTip text={hint} />}
+        {isCriticalEmpty && (
+          <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
+            مطلوب
+          </span>
+        )}
+      </span>
+      <input
+        {...props}
+        data-field-key={metaKey}
+        placeholder={props.placeholder || placeholder}
+        className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal ${
+          isCriticalEmpty
+            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
+            : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+        }`}
+      />
+    </label>
+  );
+}
 
 export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
   const [logoPreview, setLogoPreview] = useState(settings.logo_url || null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
-  const handleFile = useCallback(async (file) => {
-    if (!file || !file.type.startsWith('image/')) {
+  const handleFile = useCallback(async (rawFile) => {
+    if (!rawFile || !rawFile.type.startsWith('image/')) {
       toast.error(lang === 'ar' ? 'الرجاء اختيار صورة فقط' : 'Please select an image');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error(lang === 'ar' ? 'حجم الصورة يجب أن لا يتجاوز 2 ميجابايت' : 'Image size must be under 2MB');
       return;
     }
     setUploading(true);
     try {
+      const file = rawFile.size > 500 * 1024 ? await compressImage(rawFile) : rawFile;
       const formData = new FormData();
       formData.append('file', file);
       const res = await api.post('/api/upload', formData, {
@@ -38,53 +126,6 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
     }
     if (fileRef.current) fileRef.current.value = '';
   }, [onChange, lang]);
-
-  function InfoTip({ text }) {
-    if (!text) return null;
-    return (
-      <span className="group relative cursor-help shrink-0">
-        <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
-        <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
-          {text}
-          <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
-        </div>
-      </span>
-    );
-  }
-
-  function DenseInput({ label, required, metaKey, ...props }) {
-    const hint = metaKey ? getHint(metaKey, lang) : null;
-    const placeholder = metaKey ? getPlaceholder(metaKey, lang) : null;
-    const meta = metaKey ? getMeta(metaKey) : null;
-    const isCriticalEmpty = meta?.critical && (
-      props.value === undefined || props.value === null || props.value === "" ||
-      (meta.defaultValue !== undefined && meta.defaultValue !== null && meta.defaultValue !== "" && props.value === meta.defaultValue)
-    );
-    return (
-      <label className="block space-y-1 focus-within:text-slate-900 text-slate-500 transition-colors">
-        <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
-          {label}
-          {required && <span className="text-rose-500">*</span>}
-          {hint && <InfoTip text={hint} />}
-          {isCriticalEmpty && (
-            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
-              مطلوب
-            </span>
-          )}
-        </span>
-        <input
-          {...props}
-          data-field-key={metaKey}
-          placeholder={props.placeholder || placeholder}
-          className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal ${
-            isCriticalEmpty
-              ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
-              : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
-          }`}
-        />
-      </label>
-    );
-  }
 
   const addrs = (() => { try { return JSON.parse(settings.additional_addresses || "[]"); } catch { return []; } })();
   const phones = (() => { try { return JSON.parse(settings.additional_phones || "[]"); } catch { return []; } })();
@@ -134,7 +175,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                       {lang === 'ar' ? 'اضغط هنا لرفع الشعار' : 'Click to Upload Logo'}
                     </p>
                     <p className="mt-0.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                      PNG, JPG, SVG &bull; MAX 2MB
+                      PNG, JPG, SVG &bull; ضغط تلقائي ذكي
                     </p>
                   </div>
                 </>
@@ -170,18 +211,33 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         </div>
 
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'اسم التطبيق (رئيسي)' : 'App Name'}
             metaKey="app_name"
             value={settings.app_name || ''}
             onChange={(e) => onChange?.('app_name', e.target.value)}
           />
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'الاسم الفرعي (يظهر تحته)' : 'Sub-title'}
             metaKey="app_subtitle"
             value={settings.app_subtitle || ''}
             onChange={(e) => onChange?.('app_subtitle', e.target.value)}
           />
+        </div>
+
+        <div className="mt-5 flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0}
+            onClick={() => onChange?.('logo_on_sidebar', settings.logo_on_sidebar === false || settings.logo_on_sidebar === 0 ? 1 : 0)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0 ? '-translate-x-6' : '-translate-x-1'}`} />
+          </button>
+          <span className="text-2sm font-bold text-slate-600">
+            {lang === 'ar' ? 'إظهار الشعار في القائمة الجانبية' : 'Show logo in sidebar'}
+          </span>
         </div>
       </section>
 
@@ -202,27 +258,27 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         </div>
 
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'اسم الشركة (عربي)' : 'Company Name (Arabic)'}
             metaKey="company_name"
             required
             value={settings.company_name || ''}
             onChange={(e) => onChange('company_name', e.target.value)}
           />
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'اسم الشركة (إنجليزي)' : 'Company Name (English)'}
             metaKey="company_name_en"
             value={settings.company_name_en || ''}
             onChange={(e) => onChange('company_name_en', e.target.value)}
           />
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'اسم الفرع' : 'Branch Name'}
             metaKey="branch_name"
             required
             value={settings.branch_name || ''}
             onChange={(e) => onChange('branch_name', e.target.value)}
           />
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'كود الفرع' : 'Branch Code'}
             metaKey="branch_code"
             value={settings.branch_code || ''}
@@ -248,13 +304,13 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         </div>
 
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'السجل التجاري' : 'Commercial Register'}
             metaKey="commercial_register"
             value={settings.commercial_register || ''}
             onChange={(e) => onChange('commercial_register', e.target.value)}
           />
-          <DenseInput
+          <DenseInput lang={lang}
             label={lang === 'ar' ? 'الرقم الضريبي' : 'VAT Number'}
             metaKey="vat_number"
             value={settings.vat_number || ''}
@@ -283,13 +339,28 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
           {(() => {
             const primAddr = settings.address || "";
             const primPhone = settings.phone || "";
+            const isAddrCritical = !primAddr;
+            const isPhoneCritical = !primPhone;
             const pairs = [{ address: primAddr, phone: primPhone }];
             for (let i = 0; i < Math.max(addrs.length, phones.length); i++) {
               pairs.push({ address: addrs[i] || "", phone: phones[i] || "" });
             }
-            return pairs.map((pair, i) => (
+            return pairs.map((pair, i) => {
+              const isAddrEmpty = i === 0 && isAddrCritical;
+              const isPhoneEmpty = i === 0 && isPhoneCritical;
+              return (
               <div key={i} className="flex gap-3 items-start">
                 <div className="flex-1">
+                  {i === 0 && (
+                    <span className="flex items-center gap-1.5 mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                      {lang === 'ar' ? 'العنوان الرئيسي' : 'Main Address'}
+                      {isAddrCritical && (
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
+                          مطلوب
+                        </span>
+                      )}
+                    </span>
+                  )}
                   <textarea
                     value={pair.address}
                     data-field-key={i === 0 ? "address" : undefined}
@@ -304,26 +375,46 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                     }}
                     placeholder={`${lang === 'ar' ? 'عنوان الفرع' : 'Branch Address'} ${i + 1}`}
                     rows={2}
-                    className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all resize-none"
+                    className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all resize-none ${
+                      isAddrEmpty
+                        ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
+                        : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+                    }`}
                   />
                 </div>
                 <div className="flex-1 flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={pair.phone}
-                    data-field-key={i === 0 ? "phone" : undefined}
-                    onChange={(e) => {
-                      if (i === 0) {
-                        onChange("phone", e.target.value);
-                      } else {
-                        const updated = [...phones];
-                        updated[i - 1] = e.target.value;
-                        onChange("additional_phones", JSON.stringify(updated));
-                      }
-                    }}
-                    placeholder={`${lang === 'ar' ? 'هاتف الفرع' : 'Branch Phone'} ${i + 1}`}
-                    className="w-full rounded-sm border border-slate-200 bg-white py-2.5 px-3 text-sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all"
-                  />
+                  <div className="w-full">
+                    {i === 0 && (
+                      <span className="flex items-center gap-1.5 mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                        {lang === 'ar' ? 'الهاتف الرئيسي' : 'Main Phone'}
+                        {isPhoneCritical && (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
+                            مطلوب
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <input
+                      type="text"
+                      value={pair.phone}
+                      data-field-key={i === 0 ? "phone" : undefined}
+                      onChange={(e) => {
+                        if (i === 0) {
+                          onChange("phone", e.target.value);
+                        } else {
+                          const updated = [...phones];
+                          updated[i - 1] = e.target.value;
+                          onChange("additional_phones", JSON.stringify(updated));
+                        }
+                      }}
+                      placeholder={`${lang === 'ar' ? 'هاتف الفرع' : 'Branch Phone'} ${i + 1}`}
+                      className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all ${
+                        isPhoneEmpty
+                          ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
+                          : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+                      }`}
+                    />
+                  </div>
                 </div>
                 {i > 0 && (
                   <button
@@ -340,7 +431,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                   </button>
                 )}
               </div>
-            ));
+            )});
           })()}
           <button
             type="button"

@@ -1018,14 +1018,7 @@ export default function ItemsListPage() {
                   <span className="text-sm font-black text-slate-800 leading-none">{stats.outOfStock}</span>
                </div>
             </div>
-            <PermissionGate page="items" action="add">
-            <button
-               onClick={() => setQuickAddOpen(true)}
-               className="flex h-[42px] items-center gap-2 rounded-sm bg-slate-900 border border-slate-800 px-4 text-sm font-black text-white hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
-            >
-               <Plus className="h-3.5 w-3.5" /> إضافة صنف
-            </button>
-            </PermissionGate>
+
             <PermissionGate page="items" action="add">
             <button
                onClick={() => setNewCategoryOpen(true)}
