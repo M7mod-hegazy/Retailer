@@ -1,6 +1,6 @@
 {
   "name": "retailer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "electron/main.js",
   "scripts": {
     "dev": "npm run kill:retailer-processes && concurrently -k \"npm:dev:server\" \"npm:dev:client\" \"npm:dev:electron\"",

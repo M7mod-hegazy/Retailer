@@ -67,7 +67,11 @@ api.interceptors.response.use(
         isRedirectingToLogin = true;
         const currentPath = window.location.pathname || "";
         if (!currentPath.startsWith("/login")) {
-          window.location.replace("/login");
+          const loginPath =
+            window.location.protocol === "file:"
+              ? "#/login"
+              : "/login";
+          window.location.replace(loginPath);
         }
         window.setTimeout(() => {
           isRedirectingToLogin = false;
