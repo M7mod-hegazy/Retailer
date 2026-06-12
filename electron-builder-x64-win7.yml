@@ -14,7 +14,7 @@ files:
   - "!**/*.map"
 
 directories:
-  output: release/win7-build-x64
+  output: release/win7/x64
 
 asar: true
 asarUnpack:
@@ -60,4 +60,7 @@ publish:
   channel: latest
 
 buildDependenciesFromSource: false
-npmRebuild: true
+# Native modules are rebuilt/cache-restored per arch by
+# electron/scripts/build-win7-test.js before electron-builder runs;
+# letting electron-builder rebuild again would be a redundant second compile.
+npmRebuild: false

@@ -19,7 +19,13 @@ no longer exists.
 
 1. Kill running retailer processes (reuses `kill-retailer-processes.js`;
    ignores failure) so locked exes don't abort packaging.
-2. Build the client once (`npm run build --prefix client`), skippable with
+2. Pre-clean the `win-*-unpacked` output dirs and fail fast (seconds, with a
+   clear message) if a file in them is held open by another program. This was
+   a real hidden failure cause: editor tabs (Cursor) holding `app.asar` open
+   made electron-builder die minutes into packaging with an opaque error. The
+   output dirs were also moved to fresh paths (`release/win7/<arch>/`) to
+   escape existing locks on the old `win7-build-*` folders.
+3. Build the client once (`npm run build --prefix client`), skippable with
    `--skip-client`.
 3. For each requested arch (`both` by default):
    a. **Cache:** fetch `better_sqlite3.node` from
