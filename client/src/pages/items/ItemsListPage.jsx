@@ -40,6 +40,9 @@ import ImageUpload from "../../components/ui/ImageUpload";
 import { usePageTour } from "../../hooks/usePageTour";
 import Highlight from "../../components/ui/Highlight";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useFeatureEnabled } from "../../hooks/useFeature";
+import ItemUnitsSection from "../../components/items/ItemUnitsSection";
+import VariantsSection from "../../components/items/VariantsSection";
 
 const ItemExportModal = React.lazy(() => import("./ItemExportModal"));
 const ItemQuickAddModal = React.lazy(() => import("./ItemFormModal"));
@@ -378,6 +381,11 @@ export default function ItemsListPage() {
   const [showSkuGaps, setShowSkuGaps]     = useState(false);
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // Feature-driven per-item managers (shown on the catalog only when the flag is on)
+  const multiUnitEnabled = useFeatureEnabled("feature_multi_unit");
+  const variantsEnabled = useFeatureEnabled("feature_variants");
+  const [unitsItem, setUnitsItem] = useState(null);
+  const [variantsItem, setVariantsItem] = useState(null);
   const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -1366,6 +1374,24 @@ export default function ItemsListPage() {
                                    </button>
                                    </PermissionGate>
                                  )}
+                                 {multiUnitEnabled && (
+                                   <button
+                                     onClick={() => setUnitsItem(item)}
+                                     title="وحدات إضافية"
+                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white transition-all shadow-sm"
+                                   >
+                                     <Package className="h-3.5 w-3.5" />
+                                   </button>
+                                 )}
+                                 {variantsEnabled && (
+                                   <button
+                                     onClick={() => setVariantsItem(item)}
+                                     title="المتغيرات"
+                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-violet-50 text-violet-600 hover:bg-violet-600 hover:text-white transition-all shadow-sm"
+                                   >
+                                     <Layers className="h-3.5 w-3.5" />
+                                   </button>
+                                 )}
                                  <PermissionGate page="items" action="delete">
                                  <button
                                    onClick={() => deleteRow(item)}
@@ -1513,6 +1539,22 @@ export default function ItemsListPage() {
             }}
           />
         </React.Suspense>
+      )}
+
+      {unitsItem && (
+        <Modal open title={`وحدات إضافية — ${unitsItem.name}`} onClose={() => setUnitsItem(null)} maxWidth="max-w-lg">
+          <div className="p-4">
+            <ItemUnitsSection itemId={unitsItem.id} />
+          </div>
+        </Modal>
+      )}
+
+      {variantsItem && (
+        <Modal open title={`المتغيرات — ${variantsItem.name}`} onClose={() => setVariantsItem(null)} maxWidth="max-w-2xl">
+          <div className="p-4">
+            <VariantsSection item={variantsItem} onRefresh={() => loadItems(selectedCatId, search, showDeleted)} />
+          </div>
+        </Modal>
       )}
     </div>
   );
