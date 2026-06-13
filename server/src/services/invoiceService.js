@@ -142,7 +142,12 @@ function createInvoice(payload) {
           soldUnitFactor = unit.factor;
           soldUnitName = unit.unit_name;
           quantity = soldUnitQty * soldUnitFactor; // convert to base units for stock
-          if (unit.sale_price != null) unitPrice = unit.sale_price; // use unit price if set
+          // unit.sale_price (or the client-sent unit_price) is the price for ONE sold-unit
+          // (e.g. one carton). quantity is now in BASE units, so store unit_price PER BASE
+          // unit — otherwise quantity × unit_price over-charges by the factor. The line money
+          // is rounded to 2dp below so the carton total stays exact.
+          const perSoldUnitPrice = unit.sale_price != null ? Number(unit.sale_price) : unitPrice;
+          unitPrice = soldUnitFactor > 0 ? perSoldUnitPrice / soldUnitFactor : perSoldUnitPrice;
         }
       }
       const stockRow = db
@@ -173,7 +178,9 @@ function createInvoice(payload) {
         } catch (_) {}
       }
 
-      const rowSubtotal = quantity * unitPrice;
+      // Round line money to 2dp so multi-unit per-base prices (e.g. cartonPrice/factor)
+      // don't accumulate float drift; a correctly-2dp price rounds to itself (no-op).
+      const rowSubtotal = Math.round((quantity * unitPrice + Number.EPSILON) * 100) / 100;
       subtotal += rowSubtotal;
 
       return {
