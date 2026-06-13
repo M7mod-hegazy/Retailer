@@ -30,7 +30,8 @@ import {
   TrendingDown,
   TrendingUp,
   Columns,
-  RotateCcw
+  RotateCcw,
+  Pencil
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -384,8 +385,13 @@ export default function ItemsListPage() {
   // Feature-driven per-item managers (shown on the catalog only when the flag is on)
   const multiUnitEnabled = useFeatureEnabled("feature_multi_unit");
   const variantsEnabled = useFeatureEnabled("feature_variants");
+  const serialsEnabled = useFeatureEnabled("feature_serials");
+  const goldEnabled = useFeatureEnabled("feature_gold");
+  const scaleEnabled = useFeatureEnabled("feature_scale_barcodes");
+  const anyItemFeature = multiUnitEnabled || variantsEnabled || serialsEnabled || goldEnabled || scaleEnabled;
   const [unitsItem, setUnitsItem] = useState(null);
   const [variantsItem, setVariantsItem] = useState(null);
+  const [editFullItem, setEditFullItem] = useState(null);
   const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -1374,6 +1380,17 @@ export default function ItemsListPage() {
                                    </button>
                                    </PermissionGate>
                                  )}
+                                 {anyItemFeature && (
+                                   <PermissionGate page="items" action="edit">
+                                   <button
+                                     onClick={() => setEditFullItem(item)}
+                                     title="تعديل كامل (السيريال/الذهب/الميزان/الوحدات/المتغيرات)"
+                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                   >
+                                     <Pencil className="h-3.5 w-3.5" />
+                                   </button>
+                                   </PermissionGate>
+                                 )}
                                  {multiUnitEnabled && (
                                    <button
                                      onClick={() => setUnitsItem(item)}
@@ -1553,6 +1570,22 @@ export default function ItemsListPage() {
         <Modal open title={`المتغيرات — ${variantsItem.name}`} onClose={() => setVariantsItem(null)} maxWidth="max-w-2xl">
           <div className="p-4">
             <VariantsSection item={variantsItem} onRefresh={() => loadItems(selectedCatId, search, showDeleted)} />
+          </div>
+        </Modal>
+      )}
+
+      {editFullItem && (
+        <Modal open title={`تعديل صنف — ${editFullItem.name}`} onClose={() => setEditFullItem(null)} maxWidth="max-w-4xl">
+          <div className="p-4 max-h-[80vh] overflow-y-auto">
+            <React.Suspense fallback={null}>
+              <ItemQuickAddModal
+                editItem={editFullItem}
+                onSaved={() => {
+                  setEditFullItem(null);
+                  loadItems(selectedCatId, search, showDeleted);
+                }}
+              />
+            </React.Suspense>
           </div>
         </Modal>
       )}
