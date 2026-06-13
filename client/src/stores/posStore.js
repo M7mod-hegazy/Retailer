@@ -14,11 +14,22 @@ function computeTotals(lines, discount, increase) {
   return { subtotal, base, total: base };
 }
 
-function cartLineKey(lineOrItemId, warehouseId) {
+function cartLineKey(lineOrItemId, warehouseId, soldUnitId) {
+  let id, wh, unit;
   if (lineOrItemId && typeof lineOrItemId === "object") {
-    return `${lineOrItemId.item_id ?? lineOrItemId.id}:${lineOrItemId.warehouse_id ?? "none"}`;
+    id = lineOrItemId.item_id ?? lineOrItemId.id;
+    wh = lineOrItemId.warehouse_id;
+    unit = lineOrItemId.sold_unit_id;
+  } else {
+    id = lineOrItemId;
+    wh = warehouseId;
+    unit = soldUnitId;
   }
-  return `${lineOrItemId}:${warehouseId ?? "none"}`;
+  // Multi-unit (feature_multi_unit): the sold unit is part of the line identity so the
+  // same item sold in different units (e.g. carton vs piece) stays on separate lines and
+  // survives updateLine (which recomputes the key). null/undefined warehouse → "none".
+  const unitPart = unit ? `:u${unit}` : "";
+  return `${id}:${wh ?? "none"}${unitPart}`;
 }
 
 function computeTax(base, taxEnabled, taxRate, settings) {
@@ -84,12 +95,10 @@ export const usePosStore = create(
       addLine: (item) => {
         set((state) => {
           const nextWarehouseId = item.warehouse_id || null;
-          // When a sold_unit is provided (multi-unit feature), include it in the line key
-          // so different unit sizes can coexist as separate lines
+          // When a sold_unit is provided (multi-unit feature), it is part of the line key
+          // so different unit sizes coexist as separate lines (see cartLineKey).
           const soldUnitId = item.sold_unit_id || null;
-          const nextLineKey = soldUnitId
-            ? `${item.id}:${nextWarehouseId}:u${soldUnitId}`
-            : cartLineKey(item.id, nextWarehouseId);
+          const nextLineKey = cartLineKey(item.id, nextWarehouseId, soldUnitId);
           const existing = state.lines.find((line) => (line.line_key || cartLineKey(line)) === nextLineKey);
           const nextQuantity = Number(item.quantity || 1);
           // Use sold_unit's price if provided, else fall back to item price
