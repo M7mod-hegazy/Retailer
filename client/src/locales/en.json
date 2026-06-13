@@ -257,5 +257,17 @@
   "invoice_note": "Invoice Note",
   "invoice_note_placeholder": "Add a note to the invoice…",
   "tax_enabled": "Enable Tax",
-  "edit_tax_rate": "Edit Tax Rate"
+  "edit_tax_rate": "Edit Tax Rate",
+  "features.tab": "Features",
+  "features.banner": "Disabling a feature does not delete its data — it only hides from the UI and returns fully when re-enabled.",
+  "features.recommendedFor": "Recommended for:",
+  "features.disabled": "Feature not enabled",
+  "features.gotoSettings": "You can enable this feature from Settings → Features",
+  "feature_multi_unit.name": "Multi-Unit (Carton / Dozen / Piece)",
+  "feature_variants.name": "Variants (Sizes & Colors)",
+  "feature_serials.name": "Serial / IMEI Tracking",
+  "feature_scale_barcodes.name": "Scale Barcodes",
+  "feature_repair_orders.name": "Repair & Service Work Orders",
+  "feature_restaurant.name": "Restaurant Mode (Tables + Recipes)",
+  "feature_gold.name": "Gold & Jewelry Pricing"
 }

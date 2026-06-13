@@ -14,6 +14,13 @@ function computeTotals(lines, discount, increase) {
   return { subtotal, base, total: base };
 }
 
+function cartLineKey(lineOrItemId, warehouseId) {
+  if (lineOrItemId && typeof lineOrItemId === "object") {
+    return `${lineOrItemId.item_id ?? lineOrItemId.id}:${lineOrItemId.warehouse_id ?? "none"}`;
+  }
+  return `${lineOrItemId}:${warehouseId ?? "none"}`;
+}
+
 function computeTax(base, taxEnabled, taxRate, settings) {
   const featureOn = Number(settings?.tax_enabled ?? 0) === 1
     && (settings?.tax_type === 'inclusive' || settings?.tax_type === 'exclusive');
@@ -30,7 +37,7 @@ function computeTax(base, taxEnabled, taxRate, settings) {
   }
 }
 
-export { computeTax };
+export { computeTax, cartLineKey };
 export const usePosStore = create(
   persist(
     (set, get) => ({
@@ -76,21 +83,31 @@ export const usePosStore = create(
       },
       addLine: (item) => {
         set((state) => {
-          const existing = state.lines.find((line) => line.item_id === item.id);
+          const nextWarehouseId = item.warehouse_id || null;
+          // When a sold_unit is provided (multi-unit feature), include it in the line key
+          // so different unit sizes can coexist as separate lines
+          const soldUnitId = item.sold_unit_id || null;
+          const nextLineKey = soldUnitId
+            ? `${item.id}:${nextWarehouseId}:u${soldUnitId}`
+            : cartLineKey(item.id, nextWarehouseId);
+          const existing = state.lines.find((line) => (line.line_key || cartLineKey(line)) === nextLineKey);
           const nextQuantity = Number(item.quantity || 1);
-          const nextPrice = Number(item.sale_price || item.unit_price || item.price || 0);
+          // Use sold_unit's price if provided, else fall back to item price
+          const nextPrice = Number(item.sold_unit_price ?? item.sale_price ?? item.unit_price ?? item.price ?? 0);
           const nextDiscount = Number(item.line_discount || 0);
           const lines = existing
             ? state.lines.map((line) =>
-                line.item_id === item.id
+                (line.line_key || cartLineKey(line)) === nextLineKey
                   ? {
                       ...line,
                       quantity: line.quantity + nextQuantity,
                       unit_price: nextPrice || line.unit_price,
                       line_discount: nextDiscount || line.line_discount || 0,
-                      warehouse_id: item.warehouse_id || line.warehouse_id,
+                      line_key: nextLineKey,
+                      warehouse_id: nextWarehouseId || line.warehouse_id,
                       warehouse_name: item.warehouse_name || line.warehouse_name,
                       category_name: item.category_name || line.category_name,
+                      unit_id: item.unit_id || line.unit_id,
                       unit_name: item.unit_name || line.unit_name,
                       item_barcode: item.barcode || item.item_barcode || line.item_barcode,
                       code: item.code || line.code,
@@ -102,6 +119,7 @@ export const usePosStore = create(
                 ...state.lines,
                 {
                   item_id: item.id,
+                  line_key: nextLineKey,
                   item_name: item.name,
                   item_barcode: item.barcode || item.item_barcode || "",
                   code: item.code || item.item_code || "",
@@ -111,26 +129,36 @@ export const usePosStore = create(
                   master_sale_price: Number(item.master_sale_price ?? item.sale_price ?? 0),
                   price_type: item.price_type || "retail",
                   line_discount: nextDiscount,
-                  warehouse_id: item.warehouse_id || null,
+                  warehouse_id: nextWarehouseId,
                   warehouse_name: item.warehouse_name || "",
                   category_name: item.category_name || "",
+                  unit_id: item.unit_id || null,
                   unit_name: item.unit_name || "",
                   stock_quantity: Number(item.stock_quantity || item.stock || 0),
+                  // Multi-unit snapshot (feature_multi_unit)
+                  sold_unit_id: soldUnitId,
+                  sold_unit_name: item.sold_unit_name || null,
+                  sold_unit_factor: item.sold_unit_factor || null,
                 },
               ];
           return { lines };
         });
         get().scheduleEvaluateCart();
       },
-      updateLine: (itemId, patch) => {
+      updateLine: (lineKey, patch) => {
         set((state) => ({
-          lines: state.lines.map((line) => (line.item_id === itemId ? { ...line, ...patch } : line)),
+          lines: state.lines.map((line) => {
+            const currentKey = line.line_key || cartLineKey(line);
+            if (currentKey !== lineKey && line.item_id !== lineKey) return line;
+            const nextLine = { ...line, ...patch };
+            return { ...nextLine, line_key: cartLineKey(nextLine) };
+          }),
         }));
         get().scheduleEvaluateCart();
       },
-      removeLine: (itemId) => {
+      removeLine: (lineKey) => {
         set((state) => ({
-          lines: state.lines.filter((line) => line.item_id !== itemId),
+          lines: state.lines.filter((line) => (line.line_key || cartLineKey(line)) !== lineKey && line.item_id !== lineKey),
         }));
         get().scheduleEvaluateCart();
       },
@@ -152,10 +180,11 @@ export const usePosStore = create(
           const heldSlots = held.map((d) => ({
             id: d.id,
             dbId: d.id,
+            label: d.label || "",
             heldAt: d.held_at,
             heldTotal: d.lines.reduce((s, l) => s + l.quantity * l.unit_price - Number(l.line_discount || 0), 0) - Number(d.discount || 0) + Number(d.increase || 0),
             linesCount: d.lines.length,
-            lines: d.lines,
+            lines: d.lines.map((line) => ({ ...line, line_key: line.line_key || cartLineKey(line) })),
             customer: d.customer,
             discount: d.discount,
             increase: d.increase,
@@ -168,7 +197,7 @@ export const usePosStore = create(
           }));
           if (active) {
             set({
-              lines: active.lines,
+              lines: active.lines.map((line) => ({ ...line, line_key: line.line_key || cartLineKey(line) })),
               customer: active.customer,
               discount: active.discount,
               increase: active.increase,
@@ -217,7 +246,7 @@ export const usePosStore = create(
           set({ _activeDraftDbId: null });
         }
       },
-      holdCurrentInvoice: () => {
+      holdCurrentInvoice: (label) => {
         const state = get();
         if (!state.lines.length) return;
         const totals = computeTotals(
@@ -227,11 +256,12 @@ export const usePosStore = create(
         );
         const slot = {
           id: `held-${Date.now()}`,
+          label: (label || "").trim(),
           heldAt: new Date().toISOString(),
           heldTotal: totals.total,
           heldSubtotal: totals.subtotal,
           linesCount: state.lines.length,
-          lines: state.lines,
+          lines: state.lines.map((line) => ({ ...line, line_key: line.line_key || cartLineKey(line) })),
           customer: state.customer,
           discount: state.discount,
           increase: state.increase,
@@ -243,7 +273,7 @@ export const usePosStore = create(
           taxRate: state.taxRate,
         };
         set({
-          heldInvoices: [slot, ...state.heldInvoices].slice(0, 4),
+          heldInvoices: [slot, ...state.heldInvoices],
           lines: [],
           customer: null,
           discount: 0,
@@ -259,6 +289,7 @@ export const usePosStore = create(
         api.post("/api/pos-drafts", {
           type: "held",
           lines: slot.lines,
+          label: slot.label || null,
           customer: slot.customer,
           discount: slot.discount,
           increase: slot.increase,
@@ -293,7 +324,7 @@ export const usePosStore = create(
         }
         set({
           heldInvoices: state.heldInvoices.filter((entry) => entry.id !== id),
-          lines: held.lines,
+          lines: held.lines.map((line) => ({ ...line, line_key: line.line_key || cartLineKey(line) })),
           customer: held.customer,
           discount: held.discount,
           increase: held.increase || 0,

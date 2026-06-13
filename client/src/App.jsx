@@ -67,6 +67,10 @@ const StockLevelsPage = lazy(() => import("./pages/stock/StockLevelsPage"));
 const StockMovementsPage = lazy(() => import("./pages/stock/StockMovementsPage"));
 const StockTransferPage = lazy(() => import("./pages/stock/StockTransferPage"));
 const PhysicalCountPage = lazy(() => import("./pages/stock/PhysicalCountPage"));
+const SerialLookupPage = lazy(() => import("./pages/stock/SerialLookupPage"));
+const RepairOrdersPage = lazy(() => import("./pages/repairs/RepairOrdersPage"));
+const TableMapPage = lazy(() => import("./pages/restaurant/TableMapPage"));
+const GoldRatesPage = lazy(() => import("./pages/gold/GoldRatesPage"));
 const BulkPriceUpdatePage = lazy(() => import("./pages/operations/BulkPriceUpdate"));
 const EmployeeAdjustmentsPage = lazy(() => import("./pages/operations/EmployeeAdjustments"));
 const QuotationsPage = lazy(() => import("./pages/operations/QuotationsPage"));
@@ -291,6 +295,10 @@ export default function App() {
                     <Route path="stock/movements" element={<PermissionRoute page="stock"><StockMovementsPage /></PermissionRoute>} />
                     <Route path="stock/transfer" element={<PermissionRoute page="stock_transfer"><StockTransferPage /></PermissionRoute>} />
                     <Route path="stock/physical-count" element={<PermissionRoute page="physical_count"><PhysicalCountPage /></PermissionRoute>} />
+                    <Route path="stock/serials" element={<PermissionRoute page="items"><SerialLookupPage /></PermissionRoute>} />
+                    <Route path="repairs/*" element={<PermissionRoute page="repair_orders"><RepairOrdersPage /></PermissionRoute>} />
+                    <Route path="restaurant/tables" element={<PermissionRoute page="pos"><TableMapPage /></PermissionRoute>} />
+                    <Route path="gold/rates" element={<PermissionRoute page="settings"><GoldRatesPage /></PermissionRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                   </QueryClientProvider>

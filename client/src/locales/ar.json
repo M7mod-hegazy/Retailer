@@ -257,5 +257,17 @@
   "invoice_note": "ملاحظة الفاتورة",
   "invoice_note_placeholder": "أضف ملاحظة على الفاتورة…",
   "tax_enabled": "تفعيل الضريبة",
-  "edit_tax_rate": "تعديل نسبة الضريبة"
+  "edit_tax_rate": "تعديل نسبة الضريبة",
+  "features.tab": "الميزات",
+  "features.banner": "تعطيل ميزة لا يحذف بياناتها — تختفي من الواجهة فقط وتعود كاملةً عند إعادة التفعيل.",
+  "features.recommendedFor": "موصى به لـ:",
+  "features.disabled": "الميزة غير مفعّلة",
+  "features.gotoSettings": "يمكنك تفعيل هذه الميزة من الإعدادات ← الميزات",
+  "feature_multi_unit.name": "وحدات القياس المتعددة",
+  "feature_variants.name": "المتغيرات (مقاسات وألوان)",
+  "feature_serials.name": "تتبع السيريال / IMEI",
+  "feature_scale_barcodes.name": "باركود الميزان",
+  "feature_repair_orders.name": "أوامر الصيانة والإصلاح",
+  "feature_restaurant.name": "وضع المطعم (طاولات + وصفات)",
+  "feature_gold.name": "تسعير الذهب والمجوهرات"
 }

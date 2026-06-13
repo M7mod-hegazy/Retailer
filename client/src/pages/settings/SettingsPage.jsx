@@ -17,6 +17,8 @@ import { applyFontSettings } from "../../utils/fontSettings";
 import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
 import { useUiStore } from "../../stores/uiStore";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import FeaturesTab from "./FeaturesTab";
 import { getMeta, getHint, getPlaceholder, getDefault, findMissingCritical, fieldKeyToTab } from "../../utils/fieldMeta";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 
@@ -27,6 +29,7 @@ const tabs = [
   { id: "printing", label: "الطباعة", hint: "مقاسات الإيصال ومعاينة القوالب" },
   { id: "appearance", label: "المظهر", hint: "الخطوط وحجم النص ونمط الأرقام" },
   { id: "performance", label: "الرسوميات والأداء", hint: "إعدادات الرسوميات والأداء لأنظمة التشغيل البطيئة" },
+  { id: "features", label: "الميزات", hint: "تفعيل أو تعطيل وحدات متخصصة حسب نوع متجرك" },
   { id: "whatsapp", label: "واتساب", hint: "ربط حساب واتساب وإرسال الرسائل للعملاء" },
   { id: "maintenance", label: "النسخ الاحتياطي والبيانات", hint: "إنشاء واستعادة وتصدير النسخ وتفريغ قاعدة البيانات" },
   { id: "help", label: "المساعدة", hint: "الدليل السريع ومراجع الدعم" },
@@ -305,6 +308,10 @@ export default function SettingsPage() {
     const updated = { ...settings, [key]: value };
     setSettings(updated);
     settingsRef.current = updated;
+    // For feature flags: sync the global store immediately so Sidebar, ItemForm, etc. react right away
+    if (key.startsWith("feature_")) {
+      useAppSettingsStore.getState().applySettings({ [key]: value });
+    }
     if (activeTab === "printing") {
       clearTimeout(autoSaveTimer.current);
       autoSaveTimer.current = setTimeout(() => silentSave(settingsRef.current), 1200);
@@ -315,6 +322,8 @@ export default function SettingsPage() {
     try {
       const payload = Object.entries(snap).map(([k, v]) => ({ setting_key: k, setting_value: String(v) }));
       await api.post("/api/settings/bulk", { settings: payload });
+      // Sync the global settings store so all hooks (useFeatureEnabled, etc.) see the new values immediately
+      useAppSettingsStore.getState().applySettings(snap);
     } catch (err) {
       console.error("Silent save failed:", err);
       throw err;
@@ -333,6 +342,7 @@ export default function SettingsPage() {
       originalRef.current = JSON.parse(JSON.stringify(settings));
       toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully");
       applyFontSettings(settings);
+      useAppSettingsStore.getState().applySettings(settings);
     } catch {
       toast.error(isRTL ? "فشل حفظ الإعدادات" : "Failed to save settings");
     } finally {
@@ -832,6 +842,10 @@ export default function SettingsPage() {
 
             {activeTab === "performance" && (
               <PerformanceSettings />
+            )}
+
+            {activeTab === "features" && (
+              <FeaturesTab settings={settings} onChange={handleChange} onSilentSave={silentSave} />
             )}
 
             {activeTab === "whatsapp" && (

@@ -6,7 +6,7 @@ import {
   Boxes, Box, Tags, FileSpreadsheet, BadgePercent,
   Database, Warehouse, Scale, Briefcase,
   ShieldCheck, PieChart, Fingerprint, UsersRound, Settings, ArrowUpCircle, ClipboardCheck,
-  ShoppingBag,
+  ShoppingBag, Smartphone, Wrench, UtensilsCrossed, Gem,
 } from "lucide-react";
 
 export const PRIMARY_MENU = [
@@ -51,6 +51,10 @@ export const NAV_MODULES = [
       { path: "/operations/bulk-price-update", label: "تحديث الأسعار", icon: TrendingUp, pageKey: "bulk_price_update" },
       { path: "/stock/transfer", label: "تحويل مخزني", icon: ArrowRightLeft, pageKey: "stock_transfer" },
       { path: "/stock/physical-count", label: "الجرد الفعلي", icon: FileSpreadsheet, pageKey: "physical_count" },
+      { path: "/stock/serials", label: "بحث السيريال / IMEI", icon: Smartphone, pageKey: "items", featureKey: "feature_serials" },
+      { path: "/repairs", label: "أوامر الصيانة", icon: Wrench, pageKey: "repair_orders", featureKey: "feature_repair_orders" },
+      { path: "/restaurant/tables", label: "طاولات المطعم", icon: UtensilsCrossed, pageKey: "pos", featureKey: "feature_restaurant" },
+      { path: "/gold/rates", label: "أسعار الذهب", icon: Gem, pageKey: "settings", featureKey: "feature_gold" },
       { path: "/definitions/promotions", label: "العروض والتخفيضات", icon: BadgePercent, pageKey: "promotions" },
     ],
   },

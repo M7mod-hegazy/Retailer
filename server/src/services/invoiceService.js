@@ -7,6 +7,8 @@ const { getSnapshotCosts } = require("./waccService");
 const { captureInvoiceLineOverrides } = require("./overrideTrackingService");
 const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
 const { captureLeadFromSale } = require("./leadCapture");
+const { assertNotVariantParent } = require("../routes/variants.routes");
+const { validateAndSellSerials } = require("../utils/serialValidation");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -119,13 +121,30 @@ function createInvoice(payload) {
     let subtotal = 0;
     const lineErrors = [];
 
+    const featureMultiUnit = (() => {
+      try { return Boolean(db.prepare("SELECT feature_multi_unit FROM settings WHERE id = 1").get()?.feature_multi_unit); } catch { return false; }
+    })();
+
     const normalizedLines = (payload.lines || []).map((line, index) => {
-      const quantity = Number(line.quantity || 0);
-      const unitPrice = Number(line.unit_price || 0);
+      let quantity = Number(line.quantity || 0);
+      let unitPrice = Number(line.unit_price || 0);
       const lineDiscount = Number(line.discount || 0);
       const itemId = Number(line.item_id || 0);
       const warehouseId = Number(line.warehouse_id || payload.warehouse_id || 1);
       const item = db.prepare("SELECT id, name, name_en, barcode, purchase_price FROM items WHERE id = ?").get(itemId);
+
+      // Multi-unit: when unit_id is present and feature is on, resolve base quantity and snapshot
+      let soldUnitName = null, soldUnitFactor = null, soldUnitQty = null;
+      if (featureMultiUnit && line.unit_id) {
+        const unit = db.prepare("SELECT * FROM item_units WHERE id = ? AND item_id = ?").get(Number(line.unit_id), itemId);
+        if (unit) {
+          soldUnitQty = Number(line.sold_unit_qty || quantity);
+          soldUnitFactor = unit.factor;
+          soldUnitName = unit.unit_name;
+          quantity = soldUnitQty * soldUnitFactor; // convert to base units for stock
+          if (unit.sale_price != null) unitPrice = unit.sale_price; // use unit price if set
+        }
+      }
       const stockRow = db
         .prepare("SELECT quantity, wacc, last_purchase_cost FROM stock_levels WHERE item_id = ? AND warehouse_id = ?")
         .get(itemId, warehouseId);
@@ -135,6 +154,8 @@ function createInvoice(payload) {
       const snapshotCosts = getSnapshotCosts(itemId, db, quantity);
 
       if (!item) lineErrors.push(`الصنف غير موجود (سطر ${index + 1})`);
+      // Variant parent sellability guard (feature_variants)
+      try { assertNotVariantParent(db, itemId); } catch (e) { lineErrors.push(e.message); }
       if (!Number.isFinite(quantity) || quantity <= 0) lineErrors.push(`الكمية غير صالحة في السطر ${index + 1}`);
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) lineErrors.push(`السعر يجب أن يكون أكبر من صفر في السطر ${index + 1}`);
       if (quantity > currentStock) lineErrors.push(`المخزون غير كافٍ للصنف ${item?.name || itemId} (المتاح ${currentStock})`);
@@ -170,6 +191,9 @@ function createInvoice(payload) {
         cost_fifo:          snapshotCosts.cost_fifo,
         cost_lifo:          snapshotCosts.cost_lifo,
         is_below_cost:      isBelowCost,
+        sold_unit_name:     soldUnitName,
+        sold_unit_factor:   soldUnitFactor,
+        sold_unit_qty:      soldUnitQty,
       };
     });
 
@@ -260,8 +284,9 @@ function createInvoice(payload) {
       const lr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
-           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo,
+           sold_unit_name, sold_unit_factor, sold_unit_qty)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         inv.lastInsertRowid,
         line.item_id,
@@ -277,6 +302,9 @@ function createInvoice(payload) {
         line.cost_last_purchase,
         line.cost_fifo,
         line.cost_lifo,
+        line.sold_unit_name || null,
+        line.sold_unit_factor || null,
+        line.sold_unit_qty || null,
       );
       createdInvoiceLines.push({ id: lr.lastInsertRowid });
 
@@ -288,6 +316,33 @@ function createInvoice(payload) {
         reference_type: "invoice",
         reference_id: inv.lastInsertRowid,
       });
+
+      // Recipe-based ingredient deduction (feature_restaurant)
+      const recipeItem = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+      if (recipeItem?.has_recipe) {
+        const featureRestaurant = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+        if (featureRestaurant?.feature_restaurant) {
+          const ingredients = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+          for (const ing of ingredients) {
+            adjustStock({
+              item_id: ing.ingredient_item_id,
+              warehouse_id: line.warehouse_id || 1,
+              quantityDelta: -(ing.quantity * line.quantity),
+              movement_type: "recipe_deduction",
+              reference_type: "invoice",
+              reference_id: inv.lastInsertRowid,
+            });
+          }
+        }
+      }
+
+      // Serial/IMEI validation (feature_serials) — flag-guarded inside the helper
+      validateAndSellSerials(
+        db,
+        { item_id: line.item_id, quantity: line.quantity, serials: line.serials },
+        inv.lastInsertRowid,
+        lr.lastInsertRowid
+      );
 
       // FEFO batch deduction for items with expiry tracking
       const batchItem = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);

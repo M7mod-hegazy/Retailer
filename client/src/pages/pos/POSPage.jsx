@@ -52,7 +52,7 @@ import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import InvoiceProfitModal from "../../components/pos/InvoiceProfitModal";
 import DataGrid from "../../components/ui/DataGrid";
 import { usePageTour } from "../../hooks/usePageTour";
-import { usePosStore, computeTax } from "../../stores/posStore";
+import { usePosStore, computeTax, cartLineKey } from "../../stores/posStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
@@ -71,6 +71,7 @@ import { useIsNarrowViewport } from "../../hooks/useIsNarrowViewport";
 import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
@@ -143,6 +144,7 @@ export default function POSPage() {
   const canOverridePrice = user?.role === "dev" || user?.role === "admin" || (Array.isArray(permissions?.pos) && permissions.pos.includes("override_price"));
   const posVoiceEnabled = useAppSettingsStore((s) => s.settings.pos_voice_enabled);
   const { playBeep } = useSound(posVoiceEnabled);
+  const goldEnabled = useFeatureEnabled("feature_gold");
 
   // POS store
   const lines             = usePosStore((s) => s.lines);
@@ -188,7 +190,9 @@ export default function POSPage() {
   }, []);
   const handleHold = () => {
     if (!lines.length) return;
-    holdCurrentInvoice();
+    const fallback = customer?.name || new Intl.DateTimeFormat("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" }).format(new Date());
+    const label = window.prompt("اسم الفاتورة المعلقة", fallback);
+    holdCurrentInvoice(label || fallback);
     toast.success("تم تعليق الفاتورة");
     setHeldDropdownOpen(false);
   };
@@ -638,11 +642,22 @@ export default function POSPage() {
   }, [selectedItem?.id]);
 
   useEffect(() => {
-    const handler = (e) => { if (e.detail) handleSelectItem(e.detail); };
+    const handler = async (e) => {
+      if (!e.detail) return;
+      let item = e.detail;
+      // Enrich gold items with live pricing
+      if (item.is_gold_item && goldEnabled) {
+        try {
+          const gRes = await api.get(`/api/gold/price?item_id=${item.id}&quantity=1`);
+          item = { ...item, sale_price: gRes.data.data.unit_price, _gold_priced: true };
+        } catch {}
+      }
+      handleSelectItem(item);
+    };
     window.addEventListener("pos-barcode-scanned", handler);
     return () => window.removeEventListener("pos-barcode-scanned", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [goldEnabled]);
 
 
   useEffect(() => {
@@ -728,6 +743,13 @@ export default function POSPage() {
   const paidAmountNumber   = Number(amountPaid || 0);
   const creditRemaining    = Math.max(0, totals.total - Math.max(0, paidAmountNumber));
   const changeAmount       = Math.max(0, Number(amountReceived || 0) - totals.total);
+  const promotionSummary = useMemo(() => {
+    if (!promotionDiscount || !(appliedPromotions || []).length) return "";
+    return (appliedPromotions || [])
+      .map((p) => p.name || p.title || p.promotion_name || p.label)
+      .filter(Boolean)
+      .join("، ");
+  }, [promotionDiscount, appliedPromotions]);
 
   const lineWarnings = useMemo(() => {
     const result = {};
@@ -751,7 +773,7 @@ export default function POSPage() {
       if (lineDiscount > lineTotal && lineTotal > 0) warnings.push({ type: "warning", code: "discount_overflow", msg: "الخصم يتجاوز الإجمالي" });
       if (lineDiscount < 0) warnings.push({ type: "warning", code: "negative_discount", msg: "خصم سالب" });
       if (quantity <= 0) warnings.push({ type: "error", code: "zero_qty", msg: "كمية صفر" });
-      result[l.item_id] = warnings;
+      result[cartLineKey(l)] = warnings;
     }
     return result;
   }, [lines, items, stockLevels, stockLoaded, amendContext, amendOriginalQty]);
@@ -1135,6 +1157,7 @@ export default function POSPage() {
       warehouse_id: warehouse.id,
       warehouse_name: warehouse.name,
       stock_quantity: stockValue,
+      unit_id: unit?.id || null,
       unit_name: unit?.name || unit?.symbol || selectedItem.unit_name || "قطعة",
       primary_image_url: getItemImage(selectedItem) || null,
       quantity,
@@ -1203,11 +1226,16 @@ export default function POSPage() {
           : null,
         increase: Number(increase || 0),
         lines: lines.map((l) => ({
-          item_id:      l.item_id,
-          quantity:     Number(l.quantity || 0),
-          unit_price:   Number(l.unit_price || 0),
-          warehouse_id: l.warehouse_id || null,
-          discount:     Number(l.line_discount || 0),
+          item_id:       l.item_id,
+          quantity:      Number(l.quantity || 0),
+          unit_price:    Number(l.unit_price || 0),
+          warehouse_id:  l.warehouse_id || null,
+          discount:      Number(l.line_discount || 0),
+          // Multi-unit (feature_multi_unit) — only sent when a sold_unit is selected
+          ...(l.sold_unit_id ? {
+            unit_id:       l.sold_unit_id,
+            sold_unit_qty: Number(l.quantity || 0),
+          } : {}),
         })),
         discount,
         promotion_discount: promotionDiscount,
@@ -1387,6 +1415,7 @@ export default function POSPage() {
       warehouse_id: warehouse.id,
       warehouse_name: warehouse.name,
       stock_quantity: stockValue,
+      unit_id: item.unit_id || item.unit?.id || null,
       unit_name: item.unit_name || "قطعة",
       primary_image_url: getItemImage(item) || null,
       quantity: 1,
@@ -1874,12 +1903,12 @@ export default function POSPage() {
                     <div className="text-[11px] font-black text-rose-700 mb-1.5 flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" /> تحذيرات تمنع الحفظ
                     </div>
-                    {Object.entries(lineWarnings).flatMap(([itemId, ws]) =>
+                    {Object.entries(lineWarnings).flatMap(([lineKey, ws]) =>
                       ws.filter((w) => w.type === "error").map((w, i) => {
-                        const l = lines.find((ln) => String(ln.item_id) === String(itemId));
+                        const l = lines.find((ln) => cartLineKey(ln) === lineKey);
                         return (
-                          <div key={`${itemId}-${i}`} className="text-[11px] text-rose-600 font-bold flex items-center gap-1">
-                            <span className="h-1 w-1 rounded-full bg-rose-400 shrink-0" /> {l?.item_name || itemId}: {w.msg}
+                          <div key={`${lineKey}-${i}`} className="text-[11px] text-rose-600 font-bold flex items-center gap-1">
+                            <span className="h-1 w-1 rounded-full bg-rose-400 shrink-0" /> {l?.item_name || lineKey}: {w.msg}
                           </div>
                         );
                       })
@@ -2485,7 +2514,7 @@ export default function POSPage() {
             <DataGrid
               data-help="cart"
               data={lines}
-              rowKey={(row, i) => `${row.item_id}-${i}`}
+              rowKey={(row, i) => row.line_key || `${cartLineKey(row)}-${i}`}
               emptyMessage="لا يوجد أصناف في الفاتورة بعد"
               emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
               className="border-0"
@@ -2515,7 +2544,8 @@ export default function POSPage() {
                     const item = items.find(it => it.id === l.item_id);
                     const imgUrl = item?.primary_image_url || item?.image_url || item?.image || l.primary_image_url;
                     const resolved = imgUrl ? resolveImageUrl(imgUrl) : null;
-                    const warnings = lineWarnings[l.item_id] || [];
+                    const lineKey = cartLineKey(l);
+                    const warnings = lineWarnings[lineKey] || [];
                     const hasError = warnings.some((w) => w.type === "error");
                     return (
                       <div className="flex items-start gap-2 py-1 w-full">
@@ -2577,7 +2607,7 @@ export default function POSPage() {
                         }}
                         onChange={(e) => {
                           const v = Math.max(1, Math.floor(Number(e.target.value) || 1));
-                          updateLine(l.item_id, { quantity: hasLimit ? Math.min(v, maxStock) : v });
+                          updateLine(cartLineKey(l), { quantity: hasLimit ? Math.min(v, maxStock) : v });
                         }}
                         className={`w-full text-center text-sm font-mono font-black bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
                       />
@@ -2598,7 +2628,7 @@ export default function POSPage() {
                     return (
                       <div className="relative w-full h-full" title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}>
                         <input type="number" step="any" value={l.unit_price}
-                          onChange={(e) => canOverridePrice && updateLine(l.item_id, { unit_price: Number(e.target.value) || 0 })}
+                          onChange={(e) => canOverridePrice && updateLine(cartLineKey(l), { unit_price: Number(e.target.value) || 0 })}
                           readOnly={!canOverridePrice}
                           className={`w-full h-[40px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${
                             !canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" :
@@ -2616,7 +2646,8 @@ export default function POSPage() {
                   id: "lineDiscount", header: "خصم", width: 110, sortable: false,
                   headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                   render: (l) => {
-                    const mode = discountModes[l.item_id] || "flat";
+                    const lineKey = cartLineKey(l);
+                    const mode = discountModes[lineKey] || "flat";
                     const lineMax = Number(l.unit_price) * Number(l.quantity);
                     const flatDisc = Number(l.line_discount || 0);
                     const pctVal = lineMax > 0 ? (flatDisc / lineMax) * 100 : 0;
@@ -2632,9 +2663,9 @@ export default function POSPage() {
                             const v = Math.max(0, Number(e.target.value || 0));
                             if (mode === "pct") {
                               const flat = parseFloat(((v / 100) * lineMax).toFixed(4));
-                              updateLine(l.item_id, { line_discount: Math.min(flat, lineMax) });
+                              updateLine(lineKey, { line_discount: Math.min(flat, lineMax) });
                             } else {
-                              updateLine(l.item_id, { line_discount: Math.min(v, lineMax) });
+                              updateLine(lineKey, { line_discount: Math.min(v, lineMax) });
                             }
                           }}
                           className={`w-full h-[28px] text-center text-2sm font-mono font-black bg-transparent outline-none border rounded-sm transition-colors
@@ -2644,7 +2675,7 @@ export default function POSPage() {
                         />
                         <button
                           type="button"
-                          onClick={() => setDiscountModes((m) => ({ ...m, [l.item_id]: mode === "pct" ? "flat" : "pct" }))}
+                          onClick={() => setDiscountModes((m) => ({ ...m, [lineKey]: mode === "pct" ? "flat" : "pct" }))}
                           className={`h-[28px] px-1.5 rounded-sm text-[11px] font-black border transition-colors shrink-0
                             ${mode === "pct"
                               ? "bg-amber-100 border-amber-300 text-amber-700"
@@ -2665,7 +2696,7 @@ export default function POSPage() {
                     return (
                       <div className="relative w-full">
                         <select value={l.warehouse_id || staging.warehouseId}
-                          onChange={(e) => updateLine(l.item_id, { warehouse_id: e.target.value })}
+                          onChange={(e) => updateLine(cartLineKey(l), { warehouse_id: e.target.value })}
                           className={`w-full h-[40px] text-[11px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${
                             !hasStockInSelected && l.warehouse_id ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"
                           }`}>
@@ -2732,7 +2763,7 @@ export default function POSPage() {
                 {
                   id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",
                   render: (row) => (
-                    <button onClick={() => removeLine(row.item_id)} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors">
+                    <button onClick={() => removeLine(cartLineKey(row))} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors">
                       <X className="h-4 w-4" />
                     </button>
                   )

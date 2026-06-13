@@ -266,11 +266,36 @@ router.get("/search/detailed", requirePagePermission("items", "view"), (req, res
   res.json({ success: true, data: rows });
 });
 
-router.get("/barcode/:barcode", requirePagePermission("items", "view"), (req, res) => {
-  const row = getDb().prepare("SELECT * FROM items WHERE barcode = ?").get(req.params.barcode);
+router.get("/scale-plu/:plu", requirePagePermission("items", "view"), (req, res) => {
+  const db = getDb();
+  const plu = String(req.params.plu || "").trim();
+  if (!plu) return res.status(400).json({ success: false, message: "PLU required" });
+  const row = db.prepare("SELECT * FROM items WHERE scale_plu = ? AND deleted_at IS NULL LIMIT 1").get(plu);
   if (!row) return res.status(404).json({ success: false, message: "Item not found" });
-  const item = withImages([row])[0];
-  return res.json({ success: true, data: item });
+  return res.json({ success: true, data: withImages([row])[0] });
+});
+
+router.get("/barcode/:barcode", requirePagePermission("items", "view"), (req, res) => {
+  const db = getDb();
+  const bc = req.params.barcode;
+  let row = db.prepare("SELECT * FROM items WHERE barcode = ?").get(bc);
+  if (row) {
+    const item = withImages([row])[0];
+    return res.json({ success: true, data: item });
+  }
+  // When feature_multi_unit is on, also check item_units.barcode
+  const settings = db.prepare("SELECT feature_multi_unit FROM settings WHERE id = 1").get();
+  if (settings?.feature_multi_unit) {
+    const unit = db.prepare("SELECT * FROM item_units WHERE barcode = ?").get(bc);
+    if (unit) {
+      row = db.prepare("SELECT * FROM items WHERE id = ?").get(unit.item_id);
+      if (row) {
+        const item = withImages([row])[0];
+        return res.json({ success: true, data: item, unit });
+      }
+    }
+  }
+  return res.status(404).json({ success: false, message: "Item not found" });
 });
 
 router.get("/:id/operations", requirePagePermission("items", "view"), (req, res, next) => {

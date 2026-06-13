@@ -84,7 +84,7 @@ function normalizeBoolean(value) {
 
 // Column-type metadata: only the columns that need special coercion.
 // Everything else is treated as a plain string.
-const BOOLEAN_PREFIXES = ["show_", "logo_on_"];
+const BOOLEAN_PREFIXES = ["show_", "logo_on_", "feature_"];
 const COLUMN_META = {
   decimal_places: "int", tax_rate: "int", max_discount_percent: "int",
   header_font_size: "int", body_font_size: "int", footer_font_size: "int",
@@ -99,6 +99,9 @@ const COLUMN_META = {
   smart_lock_timeout_minutes: "int",
   logo_on_invoices: "bool", logo_on_receipts: "bool",
   logo_on_sidebar: "bool", logo_on_reports: "bool",
+  serials_strict_mode: "bool",
+  scale_item_code_length: "int",
+  scale_value_decimals: "int",
 };
 
 function isBoolCol(name) {
@@ -139,9 +142,22 @@ router.get("/", authRequired, requirePagePermission("settings", "view"), (_req, 
 router.put("/", authRequired, requirePagePermission("settings", "edit"), requireRole("admin"), (req, res) => {
   ensurePrintColumnsSafe();
   const current = getSettings();
-  const { sql, params } = buildUpdate(current, req.body || {});
+  const updates = req.body || {};
+
+  // Feature flags are one-way: once enabled they cannot be disabled via normal settings save
+  const FEATURE_KEYS = [
+    "feature_multi_unit", "feature_variants", "feature_serials",
+    "feature_scale_barcodes", "feature_repair_orders", "feature_restaurant", "feature_gold",
+  ];
+  for (const key of FEATURE_KEYS) {
+    if (key in updates && current[key] === 1 && !coerceVal(key, updates[key])) {
+      delete updates[key]; // silently ignore attempt to disable an already-enabled feature
+    }
+  }
+
+  const { sql, params } = buildUpdate(current, updates);
   getDb().prepare(sql).run(...params);
-  req.audit("edit", "settings", { keys_updated: Object.keys(req.body || {}).length }, `⚙️ تم تحديث الإعدادات`);
+  req.audit("edit", "settings", { keys_updated: Object.keys(updates).length }, `⚙️ تم تحديث الإعدادات`);
   res.json({ success: true, data: getSettings() });
 });
 
@@ -174,6 +190,12 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
       }
     }
   });
+
+  // Feature flags are one-way: silently ignore disabling already-enabled features
+  const FEATURE_KEYS = ["feature_multi_unit","feature_variants","feature_serials","feature_scale_barcodes","feature_repair_orders","feature_restaurant","feature_gold"];
+  for (const key of FEATURE_KEYS) {
+    if (key in updates && current[key] === 1 && !coerceVal(key, updates[key])) delete updates[key];
+  }
 
   if (Object.keys(updates).length === 0) {
     return res.json({ success: true, data: current });

@@ -5,11 +5,15 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 
 function usePermissionFilter() {
   const { user, permissions } = useAuthStore();
-  return (pageKey) => {
+  const settings = useAppSettingsStore((s) => s.settings);
+  return (pageKey, featureKey) => {
+    // Feature gate applies to everyone, including admin — feature off means module doesn't exist
+    if (featureKey && !settings[featureKey]) return false;
     if (!pageKey) return true;
     if (!user) return false;
     if (user.role === "dev" || user.role === "admin") return true;
@@ -77,10 +81,10 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
   const categoryCount = useCategoryCount();
   const canView = usePermissionFilter();
 
-  const visiblePrimary = PRIMARY_MENU.filter((item) => canView(item.pageKey));
+  const visiblePrimary = PRIMARY_MENU.filter((item) => canView(item.pageKey, item.featureKey));
 
   const filteredModules = NAV_MODULES.map((module) => {
-    const permittedItems = module.items.filter((item) => canView(item.pageKey));
+    const permittedItems = module.items.filter((item) => canView(item.pageKey, item.featureKey));
     if (!searchQuery) return { ...module, items: permittedItems };
     const query = searchQuery.toLowerCase();
     const items = permittedItems.filter((item) => item.label.toLowerCase().includes(query));

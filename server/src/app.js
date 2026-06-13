@@ -51,6 +51,12 @@ const posRoutes = require("./routes/pos.routes");
 const pricingRoutes = require("./routes/pricing.routes");
 const whatsappRoutes = require("./routes/whatsapp.routes");
 const leadsRoutes = require("./routes/leads.routes");
+const itemUnitsRoutes = require("./routes/itemUnits.routes");
+const variantsRoutes = require("./routes/variants.routes");
+const serialsRoutes = require("./routes/serials.routes");
+const repairOrdersRoutes = require("./routes/repairOrders.routes");
+const restaurantRoutes = require("./routes/restaurant.routes");
+const goldRoutes = require("./routes/gold.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 function createApp() {
@@ -81,6 +87,9 @@ function createApp() {
   app.use("/api/settings", settingsRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/items", itemsRoutes);
+  app.use("/api/items/:itemId/units", itemUnitsRoutes);
+  app.use("/api/variants", variantsRoutes);
+  app.use("/api/serials", serialsRoutes);
   app.use("/api/categories", categoriesRoutes);
   app.use("/api/units", unitsRoutes);
   app.use("/api/customers", customersRoutes);
@@ -125,6 +134,9 @@ function createApp() {
   app.use("/api/pricing", pricingRoutes);
   app.use("/api/whatsapp", whatsappRoutes);
   app.use("/api/leads", leadsRoutes);
+  app.use("/api/repair-orders", repairOrdersRoutes);
+  app.use("/api/restaurant", restaurantRoutes);
+  app.use("/api/gold", goldRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");
