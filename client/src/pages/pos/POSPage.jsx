@@ -73,7 +73,6 @@ import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
-import LineConfigModal from "../../components/pos/LineConfigModal";
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
 function resolveImageUrl(u) {
@@ -146,9 +145,6 @@ export default function POSPage() {
   const posVoiceEnabled = useAppSettingsStore((s) => s.settings.pos_voice_enabled);
   const { playBeep } = useSound(posVoiceEnabled);
   const goldEnabled = useFeatureEnabled("feature_gold");
-  const multiUnitEnabled = useFeatureEnabled("feature_multi_unit");
-  // Per-line config modal (multi-unit / serial / gold) — one home for every line feature
-  const [configLine, setConfigLine] = useState(null);
 
   // POS store
   const lines             = usePosStore((s) => s.lines);
@@ -1473,19 +1469,8 @@ export default function POSPage() {
 
   if (viewMode === "list") {
     return (
-      <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden animate-fade-in" dir="rtl">
+      <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden animate-fade-in" dir="rtl">
         <BarcodeListener />
-        {configLine && (
-          <LineConfigModal
-            line={configLine}
-            item={items.find((i) => String(i.id) === String(configLine.item_id))}
-            onClose={() => setConfigLine(null)}
-            onApply={(patch) => {
-              updateLine(cartLineKey(configLine), patch);
-              setConfigLine((p) => (p ? { ...p, ...patch } : p));
-            }}
-          />
-        )}
         <PosStickyTotalBar
           total={totals.total}
           subtotal={totals.subtotal}
@@ -2737,13 +2722,7 @@ export default function POSPage() {
                   sortable: false,
                   headerClass: "text-center",
                   cellClass: "text-center text-[11px] font-bold text-slate-600 border-l border-slate-100 px-1",
-                  render: (l) => multiUnitEnabled ? (
-                    <button type="button" onClick={() => setConfigLine(l)}
-                      title="اختيار وحدة البيع"
-                      className="w-full h-[40px] truncate px-1 text-[11px] font-bold text-sky-700 hover:bg-sky-50 transition-colors">
-                      {l.sold_unit_name || l.unit_name || "أساسية"} ▾
-                    </button>
-                  ) : (l.unit_name || "أساسية")
+                  render: (l) => l.unit_name || "أساسية"
                 },
                 ...(canViewProfit && showProfitColumn ? [{
                   id: "profit_pct", header: "الربح", width: 90, sortable: false,
@@ -3088,19 +3067,8 @@ export default function POSPage() {
 
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50 font-sans overflow-hidden" dir="rtl">
+    <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden" dir="rtl">
       <BarcodeListener />
-      {configLine && (
-        <LineConfigModal
-          line={configLine}
-          item={items.find((i) => String(i.id) === String(configLine.item_id))}
-          onClose={() => setConfigLine(null)}
-          onApply={(patch) => {
-            updateLine(cartLineKey(configLine), patch);
-            setConfigLine((p) => (p ? { ...p, ...patch } : p));
-          }}
-        />
-      )}
       <PosStickyTotalBar
         total={totals.total}
         subtotal={totals.subtotal}
@@ -3243,7 +3211,7 @@ export default function POSPage() {
         style={{ paddingBottom: "var(--pos-bottom-bar-h, 0px)" }}
       >
         {/* ── Left Column: Grid & Search (~65%) ── */}
-        <div className="flex flex-col flex-[1.8] bg-slate-50 border-l border-slate-100 overflow-hidden min-w-0">
+        <div className="flex flex-col flex-[1.8] bg-[#f8fafb] border-l border-slate-100 overflow-hidden min-w-0">
           {/* Header */}
           <div className="flex flex-col gap-3 shrink-0 bg-white border-b border-slate-100 p-4 shadow-[0_1px_10px_-5px_rgba(0,0,0,0.07)] z-10">
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -3658,6 +3626,13 @@ export default function POSPage() {
                             </span>
                           ) : (
                             <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">{formatMoney(unitPrice)} للقطعة</span>
+                          )}
+                          {multiUnitEnabled && (
+                            <button type="button" onClick={() => setConfigLine(line)}
+                              title="اختيار وحدة البيع"
+                              className="text-[11px] font-black text-sky-600 hover:underline whitespace-nowrap">
+                              {line.sold_unit_name || line.unit_name || "أساسية"} ▾
+                            </button>
                           )}
                         </div>
                       </div>

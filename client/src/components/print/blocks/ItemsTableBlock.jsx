@@ -5,7 +5,15 @@ const lineTotalOf = (line) =>
   ((Number(line.unit_price) || Number(line.unit_cost) || 0) * Number(line.quantity)) - (Number(line.discount_amount) || 0);
 const priceOf = (line) => (Number(line.unit_price) || Number(line.unit_cost) || 0);
 const codeOf = (line) => line.sku || line.code || line.item_code || line.barcode || line.product_code || "";
-const nameOf = (line) => line.product_name || line.item_name || line.name || "";
+const nameOf = (line) => {
+  const base = line.product_name || line.item_name || line.name || "";
+  // Multi-unit: show the sold unit snapshot (e.g. "كرتونة ×1") next to the name
+  if (line.sold_unit_name) {
+    const q = line.sold_unit_qty != null ? line.sold_unit_qty : "";
+    return `${base} — ${q} ${line.sold_unit_name}`.trim();
+  }
+  return base;
+};
 
 const VALUE = {
   code: (line) => codeOf(line),
