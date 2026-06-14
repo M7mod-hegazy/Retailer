@@ -54,7 +54,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
               type="button"
               onClick={() => setScope(item.key)}
               className={`rounded-sm border px-4 py-3 text-right transition-all ${
-                scope === item.key ? "border-slate-900 bg-slate-900 text-white shadow-lg" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                scope === item.key ? "border-primary bg-primary text-white shadow-lg" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               <span className="block text-sm font-black">{item.label}</span>
@@ -105,7 +105,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
             type="button"
             onClick={handleExport}
             disabled={!exportRows.length || !selectedFields.length}
-            className="inline-flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-lg transition hover:bg-slate-800 disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition hover:bg-primary-600 disabled:opacity-40"
           >
             <Download className="h-4 w-4" />
             تصدير Excel

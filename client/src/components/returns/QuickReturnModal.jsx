@@ -46,7 +46,7 @@ function StepDots({ step }) {
     <div className="flex items-center justify-center gap-3 mb-5">
       {[1, 2, 3].map(n => (
         <div key={n} className={`flex items-center justify-center rounded-full font-black text-[11px] transition-all duration-300 ${
-          step === n ? "h-8 w-8 bg-slate-800 text-white shadow-lg scale-110" :
+          step === n ? "h-8 w-8 bg-primary text-white shadow-lg scale-110" :
           step > n  ? "h-6 w-6 bg-emerald-500 text-white" :
                       "h-6 w-6 bg-slate-100 text-slate-400"
         }`}>
@@ -75,7 +75,7 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
         <div className="flex items-center gap-2">
           <button
             onClick={onSelect}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-2sm font-black text-white hover:bg-slate-700"
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-2sm font-black text-white hover:bg-primary-600"
           >
             إنشاء مرتجع <ArrowLeft className="h-3.5 w-3.5" />
           </button>
@@ -379,7 +379,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                   onClick={() => setShowFilters(f => !f)}
                   className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-2sm font-bold transition-all ${
                     showFilters || hasFilters
-                      ? "border-slate-700 bg-slate-800 text-white"
+                      ? "border-slate-700 bg-primary text-white"
                       : "border-slate-200 text-slate-500 hover:bg-slate-50"
                   }`}
                 >
@@ -588,7 +588,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                           onClick={() => loadDoc(doc.id)}
                           disabled={docLoading}
                           title="إنشاء مرتجع"
-                          className="flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white transition-all"
+                          className="flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 text-slate-400 hover:border-slate-700 hover:bg-primary-600 hover:text-white transition-all"
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </button>
@@ -643,7 +643,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                         key={line.id}
                         onClick={() => toggleLine(line)}
                         className={`flex items-center justify-between rounded-lg border px-4 py-3 cursor-pointer transition-all ${
-                          isChecked ? "border-slate-700 bg-slate-800 text-white" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          isChecked ? "border-slate-700 bg-primary text-white" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -728,7 +728,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                           onClick={() => setRefundMethod(m.value)}
                           className={`rounded-lg border px-4 py-2.5 text-sm font-black transition-all ${
                             refundMethod === m.value
-                              ? "border-slate-700 bg-slate-800 text-white"
+                              ? "border-slate-700 bg-primary text-white"
                               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                           }`}
                         >
@@ -750,7 +750,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                             onClick={() => setPurchaseSettlement(m.value)}
                             className={`rounded-lg border px-3 py-2.5 text-2sm font-black transition-all ${
                               purchaseSettlement === m.value
-                                ? "border-slate-700 bg-slate-800 text-white"
+                                ? "border-slate-700 bg-primary text-white"
                                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                             }`}
                           >
@@ -805,7 +805,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
               <button
                 onClick={() => setStep(3)}
                 disabled={selectedLines.length === 0}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-slate-800 py-2.5 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-black text-white hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 التالي <ArrowLeft className="h-4 w-4" />
               </button>

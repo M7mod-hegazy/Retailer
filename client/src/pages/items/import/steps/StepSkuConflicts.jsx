@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import StepTable from "../StepTable";
 import { normalizeKey } from "../../../../utils/excelImportExport";
 
@@ -11,6 +12,7 @@ const OTHER_ACTION_LABELS = {
 export default function StepSkuConflicts({ wizard }) {
   const conflicts = wizard.fileSkuConflicts || [];
   const [plans, setPlans] = useState({});
+  const [applied, setApplied] = useState(false);
   const conflictRows = useMemo(() => {
     const byRow = new Map();
     conflicts.forEach((conflict) => conflict.rows.forEach((row) => byRow.set(row.__rowNumber, row)));
@@ -24,7 +26,7 @@ export default function StepSkuConflicts({ wizard }) {
     return conflict.rows[0];
   }
 
-function planFor(conflict) {
+  function planFor(conflict) {
     const existing = plans[conflict.code];
     const keepRow = conflict.rows.find((row) => String(row.__rowNumber) === String(existing?.keepRowNumber)) || defaultKeepRow(conflict, "system");
     return {
@@ -36,6 +38,7 @@ function planFor(conflict) {
 
   function setPlan(code, patch) {
     setPlans((prev) => ({ ...prev, [code]: { ...(prev[code] || {}), ...patch } }));
+    setApplied(false);
   }
 
   function setOtherAction(code, rowNumber, action) {
@@ -46,6 +49,7 @@ function planFor(conflict) {
         otherActions: { ...(prev[code]?.otherActions || {}), [rowNumber]: action },
       },
     }));
+    setApplied(false);
   }
 
   function applyBulkPreset(mode) {
@@ -60,6 +64,7 @@ function planFor(conflict) {
       next[conflict.code] = { keepRowNumber: keep?.__rowNumber || "", currentHandling, otherActions };
     });
     setPlans(next);
+    setApplied(false);
   }
 
   function applyPlans() {
@@ -76,23 +81,45 @@ function planFor(conflict) {
         otherActions: plan.otherActions,
       };
     }));
+    setApplied(true);
+    setTimeout(() => setApplied(false), 3000);
   }
+
+  const hasResolvedConflicts = conflicts.length > 0 && wizard.fileSkuConflicts.length === 0;
 
   return (
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900 font-display">تعارض أكواد SKU</h3>
-          <p className="mt-1.5 text-sm font-bold text-slate-500 font-title">
-            اختر الصف الذي سيحتفظ بالكود، ثم قرر ماذا يحدث لباقي الصفوف: كود جديد، تخطي، أو مخزون فقط للصنف الحالي.
-          </p>
-          <div className="mt-4 inline-flex rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 ring-1 ring-rose-100">
-            {conflicts.length} كود يحتاج قرارا
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 font-display">تعارض أكواد SKU</h3>
+              <p className="mt-1.5 text-sm font-bold text-slate-500 font-title">
+                اختر الصف الذي سيحتفظ بالكود، ثم قرر ماذا يحدث لباقي الصفوف: كود جديد، تخطي، أو مخزون فقط للصنف الحالي.
+              </p>
+            </div>
+            {hasResolvedConflicts ? (
+              <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
+                <CheckCircle2 className="h-4 w-4" />
+                تم حل جميع التعارضات
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 ring-1 ring-rose-100">
+                <AlertTriangle className="h-4 w-4" />
+                {conflicts.length} كود يحتاج قرارا
+              </div>
+            )}
           </div>
+          {applied && (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800 ring-1 ring-emerald-200 animate-in fade-in zoom-in-75 duration-200">
+              <CheckCircle2 className="h-4 w-4" />
+              تم تطبيق القرارات بنجاح
+            </div>
+          )}
         </div>
 
         <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4.5 shadow-inner">
-          <button type="button" onClick={() => applyBulkPreset("system")} disabled={!conflicts.length} className="rounded-xl bg-slate-900 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] disabled:opacity-40">
+          <button type="button" onClick={() => applyBulkPreset("system")} disabled={!conflicts.length} className="rounded-xl bg-primary py-3 text-sm font-black text-white shadow-sm transition hover:bg-primary-600 active:scale-[0.98] disabled:opacity-40">
             ابدأ بإبقاء الصنف الحالي
           </button>
           <button type="button" onClick={() => applyBulkPreset("file")} disabled={!conflicts.length} className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] disabled:opacity-40">
@@ -101,7 +128,8 @@ function planFor(conflict) {
           <div className="text-center text-[10px] font-bold leading-normal text-slate-500">
             هذه الأزرار تملأ الخطة فقط. يمكنك تعديل قرار كل صف قبل التطبيق.
           </div>
-          <button type="button" onClick={applyPlans} disabled={!conflicts.length} className="rounded-xl bg-emerald-700 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 active:scale-[0.98] disabled:opacity-40">
+          <button type="button" onClick={applyPlans} disabled={!conflicts.length} className="rounded-xl bg-emerald-700 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 active:scale-[0.98] disabled:opacity-40 inline-flex items-center justify-center gap-2">
+            {applied ? <CheckCircle2 className="h-4 w-4" /> : null}
             تطبيق قرارات التعارضات
           </button>
         </div>
@@ -115,14 +143,29 @@ function planFor(conflict) {
           const keepRow = conflict.rows.find((row) => row.__rowNumber === effectiveKeepRowNumber);
           const replacesSystem = Boolean(conflict.existing && plan.currentHandling === "replace_current" && normalizeKey(keepRow?.name) !== normalizeKey(conflict.existing.name));
           const movesSystemCode = Boolean(conflict.existing && plan.currentHandling === "move_current_code");
+          const isResolved = applied;
           return (
-            <div key={conflict.code} className="rounded-2xl border border-rose-200 bg-rose-50/60 p-5 shadow-sm">
-              <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+            <div key={conflict.code} className={`rounded-2xl border p-5 shadow-sm transition-all duration-300 ${isResolved ? "border-emerald-200 bg-emerald-50/40 ring-1 ring-emerald-100" : "border-rose-200 bg-rose-50/60"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-black text-slate-950 font-display">SKU {conflict.code}</span>
+                  {isResolved ? (
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-700">
+                      <CheckCircle2 className="h-3 w-3" /> تم الحل
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-2.5 py-1 text-xs font-black text-rose-700">
+                      <AlertTriangle className="h-3 w-3" /> يحتاج قرار
+                    </span>
+                  )}
+                </div>
+              </div>
+              <p className="mt-1 text-xs font-bold text-slate-500">الصفوف: {conflict.rows.map((row) => row.__rowNumber).join("، ")}</p>
+
+              <div className="grid gap-4 mt-4 xl:grid-cols-[1fr_360px]">
                 <div>
-                  <div className="text-lg font-black text-slate-950 font-display">SKU {conflict.code}</div>
-                  <p className="mt-1 text-xs font-bold text-slate-500">الصفوف: {conflict.rows.map((row) => row.__rowNumber).join("، ")}</p>
                   {conflict.existing ? (
-                    <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-100">
+                    <p className="rounded-xl bg-white/80 px-3 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-100">
                       الصنف الحالي في النظام: {conflict.existing.name}
                     </p>
                   ) : null}
@@ -178,13 +221,17 @@ function planFor(conflict) {
                   const action = plan.otherActions[row.__rowNumber] || "new_code";
                   const canStockCurrent = Boolean(conflict.existing && plan.currentHandling !== "move_current_code");
                   return (
-                    <div key={row.__rowNumber} className={`rounded-xl border bg-white p-4 shadow-sm ${active ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-100"}`}>
+                    <div key={row.__rowNumber} className={`rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 ${active ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-100"}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-black text-slate-900">{row.name}</div>
                           <div className="mt-1 text-xs font-bold text-slate-500">صف {row.__rowNumber} - كمية {Number(row.stock_quantity || 0)}</div>
                         </div>
-                        {active ? <span className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">يحتفظ بالكود</span> : null}
+                        {active ? (
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700 ring-1 ring-emerald-200">
+                            <CheckCircle2 className="h-3 w-3" /> يحتفظ بالكود
+                          </span>
+                        ) : null}
                       </div>
                       {!active ? (
                         <div className="mt-3">

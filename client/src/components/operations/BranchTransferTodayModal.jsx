@@ -99,7 +99,7 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => onEdit(transfer.id)} className="flex items-center gap-2 rounded-xl bg-slate-800 px-6 py-2 text-sm font-black text-white hover:bg-slate-900 transition-colors">
+        <button onClick={() => onEdit(transfer.id)} className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2 text-sm font-black text-white hover:bg-primary-600 transition-colors">
           <Pencil className="h-4 w-4" /> تعديل المستند
         </button>
       </div>
@@ -292,7 +292,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
             <div className="flex items-center gap-1">
               {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
                 <button key={v} onClick={() => setTypeFilter(v)}
-                  className={`rounded-full px-4 py-1.5 text-2sm font-black transition-all ${typeFilter === v ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                  className={`rounded-full px-4 py-1.5 text-2sm font-black transition-all ${typeFilter === v ? "bg-primary text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                   {l}
                 </button>
               ))}

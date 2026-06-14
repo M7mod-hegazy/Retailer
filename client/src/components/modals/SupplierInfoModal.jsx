@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Phone, MapPin, Edit2, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import api from "../../services/api";
+import Button from "../ui/Button";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -278,27 +279,23 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
           <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 shrink-0">
             {editMode ? (
               <>
-                <button onClick={() => { setEditMode(false); setError(""); }}
-                  className="px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <Button variant="ghost" size="sm" onClick={() => { setEditMode(false); setError(""); }}>
                   إلغاء
-                </button>
-                <button onClick={handleSave} disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-lg transition-colors">
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                   حفظ التعديلات
-                </button>
+                </Button>
               </>
             ) : (
               <>
-                <button onClick={handleClose}
-                  className="px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+                <Button variant="ghost" size="sm" onClick={handleClose}>
                   إغلاق
-                </button>
-                <button onClick={openEdit}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors">
+                </Button>
+                <Button variant="primary" size="sm" onClick={openEdit}>
                   <Edit2 size={14} />
                   تعديل
-                </button>
+                </Button>
               </>
             )}
           </div>

@@ -252,15 +252,15 @@ export default function ReportsCenter() {
   }, [selectedClsDef, selectedSource?.id]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#fafafa] text-zinc-900" dir="rtl" style={{ fontFamily: "Satoshi, sans-serif" }}>
+    <div className="flex h-screen w-full overflow-hidden bg-[var(--bg-base)] text-zinc-900" dir="rtl" style={{ fontFamily: "Satoshi, sans-serif" }}>
       
       {/* MIDDLE & TOP RAIL (Source Master Grid) */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#fafafa]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-base)]">
         
         {/* TOP RAIL (Categories) */}
         <div className="shrink-0 border-b border-zinc-200 bg-white flex items-center px-6 py-3 gap-3 z-20 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-2 border-l border-zinc-200 pl-4 mr-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-zinc-900 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary text-white">
               <LayoutTemplate size={20} strokeWidth={2.5} />
             </div>
             <span className="text-sm font-black text-zinc-900 ml-2">التقارير</span>

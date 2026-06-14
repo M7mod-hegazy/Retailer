@@ -20,6 +20,8 @@
     "dist:win7": "node ./electron/scripts/build-win7-test.js --arch=x64",
     "dist:win7:ia32": "node ./electron/scripts/build-win7-test.js --arch=ia32",
     "dist:win7:test": "node ./electron/scripts/build-win7-test.js",
+    "release": "npm run build && npm run electron:rebuild && electron-builder --win --publish always",
+    "release:win11": "npm run build && npm run electron:rebuild && electron-builder --win --config electron-builder-x64-win11.yml --publish always",
     "windows:configure-users": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/configure-local-users.ps1",
     "windows:harden-acl": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/harden-windows-policy.ps1",
     "bootstrap": "npm install --workspaces",

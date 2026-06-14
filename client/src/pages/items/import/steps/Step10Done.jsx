@@ -41,7 +41,7 @@ export default function Step10Done({ wizard }) {
         <button 
           type="button" 
           onClick={wizard.reset} 
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white shadow-md shadow-slate-900/10 transition hover:bg-slate-800 active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-md shadow-slate-900/10 transition hover:bg-primary-600 active:scale-[0.98]"
         >
           رفع ملف جديد
         </button>

@@ -46,7 +46,7 @@ import api from "../../services/api";
 import DocumentPreviewModal from "../../components/operations/DocumentPreviewModal";
 
 const TYPE_OPTIONS = [
-  { key: "sales", label: "مبيعات", tone: "emerald", border: "border-emerald-200 hover:border-emerald-400 bg-emerald-50/10", text: "text-emerald-700 bg-emerald-50 border-emerald-100", dot: "bg-emerald-500", glow: "shadow-[0_0_15px_rgba(16,185,129,0.25)]" },
+  { key: "sales", label: "مبيعات", tone: "emerald", border: "border-emerald-200 hover:border-emerald-400 bg-emerald-50/10", text: "text-emerald-700 bg-emerald-50 border-emerald-100", dot: "bg-emerald-500", glow: "shadow-[0_0_15px_var(--primary-glow)]" },
   { key: "purchases", label: "مشتريات", tone: "blue", border: "border-blue-200 hover:border-blue-400 bg-blue-50/10", text: "text-blue-700 bg-blue-50 border-blue-100", dot: "bg-blue-500", glow: "shadow-[0_0_15px_rgba(59,130,246,0.25)]" },
   { key: "sales_returns", label: "مرتجع مبيعات", tone: "amber", border: "border-amber-200 hover:border-amber-400 bg-amber-50/10", text: "text-amber-700 bg-amber-50 border-amber-100", dot: "bg-amber-500", glow: "shadow-[0_0_15px_rgba(245,158,11,0.25)]" },
   { key: "purchase_returns", label: "مرتجع مشتريات", tone: "rose", border: "border-rose-200 hover:border-rose-400 bg-rose-50/10", text: "text-rose-700 bg-rose-50 border-rose-100", dot: "bg-rose-500", glow: "shadow-[0_0_15px_rgba(239,68,68,0.25)]" },
@@ -117,15 +117,15 @@ function SpotlightCard({ children, className = "", style = {}, borderTone = "ind
   };
 
   const glowColors = {
-    indigo: "rgba(99, 102, 241, 0.08)",
-    emerald: "rgba(16, 185, 129, 0.08)",
-    blue: "rgba(59, 130, 246, 0.08)",
-    amber: "rgba(245, 158, 11, 0.08)",
-    rose: "rgba(239, 68, 68, 0.08)",
-    slate: "rgba(100, 116, 139, 0.08)",
-    cyan: "rgba(6, 182, 212, 0.08)",
-    zinc: "rgba(113, 113, 122, 0.08)",
-    violet: "rgba(139, 92, 246, 0.08)",
+    indigo: "color-mix(in srgb, var(--info-text) 8%, transparent)",
+    emerald: "color-mix(in srgb, var(--primary) 8%, transparent)",
+    blue: "color-mix(in srgb, var(--info-text) 8%, transparent)",
+    amber: "color-mix(in srgb, var(--warning-text) 8%, transparent)",
+    rose: "color-mix(in srgb, var(--danger) 8%, transparent)",
+    slate: "color-mix(in srgb, var(--text-secondary) 8%, transparent)",
+    cyan: "color-mix(in srgb, var(--info-text) 8%, transparent)",
+    zinc: "color-mix(in srgb, var(--text-secondary) 8%, transparent)",
+    violet: "color-mix(in srgb, var(--info-text) 8%, transparent)",
   };
 
   const glowColor = glowColors[borderTone] || glowColors.indigo;
@@ -282,7 +282,7 @@ export default function ItemOperationsPage() {
     if (stockVal < 50) {
       return { label: "رصيد متوسط", color: "text-blue-500 stroke-blue-500", bg: "bg-blue-50 border-blue-200/55", glow: "shadow-[0_0_15px_rgba(59,130,246,0.3)]", percent: 60 };
     }
-    return { label: "مخزون وافر", color: "text-emerald-500 stroke-emerald-500", bg: "bg-emerald-50 border-emerald-200/55", glow: "shadow-[0_0_15px_rgba(16,185,129,0.3)]", percent: 100 };
+    return { label: "مخزون وافر", color: "text-emerald-500 stroke-emerald-500", bg: "bg-emerald-50 border-emerald-200/55", glow: "shadow-[0_0_15px_var(--primary-glow)]", percent: 100 };
   }, [selectedItem]);
 
   const stockValuation = useMemo(() => {
@@ -310,7 +310,7 @@ export default function ItemOperationsPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#f8fafc] text-slate-900 font-sans selection:bg-indigo-100/80 relative overflow-hidden" dir="rtl">
+    <div className="min-h-[100dvh] bg-[var(--bg-base)] text-slate-900 font-sans selection:bg-indigo-100/80 relative overflow-hidden" dir="rtl">
       
       {/* Animated background blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.45]">
@@ -856,7 +856,7 @@ export default function ItemOperationsPage() {
                             {row.type === "sales" && (
                               <SpotlightCard 
                                 borderTone="emerald"
-                                className="rounded-[2rem] border border-emerald-200 bg-white shadow-[0_4px_24px_-4px_rgba(16,185,129,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(16,185,129,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                className="rounded-[2rem] border border-emerald-200 bg-white shadow-[0_4px_24px_-4px_var(--primary-glow)] hover:shadow-[0_12px_32px_-8px_var(--primary-glow)] transition-all duration-300 overflow-hidden flex flex-col p-0"
                               >
                                 <div className="bg-emerald-600 text-white rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm">
                                   <span className="flex items-center gap-1.5"><CheckCircle2 size={13} /> فاتورة مبيعات معتمدة للعميل</span>
@@ -1183,8 +1183,8 @@ export default function ItemOperationsPage() {
                                     </div>
                                   </div>
 
-                                  <div className="bg-[#fafaff] border border-indigo-100 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner relative overflow-hidden">
-                                    <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#4f46e5_1.5px,transparent_1.5px)] [background-size:12px_12px] pointer-events-none" />
+                                  <div className="bg-[var(--bg-overlay)] border border-indigo-100 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner relative overflow-hidden">
+                                    <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(var(--info-text)_1.5px,transparent_1.5px)] [background-size:12px_12px] pointer-events-none" />
                                     
                                     <div className="flex flex-col text-right z-10">
                                       <span className="text-[8px] text-slate-400 font-bold block mb-0.5">مستودع الشحن</span>

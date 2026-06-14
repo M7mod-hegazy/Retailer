@@ -1089,7 +1089,7 @@ export default function BranchTransferFormPage() {
                 onClick={addLine}
                 onKeyDown={(e) => handleFieldKeyDown(e, itemInputRef, qtyInputRef, true)}
                 disabled={!selectedItem}
-                className="flex mt-[22px] h-11 w-[90px] shrink-0 items-center justify-center gap-2 rounded-[10px] bg-slate-800 text-sm font-black text-white shadow-md hover:bg-slate-700 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 transition-all focus:ring-4 focus:ring-slate-800/20"
+                className="flex mt-[22px] h-11 w-[90px] shrink-0 items-center justify-center gap-2 rounded-[10px] bg-primary text-sm font-black text-white shadow-md hover:bg-primary-600 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 transition-all focus:ring-4 focus:ring-slate-800/20"
               >
                 <Plus className="h-4 w-4" /> إضافة
               </button>

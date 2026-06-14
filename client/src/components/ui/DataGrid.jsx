@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback } from "react";
 import { List } from "react-window";
+import { usePerformanceStore } from "../../stores/performanceStore";
 import SortTh from "./SortTh";
 
 const ROW_HEIGHT = 45;
@@ -111,8 +112,9 @@ export default function DataGrid({
     });
   }, [data, currentSort, columns, externalSortConfig]);
 
+  const globalVirtualizeLists = usePerformanceStore((s) => s.settings.virtualizeLists);
   const totalWidth = useMemo(() => columns.reduce((sum, c) => sum + (colWidths[c.id] || 120), 0), [columns, colWidths]);
-  const useVirtual = virtualized && sortedData.length > VIRTUALIZE_THRESHOLD;
+  const useVirtual = (virtualized || globalVirtualizeLists) && sortedData.length > VIRTUALIZE_THRESHOLD;
 
   // Sync horizontal scroll between header and list
   const handleScroll = useCallback(({ scrollOffset }) => {

@@ -225,7 +225,7 @@ export default function QuotationsPage() {
             {STATUS_TABS.map(tab => (
               <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
                 className={`whitespace-nowrap rounded-full px-6 py-3 text-sm font-black transition-all ${
-                  statusFilter === tab.value ? "bg-slate-900 text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                  statusFilter === tab.value ? "bg-primary text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                 }`}>
                 {tab.label}
               </button>
@@ -266,7 +266,7 @@ export default function QuotationsPage() {
                     >
                       
                       <div className="flex items-center gap-6 lg:w-[40%]">
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 group-hover:bg-slate-950 group-hover:text-white group-hover:scale-105 transition-all duration-500">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 group-hover:bg-primary group-hover:text-white group-hover:scale-105 transition-all duration-500">
                           <FileText className="h-6 w-6" strokeWidth={1.5} />
                         </div>
                         <div className="flex flex-col gap-1.5">
@@ -302,7 +302,7 @@ export default function QuotationsPage() {
                         )}
 
                         <div className="relative" ref={openMenu === row.id ? menuRef : null}>
-                          <button onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === row.id ? null : row.id); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 hover:bg-slate-950 hover:text-white transition-all">
+                          <button onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === row.id ? null : row.id); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 hover:bg-primary-600 hover:text-white transition-all">
                             <Plus className="h-5 w-5" />
                           </button>
                           <AnimatePresence>

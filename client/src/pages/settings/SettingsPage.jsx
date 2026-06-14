@@ -12,8 +12,9 @@ import { usePageTour } from "../../hooks/usePageTour";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PrintingSettingsPanel from "./PrintingSettingsPanel";
 import PermissionGate from "../../components/ui/PermissionGate";
-import FontSettingsTab from "./FontSettingsTab";
+import AppearancePanel from "./AppearancePanel";
 import { applyFontSettings } from "../../utils/fontSettings";
+import { applyColorTheme } from "../../utils/applyColorTheme";
 import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
 import { useUiStore } from "../../stores/uiStore";
@@ -27,7 +28,7 @@ const tabs = [
   { id: "general", label: "عام", hint: "اللغة وواجهة نقطة البيع وسجل النشاط" },
   { id: "financial", label: "المالية والضرائب", hint: "العملة والضريبة وحدود الخصم وهوامش الربح" },
   { id: "printing", label: "الطباعة", hint: "مقاسات الإيصال ومعاينة القوالب" },
-  { id: "appearance", label: "المظهر", hint: "الخطوط وحجم النص ونمط الأرقام" },
+  { id: "appearance", label: "المظهر", hint: "الخطوط والألوان ونمط الأرقام — نظام ألوان متكامل للواجهة" },
   { id: "performance", label: "الرسوميات والأداء", hint: "إعدادات الرسوميات والأداء لأنظمة التشغيل البطيئة" },
   { id: "features", label: "الميزات", hint: "تفعيل أو تعطيل وحدات متخصصة حسب نوع متجرك" },
   { id: "whatsapp", label: "واتساب", hint: "ربط حساب واتساب وإرسال الرسائل للعملاء" },
@@ -342,6 +343,7 @@ export default function SettingsPage() {
       originalRef.current = JSON.parse(JSON.stringify(settings));
       toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully");
       applyFontSettings(settings);
+      applyColorTheme(settings);
       useAppSettingsStore.getState().applySettings(settings);
     } catch {
       toast.error(isRTL ? "فشل حفظ الإعدادات" : "Failed to save settings");
@@ -351,8 +353,10 @@ export default function SettingsPage() {
   };
 
   const handleDiscard = () => {
-    setSettings(JSON.parse(JSON.stringify(originalRef.current)));
-    settingsRef.current = originalRef.current;
+    const original = JSON.parse(JSON.stringify(originalRef.current));
+    setSettings(original);
+    settingsRef.current = original;
+    applyColorTheme(original);
     toast(isRTL ? "تم تجاهل التغييرات" : "Changes discarded", { icon: "↩️" });
   };
 
@@ -388,7 +392,7 @@ export default function SettingsPage() {
           </span>
           <button
             onClick={fetchSettings}
-            className="flex items-center gap-2 rounded-sm bg-slate-900 px-5 py-2.5 text-sm font-black text-white shadow-md transition-all hover:bg-slate-800 active:scale-95"
+            className="flex items-center gap-2 rounded-sm bg-primary px-5 py-2.5 text-sm font-black text-white shadow-md transition-all hover:bg-primary-600 active:scale-95"
           >
             <RefreshCw className="h-4 w-4" />
             {isRTL ? "إعادة المحاولة" : "Retry"}
@@ -425,7 +429,7 @@ export default function SettingsPage() {
               data-help="save-button"
               onClick={handleSubmit}
               disabled={saving || !dirty}
-              className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -490,7 +494,7 @@ export default function SettingsPage() {
                 {/* Interface & Display */}
                 <section>
                   <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-slate-800 text-white">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
                       <Globe className="h-3.5 w-3.5" />
                     </div>
                     <div>
@@ -533,7 +537,7 @@ export default function SettingsPage() {
                             toast.error("فشل الحفظ - تحقق من الاتصال");
                           }
                         }}
-                        className={`px-4 py-2 text-2sm font-black transition-all ${v(settings, "default_pos_view") === "detailed" ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                        className={`px-4 py-2 text-2sm font-black transition-all ${v(settings, "default_pos_view") === "detailed" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
                       >
                         شبكة / تفصيلي
                       </button>
@@ -550,7 +554,7 @@ export default function SettingsPage() {
                             toast.error("فشل الحفظ - تحقق من الاتصال");
                           }
                         }}
-                        className={`px-4 py-2 text-2sm font-black transition-all ${settings.default_pos_view === "list" ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                        className={`px-4 py-2 text-2sm font-black transition-all ${settings.default_pos_view === "list" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
                       >
                         قائمة
                       </button>
@@ -837,7 +841,7 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "appearance" && (
-              <FontSettingsTab settings={settings} onChange={handleChange} />
+              <AppearancePanel settings={settings} onChange={handleChange} />
             )}
 
             {activeTab === "performance" && (

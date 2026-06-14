@@ -176,7 +176,7 @@ export default function CategoriesPage() {
         <button
           data-help="add-button"
           onClick={openAddCategory}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-primary-700 transition-all"
         >
           <Plus className="h-4 w-4" />
           إضافة قسم جديد
@@ -329,7 +329,7 @@ export default function CategoriesPage() {
           <PermissionGate page="categories" action="add">
           <button
             onClick={openAddCategory}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-emerald-700 transition-all"
+            className="mt-4 flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-primary-700 transition-all"
           >
             <Plus className="h-4 w-4" />
             {isFirstCategory ? "إنشاء القسم الأول (فئة 1)" : "إضافة قسم جديد"}
@@ -384,7 +384,7 @@ export default function CategoriesPage() {
                     type="button"
                     disabled={saving}
                     onClick={() => deleteCategory(deleteModal)}
-                    className="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50"
+                    className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white hover:bg-primary-700 disabled:opacity-50"
                   >
                     {saving ? "جار الحذف..." : "حذف القسم"}
                   </button>
@@ -446,7 +446,7 @@ export default function CategoriesPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
                 >
                   {saving ? "جاري الحفظ…" : catModal.mode === "edit" ? "حفظ التعديلات" : isFirstCategory ? "إنشاء القسم الأول" : "إنشاء القسم"}
                 </button>

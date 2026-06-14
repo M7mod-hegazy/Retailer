@@ -82,7 +82,7 @@ function useDebounce(value, delay) {
 
 const BackgroundGraphic = () => (
   <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden opacity-40">
-    <div className="absolute inset-0 bg-[#f8fafc]" />
+    <div className="absolute inset-0 bg-[var(--bg-base)]" />
     <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
     <motion.div
       animate={{ y: [0, -30, 0], scale: [1, 1.05, 1] }}
@@ -557,7 +557,7 @@ export default function HistoryPage() {
 
   if (!canView) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-[#f8fafc]">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[var(--bg-base)]">
         <div className="text-center space-y-4">
           <Lock className="mx-auto h-12 w-12 text-zinc-300" />
           <h2 className="text-2xl font-black text-zinc-900">غير مصرح</h2>
@@ -611,7 +611,7 @@ export default function HistoryPage() {
               data-help="filter-btn"
               onClick={() => setFiltersOpen(!filtersOpen)}
               className={`flex items-center justify-center h-[54px] w-[54px] rounded-[1.25rem] transition-all duration-300 shadow-sm border ${
-                filtersOpen ? "bg-zinc-950 text-white border-zinc-950" : "bg-white border-white text-zinc-600 hover:bg-zinc-50"
+                filtersOpen ? "bg-primary text-white border-primary" : "bg-white border-white text-zinc-600 hover:bg-zinc-50"
               }`}
             >
               <SlidersHorizontal className="h-5 w-5" />

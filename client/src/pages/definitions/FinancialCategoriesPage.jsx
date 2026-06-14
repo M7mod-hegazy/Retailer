@@ -226,7 +226,7 @@ export default function FinancialCategoriesPage() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-zinc-950 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
                 >
                   <Edit3 className="h-4 w-4" />
                 </motion.button>
@@ -257,7 +257,7 @@ export default function FinancialCategoriesPage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-[#fafafa] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl">
+    <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl">
       
       {/* Impeccable Animated Architectural Background */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
@@ -267,7 +267,7 @@ export default function FinancialCategoriesPage() {
           transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
           className="absolute inset-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12 mix-blend-overlay"
         />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_50%_40%,transparent_0%,rgba(250,250,250,0.95)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_50%_40%,transparent_0%,color-mix(in srgb,var(--bg-surface) 95%,transparent)_100%)]" />
       </div>
 
       {/* Cinematic Hero Header */}
@@ -477,7 +477,7 @@ export default function FinancialCategoriesPage() {
                     className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50 ${
                       editingRow 
                         ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' 
-                        : 'bg-zinc-950 hover:bg-zinc-800 shadow-zinc-950/20'
+                        : 'bg-primary hover:bg-primary-600 shadow-zinc-950/20'
                     }`}
                   >
                     {isSubmitting ? 'جاري المعالجة...' : (

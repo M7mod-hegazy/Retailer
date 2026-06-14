@@ -199,7 +199,7 @@ function AmountCell({ t }) {
     return (
       <div className="w-full rounded-xl overflow-hidden border" style={{ borderColor: isCashIn ? "#bbf7d0" : "#fecaca" }}>
         {/* Solid accent bar — full width, thick, unmistakable */}
-        <div className="h-1 w-full" style={{ background: isCashIn ? "linear-gradient(90deg,#10b981,#34d399)" : "linear-gradient(90deg,#ef4444,#f87171)" }} />
+        <div className="h-1 w-full" style={{ background: isCashIn ? "linear-gradient(90deg,var(--primary),var(--primary-200))" : "linear-gradient(90deg,var(--danger),color-mix(in srgb, var(--danger) 60%, white))" }} />
 
         <div className={`px-3 pt-2 pb-2.5 flex flex-col gap-1.5 ${isCashIn ? "bg-emerald-50/50" : "bg-rose-50/50"}`}>
           {/* Direction label row */}
@@ -837,7 +837,7 @@ export default function DailyTreasuryPage() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { setHistoryOpen(true); loadPastSessions(); }}
-              className="flex h-10 items-center gap-1.5 rounded-xl bg-slate-900 px-3 text-[11px] font-black text-white hover:bg-slate-800 transition-colors shadow-md shadow-slate-900/10"
+              className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600 transition-colors shadow-md shadow-slate-900/10"
             >
               <History className="h-3.5 w-3.5 text-emerald-400" /> الأيام السابقة
             </motion.button>
@@ -950,7 +950,7 @@ export default function DailyTreasuryPage() {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setWithdrawalOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-slate-900 py-4 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
+                    className="flex items-center justify-center gap-3 rounded-3xl bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
                   >
                     <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
                     تسجيل مسحوبات سريع
@@ -1219,7 +1219,7 @@ export default function DailyTreasuryPage() {
                           {/* Top Half: Expected Safe & Actual Cash */}
                           <div className="flex flex-col gap-5">
                             {/* Compact Expected Amount */}
-                            <div className="rounded-3xl bg-slate-900 text-white p-5 shadow-xl shadow-slate-900/20">
+                            <div className="rounded-3xl bg-primary text-white p-5 shadow-xl shadow-slate-900/20">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5">
                                   <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -1410,7 +1410,7 @@ export default function DailyTreasuryPage() {
                         <button
                           key={t.id}
                           onClick={() => { setActiveTab(t.id); setGlobalAmountSearch(""); setActiveEquationRowId(null); setTxAffects(null); }}
-                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${activeTab === t.id ? "bg-zinc-900 text-white shadow-md shadow-zinc-900/20" : "text-slate-500 hover:bg-slate-100"
+                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${activeTab === t.id ? "bg-primary text-white shadow-md shadow-zinc-900/20" : "text-slate-500 hover:bg-slate-100"
                             }`}
                         >
                           {t.label}
@@ -1589,7 +1589,7 @@ export default function DailyTreasuryPage() {
                                   <button
                                     key={p}
                                     onClick={() => setCurrentPage(p)}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-zinc-900 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-primary text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
                                   >{p}</button>
                                 ));
                               })()}
@@ -1641,7 +1641,7 @@ export default function DailyTreasuryPage() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-5 bg-[#fafafa]">
+              <div className="flex-1 overflow-y-auto p-5 bg-[var(--bg-base)]">
                 {/* Header Summary */}
                 <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden mb-4">
                   <div className={"p-4 text-center border-b border-slate-100 " + (DOC_TYPE_COLOR[slideOver.doc_type] || "bg-white")}>
@@ -1803,7 +1803,7 @@ export default function DailyTreasuryPage() {
                               <div className="col-span-3 text-left font-mono text-[11px] font-black text-rose-700">{fmt(line.line_total || line.unit_price * line.quantity)}</div>
                             </div>
                           ))}
-                          <div className="bg-slate-900 text-white px-3 py-3 flex justify-between text-2sm font-black">
+                          <div className="bg-primary text-white px-3 py-3 flex justify-between text-2sm font-black">
                             <span className="text-slate-400">الإجمالي</span>
                             <span className="font-mono">{fmt(slideOver.amount)} ج.م</span>
                           </div>
@@ -1848,7 +1848,7 @@ export default function DailyTreasuryPage() {
                           </div>
                         ))}
                         {/* Totals */}
-                        <div className="bg-slate-900 text-white px-3 py-3">
+                        <div className="bg-primary text-white px-3 py-3">
                           <div className="flex justify-between text-[11px] font-bold mb-1">
                             <span className="text-slate-400">الفرعي</span>
                             <span className="font-mono">{fmt(slideOverDetails.subtotal)}</span>
@@ -1957,7 +1957,7 @@ export default function DailyTreasuryPage() {
                             <div className="col-span-2 text-left font-mono text-[11px] font-black text-orange-700">{fmt(line.line_total || (line.unit_cost * line.quantity))}</div>
                           </div>
                         ))}
-                        <div className="bg-slate-900 text-white px-3 py-3">
+                        <div className="bg-primary text-white px-3 py-3">
                           {Number(slideOverDetails.discount) > 0 && (
                             <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span></div>
                           )}
@@ -2042,7 +2042,7 @@ export default function DailyTreasuryPage() {
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handlePrint}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-zinc-950 py-2.5 text-2sm font-black text-white hover:bg-zinc-800 shadow-lg shadow-zinc-950/20"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-2sm font-black text-white hover:bg-primary-600 shadow-lg shadow-zinc-950/20"
                 >
                   <Printer className="h-3.5 w-3.5" /> طباعة
                 </motion.button>
@@ -2073,7 +2073,7 @@ export default function DailyTreasuryPage() {
                 <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-black text-slate-600 outline-none focus:border-indigo-500"><option value="">كل الحالات</option><option value="open">مفتوح</option><option value="closed">مغلق</option></select>
                 <button onClick={() => { setHistorySearch(""); setHistoryStatus(""); }} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-500 hover:bg-slate-50">مسح الفلاتر</button>
               </div>
-              <div className="flex-1 overflow-auto p-4 bg-[#fafafa]">
+              <div className="flex-1 overflow-auto p-4 bg-[var(--bg-base)]">
                 <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-right">
                   <thead><tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">افتتاحي</th><th className="px-3 py-2">فعلي</th><th className="px-3 py-2">ختامي</th><th className="px-3 py-2">عجز / زيادة</th><th className="px-3 py-2">إجراءات</th></tr></thead>
                   <tbody>
@@ -2085,7 +2085,7 @@ export default function DailyTreasuryPage() {
                         <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{s.actual_cash == null ? "—" : fmt(s.actual_cash)}</td>
                         <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{s.closing_balance == null ? "—" : fmt(s.closing_balance)}</td>
                         <td className={"px-3 py-3 font-mono text-2sm font-black " + (Number(s.discrepancy || 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{s.discrepancy == null ? "—" : fmt(s.discrepancy)}</td>
-                        <td className="rounded-l-2xl px-3 py-3"><button onClick={() => { setDate(s.date); setHistoryOpen(false); setActiveTab("all"); }} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-slate-900 px-3 text-[11px] font-black text-white hover:bg-slate-800"><Eye className="h-3.5 w-3.5" /> معاينة</button></td>
+                        <td className="rounded-l-2xl px-3 py-3"><button onClick={() => { setDate(s.date); setHistoryOpen(false); setActiveTab("all"); }} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600"><Eye className="h-3.5 w-3.5" /> معاينة</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -2260,7 +2260,7 @@ export default function DailyTreasuryPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleWithdrawalSave}
                     disabled={!withdrawalAmount || !withdrawalCategoryId}
-                    className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 bg-slate-900 hover:bg-slate-800 shadow-slate-900/20"
+                    className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 bg-primary hover:bg-primary-600 shadow-slate-900/20"
                   >
                     <CheckCircle2 className="h-5 w-5" /> حفظ واعتماد
                   </motion.button>

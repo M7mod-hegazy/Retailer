@@ -716,7 +716,7 @@ export default function PurchaseReturnFormPage() {
 
         <div className="flex items-center px-6 pt-5 pb-2 relative z-10">
           <button onClick={() => navigate("/purchases/returns")}
-            className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95">
+            className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:bg-primary-600 hover:text-white hover:border-slate-900 transition-all active:scale-95">
             <ArrowLeft className="h-5 w-5" />
           </button>
         </div>

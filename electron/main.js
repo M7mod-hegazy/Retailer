@@ -354,6 +354,16 @@ if (!gotTheLock) {
 
   app.on("before-quit", async () => {
     app.isQuitting = true;
+
+    // Throttled safety backup on graceful quit — runs FIRST, while the embedded
+    // server (and its open DB) are still alive. performBackup is synchronous and
+    // fast (~tens of ms for a few-MB DB copy), so this completes before the
+    // process tears down. Never allowed to block or fail the quit.
+    try {
+      const { runCloseBackup } = require("../server/src/jobs/autoBackup");
+      runCloseBackup();
+    } catch (_) {}
+
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
         await mainWindow.webContents.executeJavaScript(

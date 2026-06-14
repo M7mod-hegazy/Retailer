@@ -196,7 +196,7 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
               key={key}
               type="button"
               onClick={() => { setTableFilter(key); setPage(1); }}
-              className={`rounded-xl border px-3.5 py-2 text-xs font-black shadow-sm transition ${tableFilter === key ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+              className={`rounded-xl border px-3.5 py-2 text-xs font-black shadow-sm transition ${tableFilter === key ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
               title={`عرض ${label} داخل هذا الجدول فقط`}
             >
               {label} {count}
@@ -238,7 +238,7 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
             {Object.entries(BULK_SCOPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
 
-          <button type="button" onClick={() => wizard.applyValueToRows(wizard.bulkField, wizard.bulkValue, bulkTargetRows, "التعديل")} disabled={bulkValueIsEmpty || !bulkTargetCount} className="w-full rounded-xl bg-slate-900 py-3 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-40">
+          <button type="button" onClick={() => wizard.applyValueToRows(wizard.bulkField, wizard.bulkValue, bulkTargetRows, "التعديل")} disabled={bulkValueIsEmpty || !bulkTargetCount} className="w-full rounded-xl bg-primary py-3 text-sm font-black text-white transition hover:bg-primary-600 disabled:opacity-40">
             تطبيق على {bulkTargetCount}
           </button>
 

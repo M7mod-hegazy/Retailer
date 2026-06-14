@@ -167,14 +167,14 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                     <button 
                        type="button"
                        onClick={() => setForm(f => ({ ...f, payment_method: 'cash', bank_id: "" }))}
-                       className={`flex items-center justify-center gap-2 rounded-sm border py-2 text-[11px] font-black transition-all ${form.payment_method === 'cash' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
+                       className={`flex items-center justify-center gap-2 rounded-sm border py-2 text-[11px] font-black transition-all ${form.payment_method === 'cash' ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
                     >
                        <Banknote className="h-3.5 w-3.5" /> نقدي
                     </button>
                     <button 
                        type="button"
                        onClick={() => setForm(f => ({ ...f, payment_method: 'bank_transfer', treasury_id: "" }))}
-                       className={`flex items-center justify-center gap-2 rounded-sm border py-2 text-[11px] font-black transition-all ${form.payment_method === 'bank_transfer' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
+                       className={`flex items-center justify-center gap-2 rounded-sm border py-2 text-[11px] font-black transition-all ${form.payment_method === 'bank_transfer' ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
                     >
                        <CreditCard className="h-3.5 w-3.5" /> بنك / فيزا
                     </button>

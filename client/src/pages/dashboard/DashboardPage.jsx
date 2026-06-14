@@ -99,9 +99,9 @@ const MODAL_CONFIG = {
 };
 
 const COLOR_MAP = {
-  rose:    { ring: "ring-rose-200",    btn: "bg-rose-600 hover:bg-rose-500",    icon: "bg-rose-100 text-rose-600",    badge: "bg-rose-50 text-rose-600 border-rose-200" },
-  emerald: { ring: "ring-emerald-200", btn: "bg-emerald-600 hover:bg-emerald-500", icon: "bg-emerald-100 text-emerald-600", badge: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  amber:   { ring: "ring-amber-200",   btn: "bg-amber-600 hover:bg-amber-500",  icon: "bg-amber-100 text-amber-600",  badge: "bg-amber-50 text-amber-600 border-amber-200" },
+  rose:    { ring: "ring-rose-200",    btn: "bg-primary hover:bg-primary-600",    icon: "bg-rose-100 text-rose-600",    badge: "bg-rose-50 text-rose-600 border-rose-200" },
+  emerald: { ring: "ring-emerald-200", btn: "bg-primary hover:bg-primary-600", icon: "bg-emerald-100 text-emerald-600", badge: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  amber:   { ring: "ring-amber-200",   btn: "bg-primary hover:bg-primary-600",  icon: "bg-amber-100 text-amber-600",  badge: "bg-amber-50 text-amber-600 border-amber-200" },
 };
 
 // ─── Permission hook ──────────────────────────────────────────────────────────
@@ -308,8 +308,8 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
   const actionBtnClass = (active) =>
     `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border ${
       active
-        ? "bg-white/10 border-white/20 text-white hover:bg-emerald-500 hover:border-emerald-400"
-        : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-500 hover:border-emerald-400 hover:text-white"
+        ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
+        : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-primary hover:border-primary hover:text-white"
     }`;
 
   return (
@@ -321,9 +321,9 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         onMouseLeave={handleMouseLeave}
         className={`group block relative h-full rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
           active
-            ? "bg-zinc-950 text-white shadow-xl shadow-zinc-900/20"
+            ? "bg-primary text-white shadow-xl shadow-zinc-900/20"
             : item.pageKey === "updates" && updateAvailable
-            ? "bg-white border-2 border-emerald-300 shadow-[0_0_30px_-8px_rgba(16,185,129,0.15)] hover:shadow-[0_0_40px_-8px_rgba(16,185,129,0.25)] hover:-translate-y-0.5"
+            ? "bg-white border-2 border-emerald-300 shadow-[0_0_30px_-8px_var(--primary-glow)] hover:shadow-[0_0_40px_-8px_var(--primary-glow)] hover:-translate-y-0.5"
             : "bg-white border border-zinc-200/50 hover:border-transparent hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:z-10"
         }`}
       >
@@ -332,13 +332,13 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
           style={{ x: xSpring, y: ySpring }}
           className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
         >
-          <div className="absolute inset-[-50%] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_50%)]" />
+          <div className="absolute inset-[-50%] bg-[radial-gradient(circle_at_center,var(--primary-glow)_0%,transparent_50%)]" />
         </motion.div>
 
         <div className="relative z-10 flex flex-col h-full justify-between gap-8">
           <div className="flex justify-between items-start">
             <div className={`flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${
-              active ? "bg-white/10 text-emerald-400" : "bg-zinc-50 text-zinc-400 group-hover:bg-zinc-950 group-hover:text-emerald-400 group-hover:scale-110"
+              active ? "bg-white/10 text-accent" : "bg-zinc-50 text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:scale-110"
             }`}>
               <item.icon className="w-6 h-6" strokeWidth={1.5} />
             </div>
@@ -360,10 +360,10 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
                 <button
                   onClick={handleQuickClick}
                   title={qa.label}
-                  className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${
+                   className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${
                     active
-                      ? "bg-white/10 border-white/20 text-white hover:bg-emerald-500 hover:border-emerald-400"
-                      : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-emerald-500 hover:border-emerald-400 hover:text-white"
+                      ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
+                      : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-primary hover:border-primary hover:text-white"
                   }`}
                 >
                   <Zap className="w-3 h-3" />
@@ -373,7 +373,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
 
               {/* Arrow icon */}
               <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${
-                active ? "border-white/20 text-white" : "border-zinc-200 text-zinc-300 group-hover:border-zinc-950 group-hover:bg-zinc-950 group-hover:text-white"
+                active ? "border-white/20 text-white" : "border-zinc-200 text-zinc-300 group-hover:border-primary group-hover:bg-primary group-hover:text-white"
               }`}>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
@@ -393,7 +393,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         </div>
 
         {item.pageKey === "updates" && updateAvailable && (
-          <div className="absolute top-5 left-5 flex items-center gap-1.5 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-emerald-500/30 animate-pulse">
+          <div className="absolute top-5 left-5 flex items-center gap-1.5 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-primary/30 animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-white" />
             تحديث
           </div>
@@ -484,11 +484,11 @@ export default function DashboardPage() {
   const closeModal = useCallback(() => setQuickModal(null), []);
 
   return (
-    <div className="flex flex-col min-h-full font-sans bg-[#f4f4f5] overflow-x-hidden selection:bg-emerald-500/30" dir="rtl">
+    <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] overflow-x-hidden selection:bg-primary/30" dir="rtl">
 
       {/* Dark hero */}
       <div className="bg-zinc-950 px-6 md:px-12 pt-12 pb-24 rounded-b-[3rem] relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.15)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--primary-glow)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none" />
 
         <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
@@ -497,7 +497,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-1">
-                مرحباً بك، <span className="text-emerald-400">{user?.name?.split(" ")[0] || "مدير"}</span>
+                مرحباً بك، <span className="text-white underline decoration-primary/60 decoration-2 underline-offset-4">{user?.name?.split(" ")[0] || "مدير"}</span>
               </h1>
               <p className="text-sm font-bold text-zinc-400">
                 {settings.company_name || settings.branch_name
@@ -516,7 +516,7 @@ export default function DashboardPage() {
             return (
               <motion.div key={item.path} variants={FADE_UP}>
                 {isPOS ? (
-                  <div className={`group relative flex items-stretch rounded-[2rem] transition-all duration-500 overflow-hidden bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-2`}>
+                  <div className={`group relative flex items-stretch rounded-[2rem] transition-all duration-500 overflow-hidden bg-primary hover:bg-primary-600 shadow-[0_0_40px_var(--primary-glow)] hover:-translate-y-2`}>
                     <Link to={item.path} title={TOOLTIPS[item.pageKey] || item.label} className="flex flex-1 items-center gap-6 p-6 min-w-0">
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-black/20 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
                         <item.icon className="h-7 w-7" strokeWidth={1.5} />
@@ -543,16 +543,16 @@ export default function DashboardPage() {
                   <Link
                     to={item.path}
                     title={TOOLTIPS[item.pageKey] || item.label}
-                    className="group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden bg-white/5 border border-white/10 hover:bg-white/10 hover:-translate-y-2 backdrop-blur-xl"
+                    className="group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden bg-primary hover:bg-primary-600 shadow-[0_0_40px_var(--primary-glow)] hover:-translate-y-2"
                   >
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-white/10 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-black/20 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
                       <item.icon className="h-7 w-7" strokeWidth={1.5} />
                     </div>
                     <div className="min-w-0 z-10">
                       <div className="text-xl font-black text-white mb-1">{item.label}</div>
                       {shortcut && (
-                        <div className="text-xs font-bold flex items-center gap-2 text-zinc-400">
-                          <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-white/10 text-white">{shortcut}</kbd>
+                        <div className="text-xs font-bold flex items-center gap-2 text-emerald-100">
+                          <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-black/20 text-white">{shortcut}</kbd>
                           <span>اختصار لوحة المفاتيح</span>
                         </div>
                       )}
@@ -580,7 +580,7 @@ export default function DashboardPage() {
             </div>
             <Link
               to="/updates"
-              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-emerald-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-700/20 transition-all duration-200 hover:bg-emerald-800 hover:shadow-xl active:scale-95"
+              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-700/20 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl active:scale-95"
             >
               <ArrowUpRight className="h-4.5 w-4.5" />
               الانتقال للتحديثات
@@ -615,7 +615,7 @@ export default function DashboardPage() {
             </div>
             <Link
               to="/definitions/items"
-              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-amber-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-amber-700/20 transition-all duration-200 hover:bg-amber-800 hover:shadow-xl active:scale-95"
+              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-700/20 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl active:scale-95"
             >
               <Plus className="h-4.5 w-4.5" />
               إضافة الأصناف الآن
@@ -639,12 +639,12 @@ export default function DashboardPage() {
             <button
               key={module.id}
               onClick={() => setActiveTabId(module.id)}
-              className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group"
+              className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group transition-colors hover:bg-zinc-100"
             >
               {activeTabId === module.id && (
-                <motion.div layoutId="active-tab" className="absolute inset-0 bg-zinc-950 rounded-3xl" transition={{ type: "spring", stiffness: 300, damping: 25 }} />
+                <motion.div layoutId="active-tab" className="absolute inset-0 bg-primary rounded-3xl" transition={{ type: "spring", stiffness: 300, damping: 25 }} />
               )}
-              <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-emerald-400" : "text-zinc-400 group-hover:text-zinc-900"}`} strokeWidth={2} />
+              <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} strokeWidth={2} />
               <span className={`text-sm font-black tracking-wide relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-900"}`}>
                 {module.title}
               </span>

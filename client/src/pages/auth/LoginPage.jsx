@@ -7,6 +7,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { usePerformanceStore, applyToDOM } from "../../stores/performanceStore";
 import api from "../../services/api";
+import { applyColorTheme } from "../../utils/applyColorTheme";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
 
 const highlights = [
@@ -53,6 +54,9 @@ export default function LoginPage() {
   useEffect(() => {
     api.get("/api/settings").then((res) => {
       const data = res.data?.data || {};
+      // Refine the boot theme with the full settings payload so the login screen
+      // reflects the shop's selected color theme (including custom-theme variables).
+      applyColorTheme(data);
       setCustomerBranding({
         logo_url: data.logo_url || null,
         company_name: data.company_name || "",
@@ -101,7 +105,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-[#f4f6f8] text-slate-800 font-sans selection:bg-emerald-500/20" dir="rtl">
+    <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-[var(--bg-base)] text-slate-800 font-sans selection:bg-emerald-500/20" dir="rtl">
       
       {/* ─── FULL-BLEED POS ANIMATED ENVIRONMENT ─── */}
       <div className="absolute inset-0 z-0 pointer-events-none">
@@ -134,7 +138,7 @@ export default function LoginPage() {
         ))}
         
         {/* Architectural Grid Overlay for Depth */}
-        <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, #047857 1px, transparent 0)", backgroundSize: "40px 40px" }} />
+        <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, var(--primary-600) 1px, transparent 0)", backgroundSize: "40px 40px" }} />
       </div>
 
       {/* ─── MAIN LAYOUT ─── */}
@@ -282,7 +286,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="group relative w-full flex items-center justify-center bg-[#059669] text-white font-black text-[18px] py-[20px] rounded-2xl overflow-hidden transition-all duration-300 hover:bg-[#047857] hover:shadow-[0_12px_32px_rgba(5,150,105,0.25)] hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                    className="group relative w-full flex items-center justify-center bg-[var(--primary)] text-white font-black text-[18px] py-[20px] rounded-2xl overflow-hidden transition-all duration-300 hover:bg-[var(--primary-600)] hover:shadow-[0_12px_32px_var(--primary-glow)] hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     {/* Embedded sheen effect over the button */}
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

@@ -603,7 +603,7 @@ export default function PosStickyTotalBar({
 
           <button type="button" onClick={onPrint} disabled={!canDoPayment}
             className={`flex h-7 items-center gap-1.5 rounded-lg px-3 text-2sm font-black text-white transition-all disabled:opacity-50 active:scale-[0.95] shadow-md ${
-              hasErrors ? "bg-rose-600 hover:bg-rose-500" : "bg-zinc-900 hover:bg-zinc-800"
+              hasErrors ? "bg-rose-600 hover:bg-rose-500" : "bg-primary hover:bg-primary-600"
             }`}>
             {isSaving
               ? <Loader2 className="h-3 w-3 animate-spin" />

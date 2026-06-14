@@ -248,7 +248,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                   onClick={() => setFilterType(btn.id)}
                   className={`text-2sm font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                     active 
-                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
+                      ? "bg-primary border-primary text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
                       : `${btn.color} border-slate-200/80 shadow-sm hover:scale-[1.01]`
                   }`}
                 >
@@ -745,7 +745,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                           <div className={`flex flex-col items-end px-3 py-1.5 rounded-[12px] border flex-1 transition-all ${
                             ev.impactDir === "add" || isMulti
                               ? "bg-rose-500/[0.04] text-rose-700 border-rose-200/60 shadow-[0_2px_8px_rgba(244,63,94,0.03)]"
-                              : "bg-emerald-500/[0.04] text-emerald-700 border-emerald-200/60 shadow-[0_2px_8px_rgba(16,185,129,0.03)]"
+                              : "bg-emerald-500/[0.04] text-emerald-700 border-emerald-200/60 shadow-[0_2px_8px_var(--primary-glow)]"
                           }`}>
                             <span className="text-[9px] font-black text-slate-455 tracking-wider mb-1 select-none">
                               {ev.type === "return"
@@ -1318,7 +1318,7 @@ export default function CustomerAccountsPage() {
                       bal > 0 
                         ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
                         : bal < 0 
-                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_rgba(16,185,129,0.08)]" 
+                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_var(--primary-glow)]" 
                           : "bg-slate-100 border-slate-200/60 text-slate-400"
                     }`}>
                       {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
@@ -1488,7 +1488,7 @@ export default function CustomerAccountsPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="bg-slate-900 text-white px-4 py-4.5">
+                    <div className="bg-primary text-white px-4 py-4.5">
                       <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">إجمالي الأصناف الفرعي</span><span className="font-mono">{fmt(detailData.subtotal)} ج.م</span></div>
                       {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">خصم إضافي للفاتورة</span><span className="font-mono text-rose-350">- {fmt(detailData.discount)} ج.م</span></div>}
                       {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">رسوم / تكلفة إضافية</span><span className="font-mono text-amber-350">+ {fmt(detailData.increase)} ج.م</span></div>}
@@ -1803,7 +1803,7 @@ export default function CustomerAccountsPage() {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={handleAdjust} disabled={saving || !adjForm.amount || !adjForm.reason}
-                  className="flex-1 h-11 rounded-2xl bg-slate-900 text-white text-2sm font-bold hover:bg-slate-950 disabled:opacity-50 transition-colors">
+                  className="flex-1 h-11 rounded-2xl bg-primary text-white text-2sm font-bold hover:bg-primary-600 disabled:opacity-50 transition-colors">
                   {saving ? "جاري تنفيذ وحفظ التسوية..." : "تأكيد وقيد التسوية الآن"}
                 </button>
                 <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-2sm font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
@@ -1849,7 +1849,7 @@ function NotesTab({ notes, loading, onAdd }) {
             placeholder="اكتب هنا أي ملاحظة هامة تتعلق بالتعامل المالي، المبيعات أو شروط التسوية..." />
           <div className="flex justify-end mt-3">
             <button onClick={submit} disabled={saving || !text.trim()}
-              className="h-9.5 px-6 rounded-xl bg-amber-650 hover:bg-amber-700 text-white text-2sm font-black disabled:opacity-40 transition-all shadow-sm shadow-amber-100 hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
+              className="h-10 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-2sm font-black disabled:opacity-40 transition-all shadow-sm shadow-amber-100 hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
               {saving ? "جاري الحفظ..." : "حفظ الملاحظة الآن"}
             </button>
           </div>

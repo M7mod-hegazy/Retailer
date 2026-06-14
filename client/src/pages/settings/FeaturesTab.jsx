@@ -217,7 +217,7 @@ function FeatureCard({ feature, enabled, onRequestEnable }) {
                 <button
                   type="button"
                   onClick={onRequestEnable}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all px-3 py-1.5 text-[11px] font-black text-white"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary hover:bg-primary-600 active:scale-95 transition-all px-3 py-1.5 text-[11px] font-black text-white"
                 >
                   تفعيل ←
                 </button>

@@ -200,7 +200,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                   onClick={() => setFilterType(btn.id)}
                   className={`text-2sm font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                     active 
-                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
+                      ? "bg-primary border-primary text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
                       : `${btn.color} border-slate-200/80 shadow-sm hover:scale-[1.01]`
                   }`}
                 >
@@ -724,7 +724,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                           <div className={`flex flex-col items-end px-3 py-1.5 rounded-[12px] border flex-1 transition-all ${
                             ev.impactDir === "add" || isMulti
                               ? "bg-rose-500/[0.04] text-rose-700 border-rose-200/60 shadow-[0_2px_8px_rgba(244,63,94,0.03)]"
-                              : "bg-emerald-500/[0.04] text-emerald-700 border-emerald-200/60 shadow-[0_2px_8px_rgba(16,185,129,0.03)]"
+                              : "bg-emerald-500/[0.04] text-emerald-700 border-emerald-200/60 shadow-[0_2px_8px_var(--primary-glow)]"
                           }`}>
                             <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
                               {ev.type === "return"
@@ -1223,7 +1223,7 @@ export default function SupplierAccountsPage() {
                       bal > 0 
                         ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
                         : bal < 0 
-                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_rgba(16,185,129,0.08)]" 
+                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_var(--primary-glow)]" 
                           : "bg-slate-100 border-slate-200/60 text-slate-400"
                     }`}>
                       {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
@@ -1627,7 +1627,7 @@ export default function SupplierAccountsPage() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handleAdjust} disabled={saving || !adjForm.amount}
-                className="flex-1 h-11 rounded-xl bg-slate-800 text-white text-sm font-black hover:bg-slate-900 disabled:opacity-50">
+                className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary-600 disabled:opacity-50">
                 {saving ? "جاري التسوية..." : "تأكيد التسوية وتسجيلها"}
               </button>
               <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200">إلغاء</button>

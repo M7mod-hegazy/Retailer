@@ -117,7 +117,7 @@ export default function DesktopLayout({ children, branding }) {
   useEffect(() => { if (effectiveMode === 'full') setPeek(false); }, [effectiveMode]);
 
   return (
-    <div className="flex h-screen bg-[#F4F4F5] text-zinc-900 font-sans overflow-hidden selection:bg-emerald-200" dir="rtl">
+    <div className="flex h-screen bg-base text-primary font-sans overflow-hidden selection:bg-emerald-200" dir="rtl">
 
       {!isHidden && (
         <div
@@ -141,11 +141,12 @@ export default function DesktopLayout({ children, branding }) {
           onClick={() => handleSetMode('full')}
           onMouseEnter={openPeek}
           onMouseLeave={closePeek}
-          className="group fixed right-0 top-24 z-50 flex flex-col items-center gap-2 rounded-l-xl border border-r-0 border-zinc-200 bg-white px-1.5 py-3 shadow-md hover:bg-zinc-50 transition-colors"
+          className="group fixed right-0 top-24 z-50 flex flex-col items-center gap-2 rounded-l-xl border border-r-0 border-normal bg-surface px-1.5 py-3 shadow-md hover:bg-overlay transition-colors"
+          style={{ background: "var(--bg-surface)" }}
           title="إظهار القائمة"
         >
-          <ChevronLeft className="h-3.5 w-3.5 text-zinc-500 group-hover:text-zinc-800 transition-colors" />
-          <span className="[writing-mode:vertical-rl] text-[10px] font-black tracking-wider text-zinc-500 group-hover:text-zinc-800 transition-colors">القائمة</span>
+          <ChevronLeft className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors" />
+          <span className="[writing-mode:vertical-rl] text-[10px] font-black tracking-wider text-muted group-hover:text-primary transition-colors">القائمة</span>
         </button>
       )}
 
@@ -154,8 +155,8 @@ export default function DesktopLayout({ children, branding }) {
         <div
           onMouseEnter={openPeek}
           onMouseLeave={closePeek}
-          className="fixed right-0 top-0 z-[55] h-screen shadow-2xl animate-fade-in"
-          style={{ width: sidebarWidth }}
+          className="fixed right-0 top-0 z-[55] h-screen bg-sidebar shadow-2xl animate-fade-in"
+          style={{ width: sidebarWidth, background: "var(--bg-sidebar)" }}
         >
           <Sidebar
             mode="full"
@@ -166,10 +167,19 @@ export default function DesktopLayout({ children, branding }) {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 h-screen relative overflow-hidden bg-[#F4F4F5]">
+      <div className="flex-1 flex flex-col min-w-0 h-screen relative overflow-hidden bg-base">
+        {/* Themed ambient aura — accent-tinted glows that give every theme (esp.
+            dark ones) atmospheric depth instead of a flat fill. Driven by the
+            active theme's translucent tokens so it recolours per theme. */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-          <div className="pointer-events-none absolute top-[-10%] right-[-5%] w-[800px] h-[600px] bg-blue-100/30 rounded-full blur-[120px] mix-blend-multiply" />
-          <div className="pointer-events-none absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-emerald-100/30 rounded-full blur-[120px] mix-blend-multiply" />
+          <div
+            className="pointer-events-none absolute top-[-10%] right-[-5%] w-[800px] h-[600px] rounded-full blur-[130px]"
+            style={{ background: "radial-gradient(circle, var(--primary-glow), transparent 70%)" }}
+          />
+          <div
+            className="pointer-events-none absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full blur-[130px]"
+            style={{ background: "radial-gradient(circle, var(--info-light), transparent 70%)" }}
+          />
         </div>
 
         <Topbar />

@@ -226,7 +226,7 @@ export default function WizardShell({ wizard }) {
                 disabled={Boolean(transition) || (step.id === "done" && !wizard.result)}
                 className={`group flex-1 min-w-[140px] md:min-w-0 min-h-[64px] rounded-xl border p-3 text-right transition-all duration-300 relative overflow-hidden ${
                   active
-                    ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                    ? "border-primary bg-primary text-white shadow-md shadow-slate-900/10"
                     : done
                     ? "border-emerald-150 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-50"
                     : "border-slate-200 bg-slate-50/50 text-slate-400 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-300"
@@ -321,7 +321,7 @@ export default function WizardShell({ wizard }) {
               type="button"
               onClick={() => goNext()}
               disabled={!nextStep || wizard.loading || Boolean(transition)}
-              className={`inline-flex items-center gap-2.5 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white shadow-md transition-all duration-200 hover:bg-slate-800 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
+              className={`inline-flex items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-md transition-all duration-200 hover:bg-primary-600 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
                 shake 
                   ? "animate-shake bg-rose-700 hover:bg-rose-800 shadow-rose-900/10" 
                   : ""

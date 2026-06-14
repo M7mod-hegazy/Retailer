@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center space-y-6 bg-[#FAFAFA]">
+      <div className="flex min-h-[80vh] flex-col items-center justify-center space-y-6 bg-[var(--bg-base)]">
         <div className="relative flex items-center justify-center h-20 w-20">
           <div className="absolute inset-0 rounded-full animate-ping bg-slate-900 opacity-10"></div>
           <Activity className="h-8 w-8 animate-pulse text-slate-800" />
@@ -205,7 +205,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full font-sans bg-[#F4F7FB] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
+    <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
       
       {/* Background Ambient Glows (from dashboard pattern) */}
       <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-400/20 rounded-full blur-[100px] pointer-events-none" />
@@ -214,7 +214,7 @@ export default function AnalyticsPage() {
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-8 relative z-10 w-full max-w-[1400px] mx-auto gap-6">
         <div className="flex items-center gap-4">
-          <div className="bg-slate-900 text-white p-3 rounded-[20px] shadow-[0_8px_20px_rgba(15,23,42,0.15)] flex items-center justify-center">
+          <div className="bg-primary text-white p-3 rounded-[20px] shadow-[0_8px_20px_rgba(15,23,42,0.15)] flex items-center justify-center">
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
@@ -481,7 +481,7 @@ export default function AnalyticsPage() {
                   className="flex items-center gap-2 rounded-[16px] border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-[12px] font-black text-indigo-700 hover:bg-indigo-100 transition-all active:scale-95 shadow-sm">
                   <Maximize2 className="w-4 h-4" /> تحليل مفصل
                 </button>
-                <div className="w-12 h-12 rounded-[20px] bg-slate-900 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(15,23,42,0.15)]">
+                <div className="w-12 h-12 rounded-[20px] bg-primary text-white flex items-center justify-center shadow-[0_8px_20px_rgba(15,23,42,0.15)]">
                   <ShoppingBag className="w-5 h-5" />
                 </div>
               </div>

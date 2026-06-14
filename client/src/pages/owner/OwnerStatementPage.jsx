@@ -208,7 +208,7 @@ const THEME_CLASSES = {
     accentBg: "bg-emerald-600",
     gradient: "from-slate-900 to-slate-950 border border-slate-800 shadow-[0_12px_30px_rgba(0,0,0,0.25)]",
     cardCls: "border-emerald-500/30",
-    headerBg: "bg-slate-900 text-white",
+    headerBg: "bg-primary text-white",
   },
   stock: {
     icon: Database,
@@ -657,7 +657,7 @@ export default function OwnerStatementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] p-6 text-slate-900 font-sans selection:bg-indigo-100" dir="rtl">
+    <div className="min-h-screen bg-[var(--bg-base)] p-6 text-slate-900 font-sans selection:bg-indigo-100" dir="rtl">
       {/* Visual Mesh Glow Top Overlay */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-indigo-500/[0.015] rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-[400px] h-[250px] bg-emerald-500/[0.01] rounded-full blur-3xl pointer-events-none" />
@@ -779,7 +779,7 @@ export default function OwnerStatementPage() {
                 <button
                   onClick={handleLock}
                   disabled={saving || activeSnapshot?.status === "locked"}
-                  className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-40 transition-colors shadow-md"
+                  className="inline-flex items-center gap-1.5 rounded-2xl bg-primary px-5 py-2.5 text-xs font-black text-white hover:bg-primary-600 disabled:opacity-40 transition-colors shadow-md"
                 >
                   <FileLock2 size={13} /> إقفال نهائي
                 </button>
@@ -1010,7 +1010,7 @@ export default function OwnerStatementPage() {
               </p>
               <button
                 onClick={handleCompare}
-                className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-6 py-3 text-xs font-black text-white hover:bg-slate-800 transition-colors shadow-md active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-2xl bg-primary px-6 py-3 text-xs font-black text-white hover:bg-primary-600 transition-colors shadow-md active:scale-95"
               >
                 قارن بين الفترتين
               </button>

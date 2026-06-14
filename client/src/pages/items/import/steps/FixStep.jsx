@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import StepTable from "../StepTable";
 import WarehouseChoicePanel from "./WarehouseChoicePanel";
 
@@ -6,6 +7,17 @@ function UnitFixPanel({ wizard, rowsCount }) {
   const fileUnits = wizard.fileUnitOptions || [];
   const [createNames, setCreateNames] = useState({});
   const [selectedUnits, setSelectedUnits] = useState({});
+  const [resolvedKeys, setResolvedKeys] = useState(new Set());
+  const [resolvingKey, setResolvingKey] = useState(null);
+  const [appliedQuickFix, setAppliedQuickFix] = useState(false);
+
+  const markResolved = useCallback((key) => {
+    setResolvedKeys((prev) => new Set(prev).add(key));
+    setResolvingKey((prev) => prev === key ? null : prev);
+  }, []);
+
+  const resolvedCount = resolvedKeys.size + (appliedQuickFix ? 1 : 0);
+  const totalCount = fileUnits.length;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -21,11 +33,53 @@ function UnitFixPanel({ wizard, rowsCount }) {
         </span>
       </div>
 
+      {/* Decision progress */}
+      {fileUnits.length > 0 && (
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+              style={{ width: `${totalCount ? (resolvedCount / totalCount) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-xs font-black text-slate-500 whitespace-nowrap">{resolvedCount} / {totalCount} تم</span>
+        </div>
+      )}
+
       {fileUnits.length ? (
         <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50/40">
           {fileUnits.map((entry) => {
+            const isResolved = resolvedKeys.has(entry.name);
             const createName = createNames[entry.name] ?? entry.name;
             const selectedUnit = selectedUnits[entry.name] || "";
+            const isResolving = resolvingKey === entry.name && wizard.categorySyncing;
+
+            if (isResolved) {
+              const chosenText = selectedUnits[entry.name]
+                ? `مرتبطة بوحدة: ${selectedUnits[entry.name]}`
+                : `سيُنشئ باسم: ${createNames[entry.name] || entry.name}`;
+              return (
+                <div key={entry.name} className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="text-sm font-black text-slate-900">{entry.name}</span>
+                        <div className="mt-0.5 text-xs font-bold text-emerald-700">{chosenText}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResolvedKeys((prev) => { const n = new Set(prev); n.delete(entry.name); return n; })}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50 transition"
+                    >
+                      تغيير
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
             <div key={entry.name} className="grid gap-4 p-4 xl:grid-cols-[minmax(180px,1fr)_minmax(260px,0.95fr)_minmax(260px,0.95fr)] xl:items-end">
               <div className="min-w-0">
@@ -50,16 +104,19 @@ function UnitFixPanel({ wizard, rowsCount }) {
                   />
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      setResolvingKey(entry.name);
                       if (entry.exists && createName.trim() === entry.name) {
                         wizard.applyFileUnitChoice(entry.name, entry.name);
-                        return;
+                      } else {
+                        await wizard.createAndApplyUnit(entry.name, createName);
                       }
-                      wizard.createAndApplyUnit(entry.name, createName);
+                      markResolved(entry.name);
                     }}
-                    className="shrink-0 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 active:scale-[0.98] disabled:opacity-40"
+                    className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-white transition hover:bg-primary-600 active:scale-[0.98] disabled:opacity-40 inline-flex items-center gap-1.5"
                     disabled={wizard.categorySyncing || !String(createName || "").trim()}
                   >
+                    {isResolving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                     {entry.exists && createName.trim() === entry.name ? "استخدام" : "إنشاء واستخدام"}
                   </button>
                 </div>
@@ -78,7 +135,10 @@ function UnitFixPanel({ wizard, rowsCount }) {
                   </select>
                   <button
                     type="button"
-                    onClick={() => wizard.applyFileUnitChoice(entry.name, selectedUnit)}
+                    onClick={() => {
+                      wizard.applyFileUnitChoice(entry.name, selectedUnit);
+                      setResolvedKeys((prev) => new Set(prev).add(entry.name));
+                    }}
                     className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] disabled:opacity-40"
                     disabled={!selectedUnit}
                   >
@@ -111,8 +171,8 @@ function UnitFixPanel({ wizard, rowsCount }) {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={wizard.applyQuickUnitFix}
-              className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
+              onClick={() => { wizard.applyQuickUnitFix(); setAppliedQuickFix(true); }}
+              className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-primary-600 active:scale-[0.98]"
             >
               تطبيق على الصفوف الناقصة
             </button>
@@ -147,7 +207,7 @@ function WarehouseQuickPanel({ wizard }) {
       <button
         type="button"
         onClick={wizard.applyQuickWarehouseFix}
-        className="w-full rounded-xl bg-slate-900 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
+        className="w-full rounded-xl bg-primary py-3 text-sm font-black text-white shadow-sm transition hover:bg-primary-600 active:scale-[0.98]"
       >
         تطبيق المخزن على الصفوف الناقصة
       </button>
@@ -186,6 +246,7 @@ export default function FixStep({ wizard, type, goNext }) {
           </div>
           {wizard.lastAppliedFix ? (
             <div className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-800 ring-1 ring-emerald-250/20">
+              <CheckCircle2 className="h-3.5 w-3.5" />
               آخر تطبيق: {wizard.lastAppliedFix.label} على {wizard.lastAppliedFix.count} صف
             </div>
           ) : null}
@@ -196,12 +257,15 @@ export default function FixStep({ wizard, type, goNext }) {
 
       {resolved ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <div>
-            <h4 className="text-sm font-black text-emerald-900">تم حل مشاكل هذه الخطوة</h4>
-            <p className="mt-1 text-xs font-bold text-emerald-700">يمكنك المتابعة أو تعديل الصفوف من الجدول بالأسفل.</p>
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <div>
+              <h4 className="text-sm font-black text-emerald-900">تم حل مشاكل هذه الخطوة</h4>
+              <p className="mt-1 text-xs font-bold text-emerald-700">يمكنك المتابعة أو تعديل الصفوف من الجدول بالأسفل.</p>
+            </div>
           </div>
           <button type="button" onClick={() => goNext?.()} className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 active:scale-[0.98]">
-            متابعة
+            متابعة ←
           </button>
         </div>
       ) : null}

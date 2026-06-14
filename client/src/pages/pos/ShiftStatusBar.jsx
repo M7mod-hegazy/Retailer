@@ -16,7 +16,7 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
 
   return (
     <section style={{
-      background: shift ? 'linear-gradient(to left, var(--primary-50), #ffffff)' : 'var(--bg-surface)',
+      background: shift ? 'linear-gradient(to left, var(--primary-50), var(--bg-surface))' : 'var(--bg-surface)',
       border: `1px solid ${shift ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
       borderRadius: '20px',
       padding: '16px 20px',
@@ -44,7 +44,7 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
             <span style={{
               position: 'absolute', top: -2, right: -2,
               width: 12, height: 12, borderRadius: '50%',
-              background: '#10B981', border: '2px solid #fff',
+              background: 'var(--primary)', border: '2px solid var(--bg-surface)',
               animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
             }} />
           )}
@@ -64,7 +64,7 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
       {/* Current Total (if open) */}
       {shift && (
         <div style={{
-          background: '#fff',
+          background: 'var(--bg-surface)',
           border: '1px solid var(--border-normal)',
           borderRadius: '12px',
           padding: '8px 16px',
@@ -102,12 +102,12 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
-                background: '#fff', color: 'var(--primary)',
+                background: 'var(--bg-surface)', color: 'var(--primary)',
                 border: '1px solid var(--border-accent)', cursor: 'pointer',
                 transition: 'background 150ms ease',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-50)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; }}
             >
               <Plus size={14} /> إيداع
             </button>
@@ -116,12 +116,12 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
-                background: '#fff', color: 'var(--danger-text)',
+                background: 'var(--bg-surface)', color: 'var(--danger-text)',
                 border: '1px solid var(--danger-text)', cursor: 'pointer',
                 transition: 'background 150ms ease',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--danger-bg)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; }}
             >
               <Minus size={14} /> سحب
             </button>

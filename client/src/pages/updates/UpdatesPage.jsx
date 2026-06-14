@@ -90,10 +90,24 @@ export default function UpdatesPage() {
     });
   }, []);
 
+  const safetyTimer = useRef(null);
+
+  // Never leave the spinner hanging: if no update:* event arrives within 30s,
+  // release the checking state so the UI stays usable.
+  const armSafetyTimeout = () => {
+    if (safetyTimer.current) clearTimeout(safetyTimer.current);
+    safetyTimer.current = setTimeout(() => setChecking(false), 30000);
+  };
+
+  useEffect(() => () => {
+    if (safetyTimer.current) clearTimeout(safetyTimer.current);
+  }, []);
+
   const handleCheckNow = async () => {
     setChecking(true);
     setLastCheckedAt(Date.now());
     if (window.electronAPI) {
+      armSafetyTimeout();
       await window.electronAPI.invoke("update:check");
     } else {
       setTimeout(() => setChecking(false), 2000);
@@ -103,6 +117,7 @@ export default function UpdatesPage() {
   const handleDownload = async () => {
     setChecking(true);
     if (window.electronAPI) {
+      armSafetyTimeout();
       await window.electronAPI.invoke("update:download");
     } else {
       setTimeout(() => setChecking(false), 2000);
@@ -116,11 +131,11 @@ export default function UpdatesPage() {
   // Ultra-premium mesh background
   const BackgroundMesh = () => (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-center opacity-60">
-      <div className="absolute inset-0 bg-[#f8fafc] z-[-1]" />
+      <div className="absolute inset-0 bg-[var(--bg-base)] z-[-1]" />
       <motion.div
         animate={{ rotate: 360, scale: [1, 1.2, 1] }}
         transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-        className="absolute top-[-20%] right-[-10%] w-[1000px] h-[1000px] rounded-full bg-[radial-gradient(circle,rgba(52,211,153,0.15)_0%,transparent_70%)] blur-[80px]"
+        className="absolute top-[-20%] right-[-10%] w-[1000px] h-[1000px] rounded-full bg-[radial-gradient(circle,var(--primary-glow)_0%,transparent_70%)] blur-[80px]"
       />
       <motion.div
         animate={{ rotate: -360, scale: [1, 1.3, 1] }}
@@ -179,7 +194,7 @@ export default function UpdatesPage() {
             <div className="relative z-10 flex flex-col h-full justify-between gap-12">
               <div>
                 <div className="flex items-center gap-4 mb-8">
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-zinc-950 text-white shadow-xl overflow-hidden">
+                  <div className="relative flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-primary text-white shadow-xl overflow-hidden">
                     {checking ? (
                       <Loader2 className="h-7 w-7 animate-spin" />
                     ) : available ? (
@@ -251,7 +266,7 @@ export default function UpdatesPage() {
                   <MagneticButton
                     data-help="check-button"
                     onClick={handleCheckNow}
-                    className="px-8 py-4 bg-zinc-950 text-white rounded-2xl font-bold hover:shadow-xl transition-shadow text-sm"
+                    className="px-8 py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl transition-shadow text-sm"
                   >
                     <RefreshCw className="w-4 h-4" /> إعادة الفحص
                   </MagneticButton>
@@ -267,7 +282,7 @@ export default function UpdatesPage() {
                   <MagneticButton
                     onClick={handleDownload}
                     disabled={checking}
-                    className="px-8 py-4 bg-zinc-950 text-white rounded-2xl font-bold hover:shadow-xl transition-shadow disabled:opacity-50 text-sm"
+                    className="px-8 py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl transition-shadow disabled:opacity-50 text-sm"
                   >
                     تحميل التحديث الان
                   </MagneticButton>

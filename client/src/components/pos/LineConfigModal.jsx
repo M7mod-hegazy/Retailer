@@ -167,7 +167,7 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
 
         <div className="flex justify-end border-t border-slate-100 pt-3">
           <button type="button" onClick={onClose}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-[13px] font-black text-white hover:bg-slate-800">تم</button>
+            className="rounded-lg bg-primary px-4 py-2 text-[13px] font-black text-white hover:bg-primary-600">تم</button>
         </div>
       </div>
     </Modal>

@@ -143,7 +143,7 @@ export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'a
             style={{
               flex: 1, padding: '12px', borderRadius: '10px',
               background: canConfirm
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                ? 'linear-gradient(135deg, var(--danger), color-mix(in srgb, var(--danger) 80%, #000))'
                 : 'var(--danger-bg)',
               color: canConfirm ? '#fff' : 'var(--danger-text)',
               border: 'none',

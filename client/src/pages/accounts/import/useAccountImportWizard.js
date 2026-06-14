@@ -38,7 +38,11 @@ export function useAccountImportWizard({ entityType, onImported }) {
   const [reading, setReading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState("");
-  const [detectedMapping, setDetectedMapping] = useState({});
+
+  // Column mapping state
+  const [rawRows, setRawRows] = useState([]);
+  const [headerIndex, setHeaderIndex] = useState(0);
+  const [mapping, setMapping] = useState({});
   const fileInputRef = useRef(null);
 
   const loadExisting = useCallback(async () => {
@@ -51,6 +55,48 @@ export function useAccountImportWizard({ entityType, onImported }) {
   }, [apiBase]);
 
   useEffect(() => { loadExisting(); }, [loadExisting]);
+
+  const headers = rawRows[headerIndex] || [];
+
+  function sampleValues(columnIndex) {
+    return (rawRows || [])
+      .slice(headerIndex + 1, headerIndex + 7)
+      .map((row) => row?.[columnIndex])
+      .filter((value) => value !== undefined && value !== null && String(value).trim() !== "")
+      .slice(0, 4);
+  }
+
+  function updateMapping(columnIndex, field) {
+    setMapping((prev) => {
+      const next = { ...prev };
+      if (!field) delete next[columnIndex];
+      else {
+        Object.keys(next).forEach((key) => {
+          if (next[key] === field) delete next[key];
+        });
+        next[columnIndex] = field;
+      }
+      return next;
+    });
+  }
+
+  function applyNewMapping() {
+    if (!rawRows.length) return;
+    const dataRows = rawRows.slice(headerIndex + 1).filter(row => row.some(cell => String(cell ?? "").trim()));
+    const fieldToCol = {};
+    Object.entries(mapping).forEach(([colIdx, field]) => { fieldToCol[field] = Number(colIdx); });
+    const mappedRows = dataRows.map((row, i) => ({
+      __rowNumber: i + 1,
+      name: String(row[fieldToCol.name] ?? "").trim(),
+      phone: String(row[fieldToCol.phone] ?? "").trim(),
+      address: String(row[fieldToCol.address] ?? "").trim(),
+      opening_balance: Number(row[fieldToCol.opening_balance] ?? 0) || 0,
+    }));
+    const enriched = enrichRows(mappedRows, existingAccounts);
+    setRows(enriched);
+    setDuplicateActions({});
+    setResult(null);
+  }
 
   const enrichRows = useCallback((rawRows, existingList) => {
     const byName = new Map(existingList.map(a => [normalizeNameKey(a.name), a]));
@@ -75,13 +121,15 @@ export function useAccountImportWizard({ entityType, onImported }) {
       if (parsed.rows.length > 5001) throw new Error("الحد الأقصى للملف هو 5000 صف.");
 
       const detected = detectHeaderRow(parsed.rows, ACCOUNT_FIELDS);
-      const mapping = detectColumnHeaders(parsed.rows[detected.index] || [], ACCOUNT_FIELDS);
-      setDetectedMapping(mapping);
+      const autoMapping = detectColumnHeaders(parsed.rows[detected.index] || [], ACCOUNT_FIELDS);
+
+      setRawRows(parsed.rows);
+      setHeaderIndex(detected.index);
+      setMapping(autoMapping);
 
       const dataRows = parsed.rows.slice(detected.index + 1).filter(row => row.some(cell => String(cell ?? "").trim()));
-
       const fieldToCol = {};
-      Object.entries(mapping).forEach(([colIdx, field]) => { fieldToCol[field] = Number(colIdx); });
+      Object.entries(autoMapping).forEach(([colIdx, field]) => { fieldToCol[field] = Number(colIdx); });
 
       const mappedRows = dataRows.map((row, i) => ({
         __rowNumber: i + 1,
@@ -161,7 +209,7 @@ export function useAccountImportWizard({ entityType, onImported }) {
       });
       const data = res.data?.data || {};
       setResult(data);
-      setStep(4);
+      setStep(5);
       await onImported?.();
     } catch (err) {
       const msg = err?.response?.data?.message || "فشل تنفيذ الاستيراد.";
@@ -175,11 +223,16 @@ export function useAccountImportWizard({ entityType, onImported }) {
   const proceedFromPreview = useCallback(() => {
     const hasDuplicates = rows.some(r => r.status === "duplicate");
     if (hasDuplicates) {
-      setStep(3);
+      setStep(4);
     } else {
       runImport();
     }
   }, [rows, runImport]);
+
+  const proceedFromColumns = useCallback(() => {
+    applyNewMapping();
+    setStep(3);
+  }, []);
 
   const reset = useCallback(() => {
     setStep(1);
@@ -192,7 +245,9 @@ export function useAccountImportWizard({ entityType, onImported }) {
     setReading(false);
     setDragActive(false);
     setError("");
-    setDetectedMapping({});
+    setRawRows([]);
+    setHeaderIndex(0);
+    setMapping({});
   }, []);
 
   const counts = {
@@ -204,6 +259,13 @@ export function useAccountImportWizard({ entityType, onImported }) {
   const hasDuplicates = rows.some(r => r.status === "duplicate");
   const actionable = counts.new + (hasDuplicates ? counts.duplicate : 0);
   const canProceedFromPreview = counts.error === 0 && actionable > 0;
+  const hasNameMapped = Object.values(mapping).includes("name");
+
+  const mappedFieldsCount = Object.values(mapping).filter(Boolean).length;
+  const totalColumns = headers.length || 0;
+  const totalDataRows = rawRows.length > headerIndex + 1
+    ? rawRows.slice(headerIndex + 1).filter(row => row.some(cell => String(cell ?? "").trim())).length
+    : 0;
 
   return {
     step, setStep,
@@ -211,17 +273,26 @@ export function useAccountImportWizard({ entityType, onImported }) {
     rows, removeRow,
     existingAccounts,
     duplicateActions, setDuplicateAction,
-    detectedMapping,
     result, loading, reading, dragActive, setDragActive,
     error,
     fileInputRef,
     handleFile, handleDrop,
     proceedFromPreview,
+    proceedFromColumns,
+    applyNewMapping,
     runImport,
     reset,
-    counts,
-    hasDuplicates,
-    canProceedFromPreview,
+    counts, hasDuplicates, canProceedFromPreview,
     loadExisting,
+
+    // Column mapping state
+    rawRows, headers, headerIndex,
+    mapping, updateMapping,
+    ACCOUNT_FIELDS,
+    sampleValues,
+    hasNameMapped,
+    mappedFieldsCount,
+    totalColumns,
+    totalDataRows,
   };
 }

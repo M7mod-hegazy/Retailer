@@ -8,7 +8,7 @@ import BackupPreviewModal from "./backup/BackupPreviewModal";
 import RestoreBrowser from "./backup/RestoreBrowser";
 import RestoreConfirmModal from "./backup/RestoreConfirmModal";
 import EmptyDatabaseDialog from "./backup/EmptyDatabaseDialog";
-import { pickFolder, pickSavePath, isDesktop, formatBytes } from "./backup/helpers";
+import { pickFolder, pickSavePath, isDesktop, formatBytes, formatDateTime } from "./backup/helpers";
 
 function InfoTip({ text }) {
   if (!text) return null;
@@ -65,7 +65,12 @@ export default function BackupSettingsTab() {
   const [busy, setBusy] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [settings, setSettings] = useState({ auto_backup_enabled: 0, auto_backup_path: "", auto_backup_time: "02:00" });
+  const [settings, setSettings] = useState({
+    auto_backup_enabled: 0,
+    auto_backup_path: "",
+    auto_backup_interval_hours: 24,
+    last_auto_backup_at: null,
+  });
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
@@ -145,11 +150,11 @@ export default function BackupSettingsTab() {
   };
 
   // --- Empty ------------------------------------------------------------
-  const handleConfirmEmpty = async (mode, ownerPassword) => {
+  const handleConfirmEmpty = async (categories, ownerPassword) => {
     setBusy(true);
     try {
-      const res = await api.post("/api/backup/empty", { mode, ownerPassword });
-      toast.success(res.data?.message || "تم تفريغ قاعدة البيانات");
+      const res = await api.post("/api/backup/empty", { categories, ownerPassword });
+      toast.success(res.data?.message || "تم حذف البيانات المحددة");
       setEmptyOpen(false);
       setTimeout(() => window.location.reload(), 1800);
     } catch (err) {
@@ -180,7 +185,7 @@ export default function BackupSettingsTab() {
           <button
             type="button"
             onClick={() => setPreviewOpen(true)}
-            className="flex h-9 shrink-0 items-center justify-center rounded-sm bg-slate-900 px-6 text-2sm font-black uppercase tracking-widest text-white shadow-md transition-all hover:bg-slate-800 active:scale-95"
+            className="flex h-9 shrink-0 items-center justify-center rounded-sm bg-primary px-6 text-2sm font-black uppercase tracking-widest text-white shadow-md transition-all hover:bg-primary-600 active:scale-95"
           >
             إنشاء نسخة الآن
           </button>
@@ -189,13 +194,19 @@ export default function BackupSettingsTab() {
 
       {canCreate && (
         <div className="rounded-sm border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-800">
+          <div className="mb-1 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-800">
             <Clock className="h-4 w-4 text-slate-500" /> النسخ التلقائي
           </div>
+          <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
+            يأخذ النظام نسخة احتياطية عند فتح البرنامج، وعند إغلاقه، ودورياً أثناء التشغيل — متى مضى على آخر نسخة أكثر من الفترة المحددة. لا يعتمد على توقيت ثابت قد لا يعمل إذا كان الجهاز مغلقاً.
+            {settings.last_auto_backup_at && (
+              <span className="mt-1 block text-slate-400">آخر نسخة تلقائية: {formatDateTime(settings.last_auto_backup_at)}</span>
+            )}
+          </p>
           <div className="grid gap-4 md:grid-cols-3">
             <label className="flex items-center justify-between rounded-sm border border-slate-200 px-3 py-2 group">
               <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-                تفعيل النسخ اليومي
+                تفعيل النسخ التلقائي
                 <InfoTip text={getHint("auto_backup_enabled")} />
               </span>
               <input
@@ -207,13 +218,15 @@ export default function BackupSettingsTab() {
             </label>
             <label className="rounded-sm border border-slate-200 px-3 py-2 group">
               <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-slate-500">
-                وقت النسخة اليومية
-                <InfoTip text={getHint("auto_backup_time")} />
+                الفترة بين النسخ (ساعات)
+                <InfoTip text="أقل مدة تمر قبل أخذ نسخة تلقائية جديدة. الافتراضي 24 ساعة (نسخة يومية)." />
               </span>
               <input
-                type="time"
-                value={settings.auto_backup_time || "02:00"}
-                onChange={(e) => setSettings((s) => ({ ...s, auto_backup_time: e.target.value }))}
+                type="number"
+                min={1}
+                max={168}
+                value={settings.auto_backup_interval_hours ?? 24}
+                onChange={(e) => setSettings((s) => ({ ...s, auto_backup_interval_hours: e.target.value }))}
                 className="w-full text-sm font-black text-slate-800 outline-none"
               />
             </label>
@@ -251,7 +264,7 @@ export default function BackupSettingsTab() {
                 saveSettings({
                   auto_backup_enabled: settings.auto_backup_enabled ? 1 : 0,
                   auto_backup_path: settings.auto_backup_path || "",
-                  auto_backup_time: settings.auto_backup_time || "02:00",
+                  auto_backup_interval_hours: Number(settings.auto_backup_interval_hours) || 24,
                 })
               }
               className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 px-5 text-2sm font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50"
@@ -327,7 +340,7 @@ export default function BackupSettingsTab() {
           tone="rose"
           icon={<Eraser className="h-4 w-4" />}
           title="تفريغ قاعدة البيانات"
-          desc="تفريغ الحركات مع الإبقاء على الإعدادات، أو إعادة ضبط كاملة. تُنشأ نسخة احتياطية إجبارية أولاً، ويتطلب كلمة مرور المالك."
+          desc="اختر بالتحديد ما تريد حذفه — كل نوع بيانات على حدة (مبيعات، مشتريات، مخزون، عملاء...). تُنشأ نسخة احتياطية إجبارية أولاً، ويتطلب كلمة مرور المالك."
         >
           <button
             type="button"

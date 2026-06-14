@@ -5,6 +5,56 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>client</title>
+    <script>
+      (function() {
+        var themeColors = {
+          emerald:  { hex: "#059669", rgb: "5, 150, 105" },
+          graphite: { hex: "#4f46e5", rgb: "79, 70, 229" },
+          sand:     { hex: "#bf5a30", rgb: "191, 90, 48" },
+          rose:     { hex: "#e11d63", rgb: "225, 29, 99" },
+          nordic:   { hex: "#2563eb", rgb: "37, 99, 235" },
+          midnight: { hex: "#0e9aa0", rgb: "14, 154, 160" },
+          obsidian: { hex: "#c2710a", rgb: "194, 113, 10" },
+          plum:     { hex: "#8b5cf6", rgb: "139, 92, 246" },
+          mocha:    { hex: "#d9573a", rgb: "217, 87, 58" },
+          forest:   { hex: "#0c9268", rgb: "12, 146, 104" },
+          aurora:   { hex: "#bf2dd6", rgb: "191, 45, 214" },
+        };
+        var saved = localStorage.getItem("app_theme") || "emerald";
+        var colors = themeColors[saved] || themeColors.emerald;
+        var root = document.documentElement;
+        root.style.setProperty("--splash-primary", colors.hex);
+        root.style.setProperty("--splash-primary-rgb", colors.rgb);
+
+        // Theme the loader surface too, so reloading on a dark theme doesn't
+        // flash a bright white splash before the dark app paints.
+        var darkThemes = { midnight: 1, obsidian: 1, plum: 1, mocha: 1, forest: 1, aurora: 1 };
+        var s = root.style;
+        if (darkThemes[saved]) {
+          s.setProperty("--splash-bg", "#0b0e15");
+          s.setProperty("--splash-card-bg", "rgba(255, 255, 255, 0.05)");
+          s.setProperty("--splash-card-border", "rgba(255, 255, 255, 0.09)");
+          s.setProperty("--splash-card-inset", "rgba(255, 255, 255, 0.06)");
+          s.setProperty("--splash-text", "#f4f7fb");
+          s.setProperty("--splash-muted", "#7c8aa0");
+          s.setProperty("--splash-divider", "#3a4658");
+          s.setProperty("--splash-grid", "rgba(255, 255, 255, 0.045)");
+          s.setProperty("--splash-track", "rgba(255, 255, 255, 0.1)");
+          s.setProperty("--splash-shadow", "rgba(0, 0, 0, 0.45)");
+        } else {
+          s.setProperty("--splash-bg", "#f0f4f8");
+          s.setProperty("--splash-card-bg", "rgba(255, 255, 255, 0.62)");
+          s.setProperty("--splash-card-border", "rgba(255, 255, 255, 0.9)");
+          s.setProperty("--splash-card-inset", "rgba(255, 255, 255, 0.8)");
+          s.setProperty("--splash-text", "#0f172a");
+          s.setProperty("--splash-muted", "#94a3b8");
+          s.setProperty("--splash-divider", "#cbd5e1");
+          s.setProperty("--splash-grid", "rgba(15, 23, 42, 0.055)");
+          s.setProperty("--splash-track", "rgba(15, 23, 42, 0.07)");
+          s.setProperty("--splash-shadow", "rgba(15, 23, 42, 0.08)");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
@@ -93,7 +143,7 @@
       body, html {
         margin: 0;
         padding: 0;
-        background: #eef2f7;
+        background: var(--splash-bg, #eef2f7);
         height: 100vh;
         overflow: hidden;
         font-family: 'Tajawal', system-ui, sans-serif;
@@ -118,11 +168,10 @@
         transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 
         background:
-          radial-gradient(ellipse 90% 70% at 5%  10%,  rgba(5,  150, 105, 0.18) 0%, transparent 55%),
-          radial-gradient(ellipse 70% 80% at 95% 95%,  rgba(56, 189, 248, 0.12) 0%, transparent 55%),
-          radial-gradient(ellipse 60% 55% at 85% 5%,   rgba(16, 185, 129, 0.14) 0%, transparent 50%),
-          radial-gradient(ellipse 55% 50% at 10% 90%,  rgba(99, 102, 241, 0.07) 0%, transparent 50%),
-          #f0f4f8;
+          radial-gradient(ellipse 90% 70% at 5%  10%,  rgba(var(--splash-primary-rgb, 5, 150, 105), 0.20) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 80% at 95% 95%,  rgba(var(--splash-primary-rgb, 5, 150, 105), 0.12) 0%, transparent 55%),
+          radial-gradient(ellipse 60% 55% at 85% 5%,   rgba(var(--splash-primary-rgb, 5, 150, 105), 0.10) 0%, transparent 50%),
+          var(--splash-bg, #f0f4f8);
       }
 
       /* Slow-drifting dot grid */
@@ -130,7 +179,7 @@
         content: '';
         position: absolute;
         inset: -10%;
-        background-image: radial-gradient(circle, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+        background-image: radial-gradient(circle, var(--splash-grid, rgba(15, 23, 42, 0.055)) 1px, transparent 1px);
         background-size: 24px 24px;
         pointer-events: none;
         animation: blob-drift 16s ease-in-out infinite;
@@ -150,15 +199,15 @@
         align-items: center;
         justify-content: center;
         padding: 44px 60px 40px;
-        background: rgba(255, 255, 255, 0.62);
+        background: var(--splash-card-bg, rgba(255, 255, 255, 0.62));
         backdrop-filter: blur(28px);
         -webkit-backdrop-filter: blur(28px);
-        border: 1px solid rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--splash-card-border, rgba(255, 255, 255, 0.9));
         border-radius: 32px;
         box-shadow:
-          0 2px 0   0   rgba(255, 255, 255, 0.8) inset,
-          0 8px 32px    rgba(15,  23,  42,  0.08),
-          0 32px 64px   rgba(5,  150, 105,  0.06);
+          0 2px 0   0   var(--splash-card-inset, rgba(255, 255, 255, 0.8)) inset,
+          0 8px 32px    var(--splash-shadow, rgba(15,  23,  42,  0.08)),
+          0 32px 64px   rgba(var(--splash-primary-rgb), 0.06);
         animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
@@ -178,7 +227,7 @@
         position: absolute;
         width: 96px;
         height: 96px;
-        border: 1.5px solid rgba(5, 150, 105, 0.2);
+        border: 1.5px solid rgba(var(--splash-primary-rgb), 0.2);
         border-radius: 50%;
         pointer-events: none;
       }
@@ -190,8 +239,8 @@
         inset: -1.5px;
         border-radius: 50%;
         border: 1.5px solid transparent;
-        border-top-color: #059669;
-        border-right-color: rgba(5, 150, 105, 0.35);
+        border-top-color: var(--splash-primary);
+        border-right-color: rgba(var(--splash-primary-rgb), 0.35);
         animation: orbit-spin 2.4s linear infinite;
       }
 
@@ -201,7 +250,7 @@
         position: absolute;
         width: 80px;
         height: 80px;
-        background: radial-gradient(circle, rgba(5, 150, 105, 0.12) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(var(--splash-primary-rgb), 0.12) 0%, transparent 70%);
         border-radius: 50%;
         pointer-events: none;
         animation: blob-drift 8s ease-in-out infinite alternate;
@@ -214,7 +263,7 @@
       .splash-svg-logo {
         width: 56px;
         height: 56px;
-        color: #059669;
+        color: var(--splash-primary);
         position: relative;
         z-index: 1;
       }
@@ -234,7 +283,7 @@
       }
 
       .draw-path {
-        stroke: #059669;
+        stroke: var(--splash-primary);
         stroke-linecap: round;
         stroke-linejoin: round;
         will-change: stroke-dashoffset;
@@ -244,7 +293,7 @@
       .splash-title {
         font-size: 22px;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--splash-text, #0f172a);
         margin: 0 0 4px 0;
         letter-spacing: 0.01em;
         text-align: center;
@@ -262,7 +311,7 @@
       .splash-subtitle {
         font-size: 9.5px;
         font-weight: 600;
-        color: #94a3b8;
+        color: var(--splash-muted, #94a3b8);
         letter-spacing: 0.18em;
         text-transform: uppercase;
         font-family: 'Outfit', sans-serif;
@@ -270,14 +319,14 @@
 
       .splash-dot-divider {
         font-size: 7px;
-        color: #cbd5e1;
+        color: var(--splash-divider, #cbd5e1);
       }
 
       .splash-percentage {
         font-size: 9.5px;
         font-family: 'Outfit', monospace;
         font-weight: 700;
-        color: #059669;
+        color: var(--splash-primary);
         letter-spacing: 0.06em;
       }
 
@@ -285,7 +334,7 @@
       .splash-progress-track {
         width: 160px;
         height: 2.5px;
-        background: rgba(15, 23, 42, 0.07);
+        background: var(--splash-track, rgba(15, 23, 42, 0.07));
         border-radius: 99px;
         overflow: hidden;
         margin-bottom: 14px;
@@ -294,16 +343,16 @@
       .splash-progress-fill {
         height: 100%;
         width: 0%;
-        background: linear-gradient(90deg, #059669, #34d399);
+        background: linear-gradient(90deg, var(--splash-primary), color-mix(in srgb, var(--splash-primary) 70%, #fff));
         border-radius: 99px;
         transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 0 6px rgba(5, 150, 105, 0.5);
+        box-shadow: 0 0 6px rgba(var(--splash-primary-rgb), 0.5);
       }
 
       .splash-status {
         font-size: 11px;
         font-weight: 500;
-        color: #94a3b8;
+        color: var(--splash-muted, #94a3b8);
         text-align: center;
         min-height: 18px;
         transition: opacity 0.25s ease;

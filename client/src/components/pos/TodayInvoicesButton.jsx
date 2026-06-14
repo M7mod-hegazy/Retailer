@@ -59,7 +59,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
       ? "flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-2sm font-black text-white hover:bg-emerald-700 shadow-md transition-colors"
       : variant === "ghost"
       ? "flex items-center gap-1.5 rounded-xl px-3 py-2 text-2sm font-black text-emerald-700 hover:bg-emerald-50 transition-colors"
-      : "flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-2sm font-black text-white hover:bg-slate-700 shadow-sm transition-colors";
+      : "flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-2sm font-black text-white hover:bg-primary-600 shadow-sm transition-colors";
 
   return (
     <>

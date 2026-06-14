@@ -2,6 +2,27 @@
 <html>
 <head>
 <meta charset="utf-8">
+<script>
+  (function() {
+    var themeColors = {
+      emerald:  { hex: "#059669", rgb: "5, 150, 105" },
+      midnight: { hex: "#14b8a6", rgb: "20, 184, 166" },
+      obsidian: { hex: "#f59e0b", rgb: "245, 158, 11" },
+      sepia:    { hex: "#a16207", rgb: "161, 98, 7" },
+      candy:    { hex: "#d946ef", rgb: "217, 70, 239" },
+      coffee:   { hex: "#8B5E3C", rgb: "139, 94, 60" },
+      platinum: { hex: "#475569", rgb: "71, 85, 105" },
+      sunset:   { hex: "#ea580c", rgb: "234, 88, 12" },
+      frost:    { hex: "#3d8a9e", rgb: "61, 138, 158" },
+      royal:    { hex: "#7928ca", rgb: "121, 40, 202" },
+    };
+    var saved = localStorage.getItem("app_theme") || "emerald";
+    var colors = themeColors[saved] || themeColors.emerald;
+    var root = document.documentElement;
+    root.style.setProperty("--splash-primary", colors.hex);
+    root.style.setProperty("--splash-primary-rgb", colors.rgb);
+  })();
+</script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -39,7 +60,7 @@
     width: 100%;
     height: 100%;
     background:
-      radial-gradient(ellipse 90% 70% at 5%  10%,  rgba(5,  150, 105, 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 70% at 5%  10%,  rgba(var(--splash-primary-rgb), 0.18) 0%, transparent 55%),
       radial-gradient(ellipse 70% 80% at 95% 95%,  rgba(56, 189, 248, 0.12) 0%, transparent 55%),
       radial-gradient(ellipse 60% 55% at 85% 5%,   rgba(16, 185, 129, 0.14) 0%, transparent 50%),
       radial-gradient(ellipse 55% 50% at 10% 90%,  rgba(99, 102, 241, 0.07) 0%, transparent 50%),
@@ -92,7 +113,7 @@
     position: absolute;
     width: 108px;
     height: 108px;
-    background: radial-gradient(circle, rgba(5, 150, 105, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(var(--splash-primary-rgb), 0.1) 0%, transparent 70%);
     border-radius: 50%;
     pointer-events: none;
     animation: blob-drift 8s ease-in-out infinite reverse;
@@ -102,7 +123,7 @@
     position: absolute;
     width: 90px;
     height: 90px;
-    border: 1px dashed rgba(5, 150, 105, 0.12);
+    border: 1px dashed rgba(var(--splash-primary-rgb), 0.12);
     border-radius: 50%;
     pointer-events: none;
   }
@@ -111,16 +132,16 @@
     position: absolute;
     width: 4.5px;
     height: 4.5px;
-    background: #059669;
+    background: var(--splash-primary);
     border-radius: 50%;
-    box-shadow: 0 0 8px rgba(5, 150, 105, 0.7);
+    box-shadow: 0 0 8px rgba(var(--splash-primary-rgb), 0.7);
     will-change: transform;
   }
 
   .splash-svg-logo {
     width: 48px;
     height: 48px;
-    color: #059669;
+    color: var(--splash-primary);
   }
 
   /* Symmetrical Morphing Blueprint Groups */
@@ -146,7 +167,7 @@
   }
 
   .blueprint-group.active .draw-path {
-    stroke: #059669;
+    stroke: var(--splash-primary);
   }
 
   /* ── Typography ── */
@@ -186,7 +207,7 @@
     font-size: 9.5px;
     font-family: 'Outfit', monospace;
     font-weight: 700;
-    color: #059669;
+    color: var(--splash-primary);
     letter-spacing: 0.06em;
   }
 
@@ -203,10 +224,10 @@
   .splash-progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #059669, #34d399);
+    background: linear-gradient(90deg, var(--splash-primary), color-mix(in srgb, var(--splash-primary) 70%, #fff));
     border-radius: 99px;
     transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 6px rgba(5, 150, 105, 0.5);
+    box-shadow: 0 0 6px rgba(var(--splash-primary-rgb), 0.5);
   }
 
   .splash-status {

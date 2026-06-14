@@ -18,7 +18,7 @@ export default function UnauthorizedPage() {
         </p>
         <button
           onClick={() => navigate(-1)}
-          className="mt-7 inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-zinc-900/10 transition-colors hover:bg-zinc-800"
+          className="mt-7 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-md shadow-zinc-900/10 transition-colors hover:bg-primary-600"
         >
           <ArrowRight className="h-4 w-4" />
           رجوع

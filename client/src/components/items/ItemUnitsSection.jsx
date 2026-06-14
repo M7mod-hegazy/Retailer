@@ -53,7 +53,7 @@ export default function ItemUnitsSection({ itemId }) {
     <div className="border-t border-slate-200 pt-5 mt-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-700">وحدات إضافية</h3>
-        <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800">
+        <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-600">
           <Plus className="h-3.5 w-3.5" /> إضافة وحدة
         </button>
       </div>
@@ -118,7 +118,7 @@ export default function ItemUnitsSection({ itemId }) {
             <label htmlFor="is_default_sale" className="text-xs font-bold text-slate-600">وحدة البيع الافتراضية</label>
           </div>
           <div className="flex items-end gap-2">
-            <button type="submit" className="rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-black text-white hover:bg-slate-800">حفظ</button>
+            <button type="submit" className="rounded-lg bg-primary px-4 py-1.5 text-xs font-black text-white hover:bg-primary-600">حفظ</button>
             <button type="button" onClick={() => setAdding(false)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
           </div>
         </form>

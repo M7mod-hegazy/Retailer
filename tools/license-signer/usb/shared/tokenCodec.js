@@ -132,13 +132,8 @@ function encodeTokenV2(payload, signature) {
 function normalizeTokenInput(blob) {
   const trimmed = String(blob || "").trim();
   if (!trimmed) throw new Error("empty_token");
-
-  const dot = trimmed.indexOf(".");
-  if (dot === -1) return trimmed.replace(/[\s-]+/g, "");
-
-  const prefix = trimmed.slice(0, dot);
-  const body = trimmed.slice(dot + 1).replace(/[\s-]+/g, "");
-  return `${prefix}.${body}`;
+  // Strip only whitespace. Do NOT strip dashes: they are valid base64url chars.
+  return trimmed.replace(/\s+/g, "");
 }
 
 function decodeToken(blob) {
@@ -209,7 +204,7 @@ function formatActivationCode(blob) {
   const prefix = raw.slice(0, dot + 1);
   const body = raw.slice(dot + 1);
   const groups = body.match(/.{1,5}/g) || [];
-  return `${prefix}${groups.join("-")}`;
+  return `${prefix}${groups.join(" ")}`;
 }
 
 module.exports = {

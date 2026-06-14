@@ -30,10 +30,16 @@ import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
 
 const PRICE_FIELDS = [
-  { value: "retail_price",    label: "سعر القطاعي",  key: "sale_price" },
+  { value: "retail_price",    label: "سعر المستهلك",  key: "sale_price" },
   { value: "wholesale_price", label: "سعر الجملة",   key: "wholesale_price" },
-  { value: "cost_price",      label: "سعر التكلفة",  key: "purchase_price" },
+  { value: "cost_price",      label: "سعر الشراء",  key: "purchase_price" },
 ];
+
+const FIELD_KEY_TO_API_VALUE = {
+  sale_price: "retail_price",
+  wholesale_price: "wholesale_price",
+  purchase_price: "cost_price",
+};
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
@@ -75,83 +81,6 @@ function parsePriceInput(raw) {
   const val = parseFloat(s);
   if (isNaN(val) || val < 0) return null;
   return { type: 'absolute', value: val, raw: s };
-}
-
-function BatchInlineEditCell({ item, inlineOverrides, setInlineOverrides, editingCell, setEditingCell, commitEdit }) {
-  const [localValue, setLocalValue] = useState(() => {
-    const existing = inlineOverrides[item.id];
-    return existing || '';
-  });
-
-  useEffect(() => {
-    const existing = inlineOverrides[item.id];
-    setLocalValue(existing || '');
-  }, [inlineOverrides[item.id], item.id]);
-
-  const hasOverride = inlineOverrides[item.id] !== undefined;
-  const isEditing = editingCell === item.id;
-  const parsed = hasOverride ? parsePriceInput(inlineOverrides[item.id]) : null;
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <input type="text" inputMode="decimal" autoFocus
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={() => commitEdit(item.id, localValue)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitEdit(item.id, localValue);
-            if (e.key === "Escape") { setEditingCell(null); setLocalValue(inlineOverrides[item.id] || ''); }
-          }}
-          placeholder="سعر / ±قيمة"
-          className="w-24 rounded border border-amber-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 text-center"
-          title="أدخل سعراً مطلقاً (150) أو تعديل (+5, -10%, +15%)" />
-        {hasOverride && (
-          <button onClick={(e) => { e.stopPropagation(); setInlineOverrides((o) => { const n = { ...o }; delete n[item.id]; return n; }); setEditingCell(null); }}
-            title="إعادة ضبط"
-            className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-            <RotateCcw className="h-3 w-3" />
-          </button>
-        )}
-    </div>
-  );
-}
-
-  return (
-    <div className="flex items-center justify-end gap-1.5 group/cell"
-      onClick={(e) => e.stopPropagation()}>
-      {hasOverride && parsed ? (
-        <div className="flex items-center gap-1">
-          {parsed.type === 'absolute' ? (
-            <span className="font-mono font-black text-sm px-2 py-0.5 rounded bg-violet-100 text-violet-700 ring-1 ring-violet-300">
-              {parsed.value.toFixed(2)}
-            </span>
-          ) : (
-            <span className={`font-mono font-black text-sm px-2 py-0.5 rounded ${
-              parsed.direction === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-            }`}>
-              {parsed.direction === 'up' ? '+' : ''}{parsed.adjustment_type === 'percentage' ? `${parsed.adjustment_value}%` : `${parsed.adjustment_value}ج`}
-            </span>
-          )}
-          <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded">يدوي</span>
-        </div>
-      ) : (
-        <span className="text-slate-300 text-sm font-mono">—</span>
-      )}
-      <button onClick={(e) => { e.stopPropagation(); setEditingCell(item.id); if (!inlineOverrides[item.id]) { setLocalValue(''); } }}
-        title="تعديل يدوي — أدخل سعراً مطلقاً (150) أو تعديل نسبي (+5, -10%)"
-        className="flex h-6 w-6 items-center justify-center rounded text-slate-300 hover:text-amber-500 hover:bg-amber-50 opacity-0 group-hover/cell:opacity-100 group-hover:opacity-100 transition-all">
-        <Pencil className="h-3 w-3" />
-      </button>
-      {hasOverride && (
-        <button onClick={(e) => { e.stopPropagation(); setInlineOverrides((o) => { const n = { ...o }; delete n[item.id]; return n; }); }}
-          title="إعادة ضبط"
-          className="flex h-6 w-6 items-center justify-center rounded text-violet-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-          <RotateCcw className="h-3 w-3" />
-        </button>
-      )}
-    </div>
-  );
 }
 
 function Tab({ active, onClick, children }) {
@@ -214,9 +143,10 @@ export default function BulkPriceUpdatePage() {
   // ── Selection ──
   const [selected, setSelected] = useState(new Set());
 
-  // ── Inline price overrides: { [itemId]: string } ──
+  // ── Inline price overrides: { [itemId]: string }, override per-field: { [itemId]: fieldKey } ──
   const [inlineOverrides, setInlineOverrides] = useState({});
-  const [editingCell, setEditingCell] = useState(null); // itemId being edited
+  const [overrideFields, setOverrideFields] = useState({});
+  const [activePriceEdit, setActivePriceEdit] = useState(null); // { itemId, field }
 
   // ── Adjustment controls ──
   const [priceField, setPriceField] = useState("retail_price");
@@ -267,7 +197,8 @@ export default function BulkPriceUpdatePage() {
       if (raw !== undefined) {
         const parsed = parsePriceInput(raw);
         if (!parsed) continue;
-        const currentPrice = parseFloat(item[fieldKey]) || 0;
+        const effectiveField = overrideFields[id] || fieldKey;
+        const currentPrice = parseFloat(item[effectiveField]) || 0;
         let newPrice;
         if (parsed.type === 'absolute') {
           newPrice = Math.max(0, Math.round(parsed.value * 100) / 100);
@@ -275,7 +206,8 @@ export default function BulkPriceUpdatePage() {
           newPrice = applyAdjustment(currentPrice, parsed.direction, parsed.adjustment_type, parsed.adjustment_value);
         }
         if (newPrice === null || newPrice === currentPrice) continue;
-        const existing = batchItems.find(bi => bi.itemId === id && bi.field === priceField);
+        const apiField = FIELD_KEY_TO_API_VALUE[effectiveField] || priceField;
+        const existing = batchItems.find(bi => bi.itemId === id && bi.field === apiField);
         if (existing) {
           setBatchItems(prev => prev.map(bi => bi.id === existing.id
             ? { ...bi, oldPrice: currentPrice, newPrice, diff: newPrice - currentPrice, source: 'يدوي' }
@@ -283,7 +215,7 @@ export default function BulkPriceUpdatePage() {
         } else {
           newEntries.push({
             id: ++batchIdCounter.current, itemId: id, name: item.name, code: item.code || '',
-            field: priceField, fieldLabel: fieldLabelOf(priceField),
+            field: apiField, fieldLabel: fieldLabelOf(apiField),
             oldPrice: currentPrice, newPrice, diff: newPrice - currentPrice,
             source: 'يدوي', direction, adjType, adjValue: Math.abs(v),
           });
@@ -316,6 +248,7 @@ export default function BulkPriceUpdatePage() {
     }
     setSelected(new Set());
     setInlineOverrides({});
+    setOverrideFields({});
     setAdjValue("");
   }
 
@@ -356,6 +289,7 @@ export default function BulkPriceUpdatePage() {
       if (opId) setLastOpId(opId);
       setSelected(new Set());
       setInlineOverrides({});
+      setOverrideFields({});
       setBatchItems([]);
       setBatchReason("");
       fetchItems();
@@ -492,13 +426,14 @@ export default function BulkPriceUpdatePage() {
     else setSelected((prev) => { const s = new Set(prev); allPageIds.forEach((id) => s.add(id)); return s; });
   }
   function selectAllFiltered() { setSelected(new Set(allFilteredIds)); }
-  function clearSelection() { setSelected(new Set()); setInlineOverrides({}); }
+  function clearSelection() { setSelected(new Set()); setInlineOverrides({}); setOverrideFields({}); }
   function toggleRow(id) {
     setSelected((prev) => {
       const s = new Set(prev);
       if (s.has(id)) {
         s.delete(id);
         setInlineOverrides((o) => { const n = { ...o }; delete n[id]; return n; });
+        setOverrideFields((o) => { const n = { ...o }; delete n[id]; return n; });
       } else {
         s.add(id);
       }
@@ -508,38 +443,51 @@ export default function BulkPriceUpdatePage() {
   function goPage(p) { setPage(Math.max(1, Math.min(totalPages, p))); }
   useEffect(() => { setPage(1); }, [search, categoryFilter, pageSize]);
 
-  // Inline override helpers
-  function startEditing(e, itemId, currentSuggested) {
+  // ── Inline price cell click-to-edit ──
+
+  function startPriceEdit(e, itemId, fieldKey) {
     e.stopPropagation();
-    setEditingCell(itemId);
-    if (!inlineOverrides[itemId] && currentSuggested !== null) {
-      setInlineOverrides((o) => ({ ...o, [itemId]: String(currentSuggested) }));
-    }
+    if (!selected.has(itemId)) toggleRow(itemId);
+    setActivePriceEdit({ itemId, field: fieldKey });
   }
-  function commitEdit(itemId, rawValue) {
+
+  function commitPriceEdit(itemId, fieldKey, rawValue) {
     const trimmed = (rawValue || '').trim();
-    if (!trimmed) {
-      setInlineOverrides((o) => { const n = { ...o }; delete n[itemId]; return n; });
-    } else {
-      const parsed = parsePriceInput(trimmed);
-      if (parsed) {
-        setInlineOverrides((o) => ({ ...o, [itemId]: trimmed }));
-      }
-    }
-    setEditingCell(null);
+    if (!trimmed) { setActivePriceEdit(null); return; }
+    const val = parseFloat(trimmed);
+    if (isNaN(val) || val < 0) { toast.error('أدخل رقماً صحيحاً للسعر'); return; }
+    const newVal = Math.round(val * 100) / 100;
+    setSelected((prev) => { const s = new Set(prev); s.add(itemId); return s; });
+    setInlineOverrides((o) => ({ ...o, [itemId]: String(newVal) }));
+    setOverrideFields((o) => ({ ...o, [itemId]: fieldKey }));
+    setActivePriceEdit(null);
   }
+
+  function cancelPriceEdit(e) {
+    if (e) e.stopPropagation();
+    setActivePriceEdit(null);
+  }
+
   function clearOverride(e, itemId) {
     e.stopPropagation();
     setInlineOverrides((o) => { const n = { ...o }; delete n[itemId]; return n; });
-    setEditingCell(null);
+    setOverrideFields((o) => { const n = { ...o }; delete n[itemId]; return n; });
   }
 
-  // Compute effective new price for an item
+  // Compute effective new price for an item (respects per-field overrides)
+  function effectiveOverrideField(item) {
+    return overrideFields[item.id] || fieldKey;
+  }
+  function currentPriceFor(item) {
+    const f = effectiveOverrideField(item);
+    return parseFloat(item[f]) || 0;
+  }
   function effectiveNewPrice(item) {
     if (inlineOverrides[item.id] !== undefined) {
       const parsed = parsePriceInput(inlineOverrides[item.id]);
       if (!parsed) return null;
-      const currentPrice = parseFloat(item[fieldKey]) || 0;
+      const f = effectiveOverrideField(item);
+      const currentPrice = parseFloat(item[f]) || 0;
       if (parsed.type === 'absolute') {
         return Math.max(0, Math.round(parsed.value * 100) / 100);
       }
@@ -550,7 +498,7 @@ export default function BulkPriceUpdatePage() {
   }
 
   function handleApply() {
-    const hasOverrides = Object.keys(inlineOverrides).some((id) => selected.has(Number(id)));
+    const hasOverrides = [...selected].some((id) => inlineOverrides[id] !== undefined);
     const v = parseFloat(adjValue);
     const hasBulkFormula = v && !isNaN(v) && v !== 0;
 
@@ -564,7 +512,8 @@ export default function BulkPriceUpdatePage() {
     const preview = [...selected].map((id) => {
       const item = items.find((it) => it.id === id);
       if (!item) return null;
-      const oldPrice = parseFloat(item[fieldKey]) || 0;
+      const priceFieldUsed = overrideFields[id] || fieldKey;
+      const oldPrice = parseFloat(item[priceFieldUsed]) || 0;
       const newPrice = effectiveNewPrice(item);
       if (newPrice === null) return null;
       return {
@@ -614,16 +563,18 @@ export default function BulkPriceUpdatePage() {
       for (const id of overrideIds) {
         const item = items.find((it) => it.id === id);
         if (!item) continue;
-        const currentPrice = parseFloat(item[fieldKey]) || 0;
+        const pf = overrideFields[id] || fieldKey;
+        const currentPrice = parseFloat(item[pf]) || 0;
         const newPrice = effectiveNewPrice(item);
         if (newPrice === null || newPrice === currentPrice) continue;
         const diff = newPrice - currentPrice;
+        const overrideApiField = FIELD_KEY_TO_API_VALUE[pf] || priceField;
         const r = await api.post("/api/items/bulk-price-update", {
           item_ids: [id],
           adjustment_type: "fixed",
           adjustment_value: Math.abs(diff),
           direction: diff >= 0 ? "up" : "down",
-          price_field: priceField,
+          price_field: overrideApiField,
           reason: reason || "تعديل يدوي مباشر",
         });
         totalChanges += r.data.changes || 0;
@@ -634,6 +585,7 @@ export default function BulkPriceUpdatePage() {
       if (lastOpIdResult) setLastOpId(lastOpIdResult);
       setSelected(new Set());
       setInlineOverrides({});
+      setOverrideFields({});
       setAdjValue("");
       setReason("");
       fetchItems();
@@ -727,7 +679,7 @@ export default function BulkPriceUpdatePage() {
             </div>
           </div>
           <button data-help="refresh-items" onClick={fetchItems}
-            className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+            className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95">
             <RefreshCcw className={fetchLoading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث الأصناف
           </button>
         </div>
@@ -755,12 +707,12 @@ export default function BulkPriceUpdatePage() {
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">النوع</label>
             <div className="flex overflow-hidden rounded-sm border border-slate-200 shadow-sm font-bold text-sm">
               <button type="button" onClick={() => setAdjType("percentage")}
-                className={`flex-1 py-2 transition-colors ${adjType === "percentage" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
+                className={`flex-1 py-2 transition-colors ${adjType === "percentage" ? "bg-primary text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
                 نسبة %
               </button>
               <div className="w-[1px] bg-slate-200" />
               <button type="button" onClick={() => setAdjType("fixed")}
-                className={`flex-1 py-2 transition-colors ${adjType === "fixed" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
+                className={`flex-1 py-2 transition-colors ${adjType === "fixed" ? "bg-primary text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
                 مبلغ مقطوع
               </button>
             </div>
@@ -967,13 +919,6 @@ export default function BulkPriceUpdatePage() {
                     <ResizableTh label="سعر الشراء" sortKey="purchase_price" sortConfig={sortConfig} onSort={handleSort} colKey="purchase" colWidths={colWidths} onResizeStart={onResizeStart} className="text-slate-500" />
                     <ResizableTh label="سعر المستهلك" sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} colKey="retail" colWidths={colWidths} onResizeStart={onResizeStart} className="text-emerald-600" />
                     <ResizableTh label="سعر الجملة" sortKey="wholesale_price" sortConfig={sortConfig} onSort={handleSort} colKey="wholesale" colWidths={colWidths} onResizeStart={onResizeStart} className="text-blue-600" />
-                    <ResizableTh colKey="suggested" colWidths={colWidths} onResizeStart={onResizeStart} className="text-amber-600"
-                      title="تعديل يدوي — أدخل سعراً مطلقاً (150)، زيادة (+5)، خصم (-10)، أو نسبة (+15%, -20%)">
-                      <div className="flex flex-col gap-0.5">
-                        <span>التعديل</span>
-                        <span className="text-[9px] font-black text-slate-400">يدوي</span>
-                      </div>
-                    </ResizableTh>
                     <ResizableTh colKey="diff" colWidths={colWidths} onResizeStart={onResizeStart} className="text-slate-400 text-left">
                       الفرق
                     </ResizableTh>
@@ -981,22 +926,25 @@ export default function BulkPriceUpdatePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {fetchLoading ? (
-                    <tr><td colSpan={9} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">يتم استدعاء الأصناف...</td></tr>
+                    <tr><td colSpan={8} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">يتم استدعاء الأصناف...</td></tr>
                   ) : pageItems.length === 0 ? (
-                    <tr><td colSpan={9} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
+                    <tr><td colSpan={8} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
                   ) : pageItems.map((item) => {
                     const isSelected = selected.has(item.id);
-                    const hasOverride = inlineOverrides[item.id] !== undefined;
-                    const isEditing = editingCell === item.id;
-                    const currentPrice = parseFloat(item[fieldKey]) || 0;
+                    const effectiveDiffField = overrideFields[item.id] || fieldKey;
+                    const currentPrice = parseFloat(item[effectiveDiffField]) || 0;
                     const newPrice = effectiveNewPrice(item);
                     const diff = newPrice !== null ? newPrice - currentPrice : null;
                     const isUp = diff !== null && diff > 0;
                     const isDown = diff !== null && diff < 0;
+                    const overrideOnPurchase = overrideFields[item.id] === 'purchase_price' && inlineOverrides[item.id] !== undefined;
+                    const overrideOnSale = overrideFields[item.id] === 'sale_price' && inlineOverrides[item.id] !== undefined;
+                    const overrideOnWholesale = overrideFields[item.id] === 'wholesale_price' && inlineOverrides[item.id] !== undefined;
+                    const hasAnyOverride = overrideOnPurchase || overrideOnSale || overrideOnWholesale;
 
                     return (
                       <tr key={item.id}
-                        onClick={() => !isEditing && toggleRow(item.id)}
+                        onClick={() => toggleRow(item.id)}
                         className={`group cursor-pointer transition-colors border-r-4 ${
                           isSelected
                             ? isDown
@@ -1022,89 +970,129 @@ export default function BulkPriceUpdatePage() {
                           {item.category_name || "—"}
                         </td>
                         <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-slate-600">
-                          {Number(item.purchase_price || 0).toFixed(2)}
+                          {activePriceEdit?.itemId === item.id && activePriceEdit?.field === 'purchase_price' ? (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <input type="number" step="0.01" min="0" autoFocus
+                                defaultValue={Number(item.purchase_price || 0).toFixed(2)}
+                                onBlur={(e) => commitPriceEdit(item.id, 'purchase_price', e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") commitPriceEdit(item.id, 'purchase_price', e.target.value);
+                                  if (e.key === "Escape") cancelPriceEdit(e);
+                                }}
+                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
+                              />
+                            </div>
+                          ) : overrideOnPurchase ? (
+                            <span className="flex items-center gap-1.5 group/cell" title="سعر الشراء — تم التعديل يدوياً">
+                              <span onClick={(e) => startPriceEdit(e, item.id, 'purchase_price')}
+                                className="font-mono font-black text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
+                                {newPrice?.toFixed(2) || Number(item.purchase_price || 0).toFixed(2)}
+                              </span>
+                              <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
+                              <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.purchase_price || 0).toFixed(2)}</span>
+                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id); }}
+                                title="إعادة ضبط"
+                                className="opacity-0 group-hover/cell:opacity-100 flex h-5 w-5 items-center justify-center rounded text-slate-300 hover:text-rose-500 transition-colors">
+                                <RotateCcw className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ) : isSelected && fieldKey === 'purchase_price' && hasBulkFormula && newPrice !== null ? (
+                            <span className="flex items-center gap-1.5 group/cell" title="سعر الشراء — معاينة الصيغة">
+                              <span className="font-mono font-black text-blue-700">{newPrice.toFixed(2)}</span>
+                              <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 rounded shrink-0">صيغة</span>
+                              <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.purchase_price || 0).toFixed(2)}</span>
+                            </span>
+                          ) : (
+                            <span onClick={(e) => startPriceEdit(e, item.id, 'purchase_price')}
+                              className={`${activePriceEdit === null ? "cursor-pointer hover:text-sky-600 hover:underline decoration-dotted" : ""} transition-colors group`}
+                              title="انقر لتعديل سعر الشراء">
+                              {Number(item.purchase_price || 0).toFixed(2)}
+                              <Pencil className="h-2.5 w-2.5 inline-block mr-1 text-slate-200 group-hover:text-sky-400 transition-colors" />
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-emerald-700">
-                          {Number(item.sale_price || 0).toFixed(2)}
+                          {activePriceEdit?.itemId === item.id && activePriceEdit?.field === 'sale_price' ? (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <input type="number" step="0.01" min="0" autoFocus
+                                defaultValue={Number(item.sale_price || 0).toFixed(2)}
+                                onBlur={(e) => commitPriceEdit(item.id, 'sale_price', e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") commitPriceEdit(item.id, 'sale_price', e.target.value);
+                                  if (e.key === "Escape") cancelPriceEdit(e);
+                                }}
+                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
+                              />
+                            </div>
+                          ) : overrideOnSale ? (
+                            <span className="flex items-center gap-1.5 group/cell" title="سعر المستهلك — تم التعديل يدوياً">
+                              <span onClick={(e) => startPriceEdit(e, item.id, 'sale_price')}
+                                className="font-mono font-black text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
+                                {newPrice?.toFixed(2) || Number(item.sale_price || 0).toFixed(2)}
+                              </span>
+                              <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
+                              <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.sale_price || 0).toFixed(2)}</span>
+                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id); }}
+                                title="إعادة ضبط"
+                                className="opacity-0 group-hover/cell:opacity-100 flex h-5 w-5 items-center justify-center rounded text-slate-300 hover:text-rose-500 transition-colors">
+                                <RotateCcw className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ) : isSelected && fieldKey === 'sale_price' && hasBulkFormula && newPrice !== null ? (
+                            <span className="flex items-center gap-1.5 group/cell" title="سعر المستهلك — معاينة الصيغة">
+                              <span className="font-mono font-black text-blue-700">{newPrice.toFixed(2)}</span>
+                              <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 rounded shrink-0">صيغة</span>
+                              <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.sale_price || 0).toFixed(2)}</span>
+                            </span>
+                          ) : (
+                            <span onClick={(e) => startPriceEdit(e, item.id, 'sale_price')}
+                              className={`${activePriceEdit === null ? "cursor-pointer hover:text-sky-600 hover:underline decoration-dotted" : ""} transition-colors group`}
+                              title="انقر لتعديل سعر المستهلك">
+                              {Number(item.sale_price || 0).toFixed(2)}
+                              <Pencil className="h-2.5 w-2.5 inline-block mr-1 text-slate-200 group-hover:text-sky-400 transition-colors" />
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-blue-700">
-                          {Number(item.wholesale_price || 0).toFixed(2)}
-                        </td>
-
-                        {/* Suggested / inline-edit cell */}
-                        <td className="px-2 py-1 border-l border-slate-100 text-right"
-                          onClick={(e) => isSelected && e.stopPropagation()}>
-                          {isSelected ? (
-                            isEditing ? (
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <input type="text" inputMode="decimal" autoFocus
-                                  defaultValue={inlineOverrides[item.id] ?? (newPrice !== null ? newPrice.toFixed(2) : currentPrice.toFixed(2))}
-                                  onBlur={(e) => commitEdit(item.id, e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") commitEdit(item.id, e.target.value);
-                                    if (e.key === "Escape") { setEditingCell(null); }
-                                  }}
-                                  placeholder="سعر / +5 / -10%"
-                                  className="w-24 rounded border border-amber-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 text-center"
-                                  title="أدخل سعراً مطلقاً (150) أو تعديل (+5, -10%, +15%)" />
-                                {hasOverride && (
-                                  <button onClick={(e) => clearOverride(e, item.id)} title="إعادة ضبط"
-                                    className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                                    <RotateCcw className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-end gap-1.5 group/cell">
-                                {newPrice !== null ? (
-                                  <>
-                                    {hasOverride && inlineOverrides[item.id] ? (
-                                      (() => {
-                                        const p = parsePriceInput(inlineOverrides[item.id]);
-                                        if (p && p.type === 'relative') {
-                                          return (
-                                            <span className={`font-mono font-black text-sm px-2 py-0.5 rounded ${
-                                              p.direction === 'up' ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300' : 'bg-rose-100 text-rose-700 ring-1 ring-rose-300'
-                                            }`}>
-                                              {p.direction === 'up' ? '+' : ''}{p.adjustment_type === 'percentage' ? `${p.adjustment_value}%` : `${p.adjustment_value}ج`}
-                                            </span>
-                                          );
-                                        }
-                                        return (
-                                          <span className="font-mono font-black text-sm px-2 py-0.5 rounded text-violet-700 bg-violet-100 ring-1 ring-violet-300">
-                                            {newPrice.toFixed(2)}
-                                          </span>
-                                        );
-                                      })()
-                                    ) : (
-                                      <span className={`font-mono font-black text-sm px-2 py-0.5 rounded transition-colors ${
-                                        newPrice > currentPrice ? "text-emerald-700 bg-emerald-100" : newPrice < currentPrice ? "text-rose-700 bg-rose-100" : "text-slate-500 bg-slate-100"
-                                      }`}>
-                                        {newPrice.toFixed(2)}
-                                      </span>
-                                    )}
-                                    {hasOverride && (
-                                      <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded">يدوي</span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-slate-300 text-sm font-mono">—</span>
-                                )}
-                                <button onClick={(e) => startEditing(e, item.id, newPrice)}
-                                  title="تعديل يدوي — أدخل سعراً مطلقاً (150) أو تعديل نسبي (+5, -10%)"
-                                  className="flex h-6 w-6 items-center justify-center rounded text-slate-300 hover:text-amber-500 hover:bg-amber-50 opacity-0 group-hover/cell:opacity-100 group-hover:opacity-100 transition-all">
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                {hasOverride && (
-                                  <button onClick={(e) => clearOverride(e, item.id)} title="إعادة ضبط"
-                                    className="flex h-6 w-6 items-center justify-center rounded text-violet-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                                    <RotateCcw className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
-                            )
+                          {activePriceEdit?.itemId === item.id && activePriceEdit?.field === 'wholesale_price' ? (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <input type="number" step="0.01" min="0" autoFocus
+                                defaultValue={Number(item.wholesale_price || 0).toFixed(2)}
+                                onBlur={(e) => commitPriceEdit(item.id, 'wholesale_price', e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") commitPriceEdit(item.id, 'wholesale_price', e.target.value);
+                                  if (e.key === "Escape") cancelPriceEdit(e);
+                                }}
+                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
+                              />
+                            </div>
+                          ) : overrideOnWholesale ? (
+                            <span className="flex items-center gap-1.5 group/cell" title="سعر الجملة — تم التعديل يدوياً">
+                              <span onClick={(e) => startPriceEdit(e, item.id, 'wholesale_price')}
+                                className="font-mono font-black text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
+                                {newPrice?.toFixed(2) || Number(item.wholesale_price || 0).toFixed(2)}
+                              </span>
+                              <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
+                              <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.wholesale_price || 0).toFixed(2)}</span>
+                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id); }}
+                                title="إعادة ضبط"
+                                className="opacity-0 group-hover/cell:opacity-100 flex h-5 w-5 items-center justify-center rounded text-slate-300 hover:text-rose-500 transition-colors">
+                                <RotateCcw className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ) : isSelected && fieldKey === 'wholesale_price' && hasBulkFormula && newPrice !== null ? (
+                            <span className="flex items-center gap-1.5 group/cell" title="سعر الجملة — معاينة الصيغة">
+                              <span className="font-mono font-black text-blue-700">{newPrice.toFixed(2)}</span>
+                              <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 rounded shrink-0">صيغة</span>
+                              <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.wholesale_price || 0).toFixed(2)}</span>
+                            </span>
                           ) : (
-                            <span className="text-slate-200 text-sm">—</span>
+                            <span onClick={(e) => startPriceEdit(e, item.id, 'wholesale_price')}
+                              className={`${activePriceEdit === null ? "cursor-pointer hover:text-sky-600 hover:underline decoration-dotted" : ""} transition-colors group`}
+                              title="انقر لتعديل سعر الجملة">
+                              {Number(item.wholesale_price || 0).toFixed(2)}
+                              <Pencil className="h-2.5 w-2.5 inline-block mr-1 text-slate-200 group-hover:text-sky-400 transition-colors" />
+                            </span>
                           )}
                         </td>
 
@@ -1149,7 +1137,7 @@ export default function BulkPriceUpdatePage() {
                     return (
                       <button key={p} onClick={() => goPage(p)}
                         className={`flex h-8 w-8 items-center justify-center rounded text-2sm font-black transition-all shadow-sm ${
-                          p === safePage ? "bg-slate-900 border-slate-900 text-white" : "bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-800"
+                          p === safePage ? "bg-primary border-primary text-white" : "bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-800"
                         }`}>
                         {p}
                       </button>

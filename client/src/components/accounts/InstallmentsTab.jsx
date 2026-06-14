@@ -205,7 +205,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                   <div className="text-[11px] font-bold text-slate-500">القسط {selected.installment_no}</div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setPrintType("statement")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white hover:bg-slate-900">
+                  <button onClick={() => setPrintType("statement")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary-600">
                     <Printer className="h-4 w-4" />
                   </button>
                   <button onClick={() => { setEditMode(!editMode); if (!editMode) setEditForm({ due_date: selected.due_date || "", amount: String(selected.amount || "") }); }}
@@ -274,7 +274,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                     <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
                       className="h-10 w-full rounded-xl border border-slate-300 px-4 text-sm font-black outline-none focus:border-slate-500" />
                     <button onClick={handleEdit} disabled={saving}
-                      className="w-full rounded-xl bg-slate-800 py-2.5 text-2sm font-black text-white hover:bg-slate-900 disabled:opacity-40">
+                      className="w-full rounded-xl bg-primary py-2.5 text-2sm font-black text-white hover:bg-primary-600 disabled:opacity-40">
                       {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
                     </button>
                   </div>

@@ -110,7 +110,7 @@ function FontDropdown({ options, value, onChange, label }) {
   );
 }
 
-export default function FontSettingsTab({ settings, onChange }) {
+export default function FontSettingsTab({ settings, onChange, noPreview }) {
   const currentFamily = settings.font_family || "Noto Sans Arabic";
   const currentSize = settings.font_size || "normal";
   const currentNumberFamily = settings.number_font_family || "Outfit";
@@ -120,7 +120,6 @@ export default function FontSettingsTab({ settings, onChange }) {
   const previewScale = SCALE_VALUE_MAP[currentNumberScale] ?? 1;
 
   const arabicDigits = Intl.NumberFormat("ar-SA", { useGrouping: false }).format(1234567890);
-  const westernDigits = "0123456789";
 
   return (
     <div className="space-y-8">
@@ -163,7 +162,7 @@ export default function FontSettingsTab({ settings, onChange }) {
                     onClick={() => onChange("font_size", opt.value)}
                     className={`px-5 py-3 text-[13px] font-black transition-all ${
                       active
-                        ? "bg-slate-800 text-white"
+                        ? "bg-primary text-white"
                         : "bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
@@ -212,7 +211,7 @@ export default function FontSettingsTab({ settings, onChange }) {
                     onClick={() => onChange("number_font_scale", opt.value)}
                     className={`px-4 py-3 text-[13px] font-black transition-all ${
                       active
-                        ? "bg-slate-800 text-white"
+                        ? "bg-primary text-white"
                         : "bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
@@ -282,6 +281,7 @@ export default function FontSettingsTab({ settings, onChange }) {
       <div className="border-t border-slate-100" />
 
       {/* ═══ LIVE PREVIEW ═══ */}
+      {!noPreview && (
       <section>
         <div className="flex items-center gap-2 mb-3">
           <Edit3 className="h-4 w-4 text-slate-500" />
@@ -465,6 +465,7 @@ export default function FontSettingsTab({ settings, onChange }) {
           * التغييرات تنعكس على المعاينة فقط. للحفظ اضغط "حفظ الإعدادات" بالأعلى.
         </p>
       </section>
+      )}
     </div>
   );
 }

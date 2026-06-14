@@ -812,8 +812,6 @@ export default function SourceWorkspacePage() {
 
   const handleExport = useCallback(async (format, exportColumns = visibleColumns) => {
     if (format === "print") {
-      console.group("[PrintDebug] SourceWorkspace handleExport print");
-      console.log("totalRows:", totalRows, "appliedParams:", appliedParams);
       setPrintAllLoading(true);
       try {
         const MAX_PAGE_SIZE = 10000;
@@ -843,17 +841,11 @@ export default function SourceWorkspacePage() {
             data: mergedData,
             total: totalRows,
           };
-          console.log("batched fetch — batches:", totalPagesNeeded, "total rows merged:", mergedData.length);
         }
 
-        const rowCount = allData?.data?.length;
-        console.log("fetch response — rows received:", rowCount, "server total:", allData?.total);
-        console.groupEnd();
         setPrintAllData(allData);
         setPrintOpen(true);
       } catch (err) {
-        console.warn("[PrintDebug] fetchSourceReport error", err);
-        console.groupEnd();
         setPrintAllData(null);
         setPrintOpen(true);
       }
@@ -872,14 +864,14 @@ export default function SourceWorkspacePage() {
 
   if (!sourceDef) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#fafafa]">
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-base)]">
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="h-20 w-20 rounded-3xl bg-zinc-100 flex items-center justify-center text-zinc-400 shadow-inner"><LayoutTemplate size={36} /></div>
           <div>
             <h1 className="text-2xl font-black text-zinc-900 mb-2">المصدر غير متاح</h1>
             <p className="text-sm text-zinc-500">مصدر التقرير غير معروف.</p>
           </div>
-          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-800 transition-colors shadow-lg">
+          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-primary-600 transition-colors shadow-lg">
             <ArrowLeft size={16} /> العودة إلى مركز التقارير
           </Link>
         </div>
@@ -944,7 +936,7 @@ export default function SourceWorkspacePage() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-3 bg-white">
           <div className="flex items-center gap-2">
             <button onClick={() => setFiltersOpen(!filtersOpen)}
-              className={`h-9 px-4 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${filtersOpen ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"}`}>
+              className={`h-9 px-4 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${filtersOpen ? "bg-primary text-white shadow-sm" : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"}`}>
               <SlidersHorizontal size={14} />
               <span>فلاتر متقدمة</span>
               <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180" : ""}`} />
@@ -1042,7 +1034,7 @@ export default function SourceWorkspacePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors">إعادة تعيين</button>
-                    <button onClick={() => setFiltersOpen(false)} className="h-9 px-5 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
+                    <button onClick={() => setFiltersOpen(false)} className="h-9 px-5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-600 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
                   </div>
                 </div>
               </div>
@@ -1064,11 +1056,11 @@ export default function SourceWorkspacePage() {
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => setActiveTab("table")}
-          className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
+          className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-primary text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
           <LayoutList size={16} /> جدول
         </button>
         <button onClick={() => setActiveTab("chart")}
-          className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
+          className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-primary text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50"}`}>
           <BarChart3 size={16} /> رسم بياني
         </button>
       </div>

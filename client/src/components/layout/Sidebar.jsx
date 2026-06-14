@@ -61,7 +61,7 @@ function SidebarItem({ item, location, updateAvailable, categoryCount }) {
       </div>
       {item.path === "/definitions/items" && categoryCount !== null && (
         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none ${
-          isItemActive ? "bg-zinc-900 text-white" : categoryCount === 0 ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300" : "bg-zinc-200 text-zinc-700"
+          isItemActive ? "bg-primary text-white" : categoryCount === 0 ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300" : "bg-zinc-200 text-zinc-700"
         }`}>
           {categoryCount === 0 ? "فارغ" : categoryCount}
         </span>
@@ -110,14 +110,14 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
       <aside
         data-app-sidebar="true"
         data-sidebar-mode="rail"
-        className="relative z-40 flex shrink-0 h-screen flex-col items-center border-l border-zinc-200/60 bg-white py-3"
-        style={{ width }}
+        className="relative z-40 flex shrink-0 h-screen flex-col items-center border-l border-zinc-200/60 bg-sidebar py-3"
+        style={{ width, background: "var(--bg-sidebar)" }}
         dir="rtl"
       >
         {/* Header: logo + expand */}
         <div className="flex flex-col items-center gap-2 pb-3 border-b border-zinc-100 w-full">
           {branding?.logoUrl && branding?.showOnSidebar ? (
-            <img src={branding.logoUrl} alt={branding?.title || "Logo"} className="h-9 w-9 rounded-xl object-contain bg-white" />
+            <img src={branding.logoUrl} alt={branding?.title || "Logo"} className="h-9 w-9 rounded-xl object-contain bg-surface" />
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-950 text-emerald-400">
               <Radar strokeWidth={2} className="h-5 w-5" />
@@ -142,7 +142,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
                 to={item.path}
                 title={item.label}
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
-                  active ? "bg-zinc-950 text-emerald-400 shadow-sm" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                  active ? "bg-primary text-white shadow-sm" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
                 }`}
               >
                 <item.icon strokeWidth={active ? 2 : 1.5} className="h-[18px] w-[18px]" />
@@ -177,7 +177,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
           <Link
             to="/settings"
             title="الإعدادات"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-surface text-secondary hover:bg-zinc-100 transition-colors"
           >
             <Settings strokeWidth={1.5} className="h-4 w-4" />
           </Link>
@@ -196,8 +196,8 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
   return (
     <aside
       data-app-sidebar="true"
-      className="relative z-40 flex shrink-0 h-screen flex-col border-l border-zinc-200/60 bg-white"
-      style={{ width }}
+      className="relative z-40 flex shrink-0 h-screen flex-col border-l border-zinc-200/60 bg-sidebar"
+      style={{ width, background: "var(--bg-sidebar)" }}
       dir="rtl"
     >
       {/* Drag-to-resize handle on left edge */}
@@ -213,7 +213,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
             <img
               src={branding.logoUrl}
               alt={branding?.title || "Logo"}
-              className="h-9 w-9 shrink-0 rounded-xl object-contain bg-white"
+              className="h-9 w-9 shrink-0 rounded-xl object-contain bg-surface"
             />
           ) : (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-emerald-400">
@@ -251,7 +251,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="بحث في القوائم..."
-            className="w-full rounded-lg bg-zinc-50 border border-zinc-200/60 py-2 pl-2.5 pr-8 text-2sm font-semibold text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white focus:outline-none transition-all"
+            className="w-full rounded-lg bg-zinc-50 border border-zinc-200/60 py-2 pl-2.5 pr-8 text-2sm font-semibold text-primary placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-surface focus:outline-none transition-all"
           />
         </div>
 
@@ -263,7 +263,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
               const isSalesActive = location.pathname === "/sales";
               return (
                 <div key={item.path} className={`flex items-stretch rounded-lg overflow-hidden transition-all ${
-                  isActive ? "bg-zinc-950 shadow-sm" : "bg-emerald-50 hover:bg-emerald-100"
+                  isActive ? "bg-primary shadow-sm" : "bg-emerald-50 hover:bg-emerald-100"
                 }`}>
                   <Link
                     to={item.path}
@@ -271,7 +271,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
                       isActive ? "text-white" : "text-emerald-700"
                     }`}
                   >
-                    <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-emerald-400" : ""}`} />
+                    <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-white" : ""}`} />
                     <div className="flex flex-col min-w-0">
                       <span className={`text-2sm truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
                       {!isActive && <span className="text-[9px] text-emerald-500 font-bold">اختصار لوحة المفاتيح <kbd className="rounded px-0.5 bg-emerald-100 text-emerald-600 font-mono text-[8px]">F2</kbd></span>}
@@ -282,7 +282,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
                     title="فواتير المبيعات"
                     className={`flex items-center justify-center w-9 shrink-0 border-r transition-colors ${
                       isActive
-                        ? "border-zinc-800 text-emerald-400 hover:bg-zinc-800"
+                        ? "border-white/20 text-white hover:bg-black/10"
                         : isSalesActive
                           ? "border-emerald-300 bg-emerald-200 text-emerald-800"
                           : "border-emerald-200 text-emerald-500 hover:bg-emerald-200 hover:text-emerald-800"
@@ -299,11 +299,11 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
                 to={item.path}
                 className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
                   isActive
-                    ? "bg-zinc-950 text-white shadow-sm"
+                    ? "bg-primary text-white shadow-sm"
                     : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                 }`}
               >
-                <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-emerald-400" : ""}`} />
+                <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-white" : ""}`} />
                 <span className={`text-2sm truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
               </Link>
             );
@@ -375,7 +375,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
       <div className="border-t border-zinc-100 p-3">
         <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-1.5">
           <Link to="/settings" className="flex items-center gap-2.5 px-2 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-colors">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface border border-zinc-200 text-secondary hover:bg-zinc-100 transition-colors">
               <Settings strokeWidth={1.5} className="h-3.5 w-3.5" />
             </div>
             <div className="flex flex-col min-w-0">

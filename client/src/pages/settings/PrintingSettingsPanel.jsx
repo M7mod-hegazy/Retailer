@@ -148,7 +148,7 @@ const get = (s, k) => s[k] ?? DEFAULTS[k];
 function SectionLabel({ icon: Icon, title, hint }) {
   return (
     <div className="flex items-center gap-3 border-b border-slate-100 pb-2.5 mb-4">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-slate-900 text-white">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
         <Icon className="h-3.5 w-3.5" />
       </div>
       <div>
@@ -223,7 +223,7 @@ function ToggleSwitch({ checked, onChange, label, hint, fieldKey, hovered, onHov
       onMouseEnter={() => visual && onHover(fieldKey)}
       onMouseLeave={() => visual && onLeave()}
       onClick={() => onChange(!checked)}
-      className={`flex cursor-pointer select-none items-center justify-between gap-3 rounded-sm border p-3 transition-all ${isActive ? "ring-2 ring-amber-400 ring-offset-1" : ""} ${checked ? "border-slate-900 bg-slate-900" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+      className={`flex cursor-pointer select-none items-center justify-between gap-3 rounded-sm border p-3 transition-all ${isActive ? "ring-2 ring-amber-400 ring-offset-1" : ""} ${checked ? "border-primary bg-primary" : "border-slate-200 bg-white hover:bg-slate-50"}`}
     >
       <div className="min-w-0">
         <div className={`text-[11px] font-black uppercase tracking-widest truncate ${checked ? "text-white" : "text-slate-800"}`}>{label}</div>
@@ -239,7 +239,7 @@ function PaperPicker({ value, onChange }) {
     <div className="grid grid-cols-4 gap-3">
       {PAPER_OPTIONS.map(({ value: v, label, sub, dims, icon: Icon }) => (
         <button key={v} type="button" onClick={() => onChange(v)}
-          className={`flex flex-col items-center gap-1.5 rounded-sm border py-4 transition-all ${value === v ? "border-slate-900 bg-slate-900 shadow-lg scale-[1.02]" : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"}`}>
+          className={`flex flex-col items-center gap-1.5 rounded-sm border py-4 transition-all ${value === v ? "border-primary bg-primary shadow-lg scale-[1.02]" : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"}`}>
           <Icon className={`h-5 w-5 ${value === v ? "text-white" : "text-slate-400"}`} />
           <div className="text-center">
             <div className={`text-sm font-black tracking-widest leading-none ${value === v ? "text-white" : "text-slate-800"}`}>{label}</div>
@@ -529,7 +529,7 @@ function DocTypeNav({ activeDocType, onSelect }) {
       <div className="space-y-1">
         {DOC_TYPES.map((doc) => (
           <button key={doc.key} type="button" onClick={() => onSelect(doc.key)}
-            className={`flex w-full items-center gap-2 rounded-sm px-3 py-2 text-right text-[11px] font-black transition-colors ${activeDocType === doc.key ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}>
+            className={`flex w-full items-center gap-2 rounded-sm px-3 py-2 text-right text-[11px] font-black transition-colors ${activeDocType === doc.key ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"}`}>
             <span className={`min-w-8 rounded-sm px-1.5 py-0.5 text-center text-[9px] ${activeDocType === doc.key ? "bg-white/15" : "bg-slate-100 text-slate-400"}`}>{doc.icon}</span>
             <span className="truncate">{doc.label}</span>
           </button>
@@ -1228,7 +1228,7 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
       {/* Preview with pan & zoom */}
       <div className="flex flex-1 min-w-0 flex-col rounded-sm border border-slate-200 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-2.5">
+        <div className="flex items-center justify-between bg-primary text-white px-4 py-2.5">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-slate-400" />
             <span className="text-[11px] font-black uppercase tracking-widest">معاينة حية — {label}</span>
@@ -1245,7 +1245,7 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
         {/* Viewport */}
         <div
           ref={viewportRef}
-          className="relative flex-1 overflow-hidden bg-[#e8ecf0]"
+          className="relative flex-1 overflow-hidden bg-[var(--bg-overlay)]"
           style={{ cursor: "grab", minHeight: 0 }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -1602,7 +1602,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
       <div className="w-[520px] shrink-0 flex flex-col" style={{ height: "100%" }}>
 
         {/* Preview Header */}
-        <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-3 rounded-t-sm">
+        <div className="flex items-center justify-between bg-primary text-white px-4 py-3 rounded-t-sm">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-slate-400" />
             <span className="text-2sm font-black uppercase tracking-widest">معاينة حية</span>
@@ -1640,7 +1640,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         {/* Preview Viewport — interactive pan & zoom canvas */}
         <div
           ref={viewportRef}
-          className="relative flex-1 overflow-hidden border border-t-0 border-slate-200 bg-[#e8ecf0]"
+          className="relative flex-1 overflow-hidden border border-t-0 border-slate-200 bg-[var(--bg-overlay)]"
           style={{ cursor: "grab" }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -1705,7 +1705,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                 <button key={key} type="button"
                   onClick={() => onChange(key, !on)}
                   onMouseEnter={() => hover(key)} onMouseLeave={leave}
-                  className={`rounded-sm border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-all ${on ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"}`}>
+                  className={`rounded-sm border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-all ${on ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"}`}>
                   {label}
                 </button>
               );

@@ -55,9 +55,10 @@ nsis:
     - en_US
 
 publish:
-  provider: generic
-  url: "${UPDATE_SERVER_URL:-}"
-  channel: latest
+  provider: github
+  owner: M7mod-hegazy
+  repo: Retailer
+  releaseType: release
 
 buildDependenciesFromSource: false
 # Native modules are rebuilt/cache-restored per arch by

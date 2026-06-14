@@ -219,7 +219,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="relative w-full max-w-2xl bg-[#fcfcfc] rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl bg-[var(--bg-surface)] rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
           <div className="flex items-center gap-3">
@@ -287,7 +287,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           </div>
           <button 
             onClick={() => onSubmit(form)} disabled={saving || !form.amount || !form.category_id}
-            className="h-10 px-6 rounded-xl bg-zinc-900 text-white text-2sm font-black hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-lg shadow-zinc-900/20 flex items-center gap-2"
+            className="h-10 px-6 rounded-xl bg-primary text-white text-2sm font-black hover:bg-primary-600 disabled:opacity-50 transition-colors shadow-lg shadow-zinc-900/20 flex items-center gap-2"
           >
             {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             تأكيد العملية
@@ -447,7 +447,7 @@ export default function WithdrawalsListPage() {
   const catOptions = categories.map(c => ({ value: c.id, label: c.name }));
 
   return (
-    <div className="min-h-[100dvh] bg-[#fafafa] flex flex-col font-sans w-full relative" dir="rtl">
+    <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans w-full relative" dir="rtl">
       
       <SplineHeader />
 
@@ -495,7 +495,7 @@ export default function WithdrawalsListPage() {
               
               {/* Add Button */}
               <PermissionGate page="withdrawals" action="add">
-              <button data-help="add-button" onClick={openCreate} title="تسجيل سحب جديد (Ctrl+K)" className="h-10 px-6 shrink-0 flex items-center justify-center gap-2 rounded-xl text-2sm font-black text-white bg-zinc-900 hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/20 active:scale-95 w-full sm:w-auto">
+              <button data-help="add-button" onClick={openCreate} title="تسجيل سحب جديد (Ctrl+K)" className="h-10 px-6 shrink-0 flex items-center justify-center gap-2 rounded-xl text-2sm font-black text-white bg-primary hover:bg-primary-600 transition-colors shadow-lg shadow-zinc-900/20 active:scale-95 w-full sm:w-auto">
                 <Command className="h-3.5 w-3.5 text-zinc-400" /> تسجيل سحب
               </button>
               </PermissionGate>

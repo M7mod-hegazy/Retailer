@@ -86,7 +86,7 @@ export default function PaymentMethodsPage() {
         </div>
         <button 
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95"
+          className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95"
         >
           <Plus className="h-4 w-4" /> تعريف قناة دفع
         </button>
@@ -142,7 +142,7 @@ export default function PaymentMethodsPage() {
            <div className="h-full w-full max-w-lg bg-white shadow-2xl animate-in slide-in-from-left duration-300">
               <header className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-8 py-6">
                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-slate-900 text-white shadow-lg">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary text-white shadow-lg">
                        <ArrowRightLeft className="h-5 w-5" />
                     </div>
                     <div className="flex flex-col">
@@ -211,7 +211,7 @@ export default function PaymentMethodsPage() {
                     <button 
                       type="submit" 
                       disabled={isSubmitting}
-                      className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-slate-900 py-3 text-sm font-black text-white shadow-xl transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                      className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-primary py-3 text-sm font-black text-white shadow-xl transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
                     >
                        {isSubmitting ? 'جاري الحفظ...' : (
                           <>

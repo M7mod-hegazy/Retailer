@@ -13,6 +13,7 @@ const {
   restoreBackup,
   exportCheckpoint,
   emptyDatabase,
+  getPurgePreview,
   isLikelySqliteFile,
   sanitizePath,
 } = require("../services/backupService");
@@ -168,24 +169,37 @@ router.post("/export", can("export"), (req, res, next) => {
   }
 });
 
-// --- Empty the database ----------------------------------------------------
-router.post("/empty", can("empty"), (req, res, next) => {
+// --- Purge preview (per-category live row counts) --------------------------
+router.get("/purge-preview", can("empty"), (_req, res, next) => {
   try {
-    const result = emptyDatabase({
-      mode: String(req.body?.mode || ""),
-      ownerPassword: String(req.body?.ownerPassword || ""),
-    });
-    res.json({ success: true, message: "تم تفريغ قاعدة البيانات", data: result });
+    res.json({ success: true, data: getPurgePreview() });
   } catch (err) {
     next(err);
   }
 });
 
-// --- Settings (auto-backup enable / daily time / root path) ----------------
+// --- Purge selected categories ---------------------------------------------
+router.post("/empty", can("empty"), (req, res, next) => {
+  try {
+    const categories = Array.isArray(req.body?.categories) ? req.body.categories : [];
+    const result = emptyDatabase({
+      categories,
+      ownerPassword: String(req.body?.ownerPassword || ""),
+    });
+    res.json({ success: true, message: "تم حذف البيانات المحددة", data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Settings (auto-backup enable / interval / root path) ------------------
+const SETTINGS_COLS =
+  "auto_backup_enabled, auto_backup_path, auto_backup_interval_hours, last_auto_backup_at";
+
 router.get("/settings", can("view"), (_req, res, next) => {
   try {
     const settings = getDb()
-      .prepare("SELECT auto_backup_enabled, auto_backup_path, auto_backup_time FROM settings WHERE id = 1")
+      .prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`)
       .get();
     if (settings) settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
     res.json({ success: true, data: settings });
@@ -198,17 +212,20 @@ router.put("/settings", can("create"), (req, res, next) => {
   try {
     const autoBackupEnabled = req.body?.auto_backup_enabled ? 1 : 0;
     const autoBackupPath = sanitizePath(req.body?.auto_backup_path) || null;
-    let autoBackupTime = String(req.body?.auto_backup_time || "").trim();
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(autoBackupTime)) autoBackupTime = "02:00";
+
+    // Interval in hours: clamp to a sane 1h..168h (1 week) range, default 24.
+    let intervalHours = Math.round(Number(req.body?.auto_backup_interval_hours));
+    if (!Number.isFinite(intervalHours)) intervalHours = 24;
+    intervalHours = Math.min(168, Math.max(1, intervalHours));
 
     getDb()
       .prepare(
-        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_time = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
+        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
       )
-      .run(autoBackupEnabled, autoBackupPath, autoBackupTime);
+      .run(autoBackupEnabled, autoBackupPath, intervalHours);
 
     const settings = getDb()
-      .prepare("SELECT auto_backup_enabled, auto_backup_path, auto_backup_time FROM settings WHERE id = 1")
+      .prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`)
       .get();
     if (settings) settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
     res.json({ success: true, data: settings });

@@ -288,7 +288,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                   type="button"
                   onClick={handleSave}
                   disabled={saving || loading}
-                  className="h-10 px-6 rounded-xl bg-zinc-950 text-white text-2sm font-black flex items-center gap-2 hover:bg-zinc-800 transition-all disabled:opacity-50 shadow-lg"
+                  className="h-10 px-6 rounded-xl bg-primary text-white text-2sm font-black flex items-center gap-2 hover:bg-primary-600 transition-all disabled:opacity-50 shadow-lg"
                 >
                   <Save className="h-4 w-4" />
                   {saving ? "جاري الحفظ..." : "حفظ الصلاحيات"}

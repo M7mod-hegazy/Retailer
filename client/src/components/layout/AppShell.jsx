@@ -12,6 +12,7 @@ import { usePerformanceStore, applyToDOM } from "../../stores/performanceStore";
 import { usePageTour } from "../../hooks/usePageTour";
 import { getHelpPageKey } from "../../help/routeHelp";
 import { applyFontSettings } from "../../utils/fontSettings";
+import { applyColorTheme } from "../../utils/applyColorTheme";
 import FpsOverlay from "../ui/FpsOverlay";
 
 function useIsMobile() {
@@ -69,6 +70,7 @@ export default function AppShell({ children }) {
         const settings = response.data?.data || {};
         applySettings(settings);
         applyFontSettings(settings);
+        applyColorTheme(settings);
         setBranding({
           title: settings.app_name || settings.company_name || "ElHegazi Retailer",
           subtitle: settings.app_subtitle || settings.branch_name || "Retailer Suite",
@@ -83,7 +85,9 @@ export default function AppShell({ children }) {
   }, [applySettings]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = "global";
+    // data-theme is owned by applyColorTheme ("global" for the default theme,
+    // "light"/"dark" for color themes). Don't force it here — doing so raced
+    // applyColorTheme and briefly clobbered non-default themes' overrides.
     document.documentElement.classList.remove("light");
   }, []);
 

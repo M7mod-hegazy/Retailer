@@ -92,7 +92,7 @@ export function ReturnSaveSuccess({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--bg-surface)',
           borderRadius: 20,
           padding: '28px 24px 20px',
           width: 'min(340px, 92%)',
@@ -134,30 +134,30 @@ export function ReturnSaveSuccess({
         </div>
 
         {/* Title */}
-        <p style={{ color: '#059669', fontWeight: 900, fontSize: 17, margin: 0, letterSpacing: '-0.3px' }}>
+        <p style={{ color: 'var(--text-accent)', fontWeight: 900, fontSize: 17, margin: 0, letterSpacing: '-0.3px' }}>
           تم حفظ المرتجع بنجاح!
         </p>
 
         {/* Document number */}
         <div style={{
           marginTop: 6,
-          background: '#f1f5f9', borderRadius: 8,
+          background: 'var(--bg-input)', borderRadius: 8,
           padding: '3px 10px',
-          fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#64748b',
+          fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--text-secondary)',
           letterSpacing: '0.5px',
         }}>
           {docNo}
         </div>
 
         {/* Divider */}
-        <div style={{ width: '100%', height: 1, background: '#f1f5f9', margin: '16px 0 14px' }} />
+        <div style={{ width: '100%', height: 1, background: 'var(--bg-input)', margin: '16px 0 14px' }} />
 
         {/* Entity row */}
         {hasEntity && (
           <div style={{
             width: '100%', display: 'flex', alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#f8faff', border: '1px solid #e0e7ff',
+            background: 'var(--info-bg)', border: '1px solid var(--border-normal)',
             borderRadius: 12, padding: '8px 12px',
             marginBottom: 10,
             animation: 'slideUp 300ms ease-out 150ms backwards',
@@ -165,24 +165,24 @@ export function ReturnSaveSuccess({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#6366f1,#818cf8)',
+                background: 'linear-gradient(135deg,var(--info-text),color-mix(in srgb, var(--info-text) 80%, white))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#fff', fontWeight: 900, fontSize: 12, flexShrink: 0,
               }}>
                 {entityName[0]}
               </div>
-              <span style={{ fontWeight: 800, fontSize: 13, color: '#3730a3' }}>{entityName}</span>
+              <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--text-accent)' }}>{entityName}</span>
             </div>
             {hasBalance && (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
               }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#6366f1', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--info-text)', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {entityLabel === 'العميل' ? 'رصيد العميل' : 'رصيد المورد'}
                 </span>
                 <span style={{
                   fontFamily: 'monospace', fontWeight: 900, fontSize: 12,
-                  color: entityNewBalance > 0 ? '#b45309' : '#059669',
+                  color: entityNewBalance > 0 ? 'var(--warning-text)' : 'var(--text-accent)',
                 }}>
                   {fmt(entityNewBalance)} ج.م
                 </span>
@@ -196,20 +196,20 @@ export function ReturnSaveSuccess({
           width: '100%', textAlign: 'center',
           animation: 'slideUp 300ms ease-out 200ms backwards',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 2 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2 }}>
             {isSales ? 'المبلغ المُعاد للعميل' : 'المبلغ المُعاد للمورد'}
           </div>
           <div style={{
             fontFamily: 'monospace', fontWeight: 900, fontSize: 28,
-            color: '#0f172a', letterSpacing: '-1px',
+            color: 'var(--text-primary)', letterSpacing: '-1px',
             textShadow: '0 1px 2px rgba(0,0,0,0.06)',
           }}>
             {fmt(total)}
           </div>
           {(Number(discount) > 0 || Number(increase) > 0) && (
-            <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: '#64748b' }}>
-              {Number(discount) > 0 && <span style={{ color: '#e11d48' }}>خصم −{fmt(discount)} </span>}
-              {Number(increase) > 0 && <span style={{ color: '#059669' }}>زيادة +{fmt(increase)}</span>}
+            <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: 'var(--text-secondary)' }}>
+              {Number(discount) > 0 && <span style={{ color: 'var(--danger)' }}>خصم −{fmt(discount)} </span>}
+              {Number(increase) > 0 && <span style={{ color: 'var(--text-accent)' }}>زيادة +{fmt(increase)}</span>}
             </div>
           )}
         </div>
@@ -227,7 +227,7 @@ export function ReturnSaveSuccess({
 
         {/* Tap hint */}
         <p style={{
-          marginTop: 16, fontSize: 10, color: '#cbd5e1', fontWeight: 600,
+          marginTop: 16, fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
           animation: 'slideUp 300ms ease-out 450ms backwards',
         }}>
           اضغط للاستمرار

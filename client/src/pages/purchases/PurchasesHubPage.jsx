@@ -686,7 +686,7 @@ export default function PurchasesHubPage() {
   const pagedItemRows = itemRows.slice((itemPage - 1) * PAGE_SIZE, itemPage * PAGE_SIZE);
 
   return (
-    <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
+    <div className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden font-sans bg-[var(--bg-base)]" dir="rtl">
 
       {/* Background kinetic light emitters */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -716,7 +716,7 @@ export default function PurchasesHubPage() {
               <MagneticButton
                 data-help="add-button"
                 onClick={() => navigate("/purchases/new")}
-                className="flex items-center gap-2 bg-zinc-950 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-zinc-950/20 hover:bg-zinc-900 transition-colors"
+                className="flex items-center gap-2 bg-primary text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-zinc-950/20 hover:bg-primary-600 transition-colors"
               >
                 <Plus className="w-5 h-5" /> فاتورة شراء جديدة
               </MagneticButton>

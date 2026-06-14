@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import api from "../../services/api";
+import Button from "../ui/Button";
 
 const EMPTY_FORM = { name: "", phones: [""], addresses: [""], opening_balance: "", notes: "" };
 
@@ -183,19 +184,10 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 shrink-0">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            إلغاء
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg transition-colors"
-          >
+          <Button variant="ghost" size="sm" onClick={handleClose}>إلغاء</Button>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
             {saving ? "جاري الحفظ..." : "حفظ"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -291,7 +291,7 @@ export default function PrintPreviewModal({
             {/* Preview viewport */}
             <div
               ref={viewportRef}
-              className="flex-1 bg-[#e8ecf0] rounded-[12px] border border-slate-200/60 shadow-inner relative overflow-hidden"
+              className="flex-1 bg-[var(--bg-overlay)] rounded-[12px] border border-slate-200/60 shadow-inner relative overflow-hidden"
               style={{ cursor: "grab" }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -406,7 +406,7 @@ export default function PrintPreviewModal({
                         onClick={() => switchTemplate(t.id)}
                         className={`relative flex flex-col items-center gap-1 rounded-sm border py-3 transition-all ${
                           active
-                            ? "border-slate-900 bg-slate-900 shadow-lg scale-[1.02]"
+                            ? "border-primary bg-primary shadow-lg scale-[1.02]"
                             : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
                         }`}
                       >

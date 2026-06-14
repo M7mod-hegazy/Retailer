@@ -638,7 +638,7 @@ export default function PriceHistoryTab() {
           <button onClick={() => setSubTab("master")}
             className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
               subTab === "master"
-                ? "bg-slate-800 text-white"
+                ? "bg-primary text-white"
                 : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
             }`}>
             كل التغييرات

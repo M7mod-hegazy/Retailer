@@ -29,9 +29,9 @@ function StepFreeze({ onConfirm }) {
       </p>
 
       {/* Warning boxes */}
-      <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '10px', padding: '12px', marginBottom: '20px', textAlign: 'start' }}>
-        <p style={{ fontSize: '12px', fontWeight: 600, color: '#92400E' }}>⚠️ سيتأثر بهذا الإجراء:</p>
-        <ul style={{ marginTop: '6px', paddingInlineStart: '16px', fontSize: '12px', color: '#92400E', lineHeight: 1.8 }}>
+      <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', borderRadius: '10px', padding: '12px', marginBottom: '20px', textAlign: 'start' }}>
+        <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--warning-text)' }}>⚠️ سيتأثر بهذا الإجراء:</p>
+        <ul style={{ marginTop: '6px', paddingInlineStart: '16px', fontSize: '12px', color: 'var(--warning-text)', lineHeight: 1.8 }}>
           <li>نقطة البيع — ستُعرض رسالة "المخزون في الجرد"</li>
           <li>فواتير الشراء — لن تُحدِّث المخزون حتى الإغلاق</li>
           <li>تحويل المخزون — معلّق حتى نهاية الجرد</li>

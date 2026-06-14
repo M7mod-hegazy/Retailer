@@ -73,7 +73,7 @@ function stockBadge(qty, minQty) {
   const m = Number(minQty ?? 0);
   if (q === 0)        return { label: "نفد",  cls: "bg-rose-500 text-white shadow-rose-200" };
   if (m > 0 && q < m) return { label: q,     cls: "bg-amber-500 text-white shadow-amber-200" };
-  return               { label: q,           cls: "bg-slate-800 text-white shadow-slate-200" };
+  return               { label: q,           cls: "bg-primary text-white shadow-slate-200" };
 }
 
 function formatMoney(v) {
@@ -221,7 +221,7 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
                </select>
                <button onClick={() => { if (moveCat) { onMove(Number(moveCat)); setShowMove(false); setMoveCat(""); } }}
                  disabled={!moveCat}
-                 className="w-full rounded-sm bg-slate-900 px-3 py-2 text-2sm font-black text-white disabled:opacity-40 hover:bg-slate-800">
+                 className="w-full rounded-sm bg-primary px-3 py-2 text-2sm font-black text-white disabled:opacity-40 hover:bg-primary-600">
                  نقل الآن
                </button>
              </div>
@@ -256,7 +256,7 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
                </div>
                <button onClick={() => { if (priceVal) { onPriceChange(priceField, priceType, Number(priceVal)); setShowPrice(false); setPriceVal(""); } }}
                  disabled={!priceVal}
-                 className="w-full rounded-sm bg-slate-900 px-3 py-2.5 text-2sm font-black text-white disabled:opacity-40 hover:bg-slate-800 transition-all shadow-md">
+                 className="w-full rounded-sm bg-primary px-3 py-2.5 text-2sm font-black text-white disabled:opacity-40 hover:bg-primary-600 transition-all shadow-md">
                  تطبيق الحسبة المالية
                </button>
              </div>
@@ -278,7 +278,7 @@ function BulkBar({ count, categories, units, onDelete, onMove, onPriceChange, on
                </select>
                <button onClick={() => { if (unitVal) { onUnitChange(Number(unitVal)); setShowUnit(false); setUnitVal(""); } }}
                  disabled={!unitVal}
-                 className="w-full rounded-sm bg-slate-900 px-3 py-2 text-2sm font-black text-white disabled:opacity-40 hover:bg-slate-800">
+                 className="w-full rounded-sm bg-primary px-3 py-2 text-2sm font-black text-white disabled:opacity-40 hover:bg-primary-600">
                  تطبيق
                </button>
              </div>
@@ -969,7 +969,7 @@ export default function ItemsListPage() {
   if (!loading && categories.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-6 rounded-md border-2 border-dashed border-slate-200 bg-white/50 text-center mx-8 my-8" dir="rtl">
-        <div className="flex h-20 w-20 items-center justify-center rounded-sm bg-slate-800 text-white shadow-xl"><Shapes className="h-10 w-10 shrink-0" /></div>
+        <div className="flex h-20 w-20 items-center justify-center rounded-sm bg-primary text-white shadow-xl"><Shapes className="h-10 w-10 shrink-0" /></div>
         <div className="flex flex-col gap-1">
           <h2 className="text-[20px] font-black text-slate-900">لم يتم تعريف أقسام الأصناف</h2>
           <p className="text-sm font-bold text-slate-500 max-w-[300px]">يجب إنشاء فئة رئيسية واحدة على الأقل قبل البدء بتعريف الأصناف الفردية</p>
@@ -977,7 +977,7 @@ export default function ItemsListPage() {
         <div className="flex items-center gap-3">
           <button 
              onClick={() => setNewCategoryOpen(true)}
-             className="flex items-center gap-2 rounded-sm bg-slate-800 px-8 py-3 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-95"
+             className="flex items-center gap-2 rounded-sm bg-primary px-8 py-3 text-sm font-black text-white hover:bg-primary-600 transition-all active:scale-95"
           >
              <Plus className="h-4 w-4" /> إنشاء فئة جديدة الآن
           </button>
@@ -1108,7 +1108,7 @@ export default function ItemsListPage() {
                   <Eye className="h-3.5 w-3.5" /> {showDeleted ? "إخفاء المحذوفة" : "عرض المحذوفة"}
                </button>
                <button data-help="add-button" onClick={() => loadItems(selectedCatId, search, showDeleted)}
-                  className="flex items-center gap-2 rounded-sm bg-slate-900 px-6 py-2.5 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                  className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95">
                   <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث القائمة
                </button>
             </div>
@@ -1373,7 +1373,7 @@ export default function ItemsListPage() {
                                    <PermissionGate page="items" action="add">
                                    <button
                                      onClick={() => duplicateItem(item)}
-                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-100 text-slate-400 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-100 text-slate-400 hover:bg-primary-600 hover:text-white transition-all shadow-sm"
                                      title="تكرار الصنف"
                                    >
                                      <Copy className="h-3.5 w-3.5" />
@@ -1385,7 +1385,7 @@ export default function ItemsListPage() {
                                    <button
                                      onClick={() => setEditFullItem(item)}
                                      title="تعديل كامل (السيريال/الذهب/الميزان/الوحدات/المتغيرات)"
-                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-100 text-slate-500 hover:bg-primary-600 hover:text-white transition-all shadow-sm"
                                    >
                                      <Pencil className="h-3.5 w-3.5" />
                                    </button>

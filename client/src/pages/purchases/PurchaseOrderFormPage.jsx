@@ -455,7 +455,7 @@ export default function PurchaseOrderFormPage() {
                   onClick={addLine}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
                   disabled={!selectedItem}
-                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-slate-800 px-6 text-2sm font-black text-white hover:bg-slate-700 disabled:opacity-40 transition-all"
+                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-primary px-6 text-2sm font-black text-white hover:bg-primary-600 disabled:opacity-40 transition-all"
                 >
                   <Plus className="h-4 w-4" /> إدراج
                 </button>
@@ -570,7 +570,7 @@ export default function PurchaseOrderFormPage() {
              <div className="rounded-md border border-slate-200 bg-white p-5 flex-1 flex flex-col justify-end">
                  <button 
                   onClick={handleSave} 
-                  className="w-full rounded-sm bg-slate-800 py-4 text-sm font-black text-white hover:bg-slate-700 transition-all shadow-lg active:scale-95"
+                  className="w-full rounded-sm bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95"
                  >
                    اعتماد وإرسال الطلب
                  </button>

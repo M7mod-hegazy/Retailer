@@ -94,7 +94,7 @@ export default function TreasuryTransfer() {
                <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
                   <Banknote className="h-3 w-3" /> {tr.name}
                </span>
-               <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+               <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_var(--primary-glow)]"></div>
             </div>
             <div className="mt-3 flex items-baseline gap-1">
                <span className="text-[22px] font-black text-slate-800">{formatMoney(tr.balance)}</span>
@@ -143,7 +143,7 @@ export default function TreasuryTransfer() {
                     )}
                  </div>
 
-                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white shadow-lg shadow-slate-900/20">
+                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-slate-900/20">
                     <ArrowRight className="h-6 w-6 rtl:rotate-180" />
                  </div>
 
@@ -224,7 +224,7 @@ export default function TreasuryTransfer() {
               <button 
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-3 rounded-sm bg-slate-900 px-12 py-3.5 text-[15px] font-black text-white shadow-xl transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-3 rounded-sm bg-primary px-12 py-3.5 text-[15px] font-black text-white shadow-xl transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
               >
                 {loading ? 'جاري التحويل...' : (
                    <>

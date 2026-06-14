@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle, TrendingUp } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useNotificationStore } from "../../stores/notificationStore";
+import { usePerformanceStore } from "../../stores/performanceStore";
 import { useUiStore } from "../../stores/uiStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useHelpStore } from "../../stores/helpStore";
@@ -115,16 +116,18 @@ export default function Topbar() {
   const currentLabel = routeLabelMatchers.find((entry) => location.pathname.startsWith(entry.match))?.label || "العمل اليومي";
   const breadcrumbs = useBreadcrumbs(location.pathname, dynamicBreadcrumb);
 
+  const notifPollInterval = usePerformanceStore((s) => s.settings.notificationPollInterval);
+
   useEffect(() => {
+    if (!notifPollInterval) return;
     let id = null;
-    const start = () => { if (id == null) { fetchNotifications(); id = setInterval(fetchNotifications, 60000); } };
+    const start = () => { if (id == null) { fetchNotifications(); id = setInterval(fetchNotifications, notifPollInterval); } };
     const stop = () => { if (id != null) { clearInterval(id); id = null; } };
-    // Pause notification polling while the window is hidden, resume on focus.
     const onVisibility = () => { document.hidden ? stop() : start(); };
     if (!document.hidden) start();
     document.addEventListener("visibilitychange", onVisibility);
     return () => { stop(); document.removeEventListener("visibilitychange", onVisibility); };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, notifPollInterval]);
 
   useEffect(() => {
     if (!openBell) return;
@@ -147,10 +150,10 @@ export default function Topbar() {
   }, [openGlobalSearch]);
 
   return (
-    <header className="shrink-0 z-40 relative px-6 py-4" dir="rtl">
+    <header className="shrink-0 sticky top-0 z-50 px-6 py-4" dir="rtl">
       
       {/* Floating Glass Pill */}
-      <div className="flex h-16 items-center justify-between px-4 sm:px-5 bg-white/80 backdrop-blur-2xl border border-white rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-5 backdrop-blur-2xl border border-white rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]" style={{ backgroundColor: 'var(--bg-topbar)' }}>
         
         {/* Left: Logo & Breadcrumbs */}
         <div className="flex items-center gap-3 sm:gap-6">
@@ -214,9 +217,9 @@ export default function Topbar() {
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-950 text-white shadow-md border border-zinc-800"
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white shadow-md border border-white/20"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
                       <span className="text-xs font-black tracking-wide">{crumb.label}</span>
                     </motion.div>
                   )}
@@ -251,7 +254,7 @@ export default function Topbar() {
                 title={showProfit ? "إخفاء عمود الربح" : "إظهار عمود الربح"}
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                   showProfit
-                    ? "bg-emerald-600 text-white shadow-lg"
+                    ? "bg-primary text-white shadow-lg"
                     : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
                 }`}
               >
@@ -267,7 +270,7 @@ export default function Topbar() {
               title={isTourVisible && activeTourPageKey === currentPageKey ? 'إيقاف المساعدة' : 'ابدأ جولة هذه الصفحة'}
               className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                 isTourVisible && activeTourPageKey === currentPageKey
-                  ? "bg-zinc-950 text-white shadow-lg"
+                  ? "bg-primary text-white shadow-lg"
                   : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
               }`}
             >
@@ -279,7 +282,7 @@ export default function Topbar() {
             <button 
               onClick={() => setOpenBell(!openBell)} 
               className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
-                openBell ? "bg-zinc-950 text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+                openBell ? "bg-primary text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
               }`}
             >
               <Bell strokeWidth={2} className="h-4.5 w-4.5" />
@@ -302,7 +305,7 @@ export default function Topbar() {
                   <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 bg-zinc-50/30">
                     <span className="text-sm font-black text-zinc-900 tracking-tight">التنبيهات</span>
                     {unreadItems.length > 0 && (
-                      <button onClick={() => { markAllAsRead(); setOpenBell(false); }} className="text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-emerald-500 transition-colors bg-white px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
+                      <button onClick={() => { markAllAsRead(); setOpenBell(false); }} className="text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-accent transition-colors bg-white px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
                         تحديد الكل كمقروء
                       </button>
                     )}
@@ -367,7 +370,7 @@ export default function Topbar() {
             <button
               onClick={logout}
               title="تسجيل الخروج"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-red-50 hover:text-red-600 hover:shadow-sm transition-all group"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-primary hover:text-white hover:shadow-sm transition-all group"
             >
               <LogOut strokeWidth={2} className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
             </button>

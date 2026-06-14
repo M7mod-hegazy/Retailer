@@ -380,7 +380,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                 {/* 1. SALES SUPERMARKET RECEIPT MOCKUP (invoice) */}
                 {docType === "invoice" && (
                   <div 
-                    className="bg-[#fdfcf7] border-x border-[#efe8d5] shadow-[0_8px_30px_rgba(0,0,0,0.025),inset_0_1px_3px_white] relative flex flex-col min-h-[460px] overflow-hidden select-none"
+                    className="bg-[var(--bg-surface)] border-x border-[var(--border-subtle)] shadow-[0_8px_30px_rgba(0,0,0,0.025),inset_0_1px_3px_white] relative flex flex-col min-h-[460px] overflow-hidden select-none"
                     style={{
                       clipPath: "polygon(0% 0%, 2.5% 1.5%, 5% 0%, 7.5% 1.5%, 10% 0%, 12.5% 1.5%, 15% 0%, 17.5% 1.5%, 20% 0%, 22.5% 1.5%, 25% 0%, 27.5% 1.5%, 30% 0%, 32.5% 1.5%, 35% 0%, 37.5% 1.5%, 40% 0%, 42.5% 1.5%, 45% 0%, 47.5% 1.5%, 50% 0%, 52.5% 1.5%, 55% 0%, 57.5% 1.5%, 60% 0%, 62.5% 1.5%, 65% 0%, 67.5% 1.5%, 70% 0%, 72.5% 1.5%, 75% 0%, 77.5% 1.5%, 80% 0%, 82.5% 1.5%, 85% 0%, 87.5% 1.5%, 90% 0%, 92.5% 1.5%, 95% 0%, 97.5% 1.5%, 100% 0%, 100% 100%, 97.5% 98.5%, 95% 100%, 92.5% 98.5%, 90% 100%, 87.5% 98.5%, 85% 100%, 82.5% 98.5%, 80% 100%, 77.5% 98.5%, 75% 100%, 72.5% 98.5%, 70% 100%, 67.5% 98.5%, 65% 100%, 62.5% 98.5%, 60% 100%, 57.5% 98.5%, 55% 100%, 52.5% 98.5%, 50% 100%, 47.5% 98.5%, 45% 100%, 42.5% 98.5%, 40% 100%, 37.5% 98.5%, 35% 100%, 32.5% 98.5%, 30% 100%, 27.5% 98.5%, 25% 100%, 22.5% 98.5%, 20% 100%, 17.5% 98.5%, 15% 100%, 12.5% 98.5%, 10% 100%, 7.5% 98.5%, 5% 100%, 2.5% 98.5%, 0% 100%)",
                     }}
@@ -466,7 +466,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                 {/* 2. PURCHASES CORPORATE INVOICE TEMPLATE (purchase) */}
                 {docType === "purchase" && (
-                  <div className="bg-[#fafbff] border border-blue-200 rounded-[2.5rem] shadow-[0_8px_30px_rgba(59,130,246,0.03)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
+                  <div className="bg-[var(--info-bg)] border border-blue-200 rounded-[2.5rem] shadow-[0_8px_30px_rgba(59,130,246,0.03)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
                     {/* Blue corporate voucher top banner to clearly distinguish purchases */}
                     <div className="bg-blue-600 text-white py-3 px-5 font-black text-xs flex justify-between items-center select-none uppercase tracking-wider shadow-sm">
                       <span className="flex items-center gap-1.5"><Layers3 size={13} /> فاتورة شراء وتوريد معتمدة</span>
@@ -526,14 +526,14 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                 {/* 3. SALES RETURNS WARNING MOCKUP (sales_return) */}
                 {docType === "sales_return" && (
                   <div 
-                    className="bg-[#fdfcf7] border-x border-[#efe8d5] shadow-[0_8px_30px_rgba(245,158,11,0.03)] relative flex flex-col min-h-[460px] overflow-hidden select-none p-0"
+                    className="bg-[var(--bg-surface)] border-x border-[var(--border-subtle)] shadow-[0_8px_30px_rgba(245,158,11,0.03)] relative flex flex-col min-h-[460px] overflow-hidden select-none p-0"
                     style={{
                       clipPath: "polygon(0% 0%, 2.5% 1.5%, 5% 0%, 7.5% 1.5%, 10% 0%, 12.5% 1.5%, 15% 0%, 17.5% 1.5%, 20% 0%, 22.5% 1.5%, 25% 0%, 27.5% 1.5%, 30% 0%, 32.5% 1.5%, 35% 0%, 37.5% 1.5%, 40% 0%, 42.5% 1.5%, 45% 0%, 47.5% 1.5%, 50% 0%, 52.5% 1.5%, 55% 0%, 57.5% 1.5%, 60% 0%, 62.5% 1.5%, 65% 0%, 67.5% 1.5%, 70% 0%, 72.5% 1.5%, 75% 0%, 77.5% 1.5%, 80% 0%, 82.5% 1.5%, 85% 0%, 87.5% 1.5%, 90% 0%, 92.5% 1.5%, 95% 0%, 97.5% 1.5%, 100% 0%, 100% 100%, 97.5% 98.5%, 95% 100%, 92.5% 98.5%, 90% 100%, 87.5% 98.5%, 85% 100%, 82.5% 98.5%, 80% 100%, 77.5% 98.5%, 75% 100%, 72.5% 98.5%, 70% 100%, 67.5% 98.5%, 65% 100%, 62.5% 98.5%, 60% 100%, 57.5% 98.5%, 55% 100%, 52.5% 98.5%, 50% 100%, 47.5% 98.5%, 45% 100%, 42.5% 98.5%, 40% 100%, 37.5% 98.5%, 35% 100%, 32.5% 98.5%, 30% 100%, 27.5% 98.5%, 25% 100%, 22.5% 98.5%, 20% 100%, 17.5% 98.5%, 15% 100%, 12.5% 98.5%, 10% 100%, 7.5% 98.5%, 5% 100%, 2.5% 98.5%, 0% 100%)",
                     }}
                   >
                     {/* Amber warning checkout header bar with diagonal warning stripes */}
                     <div className="bg-amber-500 text-slate-900 text-center py-3 font-black text-xs relative select-none uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5">
-                      <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,#000,#000_10px,#fff_10px,#fff_20px)] pointer-events-none" />
+                      <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,var(--text-primary),var(--text-primary)_10px,var(--bg-surface)_10px,var(--bg-surface)_20px)] pointer-events-none" />
                       <AlertCircle size={13} className="animate-spin-slow relative z-10" /> <span className="relative z-10">سند تسوية مرتجع المبيعات</span>
                     </div>
 
@@ -589,10 +589,10 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                 {/* 4. SUPPLIER DEBIT NOTE (purchase_return) */}
                 {docType === "purchase_return" && (
-                  <div className="bg-[#fffafa] border border-rose-200 rounded-[2.5rem] shadow-[0_8px_30px_rgba(239,68,68,0.03)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
+                  <div className="bg-[var(--danger-bg)] border border-rose-200 rounded-[2.5rem] shadow-[0_8px_30px_rgba(239,68,68,0.03)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
                     {/* Rose Caution Header bar with caution stripes for returns */}
                     <div className="bg-rose-600 text-white py-3 px-5 font-black text-xs flex justify-between items-center select-none uppercase tracking-wider shadow-sm relative">
-                      <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,#000,#000_10px,#fff_10px,#fff_20px)] pointer-events-none" />
+                      <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,var(--text-primary),var(--text-primary)_10px,var(--bg-surface)_10px,var(--bg-surface)_20px)] pointer-events-none" />
                       <span className="flex items-center gap-1.5 relative z-10"><AlertTriangle size={13} className="animate-bounce" /> إشعار مدين مرتجع مشتريات</span>
                       <span className="font-mono opacity-85 relative z-10">DEBIT NOTE</span>
                     </div>
@@ -650,7 +650,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                 {/* 5. BRANCH TRANSFERS LOGISTICS BILL (branch_transfer) */}
                 {docType === "branch_transfer" && (
-                  <div className="bg-[#fafaff] border border-indigo-200 rounded-[2.5rem] shadow-[0_8px_30px_rgba(99,102,241,0.03)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
+                  <div className="bg-[var(--info-bg)] border border-indigo-200 rounded-[2.5rem] shadow-[0_8px_30px_rgba(99,102,241,0.03)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
                     {/* Indigo logistics header to clearly distinguish transfers */}
                     <div className="bg-indigo-600 text-white py-3 px-5 font-black text-xs flex justify-between items-center select-none uppercase tracking-wider shadow-sm">
                       <span className="flex items-center gap-1.5"><Truck size={13} className="animate-pulse" /> سند استلام وتحويل مخزني داخلي</span>
@@ -665,7 +665,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                       <div className="flex-1 py-2 space-y-4 relative z-10">
                         {/* Origin and destination warehouse map */}
                         <div className="bg-white border border-indigo-100/60 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner relative overflow-hidden">
-                          <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(#4f46e5_1.5px,transparent_1.5px)] [background-size:12px_12px] pointer-events-none" />
+                          <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(var(--info-text)_1.5px,transparent_1.5px)] [background-size:12px_12px] pointer-events-none" />
                           
                           <div className="flex flex-col text-right z-10">
                             <span className="text-[8px] text-slate-400 font-bold block mb-0.5">من مخزن</span>
@@ -725,7 +725,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                 {/* 6. INITIAL BALANCE DOCUMENT SHEET (opening_balance) */}
                 {docType === "opening_balance" && (
-                  <div className="bg-[#fcfbf9] border border-slate-300 rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
+                  <div className="bg-[var(--bg-surface)] border border-slate-300 rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
                     {/* Slate setup balance header bar */}
                     <div className="bg-slate-700 text-white py-3 px-5 font-black text-xs flex justify-between items-center select-none uppercase tracking-wider shadow-sm">
                       <span className="flex items-center gap-1.5"><Database size={13} /> سند اعتماد رصيد افتتاحي تأسيسي</span>
@@ -921,7 +921,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
             <motion.button 
               whileTap={{ scale: 0.96 }}
               onClick={onClose} 
-              className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-black text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl bg-primary px-6 py-2.5 text-xs font-black text-white hover:bg-primary-600 transition-colors"
             >
               إغلاق نافذة العرض
             </motion.button>

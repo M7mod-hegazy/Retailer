@@ -173,7 +173,7 @@ export default function ChequesPage() {
           </button>
           </PermissionGate>
           <PermissionGate page="cheques" action="add">
-          <button data-help="add-button" onClick={() => setAddOpen(true)} className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95">
+          <button data-help="add-button" onClick={() => setAddOpen(true)} className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95">
             <Plus className="h-4 w-4" /> إضافة شيك يدوي
           </button>
           </PermissionGate>

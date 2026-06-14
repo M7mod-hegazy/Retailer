@@ -788,8 +788,6 @@ export default function ReportWorkspacePage() {
 
   const handleExport = useCallback(async (format, exportColumns = visibleColumns) => {
     if (format === "print") {
-      console.group("[PrintDebug] handleExport print");
-      console.log("totalRows:", totalRows, "pageSize requested:", Math.max(totalRows, 10000), "appliedParams:", appliedParams);
       setPrintAllLoading(true);
       try {
         const MAX_PAGE_SIZE = 10000;
@@ -820,17 +818,11 @@ export default function ReportWorkspacePage() {
             data: mergedData,
             total: totalRows,
           };
-          console.log("batched fetch — batches:", totalPagesNeeded, "total rows merged:", mergedData.length);
         }
 
-        const rowCount = allData?.data?.length;
-        console.log("fetchReport response — rows received:", rowCount, "server total:", allData?.total, "hasData array:", Array.isArray(allData?.data));
-        console.groupEnd();
         setPrintAllData(allData);
         setPrintOpen(true);
       } catch (err) {
-        console.warn("[PrintDebug] fetchReport error", err);
-        console.groupEnd();
         setPrintAllData(null);
         setPrintOpen(true);
       }
@@ -869,7 +861,7 @@ export default function ReportWorkspacePage() {
 
   if (!definition) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#fafafa]">
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-base)]">
         <div className="flex flex-col items-center justify-center text-center space-y-6">
           <div className="h-20 w-20 rounded-3xl bg-zinc-100 flex items-center justify-center text-zinc-400 shadow-inner">
             <LayoutList size={36} />
@@ -878,7 +870,7 @@ export default function ReportWorkspacePage() {
             <h1 className="text-2xl font-black text-zinc-900 mb-2">التقرير غير متاح</h1>
             <p className="text-sm text-zinc-500 max-w-sm">هذا التقرير غير معروف في النظام الحالي.</p>
           </div>
-          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-800 transition-colors shadow-lg">
+          <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-primary-600 transition-colors shadow-lg">
             <ArrowLeft size={16} /> العودة إلى مركز التقارير
           </Link>
         </div>
@@ -887,7 +879,7 @@ export default function ReportWorkspacePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-6 py-8 bg-[#fafafa] min-h-screen text-zinc-900 font-satoshi" dir="rtl">
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-8 bg-[var(--bg-base)] min-h-screen text-zinc-900 font-satoshi" dir="rtl">
       
       {/* 1. LIGHT MODE BENTO HERO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
@@ -952,7 +944,7 @@ export default function ReportWorkspacePage() {
       {/* 2. STICKY COMMAND BAR */}
       <div className="sticky top-4 z-40 bg-white/80 backdrop-blur-xl border border-zinc-200 rounded-[20px] p-2.5 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-3 transition-all">
          <div className="flex items-center gap-2">
-           <button onClick={() => setFiltersOpen(!filtersOpen)} className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-zinc-900 text-white shadow-md" : "bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-200"}`}>
+           <button onClick={() => setFiltersOpen(!filtersOpen)} className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-primary text-white shadow-md" : "bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-200"}`}>
              <SlidersHorizontal size={16} /> 
              <span>الفلاتر المتقدمة</span>
              <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180 text-zinc-400" : ""}`} />
@@ -1061,7 +1053,7 @@ export default function ReportWorkspacePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-2sm font-bold text-zinc-500 hover:bg-zinc-100 transition-colors">إعادة تعيين</button>
-                  <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 rounded-xl text-2sm font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors">إغلاق</button>
+                  <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 rounded-xl text-2sm font-bold bg-primary text-white hover:bg-primary-600 transition-colors">إغلاق</button>
                 </div>
               </div>
             </div>
@@ -1081,10 +1073,10 @@ export default function ReportWorkspacePage() {
 
       {/* 3. WORKSPACE TABS */}
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setActiveTab("table")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
+        <button onClick={() => setActiveTab("table")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-primary text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
           <LayoutList size={16} /> جدول البيانات
         </button>
-        <button onClick={() => setActiveTab("chart")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-zinc-900 text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
+        <button onClick={() => setActiveTab("chart")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-primary text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
           <BarChart3 size={16} /> تحليل بياني
         </button>
       </div>
@@ -1210,7 +1202,7 @@ export default function ReportWorkspacePage() {
                     const page = start + i;
                     if (page > totalPages) return null;
                     const isActive = page === currentPage;
-                    return (<button key={page} onClick={() => handlePageChange(page)} className={`h-8 min-w-[32px] px-2 flex items-center justify-center rounded-lg text-sm font-black transition-all ${isActive ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"}`}>{page}</button>);
+                    return (<button key={page} onClick={() => handlePageChange(page)} className={`h-8 min-w-[32px] px-2 flex items-center justify-center rounded-lg text-sm font-black transition-all ${isActive ? "bg-primary text-white" : "text-zinc-500 hover:bg-zinc-100"}`}>{page}</button>);
                   })}
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 hover:text-zinc-900 transition-all"><ChevronLeft size={16} /></button>
                 </div>

@@ -174,7 +174,7 @@ function MethodsTab() {
                 </PermissionGate>
               )}
               <PermissionGate page="payment_methods" action="add">
-                <button data-help="add-button" onClick={openCreate} className="flex h-12 items-center gap-2 rounded-full bg-slate-900 px-6 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] active:scale-95 uppercase tracking-widest">
+                <button data-help="add-button" onClick={openCreate} className="flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] active:scale-95 uppercase tracking-widest">
                   <Plus size={16} /> وسيلة جديدة
                 </button>
               </PermissionGate>
@@ -250,7 +250,7 @@ function MethodsTab() {
               <div className="p-8 border-t border-slate-100 flex gap-4">
                 <button onClick={() => setModalOpen(false)} className="flex-1 rounded-full bg-slate-100 py-4 text-sm font-black text-slate-600 hover:bg-slate-200 transition-colors uppercase tracking-widest">إلغاء</button>
                 <button onClick={handleSave} disabled={!form.name.trim() || saving}
-                  className="flex-[2] rounded-full bg-slate-950 py-4 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50 transition-all shadow-lg active:scale-95 uppercase tracking-widest">
+                  className="flex-[2] rounded-full bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 disabled:opacity-50 transition-all shadow-lg active:scale-95 uppercase tracking-widest">
                   {saving ? "جاري التسجيل..." : "حفظ الوسيلة"}
                 </button>
               </div>
@@ -294,7 +294,7 @@ function TransactionsTab() {
   const isFiltered = filters.search || filters.from || filters.to || filters.method || filters.type;
 
   return (
-    <div className="flex flex-col flex-1 bg-[#f9fafb]">
+    <div className="flex flex-col flex-1 bg-[var(--bg-base)]">
 
       {/* Summary Chips */}
       <div className="flex items-center gap-6 px-8 py-6 border-b border-slate-200 bg-white flex-wrap">
@@ -342,7 +342,7 @@ function TransactionsTab() {
           </div>
 
           <div className="flex items-center gap-3 pr-4 border-r border-slate-200">
-            <button onClick={load} className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-md">
+            <button onClick={load} className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-600 transition-colors shadow-md">
               <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
             </button>
             <PermissionGate page="payment_methods" action="print">
@@ -452,7 +452,7 @@ export default function PaymentMethodsPage() {
   const [tab, setTab] = useState("methods");
 
   return (
-    <div className="flex flex-col h-full bg-[#f9fafb] font-sans" dir="rtl">
+    <div className="flex flex-col h-full bg-[var(--bg-base)] font-sans" dir="rtl">
       
       <header className="bg-white border-b border-slate-200 px-10 py-12 shrink-0 flex flex-col gap-12 z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 max-w-7xl mx-auto w-full">

@@ -205,7 +205,7 @@ export default function ScreenLock() {
 
       <div className="relative z-10 w-full max-w-[440px] rounded-[40px] bg-white/70 p-12 text-center shadow-[0_24px_80px_-12px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-3xl border border-white/50">
         
-        <div className="mx-auto flex h-24 w-24 relative items-center justify-center rounded-[32px] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 shadow-[0_8px_30px_-6px_rgba(16,185,129,0.15)]">
+        <div className="mx-auto flex h-24 w-24 relative items-center justify-center rounded-[32px] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 shadow-[0_8px_30px_-6px_var(--primary-glow)]">
           <div className="absolute inset-0 rounded-[32px] bg-emerald-400/20 blur-xl mix-blend-multiply" />
           <Lock className="relative z-10 h-10 w-10" strokeWidth={1.5} />
         </div>
@@ -252,7 +252,7 @@ export default function ScreenLock() {
 
           <button 
             type="submit" 
-            className="group relative mt-5 flex w-full items-center justify-center overflow-hidden rounded-[24px] bg-slate-900 px-4 py-5 text-[16px] font-black text-white shadow-[0_8px_30px_-8px_rgba(15,23,42,0.4)] transition-all hover:bg-slate-800 hover:scale-[1.02] hover:shadow-[0_12px_40px_-10px_rgba(15,23,42,0.5)] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+            className="group relative mt-5 flex w-full items-center justify-center overflow-hidden rounded-[24px] bg-primary px-4 py-5 text-[16px] font-black text-white shadow-[0_8px_30px_-8px_rgba(15,23,42,0.4)] transition-all hover:bg-primary-600 hover:scale-[1.02] hover:shadow-[0_12px_40px_-10px_rgba(15,23,42,0.5)] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             disabled={isSubmitting}
           >
             {isSubmitting ? (

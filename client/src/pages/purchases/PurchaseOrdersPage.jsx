@@ -220,7 +220,7 @@ export default function PurchaseOrdersPage() {
             {STATUS_TABS.map(tab => (
               <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
                 className={`whitespace-nowrap rounded-full px-6 py-3 text-sm font-black transition-all ${
-                  statusFilter === tab.value ? "bg-slate-900 text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                  statusFilter === tab.value ? "bg-primary text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                 }`}>
                 {tab.label}
               </button>
@@ -258,7 +258,7 @@ export default function PurchaseOrdersPage() {
                       className="group relative flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white border border-slate-200/60 rounded-[1.5rem] p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-200/60 transition-all duration-500">
                       
                       <div className="flex items-center gap-6 lg:w-[35%]">
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 group-hover:bg-slate-950 group-hover:text-white group-hover:scale-105 transition-all duration-500">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 group-hover:bg-primary group-hover:text-white group-hover:scale-105 transition-all duration-500">
                           <Package className="h-6 w-6" strokeWidth={1.5} />
                         </div>
                         <div className="flex flex-col gap-1.5">
@@ -308,7 +308,7 @@ export default function PurchaseOrdersPage() {
                           </PermissionGate>
                         )}
 
-                        <button onClick={() => openDetailModal(row.id)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 hover:bg-slate-950 hover:text-white transition-all">
+                        <button onClick={() => openDetailModal(row.id)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 hover:bg-primary-600 hover:text-white transition-all">
                           <Eye className="h-5 w-5" />
                         </button>
 
@@ -432,7 +432,7 @@ export default function PurchaseOrdersPage() {
             <button onClick={() => setActiveOrder(null)} className="rounded-2xl px-8 py-4 text-sm font-black text-slate-500 hover:bg-slate-100 transition-colors">تراجع وإلغاء</button>
             <button
               onClick={() => { if (receiveConfirmLines.length === 0) { toast.error("أدخل كمية لصنف واحد على الأقل"); return; } setReceiveStep("confirm"); }}
-              className="flex items-center gap-3 rounded-2xl bg-slate-950 px-10 py-4 text-sm font-black text-white hover:bg-slate-800 transition-all shadow-xl hover:shadow-slate-900/20 active:scale-95"
+              className="flex items-center gap-3 rounded-2xl bg-primary px-10 py-4 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-xl hover:shadow-slate-900/20 active:scale-95"
             >
               مراجعة الاستلام النهائي <ChevronRight className="h-4 w-4" />
             </button>

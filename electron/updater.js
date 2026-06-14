@@ -8,6 +8,20 @@ try {
 
 let _mainWindow = null;
 
+function send(channel, payload) {
+  if (_mainWindow && !_mainWindow.isDestroyed()) {
+    _mainWindow.webContents.send(channel, payload);
+  }
+}
+
+function sendError(err) {
+  const message =
+    (err && err.message) ||
+    (typeof err === "string" ? err : "") ||
+    "تعذر التحقق من التحديثات. يرجى التأكد من اتصال الإنترنت.";
+  send("update:error", { message });
+}
+
 function setupAutoUpdater(mainWindow) {
   _mainWindow = mainWindow;
 
@@ -16,47 +30,30 @@ function setupAutoUpdater(mainWindow) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("update-available", (info) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send("update:available", info);
-    }
-  });
+  autoUpdater.on("update-available", (info) => send("update:available", info));
+  autoUpdater.on("update-not-available", () => send("update:not-available"));
+  autoUpdater.on("download-progress", (progress) => send("update:progress", progress));
+  autoUpdater.on("update-downloaded", (info) => send("update:downloaded", info));
+  autoUpdater.on("error", (err) => sendError(err));
 
-  autoUpdater.on("update-not-available", () => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send("update:not-available");
-    }
-  });
-
-  autoUpdater.on("download-progress", (progress) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send("update:progress", progress);
-    }
-  });
-
-  autoUpdater.on("update-downloaded", (info) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send("update:downloaded", info);
-    }
-  });
-
-  autoUpdater.on("error", (err) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send("update:error", { message: err.message });
-    }
-  });
-
-  autoUpdater.checkForUpdates().catch(() => {});
+  // Initial check on launch — surface failures instead of swallowing them.
+  autoUpdater.checkForUpdates().catch(sendError);
 }
 
 function checkForUpdates() {
-  if (!autoUpdater || !_mainWindow) return;
-  autoUpdater.checkForUpdates().catch(() => {});
+  if (!autoUpdater || !_mainWindow) {
+    sendError("خدمة التحديث غير متاحة في هذه النسخة.");
+    return;
+  }
+  autoUpdater.checkForUpdates().catch(sendError);
 }
 
 function downloadUpdate() {
-  if (!autoUpdater || !_mainWindow) return;
-  autoUpdater.downloadUpdate().catch(() => {});
+  if (!autoUpdater || !_mainWindow) {
+    sendError("خدمة التحديث غير متاحة في هذه النسخة.");
+    return;
+  }
+  autoUpdater.downloadUpdate().catch(sendError);
 }
 
 function quitAndInstall() {

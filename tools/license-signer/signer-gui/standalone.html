@@ -152,7 +152,7 @@ function formatActivationCode(blob) {
   const prefix = blob.slice(0, dot + 1);
   const body = blob.slice(dot + 1);
   const groups = body.match(/.{1,5}/g) || [];
-  return prefix + groups.join("-");
+    return prefix + groups.join(" ");
 }
 
 /* ---- PEM parsing ---- */

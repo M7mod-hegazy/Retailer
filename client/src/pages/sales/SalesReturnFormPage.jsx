@@ -779,7 +779,7 @@ export default function SalesReturnFormPage() {
 
         <div className="flex items-center px-6 pt-5 pb-2 relative z-10">
           <button onClick={() => navigate("/sales/returns")}
-            className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95">
+            className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:bg-primary-600 hover:text-white hover:border-slate-900 transition-all active:scale-95">
             <ArrowLeft className="h-5 w-5" />
           </button>
         </div>
@@ -917,7 +917,7 @@ export default function SalesReturnFormPage() {
         {/* Left Panel */}
         <aside className="flex w-[340px] lg:w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
           <div className="flex flex-col gap-5 p-5">
-            <button onClick={handleTodayInvoicesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-sm active:scale-[0.98]">
+            <button onClick={handleTodayInvoicesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-600 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> فواتير المبيعات
             </button>
 

@@ -137,7 +137,7 @@ export default function ActivationPage({ status, onActivated }) {
 
   if (success) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f6f8]" dir="rtl">
+      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-base)]" dir="rtl">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
             <CheckCircle2 className="w-11 h-11 text-emerald-600" />
@@ -156,7 +156,7 @@ export default function ActivationPage({ status, onActivated }) {
 
   return (
     <div
-      className="fixed inset-0 overflow-y-auto bg-[#f4f6f8] text-slate-800 font-sans"
+      className="fixed inset-0 overflow-y-auto bg-[var(--bg-base)] text-slate-800 font-sans"
       dir="rtl"
     >
       <div className="flex min-h-full items-center justify-center p-6">
@@ -268,7 +268,7 @@ export default function ActivationPage({ status, onActivated }) {
           type="button"
           onClick={() => activate({ blob })}
           disabled={submitting || (!blob.trim())}
-          className="w-full flex items-center justify-center gap-2 bg-[#059669] text-white font-black text-[17px] py-[18px] rounded-2xl hover:bg-[#047857] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 bg-[var(--primary)] text-white font-black text-[17px] py-[18px] rounded-2xl hover:bg-[var(--primary-600)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? (
             <>

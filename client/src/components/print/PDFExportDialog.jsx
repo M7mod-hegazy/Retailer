@@ -169,7 +169,7 @@ export default function PDFExportDialog({
                     onClick={() => setOrientation(opt)}
                     className={`flex-1 px-3 py-2 rounded-xl text-2sm font-bold border transition-all ${
                       orientation === opt
-                        ? "bg-zinc-900 text-white border-zinc-900"
+                        ? "bg-primary text-white border-primary"
                         : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
                     }`}
                   >
@@ -203,7 +203,7 @@ export default function PDFExportDialog({
                     onClick={() => setFontSize(f.id)}
                     className={`flex-1 px-3 py-2 rounded-xl text-2sm font-bold border transition-all ${
                       fontSize === f.id
-                        ? "bg-zinc-900 text-white border-zinc-900"
+                        ? "bg-primary text-white border-primary"
                         : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
                     }`}
                   >

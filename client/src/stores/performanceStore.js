@@ -16,6 +16,9 @@ const PRESETS = {
     imageQuality: "high",
     particles: true,
     smoothScrolling: true,
+    notificationPollInterval: 60000,
+    healthCheckInterval: 5000,
+    virtualizeLists: false,
   },
   medium: {
     animations: false,
@@ -31,6 +34,9 @@ const PRESETS = {
     imageQuality: "medium",
     particles: false,
     smoothScrolling: true,
+    notificationPollInterval: 120000,
+    healthCheckInterval: 15000,
+    virtualizeLists: true,
   },
   low: {
     animations: false,
@@ -46,6 +52,9 @@ const PRESETS = {
     imageQuality: "low",
     particles: false,
     smoothScrolling: false,
+    notificationPollInterval: 300000,
+    healthCheckInterval: 30000,
+    virtualizeLists: true,
   },
 };
 
@@ -118,7 +127,7 @@ export const usePerformanceStore = create(
     }),
     {
       name: "elhegazi-perf",
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         const base = { ...PRESETS.low, ...persisted?.settings };
         return {

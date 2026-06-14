@@ -115,7 +115,7 @@ export default function ExpiryReportPage() {
   ], []);
 
   return (
-    <div className="flex flex-col min-h-full font-sans bg-[#F4F7FB] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
+    <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
       <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-400/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none" />
 

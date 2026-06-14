@@ -177,13 +177,13 @@ export default function PaymentFormPage() {
                <div className="grid grid-cols-2 gap-2">
                  <button 
                   onClick={() => setForm(f => ({ ...f, party_type: 'customer', party_id: "" }))}
-                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-2sm font-black transition-all ${form.party_type === 'customer' ? 'border-slate-800 bg-slate-800 text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-2sm font-black transition-all ${form.party_type === 'customer' ? 'border-primary bg-primary text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
                  >
                    <User className="h-4 w-4" /> عميل (تحصيل)
                  </button>
                  <button 
                   onClick={() => setForm(f => ({ ...f, party_type: 'supplier', party_id: "" }))}
-                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-2sm font-black transition-all ${form.party_type === 'supplier' ? 'border-slate-800 bg-slate-800 text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                  className={`flex items-center justify-center gap-2 rounded-sm border py-2.5 text-2sm font-black transition-all ${form.party_type === 'supplier' ? 'border-primary bg-primary text-white shadow-md' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
                  >
                    <Briefcase className="h-4 w-4" /> مورد (سداد)
                  </button>
@@ -292,7 +292,7 @@ export default function PaymentFormPage() {
               <button 
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-sm bg-slate-800 py-4 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-sm bg-primary py-4 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
               >
                 <CheckCircle2 className="h-5 w-5" /> {loading ? 'جاري الحفظ...' : 'تأكيد وحفظ الحركة الماليّة'}
               </button>
@@ -332,7 +332,7 @@ export default function PaymentFormPage() {
               <div className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md">
                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4">
                     <div className="flex items-center gap-3">
-                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-white"><TableIcon className="h-4 w-4" /></div>
+                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white"><TableIcon className="h-4 w-4" /></div>
                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">تخصيص السداد على الفواتير المفتوحة</h3>
                     </div>
                     <button 

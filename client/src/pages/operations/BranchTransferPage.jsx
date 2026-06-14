@@ -146,7 +146,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
             <PermissionGate page="branch_transfer" action="edit">
               <button
                 onClick={() => onEdit(d.id)}
-                className="flex items-center gap-2 rounded-[1.5rem] bg-slate-900 px-10 py-4 text-sm font-black text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
+                className="flex items-center gap-2 rounded-[1.5rem] bg-primary px-10 py-4 text-sm font-black text-white hover:bg-primary-600 transition-all active:scale-95 shadow-lg"
               >
                 <Pencil className="h-4 w-4" /> تعديل المستند
               </button>
@@ -283,7 +283,7 @@ export default function BranchTransferPage() {
   const pagedItemRows = itemRows.slice((itemPage - 1) * PAGE_SIZE, itemPage * PAGE_SIZE);
 
   return (
-    <div className="relative min-h-[100dvh] p-6 lg:p-10 overflow-x-hidden font-sans bg-[#f8fafc]" dir="rtl">
+    <div className="relative min-h-[100dvh] p-6 lg:p-10 overflow-x-hidden font-sans bg-[var(--bg-base)]" dir="rtl">
 
       {/* Background light emitters */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -383,7 +383,7 @@ export default function BranchTransferPage() {
                   {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
                     <button key={v} onClick={() => setTypeFilter(v)}
                       className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
-                        typeFilter === v ? "bg-zinc-950 text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                        typeFilter === v ? "bg-primary text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                       }`}>
                       {l}
                     </button>
@@ -483,7 +483,7 @@ export default function BranchTransferPage() {
                   {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
                     <button key={v} onClick={() => setItemTypeFilter(v)}
                       className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
-                        itemTypeFilter === v ? "bg-zinc-950 text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                        itemTypeFilter === v ? "bg-primary text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                       }`}>
                       {l}
                     </button>
@@ -587,7 +587,7 @@ export default function BranchTransferPage() {
                                 <Pencil className="h-4 w-4" />
                               </button>
                             </PermissionGate>
-                            <button className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 group-hover:bg-zinc-950 group-hover:border-zinc-950 group-hover:text-white transition-all duration-300">
+                            <button className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-300">
                               <Eye className="h-5 w-5" />
                             </button>
                           </div>

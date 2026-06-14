@@ -34,7 +34,7 @@ function BankModal({ bank, mode, onClose, onDone }) {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setPrintOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-xl bg-slate-800 px-3 text-[11px] font-black text-white hover:bg-slate-900">
+              className="flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600">
               <Printer className="h-4 w-4" /> طباعة الكشف
             </button>
             <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>

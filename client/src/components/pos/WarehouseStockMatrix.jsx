@@ -47,7 +47,7 @@ export default function WarehouseStockMatrix({
           let icon = null;
 
           if (isSelected) {
-             statusStyle = "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-[0_4px_12px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500";
+             statusStyle = "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-[0_4px_12px_var(--primary-glow)] ring-1 ring-emerald-500";
              badgeStyle = "bg-emerald-500 text-white";
              icon = <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mr-1.5" />;
           } else {

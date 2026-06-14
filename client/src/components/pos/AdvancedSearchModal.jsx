@@ -244,7 +244,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
           ) : (
             <table className="w-full text-2sm" dir="rtl">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-800 text-white">
+                <tr className="bg-primary text-white">
                   <th className="px-4 py-3 text-right font-black text-[11px] tracking-wide">#</th>
                   <th className="px-4 py-3 text-right font-black text-[11px] tracking-wide">اسم الصنف</th>
                   <th className="px-4 py-3 text-right font-black text-[11px] tracking-wide">الكود / SKU</th>

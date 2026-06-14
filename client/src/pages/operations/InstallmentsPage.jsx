@@ -90,10 +90,10 @@ export default function InstallmentsPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
-            <button onClick={() => setPartyType("customer")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "customer" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button onClick={() => setPartyType("customer")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "customer" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"}`}>
               <User className="h-3.5 w-3.5" /> العملاء
             </button>
-            <button onClick={() => setPartyType("supplier")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "supplier" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button onClick={() => setPartyType("supplier")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "supplier" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"}`}>
               <Building2 className="h-3.5 w-3.5" /> الموردين
             </button>
           </div>
@@ -144,7 +144,7 @@ export default function InstallmentsPage() {
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-2 rounded-lg text-[11px] font-black border transition-all ${statusFilter === s ? "bg-slate-800 text-white border-slate-800" : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"}`}
+              className={`px-3 py-2 rounded-lg text-[11px] font-black border transition-all ${statusFilter === s ? "bg-primary text-white border-slate-800" : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"}`}
             >
               {s === "" ? "الكل" : STATUS_MAP[s]?.label}
             </button>

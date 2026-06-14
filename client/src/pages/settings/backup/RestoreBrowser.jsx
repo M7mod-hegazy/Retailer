@@ -73,7 +73,7 @@ function SnapshotRow({ snap, onRestore, onExport, busy, perms }) {
             whileTap={{ scale: 0.94 }}
             disabled={busy}
             onClick={() => onRestore(snap)}
-            className="flex h-8 items-center gap-1 rounded-sm bg-slate-900 px-3 text-[11px] font-black uppercase tracking-wider text-white transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+            className="flex h-8 items-center gap-1 rounded-sm bg-primary px-3 text-[11px] font-black uppercase tracking-wider text-white transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
           >
             <RotateCcw className="h-3.5 w-3.5" /> استعادة
           </motion.button>

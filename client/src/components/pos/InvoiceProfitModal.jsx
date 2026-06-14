@@ -92,7 +92,7 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
             {/* Per-line breakdown */}
             <div className="overflow-auto rounded-lg border border-slate-200" style={{ maxHeight: 340 }}>
               <table className="w-full text-2sm" dir="rtl">
-                <thead className="sticky top-0 bg-slate-800 text-white">
+                <thead className="sticky top-0 bg-primary text-white">
                   <tr>
                     <th className="px-3 py-2.5 text-right font-black">الصنف</th>
                     <th className="px-3 py-2.5 text-right font-black">الكمية</th>

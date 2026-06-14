@@ -1539,7 +1539,7 @@ export default function PurchaseFormPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-sm font-black">{supplier.name[0]}</div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-black">{supplier.name[0]}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-800 truncate">{supplier.name}</p>
                   {supplier.phone && <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5"><Phone className="h-3 w-3" /> {supplier.phone}</p>}
@@ -1722,7 +1722,7 @@ export default function PurchaseFormPage() {
               <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
               {paymentMode === "cash" && (
                 <div className="flex items-center gap-3 rounded-sm border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-800 text-white"><Banknote className="h-4 w-4" /></div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-white"><Banknote className="h-4 w-4" /></div>
                   <span className="text-2sm font-black text-slate-700">نقدي</span>
                 </div>
               )}

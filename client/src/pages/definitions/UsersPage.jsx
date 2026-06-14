@@ -460,7 +460,7 @@ export default function UsersPage() {
                   }}
                   className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
                     editingRow?.id === info.row.original.id
-                      ? "bg-zinc-950 text-white shadow-md"
+                      ? "bg-primary text-white shadow-md"
                       : "text-slate-400 hover:bg-slate-100 hover:text-zinc-900"
                   }`}
                 >
@@ -494,7 +494,7 @@ export default function UsersPage() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-[#fafafa] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative"
+      className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative"
       dir="rtl"
     >
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
@@ -737,7 +737,7 @@ export default function UsersPage() {
                       ? "bg-emerald-500"
                       : editingRow
                         ? "bg-amber-600 hover:bg-amber-700"
-                        : "bg-zinc-950 hover:bg-zinc-800"
+                        : "bg-primary hover:bg-primary-600"
                   }`}
                 >
                   {isSubmitting ? (
@@ -781,7 +781,7 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={handleApplyTemplate}
-                    className="h-9 px-3 rounded-lg bg-zinc-950 text-white text-[11px] font-black hover:bg-zinc-800 transition"
+                    className="h-9 px-3 rounded-lg bg-primary text-white text-[11px] font-black hover:bg-primary-600 transition"
                   >
                     تطبيق القالب
                   </button>
@@ -1005,7 +1005,7 @@ export default function UsersPage() {
                                               onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: ["view"] }))}
                                               className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
                                                 status === "custom" && currentActions.length === 1 && currentActions.includes("view")
-                                                  ? "bg-zinc-950 text-white shadow-sm"
+                                                  ? "bg-primary text-white shadow-sm"
                                                   : "text-slate-400 hover:text-slate-700 hover:bg-slate-200"
                                               }`}
                                             >
@@ -1046,7 +1046,7 @@ export default function UsersPage() {
                                                     onClick={() => toggleAction(pageKey, act)}
                                                     className={`h-7 px-2.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 select-none ${
                                                       checked 
-                                                        ? "bg-zinc-950 text-white border-zinc-950 font-black shadow-sm" 
+                                                        ? "bg-primary text-white border-primary font-black shadow-sm" 
                                                         : "bg-slate-50 text-slate-500 border-slate-200/60 hover:bg-slate-100 hover:text-slate-700"
                                                     }`}
                                                   >

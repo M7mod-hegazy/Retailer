@@ -208,7 +208,7 @@ export default function QuotationFormPage() {
   }
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col bg-[#F9FAFB] font-sans overflow-hidden px-4 lg:px-8 pb-6">
+    <div className="flex h-full min-h-[600px] flex-col bg-[var(--bg-base)] font-sans overflow-hidden px-4 lg:px-8 pb-6">
       {/* Workspace Header */}
       <DocumentHeaderBar
         onBack={() => {
@@ -477,7 +477,7 @@ export default function QuotationFormPage() {
                     <button 
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="flex h-11 items-center justify-center gap-2 rounded-sm bg-slate-800 text-sm font-black text-white hover:bg-slate-700 shadow-md transition-all active:scale-95"
+                      className="flex h-11 items-center justify-center gap-2 rounded-sm bg-primary text-sm font-black text-white hover:bg-primary-600 shadow-md transition-all active:scale-95"
                     >
                        <Save className="h-4 w-4" /> حفظ العرض
                     </button>

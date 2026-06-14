@@ -11,7 +11,7 @@ export const useUpdateStore = create((set) => ({
   setAvailable: (info) => set({ available: true, info, checking: false }),
   setNotAvailable: () => set({ available: false, checking: false }),
   setProgress: (p) => set({ progress: p }),
-  setDownloaded: (info) => set({ downloaded: true, info }),
+  setDownloaded: (info) => set({ downloaded: true, info, checking: false }),
   setError: (e) => set({ error: e, checking: false }),
   reset: () => set({ available: false, downloaded: false, info: null, progress: null, error: null, checking: false }),
 }))

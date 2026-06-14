@@ -2,7 +2,7 @@ import React from "react";
 import { usePerformanceStore, PRESETS } from "../../stores/performanceStore";
 import {
   Monitor, Zap, BatteryLow, Wind, Eye, Sun, Table, Sidebar, ArrowLeftRight,
-  Gauge, Image, Sparkles, MousePointer2, Activity, Sliders,
+  Gauge, Image, Sparkles, MousePointer2, Activity, Sliders, Bell, Server,
 } from "lucide-react";
 
 const PRESET_META = {
@@ -50,6 +50,7 @@ const GROUPS = [
     toggles: [
       { key: "fpsCounter", icon: Activity, label: "عداد الإطارات (FPS)" },
       { key: "smoothScrolling", icon: MousePointer2, label: "التمرير السلس" },
+      { key: "virtualizeLists", icon: Table, label: "التمرير الافتراضي للجداول الكبيرة" },
     ],
     extras: [
       {
@@ -60,6 +61,36 @@ const GROUPS = [
           { value: 60, label: "60 إطار/ث" },
           { value: 30, label: "30 إطار/ث" },
           { value: -1, label: "غير محدود" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "الشبكة والخادم",
+    icon: Server,
+    toggles: [],
+    extras: [
+      {
+        key: "healthCheckInterval",
+        label: "التحقق من صحة الخادم",
+        icon: Activity,
+        options: [
+          { value: 5000, label: "كل 5 ثوان" },
+          { value: 15000, label: "كل 15 ثانية" },
+          { value: 30000, label: "كل 30 ثانية" },
+          { value: 60000, label: "كل دقيقة" },
+        ],
+      },
+      {
+        key: "notificationPollInterval",
+        label: "استعلام الإشعارات",
+        icon: Bell,
+        options: [
+          { value: 60000, label: "كل دقيقة" },
+          { value: 120000, label: "كل دقيقتين" },
+          { value: 300000, label: "كل 5 دقائق" },
+          { value: 600000, label: "كل 10 دقائق" },
+          { value: 0, label: "معطل" },
         ],
       },
     ],

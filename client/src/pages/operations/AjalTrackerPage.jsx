@@ -309,7 +309,7 @@ export default function AjalTrackerPage() {
                 واتساب
               </button>
               <button onClick={() => setPrintType("statement")}
-                className="rounded-lg bg-slate-800 px-2 py-1 text-[11px] font-black text-white hover:bg-slate-900">
+                className="rounded-lg bg-primary px-2 py-1 text-[11px] font-black text-white hover:bg-primary-600">
                 كشف
               </button>
               <button onClick={() => setPrintType("schedule")}
@@ -403,7 +403,7 @@ export default function AjalTrackerPage() {
                   </div>
                 )}
                 <button onClick={handleSchedule} disabled={scheduling}
-                  className="w-full rounded-xl bg-slate-800 py-3 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-40">
+                  className="w-full rounded-xl bg-primary py-3 text-sm font-black text-white hover:bg-primary-600 disabled:opacity-40">
                   {scheduling ? "جاري الجدولة..." : "إنشاء جدول الأقساط"}
                 </button>
 

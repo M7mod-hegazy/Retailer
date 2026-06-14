@@ -43,6 +43,90 @@ const OPERATIONAL_TABLES = [
   "document_sequences",
 ];
 
+// Category-selective purge catalog. The user ticks categories; each maps to a
+// hardcoded, schema-reviewed set of tables (and optional derived-column resets).
+// Like OPERATIONAL_TABLES this is NEVER auto-derived — master data can only be
+// wiped by a category that explicitly names it. The union of all `transactions`
+// categories' tables equals OPERATIONAL_TABLES, so "select every transaction
+// category" reproduces the old keep-setup behaviour.
+//
+// Fields:
+//   id            stable key sent by the client
+//   labelAr       Arabic label shown in the checkbox UI
+//   group         "transactions" (safe, common) | "master" (dangerous)
+//   tables        rows deleted (existence-guarded at runtime)
+//   where         optional per-table WHERE clause (e.g. keep the system owner)
+//   resets        derived columns zeroed on KEPT tables after the wipe
+//   recommendAlso categories that reference this one — surfaced by the client
+//                 advisor when a master category is wiped without its dependents
+const PURGE_CATEGORIES = [
+  // ---- Transactions -------------------------------------------------------
+  { id: "sales", labelAr: "المبيعات والمرتجعات", group: "transactions",
+    tables: ["invoices", "invoice_lines", "sales_returns", "sales_return_lines", "sales_return_lines_new"] },
+  { id: "payments", labelAr: "المدفوعات والتحصيلات", group: "transactions",
+    tables: ["payments", "payment_allocations"] },
+  { id: "purchases", labelAr: "المشتريات والمرتجعات", group: "transactions",
+    tables: ["purchases", "purchase_lines", "purchase_orders", "purchase_order_lines",
+      "purchase_payments", "purchase_returns", "purchase_return_lines"] },
+  { id: "quotations", labelAr: "عروض الأسعار", group: "transactions",
+    tables: ["quotations", "quotation_lines"] },
+  { id: "shifts", labelAr: "الورديات والجلسات اليومية", group: "transactions",
+    tables: ["shifts", "shift_transactions", "daily_sessions", "daily_withdrawals", "withdrawals"] },
+  { id: "expenses", labelAr: "المصروفات والإيرادات", group: "transactions",
+    tables: ["expenses", "revenues"] },
+  { id: "stock", labelAr: "حركات المخزون والتكاليف والجرد", group: "transactions",
+    tables: ["stock_movements", "stock_adjustments", "stock_levels", "item_batches",
+      "cost_movements", "price_history", "physical_count_sessions", "physical_count_lines"] },
+  { id: "branch_transfers", labelAr: "التحويلات بين الفروع", group: "transactions",
+    tables: ["branch_transfers", "branch_transfer_lines"] },
+  { id: "treasury", labelAr: "حركات الخزائن والبنوك (وتصفير الأرصدة)", group: "transactions",
+    tables: ["bank_transactions"],
+    resets: [{ table: "treasuries", col: "balance" }, { table: "banks", col: "balance" }] },
+  { id: "loyalty", labelAr: "نقاط الولاء (وتصفير رصيد العملاء)", group: "transactions",
+    tables: ["loyalty_transactions"],
+    resets: [{ table: "customers", col: "loyalty_points" }, { table: "customers", col: "total_spent" }] },
+  { id: "credit", labelAr: "الآجل والشيكات والأقساط", group: "transactions",
+    tables: ["cheques", "installments", "ajal_debts", "ajal_payments", "ajal_schedules"] },
+  { id: "repair_orders", labelAr: "أوامر الصيانة والإصلاح", group: "transactions",
+    tables: ["repair_orders", "repair_order_parts", "repair_order_labor", "repair_order_status_log"] },
+  { id: "owner_statements", labelAr: "كشوف حساب المالك", group: "transactions",
+    tables: ["owner_statements", "owner_statement_rows", "owner_statement_values"] },
+  { id: "pos_drafts", labelAr: "مسودات نقطة البيع المعلّقة", group: "transactions",
+    tables: ["pos_drafts"] },
+  { id: "imports", labelAr: "دفعات الاستيراد", group: "transactions",
+    tables: ["import_batches", "import_batch_items"] },
+  { id: "notifications", labelAr: "الإشعارات", group: "transactions",
+    tables: ["notifications"] },
+  { id: "notes", labelAr: "ملاحظات العملاء والموردين", group: "transactions",
+    tables: ["customer_notes", "supplier_notes"] },
+  { id: "employee_adjustments", labelAr: "تسويات الموظفين", group: "transactions",
+    tables: ["employee_adjustments"] },
+  { id: "integrity", labelAr: "نتائج فحوصات سلامة البيانات", group: "transactions",
+    tables: ["integrity_check_runs", "integrity_check_issues"] },
+  { id: "audit", labelAr: "سجل النشاط والتدقيق", group: "transactions",
+    tables: ["audit_logs"] },
+  { id: "doc_sequences", labelAr: "أرقام تسلسل المستندات (إعادة الترقيم)", group: "transactions",
+    tables: ["document_sequences"] },
+
+  // ---- Master data (dangerous) -------------------------------------------
+  { id: "customers", labelAr: "العملاء", group: "master",
+    tables: ["customers"],
+    recommendAlso: ["sales", "payments", "loyalty", "credit", "notes", "owner_statements"] },
+  { id: "suppliers", labelAr: "الموردين", group: "master",
+    tables: ["suppliers"],
+    recommendAlso: ["purchases", "payments", "notes"] },
+  { id: "items", labelAr: "الأصناف وبياناتها", group: "master",
+    tables: ["items", "item_images", "item_units", "item_serials", "item_modifier_groups",
+      "item_recipes", "variant_attributes", "variant_attribute_values"],
+    recommendAlso: ["sales", "purchases", "stock", "quotations", "branch_transfers"] },
+  { id: "users", labelAr: "المستخدمون (عدا حساب المالك)", group: "master",
+    tables: ["users"],
+    where: { users: "is_system_account IS NOT 1" },
+    recommendAlso: ["shifts", "audit", "employee_adjustments"] },
+];
+
+const PURGE_CATEGORY_IDS = new Set(PURGE_CATEGORIES.map((c) => c.id));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -531,35 +615,67 @@ function exportCheckpoint(options = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Empty the database (keep-setup or factory-reset)
+// Selective purge — delete only the chosen data categories
 // ---------------------------------------------------------------------------
 
-// Reset cached/derived columns on KEEP tables after a keep-setup wipe, so the
-// surviving master rows match the now-empty transaction history. Opening
-// balances and credit limits are intentional setup and are left untouched.
-function resetDerivedBalances(db, existing) {
-  const colExists = (table, col) => {
-    if (!existing.has(table)) return false;
+// Zero derived/cached columns on KEPT tables so surviving master rows match the
+// now-empty history (e.g. clearing loyalty also zeroes customers.loyalty_points).
+// Opening balances, credit limits and prices are intentional setup — never reset
+// here. Table- and column-guarded for idempotency.
+function applyResets(db, resets, existing) {
+  for (const { table, col, value = 0 } of resets) {
+    if (!existing.has(table)) continue;
     try {
-      return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+      const hasCol = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+      if (hasCol) db.prepare(`UPDATE ${table} SET ${col} = ?`).run(value);
     } catch {
-      return false;
+      /* non-fatal */
     }
-  };
-  const resetCol = (table, col, value = 0) => {
-    if (colExists(table, col)) db.prepare(`UPDATE ${table} SET ${col} = ?`).run(value);
-  };
+  }
+}
 
-  resetCol("treasuries", "balance");
-  resetCol("banks", "balance");
-  resetCol("customers", "total_spent");
-  resetCol("customers", "loyalty_points");
+// Live row count per category (sum across its existing tables) for the
+// pre-purge preview, so each checkbox shows exactly what it will delete.
+function getPurgePreview() {
+  const db = getDb();
+  const existing = new Set(listExistingTables(db));
+  const categories = PURGE_CATEGORIES.map((cat) => {
+    let count = 0;
+    let present = false;
+    for (const table of cat.tables) {
+      if (!existing.has(table)) continue;
+      present = true;
+      try {
+        const where = cat.where?.[table] ? ` WHERE ${cat.where[table]}` : "";
+        count += db.prepare(`SELECT COUNT(*) AS c FROM ${table}${where}`).get().c;
+      } catch {
+        /* unreadable table — skip */
+      }
+    }
+    return {
+      id: cat.id,
+      labelAr: cat.labelAr,
+      group: cat.group,
+      count,
+      present,
+      recommendAlso: cat.recommendAlso || [],
+      hasResets: Boolean(cat.resets?.length),
+    };
+  });
+  return { categories };
 }
 
 function emptyDatabase(options = {}) {
-  const { mode, ownerPassword } = options;
-  if (!["keep-setup", "factory-reset"].includes(mode)) {
-    const err = new Error("نوع التفريغ غير صالح");
+  const { categories, ownerPassword } = options;
+
+  const ids = Array.isArray(categories) ? [...new Set(categories.map(String))] : [];
+  if (ids.length === 0) {
+    const err = new Error("لم يتم اختيار أي عنصر للحذف");
+    err.status = 400;
+    throw err;
+  }
+  if (ids.some((id) => !PURGE_CATEGORY_IDS.has(id))) {
+    const err = new Error("اختيار غير صالح للحذف");
     err.status = 400;
     throw err;
   }
@@ -569,43 +685,45 @@ function emptyDatabase(options = {}) {
     throw err;
   }
 
+  const selected = PURGE_CATEGORIES.filter((c) => ids.includes(c.id));
+
   // Forced, non-skippable safety backup first.
-  const preEmpty = performBackup({ triggerType: "pre-empty", label: `before empty (${mode})` });
+  const preEmpty = performBackup({ triggerType: "pre-empty", label: `before purge (${ids.join(", ")})` });
 
   const db = getDb();
   const existing = new Set(listExistingTables(db));
 
-  const targets =
-    mode === "keep-setup"
-      ? OPERATIONAL_TABLES.filter((t) => existing.has(t))
-      : [...existing].filter((t) => t !== "_migrations");
+  // Concrete delete plan — only tables that actually exist.
+  const plan = [];
+  const resets = [];
+  for (const cat of selected) {
+    for (const table of cat.tables) {
+      if (existing.has(table)) plan.push({ table, where: cat.where?.[table] || null });
+    }
+    for (const r of cat.resets || []) resets.push(r);
+  }
 
   const fkPrev = db.pragma("foreign_keys", { simple: true });
   db.pragma("foreign_keys = OFF");
   try {
     const wipe = db.transaction(() => {
-      for (const table of targets) {
-        db.prepare(`DELETE FROM ${table}`).run();
+      for (const { table, where } of plan) {
+        db.prepare(`DELETE FROM ${table}${where ? ` WHERE ${where}` : ""}`).run();
       }
-      // keep-setup: master rows stay, but reset cached values that are derived
-      // from the wiped transactions, otherwise the kept rows go inconsistent.
-      if (mode === "keep-setup") {
-        resetDerivedBalances(db, existing);
-      }
+      applyResets(db, resets, existing);
     });
     wipe();
   } finally {
     db.pragma(`foreign_keys = ${fkPrev ? "ON" : "OFF"}`);
   }
 
-  if (mode === "factory-reset") {
-    // Reseed the minimum a blank install needs.
-    ensureSystemOwnerAccount();
-    try {
-      db.prepare("INSERT OR IGNORE INTO settings (id) VALUES (1)").run();
-    } catch {
-      /* settings shape varies — non-fatal */
-    }
+  // Always re-ensure the minimum a usable install needs (idempotent). Matters
+  // when the "users" category (or a settings-bearing one) was part of the wipe.
+  ensureSystemOwnerAccount();
+  try {
+    db.prepare("INSERT OR IGNORE INTO settings (id) VALUES (1)").run();
+  } catch {
+    /* settings shape varies — non-fatal */
   }
 
   db.exec("VACUUM");
@@ -613,12 +731,12 @@ function emptyDatabase(options = {}) {
   try {
     db.prepare(
       "INSERT INTO audit_logs (user_id, action, resource, payload_json) VALUES (?, ?, ?, ?)",
-    ).run(null, "database_emptied", "backup", JSON.stringify({ mode }));
+    ).run(null, "database_purged", "backup", JSON.stringify({ categories: ids }));
   } catch {
-    /* audit_logs may have been wiped in factory-reset — non-fatal */
+    /* audit_logs may have been among the wiped categories — non-fatal */
   }
 
-  return { emptied: true, mode, preEmptyBackup: preEmpty.dbPath, clearedTables: targets.length };
+  return { emptied: true, categories: ids, preEmptyBackup: preEmpty.dbPath, clearedTables: plan.length };
 }
 
 module.exports = {
@@ -628,9 +746,11 @@ module.exports = {
   restoreBackup,
   exportCheckpoint,
   emptyDatabase,
+  getPurgePreview,
   resolveCurrentDbPath,
   resolveBackupRoot,
   isLikelySqliteFile,
   sanitizePath,
   OPERATIONAL_TABLES,
+  PURGE_CATEGORIES,
 };

@@ -21,10 +21,10 @@ function PaymentBadge({ p }) {
   const isCredit = p.method === 'credit' || p.method_name?.includes('آجل');
   const isBank   = p.method === 'bank_transfer' || p.method_name?.includes('بنك');
   const style = isCredit
-    ? { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', dot: '#f59e0b' }
+    ? { bg: 'var(--warning-bg)', border: 'var(--warning-border)', text: 'var(--warning-text)', dot: 'var(--warning)' }
     : isBank
-      ? { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', dot: '#3b82f6' }
-      : { bg: '#f0fdf4', border: '#86efac', text: '#166534', dot: '#10b981' };
+      ? { bg: 'var(--info-bg)', border: 'var(--info-border)', text: 'var(--info-text)', dot: 'var(--info)' }
+      : { bg: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: 'color-mix(in srgb, var(--primary) 25%, transparent)', text: 'var(--primary-700)', dot: 'var(--primary)' };
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 6,
@@ -76,7 +76,7 @@ export function InvoiceSaveSuccess({
       {/* Card */}
       <div
         style={{
-          background: '#fff',
+          background: 'var(--bg-surface)',
           borderRadius: 20,
           padding: '28px 24px 20px',
           width: 'min(340px, 92%)',
@@ -90,16 +90,16 @@ export function InvoiceSaveSuccess({
         <div style={{ position: 'relative', width: 76, height: 76, marginBottom: 12 }}>
           <svg viewBox="0 0 76 76" width="76" height="76">
             <circle cx="38" cy="38" r="33"
-              fill="none" stroke="#e8faf4" strokeWidth="33"
+              fill="none" stroke="color-mix(in srgb, var(--primary) 12%, transparent)" strokeWidth="33"
               style={{ animation: 'fillCircleBg 300ms ease-out forwards' }}
             />
             <circle cx="38" cy="38" r="33"
-              fill="none" stroke="#10B981" strokeWidth="3"
+              fill="none" stroke="var(--primary)" strokeWidth="3"
               strokeDasharray="207" strokeDashoffset="207"
               style={{ animation: 'drawCircle 550ms ease-out forwards' }}
             />
             <path d="M23 38 L33 50 L53 28"
-              fill="none" stroke="#10B981" strokeWidth="4"
+              fill="none" stroke="var(--primary)" strokeWidth="4"
               strokeLinecap="round" strokeLinejoin="round"
               strokeDasharray="48" strokeDashoffset="48"
               style={{ animation: 'drawCheck 380ms ease-out 480ms forwards' }}
@@ -118,30 +118,30 @@ export function InvoiceSaveSuccess({
         </div>
 
         {/* Title */}
-        <p style={{ color: '#059669', fontWeight: 900, fontSize: 17, margin: 0, letterSpacing: '-0.3px' }}>
+        <p style={{ color: 'var(--text-accent)', fontWeight: 900, fontSize: 17, margin: 0, letterSpacing: '-0.3px' }}>
           تم الحفظ بنجاح!
         </p>
 
         {/* Invoice number */}
         <div style={{
           marginTop: 6,
-          background: '#f1f5f9', borderRadius: 8,
+          background: 'var(--bg-input)', borderRadius: 8,
           padding: '3px 10px',
-          fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#64748b',
+          fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--text-secondary)',
           letterSpacing: '0.5px',
         }}>
           {invoiceNumber}
         </div>
 
         {/* Divider */}
-        <div style={{ width: '100%', height: 1, background: '#f1f5f9', margin: '16px 0 14px' }} />
+        <div style={{ width: '100%', height: 1, background: 'var(--bg-input)', margin: '16px 0 14px' }} />
 
         {/* Customer row */}
         {hasCustomer && (
           <div style={{
             width: '100%', display: 'flex', alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#f8faff', border: '1px solid #e0e7ff',
+            background: 'var(--info-bg)', border: '1px solid var(--border-normal)',
             borderRadius: 12, padding: '8px 12px',
             marginBottom: 10,
             animation: 'slideUp 300ms ease-out 150ms backwards',
@@ -149,24 +149,24 @@ export function InvoiceSaveSuccess({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#6366f1,#818cf8)',
+                background: 'linear-gradient(135deg,var(--info-text),color-mix(in srgb, var(--info-text) 80%, white))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#fff', fontWeight: 900, fontSize: 12, flexShrink: 0,
               }}>
                 {customerName[0]}
               </div>
-              <span style={{ fontWeight: 800, fontSize: 13, color: '#3730a3' }}>{customerName}</span>
+              <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--info-text)' }}>{customerName}</span>
             </div>
             {hasBalance && (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
               }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#6366f1', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--info-text)', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   رصيد العميل
                 </span>
                 <span style={{
                   fontFamily: 'monospace', fontWeight: 900, fontSize: 12,
-                  color: customerNewBalance > 0 ? '#b45309' : '#059669',
+                  color: customerNewBalance > 0 ? 'var(--warning-text)' : 'var(--text-accent)',
                 }}>
                   {fmt(customerNewBalance)} ج.م
                 </span>
@@ -180,10 +180,10 @@ export function InvoiceSaveSuccess({
           width: '100%', textAlign: 'center',
           animation: 'slideUp 300ms ease-out 200ms backwards',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 2 }}>الإجمالي</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2 }}>الإجمالي</div>
           <div style={{
             fontFamily: 'monospace', fontWeight: 900, fontSize: 28,
-            color: '#0f172a', letterSpacing: '-1px',
+            color: 'var(--text-primary)', letterSpacing: '-1px',
             textShadow: '0 1px 2px rgba(0,0,0,0.06)',
           }}>
             {total}
@@ -199,11 +199,11 @@ export function InvoiceSaveSuccess({
             {discount > 0 && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 5,
-                background: '#fff1f2', border: '1px solid #fecdd3',
+                background: 'var(--danger-bg)', border: '1px solid var(--danger-border)',
                 borderRadius: 10, padding: '5px 10px',
               }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#be123c' }}>خصم</span>
-                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#be123c' }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--danger-text)' }}>خصم</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--danger-text)' }}>
                   {fmt(discount)} ج.م
                 </span>
               </div>
@@ -211,11 +211,11 @@ export function InvoiceSaveSuccess({
             {increase > 0 && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 5,
-                background: '#fffbeb', border: '1px solid #fde68a',
+                background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
                 borderRadius: 10, padding: '5px 10px',
               }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309' }}>رسوم</span>
-                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#b45309' }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--warning-text)' }}>رسوم</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--warning-text)' }}>
                   {fmt(increase)} ج.م
                 </span>
               </div>
@@ -236,7 +236,7 @@ export function InvoiceSaveSuccess({
 
         {/* Tap hint */}
         <p style={{
-          marginTop: 16, fontSize: 10, color: '#cbd5e1', fontWeight: 600,
+          marginTop: 16, fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
           animation: 'slideUp 300ms ease-out 450ms backwards',
         }}>
           اضغط للاستمرار

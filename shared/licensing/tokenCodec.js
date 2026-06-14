@@ -140,13 +140,10 @@ function encodeTokenV2(payload, signature) {
 function normalizeTokenInput(blob) {
   const trimmed = String(blob || "").trim();
   if (!trimmed) throw new Error("empty_token");
-
-  const dot = trimmed.indexOf(".");
-  if (dot === -1) return trimmed.replace(/[\s-]+/g, "");
-
-  const prefix = trimmed.slice(0, dot);
-  const body = trimmed.slice(dot + 1).replace(/[\s-]+/g, "");
-  return `${prefix}.${body}`;
+  // Strip only whitespace (newlines, tabs, spaces).
+  // Do NOT strip dashes: they are valid base64url characters (position 62).
+  // Buffer.from(s, "base64url") already ignores whitespace characters.
+  return trimmed.replace(/\s+/g, "");
 }
 
 function decodeToken(blob) {
@@ -209,7 +206,9 @@ function formatMachineCode(hardwareId) {
   return (hex.match(/.{1,4}/g) || []).join("-");
 }
 
-// Group the activation code for easier reading/copying (dashes are stripped on import).
+// Group the activation code for easier reading/copying.
+// Spaces are safe: Buffer.from(s, "base64url") ignores whitespace characters,
+// and normalizeTokenInput only strips whitespace (not valid base64url chars).
 function formatActivationCode(blob) {
   const raw = String(blob || "").trim();
   if (!raw) return "";
@@ -218,7 +217,7 @@ function formatActivationCode(blob) {
   const prefix = raw.slice(0, dot + 1);
   const body = raw.slice(dot + 1);
   const groups = body.match(/.{1,5}/g) || [];
-  return `${prefix}${groups.join("-")}`;
+  return `${prefix}${groups.join(" ")}`;
 }
 
 module.exports = {

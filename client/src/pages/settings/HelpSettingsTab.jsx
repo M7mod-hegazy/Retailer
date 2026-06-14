@@ -302,7 +302,7 @@ export function HelpSettingsTab() {
       {/* ═══════════════ 3. SYSTEM INFORMATION ═══════════════ */}
       <section>
         <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-slate-800 text-white">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
             <Monitor className="h-3.5 w-3.5" />
           </div>
           <div>

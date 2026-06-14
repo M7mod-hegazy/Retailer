@@ -376,7 +376,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
   const Btn = ({ active, onClick, title, disabled, children }) => (
     <button type="button" title={title} disabled={disabled} onClick={onClick}
-      className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-2sm font-bold transition-colors disabled:opacity-30 ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+      className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-2sm font-bold transition-colors disabled:opacity-30 ${active ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
       {children}
     </button>
   );
@@ -395,7 +395,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
           <div className="flex rounded-lg border border-slate-200 p-0.5">
             {["page", "roll"].map((f) => (
               <button key={f} type="button" onClick={() => switchFamily(f)}
-                className={`rounded-md px-3 py-1 text-[11px] font-black transition-colors ${family === f ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                className={`rounded-md px-3 py-1 text-[11px] font-black transition-colors ${family === f ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-50"}`}>
                 {f === "page" ? "صفحة A4/A5" : "رول 58/80"}
               </button>
             ))}
@@ -481,7 +481,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
         </div>
 
         {/* Center canvas */}
-        <div className="relative flex-1 overflow-auto bg-[#e8ecf0] p-6" onClick={() => setSelected(null)}>
+        <div className="relative flex-1 overflow-auto bg-[var(--bg-overlay)] p-6" onClick={() => setSelected(null)}>
           {compare ? (
             <div className="flex items-start justify-center gap-6" onClick={(e) => e.stopPropagation()}>
               {SIZES[family].map((sz) => (

@@ -95,7 +95,7 @@ export default function PaymentsListPage() {
           <PermissionGate page="payments" action="add">
             <Link
               to="/payments/new"
-              className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-slate-700 hover:shadow-xl active:scale-95"
+              className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 hover:shadow-xl active:scale-95"
             >
               <Plus className="h-4 w-4" /> إضافة حركة مالية
             </Link>
@@ -233,7 +233,7 @@ export default function PaymentsListPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-800 text-white hover:bg-slate-700 transition-colors shadow-md">
+                        <button className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-white hover:bg-primary-600 transition-colors shadow-md">
                           <Eye className="h-4 w-4" />
                         </button>
                         <button className="flex h-8 w-8 items-center justify-center rounded-sm text-slate-300 hover:bg-slate-100 hover:text-slate-800 transition-colors">

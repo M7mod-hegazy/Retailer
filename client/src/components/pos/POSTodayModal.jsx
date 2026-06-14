@@ -206,7 +206,7 @@ function InvoicePreviewModal({ inv, onClose }) {
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => navigate(`/invoices/${inv.id}`)} className="flex items-center gap-2 rounded-sm bg-slate-800 px-6 py-2 text-sm font-black text-white hover:bg-slate-900 transition-colors">
+        <button onClick={() => navigate(`/invoices/${inv.id}`)} className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-sm font-black text-white hover:bg-primary-600 transition-colors">
           <Pencil className="h-4 w-4" /> فتح الفاتورة
         </button>
       </div>

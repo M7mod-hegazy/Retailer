@@ -109,7 +109,7 @@ function SerialLookupContent() {
             className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-10 text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:border-slate-800 focus:outline-none shadow-sm"
           />
         </div>
-        <button type="submit" disabled={loading} className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50">
+        <button type="submit" disabled={loading} className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-white hover:bg-primary-600 disabled:opacity-50">
           {loading ? "..." : "بحث"}
         </button>
       </form>

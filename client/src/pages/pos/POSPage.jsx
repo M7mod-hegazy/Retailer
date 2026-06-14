@@ -55,6 +55,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import { usePosStore, computeTax, cartLineKey } from "../../stores/posStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
+import { usePerformanceStore } from "../../stores/performanceStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useNavigate, useLocation } from "react-router-dom";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -396,7 +397,9 @@ export default function POSPage() {
 
   // Poll the local backend health endpoint instead of the OS network flag.
   // The banner only appears when the local server is genuinely unreachable.
+  const healthCheckInterval = usePerformanceStore((s) => s.settings.healthCheckInterval);
   useEffect(() => {
+    if (!healthCheckInterval) return;
     let alive = true;
     let id = null;
     const check = async () => {
@@ -407,15 +410,13 @@ export default function POSPage() {
         if (alive) setIsOffline(true);
       }
     };
-    const start = () => { if (id == null) { check(); id = setInterval(check, 5000); } };
+    const start = () => { if (id == null) { check(); id = setInterval(check, healthCheckInterval); } };
     const stop = () => { if (id != null) { clearInterval(id); id = null; } };
-    // Pause polling while the window is hidden/minimised, resume (and re-check
-    // immediately) when it becomes visible again.
     const onVisibility = () => { document.hidden ? stop() : start(); };
     if (!document.hidden) start();
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; stop(); document.removeEventListener("visibilitychange", onVisibility); };
-  }, []);
+  }, [healthCheckInterval]);
 
   // Restore active cart and held invoices from DB on mount.
   // Skip cart restore when entering edit mode — the edit prefill owns the cart.
@@ -1469,7 +1470,7 @@ export default function POSPage() {
 
   if (viewMode === "list") {
     return (
-      <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden animate-fade-in" dir="rtl">
+      <div className="flex h-screen flex-col bg-[var(--bg-base)] font-sans overflow-hidden animate-fade-in" dir="rtl">
         <BarcodeListener />
         <PosStickyTotalBar
           total={totals.total}
@@ -1549,7 +1550,7 @@ export default function POSPage() {
               <div className="text-3xl mb-2">⚠️</div>
               <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
               <p className="text-sm text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
-              <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold">
+              <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold">
                 حسناً
               </button>
             </div>
@@ -2106,7 +2107,7 @@ export default function POSPage() {
             {customer && customer.id && (
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white text-sm font-black">{(customer.name || "?")[0]}</div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-black">{(customer.name || "?")[0]}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-black text-slate-800 truncate">{customer.name}</p>
@@ -2485,7 +2486,7 @@ export default function POSPage() {
                   onClick={addCurrentLine}
                   disabled={!selectedItem}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); } }}
-                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-slate-800 px-4 text-2sm font-bold text-white hover:bg-slate-700 disabled:opacity-40 self-end transition-all"
+                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-primary px-4 text-2sm font-bold text-white hover:bg-primary-600 disabled:opacity-40 self-end transition-all"
                 >
                   <Plus className="h-4 w-4" /> إضافة
                 </button>
@@ -2854,7 +2855,7 @@ export default function POSPage() {
                     });
                   setShowSetDefaultModal(false);
                 }}
-                className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
+                className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all active:scale-[0.98]"
               >
                 نعم، احفظه كافتراضي
               </button>
@@ -3067,7 +3068,7 @@ export default function POSPage() {
 
 
   return (
-    <div className="flex h-screen flex-col bg-[#f8fafb] font-sans overflow-hidden" dir="rtl">
+    <div className="flex h-screen flex-col bg-[var(--bg-base)] font-sans overflow-hidden" dir="rtl">
       <BarcodeListener />
       <PosStickyTotalBar
         total={totals.total}
@@ -3147,7 +3148,7 @@ export default function POSPage() {
             <div className="text-3xl mb-2">⚠️</div>
             <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
             <p className="text-sm text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
-            <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold">
+            <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold">
               حسناً
             </button>
           </div>
@@ -3211,7 +3212,7 @@ export default function POSPage() {
         style={{ paddingBottom: "var(--pos-bottom-bar-h, 0px)" }}
       >
         {/* ── Left Column: Grid & Search (~65%) ── */}
-        <div className="flex flex-col flex-[1.8] bg-[#f8fafb] border-l border-slate-100 overflow-hidden min-w-0">
+        <div className="flex flex-col flex-[1.8] bg-[var(--bg-base)] border-l border-slate-100 overflow-hidden min-w-0">
           {/* Header */}
           <div className="flex flex-col gap-3 shrink-0 bg-white border-b border-slate-100 p-4 shadow-[0_1px_10px_-5px_rgba(0,0,0,0.07)] z-10">
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -4004,7 +4005,7 @@ export default function POSPage() {
               </thead>
               <tbody>
                 {detailedItemResults.map((item) => (
-                  <tr key={item.id} className="cursor-pointer border-t border-slate-100 hover:bg-slate-900 hover:text-white transition-colors group" onClick={() => handleSelectItem(item)}>
+                  <tr key={item.id} className="cursor-pointer border-t border-slate-100 hover:bg-primary-600 hover:text-white transition-colors group" onClick={() => handleSelectItem(item)}>
                     <td className="p-2 border-l border-slate-50">
                       <div className="h-8 w-8 overflow-hidden rounded-sm border border-slate-200 bg-white">
                         {getItemImage(item) ? <img src={getItemImage(item)} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-slate-300"><ImageIcon className="h-3.5 w-3.5" /></div>}
@@ -4113,7 +4114,7 @@ export default function POSPage() {
               </span>
             </div>
             <button onClick={() => setMultiModalOpen(false)}
-              className="rounded-sm bg-slate-900 px-8 py-2.5 text-sm font-black text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition-all">
+              className="rounded-sm bg-primary px-8 py-2.5 text-sm font-black text-white hover:bg-primary-600 shadow-sm active:scale-[0.98] transition-all">
               تأكيد وإغلاق
             </button>
           </div>
@@ -4202,7 +4203,7 @@ export default function POSPage() {
                   });
                 setShowSetDefaultModal(false);
               }}
-              className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
+              className="flex-[2] flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all active:scale-[0.98]"
             >
               نعم، احفظه كافتراضي
             </button>

@@ -16,6 +16,12 @@ files:
 directories:
   output: release
 
+publish:
+  provider: github
+  owner: M7mod-hegazy
+  repo: Retailer
+  releaseType: release
+
 asar: true
 asarUnpack:
   - "**/*.node"
