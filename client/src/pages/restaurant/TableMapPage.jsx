@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { UtensilsCrossed, Plus } from "lucide-react";
 import Button from "../../components/ui/Button";
 import FeatureRoute from "../../components/ui/FeatureRoute";
@@ -18,6 +19,10 @@ export default function TableMapPage() {
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [newTable, setNewTable] = useState({ name: "", section: "", capacity: "4" });
+  const nameRef = useRef(null);
+  const sectionRef = useRef(null);
+  const capacityRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   const { data } = useQuery({
     queryKey: ["dining-tables"],
@@ -61,15 +66,15 @@ export default function TableMapPage() {
           <form onSubmit={addTable} className="flex gap-3 flex-wrap items-end rounded-xl border border-slate-200 bg-white p-4">
             <div className="space-y-1">
               <label className="text-xs font-black text-slate-500">اسم الطاولة</label>
-              <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm" required value={newTable.name} onChange={e => setNewTable(p => ({ ...p, name: e.target.value }))} placeholder="طاولة 1" />
+              <input ref={nameRef} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" required value={newTable.name} onChange={e => setNewTable(p => ({ ...p, name: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: sectionRef, prevRef: null })} placeholder="طاولة 1" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-black text-slate-500">القسم</label>
-              <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm" value={newTable.section} onChange={e => setNewTable(p => ({ ...p, section: e.target.value }))} placeholder="قسم A" />
+              <input ref={sectionRef} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" value={newTable.section} onChange={e => setNewTable(p => ({ ...p, section: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: capacityRef, prevRef: nameRef })} placeholder="قسم A" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-black text-slate-500">السعة</label>
-              <input className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" min="1" value={newTable.capacity} onChange={e => setNewTable(p => ({ ...p, capacity: e.target.value }))} />
+              <input ref={capacityRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" min="1" value={newTable.capacity} onChange={e => setNewTable(p => ({ ...p, capacity: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: sectionRef, onEnter: () => addTable({ preventDefault: () => {} }) })} />
             </div>
             <Button type="submit" size="sm">حفظ</Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setShowAdd(false)}>إلغاء</Button>

@@ -8,6 +8,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import SearchDropdown from "../ui/SearchDropdown";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) {
@@ -217,6 +218,13 @@ function FilterBar({ filters, onChange, onClear }) {
   const [itemResults, setItemResults] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const itemSearchRef = useRef(null);
+  const fieldSelectRef = useRef(null);
+  const sourceSelectRef = useRef(null);
+  const fromDateRef = useRef(null);
+  const toDateRef = useRef(null);
+  const clearBtnRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
   const debounceRef = useRef(null);
 
   useEffect(() => {
@@ -248,14 +256,6 @@ function FilterBar({ filters, onChange, onClear }) {
     onChange("item_id", item.id);
   }
 
-  function handleKeyDown(e) {
-    if (!dropdownOpen || !itemResults.length) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(v => Math.min(v + 1, itemResults.length - 1)); }
-    if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIndex(v => Math.max(v - 1, -1)); }
-    if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); handlePickItem(itemResults[activeIndex]); }
-    if (e.key === "Escape") { setDropdownOpen(false); }
-  }
-
   const hasFilters = filters.item_id || filters.field || filters.source || filters.from_date || filters.to_date;
 
   return (
@@ -264,11 +264,20 @@ function FilterBar({ filters, onChange, onClear }) {
       <div className="relative">
         <Search size={13} className="absolute right-2.5 top-2.5 text-slate-400 z-10" />
         <input
+          ref={itemSearchRef}
           value={itemQuery}
           onChange={e => handleItemQueryChange(e.target.value)}
           onFocus={() => { if (itemResults.length) setDropdownOpen(true); }}
           onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={e => {
+            if (dropdownOpen && itemResults.length) {
+              if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(v => Math.min(v + 1, itemResults.length - 1)); return; }
+              if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIndex(v => Math.max(v - 1, -1)); return; }
+              if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); handlePickItem(itemResults[activeIndex]); return; }
+              if (e.key === "Escape") { setDropdownOpen(false); return; }
+            }
+            handleKeyDown(e, { nextRef: fieldSelectRef });
+          }}
           placeholder="بحث بالصنف أو الكود…"
           className="pr-7 pl-3 py-1.5 border border-slate-200 rounded-lg text-sm w-52 bg-white"
         />
@@ -282,22 +291,22 @@ function FilterBar({ filters, onChange, onClear }) {
         )}
       </div>
 
-      <select value={filters.field} onChange={e => onChange("field", e.target.value)}
+      <select ref={fieldSelectRef} onKeyDown={e => handleKeyDown(e, { nextRef: sourceSelectRef, prevRef: itemSearchRef })} value={filters.field} onChange={e => onChange("field", e.target.value)}
         className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white">
         <option value="">كل الحقول</option>
         {Object.entries(FIELD_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select>
-      <select value={filters.source} onChange={e => onChange("source", e.target.value)}
+      <select ref={sourceSelectRef} onKeyDown={e => handleKeyDown(e, { nextRef: fromDateRef, prevRef: fieldSelectRef })} value={filters.source} onChange={e => onChange("source", e.target.value)}
         className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white">
         <option value="">كل المصادر</option>
         {Object.entries(SOURCE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select>
-      <input type="date" value={filters.from_date} onChange={e => onChange("from_date", e.target.value)}
+      <input ref={fromDateRef} onKeyDown={e => handleKeyDown(e, { nextRef: toDateRef, prevRef: sourceSelectRef })} type="date" value={filters.from_date} onChange={e => onChange("from_date", e.target.value)}
         className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white" />
-      <input type="date" value={filters.to_date} onChange={e => onChange("to_date", e.target.value)}
+      <input ref={toDateRef} onKeyDown={e => handleKeyDown(e, { nextRef: clearBtnRef, prevRef: fromDateRef })} type="date" value={filters.to_date} onChange={e => onChange("to_date", e.target.value)}
         className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white" />
       {hasFilters && (
-        <button onClick={onClear}
+        <button ref={clearBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: toDateRef })} onClick={onClear}
           className="flex items-center gap-1 px-2 py-1.5 text-xs text-slate-500 hover:text-red-500 rounded-lg border border-slate-200 bg-white">
           <X size={12} /> مسح الفلتر
         </button>
@@ -466,6 +475,9 @@ function ProductView() {
   const [productData, setProductData] = useState(null);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const searchRef = useRef(null);
+  const categorySelectRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
   const debounceRef = useRef(null);
 
   // load categories once
@@ -509,11 +521,11 @@ function ProductView() {
         <div className="p-2.5 border-b border-slate-200 space-y-2">
           <div className="relative">
             <Search size={13} className="absolute right-2.5 top-2.5 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input ref={searchRef} onKeyDown={e => handleKeyDown(e, { nextRef: categorySelectRef })} value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم أو الكود…"
               className="w-full pr-7 pl-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white" />
           </div>
-          <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+          <select ref={categorySelectRef} onKeyDown={e => handleKeyDown(e, { prevRef: searchRef })} value={categoryId} onChange={e => setCategoryId(e.target.value)}
             className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white text-slate-600">
             <option value="">كل الأقسام</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

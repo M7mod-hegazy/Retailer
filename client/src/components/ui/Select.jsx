@@ -1,11 +1,13 @@
-import React from "react";
+import React, { forwardRef } from "react";
 
-export function Select({ options = [], className = "", ...props }) {
+const Select = forwardRef(({ options = [], className = "", children, ...props }, ref) => {
   return (
-    <select {...props} className={`input w-full ${className}`.trim()}>
-      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    <select ref={ref} {...props} className={`input w-full ${className}`.trim()}>
+      {options.length > 0 ? options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>) : children}
     </select>
   );
-}
+});
 
+Select.displayName = "Select";
+export { Select };
 export default Select;

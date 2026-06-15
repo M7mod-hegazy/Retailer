@@ -39,6 +39,7 @@ import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import ImageUpload from "../../components/ui/ImageUpload";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import Highlight from "../../components/ui/Highlight";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { useFeatureEnabled } from "../../hooks/useFeature";
@@ -124,9 +125,9 @@ const Cell = React.forwardRef(function Cell(
   );
 });
 
-function UnitSelect({ value, onChange, onBlur, units, disabled = false, dirty = false }) {
+const UnitSelect = React.forwardRef(function UnitSelect({ value, onChange, onBlur, units, disabled = false, dirty = false, onKeyDown }, ref) {
   return (
-    <select value={value} onChange={onChange} onBlur={onBlur} disabled={disabled}
+    <select ref={ref} value={value} onChange={onChange} onBlur={onBlur} disabled={disabled} onKeyDown={onKeyDown}
       className={`w-full bg-transparent px-1.5 py-1.5 text-sm font-black outline-none border border-transparent transition-all rounded-sm
         focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-slate-300
         disabled:cursor-not-allowed
@@ -135,7 +136,7 @@ function UnitSelect({ value, onChange, onBlur, units, disabled = false, dirty = 
       {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
     </select>
   );
-}
+});
 
 function SkeletonRows({ cols }) {
   return Array.from({ length: 10 }).map((_, i) => (
@@ -453,7 +454,19 @@ export default function ItemsListPage() {
     document.addEventListener("mouseup", onMouseUp);
   };
 
+  const handleKeyDown = useFieldNavigation();
+  const searchRef = useRef(null);
+  const catSelectRef = useRef(null);
   const nameInputRef = useRef(null);
+  const unitSelectRef = useRef(null);
+  const barcodeRef = useRef(null);
+  const purchasePriceRef = useRef(null);
+  const salePriceRef = useRef(null);
+  const wholesalePriceRef = useRef(null);
+  const minStockQtyRef = useRef(null);
+  const addItemBtnRef = useRef(null);
+  const catNameRef = useRef(null);
+  const catSubmitRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const bottomScrollRef = useRef(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
@@ -1069,10 +1082,10 @@ export default function ItemsListPage() {
             <div className="flex items-center gap-4 flex-1 min-w-[300px]">
                <div data-help="search-bar" className="relative flex-1 group">
                   <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && loadItems(selectedCatId, search, showDeleted)}
-                    placeholder="بحث سريع (الاسم، الباركود، الكود الداخلي)..."
-                    className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                  <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)}
+                     onKeyDown={(e) => { if (e.key === "Enter") loadItems(selectedCatId, search, showDeleted); handleKeyDown(e, { nextRef: catSelectRef }); }}
+                     placeholder="بحث سريع (الاسم، الباركود، الكود الداخلي)..."
+                     className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {search && (
                       <button onClick={() => { setSearch(""); loadItems(selectedCatId, "", showDeleted); }} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
@@ -1086,8 +1099,9 @@ export default function ItemsListPage() {
                </div>
                <div data-help="category-filter" className="relative w-72 group">
                   <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                  <select value={selectedCatId ?? ""} onChange={(e) => setSelectedCatId(Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">
+                  <select ref={catSelectRef} value={selectedCatId ?? ""} onChange={(e) => setSelectedCatId(Number(e.target.value))}
+                     onKeyDown={(e) => handleKeyDown(e, { nextRef: nameInputRef, prevRef: searchRef })}
+                     className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">
                     {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.sku_prefix ? `${cat.sku_prefix} — ` : ""}{cat.name}</option>)}
                   </select>
                   <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:rotate-180 transition-transform" />
@@ -1459,40 +1473,41 @@ export default function ItemsListPage() {
                           ref={nameInputRef} placeholder="اكتب اسم الصنف الجديد هنا..." className="border-emerald-200/50 bg-emerald-50/30 font-black" />
                      </td>
                      <td className="px-3 py-2">
-                        <UnitSelect value={newRow.unit_id} units={units} onChange={(e) => setNewRow({ ...newRow, unit_id: e.target.value })} />
+                         <UnitSelect ref={unitSelectRef} value={newRow.unit_id} units={units} onChange={(e) => setNewRow({ ...newRow, unit_id: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: barcodeRef, prevRef: nameInputRef })} />
                      </td>
                      <td className="px-3 py-2">
-                        <Cell value={newRow.barcode} onChange={(e) => setNewRow({ ...newRow, barcode: e.target.value })} placeholder="الباركود..." className="font-mono" />
+                         <Cell ref={barcodeRef} value={newRow.barcode} onChange={(e) => setNewRow({ ...newRow, barcode: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: purchasePriceRef, prevRef: unitSelectRef })} placeholder="الباركود..." className="font-mono" />
                      </td>
                      <td className="px-3 py-2">
-                        <Cell type="number" value={newRow.purchase_price} onChange={(e) => setNewRow({ ...newRow, purchase_price: e.target.value })} placeholder="الشراء" />
+                         <Cell ref={purchasePriceRef} type="number" value={newRow.purchase_price} onChange={(e) => setNewRow({ ...newRow, purchase_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: salePriceRef, prevRef: barcodeRef })} placeholder="الشراء" />
                      </td>
                      <td className="px-3 py-2">
-                        <Cell type="number" value={newRow.sale_price} onChange={(e) => setNewRow({ ...newRow, sale_price: e.target.value })} placeholder="المستهلك" className="text-emerald-700" />
+                         <Cell ref={salePriceRef} type="number" value={newRow.sale_price} onChange={(e) => setNewRow({ ...newRow, sale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesalePriceRef, prevRef: purchasePriceRef })} placeholder="المستهلك" className="text-emerald-700" />
                         {(() => {
                           const profit = profitInfo(newRow.purchase_price, newRow.sale_price);
                           return profit && <div className={`text-center mt-0.5 text-[9px] font-black ${profit.cls} rounded px-1`}>{profit.label}</div>;
                         })()}
                      </td>
                      <td className="px-3 py-2">
-                        <Cell type="number" value={newRow.wholesale_price} onChange={(e) => setNewRow({ ...newRow, wholesale_price: e.target.value })} placeholder="الجملة" className="text-blue-700" />
+                         <Cell ref={wholesalePriceRef} type="number" value={newRow.wholesale_price} onChange={(e) => setNewRow({ ...newRow, wholesale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: minStockQtyRef, prevRef: salePriceRef })} placeholder="الجملة" className="text-blue-700" />
                         {(() => {
                           const profit = profitInfo(newRow.purchase_price, newRow.wholesale_price);
                           return profit && <div className={`text-center mt-0.5 text-[9px] font-black ${profit.cls} rounded px-1`}>{profit.label}</div>;
                         })()}
                      </td>
                      <td className="px-3 py-2">
-                        <Cell type="number" value={newRow.min_stock_qty} onChange={(e) => setNewRow({ ...newRow, min_stock_qty: e.target.value })} placeholder="الحد" />
+                         <Cell ref={minStockQtyRef} type="number" value={newRow.min_stock_qty} onChange={(e) => setNewRow({ ...newRow, min_stock_qty: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: addItemBtnRef, prevRef: wholesalePriceRef })} placeholder="الحد" />
                      </td>
                      <td colSpan="2" className="px-4 text-center opacity-40">
                         <Shapes className="mx-auto h-4 w-4 text-slate-400" />
                      </td>
                      <td className="px-4 py-3 text-center">
                         <PermissionGate page="items" action="add">
-                        <button
-                           onClick={createFromNewRow}
-                           disabled={!newRow.name.trim() || savingRowId === "new" || (!selectedCatId && !newRow.category_id)}
-                           className="flex w-full items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 py-2.5 text-2sm font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
+                        <button ref={addItemBtnRef}
+                            onClick={createFromNewRow}
+                            onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, onEnter: createFromNewRow })}
+                            disabled={!newRow.name.trim() || savingRowId === "new" || (!selectedCatId && !newRow.category_id)}
+                            className="flex w-full items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 py-2.5 text-2sm font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
                         >
                            {savingRowId === "new" ? "جاري..." : <><Plus className="h-4 w-4" /> إضافة</>}
                         </button>
@@ -1525,13 +1540,14 @@ export default function ItemsListPage() {
            <div className="space-y-4">
               <div className="space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-widest">اسم الفئة (مثلاً: بويات، زيوت)</label>
-                 <input autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
-                   className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold outline-none focus:border-slate-800" required />
-              </div>
-           </div>
-           <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-6">
-              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-slate-400 hover:bg-slate-50">تجاهل</button>
-              <button type="submit" className="rounded-sm bg-slate-900 px-10 py-2.5 text-sm font-black text-white shadow-xl active:scale-95 transition-all">إنشاء الفئة الآن</button>
+                 <input ref={catNameRef} autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: catSubmitRef })}
+                    className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold outline-none focus:border-slate-800" required />
+               </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-6">
+               <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-slate-400 hover:bg-slate-50">تجاهل</button>
+               <button ref={catSubmitRef} type="submit" className="rounded-sm bg-slate-900 px-10 py-2.5 text-sm font-black text-white shadow-xl active:scale-95 transition-all">إنشاء الفئة الآن</button>
            </div>
         </form>
       </Modal>

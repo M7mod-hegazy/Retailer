@@ -387,6 +387,9 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const payload = { ...(req.body || {}), user_id: resolvedUserId, _user: req.user };
   const invoice = createInvoice(payload);
   const invoiceAuditId = req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
+  if (payload.quotation_id) {
+    req.audit("update", "quotations", { id: Number(payload.quotation_id), invoice_id: invoice?.id }, `📋 تم تحويل عرض سعر #${payload.quotation_id} إلى فاتورة ${invoice?.invoice_no || invoice?.id}`);
+  }
   // Notify on large invoice (total > 1000)
   try {
     if (invoice?.total > 1000 && invoice?.id) {

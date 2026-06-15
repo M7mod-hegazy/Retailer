@@ -8,6 +8,7 @@ import SearchDropdown from "../../components/ui/SearchDropdown";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";

@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { X, Search, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -17,6 +18,11 @@ function fmt(n) {
 }
 
 export default function GeneralReturnModal({ open, onClose, onSuccess }) {
+  const handleKeyDown = useFieldNavigation();
+  const reasonRef = useRef(null);
+  const notesRef = useRef(null);
+  const saveBtnRef = useRef(null);
+
   const [lines, setLines] = useState([]);
   const [customer, setCustomer] = useState(null);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -213,8 +219,10 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           <div>
             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">سبب الإرجاع</label>
             <select
+              ref={reasonRef}
               value={reason}
               onChange={e => setReason(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: notesRef })}
               className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 bg-white"
             >
               {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -326,8 +334,10 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           <div>
             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">ملاحظات</label>
             <input
+              ref={notesRef}
               value={notes}
               onChange={e => setNotes(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: reasonRef })}
               placeholder="ملاحظات اختيارية..."
               className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-rose-400"
             />
@@ -343,6 +353,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
             إلغاء
           </button>
           <button
+            ref={saveBtnRef}
             onClick={handleSave}
             disabled={saving || !lines.length}
             className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"

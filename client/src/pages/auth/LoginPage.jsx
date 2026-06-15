@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, LogIn, Loader2, X, Monitor, Zap, Wallet, ShieldCheck, Barcode, Receipt, CreditCard, ShoppingCart, Tag, Banknote, Calculator, Radar, LockKeyhole, CheckCircle2, ShieldAlert, Settings2 } from "lucide-react";
@@ -8,7 +8,9 @@ import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { usePerformanceStore, applyToDOM } from "../../stores/performanceStore";
 import api from "../../services/api";
 import { applyColorTheme } from "../../utils/applyColorTheme";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const highlights = [
   {
@@ -50,6 +52,10 @@ export default function LoginPage() {
   const [customerBranding, setCustomerBranding] = useState({ logo_url: null, company_name: "", branch_name: "" });
   const perfPreset = usePerformanceStore((s) => s.preset);
   const perfSettings = usePerformanceStore((s) => s.settings);
+  const handleKeyDown = useFieldNavigation();
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   useEffect(() => {
     api.get("/api/settings").then((res) => {
@@ -58,7 +64,7 @@ export default function LoginPage() {
       // reflects the shop's selected color theme (including custom-theme variables).
       applyColorTheme(data);
       setCustomerBranding({
-        logo_url: data.logo_url || null,
+        logo_url: resolveImageUrl(data.logo_url || null),
         company_name: data.company_name || "",
         branch_name: data.branch_name || "",
         app_name: data.app_name || "",
@@ -231,6 +237,7 @@ export default function LoginPage() {
                     <span className={`text-2sm font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'username' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>ID</span>
                   </div>
                   <input
+                    ref={usernameRef}
                     type="text"
                     required
                     autoComplete="username"
@@ -238,6 +245,7 @@ export default function LoginPage() {
                     onChange={(e) => setForm({ ...form, username: e.target.value })}
                     onFocus={() => setFocusedField('username')}
                     onBlur={() => setFocusedField(null)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: passwordRef })}
                     className="w-full bg-transparent py-4 pl-4 pr-16 text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-bold text-[17px] leading-normal"
                     placeholder="اسم المستخدم"
                     dir="ltr"
@@ -252,6 +260,7 @@ export default function LoginPage() {
                     <span className={`text-2sm font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>PW</span>
                   </div>
                   <input
+                    ref={passwordRef}
                     type={showPassword ? "text" : "password"}
                     required
                     autoComplete="current-password"
@@ -259,6 +268,7 @@ export default function LoginPage() {
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     onFocus={() => setFocusedField('password')}
                     onBlur={() => setFocusedField(null)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: usernameRef })}
                     className="w-full bg-transparent py-4 pl-14 pr-16 text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono tracking-widest text-[17px] leading-normal selection:bg-emerald-200"
                     placeholder="••••••••"
                     dir="ltr"
@@ -284,6 +294,7 @@ export default function LoginPage() {
                 {/* Action Area */}
                 <div className="pt-4 flex flex-col gap-4 relative z-10 w-full overflow-hidden">
                   <button
+                    ref={submitBtnRef}
                     type="submit"
                     disabled={submitting}
                     className="group relative w-full flex items-center justify-center bg-[var(--primary)] text-white font-black text-[18px] py-[20px] rounded-2xl overflow-hidden transition-all duration-300 hover:bg-[var(--primary-600)] hover:shadow-[0_12px_32px_var(--primary-glow)] hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"

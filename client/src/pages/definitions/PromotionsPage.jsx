@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { Edit, Plus, Tag, Trash2, Calendar, Percent, Power, Loader2, Info } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -9,6 +10,14 @@ import Modal from "../../components/ui/Modal";
 
 export default function PromotionsPage() {
   usePageTour('promotions');
+  const handleKeyDown = useFieldNavigation();
+  const nameRef = useRef(null);
+  const ruleTypeRef = useRef(null);
+  const ruleValueRef = useRef(null);
+  const startsAtRef = useRef(null);
+  const endsAtRef = useRef(null);
+  const submitBtnRef = useRef(null);
+
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
@@ -241,10 +250,12 @@ export default function PromotionsPage() {
             <div className="space-y-1.5">
               <label className="text-2sm font-black text-slate-700 uppercase tracking-widest">اسم العرض</label>
               <input 
+                ref={nameRef}
                 required 
                 type="text" 
                 value={formData.name} 
                 onChange={(e) => setFormData(p => ({...p, name: e.target.value}))} 
+                onKeyDown={e => handleKeyDown(e, { nextRef: ruleTypeRef })}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 placeholder="مثال: خصم عيد الفطر"
               />
@@ -255,8 +266,10 @@ export default function PromotionsPage() {
                 <label className="text-2sm font-black text-slate-700 uppercase tracking-widest">نوع الخصم</label>
                 <div className="relative">
                   <select 
+                    ref={ruleTypeRef}
                     value={formData.rule_type} 
                     onChange={(e) => setFormData(p => ({...p, rule_type: e.target.value}))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: ruleValueRef, prevRef: nameRef })}
                     className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-4 pr-10 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                   >
                     <option value="percentage_off_total">خصم نسبة (%) من الإجمالي</option>
@@ -268,11 +281,13 @@ export default function PromotionsPage() {
                 <label className="text-2sm font-black text-slate-700 uppercase tracking-widest">النسبة (%)</label>
                 <div className="relative">
                   <input 
+                    ref={ruleValueRef}
                     required 
                     type="number" 
                     min="1" max="100" 
                     value={formData.rule_value} 
                     onChange={(e) => setFormData(p => ({...p, rule_value: e.target.value}))} 
+                    onKeyDown={e => handleKeyDown(e, { nextRef: startsAtRef, prevRef: ruleTypeRef })}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black font-mono text-indigo-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 text-left"
                     placeholder="0"
                     dir="ltr"
@@ -286,18 +301,22 @@ export default function PromotionsPage() {
               <div className="space-y-1.5">
                 <label className="text-2sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> يبدأ في</label>
                 <input 
+                  ref={startsAtRef}
                   type="date" 
                   value={formData.starts_at} 
                   onChange={(e) => setFormData(p => ({...p, starts_at: e.target.value}))} 
+                  onKeyDown={e => handleKeyDown(e, { nextRef: endsAtRef, prevRef: ruleValueRef })}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold font-mono text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
               <div className="space-y-1.5">
                 <label className="text-2sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> ينتهي في</label>
                 <input 
+                  ref={endsAtRef}
                   type="date" 
                   value={formData.ends_at} 
                   onChange={(e) => setFormData(p => ({...p, ends_at: e.target.value}))} 
+                  onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: startsAtRef })}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold font-mono text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
@@ -329,6 +348,7 @@ export default function PromotionsPage() {
                 إلغاء
               </button>
               <button 
+                ref={submitBtnRef}
                 type="submit"
                 className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-black text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98]"
               >

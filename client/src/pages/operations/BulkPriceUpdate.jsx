@@ -28,6 +28,7 @@ import {
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const PRICE_FIELDS = [
   { value: "retail_price",    label: "سعر المستهلك",  key: "sale_price" },
@@ -125,6 +126,14 @@ function ResizableTh({ label, sortKey, sortConfig, onSort, colKey, colWidths, on
 
 export default function BulkPriceUpdatePage() {
   usePageTour('bulk_price_update');
+
+  const searchRef = useRef(null);
+  const categoryFilterRef = useRef(null);
+  const adjValueRef = useRef(null);
+  const priceFieldRef = useRef(null);
+  const reasonRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
+
   // ── Data ──
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -656,7 +665,8 @@ export default function BulkPriceUpdatePage() {
           <div className="flex items-center gap-4 flex-1 min-w-[300px]">
             <div data-help="search-bar" className="relative flex-1 group">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)}
+              <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: categoryFilterRef, prevRef: reasonRef })}
                 placeholder="بحث سريع بأسم أو كود الصنف..."
                 className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
               {search && (
@@ -667,7 +677,8 @@ export default function BulkPriceUpdatePage() {
             </div>
             <div className="relative w-72 group">
               <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <select data-help="category-filter" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+              <select ref={categoryFilterRef} data-help="category-filter" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: adjValueRef, prevRef: searchRef })}
                 className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
                 <option value="">كل الأقسام ({items.length})</option>
                 {categories.map((c) => (
@@ -720,7 +731,8 @@ export default function BulkPriceUpdatePage() {
 
           <div data-help="value-input" className="w-32 space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">القيمة</label>
-            <input type="number" step="0.01" min="0" value={adjValue} onChange={(e) => setAdjValue(e.target.value)}
+            <input ref={adjValueRef} type="number" step="0.01" min="0" value={adjValue} onChange={(e) => setAdjValue(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: priceFieldRef, prevRef: categoryFilterRef })}
               placeholder="0.00"
               title="قيمة التعديل — الرقم الذي سيتم إضافته أو خصمه من السعر"
               className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-black outline-none focus:border-slate-800 shadow-sm font-mono text-center" />
@@ -728,7 +740,8 @@ export default function BulkPriceUpdatePage() {
 
           <div data-help="price-field-select" className="w-48 space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">حقل السعر</label>
-            <select value={priceField} onChange={(e) => setPriceField(e.target.value)}
+            <select ref={priceFieldRef} value={priceField} onChange={(e) => setPriceField(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: reasonRef, prevRef: adjValueRef })}
               title="اختر حقل السعر المراد تعديله: سعر المستهلك، سعر الجملة، أو سعر التكلفة"
               className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2 px-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
               {PRICE_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
@@ -737,7 +750,8 @@ export default function BulkPriceUpdatePage() {
 
           <div data-help="reason-input" className="flex-1 space-y-1.5 hidden md:block">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">ملاحظات التغيير (اختياري)</label>
-            <input type="text" value={reason} onChange={(e) => setReason(e.target.value)}
+            <input ref={reasonRef} type="text" value={reason} onChange={(e) => setReason(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: searchRef, prevRef: priceFieldRef })}
               placeholder="مثال: تحديثات أبريل"
               title="سجل ملاحظة توضيحية لهذه العملية لتظهر في سجل العمليات السابقة"
               className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 shadow-sm" />

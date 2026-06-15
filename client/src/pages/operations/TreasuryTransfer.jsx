@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { 
   ArrowLeftRight, 
   CheckCircle2, 
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -28,6 +29,13 @@ export default function TreasuryTransfer() {
     reference: "",
     notes: ""
   });
+  const sourceRef = useRef(null);
+  const destRef = useRef(null);
+  const amountRef = useRef(null);
+  const refRef = useRef(null);
+  const notesRef = useRef(null);
+  const formRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     fetchTreasuries();
@@ -119,22 +127,24 @@ export default function TreasuryTransfer() {
            <LayoutDashboard className="h-6 w-6 text-white/10" />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-10">
+        <form ref={formRef} onSubmit={handleSubmit} className="p-10">
            <div className="grid grid-cols-1 gap-x-12 gap-y-10 md:grid-cols-2">
               
               {/* SOURCE --> DESTINATION Flow */}
               <div className="col-span-2 flex items-center justify-center gap-8 rounded-md bg-slate-50 border border-slate-100 p-8">
                  <div className="flex-1 space-y-2">
                     <label className="text-center block text-[11px] font-black uppercase text-slate-400 tracking-widest">من (المصدر)</label>
-                    <select 
-                      required
-                      value={formData.source_id}
-                      onChange={(e) => setFormData(p => ({ ...p, source_id: e.target.value }))}
-                      className="w-full rounded-sm border border-slate-200 py-3.5 px-4 text-[15px] font-black text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 shadow-sm"
-                    >
-                       <option value="">اختيار الخزينة المصدر...</option>
-                       {treasuries.map(tr => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
-                    </select>
+                     <select 
+                       ref={sourceRef}
+                       required
+                       value={formData.source_id}
+                       onChange={(e) => setFormData(p => ({ ...p, source_id: e.target.value }))}
+                       onKeyDown={e => handleKeyDown(e, { nextRef: destRef })}
+                       className="w-full rounded-sm border border-slate-200 py-3.5 px-4 text-[15px] font-black text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 shadow-sm"
+                     >
+                        <option value="">اختيار الخزينة المصدر...</option>
+                        {treasuries.map(tr => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
+                     </select>
                     {formData.source_id && (
                        <div className="flex items-center justify-center gap-2 pt-1">
                           <TrendingDown className="h-3 w-3 text-rose-500" />
@@ -149,11 +159,13 @@ export default function TreasuryTransfer() {
 
                  <div className="flex-1 space-y-2">
                     <label className="text-center block text-[11px] font-black uppercase text-slate-400 tracking-widest">إلى (المستقبل)</label>
-                    <select 
-                      required
-                      value={formData.destination_id}
-                      onChange={(e) => setFormData(p => ({ ...p, destination_id: e.target.value }))}
-                      className="w-full rounded-sm border border-slate-200 py-3.5 px-4 text-[15px] font-black text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 shadow-sm"
+                     <select 
+                       ref={destRef}
+                       required
+                       value={formData.destination_id}
+                       onChange={(e) => setFormData(p => ({ ...p, destination_id: e.target.value }))}
+                       onKeyDown={e => handleKeyDown(e, { nextRef: amountRef, prevRef: sourceRef })}
+                       className="w-full rounded-sm border border-slate-200 py-3.5 px-4 text-[15px] font-black text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 shadow-sm"
                     >
                        <option value="">اختيار الخزينة المستلمة...</option>
                        {treasuries.map(tr => (
@@ -175,16 +187,18 @@ export default function TreasuryTransfer() {
                     </label>
                     <div className="relative">
                        <Banknote className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-300" />
-                       <input 
-                         type="number"
-                         required
-                         min="0.01"
-                         step="0.01"
-                         value={formData.amount}
-                         onChange={(e) => setFormData(p => ({ ...p, amount: e.target.value }))}
-                         placeholder="0.00"
-                         className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-12 text-[20px] font-black text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-sm"
-                       />
+                        <input 
+                          ref={amountRef}
+                          type="number"
+                          required
+                          min="0.01"
+                          step="0.01"
+                          value={formData.amount}
+                          onChange={(e) => setFormData(p => ({ ...p, amount: e.target.value }))}
+                          onKeyDown={e => handleKeyDown(e, { nextRef: refRef, prevRef: destRef })}
+                          placeholder="0.00"
+                          className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-12 text-[20px] font-black text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-sm"
+                        />
                     </div>
                  </div>
 
@@ -192,12 +206,14 @@ export default function TreasuryTransfer() {
                     <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">رقم المرجع / القيد</label>
                     <div className="relative">
                        <FileText className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-300" />
-                       <input 
-                         type="text"
-                         value={formData.reference}
-                         onChange={(e) => setFormData(p => ({ ...p, reference: e.target.value }))}
-                         placeholder="TR-..."
-                         className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-12 text-sm font-bold text-slate-700 outline-none shadow-sm focus:border-slate-800"
+                        <input 
+                          ref={refRef}
+                          type="text"
+                          value={formData.reference}
+                          onChange={(e) => setFormData(p => ({ ...p, reference: e.target.value }))}
+                          onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: amountRef })}
+                          placeholder="TR-..."
+                          className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-12 text-sm font-bold text-slate-700 outline-none shadow-sm focus:border-slate-800"
                        />
                     </div>
                  </div>
@@ -206,13 +222,15 @@ export default function TreasuryTransfer() {
               {/* Notes */}
               <div className="space-y-2">
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">ملاحظات التحويل والسبب</label>
-                 <textarea 
-                   rows="5"
-                   value={formData.notes}
-                   onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
-                   placeholder="اكتب تفاصيل العملية هنا..."
-                   className="w-full rounded-sm border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-800 shadow-sm resize-none"
-                 />
+                  <textarea 
+                    ref={notesRef}
+                    rows="5"
+                    value={formData.notes}
+                    onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { prevRef: refRef, onEnter: () => formRef.current?.requestSubmit() })}
+                    placeholder="اكتب تفاصيل العملية هنا..."
+                    className="w-full rounded-sm border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-800 shadow-sm resize-none"
+                  />
               </div>
            </div>
 

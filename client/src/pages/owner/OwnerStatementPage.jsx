@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -37,6 +37,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const COST_METHODS = [
   { value: "wacc", label: "المتوسط المرجح" },
@@ -550,6 +551,12 @@ export default function OwnerStatementPage() {
   const [leftCompare, setLeftCompare] = useState("");
   const [rightCompare, setRightCompare] = useState("");
   const [compareData, setCompareData] = useState(null);
+  const fromRef = useRef(null);
+  const toRef = useRef(null);
+  const costMethodRef = useRef(null);
+  const leftCompareRef = useRef(null);
+  const rightCompareRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   const frozen = !!activeSnapshot;
   const display = activeSnapshot || data;
@@ -709,16 +716,20 @@ export default function OwnerStatementPage() {
                 <input
                   disabled={frozen}
                   type="date"
+                  ref={fromRef}
                   value={range.from}
                   onChange={(event) => updateRange({ ...range, from: event.target.value })}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: toRef, prevRef: null })}
                   className="bg-transparent text-xs font-bold text-slate-700 outline-none disabled:opacity-60 cursor-pointer"
                 />
                 <span className="text-[11px] font-bold text-slate-400 px-1">إلى</span>
                 <input
                   disabled={frozen}
                   type="date"
+                  ref={toRef}
                   value={range.to}
                   onChange={(event) => updateRange({ ...range, to: event.target.value })}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: fromRef })}
                   className="bg-transparent text-xs font-bold text-slate-700 outline-none disabled:opacity-60 cursor-pointer"
                 />
               </div>
@@ -729,8 +740,10 @@ export default function OwnerStatementPage() {
                 <span className="text-[11px] font-black text-slate-400 block tracking-wider">تقييم الكلفة:</span>
                 <select
                   disabled={frozen}
+                  ref={costMethodRef}
                   value={costMethod}
                   onChange={(event) => { setActiveSnapshot(null); setCostMethod(event.target.value); }}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: leftCompareRef, prevRef: toRef })}
                   className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-black text-slate-700 outline-none cursor-pointer disabled:opacity-60"
                 >
                   {COST_METHODS.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}
@@ -981,8 +994,10 @@ export default function OwnerStatementPage() {
                 <div className="space-y-1">
                   <label className="text-[11px] font-black text-slate-400 block tracking-wider mr-1">الفترة الأولى (أ):</label>
                   <select
+                    ref={leftCompareRef}
                     value={leftCompare}
                     onChange={(event) => setLeftCompare(event.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: rightCompareRef, prevRef: costMethodRef })}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs font-black text-slate-700 outline-none cursor-pointer"
                   >
                     <option value="">اختر نسخة أولى...</option>
@@ -993,8 +1008,10 @@ export default function OwnerStatementPage() {
                 <div className="space-y-1">
                   <label className="text-[11px] font-black text-slate-400 block tracking-wider mr-1">الفترة الثانية (ب):</label>
                   <select
+                    ref={rightCompareRef}
                     value={rightCompare}
                     onChange={(event) => setRightCompare(event.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: leftCompareRef })}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs font-black text-slate-700 outline-none cursor-pointer"
                   >
                     <option value="">اختر نسخة ثانية...</option>

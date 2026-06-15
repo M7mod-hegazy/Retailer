@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const { issueToken, authRequired, requireRole } = require("../middleware/auth");
 const { UserModel } = require("../models/user.model");
 const { getDb } = require("../config/database");
+const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
 
 const { auditMutation } = require("../middleware/audit");
 
@@ -49,6 +50,71 @@ function generateTotp(secret, timestamp = Date.now()) {
   const code = ((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000).toString().padStart(6, "0");
   return code;
 }
+
+// ---- First-run setup ---------------------------------------------------
+// Unauthenticated by design. Lets the very first administrator be created when
+// the app has no real (non-system) users yet — the system owner "m7mod" is a
+// hidden system account and does not count. The POST is hard-gated: the moment
+// any non-system user exists it refuses, so it cannot be abused afterwards.
+function countRealUsers(db) {
+  return Number(
+    db.prepare("SELECT COUNT(*) AS c FROM users WHERE COALESCE(is_system_account, 0) = 0").get()?.c || 0,
+  );
+}
+
+router.get("/setup-status", (_req, res, next) => {
+  try {
+    res.json({ success: true, data: { needsSetup: countRealUsers(getDb()) === 0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/setup", (req, res, next) => {
+  try {
+    const db = getDb();
+    if (countRealUsers(db) > 0) {
+      const err = new Error("الإعداد الأولي مكتمل بالفعل");
+      err.status = 403;
+      err.code = "setup_already_done";
+      throw err;
+    }
+
+    const payload = req.body || {};
+    const username = String(payload.username || "").trim();
+    const password = String(payload.password || "").trim();
+    const full_name = String(payload.full_name || username).trim();
+
+    if (!username || !password) {
+      const err = new Error("اسم المستخدم وكلمة المرور مطلوبان");
+      err.status = 400;
+      throw err;
+    }
+    if (username.toLowerCase() === String(SYSTEM_OWNER_USERNAME).toLowerCase()) {
+      const err = new Error("System owner username is reserved");
+      err.status = 400;
+      throw err;
+    }
+    const conflict = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
+    if (conflict) {
+      const err = new Error("Username already taken");
+      err.status = 409;
+      throw err;
+    }
+
+    // Plaintext password matches the rest of the local user accounts (admins
+    // can view/manage them). role=admin grants full access automatically.
+    const info = db
+      .prepare("INSERT INTO users (full_name, username, password_hash, role, is_active) VALUES (?, ?, ?, 'admin', 1)")
+      .run(full_name, username, password);
+
+    req.user = { id: info.lastInsertRowid };
+    req.audit("create", "user", { id: info.lastInsertRowid, username }, `👤 إنشاء أول مدير عبر الإعداد الأولي: ${username}`);
+    res.status(201).json({ success: true, data: { id: info.lastInsertRowid, username } });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post("/login", (req, res, next) => {
   const { username, password } = req.body || {};

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   CreditCard, Plus, Pencil, Trash2, X, Lock, ArrowUpCircle, ArrowDownCircle,
   BookOpen, RefreshCw, Search, Printer, Settings2, Wallet, Banknote, ShieldCheck
@@ -10,6 +10,7 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PaymentMethodsReportTemplate from "../../components/print/templates/PaymentMethodsReportTemplate";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -44,6 +45,12 @@ function MethodsTab() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: "", category: "digital_wallet", icon: "💳", description: "", excludes_from_treasury: true });
   const [saving, setSaving] = useState(false);
+  const handleKeyDown = useFieldNavigation();
+  const nameRef = useRef(null);
+  const iconRef = useRef(null);
+  const catRef = useRef(null);
+  const descRef = useRef(null);
+  const saveBtnRef = useRef(null);
 
   async function load() {
     setLoading(true);
@@ -210,19 +217,19 @@ function MethodsTab() {
                 <div className="grid grid-cols-4 gap-6">
                   <div className="col-span-3">
                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">اسم الوسيلة</label>
-                    <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus
+                    <input ref={nameRef} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus onKeyDown={(e) => handleKeyDown(e, { nextRef: iconRef })}
                       className="w-full text-2xl font-black text-slate-900 placeholder:text-slate-300 outline-none border-b-2 border-slate-100 focus:border-slate-900 pb-3 transition-colors bg-transparent" placeholder="مثال: فودافون كاش" />
                   </div>
                   <div className="col-span-1">
                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">الرمز</label>
-                    <input value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
+                    <input ref={iconRef} value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: catRef, prevRef: nameRef })}
                       className="w-full text-2xl text-center outline-none border-b-2 border-slate-100 focus:border-slate-900 pb-3 transition-colors bg-transparent" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">التصنيف المحاسبي</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  <select ref={catRef} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: descRef, prevRef: iconRef })}
                     className="w-full text-xl font-bold text-slate-900 outline-none border-b-2 border-slate-100 focus:border-slate-900 pb-3 transition-colors bg-transparent appearance-none cursor-pointer">
                     {CATEGORIES.filter(c => c.value !== "cash" && c.value !== "credit").map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
                   </select>
@@ -230,7 +237,7 @@ function MethodsTab() {
 
                 <div>
                   <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">وصف إضافي (اختياري)</label>
-                  <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  <input ref={descRef} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: catRef })}
                     className="w-full text-lg font-bold text-slate-900 placeholder:text-slate-300 outline-none border-b border-slate-100 focus:border-slate-900 pb-3 transition-colors bg-transparent" placeholder="ملاحظات..." />
                 </div>
 
@@ -249,7 +256,7 @@ function MethodsTab() {
 
               <div className="p-8 border-t border-slate-100 flex gap-4">
                 <button onClick={() => setModalOpen(false)} className="flex-1 rounded-full bg-slate-100 py-4 text-sm font-black text-slate-600 hover:bg-slate-200 transition-colors uppercase tracking-widest">إلغاء</button>
-                <button onClick={handleSave} disabled={!form.name.trim() || saving}
+                <button ref={saveBtnRef} onClick={handleSave} disabled={!form.name.trim() || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: nameRef, onEnter: handleSave })}
                   className="flex-[2] rounded-full bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 disabled:opacity-50 transition-all shadow-lg active:scale-95 uppercase tracking-widest">
                   {saving ? "جاري التسجيل..." : "حفظ الوسيلة"}
                 </button>
@@ -267,6 +274,13 @@ function TransactionsTab() {
   const [loading, setLoading] = useState(true);
   const [methods, setMethods] = useState([]);
   const [filters, setFilters] = useState({ search: "", from: "", to: "", method: "", type: "" });
+  const handleKeyDown = useFieldNavigation();
+  const searchRef = useRef(null);
+  const fromRef = useRef(null);
+  const toRef = useRef(null);
+  const methodRef = useRef(null);
+  const typeRef = useRef(null);
+  const refreshBtnRef = useRef(null);
   const [printOpen, setPrintOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -319,22 +333,22 @@ function TransactionsTab() {
           <div className="flex flex-wrap items-center gap-4 flex-1">
             <div data-help="search-bar" className="relative w-full max-w-[300px]">
               <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-              <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") load(); }} placeholder="بحث برقم المستند، البيان..."
+              <input ref={searchRef} value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: fromRef, onEnter: load })} placeholder="بحث برقم المستند، البيان..."
                 className="w-full h-14 rounded-full bg-slate-50 pr-14 pl-6 text-sm font-black text-slate-900 outline-none focus:bg-slate-100 transition-colors" />
             </div>
             
             <div className="flex items-center bg-slate-50 rounded-full h-14 px-4 overflow-hidden border border-slate-100">
-              <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} className="flex-1 h-full px-2 bg-transparent text-sm font-bold text-slate-600 outline-none font-mono" />
+              <input ref={fromRef} type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: toRef, prevRef: searchRef })} className="flex-1 h-full px-2 bg-transparent text-sm font-bold text-slate-600 outline-none font-mono" />
               <div className="w-px h-6 bg-slate-200 mx-2" />
-              <input type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} className="flex-1 h-full px-2 bg-transparent text-sm font-bold text-slate-600 outline-none font-mono" />
+              <input ref={toRef} type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: methodRef, prevRef: fromRef })} className="flex-1 h-full px-2 bg-transparent text-sm font-bold text-slate-600 outline-none font-mono" />
             </div>
 
-            <select value={filters.method} onChange={e => setFilters(f => ({ ...f, method: e.target.value }))} className="h-14 rounded-full bg-slate-50 px-6 text-sm font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
+            <select ref={methodRef} value={filters.method} onChange={e => setFilters(f => ({ ...f, method: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: typeRef, prevRef: toRef })} className="h-14 rounded-full bg-slate-50 px-6 text-sm font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
               <option value="">جميع الوسائل</option>
               {methods.map(m => <option key={m.id} value={m.id}>{m.icon} {m.name}</option>)}
             </select>
             
-            <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} className="h-14 rounded-full bg-slate-50 px-6 text-sm font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
+            <select ref={typeRef} value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: refreshBtnRef, prevRef: methodRef })} className="h-14 rounded-full bg-slate-50 px-6 text-sm font-black text-slate-700 outline-none cursor-pointer border border-slate-100">
               <option value="">كل الاتجاهات</option>
               <option value="in">عمليات الدخول</option>
               <option value="out">عمليات الخروج</option>
@@ -342,7 +356,7 @@ function TransactionsTab() {
           </div>
 
           <div className="flex items-center gap-3 pr-4 border-r border-slate-200">
-            <button onClick={load} className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-600 transition-colors shadow-md">
+            <button ref={refreshBtnRef} onClick={load} onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, onEnter: load })} className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-600 transition-colors shadow-md">
               <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
             </button>
             <PermissionGate page="payment_methods" action="print">

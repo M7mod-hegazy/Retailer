@@ -4,6 +4,7 @@ import { Plus, RotateCcw, X, Printer, Eye, Pencil, Trash2, AlertTriangle, ArrowD
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { usePageTour } from "../../hooks/usePageTour";

@@ -1,4 +1,5 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import {
   Search, ArrowRight, ArrowLeft, CheckCircle2, Package, RotateCcw,
   User, Calendar, X, AlertCircle, ChevronLeft, Filter, SlidersHorizontal,
@@ -162,6 +163,11 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
   const [refundMethod, setRefundMethod] = useState("cash_back");
   const [purchaseSettlement, setPurchaseSettlement] = useState("account");
   const [submitting, setSubmitting] = useState(false);
+
+  const handleKeyDown = useFieldNavigation();
+  const reasonRef = useRef(null);
+  const notesRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   const debouncedSearch = useDebounce(searchTerm, 350);
   const debouncedProduct = useDebounce(productSearch, 400);
@@ -709,8 +715,10 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                 <div>
                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">سبب المرتجع</label>
                   <select
+                    ref={reasonRef}
                     value={reason}
                     onChange={e => setReason(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: notesRef })}
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 focus:border-slate-400 focus:outline-none"
                   >
                     <option value="">اختر السبب (اختياري)</option>
@@ -776,9 +784,11 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                 <div>
                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">ملاحظات (اختياري)</label>
                   <textarea
+                    ref={notesRef}
                     rows={2}
                     value={returnNotes}
                     onChange={e => setReturnNotes(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: reasonRef })}
                     placeholder="ملاحظة على المرتجع…"
                     className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 focus:border-slate-400 focus:outline-none"
                   />
@@ -817,6 +827,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                 <ArrowRight className="h-4 w-4" /> رجوع
               </button>
               <button
+                ref={submitBtnRef}
                 onClick={handleSubmit}
                 disabled={submitting}
                 className={`flex-1 rounded-lg py-2.5 text-sm font-black text-white transition-all disabled:opacity-60 ${

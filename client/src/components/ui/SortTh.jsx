@@ -6,15 +6,17 @@ export default function SortTh({
   className = "",
   sortKey,
   width,
+  minWidth,
   onResizeStart,
   resizableKey,
   sortConfig,
   onSort,
 }) {
+  const mw = minWidth || 40;
   return (
     <th
-      className={`relative select-none border-l border-slate-200/80 px-2 py-3 bg-slate-50 text-[11px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap transition-colors ${className} ${sortKey && onSort ? "cursor-pointer hover:bg-slate-100" : ""}`}
-      style={{ width, minWidth: width, maxWidth: width }}
+      className={`relative select-none border-l border-slate-200/80 px-2 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap transition-colors ${className} ${sortKey && onSort ? "cursor-pointer hover:bg-slate-100" : ""}`}
+      style={{ width, minWidth: mw, maxWidth: width }}
       onClick={() => onSort && sortKey && onSort(sortKey)}
     >
       <div className="flex items-center justify-between overflow-hidden">

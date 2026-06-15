@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 import { Plus, Search, Wrench } from "lucide-react";
 import Button from "../../components/ui/Button";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const STATUS_LABELS = {
   received: { label: "استُلم", color: "bg-slate-100 text-slate-700" },
@@ -26,6 +27,10 @@ const PRIORITY_LABELS = {
 export default function RepairOrdersList() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+
+  const searchRef = useRef(null);
+  const statusRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   const { data, isLoading } = useQuery({
     queryKey: ["repair-orders", search, status],
@@ -51,16 +56,20 @@ export default function RepairOrdersList() {
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
+            ref={searchRef}
             className="w-full rounded-lg border border-slate-200 ps-9 pe-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             placeholder="بحث بالرقم أو الجهاز أو العميل..."
             value={search}
             onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => handleKeyDown(e, { nextRef: statusRef })}
           />
         </div>
         <select
+          ref={statusRef}
           className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
           value={status}
           onChange={e => setStatus(e.target.value)}
+          onKeyDown={e => handleKeyDown(e, { prevRef: searchRef })}
         >
           <option value="">كل الحالات</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => (

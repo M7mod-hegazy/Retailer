@@ -20,8 +20,12 @@ const {
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
 
+const { ensureWritableDir } = require("../config/paths");
+
 const router = express.Router();
-const upload = multer({ dest: path.join(process.cwd(), "tmp") });
+// Temp staging for uploaded backup archives. MUST be a per-user writable
+// location — process.cwd() is the (read-only) install dir for packaged builds.
+const upload = multer({ dest: ensureWritableDir(path.join(os.tmpdir(), "ElHegaziRetailer-tmp"), "tmp") });
 
 router.use(authRequired);
 

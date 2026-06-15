@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   AlertCircle, Clock, CheckCircle2, ChevronRight, X, Plus, Printer,
   Calendar, User, FileText, BarChart2, Search, RefreshCw
@@ -9,6 +9,7 @@ import MultiPaymentInput from "../../components/payment/MultiPaymentInput";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import AjalStatementTemplate from "../../components/print/templates/AjalStatementTemplate";
 import AjalScheduleTemplate from "../../components/print/templates/AjalScheduleTemplate";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -41,6 +42,13 @@ export default function AjalTrackerPage() {
   const [schedForm, setSchedForm] = useState({ installments: 3, frequency: "monthly", start_date: "" });
   const [scheduling, setScheduling] = useState(false);
   const [activePanel, setActivePanel] = useState("pay"); // 'pay' | 'schedule'
+  const searchRef = useRef(null);
+  const payAmountRef = useRef(null);
+  const payNotesRef = useRef(null);
+  const schedInstallmentsRef = useRef(null);
+  const schedFrequencyRef = useRef(null);
+  const schedStartDateRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -207,7 +215,8 @@ export default function AjalTrackerPage() {
         <div className="flex items-center gap-3 px-4 pb-3 shrink-0">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+            <input ref={searchRef} value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+              onKeyDown={e => handleKeyDown(e, { nextRef: payAmountRef, prevRef: null })}
               placeholder="بحث بالعميل أو رقم الفاتورة..."
               className="w-full h-9 rounded-xl border border-slate-200 pr-9 pl-3 text-2sm outline-none focus:border-amber-400" />
           </div>
@@ -350,7 +359,8 @@ export default function AjalTrackerPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ (ج.م) *</label>
-                  <input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                  <input ref={payAmountRef} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: payNotesRef, prevRef: searchRef })}
                     autoFocus placeholder={`المتبقي: ${fmt(selected.remaining)}`}
                     className="w-full h-10 rounded-xl border border-slate-300 px-4 text-sm font-black text-center outline-none focus:border-amber-500" />
                 </div>
@@ -362,7 +372,8 @@ export default function AjalTrackerPage() {
                 />
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-                  <input type="text" value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                  <input ref={payNotesRef} type="text" value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: schedInstallmentsRef, prevRef: payAmountRef })}
                     className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-slate-400" />
                 </div>
                 <button onClick={handlePay} disabled={!payForm.amount || paying}
@@ -376,13 +387,15 @@ export default function AjalTrackerPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">عدد الأقساط</label>
-                  <input type="number" min="2" max="60" value={schedForm.installments}
+                  <input ref={schedInstallmentsRef} type="number" min="2" max="60" value={schedForm.installments}
                     onChange={e => setSchedForm(f => ({ ...f, installments: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: schedFrequencyRef, prevRef: payNotesRef })}
                     className="w-full h-10 rounded-xl border border-slate-300 px-4 text-center text-sm font-black outline-none focus:border-amber-500" />
                 </div>
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">التكرار</label>
-                  <select value={schedForm.frequency} onChange={e => setSchedForm(f => ({ ...f, frequency: e.target.value }))}
+                  <select ref={schedFrequencyRef} value={schedForm.frequency} onChange={e => setSchedForm(f => ({ ...f, frequency: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: schedStartDateRef, prevRef: schedInstallmentsRef })}
                     className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm font-bold outline-none bg-white focus:border-amber-500">
                     <option value="weekly">أسبوعي</option>
                     <option value="biweekly">كل أسبوعين</option>
@@ -391,7 +404,8 @@ export default function AjalTrackerPage() {
                 </div>
                 <div>
                   <label className="text-[11px] font-black text-slate-600 block mb-1.5">تاريخ البداية</label>
-                  <input type="date" value={schedForm.start_date} onChange={e => setSchedForm(f => ({ ...f, start_date: e.target.value }))}
+                  <input ref={schedStartDateRef} type="date" value={schedForm.start_date} onChange={e => setSchedForm(f => ({ ...f, start_date: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: schedFrequencyRef })}
                     className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-amber-500" />
                 </div>
                 {selected.remaining > 0 && schedForm.installments > 0 && (

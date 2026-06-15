@@ -308,7 +308,7 @@ function salesByCashier(startDate, endDate, opts = {}) {
   const costCol = getCostColumn(opts.cost_method);
   const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
   return db.prepare(`
-    SELECT u.full_name AS cashier,
+    SELECT COALESCE(u.full_name, u.username, 'غير معروف') AS cashier,
       COUNT(CASE WHEN i.status != 'cancelled' THEN 1 END) AS invoice_count,
       COUNT(CASE WHEN i.status = 'cancelled' THEN 1 END) AS cancelled_count,
       COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN i.total ELSE 0 END), 0) AS total_sales,
@@ -337,7 +337,7 @@ function salesByCashier(startDate, endDate, opts = {}) {
         THEN ROUND(COALESCE(SUM(CASE WHEN i.status != 'cancelled' THEN il_agg.item_count ELSE 0 END), 0) * 1.0
           / COUNT(CASE WHEN i.status != 'cancelled' THEN 1 END), 1) ELSE 0 END AS items_per_invoice
     FROM invoices i
-    JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
+    LEFT JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
     LEFT JOIN (
       SELECT invoice_id, COALESCE(SUM(quantity), 0) AS item_count
       FROM invoice_lines GROUP BY invoice_id
@@ -812,7 +812,7 @@ function shiftHistory(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   return db.prepare(`
-    SELECT s.id, u.full_name AS cashier,
+    SELECT s.id, COALESCE(u.full_name, u.username, 'غير معروف') AS cashier,
       DATE(s.opened_at) AS opened_date, s.closed_at,
       s.opening_cash, s.closing_cash,
       COALESCE(SUM(i.total), 0) AS sales_total,
@@ -821,7 +821,7 @@ function shiftHistory(startDate, endDate, opts = {}) {
       COUNT(DISTINCT i.id) AS invoice_count,
       s.status
     FROM shifts s
-    JOIN users u ON u.id = s.user_id
+    LEFT JOIN users u ON u.id = s.user_id
     LEFT JOIN invoices i ON i.shift_id = s.id AND i.status != 'cancelled'
     WHERE 1=1 ${addDateFilter("s.opened_at", startDate, endDate, params)}
     GROUP BY s.id

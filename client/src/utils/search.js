@@ -142,18 +142,23 @@ export function scoreItem(item, query, keys) {
 
   let maxScore = 0;
 
+  // A key is a "name" field (lower weight on loose contains-matches) unless it
+  // looks like an identifier such as code / sku / barcode.
+  const isCodeKey = (k) => /code|sku|barcode|ref/i.test(k);
+
   for (const key of keys) {
     const val = String(item[key] || '').toLowerCase();
     if (!val) continue;
 
-    if (val === q) { maxScore = Math.max(maxScore, 1000); continue; }
-
-    if (val.startsWith(q)) { maxScore = Math.max(maxScore, 900); continue; }
-
+    // Evaluate every tier and keep the highest — the tiers are NOT in score
+    // order, so an early `continue` would under-score a value that matches a
+    // higher tier later (e.g. a token-exact SKU that also starts-with the query).
     const tokens = val.split(/[\s\-_./:،,]+/);
-    if (tokens.some(t => t === q)) { maxScore = Math.max(maxScore, 950); continue; }
-
-    if (val.includes(q)) { maxScore = Math.max(maxScore, key === 'name' ? 700 : 800); continue; }
+    if (val === q)                 maxScore = Math.max(maxScore, 1000);
+    else if (tokens.some(t => t === q)) maxScore = Math.max(maxScore, 950);
+    else if (val.startsWith(q))    maxScore = Math.max(maxScore, 900);
+    else if (tokens.some(t => t.startsWith(q))) maxScore = Math.max(maxScore, isCodeKey(key) ? 850 : 760);
+    else if (val.includes(q))      maxScore = Math.max(maxScore, isCodeKey(key) ? 800 : 700);
   }
 
   const variants = searchVariants(q);

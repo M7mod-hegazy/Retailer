@@ -55,7 +55,7 @@ export const NAV_MODULES = [
       { path: "/repairs", label: "أوامر الصيانة", icon: Wrench, pageKey: "repair_orders", featureKey: "feature_repair_orders" },
       { path: "/restaurant/tables", label: "طاولات المطعم", icon: UtensilsCrossed, pageKey: "pos", featureKey: "feature_restaurant" },
       { path: "/gold/rates", label: "أسعار الذهب", icon: Gem, pageKey: "settings", featureKey: "feature_gold" },
-      { path: "/definitions/promotions", label: "العروض والتخفيضات", icon: BadgePercent, pageKey: "promotions" },
+      { path: "/definitions/promotions", label: "العروض والتخفيضات", icon: BadgePercent, pageKey: "promotions", featureKey: "feature_promotions" },
     ],
   },
   {

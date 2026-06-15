@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -433,6 +434,12 @@ export default function ReportWorkspacePage() {
   });
 
   const columnDropdownRef = useRef(null);
+  const searchRef = useRef(null);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const costMethodRef = useRef(null);
+  const closeFilterRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
   const [printOpen, setPrintOpen] = useState(false);
   const [printAllData, setPrintAllData] = useState(null);
   const [printAllLoading, setPrintAllLoading] = useState(false);
@@ -986,9 +993,11 @@ export default function ReportWorkspacePage() {
                   <div className="relative group">
                     <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
                     <input 
+                      ref={searchRef}
                       type="text" 
                       value={filters.q || ""} 
                       onChange={(e) => setFilters(c => ({ ...c, q: e.target.value }))} 
+                      onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef })}
                       placeholder="ابحث بالاسم، الكود، الوصف..." 
                       className="w-full h-11 pr-11 pl-4 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 font-bold placeholder:text-zinc-400 placeholder:font-medium focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" 
                     />
@@ -1007,9 +1016,9 @@ export default function ReportWorkspacePage() {
                       </div>
                     </label>
                     <div className="flex items-center gap-2">
-                      <input type="date" value={filters.from} onChange={(e) => setFilters(c => ({ ...c, from: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
+                      <input ref={dateFromRef} type="date" value={filters.from} onChange={(e) => setFilters(c => ({ ...c, from: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: searchRef })} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
                       <span className="text-zinc-400">-</span>
-                      <input type="date" value={filters.to} onChange={(e) => setFilters(c => ({ ...c, to: e.target.value }))} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
+                      <input ref={dateToRef} type="date" value={filters.to} onChange={(e) => setFilters(c => ({ ...c, to: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: dateFromRef })} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
                     </div>
                   </div>
                 )}
@@ -1036,7 +1045,7 @@ export default function ReportWorkspacePage() {
                 {hasCostMethodSelector && (
                   <div className="space-y-2">
                     <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">طريقة حساب التكلفة</label>
-                    <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
+                    <select ref={costMethodRef} value={costMethod} onChange={(e) => setCostMethod(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: closeFilterRef, prevRef: dateToRef })} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
                       {COST_METHODS.map(m => (<option key={m.value} value={m.value}>{m.label}</option>))}
                     </select>
                   </div>
@@ -1053,7 +1062,7 @@ export default function ReportWorkspacePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-2sm font-bold text-zinc-500 hover:bg-zinc-100 transition-colors">إعادة تعيين</button>
-                  <button onClick={() => setFiltersOpen(false)} className="px-4 py-2 rounded-xl text-2sm font-bold bg-primary text-white hover:bg-primary-600 transition-colors">إغلاق</button>
+                  <button ref={closeFilterRef} onClick={() => setFiltersOpen(false)} onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => closeFilterRef.current?.click() })} className="px-4 py-2 rounded-xl text-2sm font-bold bg-primary text-white hover:bg-primary-600 transition-colors">إغلاق</button>
                 </div>
               </div>
             </div>

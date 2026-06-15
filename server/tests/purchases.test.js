@@ -52,4 +52,54 @@ describe("Purchases Routes", () => {
     const res = await request(app).get("/api/purchases").set("Authorization", `Bearer ${token}`);
     expect(res.body.data.length).toBeGreaterThan(0);
   });
+
+  it("POST /api/purchases linked to a PO tags source and advances PO received qty/status", async () => {
+    // Create a PO with 5 units
+    const poRes = await request(app)
+      .post("/api/purchase-orders")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ supplier_id: supplierId, warehouse_id: 1, lines: [{ item_id: itemId, quantity: 5, unit_cost: 30, unit_id: 1 }] });
+    const poId = poRes.body.data.id;
+    const poDetail = await request(app).get(`/api/purchase-orders/${poId}`).set("Authorization", `Bearer ${token}`);
+    const poLineId = poDetail.body.data.lines[0].id;
+
+    // Partially receive 2 via a purchase invoice
+    const buyRes = await request(app)
+      .post("/api/purchases")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        supplier_id: supplierId, warehouse_id: 1, payment_method: "cash",
+        source_purchase_order_id: poId,
+        lines: [{ item_id: itemId, quantity: 2, unit_cost: 30, purchase_order_line_id: poLineId }],
+      });
+    expect(buyRes.status).toBe(201);
+    expect(buyRes.body.data.source_purchase_order_id).toBe(poId);
+
+    const afterPartial = await request(app).get(`/api/purchase-orders/${poId}`).set("Authorization", `Bearer ${token}`);
+    expect(afterPartial.body.data.status).toBe("partially_received");
+    expect(afterPartial.body.data.lines[0].received_quantity).toBe(2);
+
+    // Over-receive guard: receiving 99 more must be rejected
+    const overRes = await request(app)
+      .post("/api/purchases")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        supplier_id: supplierId, warehouse_id: 1, payment_method: "cash",
+        source_purchase_order_id: poId,
+        lines: [{ item_id: itemId, quantity: 99, unit_cost: 30, purchase_order_line_id: poLineId }],
+      });
+    expect(overRes.status).toBe(400);
+
+    // Receive the remaining 3 → fully received
+    await request(app)
+      .post("/api/purchases")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        supplier_id: supplierId, warehouse_id: 1, payment_method: "cash",
+        source_purchase_order_id: poId,
+        lines: [{ item_id: itemId, quantity: 3, unit_cost: 30, purchase_order_line_id: poLineId }],
+      });
+    const afterFull = await request(app).get(`/api/purchase-orders/${poId}`).set("Authorization", `Bearer ${token}`);
+    expect(afterFull.body.data.status).toBe("received");
+  });
 });

@@ -1,10 +1,5 @@
-import React from "react";
+import React, { forwardRef } from "react";
 
-// Canonical action button. Every primary call-to-action across the app should
-// route through this so button color/shape stays identical per theme. The base
-// look comes from the `.btn*` classes (index.css, @layer components) which are
-// driven by theme CSS variables; anything passed via `className` are utilities
-// that win over the component layer, so per-button width/shape tweaks still work.
 const variants = {
   primary: "btn-primary",
   secondary: "btn-ghost",
@@ -19,7 +14,7 @@ const sizes = {
   lg: "btn-lg",
 };
 
-export default function Button({
+const Button = forwardRef(({
   as: Component = "button",
   variant = "primary",
   size = "md",
@@ -29,7 +24,7 @@ export default function Button({
   loading,
   icon: Icon,
   ...props
-}) {
+}, ref) => {
   const classes = [
     "btn",
     variants[variant] || variants.primary,
@@ -37,8 +32,6 @@ export default function Button({
     className,
   ].filter(Boolean).join(" ");
 
-  // Native <button> gets a real `disabled`; polymorphic targets (e.g. Link, a)
-  // can't be disabled natively, so we expose state via aria + a class hook.
   const isNativeButton = Component === "button";
   const isDisabled = disabled || loading;
   const stateProps = isNativeButton
@@ -47,6 +40,7 @@ export default function Button({
 
   return (
     <Component
+      ref={ref}
       {...props}
       {...stateProps}
       className={isNativeButton ? classes : `${classes}${isDisabled ? " btn-disabled" : ""}`}
@@ -63,4 +57,7 @@ export default function Button({
       )}
     </Component>
   );
-}
+});
+
+Button.displayName = "Button";
+export default Button;

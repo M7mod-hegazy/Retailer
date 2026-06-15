@@ -27,12 +27,22 @@ function ensurePackagedEnv() {
   const programDataRoot = process.env.ProgramData || app.getPath("appData");
   const appRoot = path.join(programDataRoot, "ElHegaziRetailer");
 
-  if (!process.env.DB_PATH) {
-    process.env.DB_PATH = path.join(appRoot, "data", "retailer.db");
-    process.env.UPLOADS_DIR = appRoot;
-  }
+  // Point EVERY runtime-writable path at the per-user writable root. The install
+  // dir (C:\Program Files\...) is read-only for normal Windows users, so writing
+  // there fails with EPERM and the embedded server can't start. These must all be
+  // set — not just DB_PATH — otherwise uploads/backups/logs silently fall back to
+  // the (read-only) install directory.
+  process.env.RETAILER_DATA_DIR = appRoot;
+  if (!process.env.DB_PATH) process.env.DB_PATH = path.join(appRoot, "data", "retailer.db");
+  process.env.UPLOADS_DIR = appRoot;                       // upload.js appends /uploads
+  if (!process.env.BACKUP_DIR) process.env.BACKUP_DIR = path.join(appRoot, "backups");
+  if (!process.env.LOG_DIR) process.env.LOG_DIR = path.join(appRoot, "logs");
 
-  fs.mkdirSync(path.dirname(process.env.DB_PATH), { recursive: true });
+  try {
+    fs.mkdirSync(path.dirname(process.env.DB_PATH), { recursive: true });
+  } catch (_e) {
+    // Non-fatal: the server's writable-path resolver has a temp-dir safety net.
+  }
 
   if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
     const secretFile = path.join(appRoot, "jwt.secret");

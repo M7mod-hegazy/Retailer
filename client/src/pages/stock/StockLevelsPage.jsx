@@ -23,6 +23,7 @@ import {
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
@@ -31,7 +32,8 @@ import { Card } from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import PageWrapper from "../../components/ui/PageWrapper";
 import SearchInput from "../../components/ui/SearchInput";
-import { fuzzyFilterRows, adaptForServer } from "../../utils/search";
+import { scoredFilterRows } from "../../utils/search";
+import Highlight from "../../components/ui/Highlight";
 import { Select } from "../../components/ui/Select";
 import PermissionGate from "../../components/ui/PermissionGate";
 
@@ -51,6 +53,8 @@ const MOVEMENT_LABELS = {
 };
 const MOV_META = (t) => MOVEMENT_LABELS[t] || { label: t, color: "text-slate-600", badge: "bg-slate-50 border-slate-200", Icon: BarChart3 };
 const PAGE = 50;
+// Keys searched for both the levels and transfer product search (ranked relevance).
+const PRODUCT_SEARCH_KEYS = ["code", "barcode", "item_code", "item_name", "category_name"];
 
 // ─── Tab ─────────────────────────────────────────────────────────────────────
 function Tab({ active, onClick, children, ...rest }) {
@@ -93,6 +97,20 @@ function StatusBadge({ qty, min }) {
 
 export default function StockLevelsPage() {
   usePageTour('stock');
+  const handleKeyDown = useFieldNavigation();
+  const adjWhRef = useRef(null);
+  const adjQtyRef = useRef(null);
+  const adjReasonRef = useRef(null);
+  const adjSubmitRef = useRef(null);
+  const txFromRef = useRef(null);
+  const txToRef = useRef(null);
+  const txNotesRef = useRef(null);
+  const txSubmitRef = useRef(null);
+  const movSearchRef = useRef(null);
+  const movWhRef = useRef(null);
+  const movTypeRef = useRef(null);
+  const movDateFromRef = useRef(null);
+  const movDateToRef = useRef(null);
   const location = useLocation();
   const [tab, setTab] = useState(() =>
     location.pathname.endsWith("/transfer") ? "transfer" : "levels"
@@ -172,28 +190,34 @@ export default function StockLevelsPage() {
   }, []);
 
   // ══════════ LEVELS logic ══════════
+  // NOTE: search is applied client-side (ranked, keyboard/typo-tolerant) so we
+  // only refetch when the warehouse filter changes — not on every keystroke.
   const loadLevels = useCallback(() => {
     setLL(true);
     const params = {};
-    if (levelsSearch) params.search = levelsSearch;
     if (levelsWH) params.warehouse_id = levelsWH;
     api.get("/api/stock/levels", { params })
       .then((r) => setLevels(r.data.data || []))
       .catch(() => toast.error("تعذر تحميل أرصدة المخزون"))
       .finally(() => setLL(false));
-  }, [levelsSearch, levelsWH]);
+  }, [levelsWH]);
 
   useEffect(() => { loadLevels(); }, [loadLevels]);
   useEffect(() => { setLP(1); }, [levelsSearch, levelsWH, showLowOnly, sortCol, sortDir]);
 
   const filteredLevels = useMemo(() => {
     let list = showLowOnly ? levels.filter((r) => r.quantity <= (r.min_stock_qty ?? 0)) : levels;
+    // While searching, order by relevance (exact code/SKU first) — overrides the
+    // column sort so the best match always sits at the top.
+    if (levelsSearch.trim()) {
+      return scoredFilterRows(list, levelsSearch, PRODUCT_SEARCH_KEYS);
+    }
     return [...list].sort((a, b) => {
       let va = a[sortCol] ?? ""; let vb = b[sortCol] ?? "";
       if (typeof va === "string") { va = va.toLowerCase(); vb = vb.toLowerCase(); }
       return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
     });
-  }, [levels, showLowOnly, sortCol, sortDir]);
+  }, [levels, levelsSearch, showLowOnly, sortCol, sortDir]);
 
   const totalLvlPages = Math.max(1, Math.ceil(filteredLevels.length / PAGE));
   const pageLevels    = filteredLevels.slice((levelsPage - 1) * PAGE, levelsPage * PAGE);
@@ -277,7 +301,7 @@ export default function StockLevelsPage() {
   useEffect(() => { setTxPage(1); }, [txSearch]);
 
   const filteredTxItems = useMemo(() => {
-    return fuzzyFilterRows(txItems, txSearch, ['item_name', 'barcode', 'code', 'item_code', 'category_name']);
+    return scoredFilterRows(txItems, txSearch, PRODUCT_SEARCH_KEYS);
   }, [txItems, txSearch]);
 
   const txTotalPages = Math.max(1, Math.ceil(filteredTxItems.length / PAGE));
@@ -539,7 +563,7 @@ export default function StockLevelsPage() {
                   <div data-help="search-bar" className="relative flex-1 group">
                      <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                      <input value={levelsSearch} onChange={(e) => setLS(e.target.value)}
-                       placeholder="بحث سريع بالاسم أو الباركود..."
+                       placeholder="بحث بالاسم أو الكود أو الباركود..."
                        className="w-full rounded-md border border-slate-200 bg-white py-2 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
                   </div>
                   <div className="relative w-64 group">
@@ -575,14 +599,14 @@ export default function StockLevelsPage() {
                 columns={[
                   {
                     id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-2sm font-black text-slate-500 border-l border-slate-100",
-                    render: (r) => r.code || "—"
+                    render: (r) => r.code ? <Highlight text={r.code} query={levelsSearch} /> : "—"
                   },
                   {
                     id: "item_name", header: "الصنف", width: 220, sortable: true, cellClass: "font-black text-sm text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
                     render: (r) => (
                       <div className="flex flex-col">
-                        <span>{r.item_name}</span>
-                        {(r.item_code || r.code || r.barcode) && <span className="font-mono text-[11px] text-slate-400 font-bold">{r.item_code || r.code || r.barcode}</span>}
+                        <span><Highlight text={r.item_name} query={levelsSearch} /></span>
+                        {(r.item_code || r.code || r.barcode) && <span className="font-mono text-[11px] text-slate-400 font-bold"><Highlight text={r.item_code || r.code || r.barcode} query={levelsSearch} /></span>}
                       </div>
                     )
                   },
@@ -644,8 +668,8 @@ export default function StockLevelsPage() {
                             <div className="space-y-1.5 w-48">
                               <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">المخزن</span>
                               <div className="relative">
-                                <select value={adjWarehouseId} onChange={(e) => setAdjWH(e.target.value)}
-                                  className="w-full appearance-none rounded-sm border border-sky-200 bg-white py-1.5 pl-7 pr-3 text-sm font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm">
+                                <select ref={adjWhRef} value={adjWarehouseId} onChange={(e) => setAdjWH(e.target.value)}
+                                  className="w-full appearance-none rounded-sm border border-sky-200 bg-white py-1.5 pl-7 pr-3 text-sm font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: adjQtyRef })}>
                                   <option value="">اختر مخزناً...</option>
                                   {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
@@ -668,9 +692,9 @@ export default function StockLevelsPage() {
                           <div className="w-32 space-y-1.5">
                             <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">{adjMode === "delta" ? "الفرق (+/-)" : "الكمية الحقيقية"}</span>
                             <div className="relative">
-                               <input type="number" step="1" value={adjQty} onChange={(e) => setAdjQty(e.target.value)}
+                               <input ref={adjQtyRef} type="number" step="1" value={adjQty} onChange={(e) => setAdjQty(e.target.value)}
                                  placeholder={adjMode === "delta" ? "+10, -5" : "0"}
-                                 className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-sm font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm font-mono text-center" />
+                                 className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-sm font-black text-sky-900 outline-none focus:border-sky-500 shadow-sm font-mono text-center" onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef, prevRef: adjWhRef })} />
                             </div>
                             {adjMode === "delta" && adjQty !== "" && !isNaN(Number(adjQty)) && (
                                <div className="absolute mt-1 text-[11px] font-bold text-sky-800">
@@ -680,14 +704,14 @@ export default function StockLevelsPage() {
                           </div>
                           <div className="flex-1 space-y-1.5 min-w-[200px]">
                             <span className="text-[11px] font-black uppercase tracking-widest text-sky-600/70">ملاحظات العمليات (سبب التسوية)</span>
-                            <input type="text" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder="مثلاً: بضاعة تالفة, خطأ جرد..."
-                               className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-sm font-bold text-sky-900 outline-none focus:border-sky-500 shadow-sm" />
+                            <input ref={adjReasonRef} type="text" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder="مثلاً: بضاعة تالفة, خطأ جرد..."
+                               className="w-full rounded-sm border border-sky-200 bg-white py-1.5 px-3 text-sm font-bold text-sky-900 outline-none focus:border-sky-500 shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: adjSubmitRef, prevRef: adjQtyRef })} />
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => setAdjustRow(null)}
                               className="h-[34px] px-4 rounded-sm border border-sky-200 text-2sm font-black text-sky-700 hover:bg-sky-100 transition-colors">إلغاء</button>
                             <PermissionGate page="stock" action="adjust">
-                              <button onClick={submitAdjust} disabled={adjLoading}
+                              <button ref={adjSubmitRef} onClick={submitAdjust} disabled={adjLoading}
                                 className="h-[34px] px-6 rounded-sm bg-sky-600 text-2sm font-black text-white hover:bg-sky-700 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1.5">
                                 {adjLoading ? "جارٍ الحفظ..." : <><CheckCircle2 className="h-3.5 w-3.5" /> اعتماد التسوية</>}
                               </button>
@@ -728,8 +752,8 @@ export default function StockLevelsPage() {
             <div className="flex flex-wrap items-end gap-x-6 gap-y-4 px-6 py-4 border-b border-slate-200 bg-white">
               <div className="w-52 space-y-1.5 relative group">
                 <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">من مخزن (المصدر)</span>
-                <select value={fromWH} onChange={(e) => { setFromWH(e.target.value); setToWH(""); }}
-                  className="w-full appearance-none rounded-sm border border-slate-200 bg-slate-50/50 py-2 pl-8 pr-3 text-sm font-black text-slate-800 outline-none focus:border-slate-800 focus:bg-white shadow-sm transition-colors">
+                <select ref={txFromRef} value={fromWH} onChange={(e) => { setFromWH(e.target.value); setToWH(""); }}
+                  className="w-full appearance-none rounded-sm border border-slate-200 bg-slate-50/50 py-2 pl-8 pr-3 text-sm font-black text-slate-800 outline-none focus:border-slate-800 focus:bg-white shadow-sm transition-colors" onKeyDown={e => handleKeyDown(e, { nextRef: txToRef })}>
                   <option value="">اختر المخزن المصدر...</option>
                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
@@ -737,9 +761,9 @@ export default function StockLevelsPage() {
               </div>
               <div className="w-52 space-y-1.5 relative group">
                 <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">إلى مخزن (الوجهة)</span>
-                <select value={toWH} onChange={(e) => setToWH(e.target.value)}
+                <select ref={txToRef} value={toWH} onChange={(e) => setToWH(e.target.value)}
                   className={`w-full appearance-none rounded-sm border py-2 pl-8 pr-3 text-sm font-black outline-none transition-colors shadow-sm
-                    ${fromWH && !toWH ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-600 focus:bg-white" : "border-slate-200 bg-slate-50/50 text-slate-800 focus:border-slate-800 focus:bg-white"}`}>
+                    ${fromWH && !toWH ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-600 focus:bg-white" : "border-slate-200 bg-slate-50/50 text-slate-800 focus:border-slate-800 focus:bg-white"}`} onKeyDown={e => handleKeyDown(e, { nextRef: txNotesRef, prevRef: txFromRef })}>
                   <option value="">اختر المخزن الوجهة...</option>
                   {warehouses.filter(w => String(w.id) !== String(fromWH)).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
@@ -748,8 +772,8 @@ export default function StockLevelsPage() {
               </div>
               <div className="flex-1 min-w-[200px] space-y-1.5">
                 <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">ملاحظات (اختياري)</span>
-                <input type="text" value={txNotes} onChange={(e) => setTxNotes(e.target.value)} placeholder="سبب التحويل أو رقم الإذن..."
-                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                <input ref={txNotesRef} type="text" value={txNotes} onChange={(e) => setTxNotes(e.target.value)} placeholder="سبب التحويل أو رقم الإذن..."
+                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: txSubmitRef, prevRef: txToRef })} />
               </div>
             </div>
 
@@ -802,7 +826,7 @@ export default function StockLevelsPage() {
                   <div className="relative w-72 group">
                     <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input type="text" value={txSearch} onChange={(e) => setTxSearch(e.target.value)}
-                      placeholder="البحث ضمن المخزن المصدر..."
+                      placeholder="ابحث بالاسم أو الكود أو الباركود..."
                       className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-3 pr-9 text-2sm font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
                   </div>
                   <div className="flex items-center gap-4">
@@ -902,13 +926,15 @@ export default function StockLevelsPage() {
                                   />
                                 </td>
                                 <td className="py-2 text-center font-mono text-[11px] font-black text-slate-500 border-l border-slate-100 w-[100px]">
-                                  {item.code || item.item_code || "—"}
+                                  {(item.code || item.item_code)
+                                    ? <Highlight text={item.code || item.item_code} query={txSearch} />
+                                    : "—"}
                                 </td>
                                 <td className="py-2 px-3 border-l border-slate-100 w-[220px]">
                                   <div className="flex flex-col">
-                                    <p className="font-black text-2sm text-slate-800 leading-tight">{item.item_name}</p>
+                                    <p className="font-black text-2sm text-slate-800 leading-tight"><Highlight text={item.item_name} query={txSearch} /></p>
                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                      {item.barcode && <span className="font-mono text-[9px] text-slate-400 bg-slate-100 px-1 rounded-sm">{item.barcode}</span>}
+                                      {item.barcode && <span className="font-mono text-[9px] text-slate-400 bg-slate-100 px-1 rounded-sm"><Highlight text={item.barcode} query={txSearch} /></span>}
                                       <span className="text-[9px] font-bold text-slate-400">{item.category_name || "—"}</span>
                                     </div>
                                   </div>
@@ -1019,7 +1045,7 @@ export default function StockLevelsPage() {
                     </button>
                   </div>
                   <PermissionGate page="stock" action="transfer">
-                    <button onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
+                    <button ref={txSubmitRef} onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
                       className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-sm shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
                       <CheckCircle2 className="h-4 w-4" />
                       {txSubmitting ? "جاري التحويل..." : "تنفيذ التحويل"}
@@ -1043,20 +1069,20 @@ export default function StockLevelsPage() {
                 size="md"
               />
               <div className="relative w-44 group">
-                <select value={movWH} onChange={(e) => setMovWH(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+                <select ref={movWhRef} value={movWH} onChange={(e) => setMovWH(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: movTypeRef })}>
                   {whOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
               <div className="relative w-48 group">
-                <select value={movType} onChange={(e) => setMovType(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm">
+                <select ref={movTypeRef} value={movType} onChange={(e) => setMovType(e.target.value)} className="w-full appearance-none rounded-md border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm font-black text-slate-700 outline-none focus:border-slate-800 shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: movDateFromRef, prevRef: movWhRef })}>
                   <option value="">كل أنواع الحركات</option>
                   {Object.entries(MOVEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
                 <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
-              <input type="date" value={movDateFrom} onChange={(e) => setMovDateFrom(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-2sm font-black text-slate-700" />
-              <input type="date" value={movDateTo} onChange={(e) => setMovDateTo(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-2sm font-black text-slate-700" />
+              <input ref={movDateFromRef} type="date" value={movDateFrom} onChange={(e) => setMovDateFrom(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-2sm font-black text-slate-700" onKeyDown={e => handleKeyDown(e, { nextRef: movDateToRef, prevRef: movTypeRef })} />
+              <input ref={movDateToRef} type="date" value={movDateTo} onChange={(e) => setMovDateTo(e.target.value)} className="rounded-md border border-slate-200 bg-white py-2 px-3 text-2sm font-black text-slate-700" onKeyDown={e => handleKeyDown(e, { prevRef: movDateFromRef })} />
               <p className="text-2sm font-black text-slate-500">{movTotal} حركة</p>
             </div>
 

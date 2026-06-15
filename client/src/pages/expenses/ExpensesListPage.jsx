@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -187,6 +188,11 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
   });
 
   const inputRef = useRef(null);
+  const categoryRef = useRef(null);
+  const methodRef = useRef(null);
+  const descRef = useRef(null);
+  const notesRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     if (isOpen) {
@@ -244,6 +250,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <input 
               ref={inputRef}
               type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})}
+              onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
               className="w-full bg-transparent text-5xl md:text-7xl font-black font-mono text-zinc-900 placeholder:text-slate-200 outline-none pb-2 border-b-2 border-slate-100 focus:border-rose-500 transition-colors"
             />
             <span className="absolute left-0 bottom-4 text-2xl font-black text-slate-300 pointer-events-none">EGP</span>
@@ -253,7 +260,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصنيف المصروف <span className="text-rose-500">*</span></label>
               <select 
+                ref={categoryRef}
                 value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}
+                onKeyDown={e => handleKeyDown(e, { nextRef: methodRef, prevRef: inputRef })}
                 className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 appearance-none"
               >
                 <option value="" disabled>اختر التصنيف...</option>
@@ -263,7 +272,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</label>
               <select 
+                ref={methodRef}
                 value={form.payment_method} onChange={e => setForm({...form, payment_method: e.target.value})}
+                onKeyDown={e => handleKeyDown(e, { nextRef: descRef, prevRef: categoryRef })}
                 className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 appearance-none"
               >
                 <option value="cash">نقدي (Cash)</option>
@@ -276,7 +287,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">البيان / الوصف</label>
             <input 
+              ref={descRef}
               placeholder="اكتب وصفاً مختصراً للمصروف..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}
+              onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: methodRef })}
               className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
             />
           </div>
@@ -284,7 +297,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ملاحظات إضافية</label>
             <textarea 
+              ref={notesRef}
               placeholder="تفاصيل إضافية (اختياري)..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}
+              onKeyDown={e => handleKeyDown(e, { prevRef: descRef, onEnter: () => { if (form.amount && form.category_id && !saving) onSubmit(form); } })}
               className="w-full h-20 resize-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-2sm font-medium outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
             />
           </div>
@@ -338,7 +353,7 @@ const SplineHeader = () => (
         transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
       />
     </svg>
-    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#fafafa]" />
+    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--bg-base)]" />
   </div>
 );
 

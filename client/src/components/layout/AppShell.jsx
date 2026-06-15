@@ -13,6 +13,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import { getHelpPageKey } from "../../help/routeHelp";
 import { applyFontSettings } from "../../utils/fontSettings";
 import { applyColorTheme } from "../../utils/applyColorTheme";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import FpsOverlay from "../ui/FpsOverlay";
 
 function useIsMobile() {
@@ -74,7 +75,7 @@ export default function AppShell({ children }) {
         setBranding({
           title: settings.app_name || settings.company_name || "ElHegazi Retailer",
           subtitle: settings.app_subtitle || settings.branch_name || "Retailer Suite",
-          logoUrl: settings.logo_url || null,
+          logoUrl: resolveImageUrl(settings.logo_url || null),
           showOnSidebar: settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0,
         });
       })

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
 import { 
   X, 
@@ -13,6 +13,7 @@ import {
   Layers
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   const [categories, setCategories] = useState([]);
@@ -32,6 +33,15 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
     employee_id: "",
     created_at: new Date().toISOString().split('T')[0]
   });
+  const amountRef = useRef(null);
+  const categoryRef = useRef(null);
+  const descRef = useRef(null);
+  const sourceRef = useRef(null);
+  const employeeRef = useRef(null);
+  const dateRef = useRef(null);
+  const notesRef = useRef(null);
+  const formRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     if (!open) return;
@@ -110,21 +120,23 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8">
+         <form ref={formRef} onSubmit={handleSubmit} className="p-8">
            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
               {/* Amount */}
               <div className="col-span-1 space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">قيمة المصروف</label>
                  <div className="relative">
                     <DollarSign className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input 
-                       type="number"
-                       required
-                       value={form.amount}
-                       onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
-                       placeholder="0.00"
-                       className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600"
-                    />
+                     <input 
+                        ref={amountRef}
+                        type="number"
+                        required
+                        value={form.amount}
+                        onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
+                        placeholder="0.00"
+                        className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600"
+                     />
                  </div>
               </div>
 
@@ -133,15 +145,17 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تصنيف المصروف</label>
                  <div className="relative">
                     <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <select 
-                       required
-                       value={form.category_id}
-                       onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
-                       className="w-full appearance-none rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
-                    >
-                       <option value="">اختيار الفئة...</option>
-                       {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                     <select 
+                        ref={categoryRef}
+                        required
+                        value={form.category_id}
+                        onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: descRef, prevRef: amountRef })}
+                        className="w-full appearance-none rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
+                     >
+                        <option value="">اختيار الفئة...</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                     </select>
                  </div>
               </div>
 
@@ -150,13 +164,15 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">وصف مختصر</label>
                  <div className="relative">
                     <FileText className="absolute right-3 top-3 h-4 w-4 text-slate-400" />
-                    <input 
-                       type="text"
-                       value={form.description}
-                       onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
-                       placeholder="مثلاً: فاتورة الكهرباء لشهر مارس..."
-                       className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
-                    />
+                     <input 
+                        ref={descRef}
+                        type="text"
+                        value={form.description}
+                        onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: sourceRef, prevRef: categoryRef })}
+                        placeholder="مثلاً: فاتورة الكهرباء لشهر مارس..."
+                        className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
+                     />
                  </div>
               </div>
 
@@ -184,14 +200,16 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
               {/* Source Selection */}
               <div className="col-span-1 space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">المصدر المالي</label>
-                 <select 
-                    value={form.payment_method === 'cash' ? form.treasury_id : form.bank_id}
-                    onChange={(e) => setForm(f => ({ ...f, [form.payment_method === 'cash' ? 'treasury_id' : 'bank_id']: e.target.value }))}
-                    className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
-                 >
-                    <option value="">{form.payment_method === 'cash' ? 'اختر الخزينة...' : 'اختر الحساب البنكي...'}</option>
-                    {form.payment_method === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                 </select>
+                  <select 
+                     ref={sourceRef}
+                     value={form.payment_method === 'cash' ? form.treasury_id : form.bank_id}
+                     onChange={(e) => setForm(f => ({ ...f, [form.payment_method === 'cash' ? 'treasury_id' : 'bank_id']: e.target.value }))}
+                     onKeyDown={e => handleKeyDown(e, { nextRef: employeeRef, prevRef: descRef })}
+                     className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
+                  >
+                     <option value="">{form.payment_method === 'cash' ? 'اختر الخزينة...' : 'اختر الحساب البنكي...'}</option>
+                     {form.payment_method === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
               </div>
 
               {/* Employee */}
@@ -199,14 +217,16 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">بمعرفة الموظف</label>
                  <div className="relative">
                     <User className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <select 
-                       value={form.employee_id}
-                       onChange={(e) => setForm(f => ({ ...f, employee_id: e.target.value }))}
-                       className="w-full appearance-none rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-2sm font-bold text-slate-700 outline-none"
-                    >
-                       <option value="">اختيار الموظف (اختياري)...</option>
-                       {employees.map(em => <option key={em.id} value={em.id}>{em.name}</option>)}
-                    </select>
+                     <select 
+                        ref={employeeRef}
+                        value={form.employee_id}
+                        onChange={(e) => setForm(f => ({ ...f, employee_id: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: dateRef, prevRef: sourceRef })}
+                        className="w-full appearance-none rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-2sm font-bold text-slate-700 outline-none"
+                     >
+                        <option value="">اختيار الموظف (اختياري)...</option>
+                        {employees.map(em => <option key={em.id} value={em.id}>{em.name}</option>)}
+                     </select>
                  </div>
               </div>
 
@@ -215,25 +235,29 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تاريخ المصروف</label>
                  <div className="relative">
                     <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input 
-                       type="date"
-                       value={form.created_at}
-                       onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
-                       className="w-full rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-2sm font-black text-slate-800 outline-none"
-                    />
+                     <input 
+                        ref={dateRef}
+                        type="date"
+                        value={form.created_at}
+                        onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: employeeRef })}
+                        className="w-full rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-2sm font-black text-slate-800 outline-none"
+                     />
                  </div>
               </div>
 
               {/* Notes */}
               <div className="col-span-2 space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">ملاحظات داخلية</label>
-                 <textarea 
-                    value={form.notes}
-                    onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-                    placeholder="اكتب أي تفاصيل أخرى هنا..."
-                    className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-2sm font-bold text-slate-700 outline-none focus:bg-white resize-none"
-                    rows="2"
-                 />
+                  <textarea 
+                     ref={notesRef}
+                     value={form.notes}
+                     onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+                     onKeyDown={e => handleKeyDown(e, { prevRef: dateRef, onEnter: () => formRef.current?.requestSubmit() })}
+                     placeholder="اكتب أي تفاصيل أخرى هنا..."
+                     className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-2sm font-bold text-slate-700 outline-none focus:bg-white resize-none"
+                     rows="2"
+                  />
               </div>
            </div>
 

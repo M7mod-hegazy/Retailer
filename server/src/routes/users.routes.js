@@ -143,6 +143,148 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
   }
 });
 
+// Friendly Arabic labels for tables that may reference a user. Unknown tables
+// fall back to their raw name so the block message is still informative.
+const USER_REF_LABELS = {
+  invoices: "فواتير المبيعات",
+  shifts: "ورديات نقاط البيع",
+  shift_transactions: "حركات الوردية",
+  purchases: "فواتير الشراء",
+  payments: "سندات الدفع والتحصيل",
+  sales_returns: "مرتجعات المبيعات",
+  purchase_returns: "مرتجعات الشراء",
+  expenses: "المصروفات",
+  revenues: "الإيرادات",
+  withdrawals: "السحوبات",
+  daily_withdrawals: "سحوبات اليومية",
+  stock_movements: "حركات المخزون",
+  bank_transactions: "حركات البنوك",
+  branch_transfers: "تحويلات الفروع",
+  customer_notes: "ملاحظات العملاء",
+  supplier_notes: "ملاحظات الموردين",
+  owner_statements: "كشوف المالك",
+  ajal_payments: "تحصيلات الآجل",
+  employee_adjustments: "تسويات الموظفين",
+  daily_sessions: "جلسات اليومية",
+  account_import_batches: "دفعات استيراد الحسابات",
+};
+
+// Log / disposable per-user state. These have FKs to users but are NOT business
+// activity — we detach (null) or delete them on user removal instead of blocking.
+const USER_DETACH_TABLES = new Set(["audit_logs", "notifications", "user_help_state"]);
+
+// Discover every foreign key that points at users.id at runtime, so the delete
+// guard stays correct even as new tables are added (no hardcoded list to drift).
+function getUserForeignKeys(db) {
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+  const fks = [];
+  for (const { name } of tables) {
+    let list = [];
+    try { list = db.prepare(`PRAGMA foreign_key_list(${name})`).all(); } catch (_e) { continue; }
+    for (const fk of list) {
+      if (fk.table === "users") {
+        fks.push({ table: name, from: fk.from, onDelete: String(fk.on_delete || "").toUpperCase() });
+      }
+    }
+  }
+  return fks;
+}
+
+// Count business references that would block a hard-delete. FKs handled by the
+// DB (SET NULL/CASCADE) and detach tables never block. Counts are aggregated
+// per table so multiple FK columns on one table report a single figure.
+function collectUserReferences(db, userId, fks) {
+  const counts = new Map();
+  for (const fk of fks) {
+    if (["SET NULL", "CASCADE", "SET DEFAULT"].includes(fk.onDelete)) continue;
+    if (USER_DETACH_TABLES.has(fk.table)) continue;
+    let c = 0;
+    try {
+      c = Number(db.prepare(`SELECT COUNT(*) AS c FROM ${fk.table} WHERE ${fk.from} = ?`).get(userId)?.c || 0);
+    } catch (_e) {
+      continue;
+    }
+    if (c > 0) {
+      const label = USER_REF_LABELS[fk.table] || fk.table;
+      counts.set(label, (counts.get(label) || 0) + c);
+    }
+  }
+  return [...counts.entries()].map(([label, count]) => ({ label, count }));
+}
+
+// Preserve audit history but detach the user (its FK is NO ACTION → must null),
+// and drop disposable per-user rows before removing the account.
+function detachUserLogs(db, userId) {
+  try { db.prepare("UPDATE audit_logs SET user_id = NULL WHERE user_id = ?").run(userId); } catch (_e) {}
+  try { db.prepare("DELETE FROM notifications WHERE user_id = ?").run(userId); } catch (_e) {}
+  try { db.prepare("DELETE FROM user_help_state WHERE user_id = ?").run(userId); } catch (_e) {}
+}
+
+router.delete("/:id", requirePagePermission("users", "delete"), requireRole("admin"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const id = req.params.id;
+    const existing = db
+      .prepare("SELECT id, username, role, is_system_account FROM users WHERE id = ?")
+      .get(id);
+
+    if (!existing) {
+      const err = new Error("User not found");
+      err.status = 404;
+      throw err;
+    }
+
+    if (existing.is_system_account) {
+      const err = new Error("System owner account cannot be deleted");
+      err.status = 403;
+      throw err;
+    }
+
+    // Cannot delete the account you are currently logged in with.
+    if (String(req.user?.id) === String(id)) {
+      const err = new Error("Cannot delete your own account");
+      err.code = "cannot_delete_self";
+      err.status = 400;
+      throw err;
+    }
+
+    // Never allow removing the last remaining admin (would lock out management).
+    if (existing.role === "admin") {
+      const otherAdmins = db
+        .prepare(
+          "SELECT COUNT(*) AS c FROM users WHERE role = 'admin' AND is_active = 1 AND id != ?",
+        )
+        .get(id);
+      if (Number(otherAdmins?.c || 0) === 0) {
+        const err = new Error("Cannot delete the last administrator");
+        err.code = "last_admin";
+        err.status = 409;
+        throw err;
+      }
+    }
+
+    // Block hard-delete when the user owns business activity; suggest deactivate.
+    const fks = getUserForeignKeys(db);
+    const references = collectUserReferences(db, id, fks);
+    if (references.length > 0) {
+      return res.status(409).json({
+        success: false,
+        code: "has_references",
+        references,
+        message: "لا يمكن حذف المستخدم لارتباطه بسجلات. يمكنك تعطيله بدلاً من حذفه.",
+      });
+    }
+
+    // Detach logs / disposable state, then remove the account.
+    detachUserLogs(db, id);
+    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    req.audit("delete", "user", { id: Number(id), username: existing.username }, `👤 تم حذف مستخدم: ${existing.username}`);
+    res.json({ success: true, data: { deleted: true } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:id/permissions", (req, res, next) => {
   try {
     if (req.user.role !== "admin" && req.user.role !== "dev") {

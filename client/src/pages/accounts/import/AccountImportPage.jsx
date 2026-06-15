@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, History, Upload, Trash2, Loader2, CheckCircle2, AlertTriangle, Link2, MinusCircle, Eye } from "lucide-react";
 import { useAccountImportWizard } from "./useAccountImportWizard";
+import { useFieldNavigation } from "../../../hooks/useFieldNavigation";
 import AccountImportHistoryTab from "./AccountImportHistoryTab";
 
 const FIELD_LABELS = {
@@ -188,6 +189,9 @@ function StepUpload({ wizard, theme, onBack }) {
 
 /* ── NEW: Column Mapping Step ───────────────────────────────── */
 function StepColumns({ wizard }) {
+  const columnRefs = useRef([]);
+  const proceedRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
   const mappedName = wizard.hasNameMapped;
   const mappedCount = wizard.mappedFieldsCount;
   const totalColumns = wizard.totalColumns || 0;
@@ -319,9 +323,20 @@ function StepColumns({ wizard }) {
                 <div className="flex flex-col justify-center border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0 lg:border-r lg:pr-4">
                   <label className="mb-1.5 block text-xs font-black text-slate-500 font-title">حقل النظام</label>
                   <select
+                    ref={el => { columnRefs.current[index] = el; }}
                     value={field}
                     onChange={(event) => wizard.updateMapping(index, event.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-350 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                    onKeyDown={e => {
+                      const next = columnRefs.current[index + 1];
+                      const prev = columnRefs.current[index - 1];
+                      const last = columnRefs.current[index - 1] || columnRefs.current[columnRefs.current.length - 1];
+                      if (index === wizard.headers.length - 1) {
+                        handleKeyDown(e, { nextRef: proceedRef, prevRef: prev });
+                      } else {
+                        handleKeyDown(e, { nextRef: next, prevRef: prev });
+                      }
+                    }}
                   >
                     <option value="">غير مستورد</option>
                     {wizard.ACCOUNT_FIELDS.map((accountField) => <option key={accountField.key} value={accountField.key}>{accountField.label}</option>)}
@@ -354,6 +369,7 @@ function StepColumns({ wizard }) {
           {mappedName ? "✓ تم ربط الاسم. يمكنك المتابعة." : "اربط حقل الاسم أولا"}
         </div>
         <button
+          ref={proceedRef}
           type="button"
           disabled={!mappedName || wizard.loading}
           onClick={wizard.proceedFromColumns}

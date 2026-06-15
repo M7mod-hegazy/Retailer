@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-const { execFileSync, execSync } = require('child_process');
+const { execFileSync } = require('child_process');
+const path = require('path');
 
-function wmic(query) {
-  try {
-    execFileSync('wmic', ['process', 'where', query, 'delete'], { stdio: 'ignore' });
-  } catch {}
-}
+const ROOT = path.join(__dirname, '..', '..');
+const ROOT_MARKER = ROOT.replace(/\\/g, '\\\\');
 
 function killPort(port) {
   try {
@@ -21,12 +19,35 @@ function killPort(port) {
   } catch {}
 }
 
-// Kill Retailer electron/node processes
-wmic("name='electron.exe' and executablepath like '%Retailer%'");
-wmic("name='node.exe' and commandline like '%electron\\\\cli.js%' and commandline like '%Retailer%'");
+function killRetailerProcessesWindows() {
+  // wmic was removed on recent Windows builds; use CIM via PowerShell instead.
+  const ps = `
+$root = '${ROOT_MARKER}'
+Get-CimInstance Win32_Process |
+  Where-Object {
+  ($_.Name -eq 'ElHegazi-Retailer.exe') -or
+  ($_.Name -eq 'electron.exe' -and (
+    $_.ExecutablePath -like "*$root*" -or
+    $_.ExecutablePath -like "*\\\\release\\\\win7\\\\*"
+  )) -or
+  ($_.Name -eq 'node.exe' -and $_.CommandLine -like "*electron\\\\cli.js*" -and $_.CommandLine -like "*$root*")
+} | ForEach-Object {
+  Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+}
+`;
+  try {
+    execFileSync(
+      'powershell',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', ps],
+      { stdio: 'ignore' }
+    );
+  } catch {}
+}
 
-// Kill dev server and Vite ports
-killPort(5000);
-killPort(5173);
+if (process.platform === 'win32') {
+  killRetailerProcessesWindows();
+  killPort(5000);
+  killPort(5173);
+}
 
 process.exit(0);

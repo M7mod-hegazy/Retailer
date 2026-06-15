@@ -9,6 +9,7 @@ import {
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
 import useDebounce from "../../hooks/useDebounce";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import SearchInput from "../../components/ui/SearchInput";

@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, CalendarDays, Search, X, Package, User, List, LayoutList, BarChart3, Filter } from "lucide-react";
 import { PREVIEW_COLUMNS, GHOST_ROWS, CAT_PREVIEW_COLUMNS, CAT_GHOST_ROWS, COL_TYPE_STYLE, FILTER_DIMENSIONS } from "./reportsCenterConfig";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
@@ -831,6 +832,11 @@ export function FilterPanelTop({
   }, [filters, dimensions, costMethod, scope]);
 
   const [collapsed, setCollapsed] = useState(false);
+  const searchRef = useRef(null);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const costMethodRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   return (
     <motion.div layout className="bg-white rounded-[24px] border border-zinc-200 shadow-sm overflow-hidden">
@@ -883,8 +889,9 @@ export function FilterPanelTop({
                   <label className="block text-[11px] font-bold text-zinc-500">بحث عام</label>
                   <div className="relative">
                     <Search size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                    <input type="text" value={filters.q || ""}
+                    <input ref={searchRef} type="text" value={filters.q || ""}
                       onChange={(e) => onFilterChange("q", e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef })}
                       placeholder="ابحث..."
                       className="w-full h-10 pr-10 pl-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
@@ -907,13 +914,15 @@ export function FilterPanelTop({
                       </div>
                     </label>
                     <div className="flex items-center gap-2">
-                      <input type="date" value={dateRange?.from || ""}
+                      <input ref={dateFromRef} type="date" value={dateRange?.from || ""}
                         onChange={(e) => onDateChange?.("from", e.target.value)}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: searchRef })}
                         className="flex-1 h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900"
                       />
                       <span className="text-zinc-400 shrink-0">–</span>
-                      <input type="date" value={dateRange?.to || ""}
+                      <input ref={dateToRef} type="date" value={dateRange?.to || ""}
                         onChange={(e) => onDateChange?.("to", e.target.value)}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: dateFromRef })}
                         className="flex-1 h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900"
                       />
                     </div>
@@ -962,7 +971,8 @@ export function FilterPanelTop({
                 {hasProfit && (
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-bold text-zinc-500">طريقة التكلفة</label>
-                    <select value={costMethod || "wacc"} onChange={(e) => onCostChange?.(e.target.value)}
+                    <select ref={costMethodRef} value={costMethod || "wacc"} onChange={(e) => onCostChange?.(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { prevRef: dateToRef })}
                       className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
                     >
                       {[{ value: "wacc", label: "متوسط التكلفة (WACC)" }, { value: "last_purchase", label: "آخر سعر شراء" }].map((m) => (

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState, useRef } from "react";
 import api from "../../services/api";
 import {
   Plus, Calendar, User, AlertCircle, CheckCircle2,
@@ -8,6 +8,7 @@ import {
 import toast from "react-hot-toast";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function fmt(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -35,6 +36,13 @@ export default function InstallmentsPage() {
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [paying, setPaying] = useState(false);
+
+  const queryRef = useRef(null);
+  const statusFilterRef = useRef(null);
+  const partyTypeRef = useRef(null);
+  const payAmountRef = useRef(null);
+  const payNoteRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   async function load() {
     setLoading(true);
@@ -90,7 +98,8 @@ export default function InstallmentsPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
-            <button onClick={() => setPartyType("customer")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "customer" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button ref={partyTypeRef} onClick={() => setPartyType("customer")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "customer" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              onKeyDown={e => handleKeyDown(e, { prevRef: statusFilterRef })}>
               <User className="h-3.5 w-3.5" /> العملاء
             </button>
             <button onClick={() => setPartyType("supplier")} className={`px-4 py-2 text-2sm font-black transition-all flex items-center gap-1.5 ${partyType === "supplier" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"}`}>
@@ -132,19 +141,23 @@ export default function InstallmentsPage() {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
+            ref={queryRef}
             type="text"
             placeholder="بحث بالاسم أو رقم الفاتورة..."
             value={query}
             onChange={e => setQuery(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm font-bold outline-none focus:border-slate-800"
+            onKeyDown={e => handleKeyDown(e, { nextRef: statusFilterRef })}
           />
         </div>
         <div className="flex gap-1">
-          {["", "open", "partial", "overdue", "paid"].map(s => (
+          {["", "open", "partial", "overdue", "paid"].map((s, i) => (
             <button
               key={s}
+              ref={i === 0 ? statusFilterRef : undefined}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-2 rounded-lg text-[11px] font-black border transition-all ${statusFilter === s ? "bg-primary text-white border-slate-800" : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"}`}
+              onKeyDown={i === 0 ? e => handleKeyDown(e, { nextRef: partyTypeRef, prevRef: queryRef }) : undefined}
             >
               {s === "" ? "الكل" : STATUS_MAP[s]?.label}
             </button>
@@ -254,6 +267,7 @@ export default function InstallmentsPage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المبلغ المدفوع</label>
               <input
+                ref={payAmountRef}
                 type="number"
                 min="0.01"
                 step="0.01"
@@ -261,16 +275,19 @@ export default function InstallmentsPage() {
                 onChange={e => setPayAmount(e.target.value)}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-[16px] font-black outline-none focus:border-emerald-500"
                 autoFocus
+                onKeyDown={e => handleKeyDown(e, { nextRef: payNoteRef })}
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ملاحظات (اختياري)</label>
               <input
+                ref={payNoteRef}
                 type="text"
                 value={payNote}
                 onChange={e => setPayNote(e.target.value)}
                 placeholder="مثال: دفعة نقدية..."
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold outline-none focus:border-slate-800"
+                onKeyDown={e => handleKeyDown(e, { prevRef: payAmountRef, onEnter: () => handlePay(e) })}
               />
             </div>
             <div className="flex gap-2 mt-2">

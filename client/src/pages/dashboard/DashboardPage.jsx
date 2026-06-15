@@ -3,10 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
@@ -107,7 +109,10 @@ const COLOR_MAP = {
 // ─── Permission hook ──────────────────────────────────────────────────────────
 function usePermissionFilter() {
   const { user, permissions } = useAuthStore();
-  return (pageKey) => {
+  const settings = useAppSettingsStore((s) => s.settings);
+  return (pageKey, featureKey) => {
+    // Feature gate applies to everyone, including admin — feature off means the card doesn't exist
+    if (featureKey && !settings[featureKey]) return false;
     if (!pageKey) return true;
     if (!user) return false;
     if (user.role === "dev" || user.role === "admin") return true;
@@ -134,7 +139,11 @@ function QuickEntryModal({ type, onClose }) {
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const handleKeyDown = useFieldNavigation();
   const amountRef = useRef(null);
+  const categoryRef = useRef(null);
+  const descriptionRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   useEffect(() => {
     amountRef.current?.focus();
@@ -218,6 +227,7 @@ function QuickEntryModal({ type, onClose }) {
                 step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
                 placeholder="0.00"
                 className="w-full text-3xl font-black text-zinc-900 placeholder:text-zinc-200 bg-zinc-50 border border-zinc-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all text-right"
                 required
@@ -230,8 +240,10 @@ function QuickEntryModal({ type, onClose }) {
           <div>
             <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">الفئة <span className="text-rose-500">*</span></label>
             <select
+              ref={categoryRef}
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: descriptionRef, prevRef: amountRef })}
               className={`w-full text-sm font-bold text-zinc-900 bg-zinc-50 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all appearance-none ${!categoryId ? "border-rose-300" : "border-zinc-200"}`}
               required
             >
@@ -246,9 +258,11 @@ function QuickEntryModal({ type, onClose }) {
           <div>
             <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">{cfg.descLabel}</label>
             <input
+              ref={descriptionRef}
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: categoryRef })}
               placeholder="اكتب وصفاً مختصراً..."
               className="w-full text-sm font-semibold text-zinc-900 placeholder:text-zinc-300 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
             />
@@ -256,6 +270,7 @@ function QuickEntryModal({ type, onClose }) {
 
           {/* Submit */}
           <button
+            ref={submitBtnRef}
             type="submit"
             disabled={submitting || !amount || !categoryId}
             className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-black text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${colors.btn}`}
@@ -456,10 +471,10 @@ export default function DashboardPage() {
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchDashboardData]);
 
-  const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey));
+  const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey, item.featureKey));
   const visibleModules = NAV_MODULES.map((module) => ({
     ...module,
-    items: module.items.filter((item) => canView(item.pageKey)),
+    items: module.items.filter((item) => canView(item.pageKey, item.featureKey)),
   })).filter((module) => module.items.length > 0);
 
   const [activeTabId, setActiveTabId] = useState(visibleModules[0]?.id || null);

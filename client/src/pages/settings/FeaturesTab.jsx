@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, BadgePercent, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const FEATURES = [
   {
@@ -116,6 +117,20 @@ const FEATURES = [
       "قاعدة الأصناف ← حقول الذهب (العيار، الوزن بالجرام، المصنعية)",
       "نقطة البيع ← تسعير تلقائي: وزن × سعر العيار + المصنعية + تنبيه إدخال سعر اليوم",
       "الفواتير ← حفظ تفاصيل الذهب وعرضها في التفاصيل والمطبوعات",
+    ],
+  },
+  {
+    key: "feature_promotions",
+    icon: BadgePercent,
+    color: "bg-pink-600",
+    ringColor: "ring-pink-200",
+    name: "العروض والتخفيضات",
+    desc: "إدارة العروض الترويجية والخصومات على الأصناف والأقسام مع تطبيقها تلقائياً في نقطة البيع.",
+    recommendedFor: ["سوبر ماركت", "ملابس", "تجزئة"],
+    affectedPages: [
+      "الشريط الجانبي ← صفحة «العروض والتخفيضات» (تظهر فور التفعيل)",
+      "نقطة البيع ← تطبيق العروض والخصومات تلقائياً على الفاتورة",
+      "لوحة العمل ← بطاقة العروض والتخفيضات",
     ],
   },
 ];
@@ -279,6 +294,11 @@ function FeatureCard({ feature, enabled, onRequestEnable }) {
 export default function FeaturesTab({ settings, onChange, onSilentSave }) {
   const [confirmFeature, setConfirmFeature] = useState(null);
   const [saving, setSaving] = useState(false);
+  const handleKeyDown = useFieldNavigation();
+  const prefixRef = useRef(null);
+  const codeLengthRef = useRef(null);
+  const valueTypeRef = useRef(null);
+  const decimalsRef = useRef(null);
 
   async function handleEnable(key) {
     setSaving(true);
@@ -363,32 +383,40 @@ export default function FeaturesTab({ settings, onChange, onSilentSave }) {
           </h4>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Input
+              ref={prefixRef}
               label="بادئة الباركود (prefix)"
               value={settings.scale_prefix ?? "22"}
               onChange={e => handleScaleChange("scale_prefix", e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: codeLengthRef })}
               placeholder="22"
             />
             <Input
+              ref={codeLengthRef}
               label="طول كود الصنف (PLU)"
               type="number"
               min={1} max={8}
               value={settings.scale_item_code_length ?? 5}
               onChange={e => handleScaleChange("scale_item_code_length", Number(e.target.value))}
+              onKeyDown={e => handleKeyDown(e, { nextRef: valueTypeRef, prevRef: prefixRef })}
             />
             <Select
+              ref={valueTypeRef}
               label="نوع القيمة"
               value={settings.scale_value_type ?? "weight"}
               onChange={e => handleScaleChange("scale_value_type", e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: decimalsRef, prevRef: codeLengthRef })}
             >
               <option value="weight">وزن (كيلو)</option>
               <option value="price">سعر (جنيه)</option>
             </Select>
             <Input
+              ref={decimalsRef}
               label="عدد الخانات العشرية"
               type="number"
               min={0} max={4}
               value={settings.scale_value_decimals ?? 3}
               onChange={e => handleScaleChange("scale_value_decimals", Number(e.target.value))}
+              onKeyDown={e => handleKeyDown(e, { prevRef: valueTypeRef })}
             />
           </div>
           <p className="text-[11px] text-amber-700 font-bold">

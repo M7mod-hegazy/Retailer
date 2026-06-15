@@ -1,7 +1,8 @@
-﻿import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback, useRef } from "react";
 import { Receipt, X, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const PAYMENT_LABELS = {
   cash: "نقدي", bank_transfer: "بنك/فيزا", credit: "آجل",
@@ -26,6 +27,11 @@ export default function TodayInvoicesButton({ variant = "default" }) {
   const [dateTo, setDateTo] = useState(todayStr());
   const [userId, setUserId] = useState("");
   const [usersList, setUsersList] = useState([]);
+  const handleKeyDown = useFieldNavigation();
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const userSelectRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,25 +107,30 @@ export default function TodayInvoicesButton({ variant = "default" }) {
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-black text-slate-500">من:</span>
                 <input
+                  ref={dateFromRef}
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef })}
                   className="rounded-lg border border-slate-200 px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-black text-slate-500">إلى:</span>
                 <input
+                  ref={dateToRef}
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: userSelectRef, prevRef: dateFromRef })}
                   className="rounded-lg border border-slate-200 px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
                 />
               </div>
               {usersList.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black text-slate-500">المستخدم:</span>
-                  <select value={userId} onChange={(e) => setUserId(e.target.value)}
+                  <select ref={userSelectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: dateToRef })}
                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400">
                     <option value="">الكل</option>
                     {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
@@ -127,7 +138,9 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                 </div>
               )}
               <button
+                ref={submitBtnRef}
                 onClick={load}
+                onKeyDown={e => handleKeyDown(e, { prevRef: userSelectRef })}
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-emerald-700"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث

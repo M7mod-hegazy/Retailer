@@ -467,11 +467,12 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(payload.supplier_id)
         : null;
       const result = db
-        .prepare("INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .prepare("INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, notes, source_purchase_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .run(docNo, payload.supplier_id || null, total, discount, increase, paymentMethod,
              `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
              payload.user_id || req.user?.id || null,
-             payload.notes || null);
+             payload.notes || null,
+             payload.source_purchase_order_id || null);
 
       const purchaseId = result.lastInsertRowid;
 
@@ -538,6 +539,34 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
             ).run(line.item_id, warehouseId, line.batch_no || null, line.expiry_date, qty, cost);
           }
         }
+      }
+
+      // ── Linked Purchase Order: advance received quantities + status ───────────
+      if (payload.source_purchase_order_id) {
+        const poId = Number(payload.source_purchase_order_id);
+        const po = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(poId);
+        if (!po) { const e = new Error("أمر التوريد غير موجود"); e.status = 404; throw e; }
+        if (po.status === "cancelled" || po.status === "received") {
+          const e = new Error("لا يمكن استلام أمر توريد ملغى أو مستلم بالكامل"); e.status = 400; throw e;
+        }
+        for (const line of payload.lines || []) {
+          if (!line.purchase_order_line_id) continue;
+          const pol = db.prepare("SELECT * FROM purchase_order_lines WHERE id = ? AND purchase_order_id = ?")
+            .get(Number(line.purchase_order_line_id), poId);
+          if (!pol) continue;
+          const remaining = Number(pol.quantity) - Number(pol.received_quantity || 0);
+          const qty = Number(line.quantity);
+          if (qty > remaining + 1e-9) {
+            const e = new Error("الكمية المستلمة تتجاوز المتبقي في أمر التوريد"); e.status = 400; throw e;
+          }
+          db.prepare("UPDATE purchase_order_lines SET received_quantity = received_quantity + ? WHERE id = ?")
+            .run(qty, pol.id);
+        }
+        const updated = db.prepare("SELECT quantity, received_quantity FROM purchase_order_lines WHERE purchase_order_id = ?").all(poId);
+        const allReceived = updated.every(l => Number(l.received_quantity || 0) >= Number(l.quantity || 0) - 1e-9);
+        const anyReceived = updated.some(l => Number(l.received_quantity || 0) > 0);
+        const nextStatus = allReceived ? "received" : anyReceived ? "partially_received" : po.status;
+        db.prepare("UPDATE purchase_orders SET status = ? WHERE id = ?").run(nextStatus, poId);
       }
 
       // WACC replay after all lines are inserted (always-recompute pattern)

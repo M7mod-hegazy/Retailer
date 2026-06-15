@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { CircleDollarSign } from "lucide-react";
 import toast from "react-hot-toast";
@@ -7,6 +7,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import PageWrapper from "../../components/ui/PageWrapper";
 import Button from "../../components/ui/Button";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 export default function EmployeeAdjustments() {
   const { t, i18n } = useTranslation();
@@ -22,6 +23,12 @@ export default function EmployeeAdjustments() {
     amount: "",
     reason: ""
   });
+  const employeeRef = useRef(null);
+  const typeRef = useRef(null);
+  const amountRef = useRef(null);
+  const reasonRef = useRef(null);
+  const formRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     fetchEmployees();
@@ -88,14 +95,16 @@ export default function EmployeeAdjustments() {
       </div>
 
       <div className="page-surface mb-8" data-help="adjustment-form">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             
             <div className="space-y-2">
               <label className="block text-sm font-medium text-text-primary">الموظف <span className="text-danger-DEFAULT">*</span></label>
               <select
+                ref={employeeRef}
                 value={formData.employee_id}
                 onChange={handleEmployeeChange}
+                onKeyDown={e => handleKeyDown(e, { nextRef: typeRef })}
                 className="input w-full"
                 required
               >
@@ -109,8 +118,10 @@ export default function EmployeeAdjustments() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-text-primary">النوع <span className="text-danger-DEFAULT">*</span></label>
               <select
+                ref={typeRef}
                 value={formData.adjustment_type}
                 onChange={(e) => setFormData(prev => ({ ...prev, adjustment_type: e.target.value }))}
+                onKeyDown={e => handleKeyDown(e, { nextRef: amountRef, prevRef: employeeRef })}
                 className="input w-full"
               >
                 <option value="incentive">حافز (مكافأة)</option>
@@ -121,11 +132,13 @@ export default function EmployeeAdjustments() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-text-primary">القيمة <span className="text-danger-DEFAULT">*</span></label>
               <input
+                ref={amountRef}
                 type="number"
                 min="0.01"
                 step="0.01"
                 value={formData.amount}
                 onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                onKeyDown={e => handleKeyDown(e, { nextRef: reasonRef, prevRef: typeRef })}
                 className="input w-full"
                 required
               />
@@ -134,9 +147,11 @@ export default function EmployeeAdjustments() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-text-primary">السبب</label>
               <input
+                ref={reasonRef}
                 type="text"
                 value={formData.reason}
                 onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
+                onKeyDown={e => handleKeyDown(e, { prevRef: amountRef, onEnter: () => formRef.current?.requestSubmit() })}
                 className="input w-full"
               />
             </div>

@@ -77,6 +77,35 @@ describe("invoice service", () => {
     expect(inv.total).toBe(140);
   });
 
+  test("default POS invoice number uses the INV prefix, not POS_", () => {
+    const inv = createInvoice({ lines: [{ item_id: 1, quantity: 1, unit_price: 100 }], payment_type: "cash" });
+    expect(inv.invoice_no).toMatch(/^INV-\d{8}-\d{4}$/);
+  });
+
+  test("honors the client-reserved doc_no instead of minting a second number", () => {
+    const { generateDocNumber } = require("../src/utils/docNumber");
+    // Simulate POST /api/documents/reserve advancing the daily sequence.
+    const reserved = generateDocNumber("pos_sale");
+    const inv = createInvoice({
+      doc_no: reserved,
+      lines: [{ item_id: 1, quantity: 1, unit_price: 100 }],
+      payment_type: "cash",
+    });
+    // Saved number === reserved number (no off-by-one).
+    expect(inv.invoice_no).toBe(reserved);
+  });
+
+  test("falls back to a fresh number when the reserved doc_no is already taken", () => {
+    const taken = createInvoice({ lines: [{ item_id: 1, quantity: 1, unit_price: 100 }], payment_type: "cash" }).invoice_no;
+    const inv = createInvoice({
+      doc_no: taken, // collides → must not reuse
+      lines: [{ item_id: 1, quantity: 1, unit_price: 100 }],
+      payment_type: "cash",
+    });
+    expect(inv.invoice_no).not.toBe(taken);
+    expect(inv.invoice_no).toMatch(/^INV-\d{8}-\d{4}$/);
+  });
+
   test("invoice total matches client computeTotals formula", () => {
     // Mirror posStore.computeTotals: Σ(qty*price - line_discount) - (discount+promo) + increase
     const lines = [

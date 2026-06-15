@@ -2986,6 +2986,18 @@ html[data-theme="global"] {
   box-shadow: var(--card-top-highlight), 0 12px 32px rgba(0, 0, 0, 0.5), 0 28px 56px rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Decorative blurred "orb" / aurora backgrounds across pages use
+   mix-blend-multiply, which is tuned for light UIs — multiplied against a dark
+   background they disappear, so animated/atmospheric backgrounds (login,
+   hubs, dashboards, etc.) go dead-flat on dark themes. Switch to screen so the
+   glows lighten the dark surface and the ambient animation stays alive. */
+[data-theme="dark"] .mix-blend-multiply {
+  mix-blend-mode: screen !important;
+}
+[data-theme="dark"] .mix-blend-overlay {
+  mix-blend-mode: soft-light !important;
+}
+
 /* ──────────────────────────────────────────────
    BACKGROUND — Semantic: emerald/green (success)
    ────────────────────────────────────────────── */

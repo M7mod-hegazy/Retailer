@@ -606,14 +606,17 @@
 .bg-white\/95 { background-color: color-mix(in srgb, var(--bg-surface) 95%, transparent) !important; }
 
 .bg-black { background-color: var(--text-primary) !important; }
-.bg-black\/10 { background-color: color-mix(in srgb, var(--text-primary) 10%, transparent) !important; }
-.bg-black\/20 { background-color: color-mix(in srgb, var(--text-primary) 20%, transparent) !important; }
-.bg-black\/25 { background-color: color-mix(in srgb, var(--text-primary) 25%, transparent) !important; }
-.bg-black\/30 { background-color: color-mix(in srgb, var(--text-primary) 30%, transparent) !important; }
-.bg-black\/40 { background-color: color-mix(in srgb, var(--text-primary) 40%, transparent) !important; }
-.bg-black\/50 { background-color: color-mix(in srgb, var(--text-primary) 50%, transparent) !important; }
-.bg-black\/60 { background-color: color-mix(in srgb, var(--text-primary) 60%, transparent) !important; }
-.bg-black\/75 { background-color: color-mix(in srgb, var(--text-primary) 75%, transparent) !important; }
+/* Opacity variants of bg-black are scrims/overlays (modal backdrops, recessed
+   wells on coloured buttons). They must stay a NEUTRAL DARK veil on every theme —
+   mapping them to text-primary turned modal backdrops WHITE on dark themes. */
+.bg-black\/10 { background-color: rgba(0, 0, 0, 0.10) !important; }
+.bg-black\/20 { background-color: rgba(0, 0, 0, 0.20) !important; }
+.bg-black\/25 { background-color: rgba(0, 0, 0, 0.25) !important; }
+.bg-black\/30 { background-color: rgba(0, 0, 0, 0.32) !important; }
+.bg-black\/40 { background-color: rgba(0, 0, 0, 0.45) !important; }
+.bg-black\/50 { background-color: rgba(0, 0, 0, 0.55) !important; }
+.bg-black\/60 { background-color: rgba(0, 0, 0, 0.62) !important; }
+.bg-black\/75 { background-color: rgba(0, 0, 0, 0.72) !important; }
 
 [data-theme="light"] .text-white { color: var(--bg-surface) !important; }
 [data-theme="dark"] .text-white { color: var(--text-primary) !important; }

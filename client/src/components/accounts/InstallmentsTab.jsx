@@ -1,9 +1,10 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Calendar, CheckCircle2, ChevronRight, Edit3, Printer, RefreshCw, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import PrintPreviewModal from "../print/PrintPreviewModal";
 import AjalStatementTemplate from "../print/templates/AjalStatementTemplate";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "-");
@@ -20,6 +21,13 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
   const [saving, setSaving] = useState(false);
   const [printType, setPrintType] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const searchRef = useRef(null);
+  const payMethodRef = useRef(null);
+  const dueDateRef = useRef(null);
+  const amountRef = useRef(null);
+  const payBtnRef = useRef(null);
+  const saveBtnRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   const isSupplier = partyType === "supplier";
   const idKey = isSupplier ? "supplier_id" : "customer_id";
@@ -130,7 +138,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       <div className="flex items-center gap-3">
         <div className="relative max-w-xs flex-1">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
+          <input ref={searchRef} onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} value={search} onChange={e => setSearch(e.target.value)}
             className="h-10 w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-2sm font-bold outline-none focus:border-slate-400"
             placeholder="بحث برقم الفاتورة..." />
         </div>
@@ -254,11 +262,11 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 {selected.status !== "paid" && (
                   <div className="space-y-2">
                     <div className="text-[11px] font-black text-slate-400">تسديد القسط</div>
-                    <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                    <select ref={payMethodRef} onKeyDown={e => handleKeyDown(e, { nextRef: payBtnRef, prevRef: searchRef })} value={payMethod} onChange={e => setPayMethod(e.target.value)}
                       className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-2sm font-bold outline-none focus:border-slate-500">
                       {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
-                    <button onClick={handlePay} disabled={paying}
+                    <button ref={payBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: payMethodRef })} onClick={handlePay} disabled={paying}
                       className={`w-full rounded-xl py-2.5 text-2sm font-black text-white disabled:opacity-40 ${theme.main}`}>
                       {paying ? "جاري التسديد..." : "تسديد القسط"}
                     </button>
@@ -269,11 +277,11 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 {editMode && (
                   <div className="space-y-2 border-t border-slate-100 pt-3">
                     <div className="text-[11px] font-black text-slate-400">تعديل القسط</div>
-                    <input type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
+                    <input ref={dueDateRef} onKeyDown={e => handleKeyDown(e, { nextRef: amountRef })} type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
                       className="h-10 w-full rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-slate-500" />
-                    <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
+                    <input ref={amountRef} onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: dueDateRef })} type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
                       className="h-10 w-full rounded-xl border border-slate-300 px-4 text-sm font-black outline-none focus:border-slate-500" />
-                    <button onClick={handleEdit} disabled={saving}
+                    <button ref={saveBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: amountRef })} onClick={handleEdit} disabled={saving}
                       className="w-full rounded-xl bg-primary py-2.5 text-2sm font-black text-white hover:bg-primary-600 disabled:opacity-40">
                       {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
                     </button>

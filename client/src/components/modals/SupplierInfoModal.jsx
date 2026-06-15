@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { X, Phone, MapPin, Edit2, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import api from "../../services/api";
 import Button from "../ui/Button";
@@ -10,6 +11,13 @@ function parseJson(val) {
 }
 
 export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated }) {
+  const handleKeyDown = useFieldNavigation();
+  const nameRef = useRef(null);
+  const phone0Ref = useRef(null);
+  const address0Ref = useRef(null);
+  const notesRef = useRef(null);
+  const saveBtnRef = useRef(null);
+
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -196,9 +204,11 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
                   الاسم <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={nameRef}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: phone0Ref })}
                   autoFocus
                 />
               </div>
@@ -209,10 +219,12 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
                   {form.phones.map((phone, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <input
+                        ref={i === 0 ? phone0Ref : undefined}
                         className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                         placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                         value={phone}
                         onChange={e => setPhone(i, e.target.value)}
+                        onKeyDown={i === 0 ? e => handleKeyDown(e, { nextRef: address0Ref, prevRef: nameRef }) : undefined}
                         dir="ltr"
                       />
                       {form.phones.length > 1 && (
@@ -238,10 +250,12 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
                   {form.addresses.map((addr, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <input
+                        ref={i === 0 ? address0Ref : undefined}
                         className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                         placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                         value={addr}
                         onChange={e => setAddress(i, e.target.value)}
+                        onKeyDown={i === 0 ? e => handleKeyDown(e, { nextRef: notesRef, prevRef: phone0Ref }) : undefined}
                       />
                       {form.addresses.length > 1 && (
                         <button type="button" onClick={() => removeAddress(i)}
@@ -263,11 +277,13 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
                 <textarea
+                  ref={notesRef}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
                   placeholder="اختياري"
                   rows={2}
                   value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: address0Ref })}
                 />
               </div>
             </div>
@@ -282,7 +298,7 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
                 <Button variant="ghost" size="sm" onClick={() => { setEditMode(false); setError(""); }}>
                   إلغاء
                 </Button>
-                <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+                <Button ref={saveBtnRef} variant="primary" size="sm" onClick={handleSave} disabled={saving}>
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                   حفظ التعديلات
                 </Button>

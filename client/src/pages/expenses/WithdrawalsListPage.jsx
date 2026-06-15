@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
-  TrendingDown, Plus, Pencil, Trash2, Search, Download, Calendar,
+  ArrowUpFromLine, Plus, Pencil, Trash2, Search, Download, Calendar,
   X, ChevronDown, RefreshCw, AlertTriangle, Filter, Database, Check,
-  CreditCard, Banknote, Command, Info, ArrowLeftRight
+  CreditCard, Banknote, HelpCircle, Command
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -183,6 +184,10 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
   });
 
   const inputRef = useRef(null);
+  const categoryRef = useRef(null);
+  const methodRef = useRef(null);
+  const noteRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     if (isOpen) {
@@ -240,6 +245,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <input 
               ref={inputRef}
               type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})}
+              onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
               className="w-full bg-transparent text-5xl md:text-7xl font-black font-mono text-zinc-900 placeholder:text-slate-200 outline-none pb-2 border-b-2 border-slate-100 focus:border-amber-500 transition-colors"
             />
             <span className="absolute left-0 bottom-4 text-2xl font-black text-slate-300 pointer-events-none">EGP</span>
@@ -249,7 +255,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصنيف السحب <span className="text-amber-500">*</span></label>
               <select 
+                ref={categoryRef}
                 value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}
+                onKeyDown={e => handleKeyDown(e, { nextRef: methodRef, prevRef: inputRef })}
                 className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 appearance-none"
               >
                 <option value="" disabled>اختر التصنيف...</option>
@@ -259,7 +267,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</label>
               <select 
+                ref={methodRef}
                 value={form.payment_method} onChange={e => setForm({...form, payment_method: e.target.value})}
+                onKeyDown={e => handleKeyDown(e, { nextRef: noteRef, prevRef: categoryRef })}
                 className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 appearance-none"
               >
                 <option value="cash">نقدي (Cash)</option>
@@ -272,7 +282,9 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">البيان / المسحوب له</label>
             <input 
+              ref={noteRef}
               placeholder="اكتب وصفاً أو اسم المستلم..." value={form.note} onChange={e => setForm({...form, note: e.target.value})}
+              onKeyDown={e => handleKeyDown(e, { prevRef: methodRef, onEnter: () => { if (form.amount && form.category_id && !saving) onSubmit(form); } })}
               className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10"
             />
           </div>
@@ -326,7 +338,7 @@ const SplineHeader = () => (
         transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
       />
     </svg>
-    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#fafafa]" />
+    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--bg-base)]" />
   </div>
 );
 

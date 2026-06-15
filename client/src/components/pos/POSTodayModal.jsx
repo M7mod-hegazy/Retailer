@@ -1,8 +1,9 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState, useRef } from "react";
 import { X, RefreshCw, ArrowUpDown, Pencil, Trash2, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import DataGrid from "../ui/DataGrid";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
@@ -240,6 +241,15 @@ export default function POSTodayModal({ open, onClose }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState(null);
+  const handleKeyDown = useFieldNavigation();
+  const docSearchRef = useRef(null);
+  const itemSearchRef = useRef(null);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const sortRef = useRef(null);
+  const userSelectRef = useRef(null);
+  const customerQueryRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   useEffect(() => {
     const q = itemSearch.trim();
@@ -412,19 +422,21 @@ export default function POSTodayModal({ open, onClose }) {
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-sm border border-slate-700">
             <span className="text-[11px] font-black text-slate-400 shrink-0">بحث برقم فاتورة:</span>
-            <input value={docSearch} onChange={e => setDocSearch(e.target.value)}
+            <input ref={docSearchRef} value={docSearch} onChange={e => setDocSearch(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: itemSearchRef })}
               placeholder="INV-0001..."
               className="flex-1 rounded-sm border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400" />
             <span className="text-[11px] font-black text-slate-400 shrink-0">بحث صنف:</span>
             <div className="relative flex-1">
-              <input value={itemSearch}
+              <input ref={itemSearchRef}
+                value={itemSearch}
                 onChange={e => { setItemSearch(e.target.value); setItemLookupOpen(true); }}
                 onFocus={() => setItemLookupOpen(true)}
                 onBlur={() => setTimeout(() => setItemLookupOpen(false), 150)}
                 onKeyDown={e => {
                   if (e.key === "ArrowDown") { e.preventDefault(); setActiveItemIndex(i => Math.min(i + 1, filteredItems.length - 1)); setItemLookupOpen(true); }
                   else if (e.key === "ArrowUp") { e.preventDefault(); setActiveItemIndex(i => Math.max(i - 1, 0)); }
-                  else if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0 && activeItemIndex >= 0) { const picked = filteredItems[activeItemIndex]; setItemSearch(picked.code || picked.barcode || picked.name); setItemLookupOpen(false); } }
+                  else if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0 && activeItemIndex >= 0) { const picked = filteredItems[activeItemIndex]; setItemSearch(picked.code || picked.barcode || picked.name); setItemLookupOpen(false); } else { handleKeyDown(e, { nextRef: dateFromRef, prevRef: docSearchRef }); } }
                   else if (e.key === "Escape") { setItemLookupOpen(false); }
                 }}
                 placeholder="اسم الصنف أو الكود..."
@@ -442,17 +454,20 @@ export default function POSTodayModal({ open, onClose }) {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">من</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+              <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: itemSearchRef })}
                 className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">إلى</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+              <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: sortRef, prevRef: dateFromRef })}
                 className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ترتيب</label>
-              <select value={sort} onChange={(e) => setSort(e.target.value)}
+              <select ref={sortRef} value={sort} onChange={(e) => setSort(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: userSelectRef, prevRef: dateToRef })}
                 className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
@@ -467,7 +482,8 @@ export default function POSTodayModal({ open, onClose }) {
             {usersList.length > 0 && (
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المستخدم</label>
-                <select value={userId} onChange={(e) => setUserId(e.target.value)}
+                <select ref={userSelectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: customerQueryRef, prevRef: sortRef })}
                   className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
@@ -476,7 +492,7 @@ export default function POSTodayModal({ open, onClose }) {
             )}
             <div className="relative flex items-center gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</label>
-              <input type="text" value={customerQuery}
+              <input ref={customerQueryRef} type="text" value={customerQuery}
                 onChange={(e) => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); setActiveCustomerIndex(0); if (!e.target.value) setCustomerId(""); }}
                 onFocus={() => setCustomerLookupOpen(true)}
                 onBlur={() => setTimeout(() => setCustomerLookupOpen(false), 200)}
@@ -489,6 +505,7 @@ export default function POSTodayModal({ open, onClose }) {
                     setCustomerQuery(next.name); setCustomerId(next.id); setCustomerLookupOpen(false); return;
                   }
                   if (e.key === "Escape") setCustomerLookupOpen(false);
+                  handleKeyDown(e, { nextRef: submitBtnRef, prevRef: userSelectRef });
                 }}
                 placeholder="كل العملاء..."
                 className="w-[140px] rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 focus:ring-2 focus:ring-slate-100" />
@@ -502,7 +519,8 @@ export default function POSTodayModal({ open, onClose }) {
                   activeIndex={activeCustomerIndex} query={customerQuery} emptyLabel="لا توجد نتائج" />
               )}
             </div>
-            <button onClick={loadData}
+            <button ref={submitBtnRef} onClick={loadData}
+              onKeyDown={e => handleKeyDown(e, { prevRef: customerQueryRef })}
               className="flex items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-600 hover:border-slate-800 hover:text-slate-900 transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث
             </button>

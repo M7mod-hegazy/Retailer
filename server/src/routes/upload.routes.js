@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
-const { upload, getUploadsDir } = require("../middleware/upload");
+const { upload, getUploadsDir, validateFileIntegrity } = require("../middleware/upload");
 const { requirePagePermission } = require("../middleware/permission");
 
 const router = express.Router();
@@ -13,6 +13,16 @@ router.use(authRequired);
 router.post("/", requirePagePermission("items", "add"), upload.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "لم يُرفق ملف أو نوعه غير مدعوم (JPEG/PNG/WebP/GIF فقط)." });
+  }
+  const integrity = validateFileIntegrity(req.file.path, req.file.mimetype);
+  if (!integrity.valid) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    return res.status(400).json({
+      success: false,
+      message: integrity.reason === "empty_file"
+        ? "الملف المرفوع فارغ."
+        : "الملف المرفوع يبدو تالفًا. يرجى المحاولة بملف آخر.",
+    });
   }
   return res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });

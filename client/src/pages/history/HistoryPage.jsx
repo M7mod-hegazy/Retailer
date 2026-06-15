@@ -28,6 +28,7 @@ import {
 import api from "../../services/api";
 import { useAuthStore } from "../../stores/authStore";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const ACTION_OPTIONS = [
   { value: "", label: "كل الإجراءات" },
@@ -504,6 +505,13 @@ export default function HistoryPage() {
   const [userId, setUserId] = useState("");
   const [userAction, setUserAction] = useState("");
   const [resource, setResource] = useState("");
+  const searchRef = useRef(null);
+  const fromRef = useRef(null);
+  const toRef = useRef(null);
+  const userIdRef = useRef(null);
+  const userActionRef = useRef(null);
+  const resourceRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => { setPage(1); }, [search, from, to, userId, userAction, resource]);
 
@@ -601,8 +609,10 @@ export default function HistoryPage() {
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 group-focus-within:text-zinc-900 transition-colors" />
               <input
                 type="text"
+                ref={searchRef}
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: fromRef, prevRef: null })}
                 placeholder="ابحث في السجل..."
                 className="w-full rounded-[1.25rem] border border-white bg-white/60 backdrop-blur-md py-4 pr-12 pl-4 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
               />
@@ -648,8 +658,10 @@ export default function HistoryPage() {
                     </label>
                     <input 
                       type="date" 
+                      ref={fromRef}
                       value={from} 
                       onChange={e => setFrom(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: toRef, prevRef: searchRef })}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-950 transition-shadow"
                     />
                   </div>
@@ -660,8 +672,10 @@ export default function HistoryPage() {
                     </label>
                     <input 
                       type="date" 
+                      ref={toRef}
                       value={to} 
                       onChange={e => setTo(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: userIdRef, prevRef: fromRef })}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-950 transition-shadow"
                     />
                   </div>
@@ -671,8 +685,10 @@ export default function HistoryPage() {
                       <User className="w-3.5 h-3.5" /> المستخدم
                     </label>
                     <select 
+                      ref={userIdRef}
                       value={userId} 
                       onChange={e => setUserId(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: userActionRef, prevRef: toRef })}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-950 transition-shadow"
                     >
                       <option value="">كل المستخدمين</option>
@@ -687,8 +703,10 @@ export default function HistoryPage() {
                       <Activity className="w-3.5 h-3.5" /> الإجراء
                     </label>
                     <select 
+                      ref={userActionRef}
                       value={userAction} 
                       onChange={e => setUserAction(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: resourceRef, prevRef: userIdRef })}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-950 transition-shadow"
                     >
                       {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -700,8 +718,10 @@ export default function HistoryPage() {
                       <Layers className="w-3.5 h-3.5" /> القسم
                     </label>
                     <select 
+                      ref={resourceRef}
                       value={resource} 
                       onChange={e => setResource(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: userActionRef })}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-950 transition-shadow"
                     >
                       <option value="">كل الأقسام</option>

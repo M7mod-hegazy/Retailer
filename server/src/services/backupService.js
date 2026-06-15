@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const AdmZip = require("adm-zip");
 const { getDb, getDbPath, closeDb, initDb } = require("../config/database");
 const { getUploadsDir } = require("../middleware/upload");
+const { firstWritableDir } = require("../config/paths");
 const { ensureSystemOwnerAccount } = require("./systemOwner.service");
 
 const SIDECAR_SCHEMA_VERSION = 1;
@@ -154,7 +155,14 @@ function sanitizePath(value) {
 function resolveBackupRoot(db) {
   const settings = db.prepare("SELECT auto_backup_path FROM settings WHERE id = 1").get();
   const configuredDir = sanitizePath(settings?.auto_backup_path);
-  return configuredDir || path.join(process.cwd(), "backups");
+  if (configuredDir) return configuredDir;
+  // BACKUP_DIR is set for packaged installs (per-user writable root). In dev it
+  // is unset and we use the project folder. firstWritableDir guarantees backups
+  // never fail with EPERM under a read-only install directory.
+  return firstWritableDir(
+    [process.env.BACKUP_DIR, path.join(process.cwd(), "backups")],
+    "backups",
+  );
 }
 
 function readAppVersion() {

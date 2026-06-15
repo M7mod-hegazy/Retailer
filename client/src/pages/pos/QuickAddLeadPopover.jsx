@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { X, RefreshCw } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 // Quick-add a walk-by WhatsApp lead, independent of any sale. Phone required; name/tag/birthday optional.
 export default function QuickAddLeadPopover({ open, onClose }) {
@@ -11,6 +12,11 @@ export default function QuickAddLeadPopover({ open, onClose }) {
   const [birthday, setBirthday] = useState("");
   const [saving, setSaving] = useState(false);
   const phoneRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
+  const nameRef = useRef(null);
+  const tagRef = useRef(null);
+  const birthdayRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   useEffect(() => {
     if (open) {
@@ -64,36 +70,44 @@ export default function QuickAddLeadPopover({ open, onClose }) {
             dir="ltr"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+            onKeyDown={e => handleKeyDown(e, { nextRef: nameRef, onEnter: save })}
             placeholder="* رقم الهاتف / واتساب"
             className="w-full rounded-lg border border-green-200 bg-green-50/50 px-3 py-2.5 text-sm font-bold text-right outline-none focus:border-green-400 focus:bg-white placeholder:text-slate-400 placeholder:font-normal transition-colors"
           />
           <input
+            ref={nameRef}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={e => handleKeyDown(e, { nextRef: tagRef, prevRef: phoneRef })}
             placeholder="الاسم (اختياري)"
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white placeholder:text-slate-400 placeholder:font-normal transition-colors"
           />
           <input
+            ref={tagRef}
             type="text"
             value={tag}
             onChange={(e) => setTag(e.target.value)}
+            onKeyDown={e => handleKeyDown(e, { nextRef: birthdayRef, prevRef: nameRef })}
             placeholder="وسم (اختياري) — مثال: جملة، VIP"
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white placeholder:text-slate-400 placeholder:font-normal transition-colors"
           />
           <input
+            ref={birthdayRef}
             type="date"
             value={birthday}
             onChange={(e) => setBirthday(e.target.value)}
+            onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: tagRef })}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-500 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
             title="تاريخ الميلاد (اختياري)"
           />
         </div>
 
         <button
+          ref={submitBtnRef}
           disabled={!phone.trim() || saving}
           onClick={save}
+          onKeyDown={e => handleKeyDown(e, { onEnter: save, prevRef: birthdayRef })}
           className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 text-sm font-black text-white hover:bg-green-700 disabled:opacity-50 transition-all active:scale-95"
         >
           {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : "📲"}

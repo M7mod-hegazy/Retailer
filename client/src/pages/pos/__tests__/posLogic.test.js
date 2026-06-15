@@ -8,18 +8,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { formatMoney } from "../posPageUtils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure functions extracted from POSPage.jsx / posStore.js
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** formatMoney — mirrors POSPage.jsx line 48-53 */
-function formatMoney(value) {
-  return Number(value || 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
-}
 
 /** computeTotals — mirrors posStore.js lines 5-12 */
 function computeTotals(lines, discountTotal = 0) {

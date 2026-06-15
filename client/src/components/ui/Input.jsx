@@ -1,16 +1,17 @@
-import React from "react";
+import React, { forwardRef } from "react";
 
-export default function Input({ label, error, required, ...props }) {
+const Input = forwardRef(({ label, error, required, ...props }, ref) => {
   const hasValue = props.value !== undefined && props.value !== null && String(props.value).length > 0;
   const inferredAutoComplete =
     props.autoComplete ?? (props.type === "password" ? "new-password" : "off");
   return (
     <label className={`floating-label-wrapper block ${hasValue ? "has-value" : ""}`}>
-      <input 
-        {...props} 
+      <input
+        ref={ref}
+        {...props}
         autoComplete={inferredAutoComplete}
         placeholder=" "
-        className={`input w-full ${error ? "input-error" : ""}`} 
+        className={`input w-full ${error ? "input-error" : ""}`}
       />
       {label && (
         <span className="floating-label">
@@ -20,4 +21,7 @@ export default function Input({ label, error, required, ...props }) {
       {error && <span className="absolute -bottom-5 inset-inline-start-0 text-xs text-danger-DEFAULT">{error}</span>}
     </label>
   );
-}
+});
+
+Input.displayName = "Input";
+export default Input;

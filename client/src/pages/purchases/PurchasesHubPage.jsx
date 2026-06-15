@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar, ExternalLink,
   User, FileText, Loader2, CreditCard, Clock, Ban, ArrowUpRight,
-  Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
+  Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ClipboardList
 } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -13,6 +13,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motio
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const METHOD_LABELS = {
   cash: "نقدي", 
@@ -423,6 +424,12 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-zinc-50 text-zinc-500 border-zinc-200">
               <Package className="w-3 h-3" /> {row.items_count} أصناف
             </span>
+            {row.source_purchase_order_id && (
+              <Link to="/purchases/orders" title="ناتج عن أمر توريد"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 transition-colors">
+                <ClipboardList className="w-3 h-3" /> PO-{String(row.source_purchase_order_id).padStart(5, "0")}
+              </Link>
+            )}
           </div>
           
           <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
@@ -524,6 +531,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
 // ── Redesigned Purchases Hub Page Component ───────────────────────────────────
 export default function PurchasesHubPage() {
   usePageTour('purchases');
+  const handleKeyDown = useFieldNavigation();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState("invoices"); // "invoices" | "items"
@@ -540,6 +548,10 @@ export default function PurchasesHubPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [userId, setUserId] = useState("");
+  const filterUserIdRef = useRef(null);
+  const filterDateFromRef = useRef(null);
+  const filterDateToRef = useRef(null);
+  const filterSupplierRef = useRef(null);
 
   const [supplierQuery, setSupplierQuery] = useState("");
   const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
@@ -890,8 +902,8 @@ export default function PurchasesHubPage() {
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
-                <select value={userId} onChange={e => setUserId(e.target.value)}
-                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
+                <select ref={filterUserIdRef} value={userId} onChange={e => setUserId(e.target.value)}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]" onKeyDown={e => handleKeyDown(e, { nextRef: filterDateFromRef })}>
                   <option value="">كل المستخدمين</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
@@ -901,19 +913,23 @@ export default function PurchasesHubPage() {
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
                 <input 
+                  ref={filterDateFromRef}
                   type="date" 
                   value={dateFrom} 
                   onChange={e => setDateFrom(e.target.value)} 
                   className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" 
+                  onKeyDown={e => handleKeyDown(e, { nextRef: filterDateToRef, prevRef: filterUserIdRef })}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
                 <input 
+                  ref={filterDateToRef}
                   type="date" 
                   value={dateTo} 
                   onChange={e => setDateTo(e.target.value)} 
                   className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" 
+                  onKeyDown={e => handleKeyDown(e, { nextRef: filterSupplierRef, prevRef: filterDateFromRef })}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -928,6 +944,7 @@ export default function PurchasesHubPage() {
                     onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
                     placeholder="جميع الموردين"
                     className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]"
+                    onKeyDown={e => handleKeyDown(e, { prevRef: filterDateToRef })}
                   />
                   {supplierLookupOpen && (
                     <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} emptyLabel="لا يوجد موردين" />

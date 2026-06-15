@@ -6,7 +6,9 @@ export default function PermissionGate({ page, action, children }) {
   const [denied, setDenied] = useState(false);
   const permitted = usePermission(page, action);
 
-  const child = React.Children.only(children);
+  if (!children) return null;
+
+  const child = Array.isArray(children) ? children[0] : children;
 
   const wrappedChild = React.cloneElement(child, {
     onClick: (e) => {

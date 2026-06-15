@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Star, Play, Settings2, Filter, Trash2, CalendarDays, LayoutTemplate, Percent } from "lucide-react";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
@@ -158,6 +159,11 @@ export default function ReportsCenter() {
   // Workspace-style filter state (dimension lookups, cost method)
   const [workspaceFilters, setWorkspaceFilters] = useState({});
   const [costMethod, setCostMethod] = useState("wacc");
+
+  const searchRef = useRef(null);
+  const costMethodRef = useRef(null);
+  const submitRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   function handleWorkspaceFilter(key, value) {
     setWorkspaceFilters((prev) => ({ ...prev, [key]: value }));
@@ -508,8 +514,9 @@ export default function ReportsCenter() {
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3 space-y-3">
                   <div className="relative">
                     <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                    <input type="text" value={workspaceFilters.q || ""}
+                    <input ref={searchRef} type="text" value={workspaceFilters.q || ""}
                       onChange={(e) => handleWorkspaceFilter("q", e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef })}
                       placeholder="بحث عام..."
                       className="w-full h-9 pr-9 pl-3 rounded-xl border border-zinc-200 bg-white text-2sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-zinc-400"
                     />
@@ -522,7 +529,8 @@ export default function ReportsCenter() {
                   {selectedClsDef?.hasProfit && (
                     <div className="space-y-1">
                       <label className="block text-[11px] font-bold text-zinc-500">طريقة التكلفة</label>
-                      <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)}
+                      <select ref={costMethodRef} value={costMethod} onChange={(e) => setCostMethod(e.target.value)}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: submitRef, prevRef: searchRef })}
                         className="w-full h-9 px-3 rounded-xl border border-zinc-200 bg-white text-2sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                       >
                         {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
@@ -565,8 +573,10 @@ export default function ReportsCenter() {
             <div className="shrink-0 p-6 border-t border-zinc-200 bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
               <PermissionGate page="reports" action="view">
               <button
+                ref={submitRef}
                 onClick={() => handleRunSource(selectedSource)}
                 disabled={!selectedClassification}
+                onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => submitRef.current?.click() })}
                 className="w-full relative flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-6 py-4 text-[15px] font-black text-white transition-all hover:bg-emerald-600 hover:shadow-lg disabled:opacity-50 overflow-hidden group"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />

@@ -19,6 +19,7 @@ import SmartTooltip from "../ui/SmartTooltip";
 import PermissionGate from "../ui/PermissionGate";
 import { usePermission } from "../../hooks/usePermission";
 import PermissionDeniedModal from "../ui/PermissionDeniedModal";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function createInitialState(fields, source = {}) {
   return fields.reduce((acc, field) => ({ ...acc, [field.name]: source[field.name] ?? field.initialValue ?? "" }), {});
@@ -86,6 +87,9 @@ export default function SimpleCrudPage({
   const canAdd = usePermission(pageKey, 'add');
   const canEdit = usePermission(pageKey, 'edit');
   const reduceMotion = usePerformanceStore((s) => !s.settings.animations || s.settings.reduceMotion);
+  const fieldRefs = useRef({});
+  const formRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   // Refs let the memoized column cells read fresh values (search text, the row
   // being edited, the latest handlers) without rebuilding the column defs on
@@ -437,7 +441,7 @@ export default function SimpleCrudPage({
               )}
             </div>
 
-            <form onSubmit={handleSubmit} className={`p-8 pt-6 flex flex-col gap-6 ${editingRow ? 'bg-amber-100/20' : 'bg-slate-50/30'}`}>
+            <form ref={formRef} onSubmit={handleSubmit} className={`p-8 pt-6 flex flex-col gap-6 ${editingRow ? 'bg-amber-100/20' : 'bg-slate-50/30'}`}>
               <div className="space-y-5">
                 {fields.map((field, idx) => (
                   <motion.div 
@@ -465,6 +469,12 @@ export default function SimpleCrudPage({
                           type={field.type || "text"}
                           required={field.required}
                           value={form[field.name]}
+                          ref={el => { fieldRefs.current[idx] = el; }}
+                          onKeyDown={(e) => handleKeyDown(e, {
+                            nextRef: idx < fields.length - 1 ? { current: fieldRefs.current[idx + 1] } : undefined,
+                            prevRef: idx > 0 ? { current: fieldRefs.current[idx - 1] } : undefined,
+                            onEnter: idx === fields.length - 1 ? () => formRef.current?.requestSubmit() : undefined,
+                          })}
                           onChange={(e) => setForm(prev => ({ ...prev, [field.name]: e.target.value }))}
                           className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none shadow-sm border ${
                             editingRow

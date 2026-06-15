@@ -14,11 +14,13 @@ function generateDocNumber(type, overridePrefix) {
   const now = new Date();
   const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
 
-  // Prefix from settings_kv or fallback
+  // Prefix from settings_kv or fallback. POS sales are invoices — default to "INV"
+  // (not the raw "POS_" that type.slice(0,4) would yield) so the saved number matches
+  // the "INV-…" the cashier sees in the UI.
   let prefix = overridePrefix;
   if (!prefix) {
     const row = db.prepare("SELECT value FROM settings_kv WHERE key = ?").get(`doc_prefix_${type}`);
-    prefix = row?.value || type.toUpperCase().slice(0, 4);
+    prefix = row?.value || (type === "pos_sale" ? "INV" : type.toUpperCase().slice(0, 4));
   }
 
   // INV (pos_sale) uses 4 digits; all others use 3

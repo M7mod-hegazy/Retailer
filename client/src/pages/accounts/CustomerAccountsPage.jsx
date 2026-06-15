@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,6 +10,7 @@ import {
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
@@ -821,6 +822,14 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
 
 export default function CustomerAccountsPage() {
   usePageTour('customer_accounts');
+  const handleKeyDown = useFieldNavigation();
+  const payAmountRef = useRef(null);
+  const payMethodRef = useRef(null);
+  const payNotesRef = useRef(null);
+  const paySubmitRef = useRef(null);
+  const adjAmountRef = useRef(null);
+  const adjReasonRef = useRef(null);
+  const adjSubmitRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [customers, setCustomers] = useState([]);
@@ -1103,7 +1112,7 @@ export default function CustomerAccountsPage() {
             {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className="flex-1 py-1.5 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
-                style={{ color: filter === f.id ? "#1e3a8a" : "#475569" }}
+                style={{ color: filter === f.id ? "var(--primary)" : "var(--text-secondary)" }}
               >
                 {filter === f.id && (
                   <motion.div
@@ -1390,7 +1399,7 @@ export default function CustomerAccountsPage() {
               ].map(t => (
                 <button key={t.id} onClick={() => changeTab(t.id)}
                   className="px-4 py-2 text-2sm font-bold rounded-xl relative z-10 transition-colors duration-200"
-                  style={{ color: activeTab === t.id ? "#1d4ed8" : "#64748b" }}
+                  style={{ color: activeTab === t.id ? "var(--primary)" : "var(--text-secondary)" }}
                 >
                   {activeTab === t.id && (
                     <motion.div
@@ -1716,25 +1725,25 @@ export default function CustomerAccountsPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">المبلغ المقبوض أو المسترد <span className="text-rose-500">*</span></label>
-                  <input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] font-bold font-mono outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus />
+                  <input ref={payAmountRef} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] font-bold font-mono outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قناة استلام أو رد النقدية <span className="text-rose-500">*</span></label>
-                  <select value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-blue-500">
+                  <select ref={payMethodRef} value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { nextRef: payNotesRef, prevRef: payAmountRef })}>
                     <option value="">-- اختر القناة المالية --</option>
                     {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">ملاحظات توضيحية على الدفعة (اختياري)</label>
-                  <input value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-semibold outline-none focus:border-blue-500" placeholder="مثال: دفعة تحت الحساب للفواتير المعلقة" />
+                  <input ref={payNotesRef} value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-semibold outline-none focus:border-blue-500" placeholder="مثال: دفعة تحت الحساب للفواتير المعلقة" onKeyDown={e => handleKeyDown(e, { nextRef: paySubmitRef, prevRef: payMethodRef })} />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={handlePayment} disabled={saving || !payForm.amount || !payForm.method_id}
+                <button ref={paySubmitRef} onClick={handlePayment} disabled={saving || !payForm.amount || !payForm.method_id}
                   className="flex-1 h-11 rounded-2xl bg-blue-600 text-white text-2sm font-bold hover:bg-blue-700 disabled:opacity-50 shadow-sm transition-all duration-200 active:scale-[0.98]">
                   {saving ? "جاري قيد المعاملة المالية..." : "تأكيد وقيد الحركة الآن"}
                 </button>
@@ -1780,8 +1789,8 @@ export default function CustomerAccountsPage() {
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قيمة التسوية المطلوبة <span className="text-rose-500">*</span></label>
-                  <input type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] font-bold font-mono outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus />
+                  <input ref={adjAmountRef} type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] font-bold font-mono outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
                 </div>
                 {adjForm.amount > 0 && (() => {
                   const newBal = adjForm.direction === "subtract" ? bal - Number(adjForm.amount) : bal + Number(adjForm.amount);
@@ -1796,13 +1805,13 @@ export default function CustomerAccountsPage() {
                 })()}
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">سبب وقيد التسوية اليدوية (مطلوب) <span className="text-rose-500">*</span></label>
-                  <input value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
+                  <input ref={adjReasonRef} value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
                     className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm outline-none focus:border-blue-500 font-semibold"
-                    placeholder="مثال: تسوية خصومات مسموح بها للفواتير السابقة" />
+                    placeholder="مثال: تسوية خصومات مسموح بها للفواتير السابقة" onKeyDown={e => handleKeyDown(e, { nextRef: adjSubmitRef, prevRef: adjAmountRef })} />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={handleAdjust} disabled={saving || !adjForm.amount || !adjForm.reason}
+                <button ref={adjSubmitRef} onClick={handleAdjust} disabled={saving || !adjForm.amount || !adjForm.reason}
                   className="flex-1 h-11 rounded-2xl bg-primary text-white text-2sm font-bold hover:bg-primary-600 disabled:opacity-50 transition-colors">
                   {saving ? "جاري تنفيذ وحفظ التسوية..." : "تأكيد وقيد التسوية الآن"}
                 </button>

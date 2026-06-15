@@ -19,6 +19,7 @@ import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
 import { useUiStore } from "../../stores/uiStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { useAuthStore } from "../../stores/authStore";
 import FeaturesTab from "./FeaturesTab";
 import { getMeta, getHint, getPlaceholder, getDefault, findMissingCritical, fieldKeyToTab } from "../../utils/fieldMeta";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
@@ -212,6 +213,10 @@ export default function SettingsPage() {
   const [focusField, setFocusField] = useState(searchParams.get("field") || null);
   const posAutoRail = useUiStore((s) => s.posAutoRail);
   const setPosAutoRail = useUiStore((s) => s.setPosAutoRail);
+  const authUser = useAuthStore((s) => s.user);
+  // The "Features" tab toggles store-type modules — restricted to the dev account.
+  const isDev = authUser?.role === "dev" || String(authUser?.username || "").toLowerCase() === "m7mod";
+  const visibleTabs = isDev ? tabs : tabs.filter((t) => t.id !== "features");
   const originalRef = useRef({});
   const autoSaveTimer = useRef(null);
   const settingsRef   = useRef({});
@@ -227,6 +232,11 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  // Non-dev users can't open the Features tab even via ?tab=features URL
+  useEffect(() => {
+    if (!isDev && activeTab === "features") setActiveTab("identity");
+  }, [isDev, activeTab]);
 
   // Auto-switch tab + scroll to target field from URL param
   useEffect(() => {
@@ -447,7 +457,7 @@ export default function SettingsPage() {
          
          {/* Tabs Strip */}
          <div data-help="settings-tabs" className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 pt-2 px-4 scrollbar-hide">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <Tab
                 key={tab.id}
                 active={activeTab === tab.id}
@@ -848,7 +858,7 @@ export default function SettingsPage() {
               <PerformanceSettings />
             )}
 
-            {activeTab === "features" && (
+            {activeTab === "features" && isDev && (
               <FeaturesTab settings={settings} onChange={handleChange} onSilentSave={silentSave} />
             )}
 

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState, useRef } from "react";
 import api from "../../services/api";
 import { 
   Plus, 
@@ -23,6 +23,7 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ChequeRegisterTemplate from "../../components/print/templates/ChequeRegisterTemplate";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -56,6 +57,15 @@ export default function ChequesPage() {
   const [batchMode, setBatchMode] = useState(false);
   const [batchSelected, setBatchSelected] = useState([]);
   const [printOpen, setPrintOpen] = useState(false);
+  const searchRef = useRef(null);
+  const chequeNoRef = useRef(null);
+  const bankNameRef = useRef(null);
+  const amountRef = useRef(null);
+  const dueDateRef = useRef(null);
+  const drawerNameRef = useRef(null);
+  const notesRef = useRef(null);
+  const saveRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   async function loadRows() {
     setLoading(true);
@@ -214,9 +224,11 @@ export default function ChequesPage() {
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input 
                 type="text" 
+                ref={searchRef}
                 placeholder="بحث برقم الشيك أو البنك..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: null })}
                 className="w-80 rounded-sm border border-slate-200 bg-white py-2 pl-3 pr-10 text-2sm font-bold outline-none focus:border-slate-800"
               />
            </div>
@@ -356,20 +368,21 @@ export default function ChequesPage() {
                 </div>
               </div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">رقم الشيك *</label>
-                <input value={addForm.cheque_no} onChange={e => setAddForm(f => ({ ...f, cheque_no: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-violet-500" dir="ltr" /></div>
+                <input ref={chequeNoRef} value={addForm.cheque_no} onChange={e => setAddForm(f => ({ ...f, cheque_no: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: bankNameRef, prevRef: searchRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-violet-500" dir="ltr" /></div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">اسم البنك *</label>
-                <input value={addForm.bank_name} onChange={e => setAddForm(f => ({ ...f, bank_name: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" /></div>
+                <input ref={bankNameRef} value={addForm.bank_name} onChange={e => setAddForm(f => ({ ...f, bank_name: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: amountRef, prevRef: chequeNoRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" /></div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ *</label>
-                <input type="number" min="0" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-violet-500" dir="ltr" /></div>
+                <input ref={amountRef} type="number" min="0" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: dueDateRef, prevRef: bankNameRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-violet-500" dir="ltr" /></div>
               <div><label className="text-[11px] font-black text-slate-600 block mb-1.5">تاريخ الاستحقاق *</label>
-                <input type="date" value={addForm.due_date} onChange={e => setAddForm(f => ({ ...f, due_date: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" /></div>
+                <input ref={dueDateRef} type="date" value={addForm.due_date} onChange={e => setAddForm(f => ({ ...f, due_date: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: drawerNameRef, prevRef: amountRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" /></div>
               <div className="col-span-2"><label className="text-[11px] font-black text-slate-600 block mb-1.5">اسم الساحب / المستفيد</label>
-                <input value={addForm.drawer_name} onChange={e => setAddForm(f => ({ ...f, drawer_name: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
+                <input ref={drawerNameRef} value={addForm.drawer_name} onChange={e => setAddForm(f => ({ ...f, drawer_name: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: dueDateRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
               <div className="col-span-2"><label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-                <input value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
+                <input ref={notesRef} value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: saveRef, prevRef: drawerNameRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
             </div>
             <PermissionGate page="cheques" action="add">
-            <button onClick={handleAddCheque} disabled={!addForm.cheque_no || !addForm.bank_name || !addForm.amount || !addForm.due_date || adding}
+            <button ref={saveRef} onClick={handleAddCheque} disabled={!addForm.cheque_no || !addForm.bank_name || !addForm.amount || !addForm.due_date || adding}
+              onKeyDown={e => handleKeyDown(e, { onEnter: handleAddCheque, prevRef: notesRef })}
               className="w-full mt-4 rounded-xl bg-violet-600 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-40">
               {adding ? "جاري الحفظ..." : "حفظ الشيك"}
             </button>

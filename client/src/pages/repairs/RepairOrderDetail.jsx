@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -6,6 +6,7 @@ import api from "../../services/api";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { Wrench, Plus, Trash2, CheckCircle2, ArrowRight } from "lucide-react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const STATUS_FLOW = ["received", "diagnosing", "waiting_parts", "in_repair", "waiting_customer", "ready", "delivered"];
 const STATUS_LABELS = {
@@ -40,6 +41,13 @@ export default function RepairOrderDetail() {
 
   const [partForm, setPartForm] = useState({ part_name: "", quantity: "1", unit_cost: "" });
   const [laborForm, setLaborForm] = useState({ description: "", amount: "" });
+
+  const partNameRef = useRef(null);
+  const partQtyRef = useRef(null);
+  const partCostRef = useRef(null);
+  const laborDescRef = useRef(null);
+  const laborAmountRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   if (isLoading) return <div className="text-center py-16 text-slate-400">جاري التحميل...</div>;
   if (!data) return <div className="text-center py-16 text-red-500">لم يُعثر على الطلب</div>;
@@ -186,9 +194,9 @@ export default function RepairOrderDetail() {
         )}
         {order.status !== "delivered" && order.status !== "cancelled" && (
           <form onSubmit={addPart} className="flex gap-2 flex-wrap">
-            <input className="flex-1 min-w-[160px] rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="اسم القطعة" value={partForm.part_name} onChange={e => setPartForm(p => ({ ...p, part_name: e.target.value }))} required />
-            <input className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="الكمية" min="0.001" step="0.001" value={partForm.quantity} onChange={e => setPartForm(p => ({ ...p, quantity: e.target.value }))} required />
-            <input className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="السعر" min="0" step="0.01" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: e.target.value }))} required />
+            <input ref={partNameRef} className="flex-1 min-w-[160px] rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="اسم القطعة" value={partForm.part_name} onChange={e => setPartForm(p => ({ ...p, part_name: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partQtyRef })} />
+            <input ref={partQtyRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="الكمية" min="0.001" step="0.001" value={partForm.quantity} onChange={e => setPartForm(p => ({ ...p, quantity: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partCostRef, prevRef: partNameRef })} />
+            <input ref={partCostRef} className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="السعر" min="0" step="0.01" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { prevRef: partQtyRef, onEnter: () => addPart(e) })} />
             <Button type="submit" size="sm"><Plus className="h-4 w-4 me-1" />إضافة قطعة</Button>
           </form>
         )}
@@ -225,8 +233,8 @@ export default function RepairOrderDetail() {
         )}
         {order.status !== "delivered" && order.status !== "cancelled" && (
           <form onSubmit={addLabor} className="flex gap-2 flex-wrap">
-            <input className="flex-1 min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="وصف العمالة (أجرة تركيب، فحص...)" value={laborForm.description} onChange={e => setLaborForm(p => ({ ...p, description: e.target.value }))} required />
-            <input className="w-32 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="المبلغ" min="0" step="0.01" value={laborForm.amount} onChange={e => setLaborForm(p => ({ ...p, amount: e.target.value }))} required />
+            <input ref={laborDescRef} className="flex-1 min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="وصف العمالة (أجرة تركيب، فحص...)" value={laborForm.description} onChange={e => setLaborForm(p => ({ ...p, description: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: laborAmountRef })} />
+            <input ref={laborAmountRef} className="w-32 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="المبلغ" min="0" step="0.01" value={laborForm.amount} onChange={e => setLaborForm(p => ({ ...p, amount: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { prevRef: laborDescRef, onEnter: () => addLabor(e) })} />
             <Button type="submit" size="sm"><Plus className="h-4 w-4 me-1" />إضافة</Button>
           </form>
         )}

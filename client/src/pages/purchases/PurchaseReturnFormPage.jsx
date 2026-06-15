@@ -22,6 +22,7 @@ import PurchasePickerTodayModal from "../../components/purchases/PurchasePickerT
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -160,6 +161,7 @@ function OriginalPurchasePreview({ purchase }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function PurchaseReturnFormPage() {
+  const handleKeyDown = useFieldNavigation();
   const navigate = useNavigate();
   const location = useLocation();
   const editReturnId = location.state?.edit_return_id || null;
@@ -239,6 +241,10 @@ export default function PurchaseReturnFormPage() {
   const stagingQtyRef = useRef(null);
   const stagingCostRef = useRef(null);
   const addBtnRef = useRef(null);
+  const supplierInputRef = useRef(null);
+  const reasonRef = useRef(null);
+  const reasonOtherRef = useRef(null);
+  const notesRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
 
@@ -453,17 +459,6 @@ export default function PurchaseReturnFormPage() {
       })
       .catch(() => {})
       .finally(() => setIsLoadingMoreItems(false));
-  }
-
-  function handleFieldKeyDown(e, nextRef, prevRef, isEnterSubmit = false) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (isEnterSubmit) addStagingToCart();
-      else nextRef?.current?.focus();
-    } else if (e.key === "Enter" && e.shiftKey) {
-      e.preventDefault();
-      prevRef?.current?.focus();
-    }
   }
 
   function selectItemForStaging(item) {
@@ -870,6 +865,7 @@ export default function PurchaseReturnFormPage() {
               </div>
               <div className="relative">
                 <input
+                  ref={supplierInputRef}
                   type="text"
                   value={supplierQuery}
                   placeholder={supplier?.id ? supplier.name : "ابحث عن مورد..."}
@@ -878,6 +874,7 @@ export default function PurchaseReturnFormPage() {
                   onBlur={() => { setTimeout(() => { setSupplierLookupOpen(false); if (!supplier?.id) setSupplierQuery(""); }, 200); }}
                   disabled={isLocked || supplierLockedFromPurchase}
                   className={`w-full h-10 rounded-xl border px-3 text-sm font-bold outline-none disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm placeholder:font-normal placeholder:text-slate-400 ${hasSupplierBalance ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100" : "border-slate-200 bg-slate-50 text-slate-800 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100"}`}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: reasonRef })}
                 />
                 {supplierLookupOpen && !isLocked && !supplierLockedFromPurchase && (
                   <SearchDropdown
@@ -1099,15 +1096,15 @@ export default function PurchaseReturnFormPage() {
               {reasonOpen && (
                 <div className="mt-3 flex flex-col gap-2">
                   <div className="relative">
-                    <select value={reason} onChange={e => setReason(e.target.value)} disabled={isLocked}
-                      className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none">
+                    <select ref={reasonRef} value={reason} onChange={e => setReason(e.target.value)} disabled={isLocked}
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60 transition-all shadow-sm appearance-none" onKeyDown={e => handleKeyDown(e, { nextRef: reasonOtherRef, prevRef: supplierInputRef })}>
                       {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                     <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                   {reason === "other" && !isLocked && (
-                    <input value={reasonOther} onChange={e => setReasonOther(e.target.value)} placeholder="اذكر السبب بتفصيل..."
-                      className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-medium text-slate-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 shadow-sm transition-all" />
+                    <input ref={reasonOtherRef} value={reasonOther} onChange={e => setReasonOther(e.target.value)} placeholder="اذكر السبب بتفصيل..."
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-medium text-slate-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 shadow-sm transition-all" onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: reasonRef })} />
                   )}
                 </div>
               )}
@@ -1120,11 +1117,13 @@ export default function PurchaseReturnFormPage() {
                 <p className="text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{returnNotes || "—"}</p>
               ) : (
                 <textarea
+                  ref={notesRef}
                   rows={2}
                   value={returnNotes}
                   onChange={e => setReturnNotes(e.target.value)}
                   placeholder="ملاحظة اختيارية على المرتجع…"
                   className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100 transition-all"
+                  onKeyDown={e => handleKeyDown(e, { prevRef: reasonOtherRef })}
                 />
               )}
             </div>
@@ -1274,7 +1273,7 @@ export default function PurchaseReturnFormPage() {
                     {/* Warehouse dropdown */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-600">المستودع</label>
-                      <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleFieldKeyDown(e, stagingQtyRef, itemInputRef)}
+                      <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: stagingQtyRef, prevRef: itemInputRef })}
                         className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800">
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                       </select>
@@ -1301,14 +1300,14 @@ export default function PurchaseReturnFormPage() {
                           const u = units.find(u => String(u.id) === String(stagingUnitId));
                           setStagingQty(u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value);
                         }}
-                        onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingCostRef, stagingWHRef)}
+                        onFocus={e => e.target.select()} onKeyDown={e => handleKeyDown(e, { nextRef: stagingCostRef, prevRef: stagingWHRef })}
                         className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                     </div>
 
                     {/* Cost input */}
                     <div className="flex flex-col gap-0.5">
                       <label className="text-[11px] font-bold text-slate-600">سعر الشراء (المرتجع)</label>
-                      <input ref={stagingCostRef} type="number" step="any" value={stagingCost} onChange={e => setStagingCost(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, addBtnRef, stagingQtyRef, true)}
+                      <input ref={stagingCostRef} type="number" step="any" value={stagingCost} onChange={e => setStagingCost(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleKeyDown(e, { nextRef: addBtnRef, prevRef: stagingQtyRef, onEnter: addStagingToCart })}
                         className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black outline-none text-center transition-colors
                           ${stagingItem && Number(stagingItem.purchase_price) > 0 && Number(stagingCost) > 0 && Number(stagingCost) < Number(stagingItem.purchase_price)
                             ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"

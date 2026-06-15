@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 import DataTable from "../../components/ui/DataTable";
 import SmartTooltip from "../../components/ui/SmartTooltip";
@@ -95,6 +96,10 @@ const TABS = [
 
 export default function FinancialCategoriesPage() {
   usePageTour('financial_categories');
+  const handleKeyDown = useFieldNavigation();
+  const nameRef = useRef(null);
+  const descriptionRef = useRef(null);
+  const submitBtnRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTabId, setActiveTabId] = useState("expenses");
   
@@ -445,10 +450,16 @@ export default function FinancialCategoriesPage() {
                     </label>
                     <div className="relative">
                       <input
+                        ref={field.name === "name" ? nameRef : field.name === "description" ? descriptionRef : undefined}
                         type={field.type || "text"}
                         required={field.required}
                         value={form[field.name]}
                         onChange={(e) => setForm(prev => ({ ...prev, [field.name]: e.target.value }))}
+                        onKeyDown={e => {
+                          const nextMap = { name: descriptionRef, description: submitBtnRef };
+                          const prevMap = { description: nameRef };
+                          handleKeyDown(e, { nextRef: nextMap[field.name], prevRef: prevMap[field.name] });
+                        }}
                         className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
                           editingRow 
                             ? 'text-amber-950 border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-amber-300' 
@@ -469,6 +480,7 @@ export default function FinancialCategoriesPage() {
               >
                 <PermissionGate page="financial_categories" action={editingRow ? "edit" : "add"}>
                   <motion.button
+                    ref={submitBtnRef}
                     data-help="add-button"
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}

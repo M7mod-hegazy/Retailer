@@ -96,24 +96,49 @@ function ensureNativeBinary(arch) {
   assertBinaryArch(arch);
 }
 
+function unpackedDirName(arch) {
+  return arch === 'x64' ? 'win-unpacked' : 'win-ia32-unpacked';
+}
+
+function isLockedOutputError(err) {
+  const msg = err && err.message ? err.message : String(err);
+  const code = err && err.code;
+  return code === 'EBUSY' || code === 'EPERM' || /EBUSY|EPERM|being used|resource busy/i.test(msg);
+}
+
 // electron-builder must empty the unpacked dir; a stale file held open by
 // another program (editor tab, Explorer preview, antivirus) makes it fail
-// minutes into the build. Clear it up front so a lock fails fast instead.
+// minutes into the build. Clear it up front when possible; if the folder is
+// locked, fall back to a fresh timestamped output dir so the build can proceed.
 function prepareOutputDir(arch) {
-  const unpacked = path.join(ARCHS[arch].outputDir, `win-${arch === 'x64' ? '' : 'ia32-'}unpacked`);
+  const defaultOutput = ARCHS[arch].outputDir;
+  const unpacked = path.join(defaultOutput, unpackedDirName(arch));
+  if (!fs.existsSync(unpacked)) {
+    return defaultOutput;
+  }
   try {
     fs.rmSync(unpacked, { recursive: true, force: true });
+    return defaultOutput;
   } catch (err) {
-    throw new Error(
-      `cannot clean ${path.relative(ROOT, unpacked)}: a file in it is open in ` +
-      'another program (usually an editor tab, Explorer window or antivirus). ' +
-      `Close it and retry. (${err.message})`
+    if (!isLockedOutputError(err)) {
+      throw new Error(
+        `cannot clean ${path.relative(ROOT, unpacked)}: ${err.message}`
+      );
+    }
+    const fallback = path.join(
+      path.dirname(defaultOutput),
+      `${path.basename(defaultOutput)}-${Date.now()}`
     );
+    log(
+      `cannot clean ${path.relative(ROOT, unpacked)} (file open in another program); ` +
+      `using ${path.relative(ROOT, fallback)} for this build`
+    );
+    return fallback;
   }
 }
 
-function newestArtifact(arch) {
-  const { outputDir, artifactPrefix } = ARCHS[arch];
+function newestArtifact(arch, outputDir = ARCHS[arch].outputDir) {
+  const { artifactPrefix } = ARCHS[arch];
   const candidates = fs.readdirSync(outputDir)
     .filter((f) => f.startsWith(artifactPrefix) && f.endsWith('.exe'))
     .map((f) => path.join(outputDir, f))
@@ -136,12 +161,15 @@ function copyIntoWin7Test(artifact, arch) {
   log(`${arch}: installer copied to ${path.relative(ROOT, dest)}`);
 }
 
-function buildArch(arch, fast) {
+function buildArch(arch, fast, outputDir) {
   ensureNativeBinary(arch);
   const args = ['electron-builder', '--win', '--config', ARCHS[arch].config];
+  if (outputDir !== ARCHS[arch].outputDir) {
+    args.push(`-c.directories.output=${path.relative(ROOT, outputDir).replace(/\\/g, '/')}`);
+  }
   if (fast) args.push('-c.compression=store');
   run('npx', args, `electron-builder (${arch})`);
-  copyIntoWin7Test(newestArtifact(arch), arch);
+  copyIntoWin7Test(newestArtifact(arch, outputDir), arch);
 }
 
 function restoreDevBinary() {
@@ -169,7 +197,7 @@ function main() {
   }
 
   run('node', [path.join(__dirname, 'kill-retailer-processes.js')], 'kill-retailer-processes');
-  for (const arch of archs) prepareOutputDir(arch); // fail fast on locked output dirs
+  const outputDirs = Object.fromEntries(archs.map((arch) => [arch, prepareOutputDir(arch)]));
   if (skipClient) {
     log('skipping client build (--skip-client)');
   } else {
@@ -177,7 +205,7 @@ function main() {
   }
 
   try {
-    for (const arch of archs) buildArch(arch, fast);
+    for (const arch of archs) buildArch(arch, fast, outputDirs[arch]);
     log(`done: ${archs.join(' + ')} installer(s) ready in release/WIN7-TEST`);
     if (fast) log('built with --fast (no compression) — do not ship these to customers.');
   } finally {

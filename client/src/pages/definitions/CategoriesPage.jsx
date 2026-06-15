@@ -1,10 +1,11 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BarChart3, Box, DollarSign, Pencil, Plus, Tag, Trash2, TrendingUp } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 import ImageUpload from "../../components/ui/ImageUpload";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -30,6 +31,10 @@ function formatMoney(v) {
 
 export default function CategoriesPage() {
   usePageTour('categories');
+  const handleKeyDown = useFieldNavigation();
+  const skuPrefixRef = useRef(null);
+  const nameRef = useRef(null);
+  const submitBtnRef = useRef(null);
   const [categories, setCategories] = useState([]);
   const [itemsByCategory, setItemsByCategory] = useState({});
   const [selectedId, setSelectedId] = useState(null);
@@ -405,9 +410,11 @@ export default function CategoriesPage() {
               <div>
                 <label className="mb-1 block text-[11px] font-black text-slate-400 uppercase">كود SKU للفئة</label>
                 <input
+                  ref={skuPrefixRef}
                   readOnly={catModal.mode === "edit"}
                   value={catDraft.sku_prefix}
                   onChange={(e) => setCatDraft((p) => ({ ...p, sku_prefix: e.target.value.replace(/[^\d]/g, "") }))}
+                  onKeyDown={e => handleKeyDown(e, { nextRef: nameRef })}
                   className={`w-full rounded-xl border border-slate-200 px-4 py-2.5 font-mono text-sm font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 ${catModal.mode === "edit" ? "bg-slate-100 text-slate-500" : "bg-white text-slate-800"}`}
                 />
                 {catModal.mode === "add" ? (
@@ -426,9 +433,11 @@ export default function CategoriesPage() {
                 <div className="flex-1">
                   <label className="mb-1.5 block text-[11px] font-black text-slate-500 uppercase">اسم القسم</label>
                   <input
+                    ref={nameRef}
                     autoFocus
                     value={catDraft.name}
                     onChange={(e) => setCatDraft((p) => ({ ...p, name: e.target.value }))}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: skuPrefixRef })}
                     required
                     placeholder="مثال: زيوت، بويات، أدوات صحية..."
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
@@ -444,6 +453,7 @@ export default function CategoriesPage() {
                   إلغاء
                 </button>
                 <button
+                  ref={submitBtnRef}
                   type="submit"
                   disabled={saving}
                   className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"

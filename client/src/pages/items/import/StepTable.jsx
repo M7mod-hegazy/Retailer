@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useFieldNavigation } from "../../../hooks/useFieldNavigation";
 import { ArrowUpDown, ChevronDown, ChevronUp, RotateCcw, Trash2 } from "lucide-react";
 import { List } from "react-window";
 import { FIELD_META } from "./useImportWizard";
@@ -130,6 +131,12 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [tableFilter, setTableFilter] = useState("all");
 
+  const bulkFieldRef = useRef(null);
+  const bulkValueRef = useRef(null);
+  const bulkScopeRef = useRef(null);
+  const pageSizeRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
+
   const tableCounts = useMemo(() => {
     const hasError = (row) => wizard.issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error");
     const hasIssue = (row) => wizard.issuesForRow(row.__rowNumber).length > 0;
@@ -216,25 +223,25 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
 
       <div className="border-b border-slate-100 bg-white px-5 py-4">
         <div className="grid items-center gap-3 sm:grid-cols-2 md:grid-cols-[180px_1fr_190px_160px_auto]">
-          <select value={wizard.bulkField} onChange={(event) => wizard.setBulkField(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
+          <select ref={bulkFieldRef} value={wizard.bulkField} onChange={(event) => wizard.setBulkField(event.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: bulkValueRef })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
             {wizard.BULK_FIELDS.map((field) => <option key={field} value={field}>{FIELD_META[field]?.label || field}</option>)}
           </select>
 
           {wizard.bulkField === "unit_name" ? (
-            <select value={wizard.bulkValue} onChange={(event) => wizard.setBulkValue(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
+            <select ref={bulkValueRef} value={wizard.bulkValue} onChange={(event) => wizard.setBulkValue(event.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: bulkScopeRef, prevRef: bulkFieldRef })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
               <option value="">اختر وحدة</option>
               {wizard.units?.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
             </select>
           ) : wizard.bulkField === "warehouse_id" ? (
-            <select value={wizard.bulkValue} onChange={(event) => wizard.setBulkValue(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
+            <select ref={bulkValueRef} value={wizard.bulkValue} onChange={(event) => wizard.setBulkValue(event.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: bulkScopeRef, prevRef: bulkFieldRef })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
               <option value="">اختر مخزن</option>
               {wizard.warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
             </select>
           ) : (
-            <input value={wizard.bulkValue} onChange={(event) => wizard.setBulkValue(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-slate-900" placeholder="القيمة الجديدة" />
+            <input ref={bulkValueRef} value={wizard.bulkValue} onChange={(event) => wizard.setBulkValue(event.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: bulkScopeRef, prevRef: bulkFieldRef })} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-slate-900" placeholder="القيمة الجديدة" />
           )}
 
-          <select value={wizard.bulkScope} onChange={(event) => wizard.setBulkScope(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
+          <select ref={bulkScopeRef} value={wizard.bulkScope} onChange={(event) => wizard.setBulkScope(event.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: pageSizeRef, prevRef: bulkValueRef })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:border-slate-900">
             {Object.entries(BULK_SCOPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
 
@@ -291,7 +298,7 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs font-black text-slate-500">
             عدد الصفوف
-            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black">
+            <select ref={pageSizeRef} value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} onKeyDown={e => handleKeyDown(e, { nextRef: bulkFieldRef, prevRef: bulkScopeRef })} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black">
               {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>

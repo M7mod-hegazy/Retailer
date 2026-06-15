@@ -12,6 +12,7 @@ import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
@@ -368,6 +369,21 @@ export default function DailyTreasuryPage() {
   const txSectionRef = useRef(null);
   const equationRowRefs = useRef({});
   const clickedTxTimerRef = useRef(null);
+
+  // Quick modal refs
+  const quickAmountRef = useRef(null);
+  const quickNoteRef = useRef(null);
+  const quickCategoryRef = useRef(null);
+  const quickSubmitRef = useRef(null);
+
+  // Withdrawal modal refs
+  const withdrawalAmountRef = useRef(null);
+  const withdrawalNoteRef = useRef(null);
+  const withdrawalCategoryRef = useRef(null);
+  const withdrawalPaymentRef = useRef(null);
+  const withdrawalSubmitRef = useRef(null);
+
+  const handleKeyDown = useFieldNavigation();
 
   const isToday = date === todayStr();
   const isClosed = summary?.session?.status === "closed";
@@ -2130,9 +2146,11 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">القيمة (ج.م)</label>
                   <input
+                    ref={quickAmountRef}
                     type="number"
                     value={quickAmount}
                     onChange={(e) => setQuickAmount(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: quickNoteRef })}
                     autoFocus
                     placeholder="0.00"
                     className="w-full h-14 rounded-2xl bg-slate-50 border border-slate-200 px-4 text-[20px] font-black font-mono outline-none focus:border-zinc-400 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 text-center transition-all shadow-inner"
@@ -2141,9 +2159,11 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">البيان / الوصف</label>
                   <input
+                    ref={quickNoteRef}
                     type="text"
                     value={quickNote}
                     onChange={(e) => setQuickNote(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: quickCategoryRef, prevRef: quickAmountRef })}
                     placeholder="سبب المعاملة..."
                     className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
                   />
@@ -2151,8 +2171,10 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">الفئة</label>
                   <select
+                    ref={quickCategoryRef}
                     value={quickCategoryId}
                     onChange={(e) => setQuickCategoryId(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: quickSubmitRef, prevRef: quickNoteRef })}
                     className={`w-full h-12 rounded-2xl bg-white border px-4 text-sm font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!quickCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
                     required
                   >
@@ -2164,9 +2186,11 @@ export default function DailyTreasuryPage() {
                 </div>
                 <div className="pt-4">
                   <motion.button
+                    ref={quickSubmitRef}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleQuickSave}
+                    onKeyDown={e => handleKeyDown(e, { prevRef: quickCategoryRef, onEnter: handleQuickSave })}
                     disabled={!quickAmount || !quickCategoryId}
                     className={"w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 " + (quickModal === "expense" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20")}
                   >
@@ -2210,9 +2234,11 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">القيمة (ج.م)</label>
                   <input
+                    ref={withdrawalAmountRef}
                     type="number"
                     value={withdrawalAmount}
                     onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalNoteRef })}
                     autoFocus
                     placeholder="0.00"
                     className="w-full h-14 rounded-2xl bg-slate-50 border border-slate-200 px-4 text-[20px] font-black font-mono outline-none focus:border-zinc-400 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 text-center transition-all shadow-inner"
@@ -2221,9 +2247,11 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">البيان / الوصف</label>
                   <input
+                    ref={withdrawalNoteRef}
                     type="text"
                     value={withdrawalNote}
                     onChange={(e) => setWithdrawalNote(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalCategoryRef, prevRef: withdrawalAmountRef })}
                     placeholder="سبب المسحوبات..."
                     className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
                   />
@@ -2231,8 +2259,10 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">التصنيف</label>
                   <select
+                    ref={withdrawalCategoryRef}
                     value={withdrawalCategoryId}
                     onChange={(e) => setWithdrawalCategoryId(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalPaymentRef, prevRef: withdrawalNoteRef })}
                     className={`w-full h-12 rounded-2xl bg-white border px-4 text-sm font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!withdrawalCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
                     required
                   >
@@ -2245,8 +2275,10 @@ export default function DailyTreasuryPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">طريقة الدفع</label>
                   <select
+                    ref={withdrawalPaymentRef}
                     value={withdrawalPaymentMethod}
                     onChange={(e) => setWithdrawalPaymentMethod(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalSubmitRef, prevRef: withdrawalCategoryRef })}
                     className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
                   >
                     <option value="cash">نقدي</option>
@@ -2256,9 +2288,11 @@ export default function DailyTreasuryPage() {
                 </div>
                 <div className="pt-4">
                   <motion.button
+                    ref={withdrawalSubmitRef}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleWithdrawalSave}
+                    onKeyDown={e => handleKeyDown(e, { prevRef: withdrawalPaymentRef, onEnter: handleWithdrawalSave })}
                     disabled={!withdrawalAmount || !withdrawalCategoryId}
                     className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 bg-primary hover:bg-primary-600 shadow-slate-900/20"
                   >

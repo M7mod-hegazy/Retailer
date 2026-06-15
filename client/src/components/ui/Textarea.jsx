@@ -1,10 +1,11 @@
-import React from "react";
+import React, { forwardRef } from "react";
 
-export default function Textarea({ label, value, onChange, placeholder, rows = 3, required, disabled, error }) {
+const Textarea = forwardRef(({ label, value, onChange, placeholder, rows = 3, required, disabled, error }, ref) => {
   return (
     <div className="space-y-1">
       {label && <label className="block text-sm font-medium text-text-primary">{label}</label>}
       <textarea
+        ref={ref}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -16,4 +17,7 @@ export default function Textarea({ label, value, onChange, placeholder, rows = 3
       {error ? <p className="text-xs text-danger-DEFAULT">{error}</p> : null}
     </div>
   );
-}
+});
+
+Textarea.displayName = "Textarea";
+export default Textarea;

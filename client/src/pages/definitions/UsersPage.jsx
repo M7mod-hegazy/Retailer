@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Edit3,
@@ -23,6 +24,8 @@ import {
   ChevronUp,
   Check,
   Lock,
+  AlertTriangle,
+  Power,
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -111,6 +114,14 @@ export default function UsersPage() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "dev";
 
+  const handleKeyDown = useFieldNavigation();
+  const fullNameRef = useRef(null);
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
+  const templateRef = useRef(null);
+  const roleRef = useRef(null);
+  const submitBtnRef = useRef(null);
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -132,8 +143,12 @@ export default function UsersPage() {
   const [infoSaved, setInfoSaved] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // For new-user creation template
-  const [createTemplate, setCreateTemplate] = useState("user");
+  // For new-user creation template — starts empty so the admin must choose.
+  const [createTemplate, setCreateTemplate] = useState("");
+  // Delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteRefs, setDeleteRefs] = useState(null);
   // Server-saved default permissions (used by تطبيق القالب)
   const [serverDefaultPermissions, setServerDefaultPermissions] = useState(null);
 
@@ -165,7 +180,7 @@ export default function UsersPage() {
     setForm(EMPTY_FORM);
     setActiveTab("info");
     setPermissions(buildEmptyPermissions());
-    setCreateTemplate("user");
+    setCreateTemplate("");
     setShowPassword(false);
   }
 
@@ -217,15 +232,65 @@ export default function UsersPage() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("تأكيد الحذف؟")) return;
+  function requestDelete(row) {
+    setDeleteTarget(row);
+    setDeleteRefs(null);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeleteTarget(null);
+    setDeleteRefs(null);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await api.delete(`/api/users/${id}`);
-      toast.success("تم الحذف بنجاح");
+      await api.delete(`/api/users/${deleteTarget.id}`);
+      toast.success("تم حذف المستخدم بنجاح");
+      const deletedId = deleteTarget.id;
+      setDeleteTarget(null);
+      setDeleteRefs(null);
       loadRows();
-      if (editingRow?.id === id) startCreate();
-    } catch {
-      toast.error("فشل الحذف");
+      if (editingRow?.id === deletedId) startCreate();
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.code === "has_references" && Array.isArray(data.references)) {
+        // Cannot hard-delete — surface the linked records and offer deactivate.
+        setDeleteRefs(data.references);
+      } else if (data?.code === "cannot_delete_self") {
+        toast.error("لا يمكنك حذف حسابك الحالي");
+        setDeleteTarget(null);
+      } else if (data?.code === "last_admin") {
+        toast.error("لا يمكن حذف آخر مدير في النظام");
+        setDeleteTarget(null);
+      } else {
+        toast.error(data?.message || "فشل حذف المستخدم");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deactivateUser() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.put(`/api/users/${deleteTarget.id}`, { is_active: false });
+      toast.success("تم تعطيل المستخدم");
+      const id = deleteTarget.id;
+      setDeleteTarget(null);
+      setDeleteRefs(null);
+      loadRows();
+      if (editingRow?.id === id) {
+        setEditingRow((p) => (p ? { ...p, is_active: 0 } : p));
+        setForm((p) => ({ ...p, is_active: false }));
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "فشل تعطيل المستخدم");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -255,6 +320,11 @@ export default function UsersPage() {
         setInfoSaved(true);
         setTimeout(() => setInfoSaved(false), 2000);
       } else {
+        if (!createTemplate) {
+          toast.error("يرجى اختيار نمط الصلاحيات");
+          setIsSubmitting(false);
+          return;
+        }
         const role = CREATE_TEMPLATE_ROLE[createTemplate] || "user";
         const payload = { ...form, role };
         const res = await api.post("/api/users", payload);
@@ -474,7 +544,7 @@ export default function UsersPage() {
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(info.row.original.id);
+                    requestDelete(info.row.original);
                   }}
                   className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
                 >
@@ -658,6 +728,7 @@ export default function UsersPage() {
                     </label>
                     <div className="relative">
                       <input
+                        ref={field.name === "full_name" ? fullNameRef : field.name === "username" ? usernameRef : field.name === "password" ? passwordRef : undefined}
                         type={field.name === "password" ? (showPassword ? "text" : "password") : "text"}
                         autoComplete={field.name === "password" ? (editingRow ? "new-password" : "new-password") : field.name === "username" ? "username" : "off"}
                         required={field.required}
@@ -665,6 +736,11 @@ export default function UsersPage() {
                         onChange={(e) =>
                           setForm((p) => ({ ...p, [field.name]: e.target.value }))
                         }
+                        onKeyDown={e => {
+                          const nextMap = { full_name: usernameRef, username: passwordRef, password: !editingRow ? templateRef : roleRef };
+                          const prevMap = { username: fullNameRef, password: usernameRef };
+                          handleKeyDown(e, { nextRef: nextMap[field.name], prevRef: prevMap[field.name] });
+                        }}
                         className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
                           field.name === "password" ? "pl-11" : ""
                         } ${
@@ -695,14 +771,20 @@ export default function UsersPage() {
                       نمط الصلاحيات
                     </label>
                     <select
+                      ref={templateRef}
                       value={createTemplate}
+                      required
                       onChange={(e) => {
                         const t = e.target.value;
                         setCreateTemplate(t);
                         setForm((p) => ({ ...p, role: CREATE_TEMPLATE_ROLE[t] || "user" }));
                       }}
-                      className="w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border text-zinc-900 border-slate-200 focus:border-zinc-400"
+                      onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: passwordRef })}
+                      className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border focus:border-zinc-400 ${
+                        createTemplate ? "text-zinc-900 border-slate-200" : "text-slate-400 border-slate-200"
+                      }`}
                     >
+                      <option value="" disabled>اختر نمط الصلاحيات...</option>
                       <option value="user">مستخدم — صلاحيات افتراضية</option>
                       <option value="admin">مدير — كامل الصلاحيات</option>
                       <option value="none">بدون صلاحيات</option>
@@ -710,24 +792,40 @@ export default function UsersPage() {
                   </div>
                 )}
 
-                {/* Edit-only: show auto-derived role badge + is_active toggle */}
+                {/* Edit-only: editable role selector. Saving the form applies it. */}
                 {editingRow && (
-                  <>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-amber-900/70">
-                        الدور (مشتق من الصلاحيات)
-                      </label>
-                      <div className="h-12 bg-white/60 rounded-xl px-4 flex items-center border border-amber-200">
-                        <span className="text-[11px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-amber-100 text-amber-800">
-                          {permTemplate === "admin" ? "admin" : "user"}
-                        </span>
-                      </div>
-                    </div>
-                  </>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-amber-900/70">
+                      الدور
+                    </label>
+                    <select
+                      ref={roleRef}
+                      value={permTemplate === "admin" ? "admin" : "user"}
+                      onChange={(e) => {
+                        const role = e.target.value;
+                        setPermTemplate(role);
+                        setForm((p) => ({ ...p, role }));
+                        if (role === "admin") {
+                          const full = buildEmptyPermissions();
+                          Object.keys(full).forEach((k) => { full[k] = [...ALL_ACTIONS]; });
+                          setPermissions(full);
+                        }
+                      }}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: passwordRef })}
+                      className="w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border text-amber-950 border-amber-200 focus:border-amber-500"
+                    >
+                      <option value="user">مستخدم — صلاحيات مخصصة</option>
+                      <option value="admin">مدير — كامل الصلاحيات</option>
+                    </select>
+                    <p className="text-[10px] font-bold text-amber-700/60">
+                      المدير يملك كل الصلاحيات تلقائياً. غيّر الدور ثم اضغط حفظ التعديلات.
+                    </p>
+                  </div>
                 )}
 
 
                 <motion.button
+                  ref={submitBtnRef}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSubmitting}
@@ -1097,6 +1195,103 @@ export default function UsersPage() {
         open={defaultPermissionsModalOpen}
         onClose={() => setDefaultPermissionsModalOpen(false)}
       />
+
+      {/* Delete confirmation / reference-block modal */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={closeDeleteModal}
+            dir="rtl"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
+            >
+              <div className={`p-6 flex items-start gap-4 border-b ${deleteRefs ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"}`}>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${deleteRefs ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-600"}`}>
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-lg font-black text-slate-900">
+                    {deleteRefs ? "تعذّر حذف المستخدم" : "تأكيد حذف المستخدم"}
+                  </h3>
+                  <p className="text-sm font-bold text-slate-500">
+                    {deleteTarget.full_name || deleteTarget.username}
+                    <span className="text-slate-400 font-mono"> @{deleteTarget.username}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-6 flex flex-col gap-4">
+                {deleteRefs ? (
+                  <>
+                    <p className="text-sm font-bold text-slate-600 leading-relaxed">
+                      لا يمكن حذف هذا المستخدم لأنه مرتبط بسجلات في النظام. يمكنك
+                      <span className="text-amber-700"> تعطيله </span>
+                      بدلاً من ذلك للحفاظ على سلامة البيانات والسجل التاريخي.
+                    </p>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 divide-y divide-slate-100 overflow-hidden">
+                      {deleteRefs.map((ref) => (
+                        <div key={ref.label} className="flex items-center justify-between px-4 py-2.5">
+                          <span className="text-sm font-bold text-slate-700">{ref.label}</span>
+                          <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-mono">
+                            {ref.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm font-bold text-slate-600 leading-relaxed">
+                    سيتم حذف المستخدم نهائياً. لا يمكن التراجع عن هذا الإجراء.
+                    سجلّات النشاط القديمة ستبقى محفوظة دون نسبتها لهذا المستخدم.
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={closeDeleteModal}
+                    disabled={deleting}
+                    className="flex-1 h-11 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200 transition disabled:opacity-50"
+                  >
+                    إلغاء
+                  </button>
+                  {deleteRefs ? (
+                    <button
+                      type="button"
+                      onClick={deactivateUser}
+                      disabled={deleting}
+                      className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-amber-600 text-white text-sm font-black hover:bg-amber-700 transition disabled:opacity-50"
+                    >
+                      <Power className="h-4 w-4" />
+                      {deleting ? "جاري التعطيل..." : "تعطيل المستخدم"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={confirmDelete}
+                      disabled={deleting}
+                      className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 transition disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deleting ? "جاري الحذف..." : "حذف نهائي"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

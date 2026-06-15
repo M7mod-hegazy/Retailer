@@ -29,12 +29,15 @@ export default function Highlight({
   if (!variants.length) return <>{str}</>;
 
   const pattern = new RegExp(`(${variants.join('|')})`, 'gi');
+  // Single capturing group → matched segments land at odd indices of the split
+  // result. Relying on index parity avoids the stateful-lastIndex bug that a
+  // global-flag `pattern.test()` would introduce when re-tested per part.
   const parts = str.split(pattern);
 
   return (
     <>
       {parts.map((part, i) =>
-        pattern.test(part) ? (
+        part && i % 2 === 1 ? (
           <mark key={i} className={markClass}>
             {part}
           </mark>

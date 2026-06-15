@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import Button from "../ui/Button";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const EMPTY_FORM = { name: "", phones: [""], addresses: [""], opening_balance: "", notes: "" };
 
@@ -9,6 +10,12 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const nameRef = useRef(null);
+  const phoneRef = useRef(null);
+  const addressRef = useRef(null);
+  const balanceRef = useRef(null);
+  const notesRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   function reset() { setForm(EMPTY_FORM); setError(""); }
 
@@ -76,10 +83,12 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
               اسم العميل <span className="text-red-500">*</span>
             </label>
             <input
+              ref={nameRef}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
               placeholder="أدخل اسم العميل"
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              onKeyDown={e => handleKeyDown(e, { nextRef: phoneRef })}
               autoFocus
             />
           </div>
@@ -91,10 +100,12 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
               {form.phones.map((phone, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input
+                    ref={i === 0 ? phoneRef : undefined}
                     className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                     placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                     value={phone}
                     onChange={e => setPhone(i, e.target.value)}
+                    onKeyDown={i === 0 ? e => handleKeyDown(e, { nextRef: addressRef, prevRef: nameRef }) : undefined}
                     dir="ltr"
                   />
                   {form.phones.length > 1 && (
@@ -128,10 +139,12 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
               {form.addresses.map((addr, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <input
+                    ref={i === 0 ? addressRef : undefined}
                     className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                     placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                     value={addr}
                     onChange={e => setAddress(i, e.target.value)}
+                    onKeyDown={i === 0 ? e => handleKeyDown(e, { nextRef: balanceRef, prevRef: phoneRef }) : undefined}
                   />
                   {form.addresses.length > 1 && (
                     <button
@@ -161,11 +174,13 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">الرصيد الافتتاحي</label>
             <input
+              ref={balanceRef}
               type="number"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
               placeholder="0"
               value={form.opening_balance}
               onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
+              onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: addressRef })}
             />
           </div>
 
@@ -173,11 +188,13 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
             <textarea
+              ref={notesRef}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
               placeholder="اختياري"
               rows={2}
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              onKeyDown={e => handleKeyDown(e, { prevRef: balanceRef, onEnter: handleSave })}
             />
           </div>
         </div>

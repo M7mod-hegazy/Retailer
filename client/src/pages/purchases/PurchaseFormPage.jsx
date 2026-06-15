@@ -5,7 +5,7 @@ import {
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
   ImageIcon, Printer, CheckCircle2, Layers, Lock, Pencil,
   FilePlus, Sparkles, Receipt, RefreshCw, ArrowUpDown, Save,
-  Loader2, Filter,
+  Loader2, Filter, ClipboardList,
 } from "lucide-react";
 import api from "../../services/api";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
@@ -27,6 +27,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
@@ -230,6 +231,8 @@ export default function PurchaseFormPage() {
   const [paymentMethods, setPaymentMethods] = useState([]);
 
   const [supplier, setSupplier] = useState(null);
+  const [sourcePO, setSourcePO] = useState(null); // { id, doc_no } when this invoice is converted from a purchase order
+  const poPrefillApplied = useRef(false);
   const [defaultWarehouseId, setDefaultWarehouseId] = useState("");
   const [docDate, setDocDate] = useState(new Date().toISOString().split("T")[0]);
   const [refNo, setRefNo] = useState(() => {
@@ -299,8 +302,14 @@ export default function PurchaseFormPage() {
   const whSelectRef       = useRef(null);
   const unitSelectRef     = useRef(null);
   const addBtnRef         = useRef(null);
+  const docDateRef = useRef(null);
+  const notesRef = useRef(null);
+  const bankRefInput = useRef(null);
+  const dueDateRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
+
+  const handleKeyDown = useFieldNavigation();
 
   // Today's Purchases modal states
   const [todayPurchOpen, setTodayPurchOpen] = useState(false);
@@ -412,15 +421,6 @@ export default function PurchaseFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayPurchOpen, todayPurchDateFrom, todayPurchDateTo, todayPurchSort, todayPurchDir, todayPurchUserId, todayPurchItemSearch, todayPurchDocSearch, todayPurchSupplierQuery, todayPurchSupplierId]);
 
-  const handleFieldKeyDown = (e, nextRef, prevRef, isEnterSubmit = false) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (e.shiftKey) { if (prevRef?.current) { prevRef.current.focus(); if (prevRef.current.select) prevRef.current.select(); } }
-      else if (isEnterSubmit) addLine();
-      else if (nextRef?.current) { nextRef.current.focus(); if (nextRef.current.select) nextRef.current.select(); }
-    }
-  };
-
   useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
     api.get("/api/suppliers").then(r => setSuppliers(r.data.data || [])).catch(() => {});
@@ -466,6 +466,9 @@ export default function PurchaseFormPage() {
       }
       setEditDebtRemaining(p.debt_remaining || 0);
       setEditOriginalSupplierId(p.supplier_id || null);
+      if (p.source_purchase_order_id) {
+        setSourcePO({ id: p.source_purchase_order_id, doc_no: `PO-${String(p.source_purchase_order_id).padStart(5, "0")}` });
+      }
       setDiscount(Math.max(0, Number(p.discount || 0)));
       setIncrease(Math.max(0, Number(p.increase || 0)));
       setPurchaseNotes(p.notes || "");
@@ -506,6 +509,36 @@ export default function PurchaseFormPage() {
     }).catch(() => toast.error("فشل تحميل الفاتورة"))
       .finally(() => setLoadingExisting(false));
   }, [id, isEditMode]);
+
+  // Prefill from a Purchase Order conversion (state passed from طلبات التوريد).
+  useEffect(() => {
+    const fromPO = location.state?.fromPurchaseOrder;
+    if (!fromPO || poPrefillApplied.current) return;
+    if (!suppliers.length) return; // wait for suppliers to load
+    poPrefillApplied.current = true;
+    setSourcePO({ id: fromPO.source_purchase_order_id, doc_no: fromPO.po_doc_no });
+    if (fromPO.supplier_id) {
+      const s = suppliers.find(x => String(x.id) === String(fromPO.supplier_id));
+      if (s) { setSupplier(s); setSupplierQuery(s.name); }
+    }
+    const headerWh = fromPO.warehouse_id ? String(fromPO.warehouse_id) : defaultWarehouseId;
+    setLines((fromPO.lines || []).map(l => ({
+      item_id: l.item_id,
+      name: l.name,
+      code: l.code || "",
+      quantity: Number(l.quantity),
+      unit_cost: Number(l.unit_cost),
+      original_unit_cost: Number(l.unit_cost),
+      selling_price: Number(l.selling_price || 0),
+      original_sale_price: Number(l.selling_price || 0),
+      wholesale_price: Number(l.wholesale_price || 0),
+      original_wholesale_price: Number(l.wholesale_price || 0),
+      warehouse_id: l.warehouse_id ? String(l.warehouse_id) : headerWh,
+      unit_id: l.unit_id || null,
+      purchase_order_line_id: l.purchase_order_line_id,
+      total: Number(l.quantity) * Number(l.unit_cost),
+    })));
+  }, [suppliers, defaultWarehouseId, location.state]);
 
   useEffect(() => {
     if (!selectedItem) setStaging(s => ({ ...s, warehouseId: defaultWarehouseId }));
@@ -754,6 +787,7 @@ export default function PurchaseFormPage() {
       notes: purchaseNotes || null,
       payment_method: paymentMode,
       payments,
+      source_purchase_order_id: sourcePO?.id || null,
       lines: lines.map(l => ({
         item_id: l.item_id,
         quantity: l.quantity,
@@ -762,6 +796,8 @@ export default function PurchaseFormPage() {
         unit_price: l.selling_price,
         wholesale_price: l.wholesale_price,
         warehouse_id: l.warehouse_id || defaultWarehouseId,
+        unit_id: l.unit_id || null,
+        purchase_order_line_id: l.purchase_order_line_id || null,
         update_master_purchase_price:  l.update_master_purchase_price  !== false,
         update_master_sale_price:      l.update_master_sale_price      !== false,
         update_master_wholesale_price: l.update_master_wholesale_price !== false,
@@ -936,6 +972,13 @@ export default function PurchaseFormPage() {
         subtitle={isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : "إدخال مخزون جديد"}
         extras={
           <>
+            {/* Shown only while converting (unsaved). Once the invoice is saved it opens in edit/locked mode and the banner is hidden. */}
+            {sourcePO && !isEditMode && (
+              <Link to="/purchases/orders" title="فتح طلبات التوريد"
+                className="flex items-center gap-1.5 rounded-sm border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-black text-indigo-800 hover:bg-indigo-100 transition-colors">
+                <ClipboardList className="h-3.5 w-3.5" /> ناتج عن أمر توريد {sourcePO.doc_no}
+              </Link>
+            )}
             {invoiceIsActive && (
               <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
                 {isLocked ? <Lock className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
@@ -964,16 +1007,14 @@ export default function PurchaseFormPage() {
                 {priceChangedLines.length} أسعار ستتغير
               </div>
             )}
-            {/* Profit analysis — special to purchases (blue) */}
+            {/* Profit analysis — special to purchases (blue), icon-only */}
             {lines.length > 0 && (
-              <button onClick={() => setProfitModalOpen(true)}
-                className="flex h-9 items-center gap-2 rounded-sm border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-700 hover:bg-blue-100 transition-all">
-                <TrendingUp className="h-4 w-4" /> تحليل الربح
+              <button onClick={() => setProfitModalOpen(true)} title="تحليل الربح"
+                className="flex h-9 w-9 items-center justify-center rounded-sm border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all">
+                <TrendingUp className="h-4 w-4" />
               </button>
             )}
-            <DocumentActionButton variant="today" icon={Receipt} onClick={() => setTodayPurchOpen(true)}>
-              مشتريات اليوم
-            </DocumentActionButton>
+            <DocumentActionButton variant="today" icon={Receipt} onClick={() => setTodayPurchOpen(true)} title="مشتريات اليوم" className="!px-0 w-9 justify-center" />
             <PermissionGate page="purchases" action="delete">
               <DocumentActionButton variant="delete" icon={Trash2} onClick={() => setDeleteConfirmOpen(true)}>
                 {isEditMode ? "حذف" : "مسح"}
@@ -1001,9 +1042,6 @@ export default function PurchaseFormPage() {
                     {isSaving ? "جاري..." : isAmendMode ? "إصدار تعديل" : isEditMode ? "حفظ التعديلات" : "حفظ"}
                   </DocumentActionButton>
                 </PermissionGate>
-                <DocumentActionButton variant="ghost" icon={FilePlus} onClick={() => setNewInvoiceModalOpen(true)}>
-                  جديدة
-                </DocumentActionButton>
               </>
             )}
           </>
@@ -1015,34 +1053,60 @@ export default function PurchaseFormPage() {
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
           {/* Header Info Grid */}
           <section className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0 ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
-            {/* Supplier */}
-            <div data-help="supplier-select" className="relative flex flex-col gap-1">
-              <label className="text-[11px] font-bold text-slate-600">
-                المورد <span className="text-slate-400 font-medium">(اختياري للنقدي)</span>
-              </label>
-              <div className="flex items-center gap-1">
-                <div className="relative flex-1">
-                  <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    ref={supplierInputRef}
-                    type="text"
-                    value={supplierQuery}
-                    onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); setSupplier(null); }}
-                    onFocus={() => setSupplierLookupOpen(true)}
-                    onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
-                    placeholder="ابحث عن مورد..."
-                    disabled={isLocked}
-                    className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 disabled:bg-slate-50 disabled:cursor-not-allowed"
-                  />
-                  {supplierLookupOpen && !isLocked && (
-                    <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Supplier */}
+              <div data-help="supplier-select" className="relative flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-slate-600">
+                  المورد <span className="text-slate-400 font-medium">(اختياري للنقدي)</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  <div className="relative flex-1">
+                    <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      ref={supplierInputRef}
+                      type="text"
+                      value={supplierQuery}
+                      onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); setSupplier(null); }}
+                      onFocus={() => setSupplierLookupOpen(true)}
+                      onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
+                      placeholder="ابحث عن مورد..."
+                      disabled={isLocked}
+                      className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                    />
+                    {supplierLookupOpen && !isLocked && (
+                      <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
+                    )}
+                  </div>
+                  {!isLocked && (
+                    <button onClick={() => setSupplierModalOpen(true)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                      <Plus className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
-                {!isLocked && (
-                  <button onClick={() => setSupplierModalOpen(true)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    <Plus className="h-4 w-4" />
-                  </button>
+              </div>
+
+              {/* Notes — moved next to the supplier */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-slate-600 flex items-center justify-between">
+                  <span>ملاحظات <span className="text-slate-400 font-medium">(اختياري)</span></span>
+                  {Boolean(purchaseNotes && purchaseNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
+                </label>
+                {isLocked ? (
+                  <p className="text-2sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed min-h-[37px] py-2">{purchaseNotes || "—"}</p>
+                ) : (
+                  <div className="relative">
+                    <FileText className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      ref={notesRef}
+                      type="text"
+                      value={purchaseNotes}
+                      onChange={(e) => setPurchaseNotes(e.target.value)}
+                      placeholder="ملاحظة اختيارية تُحفظ مع الفاتورة…"
+                      className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
+                      onKeyDown={e => handleKeyDown(e, { nextRef: itemInputRef })}
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -1105,7 +1169,7 @@ export default function PurchaseFormPage() {
                       setStaging(s => ({ ...s, quantity: v }));
                     }}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, itemInputRef)}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: costInputRef, prevRef: itemInputRef })}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
                 </div>
 
@@ -1140,7 +1204,7 @@ export default function PurchaseFormPage() {
                   <input ref={costInputRef} type="number" step="any" value={staging.unitCost}
                     onChange={(e) => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, sellInputRef, qtyInputRef)}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: sellInputRef, prevRef: qtyInputRef })}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
                       !stagingLocks.purchase ? "border-amber-300 bg-amber-50/60"
                       : selectedItem && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && Number(staging.unitCost) > 0
@@ -1191,7 +1255,7 @@ export default function PurchaseFormPage() {
                   <input ref={sellInputRef} type="number" step="any" value={staging.sellingPrice}
                     onChange={(e) => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, wholesaleInputRef, costInputRef)}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesaleInputRef, prevRef: costInputRef })}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
                       !stagingLocks.sale ? "border-amber-300 bg-amber-50/60"
                       : selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0
@@ -1231,7 +1295,7 @@ export default function PurchaseFormPage() {
                   <input ref={wholesaleInputRef} type="number" step="any" value={staging.wholesalePrice}
                     onChange={(e) => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); warehouseTableRef.current?.focus(); } else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); sellInputRef.current?.focus(); sellInputRef.current?.select(); } }}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: warehouseTableRef, prevRef: sellInputRef })}
                     className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
                       !stagingLocks.wholesale ? "border-amber-300 bg-amber-50/60"
                       : selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0
@@ -1696,25 +1760,6 @@ export default function PurchaseFormPage() {
               </div>
             </div>
           )}
-
-          {/* Invoice note */}
-          <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-            <label className="mb-2 flex items-center justify-between text-[11px] font-black text-slate-400 uppercase tracking-widest">
-              <span>ملاحظات</span>
-              {Boolean(purchaseNotes && purchaseNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
-            </label>
-            {isLocked ? (
-              <p className="text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{purchaseNotes || "—"}</p>
-            ) : (
-              <textarea
-                rows={2}
-                value={purchaseNotes}
-                onChange={(e) => setPurchaseNotes(e.target.value)}
-                placeholder="ملاحظة اختيارية تُحفظ مع فاتورة الشراء…"
-                className="w-full resize-none rounded-sm border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all"
-              />
-            )}
-          </div>
 
           {/* Payment Method */}
           {isLocked ? (

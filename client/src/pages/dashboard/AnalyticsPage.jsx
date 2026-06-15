@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState, useCallback } from "react";
+﻿import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell } from "recharts";
 import {
@@ -10,6 +10,7 @@ import {
 import api from "../../services/api";
 import CurrencyDisplay from "../../components/ui/CurrencyDisplay";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const zeroSummary = {
   todaySales: 0,
@@ -33,6 +34,7 @@ function ChartTooltip({ active, payload, label, isCurrency = true }) {
 
 export default function AnalyticsPage() {
   usePageTour('analytics');
+  const handleKeyDown = useFieldNavigation();
   const navigate = useNavigate();
   const [summary, setSummary] = useState(zeroSummary);
   const [allSalesRows, setAllSalesRows] = useState([]);
@@ -59,6 +61,16 @@ export default function AnalyticsPage() {
   const [itemsSort, setItemsSort] = useState("top");
   const [itemsLoading, setItemsLoading] = useState(false);
   
+  const chartDateModeRef = useRef(null);
+  const chartStartRef = useRef(null);
+  const chartEndRef = useRef(null);
+  const itemsSortRef = useRef(null);
+  const itemsDateModeRef = useRef(null);
+  const itemsRangeRef = useRef(null);
+  const itemsCustomStartRef = useRef(null);
+  const itemsCustomEndRef = useRef(null);
+  const expiryWhRef = useRef(null);
+  const expirySearchRef = useRef(null);
   const [todayExpenses, setTodayExpenses] = useState(0);
   const [todayRevenues, setTodayRevenues] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -241,7 +253,6 @@ export default function AnalyticsPage() {
         <div data-help="stats-cards" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <BentoMetric title="مبيعات اليوم" value={<CurrencyDisplay value={summary.todaySales} />} icon={TrendingUp} theme="dark" hint="إجمالي المبيعات المحققة اليوم حتى اللحظة — يشمل الفواتير المكتملة فقط" />
           <BentoMetric title="مبيعات الأسبوع" value={<CurrencyDisplay value={summary.weekSales} />} icon={Activity} hint="إجمالي مبيعات الأيام السبعة الأخيرة — قارنها بيوم أمس لقياس الأداء الأسبوعي" />
-          <BentoMetric title="صافي الخزنة اليوم" value={<CurrencyDisplay value={netToday} />} icon={Wallet} trend={netToday >= 0 ? "up" : "down"} hint="مبيعات اليوم + الإيرادات الإضافية — المصروفات = صافي التدفق النقدي اليومي" />
           <BentoMetric title="إيرادات منفصلة" value={<CurrencyDisplay value={todayRevenues} />} icon={ArrowDownToLine} hint="إيرادات إضافية خارج المبيعات مثل إيجارات أو استردادات — تُسجل من شاشة الإيرادات" />
           <BentoMetric title="مصروفات اليوم" value={<CurrencyDisplay value={todayExpenses} />} icon={ArrowUpFromLine} hint="مصروفات التشغيل اليومية — مشتريات نقدية، إيجار، رواتب، وغيرها" />
           <BentoMetric title="نواقص مستعجلة" value={lowStock.length} icon={AlertTriangle} theme={lowStock.length > 0 ? "alert" : "default"} hint="الأصناف التي وصلت أو تجاوزت الحد الأدنى للمخزون — تحتاج إعادة طلب" />
@@ -281,9 +292,10 @@ export default function AnalyticsPage() {
                 </div>
                 {/* Time Range Configurator */}
                 <div data-help="period-filter" className="flex p-1 bg-slate-100 rounded-[14px] items-center text-slate-500 font-bold overflow-hidden shadow-inner border border-slate-200">
-                  <select 
+                  <select ref={chartDateModeRef}
                      value={chartDateMode}
                      onChange={e => setChartDateMode(e.target.value)}
+                     onKeyDown={(e) => handleKeyDown(e, { nextRef: chartStartRef })}
                      className="bg-slate-200/50 hover:bg-slate-200 border-none outline-none text-2sm font-black text-slate-700 py-1.5 px-2 rounded-[10px] ml-1 transition-colors cursor-pointer"
                   >
                      <option value="predefined">فترة محددة</option>
@@ -306,17 +318,19 @@ export default function AnalyticsPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 pl-2 pr-1">
-                      <input 
+                      <input ref={chartStartRef}
                         type="date" 
                         value={chartCustomDates.start} 
                         onChange={e => setChartCustomDates(c => ({...c, start: e.target.value}))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: chartEndRef, prevRef: chartDateModeRef })}
                         className="text-[11px] bg-white rounded-[8px] px-2 py-1 outline-none border border-slate-200 font-mono shadow-sm"
                       />
                       <span className="text-[11px] uppercase font-black tracking-widest text-slate-400">الي</span>
-                      <input 
+                      <input ref={chartEndRef}
                         type="date" 
                         value={chartCustomDates.end} 
                         onChange={e => setChartCustomDates(c => ({...c, end: e.target.value}))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: chartDateModeRef, prevRef: chartStartRef })}
                         className="text-[11px] bg-white rounded-[8px] px-2 py-1 outline-none border border-slate-200 font-mono shadow-sm"
                       />
                     </div>
@@ -432,25 +446,26 @@ export default function AnalyticsPage() {
                   الأصناف {itemsSort === 'top' ? 'الأكثر' : 'الأقل'} مبيعاً
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                   <select value={itemsSort} onChange={e => setItemsSort(e.target.value)} className="text-2sm font-bold bg-white border border-slate-200 shadow-sm rounded-[10px] px-2 py-1.5 outline-none text-slate-700 cursor-pointer">
+                   <select ref={itemsSortRef} value={itemsSort} onChange={e => setItemsSort(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: itemsDateModeRef })} className="text-2sm font-bold bg-white border border-slate-200 shadow-sm rounded-[10px] px-2 py-1.5 outline-none text-slate-700 cursor-pointer">
                      <option value="top">الأكثر مبيعاً</option>
                      <option value="bottom">الأقل مبيعاً</option>
                    </select>
 
                    <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-[12px] border border-slate-200 shadow-inner">
-                     <select 
-                        value={itemsDateMode}
-                        onChange={e => setItemsDateMode(e.target.value)}
-                        className="bg-transparent border-none outline-none text-[11px] font-black text-slate-600 px-2 cursor-pointer"
-                     >
-                        <option value="predefined">مدة محددة</option>
-                        <option value="custom">مخصص</option>
-                     </select>
+                    <select ref={itemsDateModeRef}
+                       value={itemsDateMode}
+                       onChange={e => setItemsDateMode(e.target.value)}
+                       onKeyDown={(e) => handleKeyDown(e, { nextRef: itemsRangeRef, prevRef: itemsSortRef })}
+                       className="bg-transparent border-none outline-none text-[11px] font-black text-slate-600 px-2 cursor-pointer"
+                    >
+                       <option value="predefined">مدة محددة</option>
+                       <option value="custom">مخصص</option>
+                    </select>
                      
                      <div className="h-3 w-px bg-slate-300" />
                      
                      {itemsDateMode === "predefined" ? (
-                       <select value={itemsRange} onChange={e => setItemsRange(Number(e.target.value))} className="text-[11px] font-bold bg-transparent border-none px-1 py-1 outline-none text-slate-700 cursor-pointer">
+                       <select ref={itemsRangeRef} value={itemsRange} onChange={e => setItemsRange(Number(e.target.value))} onKeyDown={(e) => handleKeyDown(e, { nextRef: itemsDateModeRef, prevRef: itemsDateModeRef })} className="text-[11px] font-bold bg-transparent border-none px-1 py-1 outline-none text-slate-700 cursor-pointer">
                          <option value="1">اليوم</option>
                          <option value="7">أخر 7 أيام</option>
                          <option value="14">أخر 14 يوم</option>
@@ -458,20 +473,22 @@ export default function AnalyticsPage() {
                        </select>
                      ) : (
                        <div className="flex items-center gap-1 pl-1">
-                         <input 
-                           type="date" 
-                           value={itemsCustomDates.start} 
-                           onChange={e => setItemsCustomDates(c => ({...c, start: e.target.value}))} 
-                           className="text-[11px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
-                         />
-                         <span className="text-[9px] uppercase font-black text-slate-400">الي</span>
-                         <input 
-                           type="date" 
-                           value={itemsCustomDates.end} 
-                           onChange={e => setItemsCustomDates(c => ({...c, end: e.target.value}))} 
-                           className="text-[11px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
-                         />
-                       </div>
+                          <input ref={itemsCustomStartRef}
+                            type="date" 
+                            value={itemsCustomDates.start} 
+                            onChange={e => setItemsCustomDates(c => ({...c, start: e.target.value}))} 
+                            onKeyDown={(e) => handleKeyDown(e, { nextRef: itemsCustomEndRef, prevRef: itemsDateModeRef })}
+                            className="text-[11px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
+                          />
+                          <span className="text-[9px] uppercase font-black text-slate-400">الي</span>
+                          <input ref={itemsCustomEndRef}
+                            type="date" 
+                            value={itemsCustomDates.end} 
+                            onChange={e => setItemsCustomDates(c => ({...c, end: e.target.value}))} 
+                            onKeyDown={(e) => handleKeyDown(e, { nextRef: itemsDateModeRef, prevRef: itemsCustomStartRef })}
+                            className="text-[11px] bg-white rounded-[6px] px-1.5 py-1 outline-none border border-slate-200 font-mono shadow-sm"
+                          />
+                        </div>
                      )}
                    </div>
                 </div>
@@ -758,8 +775,9 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Warehouse filter */}
-            <select value={expiryWarehouseId}
+            <select ref={expiryWhRef} value={expiryWarehouseId}
               onChange={e => setExpiryWarehouseId(e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, { nextRef: expirySearchRef })}
               className="text-[11px] font-bold bg-white border border-slate-200 rounded-[10px] px-2 py-1.5 outline-none text-slate-600 cursor-pointer">
               <option value="">كل المخازن</option>
               {warehouses.map(w => (
@@ -769,8 +787,9 @@ export default function AnalyticsPage() {
 
             {/* Search */}
             <div className="flex-1 min-w-[150px]">
-              <input type="text" value={expirySearch}
+              <input ref={expirySearchRef} type="text" value={expirySearch}
                 onChange={e => setExpirySearch(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, { nextRef: expiryWhRef, prevRef: expiryWhRef })}
                 placeholder="بحث بالاسم أو الكود أو الدفعة..."
                 className="w-full text-[11px] bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 outline-none text-slate-700 placeholder:text-slate-300 font-bold" />
             </div>
@@ -902,6 +921,8 @@ export default function AnalyticsPage() {
 // -------------------------------------------------------------
 
 function TopItemsModal({ items, onClose, dateLabel }) {
+  const handleKeyDown = useFieldNavigation();
+  const searchRef = useRef(null);
   const [sort, setSort] = useState({ key: "revenue", dir: "desc" });
   const [metric, setMetric] = useState("revenue");
   const [search, setSearch] = useState("");
@@ -1021,7 +1042,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
 
           {/* Search + Table */}
           <div className="px-8 py-5">
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef })}
               placeholder="بحث بالاسم أو الكود أو الفئة..."
               className="w-full max-w-sm rounded-[12px] border border-slate-200 px-4 py-2 text-sm font-bold outline-none focus:border-indigo-400 mb-4" />
 

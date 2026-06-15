@@ -1,10 +1,11 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState, useRef } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Package, Pencil, RefreshCw, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import DataGrid from "../ui/DataGrid";
 import toast from "react-hot-toast";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function toDateInput(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -121,6 +122,12 @@ export default function BranchTransferTodayModal({ open, onClose }) {
   const [activeItemIdx, setActiveItemIdx] = useState(0);
   const [previewTransfer, setPreviewTransfer] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const handleKeyDown = useFieldNavigation();
+  const docSearchRef = useRef(null);
+  const itemSearchRef = useRef(null);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   useEffect(() => {
     const q = itemSearch.trim();
@@ -227,14 +234,17 @@ export default function BranchTransferTodayModal({ open, onClose }) {
           <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-xl border border-slate-700 flex-wrap">
             <span className="text-[11px] font-black text-slate-400 shrink-0">رقم المستند:</span>
             <input
+              ref={docSearchRef}
               value={docSearch}
               onChange={e => setDocSearch(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: itemSearchRef })}
               placeholder="BT-R-..."
               className="w-[160px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
             />
             <span className="text-[11px] font-black text-slate-400 shrink-0">بحث صنف:</span>
             <div className="relative flex-1 min-w-[160px]">
               <input
+                ref={itemSearchRef}
                 value={itemSearch}
                 onChange={e => { setItemSearch(e.target.value); setItemLookupOpen(true); }}
                 onFocus={() => setItemLookupOpen(true)}
@@ -243,10 +253,12 @@ export default function BranchTransferTodayModal({ open, onClose }) {
                   if (e.key === "ArrowDown") { e.preventDefault(); setActiveItemIdx(i => Math.min(i + 1, filteredItemSuggestions.length - 1)); }
                   else if (e.key === "ArrowUp") { e.preventDefault(); setActiveItemIdx(i => Math.max(i - 1, 0)); }
                   else if (e.key === "Enter" && filteredItemSuggestions[activeItemIdx]) {
+                    e.preventDefault();
                     const p = filteredItemSuggestions[activeItemIdx];
                     setItemSearch(p.item_code || p.name);
                     setItemLookupOpen(false);
                   }
+                  else if (e.key === "Enter" && !filteredItemSuggestions[activeItemIdx]) { handleKeyDown(e, { nextRef: dateFromRef, prevRef: docSearchRef }); }
                   else if (e.key === "Escape") setItemLookupOpen(false);
                 }}
                 placeholder="اسم الصنف أو SKU..."
@@ -275,7 +287,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
             <button onClick={() => { setDocSearch(""); setItemSearch(""); }} className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-[11px] font-black text-white hover:bg-slate-600">
               <X className="h-3 w-3" /> مسح
             </button>
-            <button onClick={loadData} className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-[11px] font-black text-white hover:bg-slate-600">
+            <button ref={submitBtnRef} onClick={loadData} onKeyDown={e => handleKeyDown(e, { prevRef: dateToRef })} className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-[11px] font-black text-white hover:bg-slate-600">
               <RefreshCw className="h-3 w-3" />
             </button>
           </div>
@@ -283,10 +295,12 @@ export default function BranchTransferTodayModal({ open, onClose }) {
           {/* Filters row */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 border border-slate-200">
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              <input ref={dateFromRef} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: itemSearchRef })}
                 className="rounded-lg bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
               <span className="text-slate-300 text-[11px]">—</span>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              <input ref={dateToRef} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: dateFromRef })}
                 className="rounded-lg bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
             </div>
             <div className="flex items-center gap-1">

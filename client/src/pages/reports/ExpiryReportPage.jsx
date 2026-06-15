@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { Clock, Package, Search, X, ArrowUpDown, Download, Printer, FileSpreadsheet, AlertTriangle, Activity } from "lucide-react";
 import api from "../../services/api";
 import DataGrid from "../../components/ui/DataGrid";
@@ -24,6 +25,9 @@ export default function ExpiryReportPage() {
   const [sortConfig, setSortConfig] = useState({ key: "days_remaining", dir: "asc" });
   const [detailData, setDetailData] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const warehouseRef = useRef(null);
+  const searchRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     api.get("/api/warehouses").then(r => setWarehouses(r.data?.data || [])).catch(() => {});
@@ -197,8 +201,9 @@ export default function ExpiryReportPage() {
 
           <div className="w-px h-6 bg-slate-200" />
 
-          <select value={warehouseId}
+          <select ref={warehouseRef} value={warehouseId}
             onChange={e => setWarehouseId(e.target.value)}
+            onKeyDown={e => handleKeyDown(e, { nextRef: searchRef })}
             className="text-[11px] font-bold bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 outline-none text-slate-600 cursor-pointer">
             <option value="">كل المخازن</option>
             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -206,8 +211,9 @@ export default function ExpiryReportPage() {
 
           <div className="flex-1 min-w-[180px] relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
-            <input type="text" value={search}
+            <input ref={searchRef} type="text" value={search}
               onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { prevRef: warehouseRef })}
               placeholder="بحث بالاسم أو الكود أو الدفعة..."
               className="w-full text-[12px] bg-white border border-slate-200 rounded-[10px] pr-8 pl-3 py-1.5 outline-none text-slate-700 placeholder:text-slate-300 font-bold" />
             {search && (

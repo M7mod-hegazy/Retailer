@@ -6,7 +6,7 @@ import SortTh from "./SortTh";
 const ROW_HEIGHT = 45;
 const VIRTUALIZE_THRESHOLD = 100;
 
-function VirtualRow({ data: { columns, colWidths, rows, rowKey, onRowClick, rowClass }, index, style }) {
+function VirtualRow({ data: { columns, colWidths, colMinWidths, rows, rowKey, onRowClick, rowClass }, index, style }) {
   const row = rows[index];
   return (
     <div
@@ -17,8 +17,8 @@ function VirtualRow({ data: { columns, colWidths, rows, rowKey, onRowClick, rowC
       {columns.map((c) => (
         <div
           key={c.id}
-          className={`px-2 py-2 text-sm text-slate-800 border-l border-slate-100/50 flex items-center ${c.cellClass || "text-center"}`}
-          style={{ width: colWidths[c.id], minWidth: colWidths[c.id], maxWidth: colWidths[c.id], wordBreak: "break-word", overflowWrap: "break-word" }}
+          className={`px-1.5 py-1 text-xs text-slate-800 border-l border-slate-100/50 flex items-center overflow-hidden ${c.cellClass || "text-center"}`}
+          style={{ width: colWidths[c.id], minWidth: Math.min(colWidths[c.id], colMinWidths[c.id] || 40), maxWidth: colWidths[c.id] }}
           title={(row[c.id] || "-")?.toString()}
         >
           {c.render ? c.render(row, index) : (row[c.id] || "-")}
@@ -50,7 +50,11 @@ export default function DataGrid({
   }, [rowKey]);
 
   const defaultWidths = {};
-  columns.forEach((c) => (defaultWidths[c.id] = c.width || 120));
+  const colMinWidths = {};
+  columns.forEach((c) => {
+    defaultWidths[c.id] = c.width || 120;
+    colMinWidths[c.id] = c.minWidth || 40;
+  });
 
   const [colWidths, setColWidths] = useState(defaultWidths);
   const [internalSortConfig, setInternalSortConfig] = useState({ key: null, dir: "asc" });
@@ -72,7 +76,8 @@ export default function DataGrid({
     const onMouseMove = (moveEvent) => {
       if (!resizingCol.current) return;
       const diff = startX.current - moveEvent.clientX;
-      setColWidths((prev) => ({ ...prev, [resizingCol.current]: Math.max(startWidth.current + diff, 40) }));
+      const minW = colMinWidths[resizingCol.current] || 40;
+      setColWidths((prev) => ({ ...prev, [resizingCol.current]: Math.max(startWidth.current + diff, minW) }));
     };
     const onMouseUp = () => {
       resizingCol.current = null;
@@ -153,6 +158,7 @@ export default function DataGrid({
                 label={c.header}
                 sortKey={c.sortable ? c.id : null}
                 width={colWidths[c.id]}
+                minWidth={c.minWidth || 40}
                 onResizeStart={onResizeStart}
                 resizableKey={c.id}
                 sortConfig={currentSort}
@@ -170,7 +176,7 @@ export default function DataGrid({
           itemSize={ROW_HEIGHT}
           width="100%"
           onScroll={handleScroll}
-          itemData={{ columns, colWidths, rows: sortedData, rowKey, onRowClick, rowClass }}
+          itemData={{ columns, colWidths, colMinWidths, rows: sortedData, rowKey, onRowClick, rowClass }}
           overscanCount={10}
         >
           {VirtualRow}
@@ -191,6 +197,7 @@ export default function DataGrid({
                 label={c.header}
                 sortKey={c.sortable ? c.id : null}
                 width={colWidths[c.id]}
+                minWidth={c.minWidth || 40}
                 onResizeStart={onResizeStart}
                 resizableKey={c.id}
                 sortConfig={currentSort}
@@ -210,8 +217,8 @@ export default function DataGrid({
                 {columns.map((c) => (
                   <td
                     key={c.id}
-                    className={`px-2 py-2 text-sm text-slate-800 border-l border-slate-100/50 truncate align-middle ${c.cellClass || "text-center"}`}
-                    style={{ maxWidth: colWidths[c.id] }}
+                    className={`px-1.5 py-1 text-xs text-slate-800 border-l border-slate-100/50 truncate align-middle ${c.cellClass || "text-center"}`}
+                    style={{ maxWidth: colWidths[c.id], minWidth: Math.min(colWidths[c.id], colMinWidths[c.id] || 40) }}
                     title={(row[c.id] ?? "") !== "" ? String(row[c.id]) : "-"}
                   >
                     {c.render ? c.render(row, i) : ((row[c.id] ?? "") !== "" ? row[c.id] : "-")}

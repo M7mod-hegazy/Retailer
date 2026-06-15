@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -447,6 +448,12 @@ export default function SourceWorkspacePage() {
   const [columnOrder, setColumnOrderState] = useState([]);
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
   const columnDropdownRef = useRef(null);
+  const searchRef = useRef(null);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const costMethodRef = useRef(null);
+  const closeFilterRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
   const [paymentTypeOptions, setPaymentTypeOptions] = useState([]);
   useEffect(() => {
     api.get("/api/reports/payment-type-options").then((r) => {
@@ -964,7 +971,8 @@ export default function SourceWorkspacePage() {
                     <label className="text-[11px] font-semibold text-slate-500">بحث عام</label>
                     <div className="relative group">
                       <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                      <input type="text" value={filters.q || ""} onChange={(e) => setFilters((c) => ({ ...c, q: e.target.value }))}
+                      <input ref={searchRef} type="text" value={filters.q || ""} onChange={(e) => setFilters((c) => ({ ...c, q: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef })}
                         placeholder="ابحث بالاسم، الكود، الوصف..." className="w-full h-10 pr-9 pl-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm font-medium" />
                     </div>
                   </div>
@@ -985,9 +993,9 @@ export default function SourceWorkspacePage() {
                         </div>
                       </label>
                       <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-sm h-10 overflow-hidden focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-100 transition-all">
-                        <input type="date" value={filters.from} onChange={(e) => setFilters((c) => ({ ...c, from: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-sm font-medium text-slate-900 focus:outline-none font-mono" />
+                        <input ref={dateFromRef} type="date" value={filters.from} onChange={(e) => setFilters((c) => ({ ...c, from: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: searchRef })} className="flex-1 h-full px-3 bg-transparent text-sm font-medium text-slate-900 focus:outline-none font-mono" />
                         <div className="w-px h-6 bg-slate-200" />
-                        <input type="date" value={filters.to} onChange={(e) => setFilters((c) => ({ ...c, to: e.target.value }))} className="flex-1 h-full px-3 bg-transparent text-sm font-medium text-slate-900 focus:outline-none font-mono" />
+                        <input ref={dateToRef} type="date" value={filters.to} onChange={(e) => setFilters((c) => ({ ...c, to: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: dateFromRef })} className="flex-1 h-full px-3 bg-transparent text-sm font-medium text-slate-900 focus:outline-none font-mono" />
                       </div>
                     </div>
                   )}
@@ -1016,7 +1024,7 @@ export default function SourceWorkspacePage() {
                   {clsDef?.hasProfit && (
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-semibold text-slate-500">طريقة حساب التكلفة</label>
-                      <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
+                      <select ref={costMethodRef} value={costMethod} onChange={(e) => setCostMethod(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: closeFilterRef, prevRef: dateToRef })} className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all shadow-sm cursor-pointer">
                         {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
                       </select>
                     </div>
@@ -1034,7 +1042,7 @@ export default function SourceWorkspacePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors">إعادة تعيين</button>
-                    <button onClick={() => setFiltersOpen(false)} className="h-9 px-5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-600 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
+                    <button ref={closeFilterRef} onClick={() => setFiltersOpen(false)} onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => closeFilterRef.current?.click() })} className="h-9 px-5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-600 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
                   </div>
                 </div>
               </div>

@@ -2,50 +2,56 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Upload, RotateCcw, Eye, Loader2, Building2, FileText, MapPin, Plus, X, Info, Sidebar, ImageDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { resolveImageUrl } from '../../utils/resolveImageUrl';
 import { getMeta, getHint, getPlaceholder } from '../../utils/fieldMeta';
 
-function compressImage(file) {
-  return new Promise((resolve, reject) => {
-    const size = file.size;
-    let quality, maxDim;
-    if (size <= 500 * 1024) {
-      resolve(file);
-      return;
-    } else if (size > 5 * 1024 * 1024) {
-      quality = 0.4; maxDim = 400;
-    } else if (size > 2 * 1024 * 1024) {
-      quality = 0.6; maxDim = 600;
-    } else {
-      quality = 0.8; maxDim = 800;
-    }
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-      if (width > maxDim || height > maxDim) {
-        if (width > height) {
-          height = Math.round(height * maxDim / width);
-          width = maxDim;
-        } else {
-          width = Math.round(width * maxDim / height);
-          height = maxDim;
-        }
+async function compressImage(file) {
+  const size = file.size;
+  if (size <= 500 * 1024) return file;
+  let quality, maxDim;
+  if (size > 5 * 1024 * 1024) {
+    quality = 0.4; maxDim = 400;
+  } else if (size > 2 * 1024 * 1024) {
+    quality = 0.6; maxDim = 600;
+  } else {
+    quality = 0.8; maxDim = 800;
+  }
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('FileReader failed'));
+      reader.readAsDataURL(file);
+    });
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Image load failed'));
+      i.src = dataUrl;
+    });
+    const canvas = document.createElement('canvas');
+    let { width, height } = img;
+    if (width > maxDim || height > maxDim) {
+      if (width > height) {
+        height = Math.round(height * maxDim / width);
+        width = maxDim;
+      } else {
+        width = Math.round(width * maxDim / height);
+        height = maxDim;
       }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        if (!blob) return reject(new Error('Canvas toBlob failed'));
-        resolve(new File([blob], file.name, { type: file.type }));
-      }, file.type, quality);
-    };
-    img.onerror = () => reject(new Error('Image load failed'));
-    const reader = new FileReader();
-    reader.onload = (e) => { img.src = e.target.result; };
-    reader.onerror = () => reject(new Error('FileReader failed'));
-    reader.readAsDataURL(file);
-  });
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context unavailable');
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, file.type, quality));
+    if (!blob || blob.size === 0) throw new Error('Compressed image is empty');
+    return new File([blob], file.name, { type: file.type });
+  } catch (err) {
+    console.warn('Image compression failed, using original:', err);
+    return file;
+  }
 }
 
 function InfoTip({ text }) {
@@ -96,13 +102,20 @@ function DenseInput({ label, required, metaKey, lang = 'ar', ...props }) {
 }
 
 export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
-  const [logoPreview, setLogoPreview] = useState(settings.logo_url || null);
+  const [logoPreview, setLogoPreview] = useState(() => resolveImageUrl(settings.logo_url || null));
   const [uploading, setUploading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
   const fileRef = useRef(null);
 
   const handleFile = useCallback(async (rawFile) => {
-    if (!rawFile || !rawFile.type.startsWith('image/')) {
+    if (!rawFile) return;
+    if (!rawFile.type.startsWith('image/')) {
       toast.error(lang === 'ar' ? 'الرجاء اختيار صورة فقط' : 'Please select an image');
+      return;
+    }
+    const maxSize = 10 * 1024 * 1024;
+    if (rawFile.size > maxSize) {
+      toast.error(lang === 'ar' ? 'حجم الصورة كبير جدًا (الحد الأقصى 10 ميغابايت)' : 'File too large (max 10MB)');
       return;
     }
     setUploading(true);
@@ -112,15 +125,24 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
       formData.append('file', file);
       const res = await api.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
       });
       const url = res.data?.url;
       if (url) {
-        setLogoPreview(url);
+        setPreviewError(false);
+        const resolved = resolveImageUrl(url);
+        setLogoPreview(resolved);
         onChange?.('logo_url', url);
         toast.success(lang === 'ar' ? 'تم رفع الشعار بنجاح' : 'Logo uploaded successfully');
+      } else {
+        throw new Error('No URL returned from server');
       }
-    } catch {
-      toast.error(lang === 'ar' ? 'فشل رفع الشعار' : 'Logo upload failed');
+    } catch (err) {
+      const message = err?.response?.data?.message
+        || (err?.code === 'ECONNABORTED' ? (lang === 'ar' ? 'انتهت مهلة الاتصال بالخادم' : 'Connection timeout')
+           : err?.message)
+        || (lang === 'ar' ? 'فشل رفع الشعار' : 'Logo upload failed');
+      toast.error(message);
     } finally {
       setUploading(false);
     }
@@ -189,8 +211,15 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
               {lang === 'ar' ? 'معاينة حية' : 'Live Preview'}
             </label>
             <div className="relative flex h-[120px] w-full items-center justify-center rounded-sm border border-slate-200 bg-white p-4 shadow-sm">
-              {logoPreview ? (
-                <img src={logoPreview} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+              {logoPreview && !previewError ? (
+                <img src={logoPreview} alt="Logo preview" className="max-h-full max-w-full object-contain" onError={() => setPreviewError(true)} />
+              ) : logoPreview && previewError ? (
+                <div className="text-center">
+                  <ImageDown className="h-6 w-6 text-rose-400 mx-auto mb-1" />
+                  <span className="text-[11px] font-bold text-rose-500">
+                    {lang === 'ar' ? 'تعذر تحميل الصورة' : 'Failed to load image'}
+                  </span>
+                </div>
               ) : (
                 <span className="text-[11px] font-bold text-slate-400">
                   {lang === 'ar' ? 'لا يوجد شعار' : 'No Logo Preview'}
@@ -199,7 +228,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
               {logoPreview && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); setLogoPreview(null); onChange?.('logo_url', null); }}
+                  onClick={(e) => { e.stopPropagation(); setLogoPreview(null); setPreviewError(false); onChange?.('logo_url', null); }}
                   className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-md hover:bg-rose-600 hover:scale-110 transition-all"
                   title={lang === 'ar' ? 'حذف الشعار' : 'Remove Logo'}
                 >

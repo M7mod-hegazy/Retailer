@@ -1,19 +1,22 @@
-﻿import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Search, X, RefreshCw, Package, Loader2, Filter, ChevronDown } from "lucide-react";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 function fmt(v) {
   return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function FilterSelect({ value, onChange, children, icon: Icon }) {
+const FilterSelect = React.forwardRef(({ value, onChange, children, icon: Icon, onKeyDown }, ref) => {
   return (
     <div className="relative">
       {Icon && <Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />}
       <select
+        ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
         className={`appearance-none h-10 rounded-xl border border-slate-200/80 bg-white ${Icon ? "pr-9" : "pr-3"} pl-8 text-2sm font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 cursor-pointer shadow-sm transition-all`}
       >
         {children}
@@ -21,28 +24,32 @@ function FilterSelect({ value, onChange, children, icon: Icon }) {
       <ChevronDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
     </div>
   );
-}
+});
 
-function RangeInput({ label, min, max, onMinChange, onMaxChange }) {
+function RangeInput({ label, min, max, onMinChange, onMaxChange, minRef, maxRef, onMinKeyDown, onMaxKeyDown }) {
   return (
     <div className="flex items-center rounded-xl border border-slate-200/80 bg-white h-10 overflow-hidden shadow-sm focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all">
       <div className="px-3 bg-slate-50/80 border-l border-slate-200/80 h-full flex items-center justify-center">
         <span className="text-[11px] font-black text-slate-500">{label}</span>
       </div>
       <input
+        ref={minRef}
         type="number"
         min="0"
         value={min}
         onChange={(e) => onMinChange(e.target.value)}
+        onKeyDown={onMinKeyDown}
         placeholder="من"
         className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-slate-700 text-center outline-none"
       />
       <div className="w-px h-4 bg-slate-200" />
       <input
+        ref={maxRef}
         type="number"
         min="0"
         value={max}
         onChange={(e) => onMaxChange(e.target.value)}
+        onKeyDown={onMaxKeyDown}
         placeholder="إلى"
         className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-slate-700 text-center outline-none"
       />
@@ -63,6 +70,16 @@ export default function AdvancedSearchModal({ open, onClose }) {
   const [qtyMin, setQtyMin] = useState("");
   const [qtyMax, setQtyMax] = useState("");
   const [hideZero, setHideZero] = useState(false);
+  const handleKeyDown = useFieldNavigation();
+  const searchRef = useRef(null);
+  const categoryRef = useRef(null);
+  const warehouseRef = useRef(null);
+  const priceMinRef = useRef(null);
+  const priceMaxRef = useRef(null);
+  const qtyMinRef = useRef(null);
+  const qtyMaxRef = useRef(null);
+  const hideZeroRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -150,8 +167,10 @@ export default function AdvancedSearchModal({ open, onClose }) {
             <div className="relative flex-1">
               <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
               <input
+                ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
                 placeholder="ابحث بالاسم، الكود، الباركود..."
                 autoFocus
                 className="w-full h-12 rounded-xl border border-slate-200/80 bg-white pr-11 pl-10 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 shadow-sm transition-all placeholder:font-normal placeholder:text-slate-400"
@@ -164,7 +183,9 @@ export default function AdvancedSearchModal({ open, onClose }) {
             </div>
             {hasFilters && (
               <button
+                ref={submitBtnRef}
                 onClick={reset}
+                onKeyDown={e => handleKeyDown(e, { prevRef: hideZeroRef })}
                 className="flex h-12 items-center gap-2 px-4 rounded-xl border border-rose-200 bg-rose-50 text-sm font-bold text-rose-600 hover:bg-rose-100 transition-colors shadow-sm shrink-0"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -177,28 +198,38 @@ export default function AdvancedSearchModal({ open, onClose }) {
 
           {/* Bottom Row: Filters */}
           <div className="flex flex-wrap items-center gap-3">
-            <FilterSelect value={categoryFilter} onChange={setCategoryFilter}>
+            <FilterSelect ref={categoryRef} value={categoryFilter} onChange={setCategoryFilter}
+              onKeyDown={e => handleKeyDown(e, { nextRef: warehouseRef, prevRef: searchRef })}>
               <option value="">كل الفئات</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </FilterSelect>
 
-            <FilterSelect value={warehouseFilter} onChange={setWarehouseFilter}>
+            <FilterSelect ref={warehouseRef} value={warehouseFilter} onChange={setWarehouseFilter}
+              onKeyDown={e => handleKeyDown(e, { nextRef: priceMinRef, prevRef: categoryRef })}>
               <option value="">كل المخازن</option>
               {warehouses.map((w) => <option key={w} value={w}>{w}</option>)}
             </FilterSelect>
 
             <div className="h-6 w-px bg-slate-200/80 mx-1 hidden md:block"></div>
 
-            <RangeInput label="السعر" min={priceMin} max={priceMax} onMinChange={setPriceMin} onMaxChange={setPriceMax} />
-            <RangeInput label="الكمية" min={qtyMin} max={qtyMax} onMinChange={setQtyMin} onMaxChange={setQtyMax} />
+            <RangeInput label="السعر" min={priceMin} max={priceMax} onMinChange={setPriceMin} onMaxChange={setPriceMax}
+              minRef={priceMinRef} maxRef={priceMaxRef}
+              onMinKeyDown={e => handleKeyDown(e, { nextRef: priceMaxRef, prevRef: warehouseRef })}
+              onMaxKeyDown={e => handleKeyDown(e, { nextRef: qtyMinRef, prevRef: priceMinRef })} />
+            <RangeInput label="الكمية" min={qtyMin} max={qtyMax} onMinChange={setQtyMin} onMaxChange={setQtyMax}
+              minRef={qtyMinRef} maxRef={qtyMaxRef}
+              onMinKeyDown={e => handleKeyDown(e, { nextRef: qtyMaxRef, prevRef: priceMaxRef })}
+              onMaxKeyDown={e => handleKeyDown(e, { nextRef: hideZeroRef, prevRef: qtyMinRef })} />
 
             <div className="flex-1"></div>
 
             <label className="flex items-center gap-2 cursor-pointer select-none h-10 px-3.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 transition-colors shadow-sm">
               <input
+                ref={hideZeroRef}
                 type="checkbox"
                 checked={hideZero}
                 onChange={(e) => setHideZero(e.target.checked)}
+                onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: qtyMaxRef })}
                 className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
               />
               <span className="text-2sm font-bold text-slate-700">إخفاء نفاد المخزون</span>

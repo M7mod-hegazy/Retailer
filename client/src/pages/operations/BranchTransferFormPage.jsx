@@ -18,6 +18,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
@@ -57,7 +58,7 @@ export default function BranchTransferFormPage() {
   const [storeSettings, setStoreSettings] = useState({});
   const [warehouses, setWarehouses] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [units, setUnits] = useState([]);
+  // unit auto-detected from item — no dropdown
   const [stockLevels, setStockLevels] = useState({});
   const [partnerBranch, setPartnerBranch] = useState("");
   const [notes, setNotes] = useState("");
@@ -114,26 +115,18 @@ export default function BranchTransferFormPage() {
   // Keyboard navigation refs
   const itemInputRef      = useRef(null);
   const warehouseTableRef = useRef(null);
-  const unitSelectRef     = useRef(null);
+  // unitSelectRef removed — unit auto-detected
   const qtyInputRef       = useRef(null);
   const costInputRef      = useRef(null);
   const sellInputRef      = useRef(null);
   const wholesaleInputRef = useRef(null);
   const addBtnRef         = useRef(null);
+  const partnerBranchRef  = useRef(null);
+  const notesRef          = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
 
-  const handleFieldKeyDown = (e, nextRef, prevRef, isEnterSubmit = false) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        if (prevRef?.current) { prevRef.current.focus(); if (prevRef.current.select) prevRef.current.select(); }
-      } else {
-        if (isEnterSubmit) addLine();
-        else if (nextRef?.current) { nextRef.current.focus(); if (nextRef.current.select) nextRef.current.select(); }
-      }
-    }
-  };
+  const handleFieldKeyDown = useFieldNavigation();
 
   // Load master data
   useEffect(() => {
@@ -144,7 +137,7 @@ export default function BranchTransferFormPage() {
       setWarehouses(data);
       if (data.length > 0) setStaging(s => ({ ...s, warehouseId: String(data[0].id) }));
     }).catch(() => {});
-    api.get("/api/units").then(r => setUnits(r.data.data || [])).catch(() => {});
+    // unit list removed — unit is auto-detected from item
     api.get("/api/stock/levels").then(r => {
       const data = r.data?.data || [];
       const map = {};
@@ -244,11 +237,13 @@ export default function BranchTransferFormPage() {
     setItemOffset(0);
     setItemHasMore(false);
     setLookupOpen(false);
-    const iStock = stockLevels[item.id] || {};
     let bestWhId = "";
-    let max = -Infinity;
-    for (const [wId, qty] of Object.entries(iStock)) {
-      if (qty > max) { max = qty; bestWhId = wId; }
+    let bestAvail = -Infinity;
+    for (const w of warehouses) {
+      const raw = getStockQty(item.id, w.id);
+      const inCart = lines.filter(l => Number(l.item_id) === Number(item.id) && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0);
+      const avail = raw - inCart;
+      if (avail > bestAvail) { bestAvail = avail; bestWhId = String(w.id); }
     }
     setStaging(s => ({
       ...s,
@@ -265,7 +260,7 @@ export default function BranchTransferFormPage() {
 
   function handleItemKeyDown(e) {
     if (!lookupOpen) {
-      handleFieldKeyDown(e, warehouseTableRef, null);
+      handleFieldKeyDown(e, { nextRef: warehouseTableRef, prevRef: notesRef });
       return;
     }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, filteredItems.length - 1)); }
@@ -281,10 +276,14 @@ export default function BranchTransferFormPage() {
     const sell = Math.max(0, Number(staging.sellingPrice) || 0);
     const uId = staging.unitId || String(selectedItem.unit_id || "");
     const whId = staging.warehouseId || (warehouses[0] ? String(warehouses[0].id) : "");
-    const selectedUnit = units.find(u => String(u.id) === String(uId));
     const selectedWarehouse = warehouses.find(w => String(w.id) === String(whId));
 
     const wholesale = Math.max(0, Number(staging.wholesalePrice) || 0);
+
+    const stockAtWh = getStockQty(selectedItem.id, whId);
+    if (!isReceive && stockAtWh < qty) {
+      return toast.error(`المخزون غير كافٍ في ${selectedWarehouse?.name || "المخزن"} (متاح: ${stockAtWh})`);
+    }
 
     setLines(prev => [...prev, {
       id: Math.random().toString(36).substr(2, 9),
@@ -292,7 +291,7 @@ export default function BranchTransferFormPage() {
       item_name: selectedItem.name,
       code: selectedItem.item_code || selectedItem.code || "-",
       unit_id: uId,
-      unit_name: selectedUnit ? selectedUnit.name : (selectedItem.unit_name || ""),
+      unit_name: selectedItem.unit_name || "",
       warehouse_id: whId,
       warehouse_name: selectedWarehouse ? selectedWarehouse.name : "",
       quantity: qty,
@@ -335,10 +334,30 @@ export default function BranchTransferFormPage() {
     );
   }, [lines, isReceive]);
 
-  const availableStock = useMemo(() => {
-    if (!selectedItem || !staging.warehouseId) return null;
-    return stockLevels[selectedItem.id]?.[staging.warehouseId] ?? 0;
-  }, [selectedItem, staging.warehouseId, stockLevels]);
+  function getStockQty(itemId, warehouseId) {
+    if (!itemId || !warehouseId) return 0;
+    return stockLevels[itemId]?.[warehouseId] ?? 0;
+  }
+
+  function getEffectiveMaxQty(itemId, warehouseId) {
+    if (!isReceive) return getStockQty(itemId, warehouseId);
+    return Infinity;
+  }
+
+  const lineStockWarnings = useMemo(() => {
+    const w = {};
+    for (const l of lines) {
+      const maxQ = getEffectiveMaxQty(l.item_id, l.warehouse_id);
+      if (maxQ !== Infinity && Number(l.quantity) > maxQ) {
+        w[l.id] = { type: "error", msg: `المخزون غير كافٍ (متاح: ${maxQ})` };
+      }
+    }
+    return w;
+  }, [lines, stockLevels]);
+
+  const hasStockErrors = useMemo(() =>
+    Object.values(lineStockWarnings).some(v => v.type === "error"),
+  [lineStockWarnings]);
 
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [priceReportOpen, setPriceReportOpen] = useState(false);
@@ -451,19 +470,54 @@ export default function BranchTransferFormPage() {
       render: (l) => l.unit_name || "—",
     },
     {
-      id: "warehouse", header: "المخزن", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center text-2sm font-bold text-slate-600 border-l border-slate-100",
-      render: (l) => l.warehouse_name || "—",
+      id: "warehouse", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      render: (l, i) => {
+        const whStock = stockLevels[l.item_id] || {};
+        const hasStock = l.warehouse_id ? (whStock[l.warehouse_id] || 0) > 0 : false;
+        const isOut = !isReceive && l.warehouse_id && !hasStock && Number(l.quantity) > 0;
+        return (
+          <select value={l.warehouse_id}
+            onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
+            className={`w-full h-[40px] text-center text-2sm font-bold outline-none border-0 ring-0 focus:ring-0 transition-colors cursor-pointer ${
+              isOut ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-600 focus:bg-indigo-50/50"
+            }`}
+          >
+            {warehouses.map(w => {
+              const sqty = whStock[w.id] || 0;
+              return <option key={w.id} value={w.id}>{w.name} ({sqty})</option>;
+            })}
+          </select>
+        );
+      },
     },
     {
-      id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-      render: (l, i) => (
-        <input
-          type="number" min="0.001" step="any"
-          value={l.quantity}
-          onChange={(e) => updateLineField(i, "quantity", Number(e.target.value))}
-          className="w-full h-[40px] text-center text-sm font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-indigo-50/50 transition-colors"
-        />
-      ),
+      id: "quantity", header: "الكمية", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      render: (l, i) => {
+        const maxQ = getEffectiveMaxQty(l.item_id, l.warehouse_id);
+        const hasLimit = maxQ !== Infinity;
+        const atLimit = hasLimit && Number(l.quantity) >= maxQ;
+        const remaining = hasLimit ? Math.max(0, maxQ - Number(l.quantity)) : null;
+        return (
+          <div className={`w-full h-[40px] flex items-center justify-center gap-0.5 transition-colors ${atLimit ? "bg-rose-50" : ""}`}
+            title={hasLimit ? `المتاح: ${maxQ}` : undefined}
+          >
+            <input
+              type="number" min="0.001" step="any"
+              value={l.quantity}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                updateLineField(i, "quantity", hasLimit ? Math.min(v, maxQ) : v);
+              }}
+              className={`w-[52px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 focus:bg-indigo-50/50 transition-colors ${atLimit ? "text-rose-600" : "bg-transparent"}`}
+            />
+            {hasLimit && (
+              <span className={`text-[9px] font-black leading-none shrink-0 ${atLimit ? "text-rose-500" : "text-slate-400"}`}>
+                {atLimit ? "نفد" : `+${remaining}`}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -715,8 +769,7 @@ export default function BranchTransferFormPage() {
                 variant="ghost"
                 icon={CheckCircle}
                 onClick={() => handleSaveClick()}
-                disabled={isSaving || !lines.length || !partnerBranch}
-                loading={isSaving}
+                disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
               >
                 {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
               </DocumentActionButton>
@@ -739,7 +792,7 @@ export default function BranchTransferFormPage() {
                 identity={isReceive ? "emerald" : "indigo"}
                 icon={Printer}
                 onClick={() => setPreviewOpen(true)}
-                disabled={isSaving || !lines.length || !partnerBranch}
+                disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
               >
                 طباعة ومراجعة المستند
               </DocumentActionButton>
@@ -768,8 +821,10 @@ export default function BranchTransferFormPage() {
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <select
+                    ref={partnerBranchRef}
                     value={partnerBranch}
                     onChange={e => setPartnerBranch(e.target.value)}
+                    onKeyDown={e => handleFieldKeyDown(e, { nextRef: notesRef, prevRef: addBtnRef })}
                     className={`w-full appearance-none rounded-[10px] border border-slate-200/80 px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20`}
                   >
                     <option value="">اختر الفرع...</option>
@@ -798,8 +853,10 @@ export default function BranchTransferFormPage() {
               <h3 className="text-[15px] font-black text-slate-800 tracking-tight">ملاحظات وسبب الحركة</h3>
             </div>
             <textarea
+              ref={notesRef}
               value={notes}
               onChange={e => setNotes(e.target.value)}
+              onKeyDown={e => handleFieldKeyDown(e, { nextRef: itemInputRef, prevRef: partnerBranchRef })}
               placeholder="اكتب الملاحظات واسم المندوب..."
               rows={3}
               className={`w-full resize-none rounded-[10px] border border-slate-200/80 px-4 py-3 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20 custom-scrollbar`}
@@ -888,8 +945,19 @@ export default function BranchTransferFormPage() {
               </div>
 
               {/* Warehouse table */}
-              <div className="flex flex-col gap-1.5 w-[150px] shrink-0">
-                <label className="text-[11px] font-bold text-slate-500 text-center">المخزن</label>
+              <div className="flex flex-col gap-1.5 w-[170px] shrink-0">
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[11px] font-bold text-slate-500 text-center">المخزن</label>
+                  {selectedItem && !isReceive && (
+                    <span className="text-[9px] font-black text-slate-400">
+                      للإضافة: {(() => {
+                        const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
+                        const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
+                        return avail;
+                      })()}
+                    </span>
+                  )}
+                </div>
                 <div
                   ref={warehouseTableRef}
                   tabIndex={0}
@@ -899,44 +967,60 @@ export default function BranchTransferFormPage() {
                     const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
                     if (e.key === "ArrowDown") { e.preventDefault(); const next = warehouses[Math.min(idx + 1, warehouses.length - 1)]; if (next) setStaging(s => ({ ...s, warehouseId: String(next.id) })); }
                     else if (e.key === "ArrowUp") { e.preventDefault(); const prev = warehouses[Math.max(idx - 1, 0)]; if (prev) setStaging(s => ({ ...s, warehouseId: String(prev.id) })); }
-                    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); unitSelectRef.current?.focus(); unitSelectRef.current?.select?.(); }
+                    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); costInputRef.current?.focus(); costInputRef.current?.select?.(); }
                   }}
                 >
                   <table className="w-full text-[11px] border-collapse">
                     <tbody>
                       {warehouses.map(w => {
-                        const qty = selectedItem ? (stockLevels[selectedItem.id]?.[w.id] || 0) : 0;
+                        const rawQty = selectedItem ? getStockQty(selectedItem.id, w.id) : 0;
+                        const inCart = selectedItem ? lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
+                        const avail = Math.max(0, rawQty - inCart);
                         const isSelected = String(staging.warehouseId) === String(w.id);
+                        const insufficient = !isReceive && selectedItem && Number(staging.quantity) > avail;
+                        const isLow = avail > 0 && avail < 5;
+                        const isEmpty = avail === 0;
+                        let stockColor = "text-slate-400";
+                        if (insufficient) stockColor = "text-rose-600 font-black";
+                        else if (isEmpty) stockColor = "text-slate-300";
+                        else if (isLow) stockColor = "text-amber-600 font-black";
+                        else stockColor = "text-emerald-600 font-black";
+                        let bgColor = "";
+                        if (isSelected && insufficient) bgColor = "bg-rose-50";
+                        else if (isSelected) bgColor = "bg-indigo-50";
                         return (
                           <tr key={w.id}
                             onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
-                            className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${isSelected ? "bg-indigo-50" : "hover:bg-slate-100"}`}
+                            className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${bgColor || (isSelected ? "bg-indigo-50" : "hover:bg-slate-100")}`}
                           >
-                            <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{w.name}</td>
-                            <td className={`px-2 py-1 font-mono text-center tabular-nums ${qty > 0 ? "text-emerald-600 font-black" : "text-slate-400"}`}>{qty}</td>
+                            <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"} ${insufficient ? "line-through opacity-60" : ""}`}>{w.name}</td>
+                            <td className={`px-2 py-1 font-mono text-center tabular-nums ${stockColor}`}>{avail}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
+                {selectedItem && !isReceive && (() => {
+                  const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
+                  const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
+                  if (Number(staging.quantity) > avail) {
+                    return (
+                      <div className="flex items-center gap-1 rounded-sm bg-rose-50 border border-rose-200 px-2 py-1 text-[10px] font-bold text-rose-700 leading-tight">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        المتاح {avail}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
-              {/* Unit */}
+              {/* Unit — auto-detected from item */}
               <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
                 <label className="text-[11px] font-bold text-slate-500 text-center">الوحدة</label>
-                <div className="relative">
-                  <select
-                    ref={unitSelectRef}
-                    value={staging.unitId}
-                    onChange={e => setStaging(s => ({ ...s, unitId: e.target.value }))}
-                    onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, warehouseTableRef)}
-                    className={`w-full h-11 appearance-none border border-slate-200 rounded-[10px] bg-slate-50/50 px-2 text-2sm font-bold text-slate-800 outline-none focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10 transition-all shadow-inner`}
-                  >
-                    <option value="">أساسية</option>
-                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                  <ChevronDown className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-slate-400" />
+                <div className="w-full h-11 flex items-center justify-center border border-slate-200 rounded-[10px] bg-slate-100/50 px-2 text-2sm font-bold text-slate-600 shadow-inner">
+                  {selectedItem ? (selectedItem.unit_name || "أساسية") : "—"}
                 </div>
               </div>
 
@@ -962,7 +1046,7 @@ export default function BranchTransferFormPage() {
                   value={staging.unitCost}
                   onChange={e => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                   onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, sellInputRef, unitSelectRef)}
+                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: sellInputRef, prevRef: warehouseTableRef })}
                   className={`w-full h-11 border rounded-[10px] px-1 text-sm font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
                     isReceive && !stagingLocks.purchase
                       ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
@@ -1004,7 +1088,7 @@ export default function BranchTransferFormPage() {
                   value={staging.sellingPrice}
                   onChange={e => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                   onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, isReceive ? wholesaleInputRef : qtyInputRef, costInputRef)}
+                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: isReceive ? wholesaleInputRef : qtyInputRef, prevRef: costInputRef })}
                   className={`w-full h-11 border rounded-[10px] px-1 text-sm font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
                     isReceive && !stagingLocks.sale
                       ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
@@ -1045,7 +1129,7 @@ export default function BranchTransferFormPage() {
                     value={staging.wholesalePrice}
                     onChange={e => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, qtyInputRef, sellInputRef)}
+                    onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: qtyInputRef, prevRef: sellInputRef })}
                     className={`w-full h-11 border rounded-[10px] px-1 text-sm font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
                       !stagingLocks.wholesale
                         ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
@@ -1069,8 +1153,10 @@ export default function BranchTransferFormPage() {
               {/* Quantity */}
               <div className="flex flex-col gap-1.5 w-[75px] shrink-0">
                 <label className="text-[11px] font-bold text-slate-500 text-center">الكمية</label>
-                {availableStock !== null && (
-                  <span className="text-[11px] font-bold text-slate-400 text-center -mb-1">متاح: {availableStock}</span>
+                {selectedItem && staging.warehouseId && (
+                  <span className="text-[11px] font-bold text-slate-400 text-center -mb-1">
+                    متاح: {Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0))}
+                  </span>
                 )}
                 <input
                   ref={qtyInputRef}
@@ -1078,7 +1164,7 @@ export default function BranchTransferFormPage() {
                   value={staging.quantity}
                   onChange={e => setStaging(s => ({ ...s, quantity: e.target.value }))}
                   onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, addBtnRef, sellInputRef, false)}
+                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: addBtnRef, prevRef: sellInputRef })}
                   className="w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-sm font-mono font-black text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
                 />
               </div>
@@ -1087,7 +1173,7 @@ export default function BranchTransferFormPage() {
               <button
                 ref={addBtnRef}
                 onClick={addLine}
-                onKeyDown={(e) => handleFieldKeyDown(e, itemInputRef, qtyInputRef, true)}
+                onKeyDown={(e) => handleFieldKeyDown(e, { prevRef: qtyInputRef, onEnter: addLine })}
                 disabled={!selectedItem}
                 className="flex mt-[22px] h-11 w-[90px] shrink-0 items-center justify-center gap-2 rounded-[10px] bg-primary text-sm font-black text-white shadow-md hover:bg-primary-600 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 transition-all focus:ring-4 focus:ring-slate-800/20"
               >
@@ -1104,6 +1190,12 @@ export default function BranchTransferFormPage() {
               <Link to="/operations/bulk-price-update" className="mr-auto flex items-center gap-1 text-amber-600 hover:underline">
                 <ExternalLink className="h-3 w-3" /> سجل الأسعار
               </Link>
+            </div>
+          )}
+          {hasStockErrors && !isReceive && (
+            <div className="flex items-center gap-2 bg-rose-50 px-4 py-2 text-[11px] text-rose-700 font-bold shrink-0 border border-rose-200 rounded-md">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              يوجد {Object.keys(lineStockWarnings).length} صنف يتجاوز المخزون المتاح — راجع الكميات
             </div>
           )}
 

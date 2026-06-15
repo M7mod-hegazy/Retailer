@@ -12,12 +12,14 @@ import GlobalSearchPage from "./pages/search/GlobalSearchPage";
 import FullPageLoader from "./components/ui/FullPageLoader";
 import { useCanView } from "./hooks/usePermission";
 import { useUpdateStore } from "./stores/updateStore";
+import api from "./services/api";
 const UnauthorizedPage = lazy(() => import("./pages/auth/UnauthorizedPage"));
 const NotFoundPage = lazy(() => import("./pages/error/NotFoundPage"));
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const ActivationPage = lazy(() => import("./pages/auth/ActivationPage"));
+const FirstRunSetupPage = lazy(() => import("./pages/auth/FirstRunSetupPage"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
 const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
 const FinanceWorkspacePage = lazy(() => import("./pages/workspaces/FinanceWorkspacePage"));
@@ -84,6 +86,7 @@ const SourceWorkspacePage = lazy(() => import("./pages/reports/SourceWorkspacePa
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 const PromotionsPage = lazy(() => import("./pages/definitions/PromotionsPage"));
+const FeatureRoute = lazy(() => import("./components/ui/FeatureRoute"));
 const DailyTreasuryPage = lazy(() => import("./pages/pos/DailyTreasuryPage"));
 const PaymentMethodsPage = lazy(() => import("./pages/operations/PaymentMethodsPage"));
 const PaymentTransactionsPage = lazy(() => import("./pages/operations/PaymentTransactionsPage"));
@@ -152,6 +155,37 @@ function LicenseGate({ children }) {
   return children;
 }
 
+// First-run gate. After licensing passes, checks whether any real (non-system)
+// user exists. If not, forces creation of the first administrator before the
+// app proceeds to the normal login flow. Fails OPEN on error so a transient
+// server hiccup never traps the user on the setup screen.
+function SetupGate({ children }) {
+  const [state, setState] = useState({ loading: true, needsSetup: false });
+
+  const recheck = useCallback(async () => {
+    try {
+      const res = await api.get("/api/auth/setup-status");
+      setState({ loading: false, needsSetup: !!res.data?.data?.needsSetup });
+    } catch (_e) {
+      setState({ loading: false, needsSetup: false });
+    }
+  }, []);
+
+  useEffect(() => {
+    recheck();
+  }, [recheck]);
+
+  if (state.loading) return <FullPageLoader />;
+  if (state.needsSetup) {
+    return (
+      <Suspense fallback={<FullPageLoader />}>
+        <FirstRunSetupPage onDone={recheck} />
+      </Suspense>
+    );
+  }
+  return children;
+}
+
 export default function App() {
   const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError } = useUpdateStore();
 
@@ -194,6 +228,7 @@ export default function App() {
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
     <Suspense fallback={<FullPageLoader />}>
       <LicenseGate>
+      <SetupGate>
       <ServerDownOverlay />
       <Toaster position="top-left" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} />
       <ScreenLock />
@@ -252,6 +287,7 @@ export default function App() {
                     <Route path="purchases/:id" element={<PermissionRoute page="purchases"><PurchaseFormPage /></PermissionRoute>} />
                     <Route path="purchases/orders" element={<PermissionRoute page="purchase_orders"><PurchaseOrdersPage /></PermissionRoute>} />
                     <Route path="purchases/orders/new" element={<PermissionRoute page="purchase_orders"><PurchaseOrderFormPage /></PermissionRoute>} />
+                    <Route path="purchases/orders/:id/edit" element={<PermissionRoute page="purchase_orders"><PurchaseOrderFormPage /></PermissionRoute>} />
                     <Route path="purchases/returns" element={<PermissionRoute page="purchase_returns"><PurchaseReturnsListPage /></PermissionRoute>} />
                     <Route path="purchases/returns/new" element={<PermissionRoute page="purchase_returns"><PurchaseReturnFormPage /></PermissionRoute>} />
                     <Route path="purchases/returns/amend" element={<PermissionRoute page="purchase_returns"><PurchaseReturnFormPage /></PermissionRoute>} />
@@ -287,7 +323,7 @@ export default function App() {
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />
                     <Route path="updates" element={<PermissionRoute page="updates"><UpdatesPage /></PermissionRoute>} />
                     <Route path="history" element={<PermissionRoute page="history"><HistoryPage /></PermissionRoute>} />
-                    <Route path="definitions/promotions" element={<PermissionRoute page="promotions"><PromotionsPage /></PermissionRoute>} />
+                    <Route path="definitions/promotions" element={<PermissionRoute page="promotions"><FeatureRoute featureKey="feature_promotions"><PromotionsPage /></FeatureRoute></PermissionRoute>} />
                     <Route path="expenses" element={<PermissionRoute page="expenses"><ExpensesListPage /></PermissionRoute>} />
                     <Route path="revenues" element={<PermissionRoute page="revenues"><RevenuesListPage /></PermissionRoute>} />
                     <Route path="withdrawals" element={<PermissionRoute page="withdrawals"><WithdrawalsListPage /></PermissionRoute>} />
@@ -307,6 +343,7 @@ export default function App() {
             }
           />
         </Routes>
+      </SetupGate>
       </LicenseGate>
       </Suspense>
     </MotionConfig>

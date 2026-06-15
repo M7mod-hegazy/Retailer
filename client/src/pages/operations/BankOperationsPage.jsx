@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Landmark, Plus, Minus, ArrowUpCircle, ArrowDownCircle, RefreshCw, X, List, ArrowLeftRight, AlertCircle, Printer } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -6,10 +6,16 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import BankStatementTemplate from "../../components/print/templates/BankStatementTemplate";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 function BankModal({ bank, mode, onClose, onDone }) {
+  const handleKeyDown = useFieldNavigation();
+  const amountRef = useRef(null);
+  const referenceRef = useRef(null);
+  const notesRef = useRef(null);
+  const submitBtnRef = useRef(null);
   const [form, setForm] = useState({ amount: "", reference: "", notes: "" });
   const [saving, setSaving] = useState(false);
 
@@ -43,20 +49,20 @@ function BankModal({ bank, mode, onClose, onDone }) {
         <div className="space-y-4">
           <div>
             <label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ (ج.م) *</label>
-            <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-              autoFocus className="w-full h-11 rounded-xl border border-slate-300 px-4 text-sm font-black text-center outline-none focus:border-indigo-500" />
+            <input ref={amountRef} type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              autoFocus onKeyDown={(e) => handleKeyDown(e, { nextRef: referenceRef })} className="w-full h-11 rounded-xl border border-slate-300 px-4 text-sm font-black text-center outline-none focus:border-indigo-500" />
           </div>
           <div>
             <label className="text-[11px] font-black text-slate-600 block mb-1.5">رقم المرجع</label>
-            <input value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))}
-              className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none" placeholder="رقم تحويل / مرجع..." />
+            <input ref={referenceRef} value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))}
+              onKeyDown={(e) => handleKeyDown(e, { nextRef: notesRef, prevRef: amountRef })} className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none" placeholder="رقم تحويل / مرجع..." />
           </div>
           <div>
             <label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-            <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none" />
+            <input ref={notesRef} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              onKeyDown={(e) => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: referenceRef })} className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none" />
           </div>
-          <button onClick={submit} disabled={!form.amount || saving}
+          <button ref={submitBtnRef} onClick={submit} disabled={!form.amount || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: amountRef, onEnter: submit })}
             className={`w-full rounded-xl py-3 text-sm font-black text-white transition-colors disabled:opacity-40 ${mode === "deposit" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"}`}>
             {saving ? "جاري..." : mode === "deposit" ? "تأكيد الإيداع" : "تأكيد السحب"}
           </button>
@@ -87,6 +93,10 @@ function StatementPanel({ bank, onClose }) {
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const handleKeyDown = useFieldNavigation();
+  const fromRef = useRef(null);
+  const toRef = useRef(null);
+  const searchBtnRef = useRef(null);
   const [printOpen, setPrintOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -123,10 +133,10 @@ function StatementPanel({ bank, onClose }) {
           <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>
         </div>
         <div className="flex gap-3 p-4 border-b border-slate-100 shrink-0">
-          <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 flex-1 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
+          <input ref={fromRef} type="date" value={from} onChange={e => setFrom(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: toRef })} className="h-9 flex-1 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
           <span className="text-slate-400 self-center text-2sm">إلى</span>
-          <input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 flex-1 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
-          <button onClick={load} className="h-9 rounded-xl bg-indigo-600 px-4 text-2sm font-black text-white hover:bg-indigo-700">بحث</button>
+          <input ref={toRef} type="date" value={to} onChange={e => setTo(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: searchBtnRef, prevRef: fromRef })} className="h-9 flex-1 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
+          <button ref={searchBtnRef} onClick={load} onKeyDown={(e) => handleKeyDown(e, { nextRef: fromRef, onEnter: load })} className="h-9 rounded-xl bg-indigo-600 px-4 text-2sm font-black text-white hover:bg-indigo-700">بحث</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading ? (
@@ -178,6 +188,7 @@ function StatementPanel({ bank, onClose }) {
 
 export default function BankOperationsPage() {
   usePageTour('bank_operations');
+  const handleKeyDown = useFieldNavigation();
   const [banks, setBanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // { bank, mode: 'deposit'|'withdraw' }
@@ -187,6 +198,17 @@ export default function BankOperationsPage() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferForm, setTransferForm] = useState({ from_id: "", to_id: "", amount: "", notes: "" });
   const [saving, setSaving] = useState(false);
+
+  const bankNameRef = useRef(null);
+  const bankCodeRef = useRef(null);
+  const bankBalanceRef = useRef(null);
+  const bankAlertRef = useRef(null);
+  const bankSaveRef = useRef(null);
+  const transferFromRef = useRef(null);
+  const transferToRef = useRef(null);
+  const transferAmountRef = useRef(null);
+  const transferNotesRef = useRef(null);
+  const transferSubmitRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -268,16 +290,16 @@ export default function BankOperationsPage() {
           </div>
           <div className="grid grid-cols-5 gap-3">
             <div><label className="text-[11px] font-black text-slate-500 block mb-1">اسم البنك *</label>
-              <input value={newBank.name} onChange={e => setNewBank(f => ({ ...f, name: e.target.value }))} autoFocus className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-indigo-500" /></div>
+              <input ref={bankNameRef} value={newBank.name} onChange={e => setNewBank(f => ({ ...f, name: e.target.value }))} autoFocus onKeyDown={(e) => handleKeyDown(e, { nextRef: bankCodeRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-indigo-500" /></div>
             <div><label className="text-[11px] font-black text-slate-500 block mb-1">الكود</label>
-              <input value={newBank.code} onChange={e => setNewBank(f => ({ ...f, code: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
+              <input ref={bankCodeRef} value={newBank.code} onChange={e => setNewBank(f => ({ ...f, code: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankBalanceRef, prevRef: bankNameRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
             <div><label className="text-[11px] font-black text-slate-500 block mb-1">الرصيد الافتتاحي</label>
-              <input type="number" value={newBank.balance} onChange={e => setNewBank(f => ({ ...f, balance: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm text-center outline-none" /></div>
+              <input ref={bankBalanceRef} type="number" value={newBank.balance} onChange={e => setNewBank(f => ({ ...f, balance: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankAlertRef, prevRef: bankCodeRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm text-center outline-none" /></div>
             <div><label className="text-[11px] font-black text-slate-500 block mb-1">حد التنبيه</label>
-              <input type="number" value={newBank.alert_threshold} onChange={e => setNewBank(f => ({ ...f, alert_threshold: e.target.value }))} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm text-center outline-none" /></div>
+              <input ref={bankAlertRef} type="number" value={newBank.alert_threshold} onChange={e => setNewBank(f => ({ ...f, alert_threshold: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankSaveRef, prevRef: bankBalanceRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm text-center outline-none" /></div>
             <div className="flex items-end">
               <PermissionGate page="bank_operations" action="add">
-              <button onClick={createBank} disabled={!newBank.name || saving} className="w-full h-10 rounded-xl bg-indigo-600 text-2sm font-black text-white hover:bg-indigo-700 disabled:opacity-40">حفظ</button>
+              <button ref={bankSaveRef} onClick={createBank} disabled={!newBank.name || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankNameRef, onEnter: createBank })} className="w-full h-10 rounded-xl bg-indigo-600 text-2sm font-black text-white hover:bg-indigo-700 disabled:opacity-40">حفظ</button>
               </PermissionGate>
             </div>
           </div>
@@ -350,7 +372,7 @@ export default function BankOperationsPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] font-black text-slate-600 block mb-1.5">من حساب</label>
-                <select value={transferForm.from_id} onChange={e => setTransferForm(f => ({ ...f, from_id: e.target.value }))}
+                <select ref={transferFromRef} value={transferForm.from_id} onChange={e => setTransferForm(f => ({ ...f, from_id: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferToRef })}
                   className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm font-bold bg-white outline-none focus:border-blue-500">
                   <option value="">اختر حساب المصدر</option>
                   {banks.map(b => <option key={b.id} value={b.id}>{b.name} — {fmt(b.balance)} ج.م</option>)}
@@ -358,7 +380,7 @@ export default function BankOperationsPage() {
               </div>
               <div>
                 <label className="text-[11px] font-black text-slate-600 block mb-1.5">إلى حساب</label>
-                <select value={transferForm.to_id} onChange={e => setTransferForm(f => ({ ...f, to_id: e.target.value }))}
+                <select ref={transferToRef} value={transferForm.to_id} onChange={e => setTransferForm(f => ({ ...f, to_id: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferAmountRef, prevRef: transferFromRef })}
                   className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm font-bold bg-white outline-none focus:border-blue-500">
                   <option value="">اختر الحساب الوجهة</option>
                   {banks.filter(b => b.id !== Number(transferForm.from_id)).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -366,16 +388,16 @@ export default function BankOperationsPage() {
               </div>
               <div>
                 <label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ</label>
-                <input type="number" min="0" step="0.01" value={transferForm.amount}
-                  onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))}
+                <input ref={transferAmountRef} type="number" min="0" step="0.01" value={transferForm.amount}
+                  onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferNotesRef, prevRef: transferToRef })}
                   className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-blue-500" dir="ltr" />
               </div>
               <div>
                 <label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-                <input value={transferForm.notes} onChange={e => setTransferForm(f => ({ ...f, notes: e.target.value }))}
+                <input ref={transferNotesRef} value={transferForm.notes} onChange={e => setTransferForm(f => ({ ...f, notes: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferSubmitRef, prevRef: transferAmountRef })}
                   className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" />
               </div>
-              <button onClick={handleTransfer} disabled={!transferForm.from_id || !transferForm.to_id || !transferForm.amount || saving}
+              <button ref={transferSubmitRef} onClick={handleTransfer} disabled={!transferForm.from_id || !transferForm.to_id || !transferForm.amount || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferFromRef, onEnter: handleTransfer })}
                 className="w-full rounded-xl bg-blue-600 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-40">
                 {saving ? "جاري التحويل..." : "تأكيد التحويل"}
               </button>

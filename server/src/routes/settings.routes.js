@@ -122,6 +122,33 @@ function coerceVal(col, raw) {
   return raw;
 }
 
+// Feature module flags. Enabling any of these is restricted to the dev account,
+// and once enabled a feature cannot be turned off again (one-way).
+const FEATURE_KEYS = [
+  "feature_multi_unit", "feature_variants", "feature_serials",
+  "feature_scale_barcodes", "feature_repair_orders", "feature_restaurant",
+  "feature_gold", "feature_promotions",
+];
+
+// Apply feature-flag rules to an updates object in place.
+// - Disabling an already-enabled feature is silently ignored (one-way).
+// - Enabling a feature is dev-only; returns { status, message } to block otherwise.
+function guardFeatureChanges(req, current, updates) {
+  const isDev = req.user?.role === "dev";
+  for (const key of FEATURE_KEYS) {
+    if (!(key in updates)) continue;
+    const desired = coerceVal(key, updates[key]);
+    if (current[key] === 1 && !desired) {
+      delete updates[key]; // already enabled — ignore attempt to disable
+      continue;
+    }
+    if (desired && current[key] !== 1 && !isDev) {
+      return { status: 403, message: "تفعيل الميزات متاح لحساب المطوّر فقط" };
+    }
+  }
+  return null;
+}
+
 // Build a dynamic UPDATE statement + params from the current row's columns
 function buildUpdate(current, updates) {
   const next = { ...current, ...updates };
@@ -144,16 +171,8 @@ router.put("/", authRequired, requirePagePermission("settings", "edit"), require
   const current = getSettings();
   const updates = req.body || {};
 
-  // Feature flags are one-way: once enabled they cannot be disabled via normal settings save
-  const FEATURE_KEYS = [
-    "feature_multi_unit", "feature_variants", "feature_serials",
-    "feature_scale_barcodes", "feature_repair_orders", "feature_restaurant", "feature_gold",
-  ];
-  for (const key of FEATURE_KEYS) {
-    if (key in updates && current[key] === 1 && !coerceVal(key, updates[key])) {
-      delete updates[key]; // silently ignore attempt to disable an already-enabled feature
-    }
-  }
+  const blocked = guardFeatureChanges(req, current, updates);
+  if (blocked) return res.status(blocked.status).json({ success: false, message: blocked.message });
 
   const { sql, params } = buildUpdate(current, updates);
   getDb().prepare(sql).run(...params);
@@ -191,11 +210,8 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
     }
   });
 
-  // Feature flags are one-way: silently ignore disabling already-enabled features
-  const FEATURE_KEYS = ["feature_multi_unit","feature_variants","feature_serials","feature_scale_barcodes","feature_repair_orders","feature_restaurant","feature_gold"];
-  for (const key of FEATURE_KEYS) {
-    if (key in updates && current[key] === 1 && !coerceVal(key, updates[key])) delete updates[key];
-  }
+  const blocked = guardFeatureChanges(req, current, updates);
+  if (blocked) return res.status(blocked.status).json({ success: false, message: blocked.message });
 
   if (Object.keys(updates).length === 0) {
     return res.json({ success: true, data: current });

@@ -117,7 +117,16 @@ function createInvoice(payload) {
   const tx = db.transaction(() => {
     const createdDate = normalizeDate(payload.created_at);
     assertCanWriteForDate(db, createdDate);
-    const invoiceNo = generateDocNumber('pos_sale');
+    // Honor the number the client already reserved via POST /api/documents/reserve
+    // (that call already advanced the daily sequence). Regenerating here would consume
+    // a second sequence number and the saved invoice would be one ahead of the number
+    // the cashier saw on screen. Fall back to generating only when no reserved number
+    // was sent, or when the reserved one is already taken (e.g. an amend reusing the
+    // cancelled original's number) so we never collide.
+    const reservedNo = typeof payload.doc_no === "string" ? payload.doc_no.trim() : "";
+    const reservedAvailable = reservedNo
+      && !db.prepare("SELECT 1 FROM invoices WHERE invoice_no = ? LIMIT 1").get(reservedNo);
+    const invoiceNo = reservedAvailable ? reservedNo : generateDocNumber('pos_sale');
     let subtotal = 0;
     const lineErrors = [];
 
@@ -527,6 +536,14 @@ function createInvoice(payload) {
 
     // Capture an anonymous walk-in WhatsApp number as a lead (best-effort, never blocks the sale).
     captureLeadFromSale(db, payload, normalizedLines);
+
+    if (payload.quotation_id) {
+      const qid = Number(payload.quotation_id);
+      const q = db.prepare("SELECT id, status FROM quotations WHERE id = ?").get(qid);
+      if (q && q.status !== "converted") {
+        db.prepare("UPDATE quotations SET status = 'converted' WHERE id = ?").run(qid);
+      }
+    }
 
     return getInvoiceWithLines(inv.lastInsertRowid);
   });

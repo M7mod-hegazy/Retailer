@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import api from "../../services/api";
 import { 
   Plus, 
@@ -18,6 +19,11 @@ import {
 import toast from "react-hot-toast";
 
 export default function PaymentMethodsPage() {
+  const handleKeyDown = useFieldNavigation();
+  const nameRef = useRef(null);
+  const typeRef = useRef(null);
+  const targetIdRef = useRef(null);
+  const submitBtnRef = useRef(null);
   const [methods, setMethods] = useState([]);
   const [treasuries, setTreasuries] = useState([]);
   const [banks, setBanks] = useState([]);
@@ -162,40 +168,49 @@ export default function PaymentMethodsPage() {
                           اسم الوسيلة (مثلاً: فودافون كاش، بنك مصر)
                           <span className="text-[9px] text-rose-500">مطلوب*</span>
                        </label>
-                       <input 
-                         required
-                         value={form.name}
-                         onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                         placeholder="الاسم التعريفي..."
-                         className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
-                       />
+                        <input 
+                          ref={nameRef}
+                          required
+                          value={form.name}
+                          onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
+                          onKeyDown={e => handleKeyDown(e, { nextRef: typeRef })}
+                          placeholder="الاسم التعريفي..."
+                          className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                        />
                     </div>
 
                     <div className="space-y-1.5 px-1">
                        <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تصنيف القناة</label>
-                       <select 
-                          value={form.type}
-                          onChange={(e) => setForm(p => ({ ...p, type: e.target.value, target_id: "" }))}
-                          className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
-                       >
-                          <option value="cash">نقدي (خزينة)</option>
-                          <option value="bank">بنكي (حساب بنك)</option>
-                          <option value="other">أخرى</option>
-                       </select>
+                        <select 
+                           ref={typeRef}
+                           value={form.type}
+                           onChange={(e) => setForm(p => ({ ...p, type: e.target.value, target_id: "" }))}
+                           onKeyDown={e => {
+                             const target = form.type === "cash" || form.type === "bank" ? targetIdRef : submitBtnRef;
+                             handleKeyDown(e, { nextRef: target, prevRef: nameRef });
+                           }}
+                           className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                        >
+                           <option value="cash">نقدي (خزينة)</option>
+                           <option value="bank">بنكي (حساب بنك)</option>
+                           <option value="other">أخرى</option>
+                        </select>
                     </div>
 
                     {(form.type === 'cash' || form.type === 'bank') && (
                        <div className="space-y-1.5 px-1">
                           <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">التوجيه المالي (المصدر)</label>
-                          <select 
-                             required
-                             value={form.target_id}
-                             onChange={(e) => setForm(p => ({ ...p, target_id: e.target.value }))}
-                             className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
-                          >
-                             <option value="">اختيار المصدر المالي...</option>
-                             {form.type === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                          </select>
+                           <select 
+                              ref={targetIdRef}
+                              required
+                              value={form.target_id}
+                              onChange={(e) => setForm(p => ({ ...p, target_id: e.target.value }))}
+                              onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: typeRef })}
+                              className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                           >
+                              <option value="">اختيار المصدر المالي...</option>
+                              {form.type === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                           </select>
                        </div>
                     )}
                  </div>
@@ -208,18 +223,19 @@ export default function PaymentMethodsPage() {
                     >
                        إلغاء
                     </button>
-                    <button 
-                      type="submit" 
-                      disabled={isSubmitting}
-                      className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-primary py-3 text-sm font-black text-white shadow-xl transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
-                    >
-                       {isSubmitting ? 'جاري الحفظ...' : (
-                          <>
-                             <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 
-                             تأكيد إضافة القناة
-                          </>
-                       )}
-                    </button>
+                     <button 
+                       ref={submitBtnRef}
+                       type="submit" 
+                       disabled={isSubmitting}
+                       className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-primary py-3 text-sm font-black text-white shadow-xl transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
+                     >
+                        {isSubmitting ? 'جاري الحفظ...' : (
+                           <>
+                              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 
+                              تأكيد إضافة القناة
+                           </>
+                        )}
+                     </button>
                  </div>
               </form>
            </div>

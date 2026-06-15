@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import PermissionGate from "../../components/ui/PermissionGate";
 
@@ -50,6 +51,12 @@ function ScopeBadge({ scope, warehouseName, categoryName }) {
 
 export default function PhysicalCountPage() {
   usePageTour('physical_count');
+  const handleKeyDown = useFieldNavigation();
+  const formWarehouseRef = useRef(null);
+  const formCategoryRef = useRef(null);
+  const formItemSearchRef = useRef(null);
+  const formItemCategoryRef = useRef(null);
+  const formSubmitRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("dashboard"); // 'dashboard' | 'session'
   const [activeSession, setActiveSession] = useState(null);
@@ -333,20 +340,20 @@ export default function PhysicalCountPage() {
                      </div>
 
                      {/* Dynamic Selects */}
-                     {formScope === "warehouse" && (
-                        <div>
-                          <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">المستودع</label>
-                          <select className="w-full text-2xl font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formWarehouse} onChange={(e)=>setFormWarehouse(e.target.value)}>
+                      {formScope === "warehouse" && (
+                         <div>
+                           <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">المستودع</label>
+                           <select ref={formWarehouseRef} className="w-full text-2xl font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formWarehouse} onChange={(e)=>setFormWarehouse(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef })}>
                             <option value="" disabled>اختر مستودعاً...</option>
                             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                           </select>
                         </div>
                      )}
 
-                     {formScope === "category" && (
-                        <div>
-                          <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">الفئة</label>
-                          <select className="w-full text-2xl font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formCategory} onChange={(e)=>setFormCategory(e.target.value)}>
+                      {formScope === "category" && (
+                         <div>
+                           <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">الفئة</label>
+                           <select ref={formCategoryRef} className="w-full text-2xl font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formCategory} onChange={(e)=>setFormCategory(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef })}>
                             <option value="" disabled>اختر فئة...</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
@@ -359,10 +366,12 @@ export default function PhysicalCountPage() {
                             <div className="flex-1 relative">
                               <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 pointer-events-none" />
                               <input
+                                ref={formItemSearchRef}
                                 className="w-full text-lg font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 pr-12 transition-colors bg-transparent placeholder:text-slate-200"
                                 placeholder="ابحث بالاسم أو الكود..."
                                 value={formItemSearch}
                                 onChange={(e) => setFormItemSearch(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, { nextRef: formItemCategoryRef })}
                               />
                               {formItemSearch && (
                                 <button type="button" onClick={() => setFormItemSearch("")} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
@@ -372,8 +381,10 @@ export default function PhysicalCountPage() {
                             </div>
                             <div className="relative shrink-0">
                               <select
+                                ref={formItemCategoryRef}
                                 value={formItemCategory}
                                 onChange={(e) => setFormItemCategory(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef, prevRef: formItemSearchRef })}
                                 className="appearance-none bg-slate-100 text-slate-600 font-bold text-[13px] rounded-full px-6 py-3 pr-10 border-0 cursor-pointer hover:bg-slate-200 transition-colors outline-none"
                               >
                                 <option value="">كل الفئات</option>
@@ -463,8 +474,8 @@ export default function PhysicalCountPage() {
                      )}
 
                      {/* Action */}
-                     <div className="pt-6">
-                       <button onClick={handleCreateSession} className="bg-indigo-600 text-white rounded-full px-8 h-16 text-[15px] font-black tracking-widest uppercase hover:bg-indigo-700 transition-colors shadow-xl w-full">
+                      <div className="pt-6">
+                        <button ref={formSubmitRef} onClick={handleCreateSession} className="bg-indigo-600 text-white rounded-full px-8 h-16 text-[15px] font-black tracking-widest uppercase hover:bg-indigo-700 transition-colors shadow-xl w-full">
                          {formSubmitting ? "جاري الإنشاء..." : "اعتماد وبدء الجرد"}
                        </button>
                      </div>

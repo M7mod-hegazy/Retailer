@@ -13,6 +13,7 @@ import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
 import { useNavigate } from "react-router-dom";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -172,6 +173,14 @@ export default function BranchTransferPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [users, setUsers] = useState([]);
   const [userId, setUserId] = useState("");
+
+  const searchTermRef = useRef(null);
+  const userIdRef = useRef(null);
+  const dateFromRef = useRef(null);
+  const dateToRef = useRef(null);
+  const itemDateFromRef = useRef(null);
+  const itemDateToRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -373,7 +382,8 @@ export default function BranchTransferPage() {
                 <div data-help="search-bar" className="relative flex-1 w-full">
                   <Search className="absolute top-1/2 -translate-y-1/2 right-4 h-4 w-4 text-zinc-400" />
                   <input
-                    type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                    type="text" ref={searchTermRef} value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: userIdRef, prevRef: null })}
                     placeholder="البحث برقم الوصل أو الفرع..."
                     autoFocus
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pr-10 pl-4 py-3 text-sm font-bold text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all outline-none"
@@ -402,7 +412,8 @@ export default function BranchTransferPage() {
                 <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end bg-transparent">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
-                    <select value={userId} onChange={e => setUserId(e.target.value)}
+                    <select ref={userIdRef} value={userId} onChange={e => setUserId(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef, prevRef: searchTermRef })}
                       className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500 min-w-[180px]">
                       <option value="">كل المستخدمين</option>
                       {users.map(u => (
@@ -412,12 +423,14 @@ export default function BranchTransferPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
-                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                    <input ref={dateFromRef} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: userIdRef })}
                       className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
-                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                    <input ref={dateToRef} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: dateFromRef })}
                       className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-emerald-500" />
                   </div>
                   {hasFilters && (
@@ -490,10 +503,12 @@ export default function BranchTransferPage() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 bg-zinc-50 rounded-2xl p-2 border border-zinc-200/50">
-                  <input type="date" value={itemDateFrom} onChange={e => setItemDateFrom(e.target.value)}
+                  <input ref={itemDateFromRef} type="date" value={itemDateFrom} onChange={e => setItemDateFrom(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: itemDateToRef, prevRef: null })}
                     className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
                   <ArrowLeftRight className="h-4 w-4 text-zinc-300 shrink-0" />
-                  <input type="date" value={itemDateTo} onChange={e => setItemDateTo(e.target.value)}
+                  <input ref={itemDateToRef} type="date" value={itemDateTo} onChange={e => setItemDateTo(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: itemDateFromRef })}
                     className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
                   {(itemDateFrom || itemDateTo) && (
                     <button onClick={() => { setItemDateFrom(""); setItemDateTo(""); }}

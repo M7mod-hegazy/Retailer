@@ -7,6 +7,7 @@ import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 
@@ -355,6 +356,10 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
 
 export default function PurchaseReturnsListPage() {
   usePageTour('purchase_returns');
+  const handleKeyDown = useFieldNavigation();
+  const filterUserIdRef = useRef(null);
+  const filterDateFromRef = useRef(null);
+  const filterDateToRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const purchaseIdFilter = searchParams.get("purchase_id") || "";
@@ -583,8 +588,8 @@ export default function PurchaseReturnsListPage() {
             <div className="border-t border-zinc-100 pt-4 flex flex-wrap gap-4 items-end">
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">المستخدم</span>
-                <select value={userId} onChange={e => setUserId(e.target.value)}
-                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500 min-w-[180px]">
+                <select ref={filterUserIdRef} value={userId} onChange={e => setUserId(e.target.value)}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500 min-w-[180px]" onKeyDown={e => handleKeyDown(e, { nextRef: supplierInputRef })}>
                   <option value="">كل المستخدمين</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
@@ -603,6 +608,7 @@ export default function PurchaseReturnsListPage() {
                     onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
                     placeholder="جميع الموردين"
                     className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500 min-w-[180px]"
+                    onKeyDown={e => handleKeyDown(e, { nextRef: filterDateFromRef, prevRef: filterUserIdRef })}
                   />
                   {supplierLookupOpen && (
                     <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} emptyLabel="لا يوجد موردين" />
@@ -619,11 +625,11 @@ export default function PurchaseReturnsListPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">من تاريخ</span>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" />
+                <input ref={filterDateFromRef} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { nextRef: filterDateToRef, prevRef: supplierInputRef })} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1">إلى تاريخ</span>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" />
+                <input ref={filterDateToRef} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-zinc-50 border border-zinc-200/60 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { prevRef: filterDateFromRef })} />
               </div>
               {(dateFrom || dateTo || supplierId || userId) && (
                 <button onClick={() => { setDateFrom(""); setDateTo(""); setSupplierId(""); setSupplierQuery(""); setSelectedSupplier(null); setUserId(""); }}

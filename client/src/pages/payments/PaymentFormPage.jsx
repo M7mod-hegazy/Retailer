@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { 
   Banknote, 
   Receipt, 
@@ -25,6 +26,14 @@ function formatMoney(v) {
 
 export default function PaymentFormPage() {
   const navigate = useNavigate();
+  const handleKeyDown = useFieldNavigation();
+  const searchRef = useRef(null);
+  const amountRef = useRef(null);
+  const methodRef = useRef(null);
+  const dateRef = useRef(null);
+  const notesRef = useRef(null);
+  const submitRef = useRef(null);
+
   const [loading, setLoading] = useState(false);
   const [methods, setMethods] = useState([]);
   const [parties, setParties] = useState([]);
@@ -191,13 +200,15 @@ export default function PaymentFormPage() {
 
                <div className="relative mt-3">
                  <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                 <input 
-                  type="text"
-                  placeholder={`البحث عن ${form.party_type === 'customer' ? 'عميل' : 'مورد'}...`}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
-                 />
+                  <input 
+                   ref={searchRef}
+                   type="text"
+                   placeholder={`البحث عن ${form.party_type === 'customer' ? 'عميل' : 'مورد'}...`}
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   onKeyDown={e => handleKeyDown(e, { nextRef: amountRef })}
+                   className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                  />
                  {searchTerm && (
                    <div className="absolute left-0 top-full z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-xl scrollbar-thin">
                      {filteredParties.length === 0 ? (
@@ -238,22 +249,26 @@ export default function PaymentFormPage() {
                   <div className="relative">
                     <DollarSign className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input 
-                      type="number"
-                      placeholder="المبلغ المراد تسجيله..."
-                      value={form.amount}
-                      onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
-                      className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                       ref={amountRef}
+                       type="number"
+                       placeholder="المبلغ المراد تسجيله..."
+                       value={form.amount}
+                       onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
+                       onKeyDown={e => handleKeyDown(e, { nextRef: methodRef, prevRef: searchRef })}
+                       className="w-full rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                     />
                   </div>
                </div>
 
                <div>
                  <label className="mb-1.5 block text-[11px] font-black uppercase text-slate-400 tracking-widest">وسيلة الدفع</label>
-                 <select 
-                  value={form.method_id}
-                  onChange={(e) => setForm(f => ({ ...f, method_id: e.target.value }))}
-                  className="w-full rounded-sm border border-slate-200 py-2.5 px-3 text-sm font-bold outline-none focus:border-slate-800"
-                 >
+                  <select 
+                   ref={methodRef}
+                   value={form.method_id}
+                   onChange={(e) => setForm(f => ({ ...f, method_id: e.target.value }))}
+                   onKeyDown={e => handleKeyDown(e, { nextRef: dateRef, prevRef: amountRef })}
+                   className="w-full rounded-sm border border-slate-200 py-2.5 px-3 text-sm font-bold outline-none focus:border-slate-800"
+                  >
                    {methods.map(m => (
                      <option key={m.id} value={m.id}>{m.name} ({m.type === 'cash' ? 'خزينة' : 'بنك'})</option>
                    ))}
@@ -264,12 +279,14 @@ export default function PaymentFormPage() {
                  <label className="mb-1.5 block text-[11px] font-black uppercase text-slate-400 tracking-widest">تاريخ الاستحقاق / المعاملة</label>
                  <div className="relative">
                     <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      type="date"
-                      value={form.created_at}
-                      onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
-                      className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold outline-none focus:border-slate-800"
-                    />
+                     <input 
+                       ref={dateRef}
+                       type="date"
+                       value={form.created_at}
+                       onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
+                       onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: methodRef })}
+                       className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold outline-none focus:border-slate-800"
+                     />
                  </div>
                </div>
             </div>
@@ -279,17 +296,20 @@ export default function PaymentFormPage() {
             {/* 3. Additional Info */}
             <div className="space-y-3">
                <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">ملاحظات إضافية</label>
-               <textarea 
-                placeholder="اكتب أي ملاحظات اختيارية هنا..."
-                value={form.notes}
-                onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-                className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-sm font-bold outline-none focus:bg-white focus:border-slate-800 resize-none min-h-[80px]"
-               />
+                <textarea 
+                 ref={notesRef}
+                 placeholder="اكتب أي ملاحظات اختيارية هنا..."
+                 value={form.notes}
+                 onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+                 onKeyDown={e => handleKeyDown(e, { nextRef: submitRef, prevRef: dateRef })}
+                 className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-sm font-bold outline-none focus:bg-white focus:border-slate-800 resize-none min-h-[80px]"
+                />
             </div>
 
             {/* Submit */}
             <PermissionGate page="payments" action="add">
               <button 
+                ref={submitRef}
                 onClick={handleSubmit}
                 disabled={loading}
                 className="flex w-full items-center justify-center gap-3 rounded-sm bg-primary py-4 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"

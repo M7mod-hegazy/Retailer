@@ -16,10 +16,12 @@ import {
   ImageIcon,
   ZoomIn,
   AlertTriangle,
-  Save
+  Save,
+  Warehouse,
+  ClipboardList
 } from "lucide-react";
 import api from "../../services/api";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 import DataGrid from "../../components/ui/DataGrid";
 import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
@@ -28,6 +30,7 @@ import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 
 const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
@@ -40,6 +43,9 @@ function resolveImageUrl(u) {
 export default function PurchaseOrderFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: editId } = useParams();
+  const isEditMode = !!editId;
+  const [loadedDocNo, setLoadedDocNo] = useState("");
 
   const ITEM_PAGE = 20;
 
@@ -49,6 +55,9 @@ export default function PurchaseOrderFormPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [units, setUnits] = useState([]);
   const [stockLevels, setStockLevels] = useState({});
+  const [warehouses, setWarehouses] = useState([]);
+  const [defaultWarehouseId, setDefaultWarehouseId] = useState("");
+  const [perWhStockMap, setPerWhStockMap] = useState({}); // { item_id: { wh_id: qty } }
   
   // Form States
   const [supplier, setSupplier] = useState(null);
@@ -66,7 +75,7 @@ export default function PurchaseOrderFormPage() {
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", unitId: "" });
+  const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   
@@ -79,28 +88,17 @@ export default function PurchaseOrderFormPage() {
   const qtyInputRef = useRef(null);
   const unitSelectRef = useRef(null);
   const costInputRef = useRef(null);
+  const sellInputRef = useRef(null);
+  const wholesaleInputRef = useRef(null);
+  const warehouseTableRef = useRef(null);
   const addBtnRef = useRef(null);
+  const supplierInputRef = useRef(null);
+  const notesRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
 
   // --- Keyboard Navigation Hook ---
-  const handleFieldKeyDown = (e, nextRef, prevRef, isEnterSubmit = false) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        if (prevRef?.current) {
-          prevRef.current.focus();
-          if (prevRef.current.select) prevRef.current.select();
-        }
-      } else {
-        if (isEnterSubmit) addLine();
-        else if (nextRef?.current) {
-          nextRef.current.focus();
-          if (nextRef.current.select) nextRef.current.select();
-        }
-      }
-    }
-  };
+  const handleKeyDown = useFieldNavigation();
 
   // --- Init ---
   useEffect(() => {
@@ -110,17 +108,29 @@ export default function PurchaseOrderFormPage() {
       api.get("/api/units"),
       api.get("/api/stock/levels"),
       api.get("/api/items?limit=5000"),
-    ]).then(([suppRes, unitRes, stockRes, itemsRes]) => {
+      api.get("/api/warehouses"),
+    ]).then(([suppRes, unitRes, stockRes, itemsRes, whRes]) => {
       setItems(itemsRes.data?.data || []);
       const suppList = suppRes.data.data || [];
       setSuppliers(suppList);
       setUnits(unitRes.data.data || []);
+      const whList = whRes.data?.data || [];
+      setWarehouses(whList);
+      const defWh = whList.find(w => w.is_default) || whList[0];
+      if (defWh) {
+        setDefaultWarehouseId(String(defWh.id));
+        setStaging(s => ({ ...s, warehouseId: String(defWh.id) }));
+      }
       const grouped = {};
+      const byWh = {};
       (stockRes.data.data || []).forEach(row => {
         if (!grouped[row.item_id]) grouped[row.item_id] = 0;
         grouped[row.item_id] += row.quantity;
+        if (!byWh[row.item_id]) byWh[row.item_id] = {};
+        byWh[row.item_id][row.warehouse_id] = row.quantity;
       });
       setStockLevels(grouped);
+      setPerWhStockMap(byWh);
 
       // Apply navigation-state prefill (e.g. from suggested PO)
       if (prefill) {
@@ -143,6 +153,37 @@ export default function PurchaseOrderFormPage() {
       }
     }).catch(() => {});
   }, []);
+
+  // --- Edit mode: load the existing purchase order ---
+  useEffect(() => {
+    if (!isEditMode) return;
+    api.get(`/api/purchase-orders/${editId}`).then(res => {
+      const o = res.data.data;
+      setLoadedDocNo(o.doc_no || "");
+      if (o.supplier_id) {
+        api.get(`/api/suppliers/${o.supplier_id}`)
+          .then(sr => { const s = sr.data.data; setSupplier(s); setSupplierQuery(s.name); })
+          .catch(() => {});
+      }
+      setNotes(o.notes || "");
+      if (o.warehouse_id) {
+        setDefaultWarehouseId(String(o.warehouse_id));
+        setStaging(st => ({ ...st, warehouseId: String(o.warehouse_id) }));
+      }
+      setLines((o.lines || []).map(l => ({
+        item_id: l.item_id,
+        name: l.item_name,
+        code: l.item_code || "",
+        quantity: Number(l.quantity),
+        unit_cost: Number(l.unit_cost),
+        selling_price: Number(l.selling_price || 0),
+        wholesale_price: Number(l.wholesale_price || 0),
+        unit_id: l.unit_id || null,
+        warehouse_id: l.warehouse_id ? String(l.warehouse_id) : "",
+        total: Number(l.quantity) * Number(l.unit_cost),
+      })));
+    }).catch(() => setMessage({ text: "فشل تحميل أمر التوريد", type: "error" }));
+  }, [isEditMode, editId]);
 
   // --- Item search ---
   useEffect(() => {
@@ -207,6 +248,8 @@ export default function PurchaseOrderFormPage() {
     setStaging(prev => ({
       ...prev,
       unitCost: String(item.purchase_price || 0),
+      sellingPrice: String(item.sale_price || 0),
+      wholesalePrice: String(item.wholesale_price || 0),
       unitId: String(item.unit_id || prev.unitId)
     }));
     setLookupOpen(false);
@@ -222,6 +265,10 @@ export default function PurchaseOrderFormPage() {
     setSupplierLookupOpen(false);
   }
 
+  function updateLineField(index, field, value) {
+    setLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
+  }
+
   function addLine() {
     if (!selectedItem) return;
     const selectedUnit = units.find(u => String(u.id) === String(staging.unitId));
@@ -229,14 +276,19 @@ export default function PurchaseOrderFormPage() {
     const rawQty = Number(staging.quantity || 1);
     const qty = allowDecimal ? Math.max(0.001, rawQty) : Math.max(1, Math.round(rawQty));
     const cost = Number(staging.unitCost || 0);
+    const sell = Number(staging.sellingPrice || 0);
+    const wholesale = Number(staging.wholesalePrice || 0);
+    const wid = staging.warehouseId || defaultWarehouseId;
 
     setLines(prev => {
-      const existingIdx = prev.findIndex(l => l.item_id === selectedItem.id);
+      const existingIdx = prev.findIndex(l => l.item_id === selectedItem.id && String(l.warehouse_id) === String(wid));
       if (existingIdx !== -1) {
         return prev.map((l, i) => i !== existingIdx ? l : {
           ...l,
           quantity: allowDecimal ? l.quantity + qty : Math.round(l.quantity) + qty,
           unit_cost: cost || l.unit_cost,
+          selling_price: sell || l.selling_price,
+          wholesale_price: wholesale || l.wholesale_price,
           total: (allowDecimal ? l.quantity + qty : Math.round(l.quantity) + qty) * (cost || l.unit_cost),
         });
       }
@@ -246,14 +298,17 @@ export default function PurchaseOrderFormPage() {
         code: selectedItem.code || selectedItem.barcode,
         quantity: qty,
         unit_cost: cost,
+        selling_price: sell,
+        wholesale_price: wholesale,
         unit_id: staging.unitId || null,
+        warehouse_id: wid,
         total: qty * cost,
       }];
     });
 
     setSelectedItem(null);
     setItemQuery("");
-    setStaging({ quantity: "1", unitCost: "", unitId: "" });
+    setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: s.warehouseId }));
     setTimeout(() => {
       itemInputRef.current?.focus();
       itemInputRef.current?.select();
@@ -266,24 +321,34 @@ export default function PurchaseOrderFormPage() {
   }), [lines]);
 
   async function handleSave() {
-    if (!supplier) { setMessage({ text: "اختر المورد اولاً", type: "error" }); return; }
     if (!lines.length) { setMessage({ text: "لا يوجد اصناف", type: "error" }); return; }
-    
+
     setIsSaving(true);
+    const body = {
+      supplier_id: supplier?.id || null,
+      warehouse_id: defaultWarehouseId ? Number(defaultWarehouseId) : null,
+      notes: notes,
+      lines: lines.map(l => ({
+        item_id: l.item_id,
+        quantity: l.quantity,
+        unit_cost: l.unit_cost,
+        selling_price: Number(l.selling_price || 0),
+        wholesale_price: Number(l.wholesale_price || 0),
+        unit_id: l.unit_id || null,
+        warehouse_id: l.warehouse_id ? Number(l.warehouse_id) : null,
+      }))
+    };
     try {
-      await api.post("/api/purchase-orders", {
-        supplier_id: supplier.id,
-        notes: notes,
-        lines: lines.map(l => ({
-          item_id: l.item_id,
-          quantity: l.quantity,
-          unit_cost: l.unit_cost
-        }))
-      });
-      setMessage({ text: "تم إنشاء أمر الشراء بنجاح", type: "success" });
-      setTimeout(() => navigate("/purchases/orders"), 1500);
+      if (isEditMode) {
+        await api.put(`/api/purchase-orders/${editId}`, body);
+        setMessage({ text: "تم حفظ التعديلات بنجاح", type: "success" });
+      } else {
+        await api.post("/api/purchase-orders", body);
+        setMessage({ text: "تم إنشاء أمر الشراء بنجاح", type: "success" });
+      }
+      setTimeout(() => navigate("/purchases/orders"), 1200);
     } catch (e) {
-      setMessage({ text: "فشل حفظ أمر الشراء", type: "error" });
+      setMessage({ text: e?.response?.data?.message || "فشل حفظ أمر الشراء", type: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -294,8 +359,8 @@ export default function PurchaseOrderFormPage() {
       {/* Header */}
       <DocumentHeaderBar
         onBack={() => { if (lines.length > 0) setWarnModalOpen(true); else navigate("/purchases/orders"); }}
-        title="طلب توريد جديد (Purchase Order)"
-        subtitle="تخطيط المشتريات المستلمة لاحقاً"
+        title={isEditMode ? `تعديل أمر التوريد ${loadedDocNo || `PO-${String(editId).padStart(5, "0")}`}` : "طلب توريد جديد (Purchase Order)"}
+        subtitle={isEditMode ? "تعديل بنود الطلب قبل الاستلام" : "تخطيط المشتريات المستلمة لاحقاً"}
         actions={
           <>
             {message.text && (
@@ -310,7 +375,7 @@ export default function PurchaseOrderFormPage() {
                 onClick={handleSave}
                 loading={isSaving}
               >
-                {isSaving ? "جاري الحفظ..." : "إرسال طلب التوريد"}
+                {isSaving ? "جاري الحفظ..." : (isEditMode ? "حفظ التعديلات" : "إرسال طلب التوريد")}
               </DocumentActionButton>
             </PermissionGate>
           </>
@@ -318,6 +383,10 @@ export default function PurchaseOrderFormPage() {
       />
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2.5">
+          <ClipboardList className="h-4 w-4 text-indigo-600 shrink-0" />
+          <p className="text-2sm font-black text-indigo-800">طلب توريد — ليس فاتورة. المخزون لن يتأثر حتى الاستلام في صفحة المشتريات.</p>
+        </div>
         <div className="flex gap-4 flex-1 min-h-0">
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col gap-3 min-w-0">
@@ -328,6 +397,7 @@ export default function PurchaseOrderFormPage() {
                   <div className="relative">
                     <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <input
+                      ref={supplierInputRef}
                       type="text"
                       value={supplierQuery}
                       onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); }}
@@ -335,6 +405,7 @@ export default function PurchaseOrderFormPage() {
                       onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
                       placeholder="ابحث عن مورد..."
                       className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
+                      onKeyDown={e => handleKeyDown(e, { nextRef: notesRef })}
                     />
                     {supplierLookupOpen && (
                       <SearchDropdown 
@@ -352,11 +423,13 @@ export default function PurchaseOrderFormPage() {
                   <div className="relative">
                     <FileText className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <input 
+                      ref={notesRef}
                       type="text" 
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="أية تعليمات خاصة للتوريد..."
                       className="w-full border border-slate-300 rounded-sm bg-white py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
+                      onKeyDown={e => handleKeyDown(e, { nextRef: itemInputRef, prevRef: supplierInputRef })}
                     />
                   </div>
                 </div>
@@ -364,7 +437,7 @@ export default function PurchaseOrderFormPage() {
 
             {/* Quick Entry Bar */}
             <section className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
-              <div className="grid grid-cols-[3fr_100px_100px_120px_100px] gap-2 items-end">
+              <div className="grid grid-cols-[minmax(0,2.2fr)_70px_70px_90px_90px_90px_130px_80px] gap-2 items-end">
                 <div className="relative flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">البحث عن صنف</label>
                   <div className="relative">
@@ -417,40 +490,91 @@ export default function PurchaseOrderFormPage() {
                       setStaging(s => ({ ...s, quantity: v }));
                     }}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, unitSelectRef, itemInputRef)}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: costInputRef, prevRef: itemInputRef })}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                  <div className="relative">
-                    <select
-                      ref={unitSelectRef}
-                      value={staging.unitId}
-                      onChange={(e) => setStaging(s => ({ ...s, unitId: e.target.value }))}
-                      onKeyDown={(e) => handleFieldKeyDown(e, costInputRef, qtyInputRef)}
-                      className="w-full h-[37px] appearance-none border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
-                    >
-                      <option value="">أساسية</option>
-                      {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
-                    <ChevronDown className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-slate-400" />
+                  {/* Locked to the item's own base unit (mirrors the Purchases page — no free dropdown). */}
+                  <div ref={unitSelectRef} tabIndex={-1} className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-100 px-2">
+                    <span className="text-2sm font-bold text-slate-600 truncate">
+                      {selectedItem
+                        ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية")
+                        : "أساسية"}
+                    </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-600">التكلفة المتوقعة</label>
-                  <input 
+                  <input
                     ref={costInputRef}
                     type="number"
                     step="any"
                     value={staging.unitCost}
                     onChange={(e) => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, addBtnRef, unitSelectRef, true)}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: sellInputRef, prevRef: qtyInputRef, onEnter: addLine })}
                     className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
                   />
                 </div>
-                <button 
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-slate-600">سعر البيع</label>
+                  <input
+                    ref={sellInputRef}
+                    type="number"
+                    step="any"
+                    value={staging.sellingPrice}
+                    onChange={(e) => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesaleInputRef, prevRef: costInputRef, onEnter: addLine })}
+                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-2sm font-black text-emerald-700 outline-none focus:border-slate-800 text-center"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-slate-600">سعر الجملة</label>
+                  <input
+                    ref={wholesaleInputRef}
+                    type="number"
+                    step="any"
+                    value={staging.wholesalePrice}
+                    onChange={(e) => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: warehouseTableRef, prevRef: sellInputRef, onEnter: addLine })}
+                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-3 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
+                  />
+                </div>
+                {/* Warehouse select table (destination) — mirrors the Purchases page */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-slate-600">المخزن (الوجهة)</label>
+                  <div ref={warehouseTableRef} tabIndex={0}
+                    className="border border-slate-300 rounded-sm bg-slate-50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
+                    style={{ height: "37px" }}
+                    onKeyDown={(e) => {
+                      const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
+                      if (e.key === "ArrowDown") { e.preventDefault(); const next = warehouses[Math.min(idx + 1, warehouses.length - 1)]; if (next) setStaging(s => ({ ...s, warehouseId: String(next.id) })); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); const prev = warehouses[Math.max(idx - 1, 0)]; if (prev) setStaging(s => ({ ...s, warehouseId: String(prev.id) })); }
+                      else if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
+                      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); addBtnRef.current?.focus(); }
+                    }}>
+                    <table className="w-full text-[11px] border-collapse">
+                      <tbody>
+                        {warehouses.map(w => {
+                          const qty = selectedItem ? (perWhStockMap[selectedItem.id]?.[w.id] || 0) : 0;
+                          const isSelected = String(staging.warehouseId) === String(w.id);
+                          return (
+                            <tr key={w.id} onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
+                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${isSelected ? "bg-indigo-50" : "hover:bg-slate-100"}`}>
+                              <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{w.name}</td>
+                              <td className={`px-2 py-1 font-mono text-center tabular-nums ${qty > 0 ? "text-emerald-600 font-black" : "text-slate-400"}`}>{qty}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <button
                   ref={addBtnRef}
                   onClick={addLine}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
@@ -507,8 +631,49 @@ export default function PurchaseOrderFormPage() {
                     render: (l) => Number(l.quantity)
                   },
                   {
-                    id: "unit_cost", header: "سعر الوحدة", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-sm text-slate-500 border-l border-slate-100",
+                    id: "unit_id", header: "الوحدة", width: 80, sortable: false, headerClass: "text-center", cellClass: "text-center text-2sm font-bold text-slate-600 border-l border-slate-100",
+                    render: (l) => (units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية")
+                  },
+                  {
+                    id: "unit_cost", header: "التكلفة", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-sm text-slate-500 border-l border-slate-100",
                     render: (l) => Number(l.unit_cost).toLocaleString("en-US", { minimumFractionDigits: 2 })
+                  },
+                  {
+                    id: "selling_price", header: "سعر البيع", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-sm text-emerald-700 border-l border-slate-100",
+                    render: (l) => Number(l.selling_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })
+                  },
+                  {
+                    id: "wholesale_price", header: "سعر الجملة", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono font-black text-sm text-slate-600 border-l border-slate-100",
+                    render: (l) => Number(l.wholesale_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })
+                  },
+                  {
+                    id: "profit", header: "الربح", width: 100, sortable: true, headerClass: "text-center", cellClass: "text-center border-l border-slate-100",
+                    sortValue: (l) => Number(l.selling_price || 0) - Number(l.unit_cost || 0),
+                    render: (l) => {
+                      const profit = Number(l.selling_price || 0) - Number(l.unit_cost || 0);
+                      const pct = Number(l.unit_cost) > 0 ? (profit / Number(l.unit_cost)) * 100 : 0;
+                      const color = profit > 0 ? "text-emerald-600" : profit < 0 ? "text-rose-600" : "text-slate-400";
+                      return (
+                        <div className={`flex flex-col leading-tight font-mono font-black text-sm ${color}`}>
+                          <span>{profit.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                          {Number(l.selling_price) > 0 && Number(l.unit_cost) > 0 && (
+                            <span className="text-[10px] opacity-70">{pct.toFixed(1)}%</span>
+                          )}
+                        </div>
+                      );
+                    }
+                  },
+                  {
+                    id: "warehouse_id", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                    render: (l, i) => (
+                      <select value={l.warehouse_id || ""} onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
+                        className="w-full h-[40px] text-[11px] font-bold outline-none border-0 ring-0 text-center truncate cursor-pointer bg-transparent text-slate-700 focus:bg-indigo-50">
+                        {warehouses.map(w => {
+                          const sqty = perWhStockMap[l.item_id]?.[w.id] || 0;
+                          return <option key={w.id} value={w.id}>{w.name} ({sqty})</option>;
+                        })}
+                      </select>
+                    )
                   },
                   {
                     id: "total", header: "إجمالي المتوقع", width: 140, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l-0",
@@ -547,6 +712,31 @@ export default function PurchaseOrderFormPage() {
 
           {/* Right Sidebar */}
           <aside className="w-[320px] flex flex-col gap-4">
+             <div className="rounded-md border border-slate-300 bg-white p-5 shadow-sm">
+                <h3 className="mb-3 text-2sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <Warehouse className="h-4 w-4 text-slate-400" /> الرصيد الحالي للصنف
+                </h3>
+                {selectedItem ? (
+                  <div>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 truncate">{selectedItem.name}</p>
+                    <div className="rounded border border-slate-100 divide-y divide-slate-100 max-h-[180px] overflow-y-auto">
+                      {warehouses.length === 0 ? (
+                        <div className="px-3 py-2 text-2sm text-slate-400 font-bold">لا توجد مخازن</div>
+                      ) : warehouses.map(w => {
+                        const qty = (perWhStockMap[selectedItem.id]?.[w.id]) || 0;
+                        return (
+                          <div key={w.id} className="flex items-center justify-between px-3 py-1.5 text-2sm">
+                            <span className="font-bold text-slate-600 truncate">{w.name}</span>
+                            <span className={`font-mono font-black ${qty > 0 ? "text-slate-800" : "text-slate-300"}`}>{qty}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-2sm font-bold text-slate-400 text-center py-3">اختر صنفاً لعرض رصيده في المخازن</p>
+                )}
+             </div>
              <div className="rounded-md border border-slate-300 bg-white p-5 shadow-md">
                 <h3 className="mb-4 text-2sm font-black text-slate-800 border-b pb-2 border-slate-100 uppercase tracking-widest flex items-center gap-2">
                   <Clock className="h-4 w-4 text-slate-400" /> حالة الطلب
@@ -568,11 +758,11 @@ export default function PurchaseOrderFormPage() {
              </div>
 
              <div className="rounded-md border border-slate-200 bg-white p-5 flex-1 flex flex-col justify-end">
-                 <button 
-                  onClick={handleSave} 
+                 <button
+                  onClick={handleSave}
                   className="w-full rounded-sm bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95"
                  >
-                   اعتماد وإرسال الطلب
+                   {isEditMode ? "حفظ التعديلات" : "اعتماد وإرسال الطلب"}
                  </button>
              </div>
           </aside>

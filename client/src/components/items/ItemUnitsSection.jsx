@@ -1,14 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
 import { Plus, Trash2, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 export default function ItemUnitsSection({ itemId }) {
   const enabled = useFeatureEnabled("feature_multi_unit");
   const [units, setUnits] = useState([]);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ unit_name: "", factor: 1, sale_price: "", wholesale_price: "", barcode: "", is_default_sale: false });
+  const nameRef = useRef(null);
+  const factorRef = useRef(null);
+  const salePriceRef = useRef(null);
+  const barcodeRef = useRef(null);
+  const defaultSaleRef = useRef(null);
+  const saveBtnRef = useRef(null);
+  const cancelBtnRef = useRef(null);
+  const handleKeyDown = useFieldNavigation();
 
   useEffect(() => {
     if (!enabled || !itemId) return;
@@ -99,27 +108,27 @@ export default function ItemUnitsSection({ itemId }) {
         <form onSubmit={handleAdd} className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-lg border border-slate-200 bg-slate-50">
           <label className="block">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">اسم الوحدة</span>
-            <input required value={form.unit_name} onChange={e => set("unit_name", e.target.value)} placeholder="كرتونة" className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
+            <input ref={nameRef} onKeyDown={e => handleKeyDown(e, { nextRef: factorRef })} required value={form.unit_name} onChange={e => set("unit_name", e.target.value)} placeholder="كرتونة" className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
           </label>
           <label className="block">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">العامل (قطعة/وحدة)</span>
-            <input required type="number" min="1" step="1" value={form.factor} onChange={e => set("factor", e.target.value)} className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
+            <input ref={factorRef} onKeyDown={e => handleKeyDown(e, { nextRef: salePriceRef, prevRef: nameRef })} required type="number" min="1" step="1" value={form.factor} onChange={e => set("factor", e.target.value)} className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
           </label>
           <label className="block">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">سعر البيع (اختياري)</span>
-            <input type="number" step="0.01" value={form.sale_price} onChange={e => set("sale_price", e.target.value)} placeholder="سعر الوحدة" className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
+            <input ref={salePriceRef} onKeyDown={e => handleKeyDown(e, { nextRef: barcodeRef, prevRef: factorRef })} type="number" step="0.01" value={form.sale_price} onChange={e => set("sale_price", e.target.value)} placeholder="سعر الوحدة" className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
           </label>
           <label className="block">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">الباركود (اختياري)</span>
-            <input value={form.barcode} onChange={e => set("barcode", e.target.value)} className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-mono font-bold outline-none focus:border-slate-800" />
+            <input ref={barcodeRef} onKeyDown={e => handleKeyDown(e, { nextRef: defaultSaleRef, prevRef: salePriceRef })} value={form.barcode} onChange={e => set("barcode", e.target.value)} className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-mono font-bold outline-none focus:border-slate-800" />
           </label>
           <div className="flex items-center gap-2 mt-5">
-            <input type="checkbox" id="is_default_sale" checked={form.is_default_sale} onChange={e => set("is_default_sale", e.target.checked)} />
+            <input ref={defaultSaleRef} onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: barcodeRef })} type="checkbox" id="is_default_sale" checked={form.is_default_sale} onChange={e => set("is_default_sale", e.target.checked)} />
             <label htmlFor="is_default_sale" className="text-xs font-bold text-slate-600">وحدة البيع الافتراضية</label>
           </div>
           <div className="flex items-end gap-2">
-            <button type="submit" className="rounded-lg bg-primary px-4 py-1.5 text-xs font-black text-white hover:bg-primary-600">حفظ</button>
-            <button type="button" onClick={() => setAdding(false)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
+            <button ref={saveBtnRef} onKeyDown={e => handleKeyDown(e, { nextRef: cancelBtnRef, prevRef: defaultSaleRef })} type="submit" className="rounded-lg bg-primary px-4 py-1.5 text-xs font-black text-white hover:bg-primary-600">حفظ</button>
+            <button ref={cancelBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: saveBtnRef })} type="button" onClick={() => setAdding(false)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
           </div>
         </form>
       )}
