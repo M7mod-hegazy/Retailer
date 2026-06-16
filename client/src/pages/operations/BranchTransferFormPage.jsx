@@ -12,6 +12,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import SearchInput from "../../components/ui/SearchInput";
+import ProductSearchField from "../../components/ui/ProductSearchField";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -23,13 +24,9 @@ import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
+import { formatNumber } from "../../utils/currency";
 
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
-function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 function fmtDateTime(d) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
@@ -426,7 +423,7 @@ export default function BranchTransferFormPage() {
       wasSaved.current = true;
       setSaveSuccess({
         invoiceNumber: doc?.reference_no || "",
-        total: `${totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م`,
+        total: `${formatNumber(totalCost)} ج.م`,
         payments: [],
         customerName: partnerBranch || null,
         customerNewBalance: null,
@@ -508,7 +505,7 @@ export default function BranchTransferFormPage() {
                 const v = Number(e.target.value);
                 updateLineField(i, "quantity", hasLimit ? Math.min(v, maxQ) : v);
               }}
-              className={`w-[52px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 focus:bg-indigo-50/50 transition-colors ${atLimit ? "text-rose-600" : "bg-transparent"}`}
+              className={`w-[52px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 focus:bg-indigo-50/50 transition-colors ${atLimit ? "text-rose-600" : "bg-transparent"}`}
             />
             {hasLimit && (
               <span className={`text-[9px] font-black leading-none shrink-0 ${atLimit ? "text-rose-500" : "text-slate-400"}`}>
@@ -532,7 +529,7 @@ export default function BranchTransferFormPage() {
               type="number" step="any"
               value={l.unit_cost}
               onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
-              className={`w-full h-[40px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+              className={`w-full h-[40px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
             />
             {changed && <span title={`التكلفة الحالية: ${l.original_purchase_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
           </div>
@@ -550,7 +547,7 @@ export default function BranchTransferFormPage() {
                 type="number" step="any"
                 value={l.selling_price}
                 onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
-                className={`w-full h-[40px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-amber-50/50 text-amber-700"}`}
+                className={`w-full h-[40px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-amber-50/50 text-amber-700"}`}
               />
               {changed && <span title={`السعر الحالي: ${l.original_sale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
             </div>
@@ -572,7 +569,7 @@ export default function BranchTransferFormPage() {
                 const newPrice = cost * (1 + newPct / 100);
                 updateLineField(i, "selling_price", Math.round(newPrice * 1000) / 1000);
               }}
-              className="w-full h-[40px] text-center text-2sm font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50/50 text-blue-700 transition-colors"
+              className="w-full h-[40px] text-center text-2sm number-fmt-primary bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50/50 text-blue-700 transition-colors"
             />
           );
         },
@@ -587,7 +584,7 @@ export default function BranchTransferFormPage() {
                 type="number" step="any"
                 value={l.wholesale_price ?? 0}
                 onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
-                className={`w-full h-[40px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+                className={`w-full h-[40px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
               />
               {changed && <span title={`السعر الحالي: ${l.original_wholesale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
             </div>
@@ -628,14 +625,14 @@ export default function BranchTransferFormPage() {
             type="number" step="any"
             value={l.selling_price}
             onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
-            className="w-full h-[40px] text-center text-sm font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-amber-50/50 text-amber-700 transition-colors"
+            className="w-full h-[40px] text-center text-sm number-fmt-primary bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-amber-50/50 text-amber-700 transition-colors"
           />
         ),
       },
     ]),
     {
-      id: "total_cost", header: "الإجمالي", width: 110, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-sm font-black text-slate-700 border-l border-slate-100",
-      render: (l) => Number(l.quantity * l.unit_cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      id: "total_cost", header: "الإجمالي", width: 110, sortable: false, headerClass: "text-center", cellClass: "text-center number-fmt text-sm font-black text-slate-700 border-l border-slate-100",
+      render: (l) => formatNumber(l.quantity * l.unit_cost),
     },
   ];
 
@@ -794,7 +791,7 @@ export default function BranchTransferFormPage() {
                 onClick={() => setPreviewOpen(true)}
                 disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
               >
-                طباعة ومراجعة المستند
+                طباعة  
               </DocumentActionButton>
             </PermissionGate>
           </>
@@ -868,12 +865,12 @@ export default function BranchTransferFormPage() {
             <div className="flex flex-col gap-3 bg-slate-50/50 rounded-[14px] py-5 px-4 border border-slate-100 shadow-inner">
               <div className="flex items-center justify-between">
                 <span className="text-2sm font-black uppercase tracking-widest text-slate-400">إجمالي الكميات</span>
-                <span className={`text-3xl font-black font-mono text-${theme.primary}-600`}>{totalQty.toLocaleString("en-US")}</span>
+                <span className={`text-3xl number-fmt-primary text-${theme.primary}-600`}>{formatNumber(totalQty, { decimals: 0 })}</span>
               </div>
               <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                 <span className="text-2sm font-black uppercase tracking-widest text-slate-400">إجمالي التكلفة</span>
-                <span className="text-2xl font-black font-mono text-slate-700">
-                  {totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="text-2xl number-fmt-primary text-slate-700">
+                  {formatNumber(totalCost)}
                 </span>
               </div>
             </div>
@@ -912,36 +909,18 @@ export default function BranchTransferFormPage() {
               {/* Item search */}
               <div className="relative flex-[2.5] min-w-[240px] flex flex-col">
                 <label className="text-[11px] font-bold text-slate-500 mb-1.5 block text-center">المادة / الصنف (بحث)</label>
-                <SearchInput
+                <ProductSearchField
                   ref={itemInputRef}
-                  value={itemQuery}
-                  onChange={(val) => { setItemQuery(val); setLookupOpen(true); setSelectedItem(null); }}
-                  onFocus={(e) => { setLookupOpen(true); e.target.select(); }}
-                  onBlur={() => setTimeout(() => setLookupOpen(false), 150)}
-                  onKeyDown={handleItemKeyDown}
+                  query={itemQuery}
+                  onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
+                  results={filteredItems}
+                  onPick={handlePickItem}
+                  selectedItem={selectedItem}
+                  onLoadMore={loadMoreItems}
+                  hasMore={itemHasMore}
+                  isLoadingMore={isLoadingMoreItems}
                   placeholder="ابحث بالاسم أو كود SKU..."
-                  autoFocus
-                  className="w-full"
-                  inputClassName="h-11 bg-slate-50/50"
                 />
-                {selectedItem && (
-                  <div className="flex items-center gap-1.5 mt-1 px-1">
-                    <span className="text-[11px] font-black font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 tracking-wide">
-                      {selectedItem.item_code || selectedItem.code || `#${selectedItem.id}`}
-                    </span>
-                  </div>
-                )}
-                {lookupOpen && itemQuery && (
-                  <SearchDropdown
-                    items={filteredItems}
-                    onPick={handlePickItem}
-                    activeIndex={activeIndex}
-                    query={itemQuery}
-                    onLoadMore={loadMoreItems}
-                    hasMoreFromServer={itemHasMore}
-                    isLoadingMore={isLoadingMoreItems}
-                  />
-                )}
               </div>
 
               {/* Warehouse table */}
@@ -994,7 +973,7 @@ export default function BranchTransferFormPage() {
                             className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${bgColor || (isSelected ? "bg-indigo-50" : "hover:bg-slate-100")}`}
                           >
                             <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"} ${insufficient ? "line-through opacity-60" : ""}`}>{w.name}</td>
-                            <td className={`px-2 py-1 font-mono text-center tabular-nums ${stockColor}`}>{avail}</td>
+                            <td className={`px-2 py-1 number-fmt text-center tabular-nums ${stockColor}`}>{avail}</td>
                           </tr>
                         );
                       })}
@@ -1047,7 +1026,7 @@ export default function BranchTransferFormPage() {
                   onChange={e => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                   onFocus={e => e.target.select()}
                   onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: sellInputRef, prevRef: warehouseTableRef })}
-                  className={`w-full h-11 border rounded-[10px] px-1 text-sm font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
+                  className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
                     isReceive && !stagingLocks.purchase
                       ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                       : isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price)
@@ -1057,9 +1036,9 @@ export default function BranchTransferFormPage() {
                 />
                 {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
                   <span className="text-[9px] text-center leading-tight">
-                    <span className="text-slate-400 font-mono">{Number(selectedItem.purchase_price).toFixed(2)}</span>
+                    <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
                     <span className="text-slate-300 mx-0.5">→</span>
-                    <span className={`font-mono font-black ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                    <span className={`number-fmt-primary ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
                       {Number(staging.unitCost).toFixed(2)}
                     </span>
                   </span>
@@ -1089,7 +1068,7 @@ export default function BranchTransferFormPage() {
                   onChange={e => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                   onFocus={e => e.target.select()}
                   onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: isReceive ? wholesaleInputRef : qtyInputRef, prevRef: costInputRef })}
-                  className={`w-full h-11 border rounded-[10px] px-1 text-sm font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
+                  className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
                     isReceive && !stagingLocks.sale
                       ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                       : isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price)
@@ -1099,9 +1078,9 @@ export default function BranchTransferFormPage() {
                 />
                 {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
                   <span className="text-[9px] text-center leading-tight">
-                    <span className="text-slate-400 font-mono">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
+                    <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
                     <span className="text-slate-300 mx-0.5">→</span>
-                    <span className={`font-mono font-black ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                    <span className={`number-fmt-primary ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
                       {Number(staging.sellingPrice).toFixed(2)}
                     </span>
                   </span>
@@ -1130,7 +1109,7 @@ export default function BranchTransferFormPage() {
                     onChange={e => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: qtyInputRef, prevRef: sellInputRef })}
-                    className={`w-full h-11 border rounded-[10px] px-1 text-sm font-mono font-black text-slate-800 outline-none transition-all shadow-inner text-center ${
+                    className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
                       !stagingLocks.wholesale
                         ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                         : selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price)
@@ -1140,9 +1119,9 @@ export default function BranchTransferFormPage() {
                   />
                   {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
                     <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 font-mono">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
                       <span className="text-slate-300 mx-0.5">→</span>
-                      <span className={`font-mono font-black ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                      <span className={`number-fmt-primary ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
                         {Number(staging.wholesalePrice).toFixed(2)}
                       </span>
                     </span>
@@ -1165,7 +1144,7 @@ export default function BranchTransferFormPage() {
                   onChange={e => setStaging(s => ({ ...s, quantity: e.target.value }))}
                   onFocus={e => e.target.select()}
                   onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: addBtnRef, prevRef: sellInputRef })}
-                  className="w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-sm font-mono font-black text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
+                  className="w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-sm number-fmt-primary text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
                 />
               </div>
 
@@ -1310,24 +1289,24 @@ export default function BranchTransferFormPage() {
                 {priceChangedLines.map((l, i) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-3 py-2 font-bold text-slate-800 max-w-[140px] truncate">{l.item_name}</td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_purchase_price) > 0 ? Number(l.original_purchase_price).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black">
+                    <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_purchase_price) > 0 ? Number(l.original_purchase_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_purchase_price) ? (
                         <span className={Number(l.unit_cost) > Number(l.original_purchase_price) ? "text-rose-600" : "text-emerald-600"}>
                           {Number(l.unit_cost).toFixed(2)}
                         </span>
                       ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black">
+                    <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
                         <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
                           {Number(l.selling_price).toFixed(2)}
                         </span>
                       ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black">
+                    <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
                         <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
                           {Number(l.wholesale_price).toFixed(2)}
@@ -1360,7 +1339,7 @@ export default function BranchTransferFormPage() {
                 {isEditMode ? "هل تريد حفظ التعديلات؟" : "هل تريد حفظ هذا المستند؟"}
               </h3>
               <p className="text-2sm font-bold text-slate-500 leading-relaxed">
-                {lines.length} صنف — إجمالي الكميات: {totalQty.toLocaleString("en-US")}
+                {lines.length} صنف — إجمالي الكميات: {formatNumber(totalQty, { decimals: 0 })}
               </p>
             </div>
           </div>

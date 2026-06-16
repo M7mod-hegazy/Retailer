@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock } from "lucide-react";
+import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -197,6 +197,77 @@ function isDirty(original, current) {
     if (String(original[key] ?? "") !== String(current[key] ?? "")) return true;
   }
   return false;
+}
+
+function AppearancePreviewBar({ settings }) {
+  const [open, setOpen] = useState(true);
+  const currentFamily = settings.font_family || "Noto Sans Arabic";
+  const currentWeight = settings.font_weight || 700;
+  const currentNumFamily = settings.number_font_family || "Outfit";
+  const currentNumWeight = settings.number_font_weight || 700;
+  const currentScale = settings.number_font_scale || "normal";
+  const scaleMap = { tiny: 0.5, small: 0.75, normal: 1, large: 1.125, xlarge: 1.25, huge: 1.5, giant: 2 };
+  const scale = scaleMap[currentScale] ?? 1;
+  const numeralStyle = settings.numeral_style || "western";
+  const digits = numeralStyle === "arabic"
+    ? new Intl.NumberFormat("ar-SA", { useGrouping: false }).format(1234567890)
+    : "0123456789";
+
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50 shadow-lg"
+      style={{ borderTop: "1px solid var(--border-normal)", backgroundColor: "var(--bg-surface)" }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 px-4 py-2 text-right"
+        style={{ color: "var(--text-primary)" }}
+      >
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded" style={{ backgroundColor: "var(--bg-overlay)" }}>
+          <Monitor className="h-3.5 w-3.5" style={{ color: "var(--text-muted)" }} />
+        </span>
+        <span className="text-xs font-black uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
+          معاينة حية
+        </span>
+        <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>
+          {currentFamily} · {currentWeight}
+        </span>
+        <ChevronDown className={`mr-auto h-4 w-4 transition-transform ${open ? "" : "-rotate-90"}`} style={{ color: "var(--text-muted)" }} />
+      </button>
+
+      {open && (
+        <div className="flex items-center gap-6 border-t px-4 py-3 flex-wrap" style={{ borderColor: "var(--border-subtle)" }}>
+          <div>
+            <span className="mb-0.5 block text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>النص</span>
+            <span style={{ fontFamily: currentFamily, fontWeight: currentWeight, fontSize: "18px", color: "var(--text-primary)" }}>
+              عرض تجريبي
+            </span>
+          </div>
+          <div>
+            <span className="mb-0.5 block text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>الأرقام</span>
+            <span style={{ fontFamily: currentNumFamily, fontWeight: currentNumWeight, fontSize: `${20 * scale}px`, color: "var(--text-primary)", letterSpacing: "0.02em" }}>
+              {digits}
+            </span>
+          </div>
+          <div>
+            <span className="mb-0.5 block text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>أزرار</span>
+            <div className="flex gap-2">
+              <button className="rounded px-3 py-1.5 text-[11px] font-black text-white" style={{ backgroundColor: "var(--primary)" }}>
+                أساسي
+              </button>
+              <button className="rounded px-3 py-1.5 text-[11px] font-black" style={{ border: "1px solid var(--border-normal)", color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)" }}>
+                عادي
+              </button>
+              <button className="rounded px-3 py-1.5 text-[11px] font-black" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
+                حذف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -469,8 +540,8 @@ export default function SettingsPage() {
             ))}
          </div>
 
-         {/* Content Area */}
-          <div className="p-6 md:p-8 overflow-y-auto w-full">
+          {/* Content Area */}
+           <div className="p-6 md:p-8 pb-16 overflow-y-auto w-full">
             {/* Critical settings warning — visible on every tab for live feedback */}
             <div className={activeTab !== "identity" ? "mb-6" : ""}>
               <CriticalSettingsWarning
@@ -875,6 +946,8 @@ export default function SettingsPage() {
             )}
          </div>
       </div>
+
+      {activeTab === "appearance" && <AppearancePreviewBar settings={settings} />}
 
       <PrintPreviewModal
         open={printPreview}

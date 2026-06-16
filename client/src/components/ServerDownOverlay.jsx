@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../services/api";
+import { resetApiBaseUrl } from "../services/apiBase";
+import { reportClientDiag } from "../services/diag";
 
 // Shows a fullscreen Arabic overlay when the server is unreachable.
 // Triggers from three sources:
@@ -35,6 +37,7 @@ export default function ServerDownOverlay() {
   const [countdown, setCountdown] = useState(4);
   const timerRef = useRef(null);
   const countdownRef = useRef(null);
+  const pingAttemptsRef = useRef(0);
 
   const clearTimers = () => {
     clearTimeout(timerRef.current);
@@ -43,8 +46,16 @@ export default function ServerDownOverlay() {
 
   const tryPing = async () => {
     setRetrying(true);
+    pingAttemptsRef.current += 1;
+    // The server may have restarted on a different port — drop the cached base URL so
+    // the health ping re-resolves the live port instead of hitting a dead one.
+    resetApiBaseUrl();
     try {
-      await api.get("/api/health", { timeout: 3000 });
+      // Generous timeout: a busy (but alive) server can take several seconds to answer
+      // because better-sqlite3 blocks the event loop during heavy queries.
+      await api.get("/api/health", { timeout: 8000 });
+      reportClientDiag({ type: "recovered", reason, pings: pingAttemptsRef.current });
+      pingAttemptsRef.current = 0;
       setDown(false);
       setRetrying(false);
       clearTimers();
@@ -70,6 +81,7 @@ export default function ServerDownOverlay() {
   };
 
   const showOverlay = (cause) => {
+    reportClientDiag({ type: "overlay-shown", reason: cause });
     setDown(true);
     setReason(cause);
     if (cause !== "restarting" && cause !== "fatal") {

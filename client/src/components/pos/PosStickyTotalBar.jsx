@@ -7,13 +7,14 @@ import {
 import HeldDropdown from "../../pages/pos/parts/HeldDropdown";
 import SearchDropdown from "../ui/SearchDropdown";
 import { useIsNarrowViewport } from "../../hooks/useIsNarrowViewport";
+import { formatNumber } from "../../utils/currency";
 
 function formatMoney(value, digits = 2) {
-  return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return formatNumber(value, { decimals: digits });
 }
 
 function formatBalance(value) {
-  return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return formatNumber(value, { decimals: 3 });
 }
 
 const COLOR_MAP = {

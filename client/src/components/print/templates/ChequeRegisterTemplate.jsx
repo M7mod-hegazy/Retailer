@@ -1,6 +1,7 @@
 ﻿import React from "react";
+import { formatNumber } from "../../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 const STATUS_LABELS = { pending: "معلق", deposited: "مودع", cleared: "محصّل", bounced: "مرتجع", replaced: "مستبدل" };
 const STATUS_COLORS = { pending: "#d97706", deposited: "#2563eb", cleared: "#16a34a", bounced: "#dc2626", replaced: "#7c3aed" };

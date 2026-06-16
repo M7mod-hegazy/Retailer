@@ -5,6 +5,9 @@ import {
   Package, UserPlus, Calendar, Loader2, ChevronDown, Filter,
 } from "lucide-react";
 import SearchDropdown from "../../components/ui/SearchDropdown";
+import ProductSearchField from "../../components/ui/ProductSearchField";
+import EntryItemThumb from "../../components/ui/EntryItemThumb";
+import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
@@ -23,9 +26,10 @@ import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 function formatDate(d) {
   if (!d) return "—";
@@ -42,7 +46,7 @@ function PriceDelta({ entered, baseline, baseLabel = "سعر الشراء", clas
   if (Math.abs(diff) < 0.005) return <span className={`text-[11px] font-bold text-slate-400 ${className}`}>مطابق {baseLabel}</span>;
   const up = diff > 0;
   return (
-    <span className={`text-[11px] font-bold font-mono ${up ? "text-emerald-600" : "text-rose-600"} ${className}`}>
+    <span className={`text-[11px] number-fmt ${up ? "text-emerald-600" : "text-rose-600"} ${className}`}>
       {up ? "▲ أعلى بـ" : "▼ أقل بـ"} {formatMoney(Math.abs(diff))} ({up ? "+" : "−"}{Math.abs(pct).toFixed(1)}%)
     </span>
   );
@@ -921,7 +925,7 @@ export default function PurchaseReturnFormPage() {
                 <div className="absolute top-0 right-0 w-1 h-full bg-slate-200" />
                 <div className="flex justify-between items-center text-2sm">
                   <span className="font-bold text-slate-500">الرصيد الحالي</span>
-                  <span className={`font-black font-mono ${supplierBalance > 0 ? "text-rose-600" : "text-amber-600"}`}>{formatMoney(supplierBalance)} ج.م</span>
+                  <span className={`number-fmt-primary ${supplierBalance > 0 ? "text-rose-600" : "text-amber-600"}`}>{formatMoney(supplierBalance)} ج.م</span>
                 </div>
                 {total > 0 && netCreditAdjustment !== 0 && (
                   <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 flex flex-col gap-1.5">
@@ -929,13 +933,13 @@ export default function PurchaseReturnFormPage() {
                       <span className="text-[11px] font-bold text-emerald-600">
                         {netCreditAdjustment > 0 ? "الخصم من رصيد المورد" : "إضافة لرصيد المورد"}
                       </span>
-                      <span className={`text-sm font-black font-mono ${netCreditAdjustment > 0 ? "text-emerald-700" : "text-rose-600"}`}>
+                      <span className={`text-sm number-fmt-primary ${netCreditAdjustment > 0 ? "text-emerald-700" : "text-rose-600"}`}>
                         {netCreditAdjustment > 0 ? "−" : "+"}{formatMoney(Math.abs(netCreditAdjustment))}
                       </span>
                     </div>
                     <div className="flex items-center justify-between border-t border-emerald-200/60 pt-1.5">
                       <span className="text-[11px] font-bold text-slate-600">الرصيد بعد الحفظ</span>
-                      <span className={`text-sm font-black font-mono ${predictedBalance > 0 ? "text-rose-600" : "text-amber-700"}`}>
+                      <span className={`text-sm number-fmt-primary ${predictedBalance > 0 ? "text-rose-600" : "text-amber-700"}`}>
                         {formatMoney(predictedBalance)}
                       </span>
                     </div>
@@ -968,12 +972,12 @@ export default function PurchaseReturnFormPage() {
                     <div className="flex flex-col gap-0.5">
                       <label className="text-[11px] font-bold text-slate-500">خصم الأمر الكامل</label>
                       <input readOnly value={formatMoney(loadedPurchase.discount || 0)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-2sm font-black font-mono text-rose-600 cursor-not-allowed" />
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-2sm number-fmt-primary text-rose-600 cursor-not-allowed" />
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <label className="text-[11px] font-bold text-slate-500">زيادة الأمر الكاملة</label>
                       <input readOnly value={formatMoney(loadedPurchase.increase || 0)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-2sm font-black font-mono text-emerald-600 cursor-not-allowed" />
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-center text-2sm number-fmt-primary text-emerald-600 cursor-not-allowed" />
                     </div>
                   </div>
                   <div className="rounded-lg bg-white/70 border border-amber-200/70 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 leading-relaxed">
@@ -997,7 +1001,7 @@ export default function PurchaseReturnFormPage() {
               <div className="flex flex-col gap-2 rounded-xl border border-amber-200/60 bg-amber-50/50 px-4 py-3 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-2sm font-bold text-slate-600">إجمالي الأصناف</span>
-                  <span className="text-sm font-black text-slate-700 font-mono">{formatMoney(subtotal)} ج.م</span>
+                  <span className="text-sm font-black text-slate-700 number-fmt">{formatMoney(subtotal)} ج.م</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-2sm font-bold text-rose-600 shrink-0">خصم على المرتجع</label>
@@ -1008,7 +1012,7 @@ export default function PurchaseReturnFormPage() {
                       onChange={e => { setAdjustmentTouched(true); setHeaderDiscount(Math.max(0, Number(e.target.value) || 0)); }}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className={`w-24 rounded-lg border px-2 py-1 text-center text-sm font-black font-mono outline-none focus:ring-1 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${discountExceedsCap ? "border-rose-400 bg-rose-50 text-rose-700 focus:ring-rose-200" : "border-rose-200 bg-white text-rose-700 focus:border-rose-400 focus:ring-rose-100"}`}
+                      className={`w-24 rounded-lg border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${discountExceedsCap ? "border-rose-400 bg-rose-50 text-rose-700 focus:ring-rose-200" : "border-rose-200 bg-white text-rose-700 focus:border-rose-400 focus:ring-rose-100"}`}
                     />
                     <span className="text-[11px] text-slate-400 shrink-0">ج.م</span>
                   </div>
@@ -1022,7 +1026,7 @@ export default function PurchaseReturnFormPage() {
                       onChange={e => { setAdjustmentTouched(true); setHeaderIncrease(Math.max(0, Number(e.target.value) || 0)); }}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-center text-sm font-black font-mono text-emerald-700 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                      className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-center text-sm number-fmt-primary text-emerald-700 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                     />
                     <span className="text-[11px] text-slate-400 shrink-0">ج.م</span>
                   </div>
@@ -1224,74 +1228,38 @@ export default function PurchaseReturnFormPage() {
             <div className="flex flex-1 flex-col gap-4 overflow-hidden">
               {!isLocked && (
                 <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
-                  <div className="grid grid-cols-[3fr_110px_100px_80px_100px_160px_80px] gap-2 items-end">
+                  <div className="entry-bar">
+                    <EntryItemThumb item={stagingItem} />
                     {/* Item search */}
-                    <div className="relative flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-600">الصنف</label>
-                      <div className="flex items-center gap-1">
-                        <div className={`relative flex flex-1 items-center gap-2 rounded-sm border px-2.5 h-[37px] ${lookupOpen ? "border-slate-800 bg-white" : "border-slate-300 bg-slate-50"}`}>
-                          <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                          <input ref={itemInputRef} value={itemQuery}
-                            onChange={e => { setItemQuery(e.target.value); setLookupOpen(true); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
-                            onFocus={e => { setLookupOpen(true); e.target.select(); }}
-                            placeholder="ابحث عن صنف بالاسم أو الكود..."
-                            className="flex-1 bg-transparent text-2sm font-bold text-slate-800 outline-none placeholder:text-slate-400"
-                            onKeyDown={e => {
-                              if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, itemResults.length - 1)); }
-                              else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
-                              else if (e.key === "Enter") {
-                                e.preventDefault();
-                                if (itemResults.length > 0) { selectItemForStaging(itemResults[activeIndex >= 0 ? activeIndex : 0]); }
-                                else if (itemSearchActiveRef.current) { pendingPickRef.current = true; }
-                              }
-                              else if (e.key === "Escape") { setLookupOpen(false); setActiveIndex(-1); }
-                            }} />
-                          {stagingItem && (
-                            <button onClick={() => { setStagingItem(null); setStagingCost(""); setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
-                              className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
-                          )}
-                          {lookupOpen && itemResults.length > 0 && (
-                            <SearchDropdown
-                              items={itemResults.map(item => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.purchase_price || item.unit_cost || 0)} ج.م` }))}
-                              onPick={selectItemForStaging}
-                              activeIndex={activeIndex}
-                              query={itemQuery}
-                              onLoadMore={loadMoreItems}
-                              hasMoreFromServer={itemHasMore}
-                              isLoadingMore={isLoadingMoreItems}
-                            />
-                          )}
-                        </div>
-                        <button onClick={() => setAdvancedSearchOpen(true)}
-                          className="flex h-[37px] w-[37px] shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-                          title="بحث متقدم">
-                          <Filter className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Warehouse dropdown */}
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-600">المستودع</label>
-                      <select ref={stagingWHRef} value={stagingWarehouseId} onChange={e => setStagingWarehouseId(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: stagingQtyRef, prevRef: itemInputRef })}
-                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800">
-                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                      </select>
-                    </div>
-
-                    {/* Unit — read-only preview */}
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                      <div className="w-full h-[37px] border border-slate-200 rounded-sm bg-slate-100 py-2 px-2 text-2sm font-bold text-slate-500 flex items-center">
-                        {stagingItem
-                          ? (units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية")
-                          : "—"}
-                      </div>
+                    <div className="entry-field entry-field--item">
+                      <label className="entry-label">الصنف</label>
+                      <ProductSearchField
+                        ref={itemInputRef}
+                        query={itemQuery}
+                        onQueryChange={(val) => { setItemQuery(val); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
+                        results={itemResults.map(item => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.purchase_price || item.unit_cost || 0)} ج.م` }))}
+                        onPick={selectItemForStaging}
+                        onEnterNoResults={() => { if (itemSearchActiveRef.current) pendingPickRef.current = true; }}
+                        onClear={() => { setStagingItem(null); setStagingCost(""); setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
+                        selectedItem={stagingItem}
+                        placeholder="ابحث عن صنف بالاسم أو الكود..."
+                        onLoadMore={loadMoreItems}
+                        hasMore={itemHasMore}
+                        isLoadingMore={isLoadingMoreItems}
+                        trailing={(
+                          <button onClick={() => setAdvancedSearchOpen(true)}
+                            className="entry-control flex w-[38px] shrink-0 items-center justify-center !p-0"
+                            style={{ color: "var(--text-secondary)" }}
+                            title="بحث متقدم">
+                            <Filter className="h-4 w-4" />
+                          </button>
+                        )}
+                      />
                     </div>
 
                     {/* Qty input */}
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-600">الكمية</label>
+                    <div className="entry-field entry-field--qty">
+                      <label className="entry-label">الكمية</label>
                       <input ref={stagingQtyRef} type="number"
                         min={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "0.001"}
                         step={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "any"}
@@ -1301,52 +1269,51 @@ export default function PurchaseReturnFormPage() {
                           setStagingQty(u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value);
                         }}
                         onFocus={e => e.target.select()} onKeyDown={e => handleKeyDown(e, { nextRef: stagingCostRef, prevRef: stagingWHRef })}
-                        className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
+                        className="entry-control text-center" />
                     </div>
 
                     {/* Cost input */}
-                    <div className="flex flex-col gap-0.5">
-                      <label className="text-[11px] font-bold text-slate-600">سعر الشراء (المرتجع)</label>
-                      <input ref={stagingCostRef} type="number" step="any" value={stagingCost} onChange={e => setStagingCost(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleKeyDown(e, { nextRef: addBtnRef, prevRef: stagingQtyRef, onEnter: addStagingToCart })}
-                        className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black outline-none text-center transition-colors
-                          ${stagingItem && Number(stagingItem.purchase_price) > 0 && Number(stagingCost) > 0 && Number(stagingCost) < Number(stagingItem.purchase_price)
-                            ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
-                            : "border-slate-300 bg-slate-50 text-slate-800 focus:border-slate-800"}`} />
-                      <div className="h-[18px] flex items-center justify-center gap-2 rounded-sm bg-slate-100 border border-slate-200 px-1 overflow-hidden">
-                        {stagingItem ? (
-                          <>
-                            <span className="text-[9px] font-mono text-slate-400 shrink-0">شراء {Number(stagingItem.purchase_price || 0).toFixed(2)} · بيع {Number(stagingItem.sale_price || 0).toFixed(2)}</span>
-                            <PriceDelta entered={stagingCost} baseline={stagingItem.purchase_price} className="shrink-0" />
-                          </>
-                        ) : (
-                          <span className="text-[11px] font-mono text-slate-400">—</span>
-                        )}
+                    <div className="entry-field entry-field--price">
+                      <label className="entry-label">سعر الشراء (المرتجع)</label>
+                      <input ref={stagingCostRef} type="number" step="any" value={stagingCost} onChange={e => setStagingCost(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleKeyDown(e, { nextRef: stagingWHRef, prevRef: stagingQtyRef })}
+                        title={stagingItem ? `شراء ${Number(stagingItem.purchase_price || 0).toFixed(2)} · بيع ${Number(stagingItem.sale_price || 0).toFixed(2)}` : undefined}
+                        className={`entry-control text-center ${stagingItem && Number(stagingItem.purchase_price) > 0 && Number(stagingCost) > 0 && Number(stagingCost) < Number(stagingItem.purchase_price) ? "entry-control--error" : ""}`} />
+                      {stagingItem && (
+                        <div className="flex items-center justify-center gap-2 overflow-hidden">
+                          <span className="text-[9px] font-mono shrink-0 truncate" style={{ color: "var(--text-muted)" }}>شراء {Number(stagingItem.purchase_price || 0).toFixed(2)} · بيع {Number(stagingItem.sale_price || 0).toFixed(2)}</span>
+                          <PriceDelta entered={stagingCost} baseline={stagingItem.purchase_price} className="shrink-0" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Unit — read-only preview */}
+                    <div className="entry-field entry-field--unit">
+                      <label className="entry-label">الوحدة</label>
+                      <div className="entry-control entry-control--readonly">
+                        <span className="truncate">{stagingItem ? (units.find(u => String(u.id) === String(stagingUnitId))?.name || "أساسية") : "—"}</span>
                       </div>
                     </div>
 
-                    {/* Warehouse stock table */}
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-600">المخزون الحالي</label>
-                      <div className="border border-slate-300 rounded-sm bg-slate-50 overflow-y-auto outline-none" style={{height:"37px"}}>
-                        <table className="w-full text-[11px] border-collapse">
-                          <tbody>
-                            {warehouses.map(w => {
-                              const qty = stagingItem && stockLevels[stagingItem.id] ? (stockLevels[stagingItem.id][w.id] || 0) : 0;
-                              return (
-                                <tr key={w.id} className="border-b border-slate-200 last:border-0 hover:bg-slate-100">
-                                  <td className="px-1.5 py-0.5 font-bold text-slate-600 truncate">{w.name}</td>
-                                  <td className={`px-1.5 py-0.5 font-mono text-center ${qty > 0 ? "text-amber-600 font-black" : "text-slate-400"}`}>{qty}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                    {/* Warehouse — always-visible stock table (also the source picker) */}
+                    <div className="entry-field entry-field--wh">
+                      <label className="entry-label">المستودع / المخزون</label>
+                      <WarehouseSelect
+                        ref={stagingWHRef}
+                        value={stagingWarehouseId}
+                        onChange={(id) => setStagingWarehouseId(id)}
+                        emptyLabel="لا يوجد مخازن"
+                        onKeyDown={e => handleKeyDown(e, { nextRef: addBtnRef, prevRef: stagingCostRef })}
+                        options={warehouses.map(w => {
+                          const qty = stagingItem && stockLevels[stagingItem.id] ? (stockLevels[stagingItem.id][w.id] || 0) : 0;
+                          const tone = qty <= 0 ? "out" : qty < 5 ? "low" : "normal";
+                          return { id: w.id, name: w.name, qty, tone };
+                        })}
+                      />
                     </div>
 
                     {/* Add button */}
                     <button ref={addBtnRef} onClick={addStagingToCart} disabled={!stagingItem}
-                      className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-amber-600 px-4 text-2sm font-bold text-white hover:bg-amber-700 disabled:opacity-40 transition-all shadow-sm">
+                      className="entry-add-btn">
                       <Plus className="h-4 w-4" /> إضافة
                     </button>
                   </div>
@@ -1405,7 +1372,7 @@ export default function PurchaseReturnFormPage() {
                                   if (current === undefined) return null;
                                   const after = current - l.quantity;
                                   return (
-                                    <div className="flex items-center gap-1 text-[11px] font-mono font-black">
+                                    <div className="flex items-center gap-1 text-[11px] number-fmt-primary">
                                       <span className="text-slate-400">{current}</span>
                                       <span className="text-slate-300">→</span>
                                       <span className={after >= 0 ? "text-amber-600" : "text-rose-500"}>{after}</span>
@@ -1420,7 +1387,7 @@ export default function PurchaseReturnFormPage() {
                           <td className="px-3 py-3 text-center text-2sm font-bold text-slate-500">{l.unit_name}</td>
                           <td className="px-3 py-2.5 text-center">
                             <div
-                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
+                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm number-fmt text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر البيع — للمعاينة فقط"
                             >
                               {l.sale_price > 0 ? formatMoney(l.sale_price) : "—"}
@@ -1428,7 +1395,7 @@ export default function PurchaseReturnFormPage() {
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <div
-                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-mono font-bold text-slate-400 cursor-not-allowed select-none min-w-[80px]"
+                              className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm number-fmt text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر الشراء — للمعاينة فقط"
                             >
                               {l.purchase_price > 0 ? formatMoney(l.purchase_price) : "—"}
@@ -1440,14 +1407,14 @@ export default function PurchaseReturnFormPage() {
                               <input type="number" step="any" min="0" value={l.unit_cost}
                                 onChange={e => updateCartPrice(l.key, e.target.value)}
                                 onFocus={e => e.target.select()}
-                                className={`w-24 rounded border px-2 py-1 text-center text-sm font-black font-mono outline-none focus:ring-1 transition-colors
+                                className={`w-24 rounded border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 transition-colors
                                   ${l.purchase_price > 0 && Number(l.unit_cost) > 0 && Number(l.unit_cost) < l.purchase_price
                                     ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
                                     : "border-slate-200 bg-slate-50 text-slate-800 focus:border-amber-400 focus:bg-white focus:ring-amber-200"}`} />
                                 <PriceDelta entered={l.unit_cost} baseline={l.purchase_price} />
                               </div>
                             ) : (
-                              <span className="text-sm font-black text-slate-700 font-mono">{formatMoney(l.unit_cost)}</span>
+                              <span className="text-sm font-black text-slate-700 number-fmt">{formatMoney(l.unit_cost)}</span>
                             )}
                           </td>
                           <td className="px-3 py-3 text-center">
@@ -1459,7 +1426,7 @@ export default function PurchaseReturnFormPage() {
                               </div>
                             ) : <span className="text-sm font-black text-slate-700">{l.quantity}</span>}
                           </td>
-                          <td className="px-3 py-3 text-center text-sm font-black text-amber-700 font-mono">{formatMoney(l.unit_cost * l.quantity)}</td>
+                          <td className="px-3 py-3 text-center text-sm font-black text-amber-700 number-fmt">{formatMoney(l.unit_cost * l.quantity)}</td>
                           {!isLocked && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button></td>}
                         </tr>
                       ))}
@@ -1532,7 +1499,7 @@ export default function PurchaseReturnFormPage() {
                                 <td className="px-3 py-3 text-sm font-bold text-slate-800">{l.item_name}</td>
                                 <td className="px-3 py-3 text-center">
                                   <div className="flex items-center justify-center gap-1">
-                                    <span className={`text-2sm font-mono ${l.purchase_price > 0 && l.unit_cost < l.purchase_price ? "text-rose-600 font-bold" : "text-slate-600"}`}>
+                                    <span className={`text-2sm number-fmt ${l.purchase_price > 0 && l.unit_cost < l.purchase_price ? "text-rose-600 font-bold" : "text-slate-600"}`}>
                                       {formatMoney(l.unit_cost)}
                                     </span>
                                     {l.purchase_price > 0 && l.unit_cost < l.purchase_price && (

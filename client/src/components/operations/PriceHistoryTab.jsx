@@ -129,8 +129,8 @@ function HistoryTable({ rows, loading }) {
               <td className="px-3 py-2 font-mono text-[11px] font-black text-indigo-700 whitespace-nowrap">{r.item_code || "—"}</td>
               <td className="px-3 py-2 font-semibold text-slate-700">{r.item_name}</td>
               <td className="px-3 py-2 text-slate-500">{FIELD_LABELS[r.field] ?? r.field}</td>
-              <td className="px-3 py-2 font-mono text-slate-500">{fmt(r.old_value)}</td>
-              <td className="px-3 py-2 font-mono font-bold text-slate-800">{fmt(r.new_value)}</td>
+              <td className="px-3 py-2 number-fmt text-slate-500">{fmt(r.old_value)}</td>
+              <td className="px-3 py-2 number-fmt text-slate-800">{fmt(r.new_value)}</td>
               <td className="px-3 py-2"><DiffChip oldVal={r.old_value} newVal={r.new_value} /></td>
               <td className="px-3 py-2">
                 <Badge label={SOURCE_LABELS[r.source] ?? r.source ?? "—"} colorClass={SOURCE_COLORS[r.source]} />
@@ -187,8 +187,8 @@ function OverridesTable({ rows, loading }) {
               </td>
               <td className="px-3 py-2 font-mono text-[11px] font-black text-indigo-700 whitespace-nowrap">{r.item_code || "—"}</td>
               <td className="px-3 py-2 font-semibold text-slate-700">{r.item_name}</td>
-              <td className="px-3 py-2 font-mono font-bold text-slate-800">{fmt(r.used_price)}</td>
-              <td className="px-3 py-2 font-mono text-slate-500">{fmt(r.master_price_at_time)}</td>
+              <td className="px-3 py-2 number-fmt text-slate-800">{fmt(r.used_price)}</td>
+              <td className="px-3 py-2 number-fmt text-slate-500">{fmt(r.master_price_at_time)}</td>
               <td className="px-3 py-2">
                 <DiffChip oldVal={r.master_price_at_time} newVal={r.used_price} />
               </td>
@@ -322,7 +322,7 @@ function PriceSparkline({ label, points, currentVal }) {
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-3">
         <p className="text-[11px] font-bold text-slate-400 uppercase mb-1">{label}</p>
-        <p className="text-xl font-black text-slate-800 font-mono">{fmt(currentVal)}</p>
+        <p className="text-xl number-fmt-primary text-slate-800">{fmt(currentVal)}</p>
         <p className="text-[11px] text-slate-400 mt-1">تغيير واحد فقط</p>
       </div>
     );
@@ -343,11 +343,11 @@ function PriceSparkline({ label, points, currentVal }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3">
       <p className="text-[11px] font-bold text-slate-400 uppercase mb-1">{label}</p>
-      <p className="text-xl font-black text-slate-800 font-mono">{fmt(currentVal)}</p>
+      <p className="text-xl number-fmt-primary text-slate-800">{fmt(currentVal)}</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 mt-1" preserveAspectRatio="none">
         <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <div className="flex justify-between text-[9px] text-slate-400 font-mono mt-0.5">
+      <div className="flex justify-between text-[9px] text-slate-400 number-fmt mt-0.5">
         <span>{fmt(min)}</span>
         <span>{fmt(max)}</span>
       </div>
@@ -388,7 +388,7 @@ function ProductDetail({ data }) {
           {[["سعر البيع", item.sale_price], ["سعر الشراء", item.purchase_price], ["سعر الجملة", item.wholesale_price]].map(([label, val]) => (
             <div key={label} className="text-center">
               <p className="text-[11px] text-slate-400 font-bold">{label}</p>
-              <p className="text-xl font-black text-slate-800 font-mono">{fmt(val)}</p>
+              <p className="text-xl number-fmt-primary text-slate-800">{fmt(val)}</p>
             </div>
           ))}
         </div>
@@ -436,8 +436,8 @@ function ProductDetail({ data }) {
                       {isBaseline ? "عند الإنشاء" : r.changed_at?.slice(0, 16)}
                     </td>
                     <td className="px-3 py-2 text-slate-500">{FIELD_LABELS[r.field] ?? r.field}</td>
-                    <td className={`px-3 py-2 font-mono ${isBaseline ? "text-slate-300" : "text-slate-500"}`}>{fmt(r.old_value)}</td>
-                    <td className={`px-3 py-2 font-mono font-bold ${isBaseline ? "text-slate-500" : "text-slate-800"}`}>{fmt(r.new_value)}</td>
+                    <td className={`px-3 py-2 number-fmt ${isBaseline ? "text-slate-300" : "text-slate-500"}`}>{fmt(r.old_value)}</td>
+                    <td className={`px-3 py-2 number-fmt ${isBaseline ? "text-slate-500" : "text-slate-800"}`}>{fmt(r.new_value)}</td>
                     <td className="px-3 py-2">
                       {isBaseline
                         ? <span className="text-[11px] text-slate-400 italic">—</span>

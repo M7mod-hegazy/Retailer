@@ -25,6 +25,7 @@ import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
 import { SCOPE_OPTIONS } from "./reportsCenterConfig";
+import { formatNumber } from "../../utils/currency";
 
 function formatDate(date) {
   return date.toISOString().slice(0, 10);
@@ -718,11 +719,11 @@ export default function ReportWorkspacePage() {
     
     // Take top 3 max
     entries.slice(0, 3).forEach(([k, v]) => {
-      out.push({ label: allColumns.find((c) => c.id === k)?.header || prettifyLabel(k), value: v.toLocaleString("en-US", { maximumFractionDigits: 2 }) });
+      out.push({ label: allColumns.find((c) => c.id === k)?.header || prettifyLabel(k), value: formatNumber(v) });
     });
     
     if (out.length === 0) {
-      out.push({ label: "عدد السجلات", value: rows.length.toLocaleString("en-US") });
+      out.push({ label: "عدد السجلات", value: formatNumber(rows.length, { decimals: 0 }) });
     }
     return out;
   }, [rows, columnTotals, allColumns]);
@@ -1100,7 +1101,7 @@ export default function ReportWorkspacePage() {
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200 shadow-sm text-zinc-500"><LayoutList size={12} /></span>
                 <span className="text-sm font-black text-zinc-900">سجلات التقرير التفصيلية</span>
-                {!isLoading && <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("en-US")} صف</span>}
+                {!isLoading && <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{formatNumber(totalRows, { decimals: 0 })} صف</span>}
               </div>
               <div className="flex items-center gap-3">
                 {/* Column settings */}
@@ -1165,7 +1166,7 @@ export default function ReportWorkspacePage() {
                           if (val == null || val === "") return <span className="text-zinc-300">—</span>;
                           const num = Number(val);
                           const isNum = !isNaN(num) && String(val).trim() !== "";
-                          if (isNum) return (<span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>);
+                          if (isNum) return (<span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{formatNumber(num)}</span>);
                           return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
                         },
                   }))}
@@ -1187,7 +1188,7 @@ export default function ReportWorkspacePage() {
                     >
                       {hasVal ? (
                         <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
-                          {Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                          {formatNumber(val)}
                         </span>
                       ) : (
                         <span className="text-[11px] font-bold text-emerald-600">الإجمالي</span>
@@ -1202,7 +1203,7 @@ export default function ReportWorkspacePage() {
             {!isLoading && totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 bg-zinc-50 shrink-0">
                 <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500">
-                  <span>إجمالي الصفحات: {totalPages.toLocaleString("en-US")}</span>
+                  <span>إجمالي الصفحات: {formatNumber(totalPages, { decimals: 0 })}</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-xl p-1 shadow-sm">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 hover:text-zinc-900 transition-all"><ChevronRight size={16} /></button>

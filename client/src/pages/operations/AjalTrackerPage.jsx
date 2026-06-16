@@ -10,8 +10,9 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import AjalStatementTemplate from "../../components/print/templates/AjalStatementTemplate";
 import AjalScheduleTemplate from "../../components/print/templates/AjalScheduleTemplate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const STATUS_MAP = {
@@ -178,7 +179,7 @@ export default function AjalTrackerPage() {
   const KPI = ({ label, value, sub, color = "slate" }) => (
     <div className={`rounded-xl bg-white border border-${color}-200 p-4 shadow-sm`}>
       <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1">{label}</div>
-      <div className={`text-[22px] font-black font-mono text-${color}-700`}>{value}</div>
+      <div className={`text-[22px] number-fmt-primary text-${color}-700`}>{value}</div>
       {sub && <div className="text-[11px] text-slate-400 font-bold mt-0.5">{sub}</div>}
     </div>
   );
@@ -280,9 +281,9 @@ export default function AjalTrackerPage() {
                         {getAgingLabel(d) && <div className="mt-1 text-[11px] font-black text-rose-600">{getAgingLabel(d)}</div>}
                       </td>
                       <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{d.invoice_no || "—"}</td>
-                      <td className="px-4 py-3 font-black font-mono">{fmt(d.original_amount)}</td>
-                      <td className="px-4 py-3 font-mono text-emerald-700">{fmt(d.paid_amount)}</td>
-                      <td className="px-4 py-3 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
+                      <td className="px-4 py-3 number-fmt-primary">{fmt(d.original_amount)}</td>
+                      <td className="px-4 py-3 number-fmt-primary text-emerald-700">{fmt(d.paid_amount)}</td>
+                      <td className="px-4 py-3 number-fmt-primary text-rose-700">{fmt(d.remaining)}</td>
                       <td className={`px-4 py-3 text-[11px] font-black ${d.status === "overdue" ? "text-rose-600" : "text-slate-500"}`}>{fmtDate(d.due_date)}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${STATUS_MAP[d.status]?.cls || "bg-slate-100 text-slate-600"}`}>
@@ -338,7 +339,7 @@ export default function AjalTrackerPage() {
             ].map(({ label, val, bold }) => (
               <div key={label} className="text-center">
                 <div className="text-[11px] font-black text-slate-400 uppercase">{label}</div>
-                <div className={`text-sm font-black font-mono ${bold ? "text-rose-700" : "text-slate-700"}`}>{val}</div>
+                <div className={`text-sm number-fmt-primary ${bold ? "text-rose-700" : "text-slate-700"}`}>{val}</div>
               </div>
             ))}
           </div>
@@ -411,7 +412,7 @@ export default function AjalTrackerPage() {
                 {selected.remaining > 0 && schedForm.installments > 0 && (
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
                     <div className="text-[11px] text-amber-700 font-bold">قسط تقريبي</div>
-                    <div className="text-[18px] font-black font-mono text-amber-800">
+                    <div className="text-[18px] number-fmt-primary text-amber-800">
                       {fmt(selected.remaining / schedForm.installments)} ج.م
                     </div>
                   </div>
@@ -430,7 +431,7 @@ export default function AjalTrackerPage() {
                         <div key={s.id} className={`flex items-center justify-between rounded-lg px-3 py-2 text-[11px] ${s.status === "paid" ? "bg-emerald-50" : "bg-slate-50"}`}>
                           <span className="font-black text-slate-600">قسط {s.installment_no}</span>
                           <span className="text-slate-500">{fmtDate(s.due_date)}</span>
-                          <span className="font-black font-mono">{fmt(s.amount)}</span>
+                          <span className="number-fmt-primary">{fmt(s.amount)}</span>
                           <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${s.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
                             {s.status === "paid" ? "مسدد" : "معلق"}
                           </span>
@@ -469,7 +470,7 @@ export default function AjalTrackerPage() {
             </div>
             <div className="mb-3 rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
               <div className="text-[11px] font-black text-slate-400">إجمالي المحدد</div>
-              <div className="text-[20px] font-black font-mono text-slate-900">
+              <div className="text-[20px] number-fmt-primary text-slate-900">
                 {fmt(debts.filter((debt) => bulkSelected.includes(debt.id)).reduce((sum, debt) => sum + Number(debt.remaining || 0), 0))} ج.م
               </div>
             </div>

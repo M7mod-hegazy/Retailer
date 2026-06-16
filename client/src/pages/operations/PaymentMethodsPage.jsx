@@ -11,8 +11,9 @@ import PaymentMethodsReportTemplate from "../../components/print/templates/Payme
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 const CATEGORIES = [
   { value: "cash", label: "نقدي", icon: "💵" },
@@ -131,7 +132,7 @@ function MethodsTab() {
           </div>
         ) : (
           <div className="text-[11px] font-black tracking-widest uppercase text-slate-400">
-            تداولات الشهر <span className="text-sm font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg ml-2">{m.monthly_count || 0}</span>
+            تداولات الشهر <span className="text-sm number-fmt text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg ml-2">{m.monthly_count || 0}</span>
           </div>
         )}
 
@@ -320,7 +321,7 @@ function TransactionsTab() {
           <div key={label} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-full px-5 py-2.5">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
             <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{label}</span>
-            <span className={`font-mono text-[15px] font-black ${color}`}>{fmt(val)}</span>
+            <span className={`number-fmt-primary text-[15px] ${color}`}>{fmt(val)}</span>
             <span className="text-[11px] text-slate-400 font-bold">ج.م</span>
           </div>
         ))}
@@ -409,7 +410,7 @@ function TransactionsTab() {
                         <span className="text-sm font-black text-slate-800 tracking-tight">{r.doc_type || "—"}</span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="font-mono text-[18px] font-black text-slate-900 tabular-nums tracking-tighter">{fmt(r.amount)}</span>
+                        <span className="number-fmt-primary text-[18px] text-slate-900 tracking-tighter">{fmt(r.amount)}</span>
                         <span className="text-[11px] text-slate-400 font-bold ml-1">ج.م</span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">

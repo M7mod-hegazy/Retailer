@@ -1,11 +1,23 @@
 const path = require("path");
+const { logError } = require("./crashLogger");
 
 let serverRef = null;
 let stopping = false;
 let restartCount = 0;
-const MAX_RESTARTS = 3;
+// restartCount is reset to 0 after any successful (re)start, so this is the number of
+// CONSECUTIVE failed restart attempts before giving up — not a lifetime cap. Kept
+// generous so a transient crash (brief DB lock, slow disk) doesn't strand the user on
+// the unrecoverable "fatal" screen.
+const MAX_RESTARTS = 5;
 
 function notifyRenderer(status, message = "") {
+  // Persist every transition so a random production disconnect is explainable from the
+  // crash log (%ProgramData%\ElHegaziRetailer\logs), distinguishing crash vs restart vs
+  // fatal vs recovery, with the current port for spotting a port-mismatch.
+  logError(
+    `server:status → ${status}`,
+    `${message || ""} (port=${process.env.ACTUAL_PORT || "?"}, restartCount=${restartCount})`,
+  );
   try {
     const { BrowserWindow } = require("electron");
     BrowserWindow.getAllWindows().forEach((win) => {
@@ -69,6 +81,11 @@ function startEmbeddedServer() {
       .startServer()
       .then((server) => {
         serverRef = server;
+
+        try {
+          const addr = server.address();
+          logError("server:started", `listening on port ${addr && addr.port} (ACTUAL_PORT=${process.env.ACTUAL_PORT || "?"})`);
+        } catch (_e) {}
 
         // Notify the renderer if the http.Server closes while the app is still running,
         // then attempt an automatic restart.

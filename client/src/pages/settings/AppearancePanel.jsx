@@ -3,6 +3,7 @@ import { Edit3, Monitor, Type } from "lucide-react";
 import FontSettingsTab from "./FontSettingsTab";
 import ColorThemeTab from "./ColorThemeTab";
 import { applyColorTheme } from "../../utils/applyColorTheme";
+import { applyFontSettings } from "../../utils/fontSettings";
 import { SCALE_MAP as SIZE_MAP, NUMBER_SCALE_MAP as SCALE_VALUE_MAP } from "../../utils/fontSettings";
 
 export default function AppearancePanel({ settings, onChange }) {
@@ -10,8 +11,19 @@ export default function AppearancePanel({ settings, onChange }) {
 
   useEffect(() => {
     applyColorTheme(settings);
+    applyFontSettings(settings);
     prevTheme.current = settings.color_theme;
-  }, [settings.color_theme, settings.custom_theme_vars]);
+  }, [
+    settings.color_theme,
+    settings.custom_theme_vars,
+    settings.font_family,
+    settings.font_size,
+    settings.font_weight,
+    settings.number_font_family,
+    settings.number_font_scale,
+    settings.numeral_style,
+    settings.number_font_weight,
+  ]);
 
   return (
     <div className="space-y-10">
@@ -56,7 +68,7 @@ export default function AppearancePanel({ settings, onChange }) {
       {/* ═══ UNIFIED LIVE PREVIEW ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-3">
-          <Monitor className="h-4 w-4" style={{ color: "var(--text-muted)" }} />
+          <Monitor className="h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} />
           <h3 className="text-sm font-black uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
             معاينة حية
           </h3>
@@ -67,10 +79,6 @@ export default function AppearancePanel({ settings, onChange }) {
             خط + ألوان
           </span>
         </div>
-        <p className="text-[12px] font-bold mb-4 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-          يعكس الخط ونظام الألوان المختار — جميع العناصر تتغير تلقائياً عند اختيار نمط جديد.
-        </p>
-
         <UnifiedPreview settings={settings} />
       </section>
     </div>
@@ -95,7 +103,7 @@ function UnifiedPreview({ settings }) {
 
   return (
     <div
-      className="rounded-xl p-6 space-y-6"
+      className="rounded-xl p-4 space-y-3"
       style={{
         fontFamily: currentFamily,
         fontSize: `${previewPx}px`,
@@ -106,17 +114,13 @@ function UnifiedPreview({ settings }) {
         boxShadow: "var(--shadow-card)",
       }}
     >
-      {/* Section label */}
-      <PreviewSectionLabel title="نصوص تجريبية" />
-
       {/* Body text */}
       <div>
-        <p className="text-[1em] font-bold" style={{ color: "var(--text-primary)", marginBottom: "0.25rem" }}>
-          مرحباً بكم في نظام الهجازي لإدارة نقاط البيع
+        <p className="text-[0.9375em] font-bold" style={{ color: "var(--text-primary)" }}>
+          مرحباً بكم في نظام الهجازي
         </p>
-        <p className="text-[0.9375em] font-medium" style={{ color: "var(--text-secondary)" }}>
-          هذا النص يستخدم لعرض شكل الخط الجديد والألوان قبل تطبيقها على النظام.
-          يوضح المزيج بين النص العربي والأرقام في السياقات المختلفة.
+        <p className="text-[0.8125em] font-medium" style={{ color: "var(--text-secondary)" }}>
+          مزيج النص العربي والأرقام في السياقات المختلفة.
         </p>
       </div>
 

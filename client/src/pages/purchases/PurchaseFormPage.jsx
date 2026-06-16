@@ -18,6 +18,9 @@ import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
+import ProductSearchField from "../../components/ui/ProductSearchField";
+import EntryItemThumb from "../../components/ui/EntryItemThumb";
+import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import { scoredFilterRows } from "../../utils/search";
 import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
@@ -32,18 +35,12 @@ import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import PurchaseProfitModal from "../../components/purchases/PurchaseProfitModal";
+import { formatNumber } from "../../utils/currency";
 
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
-function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3, maximumFractionDigits: 3,
-  });
+  return formatNumber(value, { decimals: 3 });
 }
 
 function formatArabicDateTime(date) {
@@ -126,7 +123,7 @@ function PurchasePreviewModal({ purchase, onClose }) {
                       <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
-                      <td className="px-3 py-2.5 text-center font-mono font-black text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
+                      <td className="px-3 py-2.5 text-center number-fmt-primary text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
                       <td className="px-3 py-2.5 text-center">
                         {returned > 0 ? <span className="text-amber-600 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
                       </td>
@@ -142,18 +139,18 @@ function PurchasePreviewModal({ purchase, onClose }) {
               {Number((detail || purchase).discount) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">خصم</span>
-                  <span className="font-black font-mono text-rose-600">- {formatMoney((detail || purchase).discount)}</span>
+                  <span className="number-fmt-primary text-rose-600">- {formatMoney((detail || purchase).discount)}</span>
                 </div>
               )}
               {Number((detail || purchase).increase) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">إضافة</span>
-                  <span className="font-black font-mono text-emerald-600">+ {formatMoney((detail || purchase).increase)}</span>
+                  <span className="number-fmt-primary text-emerald-600">+ {formatMoney((detail || purchase).increase)}</span>
                 </div>
               )}
               <div className="flex justify-between border-t border-slate-200 pt-1.5">
                 <span className="font-black text-slate-800">الإجمالي</span>
-                <span className="font-black font-mono text-slate-900">{formatMoney((detail || purchase).total)} ج.م</span>
+                <span className="number-fmt-primary text-slate-900">{formatMoney((detail || purchase).total)} ج.م</span>
               </div>
             </div>
             {detail?.payments?.length > 0 && (
@@ -164,7 +161,7 @@ function PurchasePreviewModal({ purchase, onClose }) {
                   return (
                     <div key={i} className="flex justify-between items-center">
                       <span className="text-slate-600">{p.method_name || p.method_type || "—"}</span>
-                      <span className={`font-black font-mono ${PSTYLE[p.method_type] || "text-slate-800"}`}>{formatMoney(p.amount)}</span>
+                      <span className={`number-fmt-primary ${PSTYLE[p.method_type] || "text-slate-800"}`}>{formatMoney(p.amount)}</span>
                     </div>
                   );
                 })}
@@ -1115,50 +1112,40 @@ export default function PurchaseFormPage() {
           {/* Quick Entry Bar — hidden in locked mode */}
           {!isLocked && (
             <section data-help="items-section" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
-              <div className="grid grid-cols-[3fr_80px_100px_100px_100px_100px_160px_80px] gap-2 items-end">
+              <div className="entry-bar">
+                <EntryItemThumb item={selectedItem} onView={(imgs) => { const u = resolveImageUrl(imgs[0]); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }} />
                 {/* Item search */}
-                <div data-help="search-bar" className="relative flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-600">الصنف</label>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="relative flex-1">
-                      <SearchInput
-                        ref={itemInputRef}
-                        value={itemQuery}
-                        onChange={(val) => { setItemQuery(val); setLookupOpen(true); setSelectedItem(null); }}
-                        onFocus={(e) => { setLookupOpen(true); e.target.select(); }}
-                        onBlur={() => setTimeout(() => setLookupOpen(false), 200)}
-                        placeholder="ابحث بالاسم، الباركود، أو الكود..."
-                        inputClassName={selectedItem ? "!pr-[76px]" : ""}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); if (filteredItems.length > 0) { handlePickItem(filteredItems[activeIndex] || filteredItems[0]); } else if (itemSearchActiveRef.current) { pendingPickRef.current = true; } }
-                          else if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
-                          else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(prev => Math.max(prev - 1, 0)); }
-                        }}
-                      />
-                      {/* SKU code chip — sits inside the input, just before the product name */}
-                      {selectedItem && (
-                        <span className="pointer-events-none absolute right-9 top-1/2 -translate-y-1/2 z-10 text-[9px] font-mono font-black text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-sm px-1.5 py-0.5 leading-none whitespace-nowrap">
-                          {selectedItem.code || selectedItem.barcode || "—"}
-                        </span>
-                      )}
-                      {lookupOpen && <SearchDropdown items={filteredItems} onPick={handlePickItem} activeIndex={activeIndex} query={itemQuery} onLoadMore={loadMoreItems} hasMoreFromServer={itemHasMore} isLoadingMore={isLoadingMoreItems} />}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAdvancedSearchOpen(true)}
-                      className="flex h-[37px] w-[37px] shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-                      title="بحث متقدم في المخزون"
-                    >
-                      <Filter className="h-4 w-4" />
-                    </button>
-                  </div>
+                <div data-help="search-bar" className="entry-field entry-field--item">
+                  <label className="entry-label">الصنف</label>
+                  <ProductSearchField
+                    ref={itemInputRef}
+                    query={itemQuery}
+                    onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
+                    results={filteredItems}
+                    onPick={handlePickItem}
+                    onEnterNoResults={() => { if (itemSearchActiveRef.current) pendingPickRef.current = true; }}
+                    selectedItem={selectedItem}
+                    chipCode={(it) => it.code || it.barcode || `#${it.id}`}
+                    onLoadMore={loadMoreItems}
+                    hasMore={itemHasMore}
+                    isLoadingMore={isLoadingMoreItems}
+                    trailing={(
+                      <button
+                        type="button"
+                        onClick={() => setAdvancedSearchOpen(true)}
+                        className="entry-control flex w-[38px] shrink-0 items-center justify-center !p-0"
+                        style={{ color: "var(--text-secondary)" }}
+                        title="بحث متقدم في المخزون"
+                      >
+                        <Filter className="h-4 w-4" />
+                      </button>
+                    )}
+                  />
                 </div>
 
                 {/* Qty */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">الكمية</label>
+                <div className="entry-field entry-field--qty">
+                  <label className="entry-label">الكمية</label>
                   <input ref={qtyInputRef} type="number"
                     min={units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
                     step={units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
@@ -1170,14 +1157,14 @@ export default function PurchaseFormPage() {
                     }}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: costInputRef, prevRef: itemInputRef })}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center" />
+                    className="entry-control text-center" />
                 </div>
 
                 {/* Unit */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                  <div className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-50 px-2">
-                    <span className="text-2sm font-bold text-slate-600 truncate">
+                <div className="entry-field entry-field--unit">
+                  <label className="entry-label">الوحدة</label>
+                  <div className="entry-control entry-control--readonly">
+                    <span className="truncate">
                       {selectedItem && staging.unitId
                         ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية")
                         : "أساسية"}
@@ -1186,9 +1173,9 @@ export default function PurchaseFormPage() {
                 </div>
 
                 {/* Cost (with lock toggle) */}
-                <div className="flex flex-col gap-1">
+                <div className="entry-field entry-field--money">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-600">التكلفة</label>
+                    <label className="entry-label">التكلفة</label>
                     <button type="button"
                       onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
                       title={stagingLocks.purchase ? "يحدّث السعر الرئيسي عند الحفظ — اضغط لإلغاء" : "هذه الفاتورة فقط — اضغط للتحديث"}
@@ -1205,18 +1192,18 @@ export default function PurchaseFormPage() {
                     onChange={(e) => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: sellInputRef, prevRef: qtyInputRef })}
-                    className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
-                      !stagingLocks.purchase ? "border-amber-300 bg-amber-50/60"
+                    className={`entry-control text-center ${
+                      !stagingLocks.purchase ? "!border-amber-300 !bg-amber-50/60"
                       : selectedItem && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && Number(staging.unitCost) > 0
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-slate-300 bg-slate-50"
+                        ? "!border-amber-400 !bg-amber-50"
+                        : ""
                     }`} />
                   {/* Cost before→after badge (parity with selling/wholesale) */}
                   {selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
                     <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 font-mono">{Number(selectedItem.purchase_price).toFixed(2)}</span>
+                      <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
                       <span className="text-slate-300 mx-1">→</span>
-                      <span className={`font-mono font-black ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                      <span className={`number-fmt ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
                         {Number(staging.unitCost).toFixed(2)}
                       </span>
                       <span className="text-slate-400 mr-1">
@@ -1227,7 +1214,7 @@ export default function PurchaseFormPage() {
                   {/* آخر شراء hint */}
                   {selectedItem && Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0) > 0 && (
                     <span className="text-[9px] text-slate-400 text-center leading-tight">
-                      آخر شراء: <span className="font-mono font-black text-slate-500">
+                      آخر شراء: <span className="number-fmt text-slate-500">
                         {Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0).toFixed(2)}
                       </span>
                     </span>
@@ -1235,9 +1222,9 @@ export default function PurchaseFormPage() {
                 </div>
 
                 {/* Selling price (مستهلك — with lock toggle) */}
-                <div className="flex flex-col gap-1">
+                <div className="entry-field entry-field--money">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                    <label className="entry-label flex items-center gap-1">
                       مستهلك
                     </label>
                     <button type="button"
@@ -1256,18 +1243,18 @@ export default function PurchaseFormPage() {
                     onChange={(e) => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesaleInputRef, prevRef: costInputRef })}
-                    className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
-                      !stagingLocks.sale ? "border-amber-300 bg-amber-50/60"
+                    className={`entry-control text-center ${
+                      !stagingLocks.sale ? "!border-amber-300 !bg-amber-50/60"
                       : selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-slate-300 bg-slate-50"
+                        ? "!border-amber-400 !bg-amber-50"
+                        : ""
                     }`} />
                   {/* Before→after badge */}
                   {selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
                     <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 font-mono">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
                       <span className="text-slate-300 mx-1">→</span>
-                      <span className={`font-mono font-black ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                      <span className={`number-fmt ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
                         {Number(staging.sellingPrice).toFixed(2)}
                       </span>
                     </span>
@@ -1275,9 +1262,9 @@ export default function PurchaseFormPage() {
                 </div>
 
                 {/* Wholesale price (جملة — with lock toggle) */}
-                <div className="flex flex-col gap-1">
+                <div className="entry-field entry-field--money">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                    <label className="entry-label flex items-center gap-1">
                       جملة
                     </label>
                     <button type="button"
@@ -1296,61 +1283,50 @@ export default function PurchaseFormPage() {
                     onChange={(e) => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: warehouseTableRef, prevRef: sellInputRef })}
-                    className={`w-full h-[37px] border rounded-sm py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center ${
-                      !stagingLocks.wholesale ? "border-amber-300 bg-amber-50/60"
+                    className={`entry-control text-center ${
+                      !stagingLocks.wholesale ? "!border-amber-300 !bg-amber-50/60"
                       : selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-slate-300 bg-slate-50"
+                        ? "!border-amber-400 !bg-amber-50"
+                        : ""
                     }`} />
                   {/* Before→after badge */}
                   {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
                     <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 font-mono">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
                       <span className="text-slate-300 mx-1">→</span>
-                      <span className={`font-mono font-black ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                      <span className={`number-fmt ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
                         {Number(staging.wholesalePrice).toFixed(2)}
                       </span>
                     </span>
                   )}
                 </div>
 
-                {/* Warehouse table */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">المخزن</label>
-                  <div ref={warehouseTableRef} tabIndex={0}
-                    className="border border-slate-300 rounded-sm bg-slate-50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
-                    style={{height:"75px"}}
+                {/* Warehouse */}
+                <div className="entry-field entry-field--wh">
+                  <label className="entry-label">المخزن</label>
+                  <WarehouseSelect
+                    ref={warehouseTableRef}
+                    value={staging.warehouseId}
+                    onChange={(id) => setStaging(s => ({ ...s, warehouseId: String(id) }))}
+                    placeholder="اختر المخزن"
+                    emptyLabel="لا يوجد مخازن"
                     onKeyDown={(e) => {
-                      const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
-                      if (e.key === "ArrowDown") { e.preventDefault(); const next = warehouses[Math.min(idx + 1, warehouses.length - 1)]; if (next) setStaging(s => ({ ...s, warehouseId: String(next.id) })); }
-                      else if (e.key === "ArrowUp") { e.preventDefault(); const prev = warehouses[Math.max(idx - 1, 0)]; if (prev) setStaging(s => ({ ...s, warehouseId: String(prev.id) })); }
-                      else if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
+                      if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
                       else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); addBtnRef.current?.focus(); }
-                    }}>
-                    <table className="w-full text-[11px] border-collapse">
-                      <tbody>
-                        {(selectedItem ? getFilteredWarehouses(selectedItem.id, staging.warehouseId) : warehouses).map(w => {
-                          const dbQty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
-                          const inLines = selectedItem ? lines.filter(l => l.item_id === selectedItem.id && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
-                          const qty = dbQty + inLines;
-                          const isSelected = String(staging.warehouseId) === String(w.id);
-                          const hasStock = qty > 0;
-                          return (
-                            <tr key={w.id} onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
-                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${isSelected ? "bg-indigo-50" : "hover:bg-slate-100"} ${!hasStock && !isSelected ? "opacity-40" : ""}`}>
-                              <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{w.name}</td>
-                              <td className={`px-2 py-1 font-mono text-center tabular-nums ${hasStock ? "text-emerald-600 font-black" : "text-slate-400"}`}>{qty}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                    }}
+                    options={(selectedItem ? getFilteredWarehouses(selectedItem.id, staging.warehouseId) : warehouses).map(w => {
+                      const dbQty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
+                      const inLines = selectedItem ? lines.filter(l => l.item_id === selectedItem.id && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
+                      const qty = dbQty + inLines;
+                      const tone = qty <= 0 ? "out" : qty < 5 ? "low" : "normal";
+                      return { id: w.id, name: w.name, qty, tone };
+                    })}
+                  />
                 </div>
 
                 {/* Expiry / batch inputs — only shown for items with track_expiry */}
                 {selectedItem && (selectedItem.track_expiry === 1 || selectedItem.track_expiry === true) && (
-                  <div className="flex flex-col gap-1 col-span-full mt-1 p-2 rounded-sm border border-blue-200 bg-blue-50/60">
+                  <div className="flex flex-col gap-1 basis-full mt-1 p-2 rounded-sm border border-blue-200 bg-blue-50/60">
                     <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">تتبع الانتهاء (FEFO)</p>
                     <div className="flex gap-2">
                       <div className="flex flex-col gap-0.5 flex-1">
@@ -1373,7 +1349,7 @@ export default function PurchaseFormPage() {
                 <button ref={addBtnRef} onClick={addLine}
                   onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
                   disabled={!selectedItem}
-                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 text-2sm font-bold text-white hover:bg-emerald-700 disabled:opacity-40 self-end transition-all shadow-sm">
+                  className="entry-add-btn">
                   <Plus className="h-4 w-4" /> إضافة
                 </button>
               </div>
@@ -1417,7 +1393,7 @@ export default function PurchaseFormPage() {
                         const v = isInt ? Math.max(1, Math.round(Number(e.target.value) || 1)) : Math.max(0.001, Number(e.target.value) || 0.001);
                         updateLineField(i, "quantity", v);
                       }}
-                      className="w-full h-[40px] text-center text-sm font-mono font-black bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed"
+                      className="w-full h-[40px] text-center text-sm number-fmt-primary bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-emerald-50/50 transition-colors disabled:cursor-not-allowed"
                     />
                   );
                 } },
@@ -1432,12 +1408,12 @@ export default function PurchaseFormPage() {
                   return (
                     <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.unit_cost} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
-                        className={`w-full h-[32px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
                       {costChanged && (
                         <span className="text-[9px] text-center leading-none pb-0.5">
-                          <span className="text-slate-400 font-mono">{Number(l.original_unit_cost).toFixed(2)}</span>
+                          <span className="text-slate-400 number-fmt">{Number(l.original_unit_cost).toFixed(2)}</span>
                           <span className="text-slate-300 mx-0.5">→</span>
-                          <span className={`font-mono font-black ${Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-500" : "text-emerald-600"}`}>
+                          <span className={`number-fmt ${Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-500" : "text-emerald-600"}`}>
                             {Number(l.unit_cost).toFixed(2)}
                           </span>
                         </span>
@@ -1457,7 +1433,7 @@ export default function PurchaseFormPage() {
                   return (
                     <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.selling_price} disabled={isLocked} onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
-                        className={`w-full h-[32px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${belowMargin ? "bg-rose-50 text-rose-800" : changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50"}`} />
+                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${belowMargin ? "bg-rose-50 text-rose-800" : changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50"}`} />
                       {changed && !belowMargin && <span title={`السعر الحالي: ${l.original_sale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
                       {belowMargin && <span className="text-[9px] font-black text-rose-500 text-center leading-none pb-0.5">هامش {marginPct.toFixed(0)}%</span>}
                     </div>
@@ -1474,7 +1450,7 @@ export default function PurchaseFormPage() {
                   const isProfit = profitFlat >= 0;
                   return (
                     <div className="relative w-full h-full flex items-center justify-center gap-1">
-                      <span className={`text-2sm font-mono font-black ${isProfit ? "text-emerald-700" : "text-rose-600"}`}>
+                      <span className={`text-2sm number-fmt ${isProfit ? "text-emerald-700" : "text-rose-600"}`}>
                         {profitDisplayMode === "pct"
                           ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`
                           : `${profitFlat >= 0 ? "+" : ""}${profitFlat.toFixed(2)}`}
@@ -1501,7 +1477,7 @@ export default function PurchaseFormPage() {
                     <div className="relative w-full h-full">
                       <input type="number" step="any" value={l.wholesale_price ?? 0} disabled={isLocked}
                         onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
-                        className={`w-full h-[40px] text-center text-sm font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                        className={`w-full h-[40px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
                       {changed && <span title={`السعر الحالي: ${l.original_wholesale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
                     </div>
                   );
@@ -1572,8 +1548,8 @@ export default function PurchaseFormPage() {
                   );
                 }
               },
-              { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100",
-                render: (l) => Number(l.total).toLocaleString("en-US", { minimumFractionDigits: 2 }) },
+              { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100",
+                render: (l) => formatNumber(l.total) },
               { id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",
                 render: (_, i) => !isLocked && <button onClick={() => removeLine(i)} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors focus:outline-none"><X className="h-4 w-4" /></button> },
             ]}
@@ -1620,17 +1596,17 @@ export default function PurchaseFormPage() {
                       <>
                         <div className="mt-2 flex items-center justify-between rounded-sm bg-slate-50 border border-slate-200 px-3 py-1.5">
                           <span className="text-[11px] font-bold text-slate-500">{isEditMode ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
-                          <span className={`text-sm font-black font-mono ${dispBal > 0 ? "text-rose-600" : "text-slate-800"}`}>{dispBal.toFixed(2)}</span>
+                          <span className={`text-sm number-fmt-primary ${dispBal > 0 ? "text-rose-600" : "text-slate-800"}`}>{dispBal.toFixed(2)}</span>
                         </div>
                         {hasLines && balChange !== 0 && (
                           <div className="mt-1 flex items-center justify-between rounded-sm bg-indigo-50 border border-indigo-200 px-3 py-1.5">
                             <div className="flex items-center gap-1">
                               <span className="text-[11px] font-bold text-indigo-600">التغير</span>
-                              <span className={`text-[9px] font-black font-mono px-1 py-0.5 rounded-sm ${balChange > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                              <span className={`text-[9px] number-fmt px-1 py-0.5 rounded-sm ${balChange > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
                                 {balChange > 0 ? `↑` : `↓`}
                               </span>
                             </div>
-                            <span className={`text-2sm font-black font-mono ${balChange > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                            <span className={`text-2sm number-fmt ${balChange > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                               {balChange > 0 ? "+" : ""}{balChange.toFixed(2)}
                             </span>
                           </div>
@@ -1638,7 +1614,7 @@ export default function PurchaseFormPage() {
                         {hasLines && (
                           <div className="mt-1.5 flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5">
                             <span className="text-[11px] font-bold text-amber-600">الرصيد بعد الفاتورة</span>
-                            <span className={`text-sm font-black font-mono ${newBal > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                            <span className={`text-sm number-fmt-primary ${newBal > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                               {newBal.toFixed(2)}
                             </span>
                           </div>
@@ -1672,23 +1648,23 @@ export default function PurchaseFormPage() {
               {/* Subtotal */}
               <div className="flex items-center justify-between">
                 <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
-                <span className="text-sm font-black text-slate-800 font-mono">{totals.sub.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                <span className="text-sm number-fmt-primary text-slate-800">{formatNumber(totals.sub)}</span>
               </div>
               {/* Discount */}
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-rose-600">خصم الفاتورة</span>
-                <span className="text-2sm font-black font-mono text-rose-600">{discount > 0 ? `-${discount.toFixed(2)}` : "0"}</span>
+                <span className="text-2sm number-fmt text-rose-600">{discount > 0 ? `-${discount.toFixed(2)}` : "0"}</span>
               </div>
               {/* Increase */}
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-blue-600">إضافة / رسوم</span>
-                <span className="text-2sm font-black font-mono text-blue-600">{increase > 0 ? `+${increase.toFixed(2)}` : "0"}</span>
+                <span className="text-2sm number-fmt text-blue-600">{increase > 0 ? `+${increase.toFixed(2)}` : "0"}</span>
               </div>
               <div className="h-px bg-slate-100" />
               <div className="mt-3 rounded-sm bg-emerald-800 p-4 text-center text-white">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
-                <div className="text-[26px] font-black tracking-tighter font-mono">
-                  {totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                <div className="text-[26px] number-fmt-primary tracking-tighter">
+                  {formatNumber(totals.total)}
                 </div>
                 <div className="text-[11px] opacity-40">ج.م</div>
               </div>
@@ -1727,7 +1703,7 @@ export default function PurchaseFormPage() {
                     </button>
                   </div>
                   {discount > 0 && invoiceDiscountMode === "flat" && totals.sub > 0 && (
-                    <span className="text-[11px] font-mono text-rose-400 px-1">{((discount / totals.sub) * 100).toFixed(1)}% من الإجمالي</span>
+                    <span className="text-[11px] number-fmt text-rose-400 px-1">{((discount / totals.sub) * 100).toFixed(1)}% من الإجمالي</span>
                   )}
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -1780,7 +1756,7 @@ export default function PurchaseFormPage() {
                   {paymentMethods.filter(m => Number(multiAmounts[m.id] || 0) > 0).map(m => (
                     <div key={m.id} className="flex items-center justify-between rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
                       <span className="text-2sm font-bold text-slate-600">{m.name}</span>
-                      <span className="font-mono text-2sm font-black text-slate-800">{formatMoney(Number(multiAmounts[m.id] || 0))}</span>
+                      <span className="number-fmt-primary text-2sm text-slate-800">{formatMoney(Number(multiAmounts[m.id] || 0))}</span>
                     </div>
                   ))}
                 </div>
@@ -1798,11 +1774,11 @@ export default function PurchaseFormPage() {
                 <div className="mt-3 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2.5 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-amber-700">الإضافة لرصيد {supplier.name}</span>
-                    <span className="font-mono font-black text-amber-700">+{formatMoney(creditEffect)}</span>
+                    <span className="number-fmt-primary text-amber-700">+{formatMoney(creditEffect)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
                     <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
-                    <span className="font-mono font-black text-amber-600">{formatMoney(supplierBalanceAfter)}</span>
+                    <span className="number-fmt-primary text-amber-600">{formatMoney(supplierBalanceAfter)}</span>
                   </div>
                 </div>
               )}
@@ -1856,7 +1832,7 @@ export default function PurchaseFormPage() {
               <div className="mt-3 flex flex-col gap-2">
                 <div className="rounded-sm bg-slate-950 px-3 py-2 text-center">
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">المطلوب توزيعه</p>
-                  <p className="font-mono text-[16px] font-black text-white">{totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                  <p className="number-fmt-primary text-[16px] text-white">{formatNumber(totals.total)}</p>
                 </div>
                 {paymentMethods.map(m => {
                   const amount = multiAmounts[m.id] || "";
@@ -1868,7 +1844,7 @@ export default function PurchaseFormPage() {
                       <span className="flex-1 min-w-0 text-2sm font-bold text-slate-700 leading-snug break-words">{m.name}</span>
                       <input type="number" value={amount} placeholder="0.00" min="0" step="0.01" disabled={isLocked}
                         onChange={(e) => setMultiAmounts(prev => ({ ...prev, [m.id]: e.target.value }))}
-                        className="w-28 shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left font-mono text-2sm font-black text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:cursor-not-allowed transition-all" />
+                        className="w-28 shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left number-fmt-primary text-2sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:cursor-not-allowed transition-all" />
                     </div>
                   );
                 })}
@@ -1879,7 +1855,7 @@ export default function PurchaseFormPage() {
                 )}
                 <div className={`flex items-center justify-between rounded-sm px-3 py-2 text-2sm font-black ${multiBalanced ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-600 border border-rose-200"}`}>
                   <span>الموزع:</span>
-                  <span className="font-mono">{multiTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                  <span className="number-fmt">{formatNumber(multiTotal)}</span>
                 </div>
                 {!multiBalanced && totals.total > 0 && (
                   <div className="text-[11px] font-bold text-rose-500 flex items-center gap-1">
@@ -1897,11 +1873,11 @@ export default function PurchaseFormPage() {
                   <span className="font-bold text-amber-700">
                     {paymentMode === "multi" ? "الإضافة للآجل" : `الإضافة لرصيد ${supplier.name}`}
                   </span>
-                  <span className="font-mono font-black text-amber-700">+{formatMoney(creditEffect)}</span>
+                  <span className="number-fmt-primary text-amber-700">+{formatMoney(creditEffect)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
                   <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
-                  <span className={`font-mono font-black ${supplierBalanceAfter > 0.005 ? "text-rose-600" : "text-emerald-600"}`}>
+                  <span className={`number-fmt-primary ${supplierBalanceAfter > 0.005 ? "text-rose-600" : "text-emerald-600"}`}>
                     {formatMoney(supplierBalanceAfter)}
                   </span>
                 </div>
@@ -2004,16 +1980,16 @@ export default function PurchaseFormPage() {
                 {priceChangedLines.map((l, i) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 align-top">
                     <td className="px-3 py-2 font-bold text-slate-800 whitespace-normal break-words">{l.name}</td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400 whitespace-nowrap">{Number(l.original_unit_cost) > 0 ? Number(l.original_unit_cost).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black whitespace-nowrap">
+                    <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_unit_cost) > 0 ? Number(l.original_unit_cost).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                       {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_unit_cost) ? (
                         <span className={Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-600" : "text-emerald-600"}>
                           {Number(l.unit_cost).toFixed(2)}
                         </span>
                       ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center font-mono text-slate-400 whitespace-nowrap">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
-                    <td className="px-3 py-2 text-center font-mono font-black whitespace-nowrap">
+                    <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                       {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
                         <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
                           {Number(l.selling_price).toFixed(2)}
@@ -2022,8 +1998,8 @@ export default function PurchaseFormPage() {
                     </td>
                     {priceReportWholesaleUsed && (
                       <>
-                        <td className="px-3 py-2 text-center font-mono text-slate-400 whitespace-nowrap">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
-                        <td className="px-3 py-2 text-center font-mono font-black whitespace-nowrap">
+                        <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                        <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                           {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
                             <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
                               {Number(l.wholesale_price).toFixed(2)}
@@ -2060,7 +2036,7 @@ export default function PurchaseFormPage() {
               <p className="text-2sm font-bold text-slate-500 leading-relaxed">
                 {isEditMode
                   ? "سيتم تحديث المخزون والأرصدة المالية بالفرق فقط."
-                  : `${lines.length} صنف — إجمالي ${totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })} ج.م`}
+                  : `${lines.length} صنف — إجمالي ${formatNumber(totals.total)} ج.م`}
               </p>
             </div>
           </div>
@@ -2322,12 +2298,12 @@ export default function PurchaseFormPage() {
           <div className="flex items-center gap-4 rounded-sm bg-emerald-800 px-4 py-3">
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">عدد الفواتير</span>
-              <span className="font-mono text-[20px] font-black text-white leading-none">{todayPurchSummary.count}</span>
+              <span className="number-fmt-primary text-[20px] text-white leading-none">{todayPurchSummary.count}</span>
             </div>
             <div className="h-8 w-px bg-emerald-700" />
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">إجمالي المشتريات</span>
-              <span className="font-mono text-[20px] font-black text-emerald-300 leading-none">{formatMoney(todayPurchSummary.total)}</span>
+              <span className="number-fmt-primary text-[20px] text-emerald-300 leading-none">{formatMoney(todayPurchSummary.total)}</span>
             </div>
           </div>
 
@@ -2350,9 +2326,9 @@ export default function PurchaseFormPage() {
                 { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
                 { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
                 { id: "supplier_name", header: "المورد", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.supplier_name || "—" },
-                { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center font-mono text-2sm font-bold text-slate-600", render: (r) => Number(r.quantity) },
-                { id: "unit_cost", header: "التكلفة", width: 100, cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => formatMoney(r.unit_cost) },
-                { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_cost) * Number(r.quantity))) },
+                { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
+                { id: "unit_cost", header: "التكلفة", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_cost) },
+                { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_cost) * Number(r.quantity))) },
                 { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
                 { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
                   <div className="flex gap-1">
@@ -2363,7 +2339,7 @@ export default function PurchaseFormPage() {
                 { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.doc_no },
                 { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
                 { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
-                { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (inv) => formatMoney(inv.total) },
+                { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (inv) => formatMoney(inv.total) },
                 { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
                   const PSTYLE = { cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" }, bank_transfer: { label: "حوالة بنكية", cls: "bg-sky-50 text-sky-700 border-sky-200" }, credit: { label: "آجل", cls: "bg-amber-50 text-amber-700 border-amber-200" }, future_due: { label: "استحقاق لاحق", cls: "bg-orange-50 text-orange-700 border-orange-200" }, multi: { label: "متعدد", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" } };
                   if (inv.payment_splits) {
@@ -2373,7 +2349,7 @@ export default function PurchaseFormPage() {
                         {splits.map((s, i) => { const info = PSTYLE[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
                           <div key={i} className="flex items-center gap-1">
                             <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                            <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(s.amount)}</span>
+                            <span className="text-[11px] number-fmt text-slate-500">{formatMoney(s.amount)}</span>
                           </div>
                         ); })}
                       </div>
@@ -2383,7 +2359,7 @@ export default function PurchaseFormPage() {
                   return (
                     <div className="flex flex-col gap-0.5">
                       <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                      <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(inv.total)}</span>
+                      <span className="text-[11px] number-fmt text-slate-500">{formatMoney(inv.total)}</span>
                     </div>
                   );
                 }},

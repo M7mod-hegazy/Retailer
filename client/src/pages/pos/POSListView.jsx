@@ -5,12 +5,15 @@ import {
   FilePlus, Filter, Image as ImageIcon, Layers, List, LayoutGrid,
   Loader2, Minus, PackageCheck, PauseCircle, Plus, Printer,
   Receipt, RefreshCw, RotateCcw, Search, Settings2, ShieldCheck, ShoppingCart,
-  Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText,
+  Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText, Save,
 } from "lucide-react";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
+import ProductSearchField from "../../components/ui/ProductSearchField";
+import EntryItemThumb from "../../components/ui/EntryItemThumb";
+import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DataGrid from "../../components/ui/DataGrid";
@@ -27,6 +30,7 @@ import QuickAddLeadPopover from "./QuickAddLeadPopover";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import { resolveImageUrl, formatMoney } from "./posPageUtils";
+import { formatNumber } from "../../utils/currency";
 import { cartLineKey } from "../../stores/posStore";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -433,8 +437,16 @@ export default function POSListView({ vm }) {
               className={`flex h-9 items-center gap-2 rounded-sm px-6 text-sm font-black text-white transition-all disabled:opacity-50
                 ${hasBlockingErrors && !stockOnlyErrors && lines.length ? "bg-rose-600" : "bg-indigo-600 hover:bg-indigo-700"}`}
             >
-              <Printer className="h-4 w-4" /> طباعة ومراجعة المستند
+              <Printer className="h-4 w-4" /> طباعة  
               {hasBlockingErrors && <span className="ml-1.5 rounded-full bg-rose-400 text-white text-[9px] font-black px-1.5 py-0.5">{blockingErrorCount}</span>}
+            </button>
+          </PermissionGate>
+          <PermissionGate page="pos" action="add">
+            <button onClick={() => setSaveConfirmOpen(true)}
+              disabled={!lines.length || isSaving || hasBlockingErrors}
+              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-6 text-sm font-black text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="h-4 w-4" /> حفظ 
             </button>
           </PermissionGate>
         </div>
@@ -527,15 +539,15 @@ export default function POSListView({ vm }) {
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                 <span className="text-2sm font-bold text-slate-500">إجمالي الأصناف</span>
-                <span className="text-sm font-black text-slate-800 font-mono">{lines.length}</span>
+                <span className="number-fmt text-sm text-slate-800">{lines.length}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                 <span className="text-2sm font-bold text-slate-500">مجموع الكميات</span>
-                <span className="text-sm font-black text-slate-800 font-mono">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
+                <span className="number-fmt text-sm text-slate-800">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                 <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
-                <span className="text-sm font-black font-mono text-slate-800">{formatMoney(totals.subtotal)}</span>
+                <span className="number-fmt-primary text-sm text-slate-800">{formatMoney(totals.subtotal)}</span>
               </div>
               <div className="h-px bg-slate-100 my-1" />
               <div className="flex flex-col gap-1.5">
@@ -568,7 +580,7 @@ export default function POSListView({ vm }) {
                   >{invoiceDiscountMode === "pct" ? "%" : "ج"}</button>
                 </div>
                 {discount > 0 && invoiceDiscountMode === "flat" && totals.subtotal > 0 && (
-                  <span className="text-[11px] font-mono text-rose-400 px-1">{((discount / totals.subtotal) * 100).toFixed(1)}% من الإجمالي</span>
+                  <span className="text-[11px] number-fmt text-rose-400 px-1">{((discount / totals.subtotal) * 100).toFixed(1)}% من الإجمالي</span>
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
@@ -612,7 +624,7 @@ export default function POSListView({ vm }) {
                         checked={taxEnabled == null ? true : Boolean(Number(taxEnabled))}
                         onChange={(e) => setTaxEnabled(e.target.checked ? 1 : 0)}
                       />
-                      <span className="flex-1 text-center font-mono text-sm font-black text-indigo-900">
+                      <span className="flex-1 text-center number-fmt-primary text-sm text-indigo-900">
                         {(taxEnabled == null || Number(taxEnabled)) ? formatMoney(taxCalc.taxAmount) : "—"}
                       </span>
                     </label>
@@ -636,8 +648,8 @@ export default function POSListView({ vm }) {
               <div className="h-px bg-slate-100 my-1" />
               <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
-                <div className="text-[32px] font-black tracking-tighter font-mono leading-none mt-1.5">
-                  {totals.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                <div className="text-[32px] number-fmt-primary tracking-tighter leading-none mt-1.5">
+                  {formatNumber(totals.total)}
                 </div>
                 <div className="text-[11px] opacity-40 mt-1">ج.م</div>
               </div>
@@ -685,10 +697,10 @@ export default function POSListView({ vm }) {
                   )}
                   <div className="flex justify-between">
                     <span className="text-amber-600">الإجمالي</span>
-                    <span className="font-mono">{(() => {
+                    <span className="number-fmt-primary">{(() => {
                       const lines = amendContext.prefill?.lines || [];
                       const sub = lines.reduce((s, l) => s + (Number(l.unit_price||0) * Number(l.quantity||1) * (1 - Number(l.discount||0)/100)), 0);
-                      return (sub - (amendContext.prefill?.discount||0) + (amendContext.prefill?.increase||0)).toLocaleString("en-US", { minimumFractionDigits: 2 });
+                      return formatNumber(sub - (amendContext.prefill?.discount||0) + (amendContext.prefill?.increase||0));
                     })()} ج.م</span>
                   </div>
                   <div className="flex justify-between"><span className="text-amber-600">الأصناف</span><span>{(amendContext.prefill?.lines||[]).length} صنف</span></div>
@@ -864,7 +876,7 @@ export default function POSListView({ vm }) {
                   return (
                     <div className={`flex items-center justify-between rounded-lg px-3 py-2 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
                       <span>المُدخل</span>
-                      <span className="font-mono">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
+                      <span className="number-fmt-primary">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
                     </div>
                   );
                 })()}
@@ -900,7 +912,7 @@ export default function POSListView({ vm }) {
                   {customer.phone && <p className="text-[11px] text-slate-500 mt-0.5 font-mono">{customer.phone}</p>}
                   <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                     <span className="text-[11px] font-bold text-slate-500">{amendContext ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
-                    <span className={`text-sm font-black font-mono ${displayBalance > 0 ? "text-rose-600" : "text-slate-800"}`}>{displayBalance.toFixed(3)}</span>
+                    <span className={`number-fmt-primary text-sm ${displayBalance > 0 ? "text-rose-600" : "text-slate-800"}`}>{displayBalance.toFixed(3)}</span>
                   </div>
                   {creditEffect > 0 && lines.length > 0 && (
                     <div className="mt-1.5 space-y-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
@@ -908,13 +920,13 @@ export default function POSListView({ vm }) {
                         <span className="text-[11px] font-bold text-amber-600">
                           {paymentType === "installments" ? "الإضافة للأقساط" : paymentType === "multi" ? "الإضافة للآجل" : "الإضافة للرصيد"}
                         </span>
-                        <span className="text-sm font-black font-mono text-amber-700">+{creditEffect.toFixed(3)}</span>
+                        <span className="number-fmt-primary text-sm text-amber-700">+{creditEffect.toFixed(3)}</span>
                       </div>
                       <div className="flex items-center justify-between border-t border-amber-200/60 pt-1">
                         <span className="text-[11px] font-bold text-amber-600">
                           {paymentType === "installments" ? "الرصيد بعد الأقساط" : paymentType === "multi" ? "الرصيد بعد الآجل" : "الرصيد بعد الفاتورة"}
                         </span>
-                        <span className={`text-sm font-black font-mono ${displayBalance + creditEffect > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                        <span className={`number-fmt-primary text-sm ${displayBalance + creditEffect > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                           {(displayBalance + creditEffect).toFixed(3)}
                         </span>
                       </div>
@@ -923,7 +935,7 @@ export default function POSListView({ vm }) {
                   {vm.selectedTreasuryId && (paymentType === "cash" || paymentType === "multi") && lines.length > 0 && (
                     <div className="mt-1 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5">
                       <span className="text-[11px] font-bold text-emerald-600">الخزينة بعد الفاتورة</span>
-                      <span className="text-2sm font-black font-mono text-emerald-700">
+                      <span className="number-fmt-primary text-2sm text-emerald-700">
                         {(Number(vm.treasuries.find(t => String(t.id) === String(vm.selectedTreasuryId))?.balance || 0) + totals.total).toFixed(3)}
                       </span>
                     </div>
@@ -994,276 +1006,47 @@ export default function POSListView({ vm }) {
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
           {/* Quick Entry Bar */}
           <section ref={entryBarRef} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm shrink-0">
-            {entryBarNarrow ? (
-              <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-[44px_1fr_auto] gap-2 items-end">
-                  <div className="flex items-end pb-0.5">
-                    <button type="button" onClick={() => {
-                        if (!selectedItem) return;
-                        const imgs = Array.isArray(selectedItem.image_urls) && selectedItem.image_urls.length
-                          ? selectedItem.image_urls
-                          : selectedItem.primary_image_url ? [selectedItem.primary_image_url] : [];
-                        openGallery(imgs);
-                      }} disabled={!selectedItem}
-                      className={`w-[42px] h-[37px] rounded-sm border flex items-center justify-center overflow-hidden transition-all
-                        ${selectedItem?.primary_image_url ? "border-slate-300 bg-slate-100 hover:border-indigo-400 cursor-pointer" : "border-dashed border-slate-300 bg-slate-50 cursor-default opacity-60"}`}
-                      title={selectedItem?.primary_image_url ? "عرض صورة الصنف" : "لا توجد صورة"}
-                    >
-                      {selectedItem?.primary_image_url
-                        ? <img src={resolveImageUrl(selectedItem.primary_image_url)} alt="" className="w-full h-full object-cover" />
-                        : <ImageIcon className="w-4 h-4 text-slate-300" />
-                      }
-                    </button>
-                  </div>
-                  <div data-help="search-bar" className="relative flex flex-col gap-1">
-                    <label className="text-[11px] font-bold text-slate-600">الصنف</label>
-                    <div className="relative">
-                      <SearchInput ref={listItemInputRef} value={itemNameQuery}
-                        onChange={(val) => { setItemNameQuery(val); setItemLookupOpen(true); setSelectedItem(null); }}
-                        onFocus={(e) => { setItemLookupOpen(true); e.target.select(); }}
-                        onBlur={() => setTimeout(() => setItemLookupOpen(false), 200)}
-                        placeholder="ابحث بالاسم، الباركود، أو الكود..."
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            const q = itemNameQuery.trim();
-                            if (itemResults.length > 0) {
-                              const idx = activeLookupIndex >= 0 ? activeLookupIndex : 0;
-                              handleSelectItem(itemResults[idx]);
-                              setTimeout(() => listWhRef.current?.focus(), 50);
-                            }
-                          } else if (e.key === "ArrowDown") {
-                            e.preventDefault();
-                            setActiveLookupIndex(prev => (prev < itemResults.length ? prev + 1 : prev));
-                          } else if (e.key === "ArrowUp") {
-                            e.preventDefault();
-                            setActiveLookupIndex(prev => (prev > 0 ? prev - 1 : 0));
-                          }
-                        }}
-                      />
-                      {itemLookupOpen && (
-                        <SearchDropdown items={itemResults} onPick={(item) => { handleSelectItem(item); }}
-                          activeIndex={activeLookupIndex} query={itemNameQuery}
-                          onLoadMore={loadMorePOSItems} hasMoreFromServer={searchedItemHasMore} isLoadingMore={isLoadingMoreItems}
-                        />
-                      )}
-                    </div>
-                    {selectedItem && (
-                      <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-sm px-2 py-0.5 mt-0.5">
-                        <span className="font-mono text-[11px] font-black text-indigo-700 shrink-0">{selectedItem.item_code || selectedItem.code || `#${selectedItem.id}`}</span>
-                        <div className="h-3 w-px bg-indigo-300 shrink-0" />
-                        <span className="text-[11px] text-indigo-600 font-bold truncate">{selectedItem.name}</span>
-                      </div>
-                    )}
-                  </div>
-                  <button ref={listAddBtnRef} onClick={addCurrentLine} disabled={!selectedItem}
-                    onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); } }}
-                    className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-primary px-4 text-2sm font-bold text-white hover:bg-primary-600 disabled:opacity-40 self-end transition-all"
-                  ><Plus className="h-4 w-4" /> إضافة</button>
-                </div>
-                <div className="grid grid-cols-[80px_120px_80px_1fr_100px] gap-2 items-end">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-bold text-slate-600">الكمية</label>
-                    <input ref={listQtyRef} type="number"
-                      min={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
-                      step={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
-                      value={staging.quantity}
-                      onChange={(e) => {
-                        const u = selectedItem ? units.find(u => String(u.id) === String(staging.unitId)) : null;
-                        const v = u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value;
-                        setStaging(s => ({ ...s, quantity: v }));
-                      }}
-                      onFocus={e => e.target.select()}
-                      onKeyDown={(e) => handleListFieldKeyDown(e, listPriceRef, listWhRef)}
-                      className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <label className="text-[11px] font-bold text-slate-600">السعر</label>
-                    <select value={priceType} onChange={(e) => {
-                        const t = e.target.value; setPriceType(t);
-                        if (!selectedItem) return;
-                        if (t === "wholesale" && Number(selectedItem.wholesale_price) > 0) {
-                          setStaging((s) => ({ ...s, unitPrice: String(Number(selectedItem.wholesale_price)) }));
-                        } else {
-                          setStaging((s) => ({ ...s, unitPrice: String(Number(selectedItem.sale_price || selectedItem.price || 0)) }));
-                        }
-                      }}
-                      className="w-full h-[22px] border border-slate-300 rounded-sm bg-slate-50 px-1 text-[11px] font-bold text-slate-700 outline-none focus:border-slate-800"
-                    >
-                      <option value="retail">سعر المستهلك</option>
-                      {selectedItem && Number(selectedItem.wholesale_price) > 0 && <option value="wholesale">سعر الجملة</option>}
-                    </select>
-                    <input ref={listPriceRef} type="number" step="any" value={staging.unitPrice}
-                      onChange={(e) => canOverridePrice && setStaging(s => ({ ...s, unitPrice: e.target.value }))}
-                      onFocus={e => canOverridePrice && e.target.select()}
-                      onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
-                      readOnly={!canOverridePrice}
-                      title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}
-                      className={`w-full h-[30px] border rounded-sm py-1 px-2 text-2sm font-black outline-none text-center transition-colors
-                        ${!canOverridePrice ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
-                          : selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0)
-                            ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
-                            : "bg-slate-50 border-slate-300 text-slate-800 focus:border-slate-800"}`}
-                    />
-                    <div className="h-[20px] flex items-center justify-center rounded-sm bg-slate-100 border border-slate-200 px-1">
-                      <span className="text-[11px] font-mono text-slate-400">
-                        {lastSalePrice !== null ? `آخر بيع: ${Number(lastSalePrice).toFixed(2)}` : "لا يوجد سابق"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-bold text-slate-600">خصم</label>
-                    <input ref={listDiscRef} type="number" min="0" step="any" value={staging.lineDiscount}
-                      onChange={(e) => setStaging(s => ({ ...s, lineDiscount: e.target.value }))}
-                      onFocus={e => e.target.select()}
-                      onKeyDown={(e) => handleListFieldKeyDown(e, listAddBtnRef, listPriceRef)}
-                      className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-bold text-slate-600 truncate">الرصيد / المخزن</label>
-                    <div ref={listWhRef} tabIndex={0}
-                      onKeyDown={(e) => handleListFieldKeyDown(e, listQtyRef, listItemInputRef)}
-                      className="max-h-[96px] overflow-y-auto border border-slate-300 rounded-sm bg-slate-50 flex flex-col divide-y divide-slate-100 custom-scrollbar outline-none focus:border-slate-600"
-                    >
-                      {!selectedItem ? (
-                        <div className="px-2 py-3 text-[11px] text-slate-400 font-bold text-center">اختر صنفاً أولاً</div>
-                      ) : (
-                        (() => {
-                          const stocked = amendContext ? warehouses : warehouses.filter((w) => (stockLevels[selectedItem.id]?.[w.id] || 0) > 0);
-                          if (stocked.length === 0) {
-                            return <div className="px-2 py-2.5 text-[11px] text-rose-600 font-bold text-center flex items-center justify-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />لا يوجد مخزون لهذا الصنف</div>;
-                          }
-                          return stocked.map((w) => {
-                            const rawQty = stockLevels[selectedItem.id]?.[w.id] || 0;
-                            const origQty = amendContext ? (amendOriginalQty[`${selectedItem.id}_${w.id}`] || 0) : 0;
-                            const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(w.id))?.quantity || 0;
-                            const qty = Math.max(0, rawQty + origQty - inCart);
-                            const isSelected = String(staging.warehouseId) === String(w.id);
-                            const isLow = qty > 0 && qty < 5;
-                            const isInsuff = Number(staging.quantity) > qty;
-                            return (
-                              <button key={w.id} type="button" onClick={() => setStaging((s) => ({ ...s, warehouseId: String(w.id) }))}
-                                className={`flex items-center gap-2 px-2 py-1.5 text-right transition-colors ${isSelected ? "bg-emerald-50 text-emerald-800" : isInsuff ? "bg-rose-50/50 text-slate-700 hover:bg-rose-50" : "hover:bg-slate-100 text-slate-700"}`}
-                              >
-                                <div className={`h-2.5 w-2.5 rounded-full border-2 shrink-0 transition-colors ${isSelected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"}`} />
-                                <span className="flex-1 truncate text-[11px] font-bold">{w.name}</span>
-                                <span className={`font-mono text-[11px] font-black rounded-sm px-1 shrink-0 ${isInsuff ? "text-rose-700 bg-rose-100" : isLow ? "text-amber-700 bg-amber-100" : "text-slate-400"}`}>{qty}</span>
-                              </button>
-                            );
-                          });
-                        })()
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                    <div className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-50 px-2">
-                      <span className="text-2sm font-bold text-slate-600 truncate">
-                        {selectedItem && staging.unitId ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية") : "أساسية"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {selectedItem && staging.warehouseId && (() => {
-                  const itemStock = stockLevels[selectedItem?.id] || stockLevels[String(selectedItem?.id)];
-                  const totalStock = Number(itemStock?.[staging.warehouseId] ?? itemStock?.[String(staging.warehouseId)] ?? itemStock?.[Number(staging.warehouseId)] ?? 0);
-                  const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId))?.quantity || 0;
-                  const remaining = Math.max(0, totalStock - inCart);
-                  return Number(staging.quantity) > remaining ? (
-                    <div className="flex items-center gap-1.5 rounded-sm bg-rose-50 border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700">
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                      الكمية ({staging.quantity}) تتجاوز المتاح للإضافة ({remaining}) — الرصيد الكلي {totalStock}{inCart > 0 ? ` (${inCart} في السلة)` : ""}
-                    </div>
-                  ) : null;
-                })()}
-                {selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0) && (
-                  <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-bold text-amber-700">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    السعر أقل من سعر الشراء ({Number(selectedItem.purchase_price).toFixed(2)}) - ستحتاج موافقة مشرف
-                  </div>
-                )}
+            <div className="entry-bar">
+              <EntryItemThumb item={selectedItem} onView={(imgs) => openGallery(imgs)} />
+
+              {/* الصنف */}
+              <div data-help="search-bar" className="entry-field entry-field--item">
+                <label className="entry-label">الصنف</label>
+                <ProductSearchField
+                  ref={listItemInputRef}
+                  query={itemNameQuery}
+                  onQueryChange={(val) => { setItemNameQuery(val); setSelectedItem(null); }}
+                  results={itemResults}
+                  onPick={(item) => { handleSelectItem(item); setTimeout(() => listQtyRef.current?.focus(), 50); }}
+                  selectedItem={selectedItem}
+                  onLoadMore={loadMorePOSItems}
+                  hasMore={searchedItemHasMore}
+                  isLoadingMore={isLoadingMoreItems}
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-[44px_3fr_80px_120px_80px_160px_100px_auto] gap-2 items-end">
-                <div className="flex items-end pb-0.5">
-                  <button type="button" onClick={() => {
-                      if (!selectedItem) return;
-                      const imgs = Array.isArray(selectedItem.image_urls) && selectedItem.image_urls.length
-                        ? selectedItem.image_urls
-                        : selectedItem.primary_image_url ? [selectedItem.primary_image_url] : [];
-                      openGallery(imgs);
-                    }} disabled={!selectedItem}
-                    className={`w-[42px] h-[37px] rounded-sm border flex items-center justify-center overflow-hidden transition-all
-                      ${selectedItem?.primary_image_url ? "border-slate-300 bg-slate-100 hover:border-indigo-400 cursor-pointer" : "border-dashed border-slate-300 bg-slate-50 cursor-default opacity-60"}`}
-                    title={selectedItem?.primary_image_url ? "عرض صورة الصنف" : "لا توجد صورة"}
-                  >
-                    {selectedItem?.primary_image_url
-                      ? <img src={resolveImageUrl(selectedItem.primary_image_url)} alt="" className="w-full h-full object-cover" />
-                      : <ImageIcon className="w-4 h-4 text-slate-300" />
-                    }
-                  </button>
-                </div>
-                <div data-help="search-bar" className="relative flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">الصنف</label>
-                  <div className="relative">
-                    <SearchInput ref={listItemInputRef} value={itemNameQuery}
-                      onChange={(val) => { setItemNameQuery(val); setItemLookupOpen(true); setSelectedItem(null); }}
-                      onFocus={(e) => { setItemLookupOpen(true); e.target.select(); }}
-                      onBlur={() => setTimeout(() => setItemLookupOpen(false), 200)}
-                      placeholder="ابحث بالاسم، الباركود، أو الكود..."
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const q = itemNameQuery.trim();
-                          if (itemResults.length > 0) {
-                            const idx = activeLookupIndex >= 0 ? activeLookupIndex : 0;
-                            handleSelectItem(itemResults[idx]);
-                            setTimeout(() => listWhRef.current?.focus(), 50);
-                          }
-                        } else if (e.key === "ArrowDown") {
-                          e.preventDefault();
-                          setActiveLookupIndex(prev => (prev < itemResults.length ? prev + 1 : prev));
-                        } else if (e.key === "ArrowUp") {
-                          e.preventDefault();
-                          setActiveLookupIndex(prev => (prev > 0 ? prev - 1 : 0));
-                        }
-                      }}
-                    />
-                    {itemLookupOpen && (
-                      <SearchDropdown items={itemResults} onPick={(item) => { handleSelectItem(item); }}
-                        activeIndex={activeLookupIndex} query={itemNameQuery}
-                        onLoadMore={loadMorePOSItems} hasMoreFromServer={searchedItemHasMore} isLoadingMore={isLoadingMoreItems}
-                      />
-                    )}
-                  </div>
-                  {selectedItem && (
-                    <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-sm px-2 py-0.5 mt-0.5">
-                      <span className="font-mono text-[11px] font-black text-indigo-700 shrink-0">{selectedItem.item_code || selectedItem.code || `#${selectedItem.id}`}</span>
-                      <div className="h-3 w-px bg-indigo-300 shrink-0" />
-                      <span className="text-[11px] text-indigo-600 font-bold truncate">{selectedItem.name}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">الكمية</label>
-                  <input ref={listQtyRef} type="number"
-                    min={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
-                    step={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
-                    value={staging.quantity}
-                    onChange={(e) => {
-                      const u = selectedItem ? units.find(u => String(u.id) === String(staging.unitId)) : null;
-                      const v = u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value;
-                      setStaging(s => ({ ...s, quantity: v }));
-                    }}
-                    onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleListFieldKeyDown(e, listPriceRef, listWhRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <label className="text-[11px] font-bold text-slate-600">السعر</label>
+
+              {/* الكمية */}
+              <div className="entry-field entry-field--qty">
+                <label className="entry-label">الكمية</label>
+                <input ref={listQtyRef} type="number"
+                  min={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "0.001"}
+                  step={selectedItem && units.find(u => String(u.id) === String(staging.unitId))?.allow_decimal === 0 ? "1" : "any"}
+                  value={staging.quantity}
+                  onChange={(e) => {
+                    const u = selectedItem ? units.find(u => String(u.id) === String(staging.unitId)) : null;
+                    const v = u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value;
+                    setStaging(s => ({ ...s, quantity: v }));
+                  }}
+                  onFocus={e => e.target.select()}
+                  onKeyDown={(e) => handleListFieldKeyDown(e, listPriceRef, listItemInputRef)}
+                  className="entry-control text-center"
+                />
+              </div>
+
+              {/* السعر — tier select sits above so the number input gets full width */}
+              <div className="entry-field entry-field--price">
+                <div className="flex items-center justify-between gap-1">
+                  <label className="entry-label">السعر</label>
                   <select value={priceType} onChange={(e) => {
                       const t = e.target.value; setPriceType(t);
                       if (!selectedItem) return;
@@ -1273,106 +1056,93 @@ export default function POSListView({ vm }) {
                         setStaging((s) => ({ ...s, unitPrice: String(Number(selectedItem.sale_price || selectedItem.price || 0)) }));
                       }
                     }}
-                    className="w-full h-[22px] border border-slate-300 rounded-sm bg-slate-50 px-1 text-[11px] font-bold text-slate-700 outline-none focus:border-slate-800"
+                    className="entry-tier-select"
                   >
-                    <option value="retail">سعر المستهلك</option>
-                    {selectedItem && Number(selectedItem.wholesale_price) > 0 && <option value="wholesale">سعر الجملة</option>}
+                    <option value="retail">مستهلك</option>
+                    {selectedItem && Number(selectedItem.wholesale_price) > 0 && <option value="wholesale">جملة</option>}
                   </select>
-                  <input ref={listPriceRef} type="number" step="any" value={staging.unitPrice}
-                    onChange={(e) => canOverridePrice && setStaging(s => ({ ...s, unitPrice: e.target.value }))}
-                    onFocus={e => canOverridePrice && e.target.select()}
-                    onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
-                    readOnly={!canOverridePrice}
-                    title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}
-                    className={`w-full h-[30px] border rounded-sm py-1 px-2 text-2sm font-black outline-none text-center transition-colors
-                      ${!canOverridePrice ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
-                        : selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0)
-                          ? "border-rose-400 bg-rose-50 text-rose-700 focus:border-rose-600"
-                          : "bg-slate-50 border-slate-300 text-slate-800 focus:border-slate-800"}`}
-                  />
-                  <div className="h-[20px] flex items-center justify-center rounded-sm bg-slate-100 border border-slate-200 px-1">
-                    <span className="text-[11px] font-mono text-slate-400">
-                      {lastSalePrice !== null ? `آخر بيع: ${Number(lastSalePrice).toFixed(2)}` : "لا يوجد سابق"}
-                    </span>
-                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">خصم</label>
-                  <input ref={listDiscRef} type="number" min="0" step="any" value={staging.lineDiscount}
-                    onChange={(e) => setStaging(s => ({ ...s, lineDiscount: e.target.value }))}
-                    onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleListFieldKeyDown(e, listAddBtnRef, listPriceRef)}
-                    className="w-full h-[37px] border border-slate-300 rounded-sm bg-slate-50 py-2 px-2 text-2sm font-black text-slate-800 outline-none focus:border-slate-800 text-center"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600 truncate">الرصيد / المخزن</label>
-                  <div ref={listWhRef} tabIndex={0}
-                    onKeyDown={(e) => handleListFieldKeyDown(e, listQtyRef, listItemInputRef)}
-                    className="max-h-[96px] overflow-y-auto border border-slate-300 rounded-sm bg-slate-50 flex flex-col divide-y divide-slate-100 custom-scrollbar outline-none focus:border-slate-600"
-                  >
-                    {!selectedItem ? (
-                      <div className="px-2 py-3 text-[11px] text-slate-400 font-bold text-center">اختر صنفاً أولاً</div>
-                    ) : (
-                      (() => {
-                        const stocked = amendContext ? warehouses : warehouses.filter((w) => (stockLevels[selectedItem.id]?.[w.id] || 0) > 0);
-                        if (stocked.length === 0) {
-                          return <div className="px-2 py-2.5 text-[11px] text-rose-600 font-bold text-center flex items-center justify-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />لا يوجد مخزون لهذا الصنف</div>;
-                        }
-                        return stocked.map((w) => {
-                          const rawQty = stockLevels[selectedItem.id]?.[w.id] || 0;
-                          const origQty = amendContext ? (amendOriginalQty[`${selectedItem.id}_${w.id}`] || 0) : 0;
-                          const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(w.id))?.quantity || 0;
-                          const qty = Math.max(0, rawQty + origQty - inCart);
-                          const isSelected = String(staging.warehouseId) === String(w.id);
-                          const isLow = qty > 0 && qty < 5;
-                          const isInsuff = Number(staging.quantity) > qty;
-                          return (
-                            <button key={w.id} type="button" onClick={() => setStaging((s) => ({ ...s, warehouseId: String(w.id) }))}
-                              className={`flex items-center gap-2 px-2 py-1.5 text-right transition-colors ${isSelected ? "bg-emerald-50 text-emerald-800" : isInsuff ? "bg-rose-50/50 text-slate-700 hover:bg-rose-50" : "hover:bg-slate-100 text-slate-700"}`}
-                            >
-                              <div className={`h-2.5 w-2.5 rounded-full border-2 shrink-0 transition-colors ${isSelected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"}`} />
-                              <span className="flex-1 truncate text-[11px] font-bold">{w.name}</span>
-                              <span className={`font-mono text-[11px] font-black rounded-sm px-1 shrink-0 ${isInsuff ? "text-rose-700 bg-rose-100" : isLow ? "text-amber-700 bg-amber-100" : "text-slate-400"}`}>{qty}</span>
-                            </button>
-                          );
-                        });
-                      })()
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-600">الوحدة</label>
-                  <div className="flex h-[37px] items-center justify-center border border-slate-200 rounded-sm bg-slate-50 px-2">
-                    <span className="text-2sm font-bold text-slate-600 truncate">
-                      {selectedItem && staging.unitId ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية") : "أساسية"}
-                    </span>
-                  </div>
-                </div>
-                <button ref={listAddBtnRef} onClick={addCurrentLine} disabled={!selectedItem}
-                  onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); } }}
-                  className="flex h-[37px] items-center justify-center gap-2 rounded-sm bg-primary px-4 text-2sm font-bold text-white hover:bg-primary-600 disabled:opacity-40 self-end transition-all"
-                ><Plus className="h-4 w-4" /> إضافة</button>
-                {selectedItem && staging.warehouseId && (() => {
-                  const itemStock = stockLevels[selectedItem?.id] || stockLevels[String(selectedItem?.id)];
-                  const totalStock = Number(itemStock?.[staging.warehouseId] ?? itemStock?.[String(staging.warehouseId)] ?? itemStock?.[Number(staging.warehouseId)] ?? 0);
-                  const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId))?.quantity || 0;
-                  const remaining = Math.max(0, totalStock - inCart);
-                  return Number(staging.quantity) > remaining ? (
-                    <div className="col-span-full flex items-center gap-1.5 rounded-sm bg-rose-50 border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700">
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                      الكمية ({staging.quantity}) تتجاوز المتاح للإضافة ({remaining}) — الرصيد الكلي {totalStock}{inCart > 0 ? ` (${inCart} في السلة)` : ""}
-                    </div>
-                  ) : null;
-                })()}
-                {selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0) && (
-                  <div className="col-span-full flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-bold text-amber-700">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    السعر أقل من سعر الشراء ({Number(selectedItem.purchase_price).toFixed(2)}) - ستحتاج موافقة مشرف
-                  </div>
-                )}
+                <input ref={listPriceRef} type="number" step="any" value={staging.unitPrice}
+                  onChange={(e) => canOverridePrice && setStaging(s => ({ ...s, unitPrice: e.target.value }))}
+                  onFocus={e => canOverridePrice && e.target.select()}
+                  onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
+                  readOnly={!canOverridePrice}
+                  title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : (lastSalePrice !== null ? `آخر بيع: ${Number(lastSalePrice).toFixed(2)}` : undefined)}
+                  className={`entry-control text-center ${selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0) ? "entry-control--error" : ""}`}
+                />
               </div>
-            )}
+
+              {/* خصم */}
+              <div className="entry-field entry-field--disc">
+                <label className="entry-label">خصم</label>
+                <input ref={listDiscRef} type="number" min="0" step="any" value={staging.lineDiscount}
+                  onChange={(e) => setStaging(s => ({ ...s, lineDiscount: e.target.value }))}
+                  onFocus={e => e.target.select()}
+                  onKeyDown={(e) => handleListFieldKeyDown(e, listWhRef, listPriceRef)}
+                  className="entry-control text-center"
+                />
+              </div>
+
+              {/* الرصيد / المخزن */}
+              <div className="entry-field entry-field--wh">
+                <label className="entry-label">الرصيد / المخزن</label>
+                <WarehouseSelect
+                  ref={listWhRef}
+                  value={staging.warehouseId}
+                  onChange={(id) => setStaging((s) => ({ ...s, warehouseId: id }))}
+                  emptyLabel={selectedItem ? "لا يوجد مخازن" : "اختر صنفاً أولاً"}
+                  onKeyDown={(e) => handleListFieldKeyDown(e, listAddBtnRef, listDiscRef)}
+                  options={(() => {
+                    if (!selectedItem) return [];
+                    return warehouses.map((w) => {
+                      const rawQty = stockLevels[selectedItem.id]?.[w.id] || 0;
+                      const origQty = amendContext ? (amendOriginalQty[`${selectedItem.id}_${w.id}`] || 0) : 0;
+                      const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(w.id))?.quantity || 0;
+                      const qty = Math.max(0, rawQty + origQty - inCart);
+                      const isInsuff = Number(staging.quantity) > qty;
+                      const tone = isInsuff ? "insufficient" : qty <= 0 ? "out" : qty < 5 ? "low" : "normal";
+                      return { id: w.id, name: w.name, qty, tone };
+                    });
+                  })()}
+                />
+              </div>
+
+              {/* الوحدة */}
+              <div className="entry-field entry-field--unit">
+                <label className="entry-label">الوحدة</label>
+                <div className="entry-control entry-control--readonly">
+                  <span className="truncate">
+                    {selectedItem && staging.unitId ? (units.find(u => String(u.id) === String(staging.unitId))?.name || "أساسية") : "أساسية"}
+                  </span>
+                </div>
+              </div>
+
+              {/* إضافة */}
+              <button ref={listAddBtnRef} onClick={addCurrentLine} disabled={!selectedItem}
+                onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); } }}
+                className="entry-add-btn"
+              ><Plus className="h-4 w-4" /> إضافة</button>
+
+              {/* تنبيهات (سطر كامل) */}
+              {selectedItem && staging.warehouseId && (() => {
+                const itemStock = stockLevels[selectedItem?.id] || stockLevels[String(selectedItem?.id)];
+                const totalStock = Number(itemStock?.[staging.warehouseId] ?? itemStock?.[String(staging.warehouseId)] ?? itemStock?.[Number(staging.warehouseId)] ?? 0);
+                const inCart = lines.find(l => String(l.item_id) === String(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId))?.quantity || 0;
+                const remaining = Math.max(0, totalStock - inCart);
+                return Number(staging.quantity) > remaining ? (
+                  <div className="basis-full flex items-center gap-1.5 rounded bg-rose-50 border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    الكمية ({staging.quantity}) تتجاوز المتاح للإضافة ({remaining}) — الرصيد الكلي {totalStock}{inCart > 0 ? ` (${inCart} في السلة)` : ""}
+                  </div>
+                ) : null;
+              })()}
+              {selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0) && (
+                <div className="basis-full flex items-center gap-1.5 rounded bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-bold text-amber-700">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  السعر أقل من سعر الشراء ({Number(selectedItem.purchase_price).toFixed(2)}) - ستحتاج موافقة مشرف
+                </div>
+              )}
+            </div>
           </section>
 
           {/* Lines DataGrid */}
@@ -1437,7 +1207,7 @@ export default function POSListView({ vm }) {
               renderExpandedRow={null}
               onRowClick={null}
               columns={[
-                { id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-slate-400 border-l border-slate-100", render: (_, i) => i + 1 },
+                { id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", render: (_, i) => i + 1 },
                 ...(visibleColumns.includes("sku") ? [{ id: "sku", header: "الكود", width: 75, minWidth: 55, sortable: false, headerClass: "text-center px-1", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.item_code || item?.code || l.code || "-"}</span>; } }] : []),
                   ...(visibleColumns.includes("name") ? [{ id: "name", header: "البيان", width: 200, minWidth: 100, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-1", headerClass: "text-right px-2", render: (l) => {
                       const item = items.find(it => it.id === l.item_id);
@@ -1481,7 +1251,7 @@ export default function POSListView({ vm }) {
                           if (hasLimit && e.key >= '0' && e.key <= '9') { const next = Number(String(l.quantity) + e.key); if (next > maxStock) e.preventDefault(); }
                         }}
                         onChange={(e) => { const v = Math.max(1, Math.floor(Number(e.target.value) || 1)); updateLine(cartLineKey(l), { quantity: hasLimit ? Math.min(v, maxStock) : v }); }}
-                        className={`w-[40px] text-center text-sm font-mono font-black bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
+                        className={`w-[40px] text-center number-fmt text-sm bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
                       />
                       {hasLimit && <span className={`text-[8px] font-black leading-none shrink-0 ${atLimit ? 'text-rose-500' : 'text-slate-400'}`}>{atLimit ? 'نفد' : remaining}</span>}
                     </div>
@@ -1495,7 +1265,7 @@ export default function POSListView({ vm }) {
                       <input type="number" step="any" value={l.unit_price}
                         onChange={(e) => canOverridePrice && updateLine(cartLineKey(l), { unit_price: Number(e.target.value) || 0 })}
                         readOnly={!canOverridePrice}
-                        className={`w-full h-[34px] text-center text-xs font-mono font-black outline-none border-0 ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" : isOverride ? "bg-amber-50 text-amber-800 focus:bg-amber-100" : "bg-transparent focus:bg-indigo-50/50"}`} />
+                        className={`w-full h-[34px] text-center number-fmt-primary text-xs outline-none border-0 ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" : isOverride ? "bg-amber-50 text-amber-800 focus:bg-amber-100" : "bg-transparent focus:bg-indigo-50/50"}`} />
                       {isOverride && <span title={`السعر الأصلي: ${Number(l.sale_price).toFixed(2)}`} className="absolute top-0.5 left-0.5 h-1.5 w-1.5 rounded-full bg-amber-500 pointer-events-none" />}
                     </div>
                   );
@@ -1517,7 +1287,7 @@ export default function POSListView({ vm }) {
                           if (mode === "pct") { const flat = parseFloat(((v / 100) * lineMax).toFixed(4)); updateLine(lineKey, { line_discount: Math.min(flat, lineMax) }); }
                           else { updateLine(lineKey, { line_discount: Math.min(v, lineMax) }); }
                         }}
-                        className={`w-full h-[24px] text-center text-2sm font-mono font-black bg-transparent outline-none border rounded-sm transition-colors ${isOver ? "border-rose-400 bg-rose-50/50 text-rose-700 focus:border-rose-600" : "border-slate-200 focus:border-amber-400 focus:bg-amber-50/50"}`}
+                        className={`w-full h-[24px] text-center number-fmt-primary text-2sm bg-transparent outline-none border rounded-sm transition-colors ${isOver ? "border-rose-400 bg-rose-50/50 text-rose-700 focus:border-rose-600" : "border-slate-200 focus:border-amber-400 focus:bg-amber-50/50"}`}
                       />
                       <button type="button" onClick={() => setDiscountModes((m) => ({ ...m, [lineKey]: mode === "pct" ? "flat" : "pct" }))}
                         className={`h-[24px] px-1.5 rounded-sm text-[10px] font-black border transition-colors shrink-0 ${mode === "pct" ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"}`}
@@ -1543,7 +1313,7 @@ export default function POSListView({ vm }) {
                           return <option key={w.id} value={w.id} disabled={insufficient}>{w.name}</option>;
                         })}
                       </select>
-                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-mono font-black pointer-events-none" style={{ direction: "ltr", unicodeBidi: "plaintext" }}>
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] number-fmt pointer-events-none" style={{ direction: "ltr", unicodeBidi: "plaintext" }}>
                         {currentStock}
                       </span>
                     </div>
@@ -1562,7 +1332,7 @@ export default function POSListView({ vm }) {
                   const isProfit = profitFlat >= 0;
                   return (
                     <div className="relative w-full h-full flex items-center justify-center gap-0.5">
-                      <span className={`text-2sm font-mono font-black ${cost <= 0 ? "text-slate-500" : isProfit ? "text-emerald-700" : "text-rose-600"}`}>
+                      <span className={`number-fmt-primary text-2sm ${cost <= 0 ? "text-slate-500" : isProfit ? "text-emerald-700" : "text-rose-600"}`}>
                         {cost <= 0
                           ? `${profitFlat >= 0 ? "+" : ""}${profitFlat.toFixed(2)}`
                           : profitDisplayMode === "pct"
@@ -1578,10 +1348,10 @@ export default function POSListView({ vm }) {
                 }
               }] : []),
               ...(visibleColumns.includes("barcode") ? [{ id: "barcode", header: "الباركود", width: 100, minWidth: 70, sortable: false, headerClass: "text-center", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.barcode || l.item_barcode || "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("cost_price") ? [{ id: "cost_price", header: "سعر الشراء", width: 85, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{Number(item?.purchase_price || item?.current_cost || 0).toFixed(2)}</span>; } }] : []),
+              ...(visibleColumns.includes("cost_price") ? [{ id: "cost_price", header: "سعر الشراء", width: 85, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{Number(item?.purchase_price || item?.current_cost || 0).toFixed(2)}</span>; } }] : []),
               ...(visibleColumns.includes("category") ? [{ id: "category", header: "التصنيف", width: 90, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center text-[10px] text-slate-500 border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.category_name || l.category_name || "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("wholesale_price") ? [{ id: "wholesale_price", header: "سعر الجملة", width: 80, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); const wp = item?.wholesale_price || 0; return <span className={wp > 0 ? 'text-amber-700' : 'text-slate-400'}>{wp > 0 ? Number(wp).toFixed(2) : "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("total") ? [{ id: "total", header: "الإجمالي", width: 90, minWidth: 70, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-xs text-slate-900 bg-slate-50/50 border-l border-slate-100 truncate", render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0)) }] : []),
+              ...(visibleColumns.includes("wholesale_price") ? [{ id: "wholesale_price", header: "سعر الجملة", width: 80, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); const wp = item?.wholesale_price || 0; return <span className={wp > 0 ? 'text-amber-700' : 'text-slate-400'}>{wp > 0 ? Number(wp).toFixed(2) : "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("total") ? [{ id: "total", header: "الإجمالي", width: 90, minWidth: 70, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-xs text-slate-900 bg-slate-50/50 border-l border-slate-100 truncate", render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0)) }] : []),
               { id: "actions", header: "", width: 40, minWidth: 30, sortable: false, cellClass: "p-0 text-center", render: (row) => (
                   <button onClick={() => handleRemoveWithUndo(row)} className="inline-flex h-[34px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors"><X className="h-3.5 w-3.5" /></button>
                 )

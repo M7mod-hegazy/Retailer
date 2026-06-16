@@ -9,9 +9,10 @@ import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { REFUND_LABELS, statusBadge } from "../../components/operations/docHelpers";
+import { formatNumber } from "../../utils/currency";
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(n, { decimals: 2 });
 }
 
 function CancelReasonModal({ onConfirm, onClose }) {

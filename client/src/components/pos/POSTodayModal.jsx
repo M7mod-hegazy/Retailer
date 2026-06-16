@@ -9,16 +9,12 @@ import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
 import toast from "react-hot-toast";
 import PermissionGate from "../ui/PermissionGate";
+import { formatNumber } from "../../utils/currency";
 
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
-function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return formatNumber(v, { decimals: 3 });
 }
 function formatArabicDateTime(date) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
@@ -143,7 +139,7 @@ function InvoicePreviewModal({ inv, onClose }) {
                     <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
                     <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_price)}</td>
                     <td className="px-3 py-2.5 text-center text-amber-600">{l.discount > 0 ? formatMoney(l.discount) : "—"}</td>
-                    <td className="px-3 py-2.5 text-center font-mono font-black text-slate-700">{formatMoney(l.line_total || (l.quantity * l.unit_price))}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-slate-700">{formatMoney(l.line_total || (l.quantity * l.unit_price))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -156,23 +152,23 @@ function InvoicePreviewModal({ inv, onClose }) {
             <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">المجموع الفرعي</span>
-                <span className="font-black font-mono text-slate-700">{formatMoney(d.subtotal)}</span>
+                <span className="number-fmt-primary text-slate-700">{formatMoney(d.subtotal)}</span>
               </div>
               {Number(d.discount) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">خصم</span>
-                  <span className="font-black font-mono text-rose-600">- {formatMoney(d.discount)}</span>
+                  <span className="number-fmt-primary text-rose-600">- {formatMoney(d.discount)}</span>
                 </div>
               )}
               {Number(d.increase) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">إضافة</span>
-                  <span className="font-black font-mono text-emerald-600">+ {formatMoney(d.increase)}</span>
+                  <span className="number-fmt-primary text-emerald-600">+ {formatMoney(d.increase)}</span>
                 </div>
               )}
               <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1">
                 <span className="font-black text-slate-800">الإجمالي</span>
-                <span className="font-black font-mono text-slate-900">{formatMoney(d.total)} ج.م</span>
+                <span className="number-fmt-primary text-slate-900">{formatMoney(d.total)} ج.م</span>
               </div>
             </div>
 
@@ -183,7 +179,7 @@ function InvoicePreviewModal({ inv, onClose }) {
                 {d.payments.map((p, i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-slate-600">{p.method_name || PAYMENT_LABELS_PREVIEW[p.method] || p.method}</span>
-                    <span className="font-black font-mono text-slate-800">{formatMoney(p.amount)}</span>
+                    <span className="number-fmt-primary text-slate-800">{formatMoney(p.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -361,7 +357,7 @@ export default function POSTodayModal({ open, onClose }) {
     { id: "invoice_no", header: "رقم الفاتورة", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.invoice_no },
     { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => inv.customer_name || "زبون نقدي" },
     { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (inv) => formatMoney(inv.total) },
+    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (inv) => formatMoney(inv.total) },
     { id: "payment_type", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
       const PSTYLE = { cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" }, bank_transfer: { label: "بنك / فيزا", cls: "bg-sky-50 text-sky-700 border-sky-200" }, credit: { label: "آجل", cls: "bg-amber-50 text-amber-700 border-amber-200" }, installments: { label: "أقساط", cls: "bg-purple-50 text-purple-700 border-purple-200" }, multi: { label: "متعدد", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" } };
       if (inv.payment_splits) {
@@ -371,7 +367,7 @@ export default function POSTodayModal({ open, onClose }) {
             {splits.map((s, i) => { const info = PSTYLE[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
               <div key={i} className="flex items-center gap-1">
                 <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(s.amount)}</span>
+                <span className="text-[11px] number-fmt text-slate-500">{formatMoney(s.amount)}</span>
               </div>
             ); })}
           </div>
@@ -381,12 +377,12 @@ export default function POSTodayModal({ open, onClose }) {
       return (
         <div className="flex flex-col gap-0.5">
           <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-          <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(inv.total)}</span>
+          <span className="text-[11px] number-fmt text-slate-500">{formatMoney(inv.total)}</span>
         </div>
       );
     } },
     { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
-    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
+    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (inv) => (
       <div className="flex gap-1">
         <PermissionGate page="pos" action="view">
@@ -404,10 +400,10 @@ export default function POSTodayModal({ open, onClose }) {
     { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
     { id: "invoice_no", header: "الفاتورة", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.invoice_no || "—" },
     { id: "customer_name", header: "العميل", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.customer_name || "زبون نقدي" },
-    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center font-mono text-2sm font-bold text-slate-600", render: (r) => Number(r.quantity) },
-    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => formatMoney(r.unit_price) },
-    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
-    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
+    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_price) },
+    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt text-sm text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
+    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
         <button onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${r.invoice_id || r.id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>

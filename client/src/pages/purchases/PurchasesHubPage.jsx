@@ -14,6 +14,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 const METHOD_LABELS = {
   cash: "نقدي", 
@@ -39,7 +40,7 @@ const FADE_UP = {
 const PAGE_SIZE = 20;
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 function fmtDate(d) {
@@ -131,7 +132,7 @@ function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
                   <AlertTriangle className="w-6 h-6 text-rose-500" />
                 </div>
                 <div>
-                  <h2 className="text-[17px] font-black text-zinc-900 mb-1">تأكيد إلغاء الفاتورة</h2>
+                  <h2 className="text-[17px] number-fmt-primary text-zinc-900 mb-1">تأكيد إلغاء الفاتورة</h2>
                   <p className="text-sm font-medium text-zinc-500 leading-relaxed">
                     سيتم إلغاء فاتورة الشراء <span className="font-black text-zinc-800 font-mono">{row.doc_no || `#${row.id}`}</span> نهائياً.
                     سيؤدي ذلك إلى عكس تأثيرها على المخزون وحساب المورد والخزينة.
@@ -235,7 +236,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
             </div>
             <div className="flex flex-col gap-1 items-start md:items-end">
               <span className="text-[11px] font-black text-emerald-600 tracking-wider uppercase">إجمالي الفاتورة</span>
-              <span className="font-mono text-xl font-black text-emerald-700">{formatMoney(d.total)} ج.م</span>
+              <span className="number-fmt text-xl font-black text-emerald-700">{formatMoney(d.total)} ج.م</span>
             </div>
           </div>
 
@@ -276,15 +277,15 @@ function PreviewDrawer({ purchaseId, onClose }) {
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl bg-zinc-50 border border-zinc-100/80 p-2.5 text-center">
                   <span className="text-[9px] font-black text-zinc-400 block mb-1">الإجمالي</span>
-                  <span className="font-mono text-xs font-black text-zinc-800">{formatMoney(d.total)}</span>
+                  <span className="number-fmt text-xs font-black text-zinc-800">{formatMoney(d.total)}</span>
                 </div>
                 <div className="rounded-2xl bg-emerald-50/50 border border-emerald-100/50 p-2.5 text-center">
                   <span className="text-[9px] font-black text-emerald-600 block mb-1">المدفوع</span>
-                  <span className="font-mono text-xs font-black text-emerald-700">{formatMoney(totalPaid)}</span>
+                  <span className="number-fmt text-xs font-black text-emerald-700">{formatMoney(totalPaid)}</span>
                 </div>
                 <div className={`rounded-2xl border p-2.5 text-center ${remaining > 0.005 ? "bg-amber-50/50 border-amber-100/50" : "bg-zinc-50 border-zinc-100"}`}>
                   <span className={`text-[9px] font-black block mb-1 ${remaining > 0.005 ? "text-amber-600" : "text-zinc-400"}`}>المتبقي</span>
-                  <span className={`font-mono text-xs font-black ${remaining > 0.005 ? "text-amber-700" : "text-zinc-600"}`}>{formatMoney(remaining)}</span>
+                  <span className={`number-fmt text-xs font-black ${remaining > 0.005 ? "text-amber-700" : "text-zinc-600"}`}>{formatMoney(remaining)}</span>
                 </div>
               </div>
               {/* Discount & Increase row */}
@@ -294,12 +295,12 @@ function PreviewDrawer({ purchaseId, onClose }) {
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     خصم الفاتورة
                   </span>
-                  <span className="font-mono text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
+                  <span className="number-fmt text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
                   <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     إضافة / رسوم
                   </span>
-                  <span className="font-mono text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
+                  <span className="number-fmt text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
                 </div>
               )}
               {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
@@ -308,7 +309,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     خصم الفاتورة
                   </span>
-                  <span className="font-mono text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
+                  <span className="number-fmt text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
                 </div>
               )}
               {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
@@ -317,7 +318,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     إضافة / رسوم
                   </span>
-                  <span className="font-mono text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
+                  <span className="number-fmt text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
                 </div>
               )}
               {d.payment_method === "multi" && d.payments?.length > 0 && (
@@ -325,7 +326,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
                   {d.payments.map((p, i) => (
                     <div key={i} className="flex items-center justify-between text-[11px]">
                       <span className="font-bold text-zinc-500">{p.method_name || p.method_type || "—"}</span>
-                      <span className="font-mono font-black text-zinc-700">{formatMoney(p.amount)} ج.م</span>
+                      <span className="number-fmt-primary text-zinc-700">{formatMoney(p.amount)} ج.م</span>
                     </div>
                   ))}
                 </div>
@@ -354,9 +355,9 @@ function PreviewDrawer({ purchaseId, onClose }) {
                     <tr key={i} className="border-t border-zinc-100 hover:bg-emerald-50/10">
                       <td className="px-4 py-3.5 text-center font-mono text-[11px] font-black text-zinc-400">{l.item_code || "—"}</td>
                       <td className="px-4 py-3.5 font-bold text-zinc-800">{l.item_name || "—"}</td>
-                      <td className="px-4 py-3.5 text-center font-mono font-bold text-zinc-700">{l.quantity}</td>
-                      <td className="px-4 py-3.5 text-center font-mono text-zinc-600">{formatMoney(l.unit_cost)}</td>
-                      <td className="px-4 py-3.5 text-center font-mono font-black text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
+                      <td className="px-4 py-3.5 text-center number-fmt text-zinc-700">{l.quantity}</td>
+                      <td className="px-4 py-3.5 text-center number-fmt text-zinc-600">{formatMoney(l.unit_cost)}</td>
+                      <td className="px-4 py-3.5 text-center number-fmt-primary text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -454,7 +455,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
         <div className="flex items-stretch gap-0 bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3.5 py-1.5 min-w-[90px]">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الإجمالي</span>
-            <div className="text-sm font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
+            <div className="text-sm font-black text-slate-800 number-fmt leading-none flex items-baseline gap-0.5">
               <span>{formatMoney(total)}</span>
               <span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
             </div>
@@ -468,7 +469,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
                   <span className="w-1 h-1 rounded-full bg-emerald-500 inline-block" />
                   المدفوع
                 </span>
-                <div className="text-sm font-black text-emerald-700 font-mono leading-none flex items-baseline gap-0.5">
+                <div className="text-sm font-black text-emerald-700 number-fmt leading-none flex items-baseline gap-0.5">
                   <span>{formatMoney(paid)}</span>
                   <span className="text-[8px] font-bold mr-0.5">ج.م</span>
                 </div>
@@ -484,7 +485,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
                   <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />
                   المتبقي
                 </span>
-                <div className="text-sm font-black text-amber-700 font-mono leading-none flex items-baseline gap-0.5">
+                <div className="text-sm font-black text-amber-700 number-fmt leading-none flex items-baseline gap-0.5">
                   <span>{formatMoney(remaining)}</span>
                   <span className="text-[8px] font-bold mr-0.5">ج.م</span>
                 </div>
@@ -1070,10 +1071,10 @@ export default function PurchasesHubPage() {
                             </Link>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-zinc-700">{r.quantity}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-zinc-700">{formatMoney(r.unit_cost)}</td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-blue-600">{r.selling_price ? formatMoney(r.selling_price) : "—"}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-emerald-700">{formatMoney(r.line_total || (r.quantity * r.unit_cost))}</td>
+                        <td className="px-5 py-4 text-center number-fmt text-zinc-700">{r.quantity}</td>
+                        <td className="px-5 py-4 text-center number-fmt-primary text-zinc-700">{formatMoney(r.unit_cost)}</td>
+                        <td className="px-5 py-4 text-center number-fmt text-blue-600">{r.selling_price ? formatMoney(r.selling_price) : "—"}</td>
+                        <td className="px-5 py-4 text-center number-fmt-primary text-emerald-700">{formatMoney(r.line_total || (r.quantity * r.unit_cost))}</td>
                         <td className="px-5 py-4 text-center">
                           <button
                             onClick={() => setPreviewTarget({ id: r.purchase_id, doc_no: r.doc_no })}

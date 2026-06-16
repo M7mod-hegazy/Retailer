@@ -20,9 +20,10 @@ import {
 import { Link } from "react-router-dom";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { formatNumber } from "../../utils/currency";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 function StatCard({ label, value, icon: Icon, colorClass = "text-slate-600", bgClass = "bg-slate-50" }) {

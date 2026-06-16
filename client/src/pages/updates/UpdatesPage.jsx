@@ -147,8 +147,10 @@ export default function UpdatesPage() {
   );
 
   return (
-    <div dir="rtl" className="relative min-h-[100dvh] p-6 lg:p-12 overflow-x-hidden text-zinc-900 font-sans">
+    <div dir="rtl" className="relative min-h-[100dvh] px-4 md:px-8 py-6 lg:py-12 overflow-x-hidden font-sans" style={{ backgroundColor: "var(--bg-base)", color: "var(--text-primary)" }}>
       <BackgroundMesh />
+      <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to_right,var(--border-subtle) 1px,transparent 1px),linear-gradient(to_bottom,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 40%,transparent 0%,var(--bg-base) 100%)" }} />
 
       <motion.div
         variants={STAGGER}
@@ -162,7 +164,7 @@ export default function UpdatesPage() {
             <motion.div 
               animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100"
+              className="flex items-center justify-center w-12 h-12 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100" style={{ backgroundColor: "var(--bg-surface)" }}
             >
               <Zap className="w-5 h-5 text-emerald-500 fill-emerald-500/20" />
             </motion.div>
@@ -171,7 +173,7 @@ export default function UpdatesPage() {
             </span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-950 leading-[1.1] max-w-5xl">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-[1.1] max-w-5xl" style={{ color: "var(--text-primary)" }}>
             تحديثات <span className="text-transparent bg-clip-text bg-gradient-to-br from-zinc-900 to-zinc-500">النظام</span>
           </h1>
           <p className="text-zinc-500 mt-6 text-lg md:text-xl max-w-2xl font-medium leading-relaxed">
@@ -246,7 +248,7 @@ export default function UpdatesPage() {
                     >
                       <div className="flex justify-between items-end mb-3">
                         <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري التحميل</span>
-                        <span className="text-2xl font-black font-mono text-zinc-950">{progress.percent.toFixed(0)}%</span>
+                        <span className="text-2xl number-fmt text-zinc-950">{progress.percent.toFixed(0)}%</span>
                       </div>
                       <div className="h-3 w-full bg-zinc-100 rounded-full overflow-hidden p-0.5">
                         <motion.div
@@ -291,7 +293,7 @@ export default function UpdatesPage() {
                     data-help="check-button"
                     onClick={handleCheckNow}
                     disabled={checking}
-                    className="px-8 py-4 bg-white border border-zinc-200 text-zinc-900 rounded-2xl font-bold hover:bg-zinc-50 transition-colors disabled:opacity-50 text-sm shadow-sm"
+                    className="px-8 py-4 border border-zinc-200 rounded-2xl font-bold hover:bg-zinc-50 transition-colors disabled:opacity-50 text-sm shadow-sm" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
                   >
                     <RefreshCw className={`w-4 h-4 ${checking ? "animate-spin" : ""}`} />
                     فحص الخوادم
@@ -370,7 +372,7 @@ export default function UpdatesPage() {
           >
             <div className="flex items-center gap-4 mb-10 pb-8 border-b border-zinc-100">
               <div className="h-12 w-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
-                <ArrowUpRight className="w-6 h-6 text-zinc-900" />
+                <ArrowUpRight className="w-6 h-6" style={{ color: "var(--text-primary)" }} />
               </div>
               <div>
                 <h3 className="text-2xl font-black tracking-tight text-zinc-950">سجل التغييرات الشامل</h3>
@@ -390,7 +392,7 @@ export default function UpdatesPage() {
                   >
                     <Server className="w-8 h-8 text-zinc-300" />
                   </motion.div>
-                  <p className="text-xl font-black text-zinc-900 tracking-tight">لا توجد تفاصيل متاحة لهذا الإصدار</p>
+                  <p className="text-xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>لا توجد تفاصيل متاحة لهذا الإصدار</p>
                   <p className="text-zinc-400 mt-2 font-medium">سيتم عرض قائمة الميزات والإصلاحات هنا عند توفرها.</p>
                 </div>
               )}

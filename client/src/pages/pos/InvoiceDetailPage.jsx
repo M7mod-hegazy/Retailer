@@ -15,6 +15,7 @@ import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import toast from "react-hot-toast";
 import { PAYMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
+import { formatNumber } from "../../utils/currency";
 
 function CancelReasonModal({ title, onConfirm, onClose }) {
   const [reason, setReason] = useState("");
@@ -67,7 +68,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
 }
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(n);
 }
 
 export default function InvoiceDetailPage() {
@@ -279,15 +280,15 @@ export default function InvoiceDetailPage() {
             className="border-0"
             containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0"
             columns={[
-              { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
+              { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
               { id: "code", header: "الكود", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] font-black text-slate-500 border-l border-slate-100",
                 render: (l) => l.item_code || l.code || l.barcode || "—" },
               { id: "name", header: "الصنف", width: 200, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
                 render: (l) => <div className="py-1"><p className="text-sm font-black">{l.item_name || l.name}{l.sold_unit_name ? <span className="text-[11px] font-bold text-sky-600"> — {l.sold_unit_qty ?? ""} {l.sold_unit_name}</span> : null}</p></div> },
-              { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-sm font-black border-l border-slate-100", render: (l) => l.quantity },
-              { id: "unit_price", header: "السعر", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-sm font-black border-l border-slate-100 text-slate-700", render: (l) => fmt(l.unit_price) },
-              { id: "discount", header: "خصم", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-sm font-black border-l border-slate-100 text-amber-700", render: (l) => l.discount > 0 ? fmt(l.discount) : "—" },
-              { id: "line_total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 font-black font-mono text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100", render: (l) => fmt(l.line_total) },
+              { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt text-sm border-l border-slate-100", render: (l) => l.quantity },
+              { id: "unit_price", header: "السعر", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-slate-100 text-slate-700", render: (l) => fmt(l.unit_price) },
+              { id: "discount", header: "خصم", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-slate-100 text-amber-700", render: (l) => l.discount > 0 ? fmt(l.discount) : "—" },
+              { id: "line_total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100", render: (l) => fmt(l.line_total) },
             ]}
           />
 
@@ -326,30 +327,30 @@ export default function InvoiceDetailPage() {
               </div>
               <div className="flex justify-between text-2sm">
                 <span className="font-bold text-slate-500">المجموع الفرعي</span>
-                <span className="font-black font-mono text-slate-800">{fmt(invoice.subtotal)}</span>
+                <span className="number-fmt-primary text-slate-800">{fmt(invoice.subtotal)}</span>
               </div>
               {Number(invoice.discount) > 0 && (
                 <div className="flex justify-between text-2sm">
                   <span className="font-bold text-slate-500">الخصم</span>
-                  <span className="font-black font-mono text-rose-600">- {fmt(invoice.discount)}</span>
+                  <span className="number-fmt-primary text-rose-600">- {fmt(invoice.discount)}</span>
                 </div>
               )}
               {Number(invoice.increase) > 0 && (
                 <div className="flex justify-between text-2sm">
                   <span className="font-bold text-slate-500">زيادة</span>
-                  <span className="font-black font-mono text-emerald-600">+ {fmt(invoice.increase)}</span>
+                  <span className="number-fmt-primary text-emerald-600">+ {fmt(invoice.increase)}</span>
                 </div>
               )}
               {Number(invoice.tax_amount) > 0 && (
                 <div className="flex justify-between text-2sm">
                   <span className="font-bold text-slate-500">ضريبة ({invoice.tax_rate}%)</span>
-                  <span className="font-black font-mono text-indigo-600">+ {fmt(invoice.tax_amount)}</span>
+                  <span className="number-fmt-primary text-indigo-600">+ {fmt(invoice.tax_amount)}</span>
                 </div>
               )}
               <div className="h-px bg-slate-100" />
               <div className="rounded-sm bg-slate-900 p-4 text-center text-white">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">الإجمالي</div>
-                <div className="text-[26px] font-black tracking-tighter font-mono">{fmt(invoice.total)}</div>
+                <div className="text-[26px] number-fmt-primary tracking-tighter">{fmt(invoice.total)}</div>
                 <div className="text-[11px] opacity-40">ج.م</div>
               </div>
             </div>
@@ -363,7 +364,7 @@ export default function InvoiceDetailPage() {
                 {invoice.payments.map((p, i) => (
                   <div key={i} className="flex items-center justify-between rounded-sm bg-slate-50 border border-slate-200 px-3 py-2">
                     <span className="text-[11px] font-bold text-slate-600">{p.method_name || PAYMENT_LABELS[p.method] || p.method}</span>
-                    <span className="font-mono text-2sm font-black text-slate-800">{fmt(p.amount)}</span>
+                    <span className="number-fmt-primary text-2sm text-slate-800">{fmt(p.amount)}</span>
                   </div>
                 ))}
               </div>

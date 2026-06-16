@@ -9,6 +9,7 @@ import {
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
+import { formatNumber } from "../../utils/currency";
 
 const REASONS_SALES = [
   { value: "changed_mind", label: "غيّر رأيه" },
@@ -34,7 +35,7 @@ const PURCHASE_SETTLEMENTS = [
 ];
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 function fmtDate(d) {
   if (!d) return "";

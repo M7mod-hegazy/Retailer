@@ -10,6 +10,7 @@ import { printContent, getPrinterForPageSize } from "../../services/printService
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintDesigner from "./designer/PrintDesigner";
 import { familyForSize } from "./layout/layoutModel";
+import { formatNumber } from "../../utils/currency";
 
 const ALL_TEMPLATES = [
   { id: "58mm", label: "58mm", sub: "رول صغير",   icon: Receipt       },
@@ -350,7 +351,7 @@ export default function PrintPreviewModal({
                   <ChevronRight size={14} />
                 </button>
                 <span className="text-[11px] font-bold text-slate-700 tabular-nums min-w-[44px] text-center mx-1">
-                  {printPage.toLocaleString("en-US")} / {totalPrintPages.toLocaleString("en-US")}
+                  {formatNumber(printPage, { decimals: 0 })} / {formatNumber(totalPrintPages, { decimals: 0 })}
                 </span>
                 <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
                   className="p-1 rounded text-slate-500 hover:text-slate-900 disabled:opacity-25 transition-colors">
@@ -579,7 +580,7 @@ export default function PrintPreviewModal({
                     min={1}
                     max={totalPrintPages}
                   />
-                  <span className="text-[11px] font-bold text-slate-500">/ {totalPrintPages.toLocaleString("en-US")}</span>
+                  <span className="text-[11px] font-bold text-slate-500">/ {formatNumber(totalPrintPages, { decimals: 0 })}</span>
                 </div>
                 <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
                   className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30">

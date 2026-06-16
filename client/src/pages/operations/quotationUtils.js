@@ -39,8 +39,10 @@ export function formatQuotationNo(id) {
   return `QTN-${String(id || 0).padStart(5, "0")}`;
 }
 
+import { formatNumber } from "../../utils/currency";
+
 export function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 export function formatDate(d) {

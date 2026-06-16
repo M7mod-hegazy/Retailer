@@ -7,6 +7,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
+import { getApiBaseUrlSync } from "../../services/apiBase";
 
 function usePermissionFilter() {
   const { user, permissions } = useAuthStore();
@@ -29,7 +30,7 @@ function useCategoryCount() {
     if (fetched.current) return;
     fetched.current = true;
     const token = useAuthStore.getState().token;
-    const base = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
+    const base = getApiBaseUrlSync();
     fetch(`${base}/api/categories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d?.data)) setCount(d.data.length); })

@@ -27,6 +27,7 @@ import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import SortTh from "./parts/SortTh";
 import { resolveImageUrl, formatMoney } from "./posPageUtils";
+import { formatNumber } from "../../utils/currency";
 import { cartLineKey } from "../../stores/posStore";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -309,7 +310,7 @@ export default function POSDetailedView({ vm }) {
                 const sub = lines.reduce((s, l) => s + (Number(l.unit_price || 0) * Number(l.quantity || 1) * (1 - Number(l.discount || 0) / 100)), 0);
                 const disc = amendContext.prefill?.discount || 0;
                 const inc = amendContext.prefill?.increase || 0;
-                return (sub - disc + inc).toLocaleString("en-US", { minimumFractionDigits: 2 });
+                return formatNumber(sub - disc + inc);
               })()} ج.م</span>
               <span>{(amendContext.prefill?.lines || []).length} صنف</span>
               {amendContext.prefill?.payment_type && (
@@ -541,7 +542,7 @@ export default function POSDetailedView({ vm }) {
                       </div>
                       {/* Price + Stock row */}
                       <div className="flex items-center justify-between gap-1 mt-auto pt-1.5 border-t border-slate-100">
-                        <span className="font-mono text-xs font-black text-indigo-600">{formatMoney(item.sale_price || item.price || 0)}</span>
+                          <span className="number-fmt-primary text-xs text-indigo-600">{formatMoney(item.sale_price || item.price || 0)}</span>
                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
                           stockVal <= 0 ? "bg-rose-50 text-rose-600" : stockVal < 5 ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"
                         }`}>{stockVal}</span>
@@ -619,7 +620,7 @@ export default function POSDetailedView({ vm }) {
                       <span className="text-[11px] font-bold text-slate-400 font-mono truncate">{item.barcode || item.code || "—"}</span>
                     </div>
                     <div className="flex items-center justify-between w-full mt-auto pt-1.5 border-t border-slate-100">
-                      <span className="text-sm font-black text-indigo-600 font-mono">{formatMoney(item.sale_price || item.price || 0)}</span>
+                      <span className="number-fmt-primary text-sm text-indigo-600">{formatMoney(item.sale_price || item.price || 0)}</span>
                       <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-md ${Number(item.stock_quantity || item.stock || 0) <= 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500"}`}>
                         {Number(item.stock_quantity || item.stock || 0)}
                       </span>
@@ -645,8 +646,8 @@ export default function POSDetailedView({ vm }) {
                     )},
                     { id: "code", header: "الكود", width: detailedColWidths.code, render: r => <span className="font-mono text-slate-500">{r.code}</span> },
                     { id: "name", header: "اسم الصنف", width: detailedColWidths.name, render: r => <span className="font-bold">{r.name}</span> },
-                    { id: "price", header: "السعر", width: detailedColWidths.price, render: r => <span className="font-mono font-bold text-emerald-600">{formatMoney(r.sale_price || r.price)}</span> },
-                    { id: "stock", header: "الرصيد", width: detailedColWidths.stock, render: r => <span className="font-mono">{r.stock_quantity || r.stock || 0}</span> },
+                    { id: "price", header: "السعر", width: detailedColWidths.price, render: r => <span className="number-fmt-primary text-emerald-600">{formatMoney(r.sale_price || r.price)}</span> },
+                    { id: "stock", header: "الرصيد", width: detailedColWidths.stock, render: r => <span className="number-fmt">{r.stock_quantity || r.stock || 0}</span> },
                     { id: "actions", header: "", width: 60, render: r => (
                         <button onClick={() => handleGridClickTracked(r)} className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100"><Plus className="h-4 w-4"/></button>
                     )}
@@ -825,7 +826,7 @@ export default function POSDetailedView({ vm }) {
                       {/* Row 1: name + delete */}
                       <div className="flex items-center justify-between gap-1 px-2.5 pt-2 pb-1">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <span className="shrink-0 text-[10px] font-black text-slate-300 font-mono min-w-[14px]">{idx + 1}</span>
+                          <span className="shrink-0 text-[10px] font-black text-slate-300 number-fmt min-w-[14px]">{idx + 1}</span>
                           <span className="truncate font-black text-slate-800 text-2sm" title={line.item_name || line.name}>{line.item_name || line.name}</span>
                           {hasWarning && (
                             <span className="shrink-0" title={
@@ -906,7 +907,7 @@ export default function POSDetailedView({ vm }) {
 
                         {/* Price */}
                         <div className={`shrink-0 rounded-md px-2 py-0.5 border ${isPriceOverride ? "bg-amber-50 border-amber-200" : "bg-indigo-50 border-indigo-100"}`}>
-                          <span className={`font-mono text-xs font-black ${isPriceOverride ? "text-amber-700" : "text-indigo-700"}`}>{formatMoney(lineTotal)}</span>
+                          <span className={`number-fmt-primary text-xs ${isPriceOverride ? "text-amber-700" : "text-indigo-700"}`}>{formatMoney(lineTotal)}</span>
                         </div>
                       </div>
                     </div>
@@ -929,7 +930,7 @@ export default function POSDetailedView({ vm }) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                   <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
-                  <span className="text-sm font-black font-mono text-slate-800">{formatMoney(totals.subtotal)}</span>
+                  <span className="number-fmt-primary text-sm text-slate-800">{formatMoney(totals.subtotal)}</span>
                 </div>
                 <div data-help="discount-field" className="flex items-center justify-between gap-2 rounded-lg bg-rose-50/50 px-3 py-2">
                   <span className="text-2sm font-bold text-rose-600 shrink-0">خصم إضافي</span>
@@ -949,7 +950,7 @@ export default function POSDetailedView({ vm }) {
                         }
                       }}
                       onKeyDown={(e) => handleFieldNav(e, { nextRef: increaseRef })}
-                      className="w-16 rounded-lg border border-rose-200 bg-white px-2 py-1 text-center font-mono text-2sm font-black text-rose-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all"
+                      className="w-16 rounded-lg border border-rose-200 bg-white px-2 py-1 text-center number-fmt-primary text-2sm text-rose-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all"
                     />
                     <button
                       type="button"
@@ -981,7 +982,7 @@ export default function POSDetailedView({ vm }) {
                         }
                       }}
                       onKeyDown={(e) => handleFieldNav(e, { nextRef: taxRateRef, prevRef: discountRef })}
-                      className="w-16 rounded-lg border border-blue-200 bg-white px-2 py-1 text-center font-mono text-2sm font-black text-blue-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                      className="w-16 rounded-lg border border-blue-200 bg-white px-2 py-1 text-center number-fmt-primary text-2sm text-blue-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
                     />
                     <button
                       type="button"
@@ -1010,12 +1011,12 @@ export default function POSDetailedView({ vm }) {
                           value={taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}
                           onChange={(e) => setTaxRate(e.target.value === "" ? null : Number(e.target.value))}
                           onKeyDown={(e) => handleFieldNav(e, { nextRef: notesRef, prevRef: increaseRef })}
-                          className="w-14 rounded-lg border border-indigo-200 bg-white px-1.5 py-1 text-center font-mono text-2sm font-black text-indigo-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                          className="w-14 rounded-lg border border-indigo-200 bg-white px-1.5 py-1 text-center number-fmt-primary text-2sm text-indigo-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                         />
                       ) : (
-                        <span className="font-mono text-2sm font-black text-indigo-600">{taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}%</span>
+                        <span className="number-fmt-primary text-2sm text-indigo-600">{taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}%</span>
                       )}
-                      <span className="font-mono font-black text-indigo-600">
+                      <span className="number-fmt-primary text-indigo-600">
                         {(taxEnabled == null || Number(taxEnabled)) ? formatMoney(taxCalc.taxAmount) : "—"}
                       </span>
                     </div>
@@ -1024,7 +1025,7 @@ export default function POSDetailedView({ vm }) {
                 <div className="h-px bg-slate-100 my-1" />
                 <div className="flex items-center justify-between px-1">
                   <span className="text-sm font-black text-slate-700">الإجمالي المطلوب</span>
-                  <span className="font-mono text-[28px] font-black text-emerald-600 leading-none">{formatMoney(totals.total)}</span>
+                  <span className="number-fmt-primary text-[28px] text-emerald-600 leading-none">{formatMoney(totals.total)}</span>
                 </div>
               </div>
             </div>
@@ -1139,7 +1140,7 @@ export default function POSDetailedView({ vm }) {
                     return (
                       <div className={`flex items-center justify-between rounded-lg px-2 py-1.5 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
                         <span>المُدخل</span>
-                        <span className="font-mono">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
+                        <span className="number-fmt-primary">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
                       </div>
                     );
                   })()}
@@ -1277,7 +1278,7 @@ export default function POSDetailedView({ vm }) {
                     <td className="p-2 font-black text-slate-800 group-hover:text-white border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.name}px` }}>{item.name}</td>
                     <td className="p-2 font-mono font-bold text-slate-500 group-hover:text-slate-300 border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.barcode}px` }}>{item.barcode || "—"}</td>
                     <td className="p-2 font-bold text-slate-500 group-hover:text-slate-300 border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.category}px` }}>{item.category_name || "—"}</td>
-                    <td className="p-2 font-mono font-black text-emerald-700 group-hover:text-emerald-300 border-l border-slate-50" style={{ maxWidth: `${detailedColWidths.price}px` }}>{formatMoney(item.sale_price || item.price || 0)}</td>
+                    <td className="p-2 number-fmt-primary text-emerald-700 group-hover:text-emerald-300 border-l border-slate-50" style={{ maxWidth: `${detailedColWidths.price}px` }}>{formatMoney(item.sale_price || item.price || 0)}</td>
                     <td className="p-2 font-black text-slate-700 group-hover:text-slate-200" style={{ maxWidth: `${detailedColWidths.stock}px` }}>{Number(item.stock_quantity || item.stock || 0)}</td>
                   </tr>
                 ))}
@@ -1344,7 +1345,7 @@ export default function POSDetailedView({ vm }) {
         <div className="space-y-4 animate-modal-enter">
           <div className="rounded-sm bg-slate-950 p-5 text-center">
             <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">المبلغ المطلوب توزيعه</p>
-            <p className="font-mono text-[28px] font-black text-white">{formatMoney(totals.total)}</p>
+            <p className="number-fmt-primary text-[28px] text-white">{formatMoney(totals.total)}</p>
           </div>
           <div className="space-y-2">
             {paymentMethods.map(m => {
@@ -1363,7 +1364,7 @@ export default function POSDetailedView({ vm }) {
                       const val = e.target.value;
                       setActiveMultiPayments(prev => [...prev.filter(p => p.method_id !== m.id), { method_id: m.id, amount: val }]);
                     }}
-                    className="w-28 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-right font-mono text-sm font-black text-slate-800 outline-none focus:border-slate-800" />
+                    className="w-28 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-right number-fmt-primary text-sm text-slate-800 outline-none focus:border-slate-800" />
                 </div>
               );
             })}
@@ -1371,7 +1372,7 @@ export default function POSDetailedView({ vm }) {
           <div className="flex items-center justify-between border-t border-slate-100 pt-4">
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-slate-400 uppercase">الموزع</span>
-              <span className={`font-mono text-[16px] font-black ${Math.abs(totals.total - multiTotal) < 0.005 ? "text-emerald-600" : "text-rose-600"}`}>
+              <span className={`number-fmt-primary text-[16px] ${Math.abs(totals.total - multiTotal) < 0.005 ? "text-emerald-600" : "text-rose-600"}`}>
                 {formatMoney(multiTotal)}
               </span>
             </div>

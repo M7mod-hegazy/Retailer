@@ -7,8 +7,9 @@ import BankStatementTemplate from "../../components/print/templates/BankStatemen
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 function BankModal({ bank, mode, onClose, onDone }) {
   const handleKeyDown = useFieldNavigation();
@@ -162,7 +163,7 @@ function StatementPanel({ bank, onClose }) {
                         {tx.type === "deposit" ? "إيداع" : "سحب"}
                       </span>
                     </td>
-                    <td className={`px-4 py-2.5 font-black font-mono ${tx.type === "deposit" ? "text-emerald-700" : "text-rose-700"}`}>
+                    <td className={`px-4 py-2.5 number-fmt-primary ${tx.type === "deposit" ? "text-emerald-700" : "text-rose-700"}`}>
                       {tx.type === "deposit" ? "+" : "-"}{fmt(tx.amount)}
                     </td>
                     <td className="px-4 py-2.5 text-slate-400 text-[11px]">{tx.reference || "—"}</td>
@@ -329,7 +330,7 @@ export default function BankOperationsPage() {
                 </div>
                 <div className="mb-4">
                   <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الرصيد الحالي</div>
-                  <div className={`text-[26px] font-black font-mono ${Number(bank.balance) >= 0 ? "text-slate-900" : "text-rose-600"}`}>
+                  <div className={`text-[26px] number-fmt-primary ${Number(bank.balance) >= 0 ? "text-slate-900" : "text-rose-600"}`}>
                     {fmt(bank.balance)} <span className="text-2sm text-slate-400">ج.م</span>
                   </div>
                   {Number(bank.alert_threshold || 0) > 0 && Number(bank.balance || 0) < Number(bank.alert_threshold || 0) && (

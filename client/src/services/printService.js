@@ -70,9 +70,13 @@ export function buildPrintDocument(contentHtml, pageSizeStr, title = "طباعة
     @page { size: ${pageSizeStr}; margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: "Tajawal", "Noto Sans Arabic", system-ui, sans-serif;
+      /* Tahoma/Segoe UI/Arial are always present on Windows and render Arabic
+         crisply on thermal printers; the web fonts are a best-effort upgrade
+         that the silent-print window usually can't load. */
+      font-family: "Tajawal", "Noto Sans Arabic", "Tahoma", "Segoe UI", Arial, sans-serif;
       direction: rtl; text-align: center;
-      color: #0f172a; background: #fff;
+      color: #000; background: #fff;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 4px 6px; text-align: center; }
@@ -105,13 +109,16 @@ function printViaIframe(fullHtml, afterPrint) {
 }
 
 /** Attempt silent print to a configured device. Resolves true only on success. */
-async function printSilently(fullHtml, deviceName, copies) {
+async function printSilently(fullHtml, deviceName, copies, pageSizeStr) {
   if (!isElectronPrint() || !deviceName) return false;
   try {
     const res = await window.electronAPI.invoke("print:silent", {
       html: fullHtml,
       deviceName,
       copies: Math.max(1, Number(copies) || 1),
+      // The main process needs the paper size to pass an explicit pageSize to
+      // webContents.print — CSS @page is ignored there and thermal jobs print blank.
+      pageSizeStr: pageSizeStr || "",
     });
     return !!(res && res.success);
   } catch {
@@ -123,8 +130,8 @@ async function printSilently(fullHtml, deviceName, copies) {
  * Print an already-complete HTML document. Tries silent first (if a deviceName is
  * given and we're in Electron), otherwise falls back to the dialog.
  */
-export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint } = {}) {
-  const ok = await printSilently(fullHtml, deviceName, copies);
+export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint, pageSizeStr = "" } = {}) {
+  const ok = await printSilently(fullHtml, deviceName, copies, pageSizeStr);
   if (ok) {
     if (afterPrint) afterPrint();
     return true;
@@ -139,5 +146,5 @@ export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, aft
  */
 export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title } = {}) {
   const fullHtml = buildPrintDocument(contentHtml, pageSizeStr, title);
-  return printFullHtml(fullHtml, { deviceName, copies, afterPrint });
+  return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr });
 }

@@ -523,12 +523,12 @@ export default function PhysicalCountPage() {
                       <div className="flex items-center gap-10 bg-slate-50/50 px-8 py-5 rounded-3xl border border-slate-100 shrink-0">
                         <div className="text-center">
                           <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">التقدم</p>
-                          <p className="text-2xl font-mono font-black text-slate-900">{s.counted_lines}<span className="text-slate-300 text-lg">/{s.total_lines}</span></p>
+                          <p className="text-2xl number-fmt text-slate-900">{s.counted_lines}<span className="text-slate-300 text-lg">/{s.total_lines}</span></p>
                         </div>
                         <div className="w-px h-12 bg-slate-200"></div>
                         <div className="text-center">
                           <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">الفروقات</p>
-                          <p className={`text-2xl font-mono font-black ${s.variance_count > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{s.variance_count}</p>
+                          <p className={`text-2xl number-fmt ${s.variance_count > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{s.variance_count}</p>
                         </div>
                       </div>
                     </motion.div>
@@ -628,7 +628,7 @@ export default function PhysicalCountPage() {
                    <div className="flex items-center gap-12 shrink-0">
                      <div className="text-center w-24">
                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">النظام</p>
-                       <p className="text-xl font-mono font-black text-slate-300">{line.system_quantity}</p>
+                       <p className="text-xl number-fmt text-slate-300">{line.system_quantity}</p>
                      </div>
 
                      <div className="w-px h-12 bg-slate-100"></div>
@@ -639,9 +639,9 @@ export default function PhysicalCountPage() {
                          <input
                            type="number"
                            disabled={activeSession?.readOnly}
-                           className={`w-28 text-center text-2xl font-mono font-black py-2 rounded-2xl outline-none transition-all ${
-                             touched ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-900 focus:bg-indigo-50 focus:text-indigo-900"
-                           }`}
+                          className={`w-28 text-center text-2xl number-fmt py-2 rounded-2xl outline-none transition-all ${
+                            touched ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-900 focus:bg-indigo-50 focus:text-indigo-900"
+                          }`}
                            value={localVal}
                            onChange={(e) => {
                              const v = Number(e.target.value);
@@ -662,7 +662,7 @@ export default function PhysicalCountPage() {
 
                      <div className="text-center w-24">
                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">الفرق</p>
-                       <p className={`text-xl font-mono font-black ${
+                       <p className={`text-xl number-fmt ${
                          !touched ? "text-slate-200" : variance > 0 ? "text-emerald-500" : variance < 0 ? "text-rose-500" : "text-slate-800"
                        }`}>
                          {touched ? (variance > 0 ? `+${variance}` : variance) : "—"}

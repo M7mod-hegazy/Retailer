@@ -1,6 +1,7 @@
 ﻿import React from "react";
+import { formatNumber } from "../../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 export default function AjalScheduleTemplate({ debt, settings = {} }) {
   const { company_name = "", accent_color = "#7c3aed", print_font = "Cairo" } = settings;

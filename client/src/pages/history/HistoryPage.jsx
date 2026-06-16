@@ -29,6 +29,7 @@ import api from "../../services/api";
 import { useAuthStore } from "../../stores/authStore";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 const ACTION_OPTIONS = [
   { value: "", label: "كل الإجراءات" },
@@ -158,6 +159,82 @@ const PURCHASE_FIELD_LABELS = {
 const STATUS_LABELS = { active: "نشط", cancelled: "ملغاة", voided: "ملغاة", draft: "مسودة", paid: "مدفوعة", partial: "جزئي" };
 const PAYMENT_LABELS = { cash: "نقداً", credit: "آجل", multi: "متعدد", bank_transfer: "تحويل بنكي" };
 
+const SETTINGS_FIELD_LABELS = {
+  company_name: "اسم الشركة", company_name_en: "اسم الشركة (إنجليزي)", vat_number: "الرقم الضريبي",
+  tax_rate: "نسبة الضريبة", wizard_completed: "تم إكمال المعالج", app_name: "اسم التطبيق",
+  app_subtitle: "الاسم الفرعي", branch_name: "اسم الفرع", branch_code: "كود الفرع",
+  address: "العنوان", phone: "الهاتف", commercial_register: "السجل التجاري",
+  currency_symbol: "رمز العملة", currency_code: "كود العملة", decimal_places: "الخانات العشرية",
+  tax_type: "نوع الضريبة", invoice_prefix: "بادئة الفاتورة", purchase_prefix: "بادئة الشراء",
+  fiscal_year_start: "بداية السنة المالية", date_format: "تنسيق التاريخ", language: "اللغة",
+  receipt_width: "عرض الإيصال", auto_backup_enabled: "النسخ الاحتياطي التلقائي",
+  auto_backup_path: "مسار النسخ الاحتياطي", auto_backup_interval_hours: "فاصل النسخ (ساعات)",
+  auto_backup_time: "وقت النسخ الاحتياطي", last_auto_backup_at: "آخر نسخ احتياطي",
+  walk_in_customer_id: "معرف عميل المشي", default_warehouse_id: "المستودع الافتراضي",
+  default_treasury_id: "الخزينة الافتراضية", setup_step: "خطوة الإعداد",
+  setup_payload_json: "بيانات الإعداد", license_key: "مفتاح الترخيص", license_status: "حالة الترخيص",
+  receipt_footer: "تذييل الإيصال", show_cashier_name: "إظهار اسم الكاشير",
+  show_customer_name: "إظهار اسم العميل", show_tax: "إظهار الضريبة", show_footer: "إظهار التذييل",
+  logo_url: "رابط الشعار", logo_on_invoices: "شعار الفواتير", logo_on_receipts: "شعار الإيصالات",
+  logo_on_sidebar: "شعار القائمة الجانبية", logo_on_reports: "شعار التقارير",
+  default_pos_view: "عرض البيع الافتراضي", min_margin_percent: "أدنى هامش ربح",
+  additional_addresses: "عناوين إضافية", additional_phones: "هواتف إضافية",
+  address_position: "موضع العنوان", show_phone: "إظهار الهاتف", show_address: "إظهار العنوان",
+  show_tax_id: "إظهار الرقم الضريبي", show_qr: "إظهار QR", show_logo: "إظهار الشعار",
+  show_subtotal: "إظهار المجموع", show_discount_line: "إظهار الخصم",
+  show_payment_details: "إظهار تفاصيل الدفع", show_branch: "إظهار الفرع",
+  show_invoice_date: "إظهار تاريخ الفاتورة", show_barcode_line: "إظهار الباركود",
+  show_item_code: "إظهار كود الصنف", show_notes: "إظهار الملاحظات",
+  header_font_size: "حجم خط الرأس", body_font_size: "حجم خط النص",
+  footer_font_size: "حجم خط التذييل", item_font_size: "حجم خط الأصناف",
+  logo_max_height: "أقصى ارتفاع للشعار", margin_top: "الهامش العلوي", margin_side: "الهامش الجانبي",
+  qr_size: "حجم QR", print_font: "خط الطباعة", logo_alignment: "محاذاة الشعار",
+  accent_color: "لون التمييز", receipt_header: "رأس الإيصال",
+  return_prefix: "بادئة المرتجع", work_order_prefix: "بادئة أمر العمل",
+  receipt_prefix: "بادئة الإيصال", address_font_size: "حجم خط العنوان",
+  address_alignment: "محاذاة العنوان", tax_id_font_size: "حجم خط الرقم الضريبي",
+  tax_id_alignment: "محاذاة الرقم الضريبي", audit_log_retention_days: "حفظ السجل (أيام)",
+  margin_alert_cost_method: "طريقة حساب التكلفة", target_margin_percent: "الهامش المستهدف",
+  max_discount_percent: "الحد الأقصى للخصم", discount_cap_enabled: "تفعيل حد الخصم",
+  font_family: "نوع الخط", font_size: "حجم الخط", font_weight: "وزن الخط",
+  number_font_family: "خط الأرقام", number_font_scale: "حجم الأرقام",
+  number_font_weight: "وزن الأرقام", numeral_style: "نمط الأرقام",
+  tax_enabled: "تفعيل الضريبة",
+  feature_multi_unit: "الوحدات المتعددة", feature_variants: "المتغيرات",
+  feature_serials: "تتبع السيريال", feature_scale_barcodes: "باركود الميزان",
+  feature_repair_orders: "أوامر الصيانة", feature_restaurant: "وضع المطعم",
+  feature_gold: "تسعير الذهب", feature_promotions: "العروض",
+  serials_strict_mode: "الوضع الصارم للسيريال",
+  scale_prefix: "بادئة باركود الميزان", scale_item_code_length: "طول كود PLU",
+  scale_value_type: "نوع القيمة", scale_value_decimals: "الخانات العشرية",
+  color_theme: "نظام الألوان", custom_theme_vars: "متغيرات الألوان",
+  pos_voice_enabled: "الصوت في البيع", smart_lock_enabled: "القفل الذكي",
+  smart_lock_timeout_minutes: "مدة القفل الذكي (دقائق)",
+  held_yellow_hours: "التنبيه الأصفر (ساعات)", held_red_hours: "التنبيه الأحمر (ساعات)",
+};
+
+function getSettingFieldLabel(key) {
+  return SETTINGS_FIELD_LABELS[key] || key;
+}
+
+function isSettingChange(val) {
+  return typeof val === "object" && val !== null && "from" in val && "to" in val;
+}
+
+function cleanSettingValue(val) {
+  if (val === null || val === undefined) return "—";
+  const s = String(val);
+  return s.replace(/\.0+$/, "");
+}
+
+function formatPayloadValue(key, val) {
+  if (isSettingChange(val)) {
+    return `من ${cleanSettingValue(val.from)} إلى ${cleanSettingValue(val.to)}`;
+  }
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val ?? "—");
+}
+
 function SummaryCard({ data, resource }) {
   const isInvoice = ["invoice", "invoices", "sales_return", "sales_returns"].includes(resource);
   const isPurchase = ["purchase", "purchases", "purchase_returns", "purchase_return"].includes(resource);
@@ -171,7 +248,7 @@ function SummaryCard({ data, resource }) {
   if (!entries.length) return null;
 
   const fmt = (key, val) => {
-    if (["total", "subtotal", "discount", "debt_remaining"].includes(key)) return `${Number(val).toLocaleString("en-US")} ج`;
+    if (["total", "subtotal", "discount", "debt_remaining"].includes(key)) return `${formatNumber(val)} ج`;
     if (key === "status") return STATUS_LABELS[val] || val;
     if (key === "payment_type" || key === "payment_method") return PAYMENT_LABELS[val] || val;
     if (key === "created_at") return new Date(val).toLocaleString("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" });
@@ -227,14 +304,19 @@ function DetailPanel({ log, payload }) {
 
       {!detailData && !detailLoading && usefulPayloadEntries.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {usefulPayloadEntries.map(([key, val]) => (
-            <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
-              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{key}</p>
-              <p className="text-2sm font-black text-zinc-900 truncate" dir="ltr">
-                {typeof val === "object" ? JSON.stringify(val) : String(val)}
-              </p>
-            </div>
-          ))}
+          {usefulPayloadEntries.map(([key, val]) => {
+            const isSettings = resource === "settings";
+            const label = isSettings ? getSettingFieldLabel(key) : key;
+            const displayVal = isSettings && isSettingChange(val)
+              ? `من ${cleanSettingValue(val.from)} إلى ${cleanSettingValue(val.to)}`
+              : formatPayloadValue(key, val);
+            return (
+              <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
+                <p className="text-[9px] font-black tracking-widest text-zinc-400 mb-1">{label}</p>
+                <p className="text-2sm font-black text-zinc-900 truncate">{displayVal}</p>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -293,10 +375,10 @@ function DetailPanel({ log, payload }) {
                     </td>
                     <td className="px-3 py-2.5 text-center font-bold text-zinc-700">{line.quantity}</td>
                     <td className="px-3 py-2.5 text-left font-black text-zinc-600">
-                      {Number(line.unit_price || line.unit_cost || 0).toLocaleString()}
+                      {formatNumber(line.unit_price || line.unit_cost || 0)}
                     </td>
                     <td className="px-3 py-2.5 text-left font-black text-zinc-900">
-                      {Number(line.line_total || 0).toLocaleString()}
+                      {formatNumber(line.line_total || 0)}
                     </td>
                   </tr>
                 ))}
@@ -316,7 +398,7 @@ function DetailPanel({ log, payload }) {
             {payments.map((pmt, i) => (
               <div key={i} className="flex items-center justify-between px-3 py-2 text-[11px]">
                 <span className="font-bold text-zinc-500">{pmt.method_name || pmt.method || "نقداً"}</span>
-                <span className="font-black text-zinc-800">{Number(pmt.amount || 0).toLocaleString()}</span>
+                <span className="font-black text-zinc-800">{formatNumber(pmt.amount || 0)}</span>
               </div>
             ))}
           </div>
@@ -326,7 +408,7 @@ function DetailPanel({ log, payload }) {
       {detailData && !detailLoading && "debt_remaining" in detailData && Number(detailData.debt_remaining) > 0 && (
         <div className="flex items-center gap-2 text-[11px] font-black text-amber-700 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200">
           <DollarSign className="w-3.5 h-3.5" />
-          المتبقي: {Number(detailData.debt_remaining).toLocaleString()}
+          المتبقي: {formatNumber(detailData.debt_remaining)}
         </div>
       )}
     </div>
@@ -408,12 +490,19 @@ function LogRow({ log, index, highlighted, autoExpand }) {
               <span className="text-[11px] font-bold text-zinc-300">·</span>
             )}
             {hasDetails && payloadEntries.slice(0, 3).map(([key, val]) => {
-              const isMonetary = ["total", "amount", "subtotal", "price", "cost"].some(k => key.toLowerCase().includes(k));
-              const displayVal = isMonetary ? Number(val).toLocaleString("en-US") : (typeof val === "object" ? JSON.stringify(val) : String(val ?? "—"));
+              const isSettings = log.resource === "settings";
+              const label = isSettings ? getSettingFieldLabel(key) : key;
+              let displayVal;
+              if (isSettings && isSettingChange(val)) {
+                displayVal = `${cleanSettingValue(val.from)} ← ${cleanSettingValue(val.to)}`;
+              } else {
+                const isMonetary = ["total", "amount", "subtotal", "price", "cost"].some(k => key.toLowerCase().includes(k));
+                displayVal = isMonetary ? formatNumber(val) : (typeof val === "object" ? JSON.stringify(val) : String(val ?? "—"));
+              }
               return (
                 <span key={key} className="text-[11px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded flex items-center gap-1">
-                  <span className="text-zinc-400">{key}:</span>
-                  <span dir="ltr">{displayVal}</span>
+                  <span className="text-zinc-400">{label}:</span>
+                  <span>{displayVal}</span>
                 </span>
               );
             })}

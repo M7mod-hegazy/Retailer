@@ -79,16 +79,16 @@ export default function PaymentMethodsPage() {
   }
 
   return (
-    <div className="standard-page-container font-sans flex flex-col gap-8">
+    <div className="standard-page-container font-sans flex flex-col gap-8" style={{ backgroundColor: "var(--bg-base)" }}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
              <ArrowRightLeft className="h-4 w-4" />
              <span className="text-[11px] font-black uppercase tracking-widest">إعدادات الخزينة</span>
           </div>
-          <h1 className="text-[24px] font-black text-slate-800">قنوات الدفع والتحصيل</h1>
-          <p className="text-sm font-bold text-slate-400">إدارة كافة الوسائل المستخدمة في استلام وتوريد النقدية (خزينة، بنك، فيزا...)</p>
+          <h1 className="text-[24px] font-black" style={{ color: "var(--text-primary)" }}>قنوات الدفع والتحصيل</h1>
+          <p className="text-sm font-bold" style={{ color: "var(--text-muted)" }}>إدارة كافة الوسائل المستخدمة في استلام وتوريد النقدية (خزينة، بنك، فيزا...)</p>
         </div>
         <button 
           onClick={() => setModalOpen(true)}
@@ -101,28 +101,28 @@ export default function PaymentMethodsPage() {
       {/* Methods Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {loading ? (
-           <div className="col-span-full py-20 text-center font-black animate-pulse text-slate-400">جاري تحميل القنوات...</div>
+           <div className="col-span-full py-20 text-center font-black animate-pulse" style={{ color: "var(--text-muted)" }}>جاري تحميل القنوات...</div>
         ) : methods.length === 0 ? (
-           <div className="col-span-full py-20 text-center font-bold text-slate-400 border-2 border-dashed border-slate-200 rounded-md">لم يتم تعريف أي قنوات دفع بعد</div>
+           <div className="col-span-full py-20 text-center font-bold rounded-md border-2 border-dashed" style={{ color: "var(--text-muted)", borderColor: "var(--border-normal)" }}>لم يتم تعريف أي قنوات دفع بعد</div>
         ) : (
           methods.map((m) => (
-            <div key={m.id} className="group relative overflow-hidden rounded-md border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-800 hover:shadow-xl">
+            <div key={m.id} className="group relative overflow-hidden rounded-md border p-6 shadow-sm transition-all hover:shadow-xl" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
                <div className="flex items-center gap-4">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-sm shadow-inner ${m.type === 'cash' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
                      {m.type === 'cash' ? <Banknote className="h-6 w-6" /> : <CreditCard className="h-6 w-6" />}
                   </div>
                   <div className="flex flex-col">
-                     <span className="text-[16px] font-black text-slate-800">{m.name}</span>
-                     <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                     <span className="text-[16px] font-black" style={{ color: "var(--text-primary)" }}>{m.name}</span>
+                     <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                         {m.type === 'cash' ? 'خزينة / صندوق' : 'حساب بنكي / فيزا'}
                      </span>
                   </div>
                </div>
 
-               <div className="mt-6 flex items-center justify-between rounded-sm bg-slate-50 px-4 py-2 border border-slate-100">
+               <div className="mt-6 flex items-center justify-between rounded-sm px-4 py-2 border" style={{ backgroundColor: "var(--bg-overlay)", borderColor: "var(--border-subtle)" }}>
                   <div className="flex flex-col">
-                     <span className="text-[9px] font-black uppercase text-slate-400">يوجه إلى</span>
-                     <span className="text-2sm font-bold text-slate-600 truncate max-w-[120px]">
+                     <span className="text-[9px] font-black uppercase" style={{ color: "var(--text-muted)" }}>يوجه إلى</span>
+                     <span className="text-2sm font-bold truncate max-w-[120px]" style={{ color: "var(--text-secondary)" }}>
                         {m.target_name || (m.type === 'cash' ? treasuries.find(t => t.id === m.target_id)?.name : banks.find(b => b.id === m.target_id)?.name) || "مصدر افتراضي"}
                      </span>
                   </div>
@@ -132,7 +132,7 @@ export default function PaymentMethodsPage() {
                <div className="absolute left-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => handleDelete(m.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-sm text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                    className="flex h-8 w-8 items-center justify-center rounded-sm transition-all hover:bg-rose-50 hover:text-rose-600" style={{ color: "var(--text-muted)" }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -145,18 +145,18 @@ export default function PaymentMethodsPage() {
       {/* Slide-over Form Overlay */}
       {modalOpen && (
         <div className="fixed inset-0 z-[110] flex justify-end bg-slate-900/60 backdrop-blur-sm">
-           <div className="h-full w-full max-w-lg bg-white shadow-2xl animate-in slide-in-from-left duration-300">
-              <header className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-8 py-6">
+           <div className="h-full w-full max-w-lg shadow-2xl animate-in slide-in-from-left duration-300" style={{ backgroundColor: "var(--bg-surface)" }}>
+              <header className="flex items-center justify-between border-b px-8 py-6" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-overlay)" }}>
                  <div className="flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary text-white shadow-lg">
                        <ArrowRightLeft className="h-5 w-5" />
                     </div>
                     <div className="flex flex-col">
-                       <h2 className="text-[16px] font-black text-slate-800">تعريف وسيلة دفع جديدة</h2>
-                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">إعدادات الخزينة والمالية</p>
+                       <h2 className="text-[16px] font-black" style={{ color: "var(--text-primary)" }}>تعريف وسيلة دفع جديدة</h2>
+                       <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>إعدادات الخزينة والمالية</p>
                     </div>
                  </div>
-                 <button onClick={() => setModalOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-200 transition-colors">
+                 <button onClick={() => setModalOpen(false)} className="rounded-full p-2 transition-colors hover:bg-slate-200" style={{ color: "var(--text-muted)" }}>
                     <X className="h-5 w-5" />
                  </button>
               </header>
@@ -164,7 +164,7 @@ export default function PaymentMethodsPage() {
               <form onSubmit={handleAdd} className="p-10 flex flex-col h-[calc(100%-88px)]">
                  <div className="space-y-8 flex-1">
                     <div className="space-y-1.5 px-1">
-                       <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest flex items-center justify-between">
+                       <label className="text-[11px] font-black uppercase tracking-widest flex items-center justify-between" style={{ color: "var(--text-muted)" }}>
                           اسم الوسيلة (مثلاً: فودافون كاش، بنك مصر)
                           <span className="text-[9px] text-rose-500">مطلوب*</span>
                        </label>
@@ -175,12 +175,13 @@ export default function PaymentMethodsPage() {
                           onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
                           onKeyDown={e => handleKeyDown(e, { nextRef: typeRef })}
                           placeholder="الاسم التعريفي..."
-                          className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                          className="w-full rounded-sm border py-3 px-4 text-sm font-bold outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                          style={{ borderColor: "var(--border-normal)", color: "var(--text-primary)", backgroundColor: "var(--bg-input)" }}
                         />
                     </div>
 
                     <div className="space-y-1.5 px-1">
-                       <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تصنيف القناة</label>
+                       <label className="text-[11px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>تصنيف القناة</label>
                         <select 
                            ref={typeRef}
                            value={form.type}
@@ -189,7 +190,8 @@ export default function PaymentMethodsPage() {
                              const target = form.type === "cash" || form.type === "bank" ? targetIdRef : submitBtnRef;
                              handleKeyDown(e, { nextRef: target, prevRef: nameRef });
                            }}
-                           className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                           className="w-full rounded-sm border py-3 px-4 text-sm font-bold outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                           style={{ borderColor: "var(--border-normal)", color: "var(--text-primary)", backgroundColor: "var(--bg-input)" }}
                         >
                            <option value="cash">نقدي (خزينة)</option>
                            <option value="bank">بنكي (حساب بنك)</option>
@@ -199,14 +201,15 @@ export default function PaymentMethodsPage() {
 
                     {(form.type === 'cash' || form.type === 'bank') && (
                        <div className="space-y-1.5 px-1">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">التوجيه المالي (المصدر)</label>
+                          <label className="text-[11px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>التوجيه المالي (المصدر)</label>
                            <select 
                               ref={targetIdRef}
                               required
                               value={form.target_id}
                               onChange={(e) => setForm(p => ({ ...p, target_id: e.target.value }))}
                               onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: typeRef })}
-                              className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold text-slate-800 outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-slate-50 focus:bg-white"
+                              className="w-full rounded-sm border py-3 px-4 text-sm font-bold outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                              style={{ borderColor: "var(--border-normal)", color: "var(--text-primary)", backgroundColor: "var(--bg-input)" }}
                            >
                               <option value="">اختيار المصدر المالي...</option>
                               {form.type === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -215,11 +218,11 @@ export default function PaymentMethodsPage() {
                     )}
                  </div>
 
-                 <div className="mt-auto pt-10 border-t border-slate-100 flex items-center gap-4">
+                 <div className="mt-auto pt-10 border-t flex items-center gap-4" style={{ borderColor: "var(--border-subtle)" }}>
                     <button 
                       type="button" 
                       onClick={() => setModalOpen(false)}
-                      className="flex-1 rounded-sm border border-slate-200 py-3 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                      className="flex-1 rounded-sm border py-3 text-sm font-black transition-colors hover:bg-slate-50" style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
                     >
                        إلغاء
                     </button>

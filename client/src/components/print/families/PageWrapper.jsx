@@ -9,9 +9,12 @@ export default function PageWrapper({ settings: s, size = "A4", children }) {
     <div dir="rtl" style={{
       width: w,
       padding: `${g(s, "margin_top")}mm ${g(s, "margin_side")}mm`,
-      fontFamily: g(s, "print_font"),
+      fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
       fontSize: `${g(s, "body_font_size")}px`,
-      color: "#1e293b", background: "#fff",
+      // Bolder, near-black base for the whole A4/A5 sheet so text and numbers
+      // read strongly instead of the thin slate-gray default.
+      fontWeight: 600,
+      color: "#0f172a", background: "#fff",
     }}>{children}</div>
   );
 }

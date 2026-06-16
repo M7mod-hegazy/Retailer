@@ -735,7 +735,7 @@ export default function BulkPriceUpdatePage() {
               onKeyDown={e => handleKeyDown(e, { nextRef: priceFieldRef, prevRef: categoryFilterRef })}
               placeholder="0.00"
               title="قيمة التعديل — الرقم الذي سيتم إضافته أو خصمه من السعر"
-              className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-black outline-none focus:border-slate-800 shadow-sm font-mono text-center" />
+              className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-black outline-none focus:border-slate-800 shadow-sm number-fmt text-center" />
           </div>
 
           <div data-help="price-field-select" className="w-48 space-y-1.5">
@@ -973,17 +973,17 @@ export default function BulkPriceUpdatePage() {
                           <input type="checkbox" checked={isSelected} onChange={() => toggleRow(item.id)}
                             className="h-3.5 w-3.5 cursor-pointer rounded-sm accent-slate-800" />
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-center font-mono text-2sm font-black text-slate-500">
+                        <td className="px-4 py-2 border-l border-slate-100 text-center number-fmt-primary text-2sm text-slate-500">
                           {item.code || "—"}
                         </td>
                         <td className="px-4 py-2 border-l border-slate-100">
                           <p className="font-black text-sm text-slate-800">{item.name}</p>
-                          {item.barcode && <p className="font-mono text-[11px] text-slate-400">{item.barcode}</p>}
+                          {item.barcode && <p className="number-fmt text-[11px] text-slate-400">{item.barcode}</p>}
                         </td>
                         <td className="px-4 py-2 border-l border-slate-100 text-2sm font-bold text-slate-500">
                           {item.category_name || "—"}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-slate-600">
+                        <td className="px-4 py-2 border-l border-slate-100 text-right number-fmt-primary text-sm text-slate-600">
                           {activePriceEdit?.itemId === item.id && activePriceEdit?.field === 'purchase_price' ? (
                             <div onClick={(e) => e.stopPropagation()}>
                               <input type="number" step="0.01" min="0" autoFocus
@@ -993,13 +993,13 @@ export default function BulkPriceUpdatePage() {
                                   if (e.key === "Enter") commitPriceEdit(item.id, 'purchase_price', e.target.value);
                                   if (e.key === "Escape") cancelPriceEdit(e);
                                 }}
-                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
+                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black number-fmt text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
                               />
                             </div>
                           ) : overrideOnPurchase ? (
                             <span className="flex items-center gap-1.5 group/cell" title="سعر الشراء — تم التعديل يدوياً">
                               <span onClick={(e) => startPriceEdit(e, item.id, 'purchase_price')}
-                                className="font-mono font-black text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
+                                                                className="number-fmt-primary text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
                                 {newPrice?.toFixed(2) || Number(item.purchase_price || 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
@@ -1012,7 +1012,7 @@ export default function BulkPriceUpdatePage() {
                             </span>
                           ) : isSelected && fieldKey === 'purchase_price' && hasBulkFormula && newPrice !== null ? (
                             <span className="flex items-center gap-1.5 group/cell" title="سعر الشراء — معاينة الصيغة">
-                              <span className="font-mono font-black text-blue-700">{newPrice.toFixed(2)}</span>
+                              <span className="number-fmt-primary text-blue-700">{newPrice.toFixed(2)}</span>
                               <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 rounded shrink-0">صيغة</span>
                               <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.purchase_price || 0).toFixed(2)}</span>
                             </span>
@@ -1025,7 +1025,7 @@ export default function BulkPriceUpdatePage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-emerald-700">
+                        <td className="px-4 py-2 border-l border-slate-100 text-right number-fmt-primary text-sm text-emerald-700">
                           {activePriceEdit?.itemId === item.id && activePriceEdit?.field === 'sale_price' ? (
                             <div onClick={(e) => e.stopPropagation()}>
                               <input type="number" step="0.01" min="0" autoFocus
@@ -1035,13 +1035,13 @@ export default function BulkPriceUpdatePage() {
                                   if (e.key === "Enter") commitPriceEdit(item.id, 'sale_price', e.target.value);
                                   if (e.key === "Escape") cancelPriceEdit(e);
                                 }}
-                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
+                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black number-fmt text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
                               />
                             </div>
                           ) : overrideOnSale ? (
                             <span className="flex items-center gap-1.5 group/cell" title="سعر المستهلك — تم التعديل يدوياً">
                               <span onClick={(e) => startPriceEdit(e, item.id, 'sale_price')}
-                                className="font-mono font-black text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
+                                className="number-fmt-primary text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
                                 {newPrice?.toFixed(2) || Number(item.sale_price || 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
@@ -1054,7 +1054,7 @@ export default function BulkPriceUpdatePage() {
                             </span>
                           ) : isSelected && fieldKey === 'sale_price' && hasBulkFormula && newPrice !== null ? (
                             <span className="flex items-center gap-1.5 group/cell" title="سعر المستهلك — معاينة الصيغة">
-                              <span className="font-mono font-black text-blue-700">{newPrice.toFixed(2)}</span>
+                              <span className="number-fmt-primary text-blue-700">{newPrice.toFixed(2)}</span>
                               <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 rounded shrink-0">صيغة</span>
                               <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.sale_price || 0).toFixed(2)}</span>
                             </span>
@@ -1067,7 +1067,7 @@ export default function BulkPriceUpdatePage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 border-l border-slate-100 text-right font-mono font-bold text-sm text-blue-700">
+                        <td className="px-4 py-2 border-l border-slate-100 text-right number-fmt-primary text-sm text-blue-700">
                           {activePriceEdit?.itemId === item.id && activePriceEdit?.field === 'wholesale_price' ? (
                             <div onClick={(e) => e.stopPropagation()}>
                               <input type="number" step="0.01" min="0" autoFocus
@@ -1077,13 +1077,13 @@ export default function BulkPriceUpdatePage() {
                                   if (e.key === "Enter") commitPriceEdit(item.id, 'wholesale_price', e.target.value);
                                   if (e.key === "Escape") cancelPriceEdit(e);
                                 }}
-                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black font-mono text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
+                                className="w-full rounded border border-sky-400 bg-white px-2 py-0.5 text-sm font-black number-fmt text-slate-800 outline-none focus:ring-2 focus:ring-sky-300 text-center"
                               />
                             </div>
                           ) : overrideOnWholesale ? (
                             <span className="flex items-center gap-1.5 group/cell" title="سعر الجملة — تم التعديل يدوياً">
                               <span onClick={(e) => startPriceEdit(e, item.id, 'wholesale_price')}
-                                className="font-mono font-black text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
+                                className="number-fmt-primary text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
                                 {newPrice?.toFixed(2) || Number(item.wholesale_price || 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
@@ -1096,7 +1096,7 @@ export default function BulkPriceUpdatePage() {
                             </span>
                           ) : isSelected && fieldKey === 'wholesale_price' && hasBulkFormula && newPrice !== null ? (
                             <span className="flex items-center gap-1.5 group/cell" title="سعر الجملة — معاينة الصيغة">
-                              <span className="font-mono font-black text-blue-700">{newPrice.toFixed(2)}</span>
+                              <span className="number-fmt-primary text-blue-700">{newPrice.toFixed(2)}</span>
                               <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1 rounded shrink-0">صيغة</span>
                               <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.wholesale_price || 0).toFixed(2)}</span>
                             </span>
@@ -1110,7 +1110,7 @@ export default function BulkPriceUpdatePage() {
                           )}
                         </td>
 
-                        <td className="px-4 py-2 text-left font-mono font-bold text-2sm">
+                        <td className="px-4 py-2 text-left number-fmt text-2sm">
                           {isSelected && diff !== null ? (
                             <span className={`px-2 py-0.5 rounded transition-colors ${
                               diff > 0 ? "text-emerald-500 bg-emerald-50" : diff < 0 ? "text-rose-500 bg-rose-50" : "text-slate-400 bg-slate-50"
@@ -1171,7 +1171,7 @@ export default function BulkPriceUpdatePage() {
                 <Activity className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                 <span className="font-bold text-slate-700">
                   المعاينة الحية: {selected.size} صنف —{' '}
-                  <span className="font-mono font-black">
+                  <span className="number-fmt-primary">
                     {(() => {
                       const sample = items.find(it => selected.has(it.id));
                       if (!sample) return '';
@@ -1279,7 +1279,7 @@ export default function BulkPriceUpdatePage() {
                         className={`hover:bg-slate-50/50 transition-colors cursor-pointer ${expandedOp === op.operation_id ? "bg-slate-50 border-r-4 border-indigo-400" : ""}`}
                         onClick={() => loadOpItems(op.operation_id)}
                       >
-                        <td className="px-4 py-3 font-mono text-2sm text-slate-500 font-bold border-l border-slate-100">
+                        <td className="px-4 py-3 number-fmt text-2sm text-slate-500 font-bold border-l border-slate-100">
                           {op.changed_at?.slice(0, 16).replace("T", " ")}
                         </td>
                         <td className="px-4 py-3 text-center border-l border-slate-100">
@@ -1298,7 +1298,7 @@ export default function BulkPriceUpdatePage() {
                               {(() => { const m = parseBatchMeta(op); if (m && m.rules) return `${m.rules.length} قواعد`; return 'Batch'; })()}
                             </span>
                           ) : (
-                            <span className={`font-mono font-black text-sm px-2 py-0.5 rounded ${op.adjustment_value > 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"}`}>
+                            <span className={`number-fmt-primary text-sm px-2 py-0.5 rounded ${op.adjustment_value > 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"}`}>
                               {op.adjustment_value > 0 ? "+" : ""}{op.adjustment_value} {op.adjustment_type === "percentage" ? "%" : "ج"}
                             </span>
                           )}
@@ -1353,7 +1353,7 @@ export default function BulkPriceUpdatePage() {
                                           <div key={ri} className="flex items-center gap-1.5 bg-white border border-indigo-200 px-2.5 py-1 rounded-sm text-2sm">
                                             <span className="font-black text-indigo-500">قاعدة {ri + 1}</span>
                                             <span className="font-bold text-slate-600">{fieldLabelOf(rule.price_field)}</span>
-                                            <span className={`font-mono font-black ${rule.direction === 'up' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            <span className={`number-fmt-primary ${rule.direction === 'up' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                               {rule.direction === 'up' ? '+' : '-'}{rule.adjustment_value}{rule.adjustment_type === 'percentage' ? '%' : 'ج'}
                                             </span>
                                             <span className="font-bold text-slate-400">{rule.items_count} صنف</span>
@@ -1387,15 +1387,15 @@ export default function BulkPriceUpdatePage() {
                                           <tr key={oi.item_id} className="hover:bg-indigo-50 transition-colors">
                                             <td className="py-1.5">
                                               <div className="flex flex-col">
-                                                {(oi.item_code || oi.code) && <span className="font-mono text-[11px] text-slate-400">{oi.item_code || oi.code}</span>}
+                                                {(oi.item_code || oi.code) && <span className="number-fmt text-[11px] text-slate-400">{oi.item_code || oi.code}</span>}
                                                 <span className="font-bold text-slate-800">{oi.item_name}</span>
                                               </div>
                                             </td>
                                             <td className="py-1.5 text-slate-500">{oi.category_name || "—"}</td>
                                             <td className="py-1.5 text-slate-500">{fieldLabelByKey(oi.field)}</td>
-                                            <td className="py-1.5 font-mono text-slate-500">{Number(oi.old_value).toFixed(2)}</td>
-                                            <td className="py-1.5 font-mono font-black text-slate-800">{Number(oi.new_value).toFixed(2)}</td>
-                                            <td className="py-1.5 font-mono font-black">
+                                            <td className="py-1.5 number-fmt-primary text-slate-500">{Number(oi.old_value).toFixed(2)}</td>
+                                            <td className="py-1.5 number-fmt-primary text-slate-800">{Number(oi.new_value).toFixed(2)}</td>
+                                            <td className="py-1.5 number-fmt-primary">
                                               <span className={`px-1.5 py-0.5 rounded text-[11px] ${delta > 0 ? "text-emerald-700 bg-emerald-100" : delta < 0 ? "text-rose-700 bg-rose-100" : "text-slate-400 bg-slate-100"}`}>
                                                 {delta > 0 ? "+" : ""}{delta.toFixed(2)}
                                               </span>
@@ -1465,7 +1465,7 @@ export default function BulkPriceUpdatePage() {
                   {unchanged.length > 0 && (
                     <span className="text-slate-400 bg-slate-100 px-2 py-1 rounded">{unchanged.length} بدون تغيير</span>
                   )}
-                  <span className="mr-auto font-mono font-black text-slate-700">
+                    <span className="mr-auto number-fmt-primary text-slate-700">
                     إجمالي الفارق:
                     <span className={`mr-1 ${totalImpact > 0 ? "text-emerald-600" : totalImpact < 0 ? "text-rose-600" : "text-slate-400"}`}>
                       {totalImpact > 0 ? "+" : ""}{totalImpact.toFixed(2)} ج
@@ -1491,13 +1491,13 @@ export default function BulkPriceUpdatePage() {
                     <tr key={it.id} className="hover:bg-slate-50/50">
                       <td className="px-4 py-2">
                         <p className="font-black text-slate-800">{it.name}</p>
-                        {it.code && <p className="font-mono text-[11px] text-slate-400">{it.code}</p>}
+                        {it.code && <p className="number-fmt text-[11px] text-slate-400">{it.code}</p>}
                         {it.isOverride && <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded">مخصص</span>}
                       </td>
-                      <td className="px-4 py-2 font-mono font-bold text-slate-500 text-right">{it.oldPrice.toFixed(2)}</td>
-                      <td className="px-4 py-2 font-mono font-black text-slate-900 text-right">{it.newPrice.toFixed(2)}</td>
+                      <td className="px-4 py-2 number-fmt-primary text-slate-500 text-right">{it.oldPrice.toFixed(2)}</td>
+                      <td className="px-4 py-2 number-fmt-primary text-slate-900 text-right">{it.newPrice.toFixed(2)}</td>
                       <td className="px-4 py-2 text-left">
-                        <span className={`font-mono font-black text-[11px] px-1.5 py-0.5 rounded ${it.diff > 0 ? "text-emerald-700 bg-emerald-50" : it.diff < 0 ? "text-rose-700 bg-rose-50" : "text-slate-400 bg-slate-100"}`}>
+                        <span className={`number-fmt-primary text-[11px] px-1.5 py-0.5 rounded ${it.diff > 0 ? "text-emerald-700 bg-emerald-50" : it.diff < 0 ? "text-rose-700 bg-rose-50" : "text-slate-400 bg-slate-100"}`}>
                           {it.diff > 0 ? "+" : ""}{it.diff.toFixed(2)}
                         </span>
                       </td>
@@ -1567,7 +1567,7 @@ export default function BulkPriceUpdatePage() {
                   {unchanged.length > 0 && (
                     <span className="text-slate-400 bg-slate-100 px-2 py-1 rounded">{unchanged.length} بدون تغيير</span>
                   )}
-                  <span className="mr-auto font-mono font-black text-slate-700">
+                  <span className="mr-auto number-fmt-primary text-slate-700">
                     إجمالي الفارق:
                     <span className={`mr-1 ${totalImpact > 0 ? "text-emerald-600" : totalImpact < 0 ? "text-rose-600" : "text-slate-400"}`}>
                       {totalImpact > 0 ? "+" : ""}{totalImpact.toFixed(2)} ج
@@ -1602,10 +1602,10 @@ export default function BulkPriceUpdatePage() {
                         style={{ animation: `fadeIn 0.2s ease-out ${idx * 0.02}s both` }}>
                         <td className="px-4 py-2">
                           <p className="font-black text-slate-800">{bi.name}</p>
-                          {bi.code && <p className="font-mono text-[11px] text-slate-400">{bi.code}</p>}
+                          {bi.code && <p className="number-fmt text-[11px] text-slate-400">{bi.code}</p>}
                         </td>
                         <td className="px-4 py-2 font-bold text-slate-600">{bi.fieldLabel}</td>
-                        <td className="px-4 py-2 font-mono font-bold text-slate-500 text-right">{bi.oldPrice.toFixed(2)}</td>
+                        <td className="px-4 py-2 number-fmt-primary text-slate-500 text-right">{bi.oldPrice.toFixed(2)}</td>
                         <td className="px-4 py-2 text-right">
                           {isEditing ? (
                             <input type="number" step="0.01" min="0" autoFocus
@@ -1616,19 +1616,19 @@ export default function BulkPriceUpdatePage() {
                                 if (e.key === 'Escape') setBatchEditingId(null);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="w-full rounded-sm border border-indigo-400 bg-white px-2 py-1 text-sm font-black font-mono text-slate-900 outline-none shadow-sm text-right"
+                              className="w-full rounded-sm border border-indigo-400 bg-white px-2 py-1 text-sm font-black number-fmt text-slate-900 outline-none shadow-sm text-right"
                             />
                           ) : (
                             <button onClick={() => setBatchEditingId(bi.id)}
                               title="انقر لتعديل السعر يدوياً"
-                              className="group inline-flex items-center gap-1 font-mono font-black text-slate-900 cursor-pointer hover:text-indigo-700 transition-colors">
+                              className="group inline-flex items-center gap-1 number-fmt-primary text-slate-900 cursor-pointer hover:text-indigo-700 transition-colors">
                               {bi.newPrice.toFixed(2)}
                               <Pencil className="h-2.5 w-2.5 text-slate-300 group-hover:text-indigo-400 transition-colors" />
                             </button>
                           )}
                         </td>
                         <td className="px-4 py-2 text-left">
-                          <span className={`font-mono font-black text-[11px] px-1.5 py-0.5 rounded ${
+                          <span className={`number-fmt-primary text-[11px] px-1.5 py-0.5 rounded ${
                             bi.diff > 0 ? "text-emerald-700 bg-emerald-50" : bi.diff < 0 ? "text-rose-700 bg-rose-50" : "text-slate-400 bg-slate-100"
                           }`}>
                             {bi.diff > 0 ? "+" : ""}{bi.diff.toFixed(2)}

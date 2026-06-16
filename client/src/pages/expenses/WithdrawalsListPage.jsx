@@ -12,8 +12,9 @@ import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const today = () => new Date().toISOString().slice(0, 10);
 
 function Highlight({ text, query }) {
@@ -246,7 +247,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
               ref={inputRef}
               type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})}
               onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
-              className="w-full bg-transparent text-5xl md:text-7xl font-black font-mono text-zinc-900 placeholder:text-slate-200 outline-none pb-2 border-b-2 border-slate-100 focus:border-amber-500 transition-colors"
+              className="w-full bg-transparent text-5xl md:text-7xl number-fmt-primary text-zinc-900 placeholder:text-slate-200 outline-none pb-2 border-b-2 border-slate-100 focus:border-amber-500 transition-colors"
             />
             <span className="absolute left-0 bottom-4 text-2xl font-black text-slate-300 pointer-events-none">EGP</span>
           </div>
@@ -491,13 +492,13 @@ export default function WithdrawalsListPage() {
                 <div className="flex items-center gap-1.5 cursor-default" title="إجمالي مسحوبات اليوم فقط">
                   <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">سحب اليوم:</span>
-                  <span className="text-2sm font-black font-mono text-amber-600">{fmt(stats.todayAmt)} ج.م</span>
+                  <span className="text-2sm number-fmt-primary text-amber-600">{fmt(stats.todayAmt)} ج.م</span>
                 </div>
                 <div className="h-4 w-px bg-slate-200 hidden sm:block" />
                 <div className="flex items-center gap-1.5 cursor-default" title="إجمالي الفترة المحددة بالفلتر">
                   <Database className="h-3.5 w-3.5 text-slate-400" />
                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إجمالي الفترة:</span>
-                  <span className="text-2sm font-black font-mono text-zinc-800">{fmt(stats.total)} ج.م</span>
+                  <span className="text-2sm number-fmt-primary text-zinc-800">{fmt(stats.total)} ج.م</span>
                 </div>
               </div>
             </div>
@@ -598,7 +599,7 @@ export default function WithdrawalsListPage() {
                     <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full sm:pl-2">
                       <div className="flex flex-col sm:items-end">
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xl font-black font-mono text-amber-600 tracking-tighter">
+                          <span className="text-xl number-fmt-primary text-amber-600 tracking-tighter">
                             -{fmt(row.amount)}
                           </span>
                           <span className="text-[11px] font-black text-slate-300">EGP</span>

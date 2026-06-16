@@ -3,9 +3,10 @@ import { X, Package, Smartphone, Gem, Loader2, Check } from "lucide-react";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { formatNumber } from "../../utils/currency";
 
 function money(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatNumber(v, { decimals: 2 });
 }
 
 /**

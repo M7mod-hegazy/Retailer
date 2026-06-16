@@ -55,7 +55,7 @@ function StatusBadge({ status, expiresAt, showHint = false }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        <span className={`rounded-full border px-4 py-1.5 text-[11px] font-black uppercase tracking-widest ${s.cls}`}>{s.label}</span>
+        <span className={`rounded-full border px-4 py-1.5 text-[11px] number-fmt-primary uppercase tracking-widest ${s.cls}`}>{s.label}</span>
         {expiringSoon && (
           <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-1 shadow-sm">
             <AlertTriangle className="h-3 w-3" /> متبقي {daysLeft} أيام
@@ -324,15 +324,15 @@ export default function QuotationsPage() {
             <div className="flex items-center gap-8 px-6 lg:border-r border-slate-200">
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">القيم المعروضة</span>
-                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter font-mono">{formatMoney(stats.total)}<span className="text-2sm text-slate-400 font-sans mr-1">ج.م</span></span>
+                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter number-fmt">{formatMoney(stats.total)}<span className="text-2sm text-slate-400 font-sans mr-1">ج.م</span></span>
                </div>
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1">معدل التحويل</span>
-                 <span className="text-[24px] font-black leading-none text-emerald-700 tracking-tighter font-mono">{stats.conversionRate}%</span>
+                 <span className="text-[24px] font-black leading-none text-emerald-700 tracking-tighter number-fmt">{stats.conversionRate}%</span>
                </div>
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">إجمالي العروض</span>
-                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter font-mono">{total}</span>
+                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter number-fmt">{total}</span>
                </div>
             </div>
 
@@ -466,7 +466,7 @@ export default function QuotationsPage() {
                           </div>
                           <div className="flex flex-col gap-1 lg:border-r border-slate-100 lg:pr-12">
                             <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">إجمالي العرض</span>
-                            <span className="text-[24px] font-black text-slate-900 font-mono tracking-tighter mt-0.5">{formatMoney(row.total)}</span>
+                            <span className="text-[24px] font-black text-slate-900 tracking-tighter mt-0.5">{formatMoney(row.total)}</span>
                           </div>
                         </div>
 
@@ -621,13 +621,13 @@ export default function QuotationsPage() {
                     <div className="text-center font-mono text-sm text-slate-600">{formatMoney(line.unit_price)}</div>
                     <div className="text-center font-mono text-sm text-rose-500">{Number(line.discount_amount) > 0 ? formatMoney(line.discount_amount) : "—"}</div>
                     <div className="text-center text-[11px] font-bold text-slate-500">{line.unit_name || "—"}</div>
-                    <div className="px-2 text-left font-black font-mono text-sm">{formatMoney(line.line_total)}</div>
+                    <div className="px-2 text-left number-fmt-primary text-sm">{formatMoney(line.line_total)}</div>
                   </div>
                 ))}
               </div>
               <div className="flex items-center justify-between bg-violet-950 px-6 py-5 text-white">
                 <span className="text-sm font-black opacity-70">إجمالي العرض</span>
-                <span className="text-3xl font-black font-mono">{formatMoney(activeQuotation.total)} <span className="text-sm font-sans opacity-50">ج.م</span></span>
+                <span className="text-3xl number-fmt-primary">{formatMoney(activeQuotation.total)} <span className="text-sm font-sans opacity-50">ج.م</span></span>
               </div>
             </div>
 

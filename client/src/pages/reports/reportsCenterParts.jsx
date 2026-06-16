@@ -8,7 +8,7 @@ import Highlight from "../../components/ui/Highlight";
 import { fuzzyFilterRows } from "../../utils/search";
 import api from "../../services/api";
 
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 const AR_LABELS = {
   cash: "نقداً", card: "بطاقة", credit: "آجل", wallet: "محفظة",
@@ -20,11 +20,6 @@ const AR_LABELS = {
   payment_type: "طريقة الدفع", status: "الحالة",
 };
 function arLabel(key) { return AR_LABELS[key] || key; }
-function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
 
 // ─── Normalize column from either config format or server format ─────
 function normalizeCol(c) {
@@ -448,7 +443,7 @@ export function GhostPreviewRows({ catId, colVisibility, report, dateRange, scop
           className="flex gap-2 rounded-[4px] bg-bg-overlay px-1.5 py-1"
         >
           {visible.slice(0, 5).map((c, ci) => (
-            <span key={c.key} className={`flex-1 text-[11px] truncate font-bold ${c.type === "cur" || c.type === "num" ? "font-mono text-text-primary" : "text-text-secondary"}`}>
+            <span key={c.key} className={`flex-1 text-[11px] truncate font-bold ${c.type === "cur" ? "number-fmt-primary text-text-primary" : c.type === "num" ? "number-fmt text-text-primary" : "text-text-secondary"}`}>
               {row[ci] ?? "—"}
             </span>
           ))}

@@ -1,35 +1,25 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../stores/authStore";
-
-let resolvedBaseUrl = null;
-
-async function resolveBaseUrl() {
-  if (resolvedBaseUrl) return resolvedBaseUrl;
-  if (typeof window !== "undefined" && window.electronAPI?.getApiUrl) {
-    try {
-      resolvedBaseUrl = await window.electronAPI.getApiUrl();
-      return resolvedBaseUrl;
-    } catch (_) {}
-  }
-  resolvedBaseUrl = import.meta.env.VITE_API_URL || window.location.origin || "http://127.0.0.1:5000";
-  return resolvedBaseUrl;
-}
+import { getApiBaseUrl, getApiBaseUrlSync, resetApiBaseUrl } from "./apiBase";
+import { reportClientDiag } from "./diag";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:5000",
+  baseURL: getApiBaseUrlSync(),
+  // Global safety net so a genuinely hung request fails cleanly instead of hanging
+  // forever. Known-long calls (report exports, uploads) pass their own larger timeout.
+  timeout: 60000,
 });
 
 let isRedirectingToLogin = false;
 
-let baseUrlResolved = false;
-
+// Resolve the live base URL on every request. getApiBaseUrl() returns the cached value
+// immediately once resolved, so this is cheap — but it means a resetApiBaseUrl() (on
+// disconnect) is automatically picked up on the next request without a permanent cache.
 api.interceptors.request.use(async (config) => {
-  if (!baseUrlResolved) {
-    config.baseURL = await resolveBaseUrl();
-    api.defaults.baseURL = config.baseURL;
-    baseUrlResolved = true;
-  }
+  const base = await getApiBaseUrl();
+  config.baseURL = base;
+  api.defaults.baseURL = base;
   return config;
 });
 
@@ -39,12 +29,50 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ── Disconnect detection ────────────────────────────────────────────────────────────
+// The full-screen "انقطع الاتصال بالبرنامج" overlay must only appear for a REAL
+// disconnect, never for a busy server. better-sqlite3 is synchronous, so a heavy
+// report/export blocks the event loop and makes short-timeout pings time out — that is
+// "busy", not "down". We therefore (a) classify timeouts separately from connection
+// failures and (b) require two consecutive connection failures before showing the
+// overlay. A single transient blip no longer triggers it.
+
+function classifyError(error) {
+  if (error?.response) return "http"; // server answered (4xx/5xx) — it is up
+  const code = error?.code || "";
+  if (code === "ECONNABORTED" || code === "ETIMEDOUT" || /timeout/i.test(error?.message || "")) {
+    return "timeout"; // request aborted by our own timeout — server is busy, not down
+  }
+  return "disconnect"; // ERR_NETWORK / ECONNREFUSED / ECONNRESET / ENOTFOUND ...
+}
+
+let consecutiveDisconnects = 0;
+let overlayDispatched = false;
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Any successful response proves the server is reachable — reset disconnect state.
+    consecutiveDisconnects = 0;
+    overlayDispatched = false;
+    return response;
+  },
   (error) => {
-    // Network error — server is unreachable (ECONNREFUSED, timeout, etc.)
-    if (!error.response && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("server:unreachable"));
+    const kind = classifyError(error);
+    const reqUrl = String(error?.config?.url || "");
+
+    if (kind === "disconnect") {
+      consecutiveDisconnects += 1;
+      // The server may have restarted on a different port — drop the cached base URL so
+      // the next request re-resolves the live port instead of retrying a dead one.
+      resetApiBaseUrl();
+      if (consecutiveDisconnects >= 2 && !overlayDispatched && typeof window !== "undefined") {
+        overlayDispatched = true;
+        window.dispatchEvent(new CustomEvent("server:unreachable"));
+        reportClientDiag({ type: "disconnect", code: error?.code || null, url: reqUrl });
+      }
+    } else if (kind === "timeout") {
+      // Busy server — log it, but do NOT show the disconnect overlay.
+      reportClientDiag({ type: "timeout", code: error?.code || null, url: reqUrl });
     }
 
     const status = error?.response?.status;
@@ -56,7 +84,7 @@ api.interceptors.response.use(
         duration: 4000,
       });
     }
-    const reqUrl = String(error?.config?.url || "");
+
     const isAuthLoginRequest = reqUrl.includes("/api/auth/login");
 
     if (status === 401 && !isAuthLoginRequest) {

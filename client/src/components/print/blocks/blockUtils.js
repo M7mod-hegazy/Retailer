@@ -1,8 +1,8 @@
 export const DEFAULTS = {
   receipt_width: "80mm", invoice_prefix: "INV",
   receipt_header: "", receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
-  header_font_size: 16, body_font_size: 11, footer_font_size: 10,
-  item_font_size: 11, print_font: "monospace", logo_max_height: 48,
+  header_font_size: 16, body_font_size: 12, footer_font_size: 10,
+  item_font_size: 12, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   margin_top: 4, margin_side: 4, qr_size: 44,
   show_cashier_name: true, show_customer_name: true, show_tax: true,

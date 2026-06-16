@@ -52,7 +52,15 @@ const SCALE_OPTIONS = [
 const SIZE_MAP = { small: 13, normal: 15, medium: 16, large: 18, xlarge: 20, huge: 22, giant: 24 };
 const SCALE_VALUE_MAP = { tiny: 0.5, small: 0.75, normal: 1, large: 1.125, xlarge: 1.25, huge: 1.5, giant: 2 };
 
-function FontDropdown({ options, value, onChange, label }) {
+const WEIGHT_OPTIONS = [
+  { value: 200, label: "نحيف", desc: "ExtraLight" },
+  { value: 400, label: "عادي", desc: "Regular" },
+  { value: 600, label: "نصف سميك", desc: "Semibold" },
+  { value: 800, label: "سميك", desc: "Extrabold" },
+  { value: 1000, label: "أثخن", desc: "Ultra" },
+];
+
+function FontDropdown({ options, value, onChange, label, numberOnly }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -66,6 +74,8 @@ function FontDropdown({ options, value, onChange, label }) {
 
   const selected = options.find((o) => o.value === value) || options[0];
 
+  const numberPreview = "0123456789";
+
   return (
     <div ref={ref} className="relative" dir="rtl">
       <button
@@ -77,9 +87,15 @@ function FontDropdown({ options, value, onChange, label }) {
           <span className="text-[15px] font-bold text-slate-800 leading-tight truncate max-w-full" style={{ fontFamily: value }}>
             {selected.label}
           </span>
-          <span className="text-[13px] text-slate-600 leading-relaxed truncate max-w-full" style={{ fontFamily: value }}>
-            مرحباً بكم في النظام العربي — ٠١٢٣
-          </span>
+          {numberOnly ? (
+            <span className="text-xl font-black text-slate-800 leading-none truncate max-w-full tracking-wider" style={{ fontFamily: value }}>
+              {numberPreview}
+            </span>
+          ) : (
+            <span className="text-[13px] text-slate-600 leading-relaxed truncate max-w-full" style={{ fontFamily: value }}>
+              مرحباً بكم في النظام العربي — ٠١٢٣
+            </span>
+          )}
         </div>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -98,9 +114,15 @@ function FontDropdown({ options, value, onChange, label }) {
               <span className="text-[15px] font-bold text-slate-800 leading-tight" style={{ fontFamily: opt.value }}>
                 {opt.label}
               </span>
-              <span className="text-[13px] text-slate-500 leading-relaxed" style={{ fontFamily: opt.value }}>
-                مرحباً بكم في النظام العربي — ٠١٢٣
-              </span>
+              {numberOnly ? (
+                <span className="text-lg font-black text-slate-800 leading-none tracking-wider" style={{ fontFamily: opt.value }}>
+                  {numberPreview}
+                </span>
+              ) : (
+                <span className="text-[13px] text-slate-500 leading-relaxed" style={{ fontFamily: opt.value }}>
+                  مرحباً بكم في النظام العربي — ٠١٢٣
+                </span>
+              )}
               <span className="text-[11px] font-bold text-slate-400 leading-tight">{opt.desc}</span>
             </button>
           ))}
@@ -116,10 +138,13 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
   const currentNumberFamily = settings.number_font_family || "Outfit";
   const currentNumberScale = settings.number_font_scale || "normal";
   const currentNumeralStyle = settings.numeral_style || "western";
+  const currentTextWeight = settings.font_weight || 700;
+  const currentNumberWeight = settings.number_font_weight || 700;
   const previewPx = SIZE_MAP[currentSize] || 15;
   const previewScale = SCALE_VALUE_MAP[currentNumberScale] ?? 1;
 
   const arabicDigits = Intl.NumberFormat("ar-SA", { useGrouping: false }).format(1234567890);
+  const westernDigits = "0123456789";
 
   return (
     <div className="space-y-8">
@@ -173,6 +198,49 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
               })}
             </div>
           </div>
+
+          {/* TEXT WEIGHT — مباشرة تحت حجم النص */}
+          <div className="border-t border-slate-100 mt-6 pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+                وزن الخط
+              </h3>
+              <span className="rounded-sm bg-indigo-100 px-2 py-0.5 text-[11px] font-black text-indigo-700 tracking-wider">
+                جديد
+              </span>
+            </div>
+            <p className="text-2sm font-bold text-slate-400 mb-3">درجة ثخانة النص العام في النظام</p>
+
+            <div
+              className="rounded-sm px-4 py-3 mb-4"
+              style={{ fontFamily: currentFamily, fontWeight: currentTextWeight, fontSize: "20px", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-overlay)", lineHeight: 1.5 }}
+            >
+              عرض تجريبي — النص بالوزن {currentTextWeight}
+            </div>
+
+            <div className="flex rounded-sm border border-slate-200 w-fit flex-wrap">
+              {WEIGHT_OPTIONS.map((opt) => {
+                const active = currentTextWeight === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onChange("font_weight", opt.value)}
+                    className={`px-5 py-4 text-center transition-all ${
+                      active
+                        ? "bg-primary text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="block text-[22px] leading-none" style={{ fontWeight: opt.value, fontFamily: currentFamily }}>
+                      عرض
+                    </span>
+                    <span className="block text-[11px] font-bold opacity-60 mt-2">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </section>
 
         {/* NUMBER SECTION */}
@@ -190,6 +258,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
               خط الأرقام (مستقل عن خط النص)
             </h4>
             <FontDropdown
+              numberOnly
               options={NUMBER_FONT_OPTIONS}
               value={currentNumberFamily}
               onChange={(val) => onChange("number_font_family", val)}
@@ -274,6 +343,49 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
               </button>
             </div>
           </div>
+
+          {/* NUMBER WEIGHT — داخل قسم الأرقام */}
+          <div className="border-t border-slate-100 mt-6 pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+                وزن الأرقام
+              </h3>
+              <span className="rounded-sm bg-indigo-100 px-2 py-0.5 text-[11px] font-black text-indigo-700 tracking-wider">
+                جديد
+              </span>
+            </div>
+            <p className="text-2sm font-bold text-slate-400 mb-3">درجة ثخانة الأرقام في النظام</p>
+
+            <div
+              className="rounded-sm px-4 py-3 mb-4 text-right"
+              style={{ fontFamily: currentNumberFamily, fontWeight: currentNumberWeight, fontSize: "26px", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-overlay)", lineHeight: 1, letterSpacing: "0.03em" }}
+            >
+              {currentNumeralStyle === "arabic" ? arabicDigits : westernDigits}
+            </div>
+
+            <div className="flex rounded-sm border border-slate-200 w-fit flex-wrap">
+              {WEIGHT_OPTIONS.map((opt) => {
+                const active = currentNumberWeight === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onChange("number_font_weight", opt.value)}
+                    className={`px-6 py-5 text-center transition-all ${
+                      active
+                        ? "bg-primary text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="block text-[36px] leading-none tracking-wider" style={{ fontWeight: opt.value, fontFamily: currentNumberFamily }}>
+                      123
+                    </span>
+                    <span className="block text-[11px] font-bold opacity-60 mt-2">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </section>
 
       </div>
@@ -313,7 +425,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
             </p>
           </div>
 
-          {/* KPI mock */}
+          {/* KPI mock — uses primary weight */}
           <div
             style={{
               border: "1px solid #e2e8f0",
@@ -332,7 +444,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                   style={{
                     fontFamily: currentNumberFamily,
                     fontSize: `${1.75 * previewScale}em`,
-                    fontWeight: 800,
+                    fontWeight: currentWeightPrimary,
                     color: "#0f172a",
                     lineHeight: 1.1,
                     letterSpacing: "-0.02em",
@@ -342,7 +454,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     ? new Intl.NumberFormat("ar-SA").format(1257800)
                     : "1,257,800"}
                   {" "}
-                  <span style={{ fontSize: `${0.6 * previewScale}em`, fontWeight: 600, color: "#64748b" }}>
+                  <span style={{ fontSize: `${0.6 * previewScale}em`, fontWeight: currentWeightSecondary, color: "#64748b" }}>
                     ر.س
                   </span>
                 </div>
@@ -353,7 +465,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                   style={{
                     fontFamily: currentNumberFamily,
                     fontSize: `${1.25 * previewScale}em`,
-                    fontWeight: 800,
+                    fontWeight: currentWeightPrimary,
                     color: "#0f172a",
                   }}
                 >
@@ -366,7 +478,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                   style={{
                     fontFamily: currentNumberFamily,
                     fontSize: `${1.25 * previewScale}em`,
-                    fontWeight: 800,
+                    fontWeight: currentWeightPrimary,
                     color: "#0f172a",
                   }}
                 >
@@ -374,7 +486,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     ? new Intl.NumberFormat("ar-SA").format(42)
                     : "42"}
                   {" "}
-                  <span style={{ fontSize: `${0.7 * previewScale}em`, fontWeight: 600, color: "#64748b" }}>
+                  <span style={{ fontSize: `${0.7 * previewScale}em`, fontWeight: currentWeightSecondary, color: "#64748b" }}>
                     قطعة
                   </span>
                 </div>
@@ -382,15 +494,15 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
             </div>
           </div>
 
-          {/* Price lines */}
+          {/* Price lines — shows primary vs secondary weight */}
           <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", fontSize: "0.9375em" }}>
             <div>
-              <span style={{ fontWeight: 600, color: "#475569" }}>سعر الوحدة: </span>
+              <span style={{ fontWeight: currentWeightSecondary, color: "#475569" }}>سعر الوحدة: </span>
               <span
                 style={{
                   fontFamily: currentNumberFamily,
                   fontSize: `${1 * previewScale}em`,
-                  fontWeight: 700,
+                  fontWeight: currentWeightSecondary,
                   color: "#0f172a",
                 }}
               >
@@ -398,16 +510,16 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                   ? new Intl.NumberFormat("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(35.5)
                   : "35.50"}
                 {" "}
-                <span style={{ fontSize: `${0.8 * previewScale}em`, fontWeight: 600, color: "#64748b" }}>ر.س</span>
+                <span style={{ fontSize: `${0.8 * previewScale}em`, fontWeight: currentWeightSecondary, color: "#64748b" }}>ر.س</span>
               </span>
             </div>
             <div>
-              <span style={{ fontWeight: 600, color: "#475569" }}>الإجمالي: </span>
+              <span style={{ fontWeight: currentWeightSecondary, color: "#475569" }}>الإجمالي: </span>
               <span
                 style={{
                   fontFamily: currentNumberFamily,
                   fontSize: `${1 * previewScale}em`,
-                  fontWeight: 700,
+                  fontWeight: currentWeightPrimary,
                   color: "#065f46",
                 }}
               >
@@ -415,16 +527,16 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                   ? new Intl.NumberFormat("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(1250)
                   : "1,250.00"}
                 {" "}
-                <span style={{ fontSize: `${0.8 * previewScale}em`, fontWeight: 600, color: "#64748b" }}>ر.س</span>
+                <span style={{ fontSize: `${0.8 * previewScale}em`, fontWeight: currentWeightSecondary, color: "#64748b" }}>ر.س</span>
               </span>
             </div>
             <div>
-              <span style={{ fontWeight: 600, color: "#475569" }}>الخصم: </span>
+              <span style={{ fontWeight: currentWeightSecondary, color: "#475569" }}>الخصم: </span>
               <span
                 style={{
                   fontFamily: currentNumberFamily,
                   fontSize: `${1 * previewScale}em`,
-                  fontWeight: 700,
+                  fontWeight: currentWeightPrimary,
                   color: "#dc2626",
                 }}
               >
@@ -432,7 +544,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                   ? new Intl.NumberFormat("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(-15)
                   : "-15.00"}
                 {" "}
-                <span style={{ fontSize: `${0.8 * previewScale}em`, fontWeight: 600, color: "#64748b" }}>%</span>
+                <span style={{ fontSize: `${0.8 * previewScale}em`, fontWeight: currentWeightSecondary, color: "#64748b" }}>%</span>
               </span>
             </div>
           </div>
@@ -445,12 +557,12 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
               fontSize: "0.8125em",
             }}
           >
-            <span style={{ fontWeight: 600, color: "#64748b" }}>الأرقام: </span>
+            <span style={{ fontWeight: currentWeightSecondary, color: "#64748b" }}>الأرقام: </span>
             <span
               style={{
                 fontFamily: currentNumberFamily,
                 fontSize: `${1 * previewScale}em`,
-                fontWeight: 700,
+                fontWeight: currentWeightPrimary,
                 color: "#0f172a",
               }}
             >

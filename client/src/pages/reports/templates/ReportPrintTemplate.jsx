@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import AccountStatementLedger from "./AccountStatementLedger";
+import { formatNumber } from "../../../utils/currency";
 
 function safeText(value) {
   if (value == null) return "";
@@ -371,7 +372,7 @@ export default function ReportPrintTemplate({
             طباعة: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}
           </div>
           <div style={{ marginTop: "2px" }}>
-            صفحة {currentPage.toLocaleString("en-US")} من {totalPrintPages.toLocaleString("en-US")}
+            صفحة {formatNumber(currentPage, { decimals: 0 })} من {formatNumber(totalPrintPages, { decimals: 0 })}
           </div>
         </div>
       </div>
@@ -476,7 +477,7 @@ export default function ReportPrintTemplate({
                           : column.type === "date" || key === "date" || key.endsWith("_date")
                             ? formatDateEG(value)
                             : numeric
-                              ? `${column.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${column.type === "percent" ? "%" : ""}`
+                              ? `${column.type === "money" && currency ? `${currency} ` : ""}${formatNumber(value)}${column.type === "percent" ? "%" : ""}`
                               : safeText(value);
 
                       const isTextWrap = column.type === "text" || column.type === "name" ||
@@ -517,9 +518,9 @@ export default function ReportPrintTemplate({
                           } else if (key === "quantity" || key === "qty") {
                             display = item.quantity != null ? String(item.quantity) : "";
                           } else if (key === "unit_price" || key === "price") {
-                            display = item.unit_price != null ? Number(item.unit_price).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "";
+                            display = item.unit_price != null ? formatNumber(item.unit_price) : "";
                           } else if (key === "line_total" || key === "total" || key === "amount") {
-                            display = item.line_total != null ? Number(item.line_total).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "";
+                            display = item.line_total != null ? formatNumber(item.line_total) : "";
                           }
                           return (
                             <td key={key}
@@ -575,7 +576,7 @@ export default function ReportPrintTemplate({
                     }}
                   >
                     {hasVal
-                      ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                      ? formatNumber(val)
                       : ""}
                   </div>
                 );
@@ -631,7 +632,7 @@ export default function ReportPrintTemplate({
       >
         <span>تم التصدير: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</span>
         {footerText ? <span>{safeText(footerText)}</span> : null}
-        <span>صفحة {currentPage.toLocaleString("en-US")} من {totalPrintPages.toLocaleString("en-US")}</span>
+        <span>صفحة {formatNumber(currentPage, { decimals: 0 })} من {formatNumber(totalPrintPages, { decimals: 0 })}</span>
       </div>
 
       <style>{`

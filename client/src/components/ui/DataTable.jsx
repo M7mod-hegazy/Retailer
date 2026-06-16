@@ -44,16 +44,15 @@ export default function DataTable({
   });
 
   return (
-    <div className="w-full">
-      <table className="w-full text-right border-collapse">
+    <div className="w-full overflow-x-auto">
+      <table className="w-full text-right border-collapse min-w-[500px]">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className="border-b border-slate-100 bg-white">
+            <tr key={headerGroup.id} style={{ borderBottom: "1px solid var(--border-subtle)", backgroundColor: "var(--bg-surface)" }}>
               {headerGroup.headers.map((header) => {
                 const canSort = header.column.getCanSort();
                 const isSorted = header.column.getIsSorted();
                 
-                // Only enforce specific widths for index and action columns
                 const isFixedColumn = header.column.id === 'index' || header.column.id === 'actions';
                 const styleObj = isFixedColumn ? { width: header.column.columnDef.size, position: "relative" } : { position: "relative" };
 
@@ -62,25 +61,27 @@ export default function DataTable({
                     key={header.id}
                     colSpan={header.colSpan}
                     style={styleObj}
-                    className="px-6 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest select-none group transition-colors hover:bg-slate-50"
+                    className="px-4 md:px-6 py-4 md:py-5 text-[11px] font-black uppercase tracking-widest select-none group transition-colors"
                   >
                     <div 
                       className={`flex items-center gap-2 ${canSort ? "cursor-pointer" : ""}`}
                       onClick={header.column.getToggleSortingHandler()}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      <span style={{ color: "var(--text-muted)" }}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </span>
                       
                       {canSort && (
-                        <div className="text-slate-300 group-hover:text-slate-600 transition-colors">
+                        <div className="transition-colors" style={{ color: "var(--text-muted)" }}>
                           {isSorted === "asc" ? (
-                            <ChevronUp className="h-4 w-4 text-zinc-900" />
+                            <ChevronUp className="h-4 w-4" style={{ color: "var(--text-primary)" }} />
                           ) : isSorted === "desc" ? (
-                            <ChevronDown className="h-4 w-4 text-zinc-900" />
+                            <ChevronDown className="h-4 w-4" style={{ color: "var(--text-primary)" }} />
                           ) : (
                             <ChevronsUpDown className="h-4 w-4 opacity-0 group-hover:opacity-100" />
                           )}
@@ -88,14 +89,14 @@ export default function DataTable({
                       )}
                     </div>
 
-                    {/* Resizing Handle */}
                     {header.column.getCanResize() && (
                       <div
                         onMouseDown={header.getResizeHandler()}
                         onTouchStart={header.getResizeHandler()}
-                        className={`absolute left-0 top-1/4 h-1/2 w-1 rounded-full cursor-col-resize z-10 transition-all ${
-                          header.column.getIsResizing() ? "bg-zinc-900 w-1.5" : "bg-slate-200 hover:bg-slate-400 group-hover:opacity-100 opacity-0"
+                        className={`absolute left-0 top-1/4 h-1/2 rounded-full cursor-col-resize z-10 transition-all ${
+                          header.column.getIsResizing() ? "w-1.5" : "w-1 opacity-0 group-hover:opacity-100"
                         }`}
+                        style={{ backgroundColor: header.column.getIsResizing() ? "var(--text-primary)" : "var(--border-normal)" }}
                       />
                     )}
                   </th>
@@ -109,17 +110,18 @@ export default function DataTable({
             variants={{ show: { transition: { staggerChildren: 0.05 } } }}
             initial="hidden"
             animate="show"
-            className="divide-y divide-slate-50 bg-white"
+            className="divide-y"
+            style={{ backgroundColor: "var(--bg-surface)" }}
           >
             {loading ? (
               <tr>
-                <td colSpan={columns.length} className="py-24 text-center text-sm font-black animate-pulse text-slate-400">
+                <td colSpan={columns.length} className="py-24 text-center text-sm font-black animate-pulse" style={{ color: "var(--text-muted)" }}>
                   جاري تحميل البيانات...
                 </td>
               </tr>
             ) : table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="py-24 text-center text-sm font-black text-slate-400">
+                <td colSpan={columns.length} className="py-24 text-center text-sm font-black" style={{ color: "var(--text-muted)" }}>
                   لا توجد سجلات مطابقة
                 </td>
               </tr>
@@ -135,13 +137,16 @@ export default function DataTable({
                     }}
                     whileHover={{ x: -4 }}
                     onClick={() => onRowClick?.(row.original)}
-                    className="group transition-all cursor-pointer hover:bg-slate-50/80 hover:shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)] hover:z-10 relative"
+                    className="group transition-all cursor-pointer relative"
+                    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--bg-overlay)"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                   >
                     {row.getVisibleCells().map((cell) => {
                       const isFixedColumn = cell.column.id === 'index' || cell.column.id === 'actions';
                       return (
-                        <td key={cell.id} className="px-6 py-5" style={isFixedColumn ? { width: cell.column.columnDef.size } : {}}>
-                          <span className={`text-sm font-bold text-slate-700 ${cell.column.id === 'code' ? 'font-mono tracking-wider' : ''}`}>
+                        <td key={cell.id} className="px-4 md:px-6 py-4 md:py-5" style={isFixedColumn ? { width: cell.column.columnDef.size } : {}}>
+                          <span className={`text-sm font-bold ${cell.column.id === 'code' ? 'font-mono tracking-wider' : ''}`} style={{ color: "var(--text-secondary)" }}>
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </span>
                         </td>
@@ -153,16 +158,16 @@ export default function DataTable({
             )}
           </motion.tbody>
         ) : (
-          <tbody className="divide-y divide-slate-50 bg-white">
+          <tbody style={{ backgroundColor: "var(--bg-surface)" }}>
             {loading ? (
               <tr>
-                <td colSpan={columns.length} className="py-24 text-center text-sm font-black text-slate-400">
+                <td colSpan={columns.length} className="py-24 text-center text-sm font-black" style={{ color: "var(--text-muted)" }}>
                   جاري تحميل البيانات...
                 </td>
               </tr>
             ) : table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="py-24 text-center text-sm font-black text-slate-400">
+                <td colSpan={columns.length} className="py-24 text-center text-sm font-black" style={{ color: "var(--text-muted)" }}>
                   لا توجد سجلات مطابقة
                 </td>
               </tr>
@@ -171,13 +176,16 @@ export default function DataTable({
                 <tr
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
-                  className="group cursor-pointer hover:bg-slate-50/80 relative"
+                  className="group cursor-pointer relative"
+                  style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--bg-overlay)"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const isFixedColumn = cell.column.id === 'index' || cell.column.id === 'actions';
                     return (
-                      <td key={cell.id} className="px-6 py-5" style={isFixedColumn ? { width: cell.column.columnDef.size } : {}}>
-                        <span className={`text-sm font-bold text-slate-700 ${cell.column.id === 'code' ? 'font-mono tracking-wider' : ''}`}>
+                      <td key={cell.id} className="px-4 md:px-6 py-4 md:py-5" style={isFixedColumn ? { width: cell.column.columnDef.size } : {}}>
+                        <span className={`text-sm font-bold ${cell.column.id === 'code' ? 'font-mono tracking-wider' : ''}`} style={{ color: "var(--text-secondary)" }}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </span>
                       </td>

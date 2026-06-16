@@ -14,9 +14,10 @@ import {
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 export default function TreasuryTransfer() {

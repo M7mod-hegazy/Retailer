@@ -6,6 +6,7 @@ import Modal from "../ui/Modal";
 import DataGrid from "../ui/DataGrid";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 function toDateInput(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -17,10 +18,10 @@ function fmtDateTime(d) {
   }).format(new Date(d));
 }
 function fmtQty(v) {
-  return Number(v || 0).toLocaleString("en-US");
+  return formatNumber(v, { decimals: 0 });
 }
 function fmtMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 function TransferDetailPreview({ transfer, onClose, onEdit }) {
@@ -75,9 +76,9 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
                     <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name}</td>
                     <td className="px-3 py-2.5 text-center text-slate-500">{l.unit_name || "—"}</td>
                     <td className="px-3 py-2.5 text-center text-slate-500">{l.warehouse_name || "—"}</td>
-                    <td className="px-3 py-2.5 text-center font-mono font-black text-slate-700">{fmtQty(l.quantity)}</td>
-                    <td className="px-3 py-2.5 text-center font-mono text-slate-600">{fmtMoney(l.unit_cost)}</td>
-                    <td className="px-3 py-2.5 text-center font-mono font-black text-slate-700">{fmtMoney(l.quantity * l.unit_cost)}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-slate-700">{fmtQty(l.quantity)}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-slate-600">{fmtMoney(l.unit_cost)}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-slate-700">{fmtMoney(l.quantity * l.unit_cost)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -86,7 +87,7 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
 
           <div className="flex items-center justify-between bg-slate-50 rounded-xl border border-slate-200 px-5 py-3">
             <span className="text-2sm font-black text-slate-500">إجمالي الكمية</span>
-            <span className="font-black font-mono text-[18px] text-slate-900">
+            <span className="number-fmt-primary text-[18px] text-slate-900">
               {fmtQty((d.lines || []).reduce((s, l) => s + Number(l.quantity || 0), 0))}
             </span>
           </div>
@@ -202,13 +203,13 @@ export default function BranchTransferTodayModal({ open, onClose }) {
     {
       id: "total_qty", header: "الكمية", width: 90, sortable: true,
       headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-center font-mono font-black text-sm text-slate-800",
+      cellClass: "px-3 text-center number-fmt text-sm text-slate-800",
       render: (r) => fmtQty(r.total_qty),
     },
     {
       id: "created_at", header: "التاريخ والوقت", width: 160, sortable: true,
       headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap",
+      cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap",
       render: (r) => fmtDateTime(r.created_at),
     },
     {

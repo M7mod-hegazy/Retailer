@@ -8,16 +8,12 @@ import DataGrid from "../ui/DataGrid";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
 import toast from "react-hot-toast";
+import { formatNumber } from "../../utils/currency";
 
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
-function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return formatNumber(v, { decimals: 3 });
 }
 function formatArabicDateTime(date) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
@@ -122,7 +118,7 @@ function ReturnPreviewModal({ ret, onClose }) {
                     <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
                     <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
                     <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_price)}</td>
-                    <td className="px-3 py-2.5 text-center font-mono font-black text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_price))}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_price))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -135,13 +131,13 @@ function ReturnPreviewModal({ ret, onClose }) {
               {Number(detail.cash_amount || 0) > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />نقداً (صندوق)</span>
-                  <span className="font-black font-mono text-emerald-700">{formatMoney(detail.cash_amount)} ج.م</span>
+                  <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.cash_amount)} ج.م</span>
                 </div>
               )}
               {Number(detail.credit_amount || 0) > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />رصيد حساب العميل</span>
-                  <span className="font-black font-mono text-blue-700">{formatMoney(detail.credit_amount)} ج.م</span>
+                  <span className="number-fmt-primary text-blue-700">{formatMoney(detail.credit_amount)} ج.م</span>
                 </div>
               )}
             </div>
@@ -307,7 +303,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
     { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => r.doc_no || "—" },
     { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.customer_name || "—" },
     { id: "original_invoice_no", header: "الفاتورة الأصلية", width: 140, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.original_invoice_no ? r.original_invoice_no : <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black bg-amber-50 text-amber-700 border-amber-200">مباشر</span> },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (r) => formatMoney(r.total) },
+    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (r) => formatMoney(r.total) },
     { id: "refund_method", header: "طريقة الرد", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => {
       const info = REFUND_LABELS[r.refund_method] || REFUND_LABELS.cash_back;
       const cashAmt = Number(r.cash_amount || 0);
@@ -329,7 +325,7 @@ export default function SalesReturnTodayModal({ open, onClose }) {
       );
     } },
     { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (r) => r.created_by_username || "—" },
-    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
         <button onClick={() => { onClose(); navigate("/sales/returns/new", { state: { edit_return_id: r.id } }); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
@@ -343,10 +339,10 @@ export default function SalesReturnTodayModal({ open, onClose }) {
     { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
     { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
     { id: "customer_name", header: "العميل", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.customer_name || "—" },
-    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center font-mono text-2sm font-bold text-slate-600", render: (r) => Number(r.quantity) },
-    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => formatMoney(r.unit_price) },
-    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 font-mono text-sm font-black text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
-    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
+    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_price) },
+    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt text-sm text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
+    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
         <button onClick={(e) => { e.stopPropagation(); onClose(); navigate("/sales/returns/new", { state: { edit_return_id: r.return_id || r.id } }); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
@@ -475,12 +471,12 @@ export default function SalesReturnTodayModal({ open, onClose }) {
           <div className="flex items-center gap-4 rounded-sm bg-emerald-800 px-4 py-3">
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">عدد المرتجعات</span>
-              <span className="font-mono text-[20px] font-black text-white leading-none">{summary.count}</span>
+              <span className="number-fmt-primary text-[20px] text-white leading-none">{summary.count}</span>
             </div>
             <div className="h-8 w-px bg-emerald-700" />
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">إجمالي المرتجعات</span>
-              <span className="font-mono text-[20px] font-black text-emerald-300 leading-none">{formatMoney(summary.total)}</span>
+              <span className="number-fmt-primary text-[20px] text-emerald-300 leading-none">{formatMoney(summary.total)}</span>
             </div>
           </div>
           {/* Table */}

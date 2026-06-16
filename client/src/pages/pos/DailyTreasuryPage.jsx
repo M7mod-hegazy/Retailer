@@ -16,9 +16,9 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) =>
-  Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -67,7 +67,7 @@ const DOC_TYPE_COLOR = {
   purchase_return: "text-teal-700 bg-teal-50 border-teal-200",
   ajal_payment: "text-cyan-700 bg-cyan-50 border-cyan-200",
   customer_payment: "text-purple-700 bg-purple-50 border-purple-200",
-  withdrawal: "text-slate-700 bg-slate-100 border-slate-200",
+  withdrawal: "text-[var(--text-secondary)] bg-[var(--bg-overlay)] border-[var(--border-normal)]",
 };
 
 function getEquationRowAffects(tx) {
@@ -159,29 +159,29 @@ function AmountCell({ t }) {
   /* ── ZERO CASH ──────────────────────────────────────────── */
   if (isZeroCash) {
     return (
-      <div className="w-full rounded-xl border border-slate-200 overflow-hidden bg-white">
+      <div className="w-full rounded-xl border border-[var(--border-normal)] overflow-hidden bg-[var(--bg-surface)]">
         {/* Striped header — signals "no flow" */}
-        <div className="relative h-1.5 overflow-hidden bg-slate-100">
+        <div className="relative h-1.5 overflow-hidden bg-[var(--bg-overlay)]">
           <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg,#cbd5e1 0px,#cbd5e1 4px,#f1f5f9 4px,#f1f5f9 10px)" }} />
         </div>
         <div className="px-3 pt-2 pb-2.5 flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">الإجمالي</span>
+            <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">الإجمالي</span>
             {/* ∅ badge */}
-            <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-full px-1.5 py-0.5">
+            <span className="inline-flex items-center gap-1 bg-[var(--bg-overlay)] border border-[var(--border-normal)] rounded-full px-1.5 py-0.5">
               <span className="w-1 h-1 rounded-full bg-slate-400" />
-              <span className="text-[7px] font-black text-slate-500 tracking-wide">لا يؤثر</span>
+              <span className="text-[7px] font-black text-[var(--text-secondary)] tracking-wide">لا يؤثر</span>
             </span>
           </div>
-          <span className="font-mono text-[16px] font-black text-slate-500 tabular-nums leading-none">{fmt(total)}</span>
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1">
-            <span className="text-[8px] font-black text-slate-400">صفر نقدي — لا يؤثر على الخزنة</span>
+          <span className="number-fmt-primary text-[16px] text-[var(--text-secondary)] leading-none">{fmt(total)}</span>
+          <div className="flex items-center gap-1 bg-[var(--bg-overlay)] border border-[var(--border-subtle)] rounded-lg px-2 py-1">
+            <span className="text-[8px] font-black text-[var(--text-muted)]">صفر نقدي — لا يؤثر على الخزنة</span>
           </div>
           {/* Credit portion for zero-cash returns */}
           {isReturn && creditAmt > 0.005 && (
             <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>
               <span className={`text-[8px] font-black ${isSalesReturn ? "text-blue-500" : "text-amber-600"}`}>{isSalesReturn ? "رصيد حساب" : "ذمة مورد"}</span>
-              <span className={`text-[11px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
+              <span className={`number-fmt-primary text-[11px] ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
             </div>
           )}
           {isSalesReturn && t.original_invoice_no && (
@@ -213,15 +213,15 @@ function AmountCell({ t }) {
           </div>
 
           {/* Hero number */}
-          <span className={`font-mono text-[18px] font-black tabular-nums leading-none tracking-tight ${isCashIn ? "text-emerald-700" : "text-rose-700"}`}>
+          <span className={`number-fmt-primary text-[18px] leading-none tracking-tight ${isCashIn ? "text-emerald-700" : "text-rose-700"}`}>
             {isCashIn ? "+" : "−"}{fmt(Math.abs(ce))}
           </span>
 
           {/* Total when partial */}
           {totalDiffers && (
             <div className="flex items-center justify-between border-t pt-1.5 mt-0.5" style={{ borderColor: isCashIn ? "#d1fae5" : "#fee2e2" }}>
-              <span className="text-[8px] font-black text-slate-400">إجمالي الحركة</span>
-              <span className="text-[11px] font-black font-mono text-slate-600">{fmt(total)}</span>
+              <span className="text-[8px] font-black text-[var(--text-muted)]">إجمالي الحركة</span>
+              <span className="number-fmt-primary text-[11px] text-[var(--text-secondary)]">{fmt(total)}</span>
             </div>
           )}
 
@@ -229,7 +229,7 @@ function AmountCell({ t }) {
           {splits.length > 0 && (
             <div className="flex flex-col gap-1 border-t pt-1.5 mt-0.5" style={{ borderColor: isCashIn ? "#d1fae5" : "#fee2e2" }}>
               {/* Bar */}
-              <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100">
+              <div className="flex h-1.5 rounded-full overflow-hidden bg-[var(--bg-overlay)]">
                 {splits.map((s, i) => {
                   const pct = splitsTotal > 0 ? (s.amt / splitsTotal) * 100 : 0;
                   const isCashSplit = s.key === "cash";
@@ -261,7 +261,7 @@ function AmountCell({ t }) {
           {isReturn && creditAmt > 0.005 && (
             <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>
               <span className={`text-[8px] font-black ${isSalesReturn ? "text-blue-500" : "text-amber-600"}`}>{isSalesReturn ? "رصيد حساب" : "ذمة مورد"}</span>
-              <span className={`text-[11px] font-black font-mono ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
+              <span className={`number-fmt-primary text-[11px] ${isSalesReturn ? "text-blue-700" : "text-amber-700"}`}>{fmt(creditAmt)}</span>
             </div>
           )}
 
@@ -278,7 +278,7 @@ function AmountCell({ t }) {
   }
 
   /* ── TRULY EMPTY ─────────────────────────────────────────── */
-  return <span className="text-slate-300 text-sm font-black block text-center">—</span>;
+  return <span className="text-[var(--text-muted)] text-sm font-black block text-center">—</span>;
 }
 
 const TABS = [
@@ -779,11 +779,11 @@ export default function DailyTreasuryPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl" onClick={() => { setActiveEquationRowId(null); setTxAffects(null); }}>
+    <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl" onClick={() => { setActiveEquationRowId(null); setTxAffects(null); }}>
       {/* Impeccable Animated Architectural Background */}
       <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
         {/* Base Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]" />
+        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to_right,var(--border-subtle) 1px,transparent 1px),linear-gradient(to_bottom,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
         {/* Cinematic Shimmer Sweep */}
         <motion.div
           animate={{ x: ["-150%", "200%"] }}
@@ -791,11 +791,11 @@ export default function DailyTreasuryPage() {
           className="absolute inset-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/60 to-transparent skew-x-12 mix-blend-overlay"
         />
         {/* Center Spotlight / Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_30%,transparent_0%,rgba(248,250,252,0.95)_100%)]" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 40%,transparent 0%,var(--bg-base) 100%)" }} />
       </div>
 
       {/* Cinematic Hero Header */}
-      <header className="relative z-10 w-full pt-6 pb-4 px-6 shrink-0">
+      <header className="relative z-10 w-full pt-6 pb-4 px-4 md:px-8 shrink-0">
         <motion.div
           initial="hidden"
           animate="show"
@@ -803,12 +803,12 @@ export default function DailyTreasuryPage() {
           className="max-w-[1400px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4"
         >
           <div className="flex flex-col items-start justify-center">
-            <motion.div variants={fadeInUp} className="flex items-center gap-2 text-slate-400 mb-2">
+            <motion.div variants={fadeInUp} className="flex items-center gap-2 text-[var(--text-muted)] mb-2">
               <Wallet className="h-4 w-4" />
               <span className="text-[11px] font-black uppercase tracking-[0.15em] font-mono">المالية // تسوية ومراجعة الحركات</span>
             </motion.div>
 
-            <motion.h1 variants={fadeInUp} className="text-3xl md:text-4xl font-black text-zinc-950 tracking-tighter">
+            <motion.h1 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-black text-zinc-950 tracking-tighter">
               الخزينة اليومية
             </motion.h1>
           </div>
@@ -820,7 +820,7 @@ export default function DailyTreasuryPage() {
                 value={date}
                 max={todayStr()}
                 onChange={(e) => { setDate(e.target.value); setActiveTab("all"); }}
-                className="h-10 rounded-xl border border-slate-200 bg-white/50 px-3 text-2sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer"
+                className="h-10 rounded-xl border border-[var(--border-normal)] bg-white/50 px-3 text-2sm font-bold text-[var(--text-secondary)] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer"
               />
             </div>
 
@@ -828,7 +828,7 @@ export default function DailyTreasuryPage() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { setDate(todayStr()); setActiveTab("all"); setGlobalAmountSearch(""); }}
-              className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-2sm font-black transition-colors ${isToday ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+              className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-2sm font-black transition-colors ${isToday ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"
                 }`}
             >
               <Calendar className="h-3.5 w-3.5" /> اليوم
@@ -839,7 +839,7 @@ export default function DailyTreasuryPage() {
               <span className="text-sm font-black">{isClosed ? "مغلق" : "مفتوح"}</span>
             </div>
 
-            <label className="flex items-center gap-1.5 h-10 cursor-pointer rounded-xl border border-slate-200 px-3 text-[11px] font-black text-slate-600 hover:bg-slate-50 transition-colors select-none">
+            <label className="flex items-center gap-1.5 h-10 cursor-pointer rounded-xl border border-[var(--border-normal)] px-3 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors select-none">
               <input
                 type="checkbox"
                 className="accent-emerald-600 h-3.5 w-3.5 rounded"
@@ -862,7 +862,7 @@ export default function DailyTreasuryPage() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={loadSummary}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors shadow-sm"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] border border-[var(--border-normal)] hover:bg-[var(--bg-overlay)] text-[var(--text-secondary)] transition-colors shadow-sm"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </motion.button>
@@ -871,7 +871,7 @@ export default function DailyTreasuryPage() {
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={handlePrint}
-              className="flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+              className="flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] px-3 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors shadow-sm"
             >
               <Printer className="h-3.5 w-3.5" /> طباعة
             </motion.button>
@@ -880,7 +880,7 @@ export default function DailyTreasuryPage() {
       </header>
 
       {/* Main Grid Layout (AIDA: Interest & Action) */}
-      <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-6 pb-24">
+      <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-4 md:px-8 pb-24">
         <motion.div
           initial="hidden"
           animate="show"
@@ -892,13 +892,13 @@ export default function DailyTreasuryPage() {
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="flex flex-col items-center gap-4">
-                <RefreshCw className="h-8 w-8 animate-spin text-slate-300" />
-                <span className="text-sm font-black text-slate-400">جاري تحميل بيانات الخزينة...</span>
+                <RefreshCw className="h-8 w-8 animate-spin text-[var(--text-muted)]" />
+                <span className="text-sm font-black text-[var(--text-muted)]">جاري تحميل بيانات الخزينة...</span>
               </div>
             </div>
           ) : !sess ? (
             <div className="flex items-center justify-center h-64 rounded-3xl border border-dashed border-slate-300 bg-white/50 backdrop-blur-md">
-              <span className="text-[15px] font-black text-slate-400">لا توجد جلسة مفتوحة لهذا اليوم.</span>
+              <span className="text-[15px] font-black text-[var(--text-muted)]">لا توجد جلسة مفتوحة لهذا اليوم.</span>
             </div>
           ) : (
             <>
@@ -924,7 +924,7 @@ export default function DailyTreasuryPage() {
                           value={reopenReason}
                           onChange={(e) => setReopenReason(e.target.value)}
                           placeholder="سبب إعادة الفتح"
-                          className="h-9 w-48 rounded-xl border border-blue-200 bg-white px-3 text-[11px] font-bold outline-none focus:border-blue-500"
+                          className="h-9 w-48 rounded-xl border border-blue-200 bg-[var(--bg-surface)] px-3 text-[11px] font-bold outline-none focus:border-blue-500"
                         />
                         <button
                           onClick={reopenDay}
@@ -1042,20 +1042,20 @@ export default function DailyTreasuryPage() {
                     <div className={`absolute -right-4 -top-4 h-16 w-16 rounded-full bg-${color}-50/50 blur-xl group-hover:bg-${color}-100/50 transition-colors`}></div>
                     <div className="relative z-10 flex flex-col h-full justify-between">
                       <div className="flex items-start justify-between mb-2">
-                        <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest leading-tight">{label}</span>
+                        <span className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-widest leading-tight">{label}</span>
                         <div className={`flex h-8 w-8 items-center justify-center rounded-xl bg-${color}-50 text-${color}-600 ring-1 ring-inset ring-${color}-100 shadow-sm shrink-0`}>
                           <Icon className="h-4 w-4" />
                         </div>
                       </div>
                       <div>
-                        <div className={`text-[22px] font-black font-mono tracking-tighter ${value != null && value < 0 ? "text-rose-600" : "text-zinc-900"}`}>
+                        <div className={`number-fmt-primary text-[22px] tracking-tighter ${value != null && value < 0 ? "text-rose-600" : "text-[var(--text-primary)]"}`}>
                           {value != null ? fmt(value) : "—"}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-bold mt-0.5">جنيه مصري</div>
+                        <div className="text-[11px] text-[var(--text-muted)] font-bold mt-0.5">جنيه مصري</div>
                         {compareYesterday && yesterday != null && (
-                          <div className="mt-2 text-[11px] text-slate-500 font-bold border-t border-slate-100/80 pt-2 flex items-center justify-between">
+                          <div className="mt-2 text-[11px] text-[var(--text-secondary)] font-bold border-t border-slate-100/80 pt-2 flex items-center justify-between">
                             <span>بالأمس:</span>
-                            <span className="font-mono">{fmt(yesterday)} ج.م</span>
+                            <span className="number-fmt-primary">{fmt(yesterday)} ج.م</span>
                           </div>
                         )}
                       </div>
@@ -1069,15 +1069,15 @@ export default function DailyTreasuryPage() {
                 {/*  معادلة الخزينة  -  MAIN FOCUS         */}
                 {/* ═══════════════════════════════════════ */}
                 <motion.div data-help="stats-cards" ref={equationSectionRef} variants={fadeInUp} onClick={(e) => e.stopPropagation()}>
-                  <div className="rounded-3xl bg-white border border-slate-200/80 shadow-lg overflow-hidden">
+                  <div className="rounded-3xl bg-[var(--bg-surface)] border border-slate-200/80 shadow-lg overflow-hidden">
                     {/* Prominent Header */}
-                    <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/80 flex items-center gap-4">
+                    <div className="px-6 py-5 border-b border-[var(--border-subtle)] bg-slate-50/80 flex items-center gap-4">
                       <div className="h-12 w-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center ring-2 ring-inset ring-indigo-200 shadow-sm">
                         <Calculator className="h-6 w-6" />
                       </div>
                       <div>
-                        <h3 className="text-[22px] font-black text-zinc-900 leading-tight">معادلة الخزينة</h3>
-                        <p className="text-sm font-bold text-slate-500 mt-1">الرصيد المتوقع = الرصيد السابق + الداخل النقدي − الخارج النقدي</p>
+                        <h3 className="text-[22px] font-black text-[var(--text-primary)] leading-tight">معادلة الخزينة</h3>
+                        <p className="text-sm font-bold text-[var(--text-secondary)] mt-1">الرصيد المتوقع = الرصيد السابق + الداخل النقدي − الخارج النقدي</p>
                       </div>
                     </div>
 
@@ -1086,14 +1086,14 @@ export default function DailyTreasuryPage() {
                         {/* Left: Breakdown (3 cols) */}
                         <div className="lg:col-span-3 space-y-4">
                           {/* Opening Balance */}
-                          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)]">
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center">
+                              <div className="h-10 w-10 rounded-xl bg-slate-200 text-[var(--text-secondary)] flex items-center justify-center">
                                 <Lock className="h-5 w-5" />
                               </div>
-                              <span className="text-[15px] font-black text-slate-700">رصيد سابق</span>
+                              <span className="text-[15px] font-black text-[var(--text-secondary)]">رصيد سابق</span>
                             </div>
-                            <span className="text-[22px] font-black font-mono text-zinc-900">{fmt(summary?.previous_balance ?? summary?.opening_balance)} <span className="text-2sm text-slate-400">ج.م</span></span>
+                            <span className="number-fmt-primary text-[22px] text-[var(--text-primary)]">{fmt(summary?.previous_balance ?? summary?.opening_balance)} <span className="text-2sm text-[var(--text-muted)]">ج.م</span></span>
                           </div>
 
                           {/* Cash In */}
@@ -1103,7 +1103,7 @@ export default function DailyTreasuryPage() {
                                 <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" />
                                 <span className="text-[15px] font-black text-emerald-800">الداخل النقدي</span>
                               </div>
-                              <span className="text-[24px] font-black font-mono text-emerald-700">+ {fmt(cashIn)}</span>
+                              <span className="number-fmt-primary text-[24px] text-emerald-700">+ {fmt(cashIn)}</span>
                             </div>
                             <div className="space-y-2">
                               {cashInRows.map((row) => {
@@ -1124,11 +1124,11 @@ export default function DailyTreasuryPage() {
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <div className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-                                        <span className="text-2sm text-slate-700 font-bold text-right leading-snug">{row.label}</span>
-                                        <Info className="h-3 w-3 text-slate-300 shrink-0" />
+                                        <span className="text-2sm text-[var(--text-secondary)] font-bold text-right leading-snug">{row.label}</span>
+                                        <Info className="h-3 w-3 text-[var(--text-muted)] shrink-0" />
                                       </div>
                                       <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
-                                        <span className={`font-black text-sm font-mono transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
+                                        <span className={`number-fmt-primary text-sm transition-all ${isActive ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"
                                           }`}>{fmt(row.value)}</span>
                                         {affect && (
                                           <span className="text-[11px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
@@ -1150,7 +1150,7 @@ export default function DailyTreasuryPage() {
                                 <div className="h-3 w-3 rounded-full bg-rose-500 shadow-sm shadow-rose-500/30" />
                                 <span className="text-[15px] font-black text-rose-800">الخارج النقدي</span>
                               </div>
-                              <span className="text-[24px] font-black font-mono text-rose-700">− {fmt(cashOut)}</span>
+                              <span className="number-fmt-primary text-[24px] text-rose-700">− {fmt(cashOut)}</span>
                             </div>
                             <div className="space-y-2">
                               {cashOutRows.map((row) => {
@@ -1170,11 +1170,11 @@ export default function DailyTreasuryPage() {
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <div className="h-2 w-2 rounded-full bg-rose-400 shrink-0" />
-                                        <span className="text-2sm text-slate-700 font-bold text-right leading-snug">{row.label}</span>
-                                        <Info className="h-3 w-3 text-slate-300 shrink-0" />
+                                        <span className="text-2sm text-[var(--text-secondary)] font-bold text-right leading-snug">{row.label}</span>
+                                        <Info className="h-3 w-3 text-[var(--text-muted)] shrink-0" />
                                       </div>
                                       <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
-                                        <span className={`font-black text-sm font-mono transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
+                                        <span className={`number-fmt-primary text-sm transition-all ${isActive ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"
                                           }`}>{fmt(row.value)}</span>
                                         {affect && (
                                           <span className="text-[11px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
@@ -1190,8 +1190,8 @@ export default function DailyTreasuryPage() {
                           </div>
 
                           {/* Non-cash */}
-                          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                            <div className="mb-2 text-sm font-black text-slate-600">حركات لا تؤثر على الخزنة نقدياً</div>
+                          <div className="rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] p-4">
+                            <div className="mb-2 text-sm font-black text-[var(--text-secondary)]">حركات لا تؤثر على الخزنة نقدياً</div>
                             <div className="space-y-1">
                               {nonCashRows.map((row) => {
                                 const affect = txAffects?.find(a => a.id === row.id);
@@ -1205,16 +1205,16 @@ export default function DailyTreasuryPage() {
                                       onClick={() => handleEquationRowClick(row)}
                                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-right transition-all ${isActive
                                           ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
-                                          : txAffects ? "opacity-40" : "hover:bg-white"
+                                          : txAffects ? "opacity-40" : "hover:bg-[var(--bg-surface)]"
                                         }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
-                                        <Lock className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-                                        <span className="text-[11px] font-bold text-slate-500 text-right leading-snug">{row.label}</span>
-                                        <Info className="h-3 w-3 text-slate-300 shrink-0" />
+                                        <Lock className="h-3.5 w-3.5 text-[var(--text-muted)] shrink-0" />
+                                        <span className="text-[11px] font-bold text-[var(--text-secondary)] text-right leading-snug">{row.label}</span>
+                                        <Info className="h-3 w-3 text-[var(--text-muted)] shrink-0" />
                                       </div>
                                       <div className="flex flex-col items-end gap-0.5 shrink-0 mr-2">
-                                        <span className={`font-black text-sm font-mono transition-all ${isActive ? "text-slate-900 bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-slate-600"
+                                        <span className={`number-fmt-primary text-sm transition-all ${isActive ? "text-[var(--text-primary)] bg-slate-300 ring-2 ring-slate-500 rounded-lg px-2 py-0.5" : "text-[var(--text-secondary)]"
                                           }`}>{fmt(row.value)}</span>
                                         {affect && (
                                           <span className="text-[11px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
@@ -1239,13 +1239,13 @@ export default function DailyTreasuryPage() {
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5">
                                   <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                                    <Wallet className="h-5 w-5 text-slate-300" />
+                                    <Wallet className="h-5 w-5 text-[var(--text-muted)]" />
                                   </div>
-                                  <div className="text-2sm font-bold text-slate-400 uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
+                                  <div className="text-2sm font-bold text-[var(--text-muted)] uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
                                 </div>
                                 <div className="text-left">
-                                  <div className="text-[28px] font-black font-mono tracking-tighter leading-none">{fmt(expected)}</div>
-                                  <div className="text-[11px] font-bold text-slate-500 mt-1">جنيه مصري</div>
+                                  <div className="number-fmt-primary text-[28px] tracking-tighter leading-none">{fmt(expected)}</div>
+                                  <div className="text-[11px] font-bold text-[var(--text-secondary)] mt-1">جنيه مصري</div>
                                 </div>
                               </div>
 
@@ -1256,8 +1256,8 @@ export default function DailyTreasuryPage() {
                                   className={"mt-4 w-full rounded-2xl p-3 border flex items-center justify-between " + (discrepancy >= 0 ? "bg-emerald-500/20 border-emerald-500/30" : "bg-rose-500/20 border-rose-500/30")}
                                 >
                                   <div>
-                                    <div className="text-[11px] font-bold text-slate-400">الرصيد الفعلي المُغلق</div>
-                                    <div className="text-[20px] font-black font-mono">{fmt(sess.actual_cash)}</div>
+                                    <div className="text-[11px] font-bold text-[var(--text-muted)]">الرصيد الفعلي المُغلق</div>
+                                    <div className="number-fmt-primary text-[20px]">{fmt(sess.actual_cash)}</div>
                                   </div>
                                   <div className={"text-sm font-black " + (discrepancy >= 0 ? "text-emerald-400" : "text-rose-400")}>
                                     الفرق: {discrepancy >= 0 ? "+" : ""}{fmt(discrepancy)} ج.م
@@ -1267,19 +1267,19 @@ export default function DailyTreasuryPage() {
                             </div>
 
                             {/* الرصيد الفعلي — always visible, no close action */}
-                            <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
-                              <h4 className="text-[16px] font-black text-zinc-900 mb-4 flex items-center gap-2">
-                                <Lock className="h-5 w-5 text-slate-600" /> إدخال الرصيد الفعلي
+                            <div className="rounded-2xl border-2 border-[var(--border-normal)] bg-[var(--bg-surface)] p-6 shadow-sm">
+                              <h4 className="text-[16px] font-black text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                                <Lock className="h-5 w-5 text-[var(--text-secondary)]" /> إدخال الرصيد الفعلي
                               </h4>
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-2">
-                                  <label className="text-sm font-black text-slate-700">الرصيد الفعلي (ج.م)</label>
+                                  <label className="text-sm font-black text-[var(--text-secondary)]">الرصيد الفعلي (ج.م)</label>
                                   <div className="flex gap-3">
                                     <input
                                       type="number"
                                       value={actualCash}
                                       onChange={(e) => setActualCash(e.target.value)}
-                                      className="flex-1 h-14 bg-slate-50 rounded-2xl px-5 text-[20px] font-black text-zinc-900 outline-none transition-all placeholder:text-slate-300 border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-center font-mono"
+                                      className="flex-1 h-14 bg-[var(--bg-overlay)] rounded-2xl px-5 text-[20px] font-black text-[var(--text-primary)] outline-none transition-all placeholder:text-[var(--text-muted)] border border-[var(--border-normal)] focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-center number-fmt-primary"
                                       placeholder="0.00"
                                     />
                                     <SmartTooltip content="فتح آلة عد العملات">
@@ -1304,23 +1304,23 @@ export default function DailyTreasuryPage() {
                                   </motion.div>
                                 )}
                                 {actualCash && (
-                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                    <div className="mb-2 flex items-center gap-2 text-2sm font-black text-slate-700">
+                                  <div className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-overlay)] px-4 py-3">
+                                    <div className="mb-2 flex items-center gap-2 text-2sm font-black text-[var(--text-secondary)]">
                                       <Sparkles className="h-4 w-4 text-amber-500" /> مساعد العجز والزيادة
                                     </div>
                                     <div className="space-y-1">
                                       {discrepancySuggestions.map((tip, idx) => (
-                                        <div key={idx} className="text-2sm font-bold text-slate-500 leading-5">• {tip}</div>
+                                        <div key={idx} className="text-2sm font-bold text-[var(--text-secondary)] leading-5">• {tip}</div>
                                       ))}
                                     </div>
                                   </div>
                                 )}
                                 <div className="flex flex-col gap-1.5">
-                                  <label className="text-2sm font-black uppercase tracking-widest text-slate-500">ملاحظات</label>
+                                  <label className="text-2sm font-black uppercase tracking-widest text-[var(--text-secondary)]">ملاحظات</label>
                                   <textarea
                                     value={closeNotes}
                                     onChange={(e) => setCloseNotes(e.target.value)}
-                                    className="w-full h-16 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm font-bold text-zinc-800 outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-slate-300 transition-all"
+                                    className="w-full h-16 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-4 py-3 text-sm font-bold text-[var(--text-primary)] outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-[var(--text-muted)] transition-all"
                                     placeholder="ملاحظات حول الرصيد..."
                                   />
                                 </div>
@@ -1331,14 +1331,14 @@ export default function DailyTreasuryPage() {
                           {/* Bottom Half: Payment Methods (The Rest) */}
                           <div className="flex flex-col gap-5">
                             {/* Daily movement per payment method (wallets / bank) */}
-                            <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                              <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2.5">
+                            <div className="rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-normal)] shadow-sm overflow-hidden flex flex-col">
+                              <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-slate-50/80 flex items-center gap-2.5">
                                 <div className="h-9 w-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center ring-1 ring-inset ring-violet-200 shrink-0">
                                   <CreditCard className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <h4 className="text-[15px] font-black text-zinc-900 leading-tight">حركة الوسائل اليوم</h4>
-                                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">المحافظ والبنوك — خارج درج النقد</p>
+                                  <h4 className="text-[15px] font-black text-[var(--text-primary)] leading-tight">حركة الوسائل اليوم</h4>
+                                  <p className="text-[11px] font-bold text-[var(--text-secondary)] mt-0.5">المحافظ والبنوك — خارج درج النقد</p>
                                 </div>
                               </div>
 
@@ -1346,8 +1346,8 @@ export default function DailyTreasuryPage() {
                                 {methodTotals.length === 0 ? (
                                   <div className="h-full min-h-[120px] flex flex-col items-center justify-center text-center px-4 py-6">
                                     <CreditCard className="h-8 w-8 text-slate-200 mb-2" />
-                                    <span className="text-2sm font-black text-slate-400">لا توجد وسائل دفع إضافية</span>
-                                    <span className="text-[11px] font-bold text-slate-300 mt-1">أضف محفظة أو بنك من شاشة وسائل الدفع</span>
+                                    <span className="text-2sm font-black text-[var(--text-muted)]">لا توجد وسائل دفع إضافية</span>
+                                    <span className="text-[11px] font-bold text-[var(--text-muted)] mt-1">أضف محفظة أو بنك من شاشة وسائل الدفع</span>
                                   </div>
                                 ) : (
                                   methodTotals.map((m) => {
@@ -1356,16 +1356,16 @@ export default function DailyTreasuryPage() {
                                     return (
                                       <div
                                         key={m.id}
-                                        className={`rounded-2xl border p-3 transition-all ${hasMovement ? "bg-white border-slate-200" : "bg-slate-50/60 border-slate-100"}`}
+                                        className={`rounded-2xl border p-3 transition-all ${hasMovement ? "bg-[var(--bg-surface)] border-[var(--border-normal)]" : "bg-slate-50/60 border-[var(--border-subtle)]"}`}
                                       >
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-[18px] leading-none shrink-0">{m.icon || "💳"}</span>
-                                            <span className="text-sm font-black text-zinc-900 truncate">{m.name}</span>
+                                            <span className="text-sm font-black text-[var(--text-primary)] truncate">{m.name}</span>
                                           </div>
                                           <div className="flex flex-col items-end shrink-0">
-                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">الصافي</span>
-                                            <span className={`text-[15px] font-black font-mono tabular-nums leading-none ${net > 0 ? "text-emerald-600" : net < 0 ? "text-rose-600" : "text-slate-400"}`}>
+                                            <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">الصافي</span>
+                                            <span className={`number-fmt-primary text-[15px] leading-none ${net > 0 ? "text-emerald-600" : net < 0 ? "text-rose-600" : "text-[var(--text-muted)]"}`}>
                                               {net > 0 ? "+" : net < 0 ? "−" : ""}{fmt(Math.abs(net))}
                                             </span>
                                           </div>
@@ -1375,13 +1375,13 @@ export default function DailyTreasuryPage() {
                                             <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600">
                                               <TrendingUp className="h-3 w-3" /> داخل
                                             </span>
-                                            <span className="text-2sm font-black font-mono text-emerald-700 tabular-nums">{fmt(m.in)}</span>
+                                            <span className="number-fmt-primary text-2sm text-emerald-700">{fmt(m.in)}</span>
                                           </div>
                                           <div className="flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-1.5">
                                             <span className="inline-flex items-center gap-1 text-[11px] font-black text-rose-600">
                                               <TrendingDown className="h-3 w-3" /> خارج
                                             </span>
-                                            <span className="text-2sm font-black font-mono text-rose-700 tabular-nums">{fmt(m.out)}</span>
+                                            <span className="number-fmt-primary text-2sm text-rose-700">{fmt(m.out)}</span>
                                           </div>
                                         </div>
                                       </div>
@@ -1404,15 +1404,15 @@ export default function DailyTreasuryPage() {
 
                   {/* Search Bar */}
                   <div data-help="search-bar" className="relative group w-full">
-                    <Search className="absolute right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-zinc-900 transition-colors" />
+                    <Search className="absolute right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-muted)] group-focus-within:text-[var(--text-primary)] transition-colors" />
                     <input
                       value={globalAmountSearch}
                       onChange={(e) => { setGlobalAmountSearch(e.target.value); if (e.target.value) setActiveTab("all"); }}
                       placeholder="البحث الشامل برقم الفاتورة، المبلغ، أو اسم العميل..."
-                      className="w-full h-12 bg-white/80 backdrop-blur-xl rounded-2xl pr-12 pl-4 text-sm font-bold text-zinc-800 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-zinc-900/5 shadow-sm border border-slate-200/60 placeholder:text-slate-400"
+                      className="w-full h-12 bg-white/80 backdrop-blur-xl rounded-2xl pr-12 pl-4 text-sm font-bold text-[var(--text-primary)] outline-none transition-all focus:bg-[var(--bg-surface)] focus:ring-2 focus:ring-zinc-900/5 shadow-sm border border-slate-200/60 placeholder:text-[var(--text-muted)]"
                     />
                     {globalAmountSearch && (
-                      <button onClick={() => setGlobalAmountSearch("")} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 bg-slate-100 rounded-full p-1 transition-colors">
+                      <button onClick={() => setGlobalAmountSearch("")} className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--bg-overlay)] rounded-full p-1 transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     )}
@@ -1426,7 +1426,7 @@ export default function DailyTreasuryPage() {
                         <button
                           key={t.id}
                           onClick={() => { setActiveTab(t.id); setGlobalAmountSearch(""); setActiveEquationRowId(null); setTxAffects(null); }}
-                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${activeTab === t.id ? "bg-primary text-white shadow-md shadow-zinc-900/20" : "text-slate-500 hover:bg-slate-100"
+                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${activeTab === t.id ? "bg-primary text-white shadow-md shadow-zinc-900/20" : "text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"
                             }`}
                         >
                           {t.label}
@@ -1435,16 +1435,16 @@ export default function DailyTreasuryPage() {
                       <div className="flex items-center gap-2 mr-auto shrink-0 pr-3">
                         <button
                           onClick={() => setShowCancelled(v => !v)}
-                          className={`h-8 px-3 rounded-lg text-[11px] font-black border transition-colors ${showCancelled ? "bg-rose-50 border-rose-300 text-rose-700" : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                          className={`h-8 px-3 rounded-lg text-[11px] font-black border transition-colors ${showCancelled ? "bg-rose-50 border-rose-300 text-rose-700" : "bg-[var(--bg-overlay)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:border-slate-300"}`}
                         >
                           {showCancelled ? "إخفاء الملغيات" : "إظهار الملغيات"}
                         </button>
                         <div className="relative">
-                          <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                          <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[var(--text-muted)]" />
                           <select
                             value={txSort}
                             onChange={(e) => setTxSort(e.target.value)}
-                            className="h-8 rounded-lg bg-slate-50 border border-slate-200 pl-3 pr-8 text-[11px] font-black outline-none text-slate-600 focus:border-zinc-400 appearance-none cursor-pointer"
+                            className="h-8 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border-normal)] pl-3 pr-8 text-[11px] font-black outline-none text-[var(--text-secondary)] focus:border-zinc-400 appearance-none cursor-pointer"
                           >
                             <option value="time_desc">الأحدث أولاً</option>
                             <option value="time_asc">الأقدم أولاً</option>
@@ -1459,20 +1459,20 @@ export default function DailyTreasuryPage() {
                     <div className="flex-1 overflow-y-auto relative p-2">
                       {txLoading ? (
                         <div className="flex items-center justify-center h-full min-h-[300px]">
-                          <RefreshCw className="h-6 w-6 animate-spin text-slate-300" />
+                          <RefreshCw className="h-6 w-6 animate-spin text-[var(--text-muted)]" />
                         </div>
                       ) : sortedTransactions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-400 gap-3">
+                        <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-[var(--text-muted)] gap-3">
                           <FileText className="h-10 w-10 text-slate-200" />
                           <span className="text-sm font-black">لا توجد حركات مسجلة في هذا التبويب</span>
                         </div>
                       ) : (
                         <>
                         <table className="w-full text-center border-collapse [&_td]:align-middle">
-                          <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
-                            <tr className="border-b border-slate-200">
+                          <thead className="sticky top-0 z-10 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
+                            <tr className="border-b border-[var(--border-normal)]">
                               {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
-                                <th key={h} className={`px-3 py-3 text-[11px] font-black uppercase text-slate-400 tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
+                                <th key={h} className={`px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
                                   {h}
                                 </th>
                               ))}
@@ -1500,7 +1500,7 @@ export default function DailyTreasuryPage() {
                                           : ""
                                     }`}
                                 >
-                                  <td className={`px-3 py-3.5 font-black text-[11px] tracking-wider text-center border-r border-slate-200/70 ${t.is_cancelled ? "text-slate-300 line-through" : "text-slate-500"}`}>{t.doc_no || `#${t.id}`}</td>
+                                  <td className={`px-3 py-3.5 font-black text-[11px] tracking-wider text-center border-r border-slate-200/70 ${t.is_cancelled ? "text-[var(--text-muted)] line-through" : "text-[var(--text-secondary)]"}`}>{t.doc_no || `#${t.id}`}</td>
                                   <td className="px-3 py-3.5 border-r border-slate-200/70">
                                     <div className="flex items-center justify-center gap-1 flex-wrap">
                                       <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${
@@ -1508,7 +1508,7 @@ export default function DailyTreasuryPage() {
                                           ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60"
                                           : t.doc_type === "purchase"
                                             ? ({ cash: "text-emerald-700 bg-emerald-50 border-emerald-200", credit: "text-amber-700 bg-amber-50 border-amber-200", future_due: "text-amber-700 bg-amber-50 border-amber-200", multi: "text-indigo-700 bg-indigo-50 border-indigo-200", bank_transfer: "text-blue-700 bg-blue-50 border-blue-200" }[t.payment_type] || "text-orange-700 bg-orange-50 border-orange-200")
-                                            : (DOC_TYPE_COLOR[t.doc_type] || "text-slate-600 bg-slate-100 border-slate-200")
+                                            : (DOC_TYPE_COLOR[t.doc_type] || "text-[var(--text-secondary)] bg-[var(--bg-overlay)] border-[var(--border-normal)]")
                                       }`}>
                                         {t.doc_type === "purchase"
                                           ? ({ cash: "مشتريات نقدية", credit: "مشتريات آجلة", future_due: "مشتريات آجلة", multi: "مشتريات متعددة", bank_transfer: "مشتريات تحويل" }[t.payment_type] || "مشتريات")
@@ -1542,13 +1542,13 @@ export default function DailyTreasuryPage() {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-3 py-3.5 text-slate-600 text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
+                                  <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
                                     {t.party || t.description || "—"}
                                   </td>
-                                  <td className="px-3 py-3.5 text-slate-500 text-[11px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
+                                  <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
                                     {t.seller_name || t.cancelled_by_name || "—"}
                                   </td>
-                                  <td className="px-3 py-3.5 text-slate-400 text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
+                                  <td className="px-3 py-3.5 text-[var(--text-muted)] text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
                                     {t.created_at
                                       ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
                                       : "—"}
@@ -1557,14 +1557,14 @@ export default function DailyTreasuryPage() {
                                     <div className="flex items-center justify-center gap-1.5 opacity-100 transition-opacity">
                                       <button
                                         onClick={() => setSlideOver(t)}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-zinc-900 hover:bg-slate-50 shadow-sm transition-all"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] shadow-sm transition-all"
                                         title="عرض التفاصيل"
                                       >
                                         <Eye className="h-3 w-3" />
                                       </button>
                                       <button
                                         onClick={handlePrint}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-blue-50 shadow-sm transition-all"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 shadow-sm transition-all"
                                         title="طباعة"
                                       >
                                         <Printer className="h-3 w-3" />
@@ -1575,12 +1575,12 @@ export default function DailyTreasuryPage() {
                               ))}
                             </AnimatePresence>
                           </tbody>
-                          <tfoot className="sticky bottom-0 bg-white/95 backdrop-blur-xl shadow-[0_-1px_0_0_#f1f5f9]">
+                          <tfoot className="sticky bottom-0 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_-1px_0_0_#f1f5f9]">
                             <tr>
-                              <td className="px-3 py-3 font-black text-slate-500 uppercase tracking-widest text-[11px]" colSpan={2}>
+                              <td className="px-3 py-3 font-black text-[var(--text-secondary)] uppercase tracking-widest text-[11px]" colSpan={2}>
                                 الإجمالي للتبويب الحالي
                               </td>
-                              <td className="px-3 py-3 font-black text-zinc-950 font-mono text-sm">
+                              <td className="number-fmt-primary text-zinc-950 text-sm">
                                 {fmt(txTotal)} ج.م
                               </td>
                               <td colSpan={3} />
@@ -1588,15 +1588,15 @@ export default function DailyTreasuryPage() {
                           </tfoot>
                         </table>
                         {totalPages > 1 && (
-                          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50" dir="ltr">
-                            <div className="text-[11px] font-bold text-slate-400">
+                          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-subtle)] bg-slate-50/50" dir="ltr">
+                            <div className="text-[11px] font-bold text-[var(--text-muted)]">
                               {startIdx + 1}–{Math.min(startIdx + ITEMS_PER_PAGE, sortedTransactions.length)} من {sortedTransactions.length}
                             </div>
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={safePage <= 1}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 font-black text-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >‹</button>
                               {(() => {
                                 const pages = [];
@@ -1605,14 +1605,14 @@ export default function DailyTreasuryPage() {
                                   <button
                                     key={p}
                                     onClick={() => setCurrentPage(p)}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-primary text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-primary text-white shadow-md" : "bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"}`}
                                   >{p}</button>
                                 ));
                               })()}
                               <button
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                 disabled={safePage >= totalPages}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 font-black text-sm hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                               >›</button>
                             </div>
                           </div>
@@ -1643,26 +1643,26 @@ export default function DailyTreasuryPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-2xl bg-white shadow-2xl rounded-[2rem] flex flex-col overflow-hidden my-20 mx-auto"
+              className="relative w-full max-w-2xl bg-[var(--bg-surface)] shadow-2xl rounded-[2rem] flex flex-col overflow-hidden my-20 mx-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-slate-50/50">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-5 py-4 bg-slate-50/50">
                 <div>
-                  <h2 className="text-[16px] font-black text-zinc-900">
+                  <h2 className="text-[16px] font-black text-[var(--text-primary)]">
                     {DOC_TYPE_LABEL[slideOver.doc_type] || "مستند مالية"}
                   </h2>
-                  <p className="text-[11px] text-slate-400 font-bold font-mono tracking-wider mt-0.5">{slideOver.doc_no || "#" + slideOver.id}</p>
+                  <p className="text-[11px] text-[var(--text-muted)] font-bold font-mono tracking-wider mt-0.5">{slideOver.doc_no || "#" + slideOver.id}</p>
                 </div>
-                <button onClick={() => { setSlideOver(null); setSlideOverDetails(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-zinc-900 hover:bg-slate-50 transition-colors shadow-sm">
+                <button onClick={() => { setSlideOver(null); setSlideOverDetails(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors shadow-sm">
                   <X className="h-4 w-4" />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-5 bg-[var(--bg-base)]">
                 {/* Header Summary */}
-                <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden mb-4">
-                  <div className={"p-4 text-center border-b border-slate-100 " + (DOC_TYPE_COLOR[slideOver.doc_type] || "bg-white")}>
+                <div className="rounded-2xl bg-[var(--bg-surface)] border border-slate-200/60 shadow-sm overflow-hidden mb-4">
+                  <div className={"p-4 text-center border-b border-[var(--border-subtle)] " + (DOC_TYPE_COLOR[slideOver.doc_type] || "bg-[var(--bg-surface)]")}>
                     <div className="text-[11px] font-black uppercase tracking-widest opacity-60 mb-1">القيمة</div>
-                    <div className="text-[28px] font-black font-mono leading-none tracking-tighter">
+                    <div className="number-fmt-primary text-[28px] leading-none tracking-tighter">
                       {fmt(slideOver.amount)}
                     </div>
                     <div className="text-[11px] font-bold mt-1 opacity-70">جنيه مصري</div>
@@ -1680,9 +1680,9 @@ export default function DailyTreasuryPage() {
                           : "—",
                       },
                     ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">{label}</span>
-                        <span className="text-2sm font-bold text-zinc-900 text-right truncate">{value}</span>
+                      <div key={label} className="flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 hover:bg-[var(--bg-overlay)] transition-colors">
+                        <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest shrink-0">{label}</span>
+                        <span className="text-2sm font-bold text-[var(--text-primary)] text-right truncate">{value}</span>
                       </div>
                     ))}
                   </div>
@@ -1698,28 +1698,28 @@ export default function DailyTreasuryPage() {
                       const total     = Number(slideOver.amount        || 0);
                       const isSalesReturn = slideOver.doc_type === "sales_return";
                       return (
-                        <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
-                          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-slate-400" />
-                            <span className="text-2sm font-black text-slate-700">تفاصيل الاسترداد</span>
+                        <div className="rounded-2xl bg-[var(--bg-surface)] border border-slate-200/60 shadow-sm overflow-hidden">
+                          <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-slate-50/50 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-[var(--text-muted)]" />
+                            <span className="text-2sm font-black text-[var(--text-secondary)]">تفاصيل الاسترداد</span>
                           </div>
                           <div className="p-3 flex flex-wrap items-stretch gap-0 bg-slate-50/80 border-b border-slate-200/80">
                             {/* Total */}
                             <div className="flex flex-col items-end justify-center px-4 py-2.5 min-w-[110px]">
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
-                              <div className="text-[18px] font-black text-slate-800 font-mono leading-none">
-                                {fmt(total)} <span className="text-[11px] font-bold text-slate-400">ج.م</span>
+                              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-0.5">إجمالي المرتجع</span>
+                              <div className="number-fmt-primary text-[18px] text-[var(--text-primary)] leading-none">
+                                {fmt(total)} <span className="text-[11px] font-bold text-[var(--text-muted)]">ج.م</span>
                               </div>
                             </div>
                             {cashAmt > 0.005 && (
                               <>
                                 <div className="w-px self-stretch bg-slate-200/80" />
                                 <div className="flex flex-col items-end justify-center px-4 py-2.5 bg-emerald-50/80 min-w-[110px]">
-                                  <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                                  <span className="text-[8px] font-black text-[var(--text-muted)] tracking-wider mb-0.5 flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
                                     {isSalesReturn ? "نقداً — صندوق" : "نقداً مُستردّ"}
                                   </span>
-                                  <div className="text-[16px] font-black text-emerald-700 font-mono leading-none">
+                                  <div className="number-fmt-primary text-[16px] text-emerald-700 leading-none">
                                     {fmt(cashAmt)} <span className="text-[11px] font-bold">ج.م</span>
                                   </div>
                                 </div>
@@ -1729,11 +1729,11 @@ export default function DailyTreasuryPage() {
                               <>
                                 <div className="w-px self-stretch bg-slate-200/80" />
                                 <div className="flex flex-col items-end justify-center px-4 py-2.5 bg-blue-50/80 min-w-[110px]">
-                                  <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                                  <span className="text-[8px] font-black text-[var(--text-muted)] tracking-wider mb-0.5 flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
                                     {isSalesReturn ? "رصيد حساب العميل" : "خصم من ذمة المورد"}
                                   </span>
-                                  <div className="text-[16px] font-black text-blue-700 font-mono leading-none">
+                                  <div className="number-fmt-primary text-[16px] text-blue-700 leading-none">
                                     {fmt(creditAmt)} <span className="text-[11px] font-bold">ج.م</span>
                                   </div>
                                 </div>
@@ -1743,8 +1743,8 @@ export default function DailyTreasuryPage() {
                               <>
                                 <div className="w-px self-stretch bg-slate-200/80" />
                                 <div className="flex flex-col items-end justify-center px-4 py-2.5 bg-slate-100/80 min-w-[110px]">
-                                  <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5">صفر نقدي</span>
-                                  <span className="text-[11px] font-black text-slate-500">لا يؤثر على الخزنة</span>
+                                  <span className="text-[8px] font-black text-[var(--text-muted)] tracking-wider mb-0.5">صفر نقدي</span>
+                                  <span className="text-[11px] font-black text-[var(--text-secondary)]">لا يؤثر على الخزنة</span>
                                 </div>
                               </>
                             )}
@@ -1752,38 +1752,38 @@ export default function DailyTreasuryPage() {
                           {/* Metadata rows */}
                           <div className="divide-y divide-slate-50">
                             {isSalesReturn && slideOverDetails?.invoice_id && (
-                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-[var(--bg-overlay)] transition-colors">
+                                <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest shrink-0">المصدر</span>
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-indigo-50 text-indigo-700 border-indigo-200">
                                   <FileText className="w-3 h-3" /> من فاتورة سابقة
                                 </span>
                               </div>
                             )}
                             {isSalesReturn && !slideOverDetails?.invoice_id && slideOverDetails && (
-                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">المصدر</span>
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-[var(--bg-overlay)] transition-colors">
+                                <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest shrink-0">المصدر</span>
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black bg-amber-50 text-amber-700 border-amber-200">
                                   <RotateCcw className="w-3 h-3" /> مرتجع مباشر
                                 </span>
                               </div>
                             )}
                             {(slideOver.description || slideOverDetails?.reason) && (
-                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">السبب</span>
-                                <span className="text-2sm font-bold text-zinc-900 text-right">
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-[var(--bg-overlay)] transition-colors">
+                                <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest shrink-0">السبب</span>
+                                <span className="text-2sm font-bold text-[var(--text-primary)] text-right">
                                   {REASON_MAP[slideOver.description || slideOverDetails?.reason] || slideOver.description || slideOverDetails?.reason || "أخرى"}
                                 </span>
                               </div>
                             )}
                             {slideOverDetails?.original_invoice_no && (
-                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">الفاتورة الأصلية</span>
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-[var(--bg-overlay)] transition-colors">
+                                <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest shrink-0">الفاتورة الأصلية</span>
                                 <span className="text-2sm font-black text-indigo-700 font-mono">{slideOverDetails.original_invoice_no}</span>
                               </div>
                             )}
                             {(slideOverDetails?.notes || slideOver.notes) && (
-                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">ملاحظات</span>
+                              <div className="flex items-center justify-between gap-4 px-3 py-2.5 hover:bg-[var(--bg-overlay)] transition-colors">
+                                <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest shrink-0">ملاحظات</span>
                                 <span className="text-2sm font-bold text-zinc-700 text-right truncate">{slideOverDetails?.notes || slideOver.notes}</span>
                               </div>
                             )}
@@ -1793,16 +1793,16 @@ export default function DailyTreasuryPage() {
                     })()}
 
                     {/* Return Lines */}
-                    <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
-                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-slate-400" />
-                        <span className="text-2sm font-black text-slate-700">الأصناف المرتجعة</span>
+                    <div className="rounded-2xl bg-[var(--bg-surface)] border border-slate-200/60 shadow-sm overflow-hidden">
+                      <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-slate-50/50 flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-[var(--text-muted)]" />
+                        <span className="text-2sm font-black text-[var(--text-secondary)]">الأصناف المرتجعة</span>
                       </div>
                       {slideOverLoading ? (
-                        <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                        <div className="p-6 text-center text-2sm text-[var(--text-muted)] animate-pulse">جاري تحميل التفاصيل...</div>
                       ) : slideOverDetails?.lines?.length ? (
                         <div className="divide-y divide-slate-100">
-                          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[var(--bg-overlay)] text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">
                             <div className="col-span-5">الصنف</div>
                             <div className="col-span-2 text-center">الكمية</div>
                             <div className="col-span-2 text-center">السعر</div>
@@ -1811,21 +1811,21 @@ export default function DailyTreasuryPage() {
                           {slideOverDetails.lines.map((line, idx) => (
                             <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50 transition-colors">
                               <div className="col-span-5 flex flex-col min-w-0">
-                                <span className="text-[11px] font-black text-slate-800 truncate">{line.item_name || line.name}</span>
-                                <span className="text-[9px] font-mono text-slate-400 truncate">{line.item_code || "#" + line.item_id}</span>
+                                <span className="text-[11px] font-black text-[var(--text-primary)] truncate">{line.item_name || line.name}</span>
+                                <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">{line.item_code || "#" + line.item_id}</span>
                               </div>
-                              <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{line.quantity}</div>
-                              <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{fmt(line.unit_price)}</div>
-                              <div className="col-span-3 text-left font-mono text-[11px] font-black text-rose-700">{fmt(line.line_total || line.unit_price * line.quantity)}</div>
+                              <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{line.quantity}</div>
+                              <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{fmt(line.unit_price)}</div>
+                              <div className="col-span-3 text-left number-fmt text-[11px] text-rose-700">{fmt(line.line_total || line.unit_price * line.quantity)}</div>
                             </div>
                           ))}
                           <div className="bg-primary text-white px-3 py-3 flex justify-between text-2sm font-black">
-                            <span className="text-slate-400">الإجمالي</span>
-                            <span className="font-mono">{fmt(slideOver.amount)} ج.م</span>
+                            <span className="text-[var(--text-muted)]">الإجمالي</span>
+                            <span className="number-fmt-primary">{fmt(slideOver.amount)} ج.م</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="p-6 text-center text-2sm text-slate-400">لا توجد تفاصيل متاحة</div>
+                        <div className="p-6 text-center text-2sm text-[var(--text-muted)]">لا توجد تفاصيل متاحة</div>
                       )}
                     </div>
                   </div>
@@ -1833,17 +1833,17 @@ export default function DailyTreasuryPage() {
 
                 {/* Invoice Lines for POS Invoice */}
                 {["pos_invoice", "installment_invoice", "credit_invoice"].includes(slideOver.doc_type) && (
-                  <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-slate-400" />
-                      <span className="text-2sm font-black text-slate-700">تفاصيل الفاتورة</span>
+                  <div className="rounded-2xl bg-[var(--bg-surface)] border border-slate-200/60 shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-slate-50/50 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-[var(--text-muted)]" />
+                      <span className="text-2sm font-black text-[var(--text-secondary)]">تفاصيل الفاتورة</span>
                     </div>
                     {slideOverLoading ? (
-                      <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                      <div className="p-6 text-center text-2sm text-[var(--text-muted)] animate-pulse">جاري تحميل التفاصيل...</div>
                     ) : slideOverDetails?.lines?.length ? (
                       <div className="divide-y divide-slate-100">
                         {/* Column Headers */}
-                        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[var(--bg-overlay)] text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">
                           <div className="col-span-5">الصنف</div>
                           <div className="col-span-2 text-center">الكمية</div>
                           <div className="col-span-2 text-center">السعر</div>
@@ -1854,40 +1854,40 @@ export default function DailyTreasuryPage() {
                         {slideOverDetails.lines.map((line, idx) => (
                           <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50 transition-colors">
                             <div className="col-span-5 flex flex-col min-w-0">
-                              <span className="text-[11px] font-black text-slate-800 truncate">{line.item_name || line.name}</span>
-                              <span className="text-[9px] font-mono text-slate-400 truncate">{line.code || line.item_code || "#" + line.item_id}</span>
+                              <span className="text-[11px] font-black text-[var(--text-primary)] truncate">{line.item_name || line.name}</span>
+                              <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">{line.code || line.item_code || "#" + line.item_id}</span>
                             </div>
-                            <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{line.quantity}</div>
-                            <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{fmt(line.unit_price)}</div>
-                            <div className="col-span-1 text-center font-mono text-[11px] font-bold text-amber-600">{line.line_discount || line.discount || "—"}</div>
-                            <div className="col-span-2 text-left font-mono text-[11px] font-black text-emerald-700">{fmt((line.unit_price * line.quantity) - (line.line_discount || 0))}</div>
+                            <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{line.quantity}</div>
+                            <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{fmt(line.unit_price)}</div>
+                            <div className="col-span-1 text-center number-fmt text-[11px] text-amber-600">{line.line_discount || line.discount || "—"}</div>
+                            <div className="col-span-2 text-left number-fmt text-[11px] text-emerald-700">{fmt((line.unit_price * line.quantity) - (line.line_discount || 0))}</div>
                           </div>
                         ))}
                         {/* Totals */}
                         <div className="bg-primary text-white px-3 py-3">
                           <div className="flex justify-between text-[11px] font-bold mb-1">
-                            <span className="text-slate-400">الفرعي</span>
-                            <span className="font-mono">{fmt(slideOverDetails.subtotal)}</span>
+                            <span className="text-[var(--text-muted)]">الفرعي</span>
+                            <span className="number-fmt-primary">{fmt(slideOverDetails.subtotal)}</span>
                           </div>
                           {Number(slideOverDetails.discount) > 0 && (
                             <div className="flex justify-between text-[11px] font-bold mb-1">
-                              <span className="text-slate-400">الخصم</span>
-                              <span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span>
+                              <span className="text-[var(--text-muted)]">الخصم</span>
+                              <span className="number-fmt-primary text-rose-300">- {fmt(slideOverDetails.discount)}</span>
                             </div>
                           )}
                           {Number(slideOverDetails.increase) > 0 && (
                             <div className="flex justify-between text-[11px] font-bold mb-1">
-                              <span className="text-slate-400">الإضافة</span>
-                              <span className="font-mono text-emerald-300">+ {fmt(slideOverDetails.increase)}</span>
+                              <span className="text-[var(--text-muted)]">الإضافة</span>
+                              <span className="number-fmt-primary text-emerald-300">+ {fmt(slideOverDetails.increase)}</span>
                             </div>
                           )}
                           <div className="flex justify-between text-2sm font-black border-t border-slate-700 pt-2 mt-2">
                             <span>الإجمالي</span>
-                            <span className="font-mono">{fmt(slideOverDetails.total)} ج.م</span>
+                            <span className="number-fmt-primary">{fmt(slideOverDetails.total)} ج.م</span>
                           </div>
                           {["multi", "installments", "credit"].includes(slideOverDetails.payment_type) && (
                             <div className="mt-3 pt-3 border-t border-slate-700">
-                              <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-2">توزيع طرق الدفع</div>
+                              <div className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-2">توزيع طرق الدفع</div>
                               <div className="flex flex-col gap-1.5">
                                 {slideOverDetails.payment_type === "multi" && slideOverDetails.payments?.length > 0 && (
                                   slideOverDetails.payments.map((p, i) => {
@@ -1897,10 +1897,10 @@ export default function DailyTreasuryPage() {
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-[11px] font-black text-white">{p.method_name || arMethod(p.method)}</span>
                                           {!isCash && (
-                                            <span className="text-[8px] font-bold text-slate-400 bg-slate-600/50 px-1.5 py-0.5 rounded">لا يؤثر على حساب الخزنة</span>
+                                            <span className="text-[8px] font-bold text-[var(--text-muted)] bg-slate-600/50 px-1.5 py-0.5 rounded">لا يؤثر على حساب الخزنة</span>
                                           )}
                                         </div>
-                                        <span className={`font-mono text-[11px] font-black ${isCash ? "text-emerald-300" : "text-slate-300"}`}>{fmt(p.amount)} ج.م</span>
+                                        <span className={`number-fmt-primary text-[11px] ${isCash ? "text-emerald-300" : "text-[var(--text-muted)]"}`}>{fmt(p.amount)} ج.م</span>
                                       </div>
                                     );
                                   })
@@ -1912,7 +1912,7 @@ export default function DailyTreasuryPage() {
                                         <span className="text-[11px] font-black text-white">💰 نقداً (دفعة مقدم)</span>
                                         <span className="text-[8px] font-bold text-emerald-300 bg-emerald-800/50 px-1.5 py-0.5 rounded">يضاف للخزنة</span>
                                       </div>
-                                      <span className="font-mono text-[11px] font-black text-emerald-300">{fmt(Number(slideOverDetails.amount_received || 0))} ج.م</span>
+                                      <span className="number-fmt-primary text-[11px] text-emerald-300">{fmt(Number(slideOverDetails.amount_received || 0))} ج.م</span>
                                     </div>
                                     {Number(slideOverDetails.total) > Number(slideOverDetails.amount_received || 0) && (
                                       <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-violet-900/40 border border-violet-700/40">
@@ -1920,7 +1920,7 @@ export default function DailyTreasuryPage() {
                                           <span className="text-[11px] font-black text-white">📋 آجل (قسط)</span>
                                           <span className="text-[8px] font-bold text-violet-300 bg-violet-800/50 px-1.5 py-0.5 rounded">يضاف لذمة العميل</span>
                                         </div>
-                                        <span className="font-mono text-[11px] font-black text-violet-300">{fmt(Number(slideOverDetails.total) - Number(slideOverDetails.amount_received || 0))} ج.م</span>
+                                        <span className="number-fmt-primary text-[11px] text-violet-300">{fmt(Number(slideOverDetails.total) - Number(slideOverDetails.amount_received || 0))} ج.م</span>
                                       </div>
                                     )}
                                   </>
@@ -1931,7 +1931,7 @@ export default function DailyTreasuryPage() {
                                       <span className="text-[11px] font-black text-white">📋 آجل (كامل المبلغ)</span>
                                       <span className="text-[8px] font-bold text-amber-300 bg-amber-800/50 px-1.5 py-0.5 rounded">يضاف لذمة العميل</span>
                                     </div>
-                                    <span className="font-mono text-[11px] font-black text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
+                                    <span className="number-fmt-primary text-[11px] text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
                                   </div>
                                 )}
                               </div>
@@ -1940,23 +1940,23 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="p-6 text-center text-2sm text-slate-400">لا توجد تفاصيل متاحة</div>
+                      <div className="p-6 text-center text-2sm text-[var(--text-muted)]">لا توجد تفاصيل متاحة</div>
                     )}
                   </div>
                 )}
 
                 {/* Purchase invoice detail */}
                 {slideOver.doc_type === "purchase" && (
-                  <div className="rounded-2xl bg-white border border-slate-200/60 shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-slate-400" />
-                      <span className="text-2sm font-black text-slate-700">تفاصيل فاتورة الشراء</span>
+                  <div className="rounded-2xl bg-[var(--bg-surface)] border border-slate-200/60 shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-slate-50/50 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-[var(--text-muted)]" />
+                      <span className="text-2sm font-black text-[var(--text-secondary)]">تفاصيل فاتورة الشراء</span>
                     </div>
                     {slideOverLoading ? (
-                      <div className="p-6 text-center text-2sm text-slate-400 animate-pulse">جاري تحميل التفاصيل...</div>
+                      <div className="p-6 text-center text-2sm text-[var(--text-muted)] animate-pulse">جاري تحميل التفاصيل...</div>
                     ) : slideOverDetails?.lines?.length ? (
                       <div className="divide-y divide-slate-100">
-                        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[var(--bg-overlay)] text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">
                           <div className="col-span-6">الصنف</div>
                           <div className="col-span-2 text-center">الكمية</div>
                           <div className="col-span-2 text-center">التكلفة</div>
@@ -1965,33 +1965,33 @@ export default function DailyTreasuryPage() {
                         {slideOverDetails.lines.map((line, idx) => (
                           <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50">
                             <div className="col-span-6 flex flex-col min-w-0">
-                              <span className="text-[11px] font-black text-slate-800 truncate">{line.item_name_ar || line.item_name || line.name}</span>
-                              <span className="text-[9px] font-mono text-slate-400 truncate">{line.item_code || line.code || line.barcode || "#" + line.item_id}</span>
+                              <span className="text-[11px] font-black text-[var(--text-primary)] truncate">{line.item_name_ar || line.item_name || line.name}</span>
+                              <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">{line.item_code || line.code || line.barcode || "#" + line.item_id}</span>
                             </div>
-                            <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{line.quantity}</div>
-                            <div className="col-span-2 text-center font-mono text-[11px] font-bold text-slate-700">{fmt(line.unit_cost)}</div>
-                            <div className="col-span-2 text-left font-mono text-[11px] font-black text-orange-700">{fmt(line.line_total || (line.unit_cost * line.quantity))}</div>
+                            <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{line.quantity}</div>
+                            <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{fmt(line.unit_cost)}</div>
+                            <div className="col-span-2 text-left number-fmt text-[11px] text-orange-700">{fmt(line.line_total || (line.unit_cost * line.quantity))}</div>
                           </div>
                         ))}
                         <div className="bg-primary text-white px-3 py-3">
                           {Number(slideOverDetails.discount) > 0 && (
-                            <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-slate-400">الخصم</span><span className="font-mono text-rose-300">- {fmt(slideOverDetails.discount)}</span></div>
+                            <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-[var(--text-muted)]">الخصم</span><span className="number-fmt-primary text-rose-300">- {fmt(slideOverDetails.discount)}</span></div>
                           )}
                           {Number(slideOverDetails.increase) > 0 && (
-                            <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-slate-400">الإضافة</span><span className="font-mono text-emerald-300">+ {fmt(slideOverDetails.increase)}</span></div>
+                            <div className="flex justify-between text-[11px] font-bold mb-1"><span className="text-[var(--text-muted)]">الإضافة</span><span className="number-fmt-primary text-emerald-300">+ {fmt(slideOverDetails.increase)}</span></div>
                           )}
                           <div className="flex justify-between text-2sm font-black border-t border-slate-700 pt-2 mt-1">
-                            <span>الإجمالي</span><span className="font-mono">{fmt(slideOverDetails.total)} ج.م</span>
+                            <span>الإجمالي</span><span className="number-fmt-primary">{fmt(slideOverDetails.total)} ج.م</span>
                           </div>
                           {slideOverDetails.payment_method === "multi" && slideOverDetails.payments?.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-slate-700 flex flex-col gap-1.5">
-                              <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">توزيع طرق الدفع</div>
+                              <div className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">توزيع طرق الدفع</div>
                               {slideOverDetails.payments.map((p, i) => {
                                 const isCredit = p.method_type === "credit" || p.method_category === "credit";
                                 return (
                                   <div key={i} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${isCredit ? "bg-amber-900/40 border border-amber-700/40" : "bg-emerald-900/40 border border-emerald-700/40"}`}>
                                     <span className="text-[11px] font-black text-white">{p.method_name || arMethod(p.method)} {isCredit && <span className="text-[8px] text-amber-300">(آجل — ذمة المورد)</span>}</span>
-                                    <span className={`font-mono text-[11px] font-black ${isCredit ? "text-amber-300" : "text-emerald-300"}`}>{fmt(p.amount)} ج.م</span>
+                                    <span className={`number-fmt-primary text-[11px] ${isCredit ? "text-amber-300" : "text-emerald-300"}`}>{fmt(p.amount)} ج.م</span>
                                   </div>
                                 );
                               })}
@@ -2001,19 +2001,19 @@ export default function DailyTreasuryPage() {
                             <div className="mt-3 pt-3 border-t border-slate-700">
                               <div className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-amber-900/40 border border-amber-700/40">
                                 <span className="text-[11px] font-black text-white">📋 آجل (كامل المبلغ — ذمة المورد)</span>
-                                <span className="font-mono text-[11px] font-black text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
+                                <span className="number-fmt-primary text-[11px] text-amber-300">{fmt(slideOverDetails.total)} ج.م</span>
                               </div>
                             </div>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div className="p-6 text-center text-2sm text-slate-400">لا توجد تفاصيل متاحة</div>
+                      <div className="p-6 text-center text-2sm text-[var(--text-muted)]">لا توجد تفاصيل متاحة</div>
                     )}
                   </div>
                 )}
               </div>
-              <div className="border-t border-slate-100 p-3 bg-white flex gap-2">
+              <div className="border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-surface)] flex gap-2">
                 {slideOver.doc_type === "purchase" && (
                   <motion.button
                     whileHover={{ y: -2 }}
@@ -2076,37 +2076,37 @@ export default function DailyTreasuryPage() {
         {historyOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" onClick={() => setHistoryOpen(false)} />
-            <motion.div variants={modalVariants} initial="hidden" animate="show" exit="exit" className="relative w-full max-w-5xl max-h-[86vh] overflow-hidden rounded-[2rem] bg-white shadow-2xl border border-slate-100 flex flex-col">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+            <motion.div variants={modalVariants} initial="hidden" animate="show" exit="exit" className="relative w-full max-w-5xl max-h-[86vh] overflow-hidden rounded-[2rem] bg-[var(--bg-surface)] shadow-2xl border border-[var(--border-subtle)] flex flex-col">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-slate-50/70 px-6 py-5">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100"><History className="h-5 w-5" /></div>
-                  <div><h2 className="text-[18px] font-black text-zinc-900">سجل اليوميات السابقة</h2><p className="text-[11px] font-bold text-slate-400">بحث، فلترة، ومعاينة مركزية بدون درج جانبي</p></div>
+                  <div><h2 className="text-[18px] font-black text-[var(--text-primary)]">سجل اليوميات السابقة</h2><p className="text-[11px] font-bold text-[var(--text-muted)]">بحث، فلترة، ومعاينة مركزية بدون درج جانبي</p></div>
                 </div>
-                <button onClick={() => setHistoryOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-zinc-900 hover:bg-slate-50 transition-colors shadow-sm"><X className="h-5 w-5" /></button>
+                <button onClick={() => setHistoryOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors shadow-sm"><X className="h-5 w-5" /></button>
               </div>
-              <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-3">
-                <div className="relative flex-1 min-w-[240px]"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder="بحث بتاريخ اليوم أو ملاحظات الإغلاق" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pr-9 pl-3 text-2sm font-bold outline-none focus:border-indigo-500 focus:bg-white" /></div>
-                <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-2sm font-black text-slate-600 outline-none focus:border-indigo-500"><option value="">كل الحالات</option><option value="open">مفتوح</option><option value="closed">مغلق</option></select>
-                <button onClick={() => { setHistorySearch(""); setHistoryStatus(""); }} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-500 hover:bg-slate-50">مسح الفلاتر</button>
+              <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-subtle)] px-6 py-3">
+                <div className="relative flex-1 min-w-[240px]"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" /><input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder="بحث بتاريخ اليوم أو ملاحظات الإغلاق" className="h-10 w-full rounded-xl border border-[var(--border-normal)] bg-[var(--bg-overlay)] pr-9 pl-3 text-2sm font-bold outline-none focus:border-indigo-500 focus:bg-[var(--bg-surface)]" /></div>
+                <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)} className="h-10 rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] px-3 text-2sm font-black text-[var(--text-secondary)] outline-none focus:border-indigo-500"><option value="">كل الحالات</option><option value="open">مفتوح</option><option value="closed">مغلق</option></select>
+                <button onClick={() => { setHistorySearch(""); setHistoryStatus(""); }} className="h-10 rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] px-3 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]">مسح الفلاتر</button>
               </div>
               <div className="flex-1 overflow-auto p-4 bg-[var(--bg-base)]">
                 <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-right">
-                  <thead><tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">افتتاحي</th><th className="px-3 py-2">فعلي</th><th className="px-3 py-2">ختامي</th><th className="px-3 py-2">عجز / زيادة</th><th className="px-3 py-2">إجراءات</th></tr></thead>
+                  <thead><tr className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">افتتاحي</th><th className="px-3 py-2">فعلي</th><th className="px-3 py-2">ختامي</th><th className="px-3 py-2">عجز / زيادة</th><th className="px-3 py-2">إجراءات</th></tr></thead>
                   <tbody>
                     {pastSessions.map((s) => (
-                      <tr key={s.id} className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
-                        <td className="rounded-r-2xl px-3 py-3 font-black text-zinc-900">{s.date}</td>
-                        <td className="px-3 py-3"><span className={"inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-black " + (s.status === "closed" ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700")}>{s.status === "closed" ? <Lock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}{s.status === "closed" ? "مغلق" : "مفتوح"}</span></td>
-                        <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{fmt(s.opening_balance)}</td>
-                        <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{s.actual_cash == null ? "—" : fmt(s.actual_cash)}</td>
-                        <td className="px-3 py-3 font-mono text-2sm font-black text-slate-600">{s.closing_balance == null ? "—" : fmt(s.closing_balance)}</td>
-                        <td className={"px-3 py-3 font-mono text-2sm font-black " + (Number(s.discrepancy || 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{s.discrepancy == null ? "—" : fmt(s.discrepancy)}</td>
+                      <tr key={s.id} className="rounded-2xl bg-[var(--bg-surface)] shadow-sm ring-1 ring-slate-200/70">
+                        <td className="rounded-r-2xl px-3 py-3 font-black text-[var(--text-primary)]">{s.date}</td>
+                        <td className="px-3 py-3"><span className={"inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-black " + (s.status === "closed" ? "bg-[var(--bg-overlay)] text-[var(--text-secondary)]" : "bg-emerald-100 text-emerald-700")}>{s.status === "closed" ? <Lock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}{s.status === "closed" ? "مغلق" : "مفتوح"}</span></td>
+                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{fmt(s.opening_balance)}</td>
+                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{s.actual_cash == null ? "—" : fmt(s.actual_cash)}</td>
+                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{s.closing_balance == null ? "—" : fmt(s.closing_balance)}</td>
+                        <td className={"px-3 py-3 number-fmt text-2sm " + (Number(s.discrepancy || 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{s.discrepancy == null ? "—" : fmt(s.discrepancy)}</td>
                         <td className="rounded-l-2xl px-3 py-3"><button onClick={() => { setDate(s.date); setHistoryOpen(false); setActiveTab("all"); }} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600"><Eye className="h-3.5 w-3.5" /> معاينة</button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {pastSessions.length === 0 && <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3"><History className="h-8 w-8 text-slate-200" /><span className="text-sm font-black">لا توجد يوميات مطابقة</span></div>}
+                {pastSessions.length === 0 && <div className="flex flex-col items-center justify-center h-48 text-[var(--text-muted)] gap-3"><History className="h-8 w-8 text-slate-200" /><span className="text-sm font-black">لا توجد يوميات مطابقة</span></div>}
               </div>
             </motion.div>
           </div>
@@ -2124,7 +2124,7 @@ export default function DailyTreasuryPage() {
             />
             <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
-              className="relative w-full max-w-[420px] rounded-[2.5rem] bg-white shadow-2xl p-8 border border-slate-100" dir="rtl"
+              className="relative w-full max-w-[420px] rounded-[2.5rem] bg-[var(--bg-surface)] shadow-2xl p-8 border border-[var(--border-subtle)]" dir="rtl"
             >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
@@ -2132,19 +2132,19 @@ export default function DailyTreasuryPage() {
                     {quickModal === "expense" ? <TrendingDown className="h-6 w-6" /> : <TrendingUp className="h-6 w-6" />}
                   </div>
                   <div>
-                    <h2 className="text-[20px] font-black text-zinc-900 leading-tight">
+                    <h2 className="text-[20px] font-black text-[var(--text-primary)] leading-tight">
                       {quickModal === "expense" ? "تسجيل مصروف" : "تسجيل إيراد"}
                     </h2>
-                    <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Quick Entry</p>
+                    <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Quick Entry</p>
                   </div>
                 </div>
-                <button onClick={() => setQuickModal(null)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-zinc-900 hover:bg-slate-100 transition-colors">
+                <button onClick={() => setQuickModal(null)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors">
                   <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="space-y-5">
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">القيمة (ج.م)</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">القيمة (ج.م)</label>
                   <input
                     ref={quickAmountRef}
                     type="number"
@@ -2153,11 +2153,11 @@ export default function DailyTreasuryPage() {
                     onKeyDown={e => handleKeyDown(e, { nextRef: quickNoteRef })}
                     autoFocus
                     placeholder="0.00"
-                    className="w-full h-14 rounded-2xl bg-slate-50 border border-slate-200 px-4 text-[20px] font-black font-mono outline-none focus:border-zinc-400 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 text-center transition-all shadow-inner"
+                    className="w-full h-14 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-4 text-[20px] font-black number-fmt-primary outline-none focus:border-zinc-400 focus:bg-[var(--bg-surface)] focus:ring-4 focus:ring-zinc-900/5 text-center transition-all shadow-inner"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">البيان / الوصف</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">البيان / الوصف</label>
                   <input
                     ref={quickNoteRef}
                     type="text"
@@ -2165,17 +2165,17 @@ export default function DailyTreasuryPage() {
                     onChange={(e) => setQuickNote(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: quickCategoryRef, prevRef: quickAmountRef })}
                     placeholder="سبب المعاملة..."
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
+                    className="w-full h-12 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-normal)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">الفئة</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">الفئة</label>
                   <select
                     ref={quickCategoryRef}
                     value={quickCategoryId}
                     onChange={(e) => setQuickCategoryId(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: quickSubmitRef, prevRef: quickNoteRef })}
-                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-sm font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!quickCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
+                    className={`w-full h-12 rounded-2xl bg-[var(--bg-surface)] border px-4 text-sm font-bold text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!quickCategoryId ? "border-rose-300 focus:border-rose-400" : "border-[var(--border-normal)] focus:border-zinc-400"}`}
                     required
                   >
                     <option value="">— اختر الفئة (مطلوب) —</option>
@@ -2214,25 +2214,25 @@ export default function DailyTreasuryPage() {
             />
             <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
-              className="relative w-full max-w-[420px] rounded-[2.5rem] bg-white shadow-2xl p-8 border border-slate-100" dir="rtl"
+              className="relative w-full max-w-[420px] rounded-[2.5rem] bg-[var(--bg-surface)] shadow-2xl p-8 border border-[var(--border-subtle)]" dir="rtl"
             >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
+                  <div className="h-12 w-12 rounded-2xl bg-[var(--bg-overlay)] text-[var(--text-secondary)] flex items-center justify-center border border-[var(--border-normal)]">
                     <Banknote className="h-6 w-6" />
                   </div>
                   <div>
-                    <h2 className="text-[20px] font-black text-zinc-900 leading-tight">تسجيل مسحوبات</h2>
-                    <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Cash Withdrawal</p>
+                    <h2 className="text-[20px] font-black text-[var(--text-primary)] leading-tight">تسجيل مسحوبات</h2>
+                    <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Cash Withdrawal</p>
                   </div>
                 </div>
-                <button onClick={() => setWithdrawalOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-zinc-900 hover:bg-slate-100 transition-colors">
+                <button onClick={() => setWithdrawalOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors">
                   <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="space-y-5">
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">القيمة (ج.م)</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">القيمة (ج.م)</label>
                   <input
                     ref={withdrawalAmountRef}
                     type="number"
@@ -2241,11 +2241,11 @@ export default function DailyTreasuryPage() {
                     onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalNoteRef })}
                     autoFocus
                     placeholder="0.00"
-                    className="w-full h-14 rounded-2xl bg-slate-50 border border-slate-200 px-4 text-[20px] font-black font-mono outline-none focus:border-zinc-400 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 text-center transition-all shadow-inner"
+                    className="w-full h-14 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-4 text-[20px] font-black number-fmt-primary outline-none focus:border-zinc-400 focus:bg-[var(--bg-surface)] focus:ring-4 focus:ring-zinc-900/5 text-center transition-all shadow-inner"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">البيان / الوصف</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">البيان / الوصف</label>
                   <input
                     ref={withdrawalNoteRef}
                     type="text"
@@ -2253,17 +2253,17 @@ export default function DailyTreasuryPage() {
                     onChange={(e) => setWithdrawalNote(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalCategoryRef, prevRef: withdrawalAmountRef })}
                     placeholder="سبب المسحوبات..."
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
+                    className="w-full h-12 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-normal)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">التصنيف</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">التصنيف</label>
                   <select
                     ref={withdrawalCategoryRef}
                     value={withdrawalCategoryId}
                     onChange={(e) => setWithdrawalCategoryId(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalPaymentRef, prevRef: withdrawalNoteRef })}
-                    className={`w-full h-12 rounded-2xl bg-white border px-4 text-sm font-bold text-zinc-800 outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!withdrawalCategoryId ? "border-rose-300 focus:border-rose-400" : "border-slate-200 focus:border-zinc-400"}`}
+                    className={`w-full h-12 rounded-2xl bg-[var(--bg-surface)] border px-4 text-sm font-bold text-[var(--text-primary)] outline-none focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none ${!withdrawalCategoryId ? "border-rose-300 focus:border-rose-400" : "border-[var(--border-normal)] focus:border-zinc-400"}`}
                     required
                   >
                     <option value="">— اختر التصنيف (مطلوب) —</option>
@@ -2273,13 +2273,13 @@ export default function DailyTreasuryPage() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">طريقة الدفع</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)]">طريقة الدفع</label>
                   <select
                     ref={withdrawalPaymentRef}
                     value={withdrawalPaymentMethod}
                     onChange={(e) => setWithdrawalPaymentMethod(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalSubmitRef, prevRef: withdrawalCategoryRef })}
-                    className="w-full h-12 rounded-2xl bg-white border border-slate-200 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
+                    className="w-full h-12 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-normal)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
                   >
                     <option value="cash">نقدي</option>
                     <option value="bank_transfer">تحويل بنكي</option>
@@ -2316,7 +2316,7 @@ export default function DailyTreasuryPage() {
             />
             <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
-              className="relative w-full max-w-[480px] max-h-[90vh] overflow-hidden flex flex-col rounded-[2.5rem] bg-white shadow-2xl border border-slate-100" dir="rtl"
+              className="relative w-full max-w-[480px] max-h-[90vh] overflow-hidden flex flex-col rounded-[2.5rem] bg-[var(--bg-surface)] shadow-2xl border border-[var(--border-subtle)]" dir="rtl"
             >
               <div className="flex items-center justify-between p-6 border-b border-slate-100/80 bg-slate-50/50 shrink-0">
                 <div className="flex items-center gap-3">
@@ -2324,26 +2324,26 @@ export default function DailyTreasuryPage() {
                     <Coins className="h-6 w-6" />
                   </div>
                   <div>
-                    <h2 className="text-[18px] font-black text-zinc-900 leading-tight">آلة الجرد الفعلي</h2>
-                    <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Cash Register</p>
+                    <h2 className="text-[18px] font-black text-[var(--text-primary)] leading-tight">آلة الجرد الفعلي</h2>
+                    <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Cash Register</p>
                   </div>
                 </div>
-                <button onClick={() => setMoneyOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-zinc-900 hover:bg-slate-50 transition-colors shadow-sm">
+                <button onClick={() => setMoneyOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors shadow-sm">
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="rounded-3xl bg-slate-50 border border-slate-200/60 p-4">
-                  <div className="grid grid-cols-3 text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">
+                <div className="rounded-3xl bg-[var(--bg-overlay)] border border-slate-200/60 p-4">
+                  <div className="grid grid-cols-3 text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 px-2">
                     <span>الفئة النقدية</span>
                     <span className="text-center">العدد</span>
                     <span className="text-left">الإجمالي الفرعي</span>
                   </div>
                   <div className="space-y-2">
                     {DENOMS.map((d) => (
-                      <div key={d} className="grid grid-cols-3 items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm transition-colors hover:border-blue-200">
-                        <span className="text-sm font-black text-slate-800 px-2 flex items-center gap-2">
+                      <div key={d} className="grid grid-cols-3 items-center gap-3 bg-[var(--bg-surface)] p-2 rounded-2xl border border-[var(--border-subtle)] shadow-sm transition-colors hover:border-blue-200">
+                        <span className="text-sm font-black text-[var(--text-primary)] px-2 flex items-center gap-2">
                           <Banknote className="h-4 w-4 text-emerald-500 opacity-50" />
                           {d >= 1 ? d + " ج" : (d * 100) + " قرش"}
                         </span>
@@ -2352,10 +2352,10 @@ export default function DailyTreasuryPage() {
                           min="0"
                           value={counts[d] || ""}
                           onChange={(e) => setCounts((p) => ({ ...p, [d]: e.target.value }))}
-                          className="h-10 rounded-xl bg-slate-50 border border-slate-200 px-3 text-center text-[15px] font-black font-mono outline-none focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all"
+                          className="h-10 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-3 text-center text-[15px] font-black number-fmt outline-none focus:bg-[var(--bg-surface)] focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all"
                           placeholder="0"
                         />
-                        <span className="text-[15px] font-black font-mono text-slate-500 text-left px-2">
+                        <span className="number-fmt-primary text-[15px] text-[var(--text-secondary)] text-left px-2">
                           {fmt(Number(counts[d] || 0) * d)}
                         </span>
                       </div>
@@ -2364,11 +2364,11 @@ export default function DailyTreasuryPage() {
                 </div>
               </div>
 
-              <div className="p-6 border-t border-slate-100 bg-white shrink-0 space-y-4">
+              <div className="p-6 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] shrink-0 space-y-4">
                 <div className="flex items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-100 p-5 shadow-inner">
                   <span className="font-black text-emerald-800 text-sm uppercase tracking-widest">مجموع الجرد الفعلي</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[28px] font-black font-mono text-emerald-700 tracking-tighter leading-none">{fmt(moneyTotal)}</span>
+                    <span className="number-fmt-primary text-[28px] text-emerald-700 tracking-tighter leading-none">{fmt(moneyTotal)}</span>
                     <span className="text-2sm font-bold text-emerald-600">ج.م</span>
                   </div>
                 </div>
@@ -2397,13 +2397,13 @@ export default function DailyTreasuryPage() {
             />
             <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
-              className="relative w-full max-w-[340px] rounded-[2rem] bg-white shadow-2xl border border-slate-100 overflow-hidden" dir="rtl"
+              className="relative w-full max-w-[340px] rounded-[2rem] bg-[var(--bg-surface)] shadow-2xl border border-[var(--border-subtle)] overflow-hidden" dir="rtl"
             >
               {/* Display */}
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6">
                 <div className="text-right">
                   {calcPrev !== null && calcOp && (
-                    <div className="text-2sm text-slate-400 font-mono mb-1">
+                    <div className="text-2sm text-[var(--text-muted)] font-mono mb-1">
                       {fmt(calcPrev)} {calcOp}
                     </div>
                   )}
@@ -2414,34 +2414,34 @@ export default function DailyTreasuryPage() {
               </div>
 
               {/* Buttons */}
-              <div className="p-4 bg-slate-50 grid grid-cols-4 gap-2">
+              <div className="p-4 bg-[var(--bg-overlay)] grid grid-cols-4 gap-2">
                 {/* Row 1 */}
-                <button onClick={calcClear} className="h-14 rounded-2xl bg-slate-200 text-slate-700 text-[18px] font-black hover:bg-slate-300 transition-colors">AC</button>
-                <button onClick={calcNegate} className="h-14 rounded-2xl bg-slate-200 text-slate-700 text-[18px] font-black hover:bg-slate-300 transition-colors">±</button>
-                <button onClick={calcPercent} className="h-14 rounded-2xl bg-slate-200 text-slate-700 text-[18px] font-black hover:bg-slate-300 transition-colors">%</button>
+                <button onClick={calcClear} className="h-14 rounded-2xl bg-slate-200 text-[var(--text-secondary)] text-[18px] font-black hover:bg-slate-300 transition-colors">AC</button>
+                <button onClick={calcNegate} className="h-14 rounded-2xl bg-slate-200 text-[var(--text-secondary)] text-[18px] font-black hover:bg-slate-300 transition-colors">±</button>
+                <button onClick={calcPercent} className="h-14 rounded-2xl bg-slate-200 text-[var(--text-secondary)] text-[18px] font-black hover:bg-slate-300 transition-colors">%</button>
                 <button onClick={() => calcOperator("÷")} className={"h-14 rounded-2xl text-[20px] font-black transition-colors " + (calcOp === "÷" ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200")}>÷</button>
 
                 {/* Row 2 */}
-                <button onClick={() => calcInput("7")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">7</button>
-                <button onClick={() => calcInput("8")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">8</button>
-                <button onClick={() => calcInput("9")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">9</button>
+                <button onClick={() => calcInput("7")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">7</button>
+                <button onClick={() => calcInput("8")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">8</button>
+                <button onClick={() => calcInput("9")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">9</button>
                 <button onClick={() => calcOperator("×")} className={"h-14 rounded-2xl text-[20px] font-black transition-colors " + (calcOp === "×" ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200")}>×</button>
 
                 {/* Row 3 */}
-                <button onClick={() => calcInput("4")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">4</button>
-                <button onClick={() => calcInput("5")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">5</button>
-                <button onClick={() => calcInput("6")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">6</button>
+                <button onClick={() => calcInput("4")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">4</button>
+                <button onClick={() => calcInput("5")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">5</button>
+                <button onClick={() => calcInput("6")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">6</button>
                 <button onClick={() => calcOperator("-")} className={"h-14 rounded-2xl text-[20px] font-black transition-colors " + (calcOp === "-" ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200")}>−</button>
 
                 {/* Row 4 */}
-                <button onClick={() => calcInput("1")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">1</button>
-                <button onClick={() => calcInput("2")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">2</button>
-                <button onClick={() => calcInput("3")} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">3</button>
+                <button onClick={() => calcInput("1")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">1</button>
+                <button onClick={() => calcInput("2")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">2</button>
+                <button onClick={() => calcInput("3")} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">3</button>
                 <button onClick={() => calcOperator("+")} className={"h-14 rounded-2xl text-[20px] font-black transition-colors " + (calcOp === "+" ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200")}>+</button>
 
                 {/* Row 5 */}
-                <button onClick={() => calcInput("0")} className="col-span-2 h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">0</button>
-                <button onClick={calcDecimal} className="h-14 rounded-2xl bg-white text-slate-800 text-[20px] font-black hover:bg-slate-100 transition-colors border border-slate-200">.</button>
+                <button onClick={() => calcInput("0")} className="col-span-2 h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">0</button>
+                <button onClick={calcDecimal} className="h-14 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] text-[20px] font-black hover:bg-[var(--bg-overlay)] transition-colors border border-[var(--border-normal)]">.</button>
                 <button onClick={calcEquals} className="h-14 rounded-2xl bg-emerald-600 text-white text-[20px] font-black hover:bg-emerald-700 transition-colors">=</button>
               </div>
 

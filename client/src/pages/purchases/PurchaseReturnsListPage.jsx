@@ -10,6 +10,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
+import { formatNumber } from "../../utils/currency";
 
 const REASON_MAP = {
   defective: "عيب في المنتج",
@@ -31,7 +32,7 @@ const FADE_UP = {
 
 const PAGE_SIZE = 20;
 
-function fmt(v) { return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 }); }
+function fmt(v) { return formatNumber(v); }
 function fmtDate(d) {
   if (!d) return "—";
   const raw = d.split(".")[0].replace("T", " ");
@@ -163,7 +164,7 @@ function PreviewModal({ returnId, onClose }) {
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       <span className="text-[11px] font-black text-blue-600 tracking-wider uppercase">صافي المرتجع</span>
-                      <span className="font-mono text-xl font-black text-blue-700">{fmt(total)} ج.م</span>
+                      <span className="number-fmt text-xl font-black text-blue-700">{fmt(total)} ج.م</span>
                       {(Number(data.discount) > 0 || Number(data.increase) > 0) && (
                         <span className="text-[11px] font-bold text-slate-500">
                           {fmt(Number(data.total) + Number(data.discount || 0) - Number(data.increase || 0))} أصناف
@@ -203,15 +204,15 @@ function PreviewModal({ returnId, onClose }) {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-2 text-center">
                           <span className="text-[9px] font-black text-zinc-400 block mb-1">الإجمالي</span>
-                          <span className="font-mono text-xs font-black text-zinc-800">{fmt(total)}</span>
+                          <span className="number-fmt text-xs font-black text-zinc-800">{fmt(total)}</span>
                         </div>
                         <div className={`rounded-xl border p-2 text-center ${cashAmt > 0.005 ? "bg-emerald-50/50 border-emerald-100" : "bg-zinc-50 border-zinc-100"}`}>
                           <span className={`text-[9px] font-black block mb-1 ${cashAmt > 0.005 ? "text-emerald-600" : "text-zinc-400"}`}>نقداً</span>
-                          <span className={`font-mono text-xs font-black ${cashAmt > 0.005 ? "text-emerald-700" : "text-zinc-400"}`}>{fmt(cashAmt)}</span>
+                          <span className={`number-fmt text-xs font-black ${cashAmt > 0.005 ? "text-emerald-700" : "text-zinc-400"}`}>{fmt(cashAmt)}</span>
                         </div>
                         <div className={`rounded-xl border p-2 text-center ${creditAmt > 0.005 ? "bg-amber-50/50 border-amber-100" : "bg-zinc-50 border-zinc-100"}`}>
                           <span className={`text-[9px] font-black block mb-1 ${creditAmt > 0.005 ? "text-amber-600" : "text-zinc-400"}`}>حساب المورد</span>
-                          <span className={`font-mono text-xs font-black ${creditAmt > 0.005 ? "text-amber-700" : "text-zinc-400"}`}>{fmt(creditAmt)}</span>
+                          <span className={`number-fmt text-xs font-black ${creditAmt > 0.005 ? "text-amber-700" : "text-zinc-400"}`}>{fmt(creditAmt)}</span>
                         </div>
                       </div>
                     </div>
@@ -237,9 +238,9 @@ function PreviewModal({ returnId, onClose }) {
                             <tr key={i} className="border-t border-zinc-100 hover:bg-blue-50/10">
                               <td className="px-4 py-3 text-center font-mono text-[11px] font-black text-zinc-400">{l.item_code || "—"}</td>
                               <td className="px-4 py-3 font-bold text-zinc-800">{l.item_name || "—"}</td>
-                              <td className="px-4 py-3 text-center font-mono font-bold text-zinc-700">{l.quantity}</td>
-                              <td className="px-4 py-3 text-center font-mono text-zinc-600">{fmt(l.unit_cost)}</td>
-                              <td className="px-4 py-3 text-center font-mono font-black text-blue-700">{fmt(l.line_total)}</td>
+                              <td className="px-4 py-3 text-center number-fmt text-zinc-700">{l.quantity}</td>
+                              <td className="px-4 py-3 text-center number-fmt text-zinc-600">{fmt(l.unit_cost)}</td>
+                              <td className="px-4 py-3 text-center number-fmt-primary text-blue-700">{fmt(l.line_total)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -319,7 +320,7 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
         <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3 py-2 min-w-[90px]">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">صافي المرتجع</span>
-            <div className="text-[15px] font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
+            <div className="text-[15px] font-black text-slate-800 number-fmt leading-none flex items-baseline gap-0.5">
               <span>{fmt(total)}</span><span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
             </div>
             {Number(row.discount) > 0 && <span className="text-[8px] font-black text-rose-500 mt-0.5">خصم −{fmt(row.discount)}</span>}
@@ -329,14 +330,14 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
             <><div className="w-px self-stretch bg-slate-200/80" />
             <div className="flex flex-col items-end justify-center px-3 py-2 bg-emerald-50/80 min-w-[90px]">
               <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> نقداً للمورد</span>
-              <div className="text-sm font-black text-emerald-700 font-mono leading-none"><span>{fmt(cashAmt)}</span></div>
+              <div className="text-sm font-black text-emerald-700 number-fmt leading-none"><span>{fmt(cashAmt)}</span></div>
             </div></>
           )}
           {creditAmt > 0.005 && (
             <><div className="w-px self-stretch bg-slate-200/80" />
             <div className="flex flex-col items-end justify-center px-3 py-2 bg-amber-50/80 min-w-[90px]">
               <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> حساب المورد</span>
-              <div className="text-sm font-black text-amber-700 font-mono leading-none"><span>{fmt(creditAmt)}</span></div>
+              <div className="text-sm font-black text-amber-700 number-fmt leading-none"><span>{fmt(creditAmt)}</span></div>
             </div></>
           )}
         </div>
@@ -711,9 +712,9 @@ export default function PurchaseReturnsListPage() {
                       <td className="px-5 py-4 font-bold text-zinc-700">{r.supplier_name || "—"}</td>
                       <td className="px-5 py-4 text-center font-mono text-[11px] font-black text-zinc-400">{r.item_code || r.barcode || "—"}</td>
                       <td className="px-5 py-4 font-bold text-zinc-800">{r.item_name || "—"}</td>
-                      <td className="px-5 py-4 text-center font-mono font-bold text-zinc-700">{r.quantity}</td>
-                      <td className="px-5 py-4 text-center font-mono text-zinc-600">{fmt(r.unit_cost)}</td>
-                      <td className="px-5 py-4 text-center font-mono font-black text-blue-700">{fmt(r.line_total)}</td>
+                      <td className="px-5 py-4 text-center number-fmt text-zinc-700">{r.quantity}</td>
+                      <td className="px-5 py-4 text-center number-fmt text-zinc-600">{fmt(r.unit_cost)}</td>
+                      <td className="px-5 py-4 text-center number-fmt-primary text-blue-700">{fmt(r.line_total)}</td>
                       <td className="px-5 py-4 text-center">
                         <button onClick={() => setPreviewId(r.purchase_return_id)} className="p-1.5 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors inline-block">
                           <Eye className="w-4 h-4" />

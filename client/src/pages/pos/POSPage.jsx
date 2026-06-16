@@ -307,7 +307,10 @@ export default function POSPage() {
     let id = null;
     const check = async () => {
       try {
-        await api.get("/api/health", { timeout: 2000 });
+        // Generous timeout: better-sqlite3 is synchronous, so a busy-but-alive server
+        // can take several seconds to answer. A short timeout here used to surface a
+        // false disconnect overlay during heavy operations.
+        await api.get("/api/health", { timeout: 8000 });
         if (alive) setIsOffline(false);
       } catch {
         if (alive) setIsOffline(true);
@@ -733,10 +736,10 @@ export default function POSPage() {
 
   const invoiceNumber = useMemo(() => {
     const stamp = new Date(invoiceTick);
-    const yy = String(stamp.getFullYear()).slice(-2);
+    const yyyy = String(stamp.getFullYear());
     const mm = String(stamp.getMonth() + 1).padStart(2, "0");
     const dd = String(stamp.getDate()).padStart(2, "0");
-    return `INV-${yy}${mm}${dd}-${String(invoiceSeq).padStart(4, "0")}`;
+    return `INV-${yyyy}${mm}${dd}-${String(invoiceSeq).padStart(4, "0")}`;
   }, [invoiceSeq, invoiceTick]);
 
   const customerResults = useMemo(() => {

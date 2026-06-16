@@ -1,8 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Image, Loader2, Trash2, Upload } from "lucide-react";
 import api from "../../services/api";
-
-const BASE = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
+import { getApiBaseUrlSync } from "../../services/apiBase";
 
 /**
  * ImageUpload — click to pick a file, uploads immediately, calls onUpload(url) with the
@@ -35,7 +34,7 @@ export default function ImageUpload({ url, onUpload, onRemove, size = "md", clas
   function resolveUrl(u) {
     if (!u) return null;
     if (u.startsWith("http")) return u;
-    return `${BASE}${u}`;
+    return `${getApiBaseUrlSync()}${u}`;
   }
 
   async function handleChange(e) {

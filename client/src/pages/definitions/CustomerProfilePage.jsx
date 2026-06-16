@@ -5,8 +5,9 @@ import {
   Calendar, AlertCircle, Printer, Plus, ChevronLeft
 } from "lucide-react";
 import api from "../../services/api";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const STATUS_AR = { open: "مفتوح", partial: "جزئي", overdue: "متأخر", paid: "مسدد" };
@@ -59,32 +60,32 @@ export default function CustomerProfilePage() {
     load();
   }, [activeTab, id]);
 
-  if (loading) return <div className="flex items-center justify-center h-full text-slate-400 font-black animate-pulse">جاري التحميل...</div>;
-  if (!customer) return <div className="flex items-center justify-center h-full text-slate-400 font-black">العميل غير موجود</div>;
+  if (loading) return <div className="flex items-center justify-center h-full font-black animate-pulse" style={{ color: "var(--text-muted)" }}>جاري التحميل...</div>;
+  if (!customer) return <div className="flex items-center justify-center h-full font-black" style={{ color: "var(--text-muted)" }}>العميل غير موجود</div>;
 
   const balance = Number(customer.opening_balance || 0);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50" dir="rtl" data-help-root="customer_profile">
+    <div className="flex flex-col h-full" dir="rtl" data-help-root="customer_profile" style={{ backgroundColor: "var(--bg-base)" }}>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 px-6 py-3 bg-white border-b border-slate-100 text-2sm font-bold text-slate-500 shrink-0" data-help="breadcrumb">
-        <Link to="/definitions/customers" className="flex items-center gap-1 hover:text-slate-800 transition-colors">
+      <div className="flex items-center gap-2 px-4 sm:px-6 py-3 text-2sm font-bold shrink-0" data-help="breadcrumb" style={{ backgroundColor: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+        <Link to="/definitions/customers" className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors">
           <ChevronLeft className="h-3.5 w-3.5" /> العملاء
         </Link>
         <span>/</span>
-        <span className="text-slate-800">{customer.name}</span>
+        <span style={{ color: "var(--text-primary)" }}>{customer.name}</span>
       </div>
 
       {/* Customer Card */}
-      <div className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 shrink-0" data-help="info-card">
+      <div className="mx-4 mt-4 rounded-2xl border shadow-sm p-5 shrink-0" data-help="info-card" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-200 text-white font-black text-[22px]">
               {customer.name?.charAt(0)}
             </div>
             <div>
-              <h1 className="text-[20px] font-black text-slate-900">{customer.name}</h1>
-              <div className="flex items-center gap-4 mt-1 text-2sm text-slate-500 font-bold">
+              <h1 className="text-[20px] font-black" style={{ color: "var(--text-primary)" }}>{customer.name}</h1>
+              <div className="flex items-center gap-4 mt-1 text-2sm font-bold" style={{ color: "var(--text-secondary)" }}>
                 {customer.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {customer.phone}</span>}
                 {customer.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> {customer.email}</span>}
               </div>
@@ -92,9 +93,9 @@ export default function CustomerProfilePage() {
           </div>
           <div className="flex items-center gap-3">
             <div className={`rounded-xl p-3 text-center min-w-[120px] ${balance < 0 ? "bg-rose-50 border border-rose-200" : "bg-emerald-50 border border-emerald-200"}`}>
-              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-0.5">رصيد الحساب</div>
-              <div className={`text-[18px] font-black font-mono ${balance < 0 ? "text-rose-700" : "text-emerald-700"}`}>{fmt(balance)}</div>
-              <div className="text-[11px] text-slate-400 font-bold">ج.م</div>
+              <div className="text-[11px] font-black uppercase tracking-wider mb-0.5" style={{ color: "var(--text-secondary)" }}>رصيد الحساب</div>
+              <div className={`text-[18px] number-fmt-primary ${balance < 0 ? "text-rose-700" : "text-emerald-700"}`}>{fmt(balance)}</div>
+              <div className="text-[11px] font-bold" style={{ color: "var(--text-muted)" }}>ج.م</div>
             </div>
             <Link to={`/payments/new?customer_id=${id}`}
               className="flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-2sm font-black text-white hover:bg-blue-700">
@@ -108,7 +109,7 @@ export default function CustomerProfilePage() {
       <div className="flex gap-1 px-4 mt-4 shrink-0" data-help="profile-tabs">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2 rounded-xl text-2sm font-black transition-colors ${activeTab === t.id ? "bg-blue-600 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+            className={`px-4 py-2 rounded-xl text-2sm font-black transition-colors ${activeTab === t.id ? "bg-blue-600 text-white shadow-md" : "border hover:bg-[var(--bg-overlay)]"}`} style={activeTab === t.id ? undefined : { backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
             {t.label}
           </button>
         ))}
@@ -116,22 +117,22 @@ export default function CustomerProfilePage() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto p-4" data-help="tab-content">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
           {tabLoading ? (
-            <div className="flex items-center justify-center h-40 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+            <div className="flex items-center justify-center h-40 font-black animate-pulse" style={{ color: "var(--text-muted)" }}>جاري التحميل...</div>
           ) : tabData.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-slate-300 font-black">لا توجد بيانات</div>
+            <div className="flex items-center justify-center h-40 font-black" style={{ color: "var(--text-muted)" }}>لا توجد بيانات</div>
           ) : activeTab === "invoices" ? (
             <table className="w-full text-2sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>{["رقم الفاتورة", "التاريخ", "الإجمالي", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px] uppercase">{h}</th>)}</tr>
+              <thead className="border-b" style={{ backgroundColor: "var(--bg-overlay)", borderBottomColor: "var(--border-normal)" }}>
+                <tr>{["رقم الفاتورة", "التاريخ", "الإجمالي", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {tabData.map(inv => (
-                  <tr key={inv.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <tr key={inv.id} className="border-b border-slate-50 hover:bg-[var(--bg-overlay)]">
                     <td className="px-4 py-3 font-black font-mono text-blue-700">{inv.invoice_no || inv.doc_no || `#${inv.id}`}</td>
-                    <td className="px-4 py-3 text-slate-500">{fmtDate(inv.created_at)}</td>
-                    <td className="px-4 py-3 font-black font-mono">{fmt(inv.total)} ج.م</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{fmtDate(inv.created_at)}</td>
+                    <td className="px-4 py-3 number-fmt-primary">{fmt(inv.total)} ج.م</td>
                     <td className="px-4 py-3"><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-700">{inv.status || "—"}</span></td>
                   </tr>
                 ))}
@@ -139,19 +140,19 @@ export default function CustomerProfilePage() {
             </table>
           ) : activeTab === "debts" ? (
             <table className="w-full text-2sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>{["الفاتورة", "المبلغ", "المدفوع", "المتبقي", "الاستحقاق", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px] uppercase">{h}</th>)}</tr>
+              <thead className="border-b" style={{ backgroundColor: "var(--bg-overlay)", borderBottomColor: "var(--border-normal)" }}>
+                <tr>{["الفاتورة", "المبلغ", "المدفوع", "المتبقي", "الاستحقاق", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {tabData.map(d => (
-                  <tr key={d.id} className={`border-b border-slate-50 hover:bg-slate-50 ${d.status === "overdue" ? "bg-rose-50/30" : ""}`}>
+                  <tr key={d.id} className={`border-b border-slate-50 hover:bg-[var(--bg-overlay)] ${d.status === "overdue" ? "bg-rose-50/30" : ""}`}>
                     <td className="px-4 py-3 font-mono text-[11px]">{d.invoice_no || "—"}</td>
-                    <td className="px-4 py-3 font-black font-mono">{fmt(d.original_amount)}</td>
-                    <td className="px-4 py-3 font-mono text-emerald-700">{fmt(d.paid_amount)}</td>
-                    <td className="px-4 py-3 font-black font-mono text-rose-700">{fmt(d.remaining)}</td>
-                    <td className="px-4 py-3 text-slate-500">{fmtDate(d.due_date)}</td>
+                    <td className="px-4 py-3 number-fmt-primary">{fmt(d.original_amount)}</td>
+                    <td className="px-4 py-3 number-fmt text-emerald-700">{fmt(d.paid_amount)}</td>
+                    <td className="px-4 py-3 number-fmt-primary text-rose-700">{fmt(d.remaining)}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{fmtDate(d.due_date)}</td>
                     <td className="px-4 py-3">
-                      <Link to="/accounts/customers" className={`rounded-full px-2 py-0.5 text-[11px] font-black ${STATUS_CLS[d.status] || "bg-slate-100 text-slate-600"}`}>
+                      <Link to="/accounts/customers" className={`rounded-full px-2 py-0.5 text-[11px] font-black ${STATUS_CLS[d.status] || "bg-[var(--bg-overlay)] text-[var(--text-secondary)]"}`}>
                         {STATUS_AR[d.status] || d.status}
                       </Link>
                     </td>
@@ -161,32 +162,32 @@ export default function CustomerProfilePage() {
             </table>
           ) : activeTab === "payments" ? (
             <table className="w-full text-2sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>{["الكود", "المبلغ", "الوسيلة", "التاريخ"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px] uppercase">{h}</th>)}</tr>
+              <thead className="border-b" style={{ backgroundColor: "var(--bg-overlay)", borderBottomColor: "var(--border-normal)" }}>
+                <tr>{["الكود", "المبلغ", "الوسيلة", "التاريخ"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {tabData.map(p => (
-                  <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <tr key={p.id} className="border-b border-slate-50 hover:bg-[var(--bg-overlay)]">
                     <td className="px-4 py-3 font-mono text-[11px]">{p.doc_no || `PAY-${p.id}`}</td>
-                    <td className="px-4 py-3 font-black font-mono text-emerald-700">{fmt(p.amount)} ج.م</td>
-                    <td className="px-4 py-3 text-slate-500">{p.method_name || p.method}</td>
-                    <td className="px-4 py-3 text-slate-500">{fmtDate(p.created_at)}</td>
+                    <td className="px-4 py-3 number-fmt-primary text-emerald-700">{fmt(p.amount)} ج.م</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{p.method_name || p.method}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{fmtDate(p.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
             <table className="w-full text-2sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>{["رقم الشيك", "المبلغ", "البنك", "الاستحقاق", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-slate-500 text-[11px] uppercase">{h}</th>)}</tr>
+              <thead className="border-b" style={{ backgroundColor: "var(--bg-overlay)", borderBottomColor: "var(--border-normal)" }}>
+                <tr>{["رقم الشيك", "المبلغ", "البنك", "الاستحقاق", "الحالة"].map(h => <th key={h} className="px-4 py-3 text-right font-black text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {tabData.map(c => (
-                  <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <tr key={c.id} className="border-b border-slate-50 hover:bg-[var(--bg-overlay)]">
                     <td className="px-4 py-3 font-mono text-[11px]">{c.cheque_no}</td>
-                    <td className="px-4 py-3 font-black font-mono">{fmt(c.amount)} ج.م</td>
-                    <td className="px-4 py-3 text-slate-500">{c.bank_name || "—"}</td>
-                    <td className="px-4 py-3 text-slate-500">{fmtDate(c.due_date)}</td>
+                    <td className="px-4 py-3 number-fmt-primary">{fmt(c.amount)} ج.م</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{c.bank_name || "—"}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{fmtDate(c.due_date)}</td>
                     <td className="px-4 py-3"><span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-black text-violet-700">{c.status}</span></td>
                   </tr>
                 ))}

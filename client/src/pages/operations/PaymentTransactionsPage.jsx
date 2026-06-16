@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect, useCallback } from "react";
 import { BookOpen, RefreshCw, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import api from "../../services/api";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 const DOC_TYPES = {
   pos_invoice: "فاتورة POS",
@@ -104,7 +105,7 @@ export default function PaymentTransactionsPage() {
                         {DOC_TYPES[r.doc_type] || r.doc_type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-black font-mono text-slate-900">{fmt(r.amount)} ج.م</td>
+                    <td className="px-4 py-3 number-fmt-primary text-slate-900">{fmt(r.amount)} ج.م</td>
                     <td className="px-4 py-3">
                       <span className={`flex items-center gap-1 w-fit rounded-full px-2 py-0.5 text-[11px] font-black ${r.direction === "out" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
                         {r.direction === "out" ? <ArrowDownCircle className="h-3 w-3" /> : <ArrowUpCircle className="h-3 w-3" />}
@@ -123,7 +124,7 @@ export default function PaymentTransactionsPage() {
                   <td colSpan={2} className="px-4 py-3 font-black text-slate-700 text-2sm">
                     الإجمالي ({rows.length} حركة)
                   </td>
-                  <td className="px-4 py-3 font-black font-mono text-slate-900">
+                  <td className="px-4 py-3 number-fmt-primary text-slate-900">
                     {fmt(rows.reduce((s, r) => s + Number(r.amount || 0), 0))} ج.م
                   </td>
                   <td colSpan={3} />

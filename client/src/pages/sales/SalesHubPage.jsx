@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
+import { formatNumber } from "../../utils/currency";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAYMENT_LABELS = {
@@ -49,7 +50,7 @@ const FADE_UP = {
 const PAGE_SIZE = 20;
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 function fmtDate(d) {
   if (!d) return "—";
@@ -167,7 +168,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
       <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري تحميل المستند</span>
+      <span className="text-xs number-fmt-primary tracking-widest text-zinc-400 uppercase">جاري تحميل المستند</span>
     </div>
   );
   if (!data) return <div className="text-center py-12 text-zinc-400 font-bold">تعذّر تحميل بيانات الفاتورة</div>;
@@ -193,7 +194,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
           </div>
           <div className="flex flex-col gap-1 items-end">
             <span className="text-[11px] font-black text-blue-600 tracking-wider uppercase">إجمالي الفاتورة</span>
-            <span className="font-mono text-xl font-black text-blue-700">{fmt(total)} ج.م</span>
+            <span className="number-fmt text-xl font-black text-blue-700">{fmt(total)} ج.م</span>
           </div>
         </div>
 
@@ -253,15 +254,15 @@ function PreviewDrawer({ invoiceId, onClose }) {
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-2xl bg-zinc-50 border border-zinc-100 p-2.5 text-center">
                 <span className="text-[9px] font-black text-zinc-400 block mb-1">الإجمالي</span>
-                <span className="font-mono text-xs font-black text-zinc-800">{fmt(total)}</span>
+                <span className="number-fmt text-xs font-black text-zinc-800">{fmt(total)}</span>
               </div>
               <div className="rounded-2xl bg-blue-50/50 border border-blue-100/50 p-2.5 text-center">
                 <span className="text-[9px] font-black text-blue-600 block mb-1">المستلم</span>
-                <span className="font-mono text-xs font-black text-blue-700">{fmt(received)}</span>
+                <span className="number-fmt text-xs font-black text-blue-700">{fmt(received)}</span>
               </div>
               <div className={`rounded-2xl border p-2.5 text-center ${debtAmount > 0.005 ? "bg-amber-50/50 border-amber-100" : "bg-zinc-50 border-zinc-100"}`}>
                 <span className={`text-[9px] font-black block mb-1 ${debtAmount > 0.005 ? "text-amber-600" : "text-zinc-400"}`}>المتبقي</span>
-                <span className={`font-mono text-xs font-black ${debtAmount > 0.005 ? "text-amber-700" : "text-zinc-500"}`}>{fmt(debtAmount)}</span>
+                <span className={`number-fmt text-xs font-black ${debtAmount > 0.005 ? "text-amber-700" : "text-zinc-500"}`}>{fmt(debtAmount)}</span>
               </div>
             </div>
 
@@ -272,12 +273,12 @@ function PreviewDrawer({ invoiceId, onClose }) {
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   خصم الفاتورة
                 </span>
-                <span className="font-mono text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
+                <span className="number-fmt text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
                 <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   إضافة / رسوم
                 </span>
-                <span className="font-mono text-[11px] font-black text-emerald-600">{fmt(d.increase)} ج.م</span>
+                <span className="number-fmt text-[11px] font-black text-emerald-600">{fmt(d.increase)} ج.م</span>
               </div>
             )}
             {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
@@ -286,7 +287,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   خصم الفاتورة
                 </span>
-                <span className="font-mono text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
+                <span className="number-fmt text-[11px] font-black text-rose-600">{fmt(d.discount)} ج.م</span>
               </div>
             )}
             {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
@@ -295,7 +296,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   إضافة / رسوم
                 </span>
-                <span className="font-mono text-[11px] font-black text-emerald-600">{fmt(d.increase)} ج.م</span>
+                <span className="number-fmt text-[11px] font-black text-emerald-600">{fmt(d.increase)} ج.م</span>
               </div>
             )}
             {/* Payment chips */}
@@ -305,7 +306,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
                   <span key={i} className={`inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl border ${CHIP_COLORS[chip.method] || "bg-zinc-50 text-zinc-600 border-zinc-200"}`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
                     {chip.label}
-                    <span className="font-mono">{fmt(chip.amount)}</span>
+                    <span className="number-fmt">{fmt(chip.amount)}</span>
                     {d.payment_type === "multi" && total > 0 && (
                       <span className="opacity-50 text-[8.5px]">({Math.round((chip.amount / total) * 100)}%)</span>
                     )}
@@ -344,7 +345,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
                 {d.payments.map((p, i) => (
                   <tr key={i} className="border-b border-zinc-50 hover:bg-zinc-50/50">
                     <td className="px-5 py-3.5 font-bold text-zinc-700">{p.method_name || PAYMENT_LABELS[p.method] || p.method}</td>
-                    <td className="px-5 py-3.5 font-mono font-black text-zinc-900 text-center">{fmt(p.amount)} ج.م</td>
+                    <td className="px-5 py-3.5 number-fmt-primary text-zinc-900 text-center">{fmt(p.amount)} ج.م</td>
                   </tr>
                 ))}
               </tbody>
@@ -374,10 +375,10 @@ function PreviewDrawer({ invoiceId, onClose }) {
                   <tr key={i} className="border-t border-zinc-100 hover:bg-blue-50/10">
                     <td className="px-4 py-3.5 text-center font-mono text-[11px] font-black text-zinc-400">{l.item_code || "—"}</td>
                     <td className="px-4 py-3.5 font-bold text-zinc-800">{l.item_name || "—"}</td>
-                    <td className="px-4 py-3.5 text-center font-mono font-bold text-zinc-700">{l.quantity}</td>
-                    <td className="px-4 py-3.5 text-center font-mono text-zinc-600">{fmt(l.unit_price)}</td>
-                    <td className="px-4 py-3.5 text-center font-mono font-black text-blue-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>
-                    <td className="px-4 py-3.5 text-center font-mono text-rose-500 font-bold">
+                    <td className="px-4 py-3.5 text-center number-fmt text-zinc-700">{l.quantity}</td>
+                    <td className="px-4 py-3.5 text-center number-fmt text-zinc-600">{fmt(l.unit_price)}</td>
+                    <td className="px-4 py-3.5 text-center number-fmt-primary text-blue-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>
+                    <td className="px-4 py-3.5 text-center number-fmt text-rose-500 font-bold">
                       {Number(l.returned_quantity || 0) > 0 ? l.returned_quantity : "—"}
                     </td>
                   </tr>
@@ -452,7 +453,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
         <div className="flex items-stretch gap-0 bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3.5 py-1.5 min-w-[80px]">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الإجمالي</span>
-            <div className="text-sm font-black text-slate-800 font-mono leading-none flex items-baseline gap-0.5">
+            <div className="text-sm font-black text-slate-800 number-fmt leading-none flex items-baseline gap-0.5">
               <span>{fmt(total)}</span><span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
             </div>
           </div>
@@ -468,7 +469,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
                   <span className="w-1 h-1 rounded-full bg-current inline-block" />
                   {chip.label}
                 </span>
-                <div className={`text-2sm font-black font-mono leading-none ${
+                <div className={`text-2sm number-fmt-primary leading-none ${
                   chip.method === "credit" ? "text-amber-700" : "text-blue-700"
                 }`}>
                   {fmt(chip.amount)}
@@ -483,7 +484,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
                 <span className="text-[8px] font-black text-amber-500 tracking-wider mb-0.5 flex items-center gap-1">
                   <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" /> المتبقي
                 </span>
-                <div className="text-sm font-black text-amber-700 font-mono leading-none">
+                <div className="text-sm font-black text-amber-700 number-fmt leading-none">
                   {fmt(debt)}
                 </div>
               </div>
@@ -935,10 +936,10 @@ export default function SalesHubPage() {
                             </Link>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-zinc-700">{r.quantity}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-zinc-700">{fmt(r.unit_price)}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-blue-700">{fmt(r.line_total || (r.quantity * r.unit_price))}</td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-emerald-600">{r.returnable_qty ?? "—"}</td>
+                        <td className="px-5 py-4 text-center number-fmt text-zinc-700">{r.quantity}</td>
+                        <td className="px-5 py-4 text-center number-fmt-primary text-zinc-700">{fmt(r.unit_price)}</td>
+                        <td className="px-5 py-4 text-center number-fmt-primary text-blue-700">{fmt(r.line_total || (r.quantity * r.unit_price))}</td>
+                        <td className="px-5 py-4 text-center number-fmt text-emerald-600">{r.returnable_qty ?? "—"}</td>
                         <td className="px-5 py-4 text-center">
                           <button
                             onClick={() => setPreviewTarget({ id: r.invoice_id, invoice_no: r.invoice_no })}

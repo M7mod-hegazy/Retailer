@@ -45,6 +45,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import ItemUnitsSection from "../../components/items/ItemUnitsSection";
 import VariantsSection from "../../components/items/VariantsSection";
+import { formatNumber } from "../../utils/currency";
 
 const ItemExportModal = React.lazy(() => import("./ItemExportModal"));
 const ItemQuickAddModal = React.lazy(() => import("./ItemFormModal"));
@@ -78,7 +79,7 @@ function stockBadge(qty, minQty) {
 }
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 function exportCsv(items, categoryName) {

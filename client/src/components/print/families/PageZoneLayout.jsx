@@ -44,12 +44,12 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
       {receiptHeader}
 
       {(showCustomer || showCashier) && (
-        <div data-zone="parties" style={{ display: "flex", gap: "24px", marginBottom: "10px", fontSize: "11px", background: "#f8fafc", padding: "8px 10px", borderRadius: "4px" }}>
+        <div data-zone="parties" style={{ display: "flex", gap: "24px", marginBottom: "10px", fontSize: "11px", fontWeight: 600, background: "#f8fafc", padding: "8px 10px", borderRadius: "4px" }}>
           {showCustomer && (
-            <div><span style={{ color: "#64748b" }}>العميل: </span><strong>{invoice.customer_name}</strong></div>
+            <div><span style={{ color: "#334155" }}>العميل: </span><strong>{invoice.customer_name}</strong></div>
           )}
           {showCashier && (
-            <div><span style={{ color: "#64748b" }}>الكاشير: </span><strong>{cashierName}</strong></div>
+            <div><span style={{ color: "#334155" }}>الكاشير: </span><strong>{cashierName}</strong></div>
           )}
         </div>
       )}
@@ -73,7 +73,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
       </div>
 
       {bottomAddr.length > 0 && (
-        <div data-zone="address-bottom" style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#94a3b8", textAlign: "center" }}>{bottomAddr}</div>
+        <div data-zone="address-bottom" style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#475569", fontWeight: 600, textAlign: "center" }}>{bottomAddr}</div>
       )}
     </>
   );

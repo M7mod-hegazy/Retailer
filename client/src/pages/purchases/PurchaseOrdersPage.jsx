@@ -16,6 +16,7 @@ import Highlight from "../../components/ui/Highlight";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 // Single shared vocabulary used by the badges, filters and counter.
 const STATUS_MAP = {
@@ -35,7 +36,7 @@ const STATUS_TABS = [
 function StatusBadge({ status }) {
   const s = STATUS_MAP[status] || STATUS_MAP.pending;
   return (
-    <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-widest border ${s.cls}`}>
+    <span className={`px-2.5 py-1 rounded-md text-[11px] number-fmt-primary uppercase tracking-widest border ${s.cls}`}>
       {s.label}
     </span>
   );
@@ -52,7 +53,7 @@ const ROW_ANIMATION = {
 };
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 export default function PurchaseOrdersPage() {
@@ -182,11 +183,11 @@ export default function PurchaseOrdersPage() {
             <div className="flex items-center gap-8 px-6 lg:border-r border-slate-200">
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-amber-500 mb-1">معلق</span>
-                 <span className="text-[24px] font-black leading-none text-amber-700 tracking-tighter font-mono">{stats.open}</span>
+                 <span className="text-[24px] font-black leading-none text-amber-700 tracking-tighter number-fmt">{stats.open}</span>
                </div>
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">إجمالي الأوامر</span>
-                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter font-mono">{stats.total}</span>
+                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter number-fmt">{stats.total}</span>
                </div>
             </div>
 
@@ -306,7 +307,7 @@ export default function PurchaseOrdersPage() {
                                       <Highlight text={m.code} query={searchTerm} />
                                     </span>
                                   )}
-                                  <span className="shrink-0 font-mono text-[11px] font-black text-indigo-600">×{m.quantity}</span>
+                                  <span className="shrink-0 number-fmt text-[11px] font-black text-indigo-600">×{m.quantity}</span>
                                 </div>
                               ))}
                             </div>
@@ -427,13 +428,13 @@ export default function PurchaseOrdersPage() {
                     <div className="px-2 text-center font-black text-sm">{l.quantity}</div>
                     <div className="px-2 text-center font-black text-sm text-emerald-600">{l.received_quantity || 0}</div>
                     <div className="px-2 text-center font-black text-sm text-amber-500">{l.remaining_quantity}</div>
-                    <div className="px-2 text-left font-black font-mono text-sm text-slate-900">{formatMoney(l.quantity * l.unit_cost)}</div>
+                    <div className="px-2 text-left number-fmt-primary text-sm text-slate-900">{formatMoney(l.quantity * l.unit_cost)}</div>
                   </div>
                 ))}
               </div>
               <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-t border-slate-200">
                 <span className="text-2sm font-bold text-slate-500">عدد الأصناف: <span className="font-black text-slate-800">{(detailOrder.lines || []).length}</span></span>
-                <span className="text-sm font-bold text-slate-500">القيمة الإجمالية: <span className="text-[18px] font-black font-mono text-slate-900">{formatMoney((detailOrder.lines || []).reduce((a, l) => a + l.quantity * l.unit_cost, 0))}</span> ج.م</span>
+                <span className="text-sm font-bold text-slate-500">القيمة الإجمالية: <span className="number-fmt-primary text-slate-900">{formatMoney((detailOrder.lines || []).reduce((a, l) => a + l.quantity * l.unit_cost, 0))}</span> ج.م</span>
               </div>
             </div>
 

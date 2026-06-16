@@ -3,9 +3,10 @@ import { PauseCircle, PlayCircle, Trash2 } from "lucide-react";
 import PermissionGate from "../../../components/ui/PermissionGate";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import Modal from "../../../components/ui/Modal";
+import { formatNumber } from "../../../utils/currency";
 
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return formatNumber(value, { decimals: 3 });
 }
 
 function formatArabicDateTime(date) {
@@ -35,7 +36,7 @@ export default function HeldDropdown({ heldInvoices, onResume, onDiscard, onClos
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-black text-slate-800 truncate">{h.customer?.name || "زبون نقدي"}</span>
-                      <span className="font-mono text-sm font-black text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
+                      <span className="number-fmt-primary text-sm text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">{h.linesCount} أصناف</span>

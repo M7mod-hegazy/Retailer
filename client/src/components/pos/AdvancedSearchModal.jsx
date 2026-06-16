@@ -3,9 +3,10 @@ import { Search, X, RefreshCw, Package, Loader2, Filter, ChevronDown } from "luc
 import Modal from "../ui/Modal";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 const FilterSelect = React.forwardRef(({ value, onChange, children, icon: Icon, onKeyDown }, ref) => {
@@ -299,7 +300,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
                         isZero ? "bg-rose-50/60 hover:bg-rose-50" : isLow ? "bg-amber-50/60 hover:bg-amber-50" : "bg-white hover:bg-indigo-50/40"
                       }`}
                     >
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400 tabular-nums">{idx + 1}</td>
+                      <td className="px-4 py-2.5 number-fmt text-[11px] text-slate-400">{idx + 1}</td>
                       <td className="px-4 py-2.5 font-black text-slate-800 max-w-[200px]">
                         <span className="block truncate">{row.item_name}</span>
                       </td>
@@ -307,7 +308,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
                       <td className="px-4 py-2.5 font-mono text-slate-400 text-[11px]">{row.barcode || "—"}</td>
                       <td className="px-4 py-2.5 text-slate-500">{row.category_name || "—"}</td>
                       <td className="px-4 py-2.5 text-slate-500">{row.unit_name || "—"}</td>
-                      <td className="px-4 py-2.5 font-mono font-black text-emerald-700 tabular-nums">{fmt(row.sale_price)}</td>
+                      <td className="px-4 py-2.5 number-fmt text-emerald-700">{fmt(row.sale_price)}</td>
                       <td className="px-4 py-2.5 tabular-nums">
                         <span className={`inline-flex items-center justify-center min-w-[40px] rounded-full px-2 py-0.5 text-[11px] font-black ${
                           isZero ? "bg-rose-100 text-rose-700" : isLow ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"

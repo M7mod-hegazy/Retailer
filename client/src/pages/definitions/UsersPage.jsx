@@ -472,7 +472,7 @@ export default function UsersPage() {
         header: "#",
         accessorFn: (_, i) => String(i + 1).padStart(2, "0"),
         cell: (info) => (
-          <span className="text-[11px] font-black text-slate-300 font-mono">
+          <span className="text-[11px] number-fmt text-slate-300">
             {info.getValue()}
           </span>
         ),
@@ -568,45 +568,49 @@ export default function UsersPage() {
       dir="rtl"
     >
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_50%_40%,transparent_0%,rgba(250,250,250,0.95)_100%)]" />
+        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to_right,var(--border-subtle) 1px,transparent 1px),linear-gradient(to_bottom,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 40%,transparent 0%,var(--bg-base) 100%)" }} />
       </div>
 
-      <header className="relative z-10 w-full pt-24 pb-12 px-8">
+      <header className="relative z-10 w-full pt-24 pb-12 px-4 md:px-8">
         <div className="max-w-[1400px] mx-auto flex flex-col items-start">
-          <div className="flex items-center gap-3 text-slate-400 mb-6">
-            <div className="h-px w-8 bg-zinc-400" />
+          <div className="flex items-center gap-3 mb-6" style={{ color: "var(--text-muted)" }}>
+            <div className="h-px w-8" style={{ backgroundColor: "var(--text-muted)" }} />
             <Database className="h-3 w-3" />
             <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">
               نظام الإدارة الأساسي
             </span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-black text-zinc-950 tracking-tighter leading-[1.1]">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-[1.1]" style={{ color: "var(--text-primary)" }}>
             المستخدمون والصلاحيات
           </h1>
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-8 pb-32">
+      <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-4 md:px-8 pb-32">
         <div className="flex items-center justify-between gap-6 mb-8">
-          <div data-help="search-bar" className="relative group w-96">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+          <div data-help="search-bar" className="relative group w-full md:w-96">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: "var(--text-muted)" }} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="البحث..."
-              className="w-full h-12 bg-white/80 rounded-xl pr-12 pl-6 text-sm font-bold text-zinc-800 outline-none focus:bg-white focus:ring-2 focus:ring-zinc-900/10 shadow-sm border border-white"
+              className="w-full h-12 rounded-xl pr-12 pl-6 text-sm font-bold outline-none shadow-sm border transition-all"
+              style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
+              onFocus={(e) => { e.target.style.borderColor = "var(--border-accent)"; e.target.style.boxShadow = "0 0 0 2px var(--border-accent)"; }}
+              onBlur={(e) => { e.target.style.borderColor = "var(--border-normal)"; e.target.style.boxShadow = "none"; }}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             data-help="main-table"
-          className="lg:col-span-6 bg-white/95 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
+          className="lg:col-span-6 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-x-auto"
+          style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
           >
             <DataTable
               columns={columns}
@@ -625,27 +629,28 @@ export default function UsersPage() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className={`lg:col-span-6 sticky top-10 flex flex-col rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-hidden transition-all ${
               editingRow
-                ? "bg-amber-50/95 border-amber-300 ring-4 ring-amber-500/10"
-                : "bg-white/95 border-slate-100"
+                ? "ring-4 ring-amber-500/10"
+                : ""
             }`}
+            style={{
+              backgroundColor: editingRow ? "var(--bg-surface)" : "var(--bg-surface)",
+              borderColor: editingRow ? "var(--border-accent)" : "var(--border-normal)"
+            }}
           >
             <div
-              className={`p-6 flex items-center justify-between border-b ${
-                editingRow ? "border-amber-200/50" : "border-slate-50"
-              }`}
+              className="p-6 flex items-center justify-between border-b"
+              style={{ borderColor: editingRow ? "var(--border-accent)" : "var(--border-subtle)" }}
             >
               <div>
                 <h2
-                  className={`text-xl font-black tracking-tight ${
-                    editingRow ? "text-amber-900" : "text-zinc-900"
-                  }`}
+                  className="text-xl font-black tracking-tight"
+                  style={{ color: editingRow ? "var(--text-primary)" : "var(--text-primary)" }}
                 >
                   {editingRow ? "وضع التعديل" : "إضافة جديد"}
                 </h2>
                 <p
-                  className={`text-[11px] font-bold uppercase tracking-widest mt-1 ${
-                    editingRow ? "text-amber-700/70" : "text-slate-400"
-                  }`}
+                  className="text-[11px] font-bold uppercase tracking-widest mt-1"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   {editingRow
                     ? `ID: ${editingRow.id}`
@@ -656,7 +661,8 @@ export default function UsersPage() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={startCreate}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors"
+                  style={{ backgroundColor: "var(--accent-soft)", color: "var(--text-primary)" }}
                 >
                   <X className="h-5 w-5" />
                 </motion.button>
@@ -665,15 +671,16 @@ export default function UsersPage() {
 
             {/* Tabs */}
             {editingRow && (
-              <div className="flex border-b border-slate-200/60 bg-white/40">
+              <div className="flex border-b" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-overlay)" }}>
                 <button
                   type="button"
                   onClick={() => setActiveTab("info")}
-                  className={`flex-1 flex items-center justify-center gap-2 h-12 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                    activeTab === "info"
-                      ? "bg-white text-zinc-900 border-b-2 border-zinc-900"
-                      : "text-slate-500 hover:text-zinc-700"
-                  }`}
+                  className="flex-1 flex items-center justify-center gap-2 h-12 text-[11px] font-black uppercase tracking-widest transition-colors"
+                  style={{
+                    backgroundColor: activeTab === "info" ? "var(--bg-surface)" : "transparent",
+                    color: activeTab === "info" ? "var(--text-primary)" : "var(--text-muted)",
+                    borderBottom: activeTab === "info" ? "2px solid var(--text-primary)" : "2px solid transparent"
+                  }}
                 >
                   <UserIcon className="h-3.5 w-3.5" />
                   البيانات
@@ -682,11 +689,12 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("permissions")}
-                    className={`flex-1 flex items-center justify-center gap-2 h-12 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                      activeTab === "permissions"
-                        ? "bg-white text-zinc-900 border-b-2 border-zinc-900"
-                        : "text-slate-500 hover:text-zinc-700"
-                    }`}
+                    className="flex-1 flex items-center justify-center gap-2 h-12 text-[11px] font-black uppercase tracking-widest transition-colors"
+                    style={{
+                      backgroundColor: activeTab === "permissions" ? "var(--bg-surface)" : "transparent",
+                      color: activeTab === "permissions" ? "var(--text-primary)" : "var(--text-muted)",
+                      borderBottom: activeTab === "permissions" ? "2px solid var(--text-primary)" : "2px solid transparent"
+                    }}
                   >
                     <Shield className="h-3.5 w-3.5" />
                     الصلاحيات
@@ -699,9 +707,8 @@ export default function UsersPage() {
             {activeTab === "info" && (
               <form
                 onSubmit={handleSubmit}
-                className={`p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh] ${
-                  editingRow ? "bg-amber-100/20" : "bg-slate-50/30"
-                }`}
+                className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh]"
+                style={{ backgroundColor: editingRow ? "var(--bg-overlay)" : "var(--bg-overlay)" }}
               >
                 {[
                   { name: "full_name", label: "الاسم الكامل", required: true },
@@ -715,13 +722,12 @@ export default function UsersPage() {
                 ].map((field) => (
                   <div key={field.name} className="flex flex-col gap-2">
                     <label
-                      className={`text-[11px] font-black uppercase tracking-widest flex items-center justify-between ${
-                        editingRow ? "text-amber-900/70" : "text-slate-500"
-                      }`}
+                      className="text-[11px] font-black uppercase tracking-widest flex items-center justify-between"
+                      style={{ color: "var(--text-secondary)" }}
                     >
                       {field.label}
                       {field.required && (
-                        <span className="text-[9px] font-bold text-zinc-400">
+                        <span className="text-[9px] font-bold" style={{ color: "var(--text-muted)" }}>
                           مطلوب
                         </span>
                       )}
@@ -741,20 +747,22 @@ export default function UsersPage() {
                           const prevMap = { username: fullNameRef, password: usernameRef };
                           handleKeyDown(e, { nextRef: nextMap[field.name], prevRef: prevMap[field.name] });
                         }}
-                        className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
+                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border ${
                           field.name === "password" ? "pl-11" : ""
-                        } ${
-                          editingRow
-                            ? "text-amber-950 border-amber-200 focus:border-amber-500"
-                            : "text-zinc-900 border-slate-200 focus:border-zinc-400"
                         }`}
+                        style={{
+                          backgroundColor: "var(--bg-input)",
+                          color: "var(--text-primary)",
+                          borderColor: editingRow ? "var(--border-accent)" : "var(--border-normal)"
+                        }}
                         placeholder={`إدخال ${field.label}...`}
                       />
                       {field.name === "password" && (
                         <button
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-zinc-700 transition-colors"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors"
+                          style={{ color: "var(--text-muted)" }}
                           tabIndex={-1}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -780,9 +788,8 @@ export default function UsersPage() {
                         setForm((p) => ({ ...p, role: CREATE_TEMPLATE_ROLE[t] || "user" }));
                       }}
                       onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: passwordRef })}
-                      className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border focus:border-zinc-400 ${
-                        createTemplate ? "text-zinc-900 border-slate-200" : "text-slate-400 border-slate-200"
-                      }`}
+                      className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border"
+                      style={{ backgroundColor: "var(--bg-input)", color: createTemplate ? "var(--text-primary)" : "var(--text-muted)", borderColor: "var(--border-normal)" }}
                     >
                       <option value="" disabled>اختر نمط الصلاحيات...</option>
                       <option value="user">مستخدم — صلاحيات افتراضية</option>
@@ -795,7 +802,7 @@ export default function UsersPage() {
                 {/* Edit-only: editable role selector. Saving the form applies it. */}
                 {editingRow && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-amber-900/70">
+                    <label className="text-[11px] font-black uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>
                       الدور
                     </label>
                     <select
@@ -812,12 +819,13 @@ export default function UsersPage() {
                         }
                       }}
                       onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: passwordRef })}
-                      className="w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border text-amber-950 border-amber-200 focus:border-amber-500"
+                      className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all shadow-sm border"
+                      style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--border-accent)" }}
                     >
                       <option value="user">مستخدم — صلاحيات مخصصة</option>
                       <option value="admin">مدير — كامل الصلاحيات</option>
                     </select>
-                    <p className="text-[10px] font-bold text-amber-700/60">
+                    <p className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>
                       المدير يملك كل الصلاحيات تلقائياً. غيّر الدور ثم اضغط حفظ التعديلات.
                     </p>
                   </div>
@@ -830,14 +838,8 @@ export default function UsersPage() {
                   type="submit"
                   disabled={isSubmitting}
                   animate={infoSaved ? { scale: [1, 1.02, 1] } : {}}
-                  className={`w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50 ${
-                    infoSaved
-                      ? "bg-emerald-500"
-                      : editingRow
-                        ? "bg-amber-600 hover:bg-amber-700"
-                        : "bg-primary hover:bg-primary-600"
-                  }`}
-                >
+                  className="w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50"
+                  style={{ backgroundColor: infoSaved ? "var(--primary)" : editingRow ? "var(--primary)" : "var(--primary)" }}>
                   {isSubmitting ? (
                     "جاري المعالجة..."
                   ) : infoSaved ? (
@@ -861,16 +863,17 @@ export default function UsersPage() {
 
             {/* Permissions tab */}
             {activeTab === "permissions" && showPermissionsTab && (
-              <div data-help="permissions-section" className="p-6 flex flex-col gap-4 bg-amber-100/20">
+              <div data-help="permissions-section" className="p-6 flex flex-col gap-4" style={{ backgroundColor: "var(--bg-overlay)" }}>
                 {/* Template selector */}
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-amber-200">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-amber-900/70 whitespace-nowrap">
+                <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-accent)" }}>
+                  <label className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                     قالب الدور
                   </label>
                   <select
                     value={permTemplate}
                     onChange={(e) => setPermTemplate(e.target.value)}
-                    className="flex-1 h-9 bg-white rounded-lg px-2 text-xs font-bold text-zinc-900 outline-none border border-slate-200 focus:border-zinc-400"
+                    className="flex-1 h-9 rounded-lg px-2 text-xs font-bold outline-none border"
+                    style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
                   >
                     <option value="user">user (افتراضي)</option>
                     <option value="admin">admin (الكل)</option>
@@ -879,7 +882,8 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={handleApplyTemplate}
-                    className="h-9 px-3 rounded-lg bg-primary text-white text-[11px] font-black hover:bg-primary-600 transition"
+                    className="h-9 px-3 rounded-lg text-white text-[11px] font-black transition"
+                    style={{ backgroundColor: "var(--primary)" }}
                   >
                     تطبيق القالب
                   </button>
@@ -887,12 +891,13 @@ export default function UsersPage() {
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: "var(--text-muted)" }} />
                   <input
                     value={permSearch}
                     onChange={(e) => setPermSearch(e.target.value)}
                     placeholder="بحث في الصفحات..."
-                    className="w-full h-9 bg-white rounded-lg pr-9 pl-3 text-2sm font-bold text-zinc-800 outline-none focus:ring-2 focus:ring-amber-400/40 border border-slate-200"
+                    className="w-full h-9 rounded-lg pr-9 pl-3 text-2sm font-bold outline-none border transition-all"
+                    style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
                   />
                 </div>
 
@@ -939,7 +944,7 @@ export default function UsersPage() {
                 )}
 
                 {permLoading ? (
-                  <div className="text-center py-8 text-sm font-bold text-amber-900/70">
+                  <div className="text-center py-8 text-sm font-bold" style={{ color: "var(--text-muted)" }}>
                     جاري التحميل...
                   </div>
                 ) : (
@@ -949,7 +954,6 @@ export default function UsersPage() {
                         const IconComponent = CATEGORY_ICONS[cat.id] || Shield;
                         const isOpen = permSearch || !!expandedCats[cat.id];
                         
-                        // Calculate active vs total pages in this category
                         const activeCount = cat.pages.filter(pageKey => (permissions[pageKey] || []).includes('view')).length;
                         const totalCount = cat.pages.length;
 
@@ -961,56 +965,54 @@ export default function UsersPage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -12 }}
                             transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-                            className={`bg-white/95 border rounded-2xl p-1.5 transition-all duration-300 ${
-                              isOpen 
-                                ? "border-amber-300 shadow-[0_8px_30px_-6px_rgba(245,158,11,0.08)] ring-1 ring-amber-400/20" 
-                                : "border-slate-100 hover:border-slate-200/80 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)]"
-                            }`}
+                            className="border rounded-2xl p-1.5 transition-all duration-300"
+                            style={{ backgroundColor: "var(--bg-surface)", borderColor: isOpen ? "var(--border-accent)" : "var(--border-normal)" }}
                           >
-                            {/* Category Header (Sticky top-0 within its container when expanded) */}
                             <div 
                               onClick={() => {
                                 if (permSearch) return;
                                 setExpandedCats(p => ({ ...p, [cat.id]: !p[cat.id] }));
                               }}
-                              className={`flex items-center justify-between p-3 rounded-xl cursor-pointer select-none transition-all ${
-                                isOpen 
-                                  ? "sticky top-0 z-10 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 py-3.5 mb-1.5" 
-                                  : "hover:bg-slate-50/50"
-                              }`}
+                              className="flex items-center justify-between p-3 rounded-xl cursor-pointer select-none transition-all"
+                              style={{
+                                backgroundColor: isOpen ? "var(--bg-overlay)" : "transparent",
+                                borderBottom: isOpen ? "1px solid var(--border-subtle)" : "none",
+                                paddingTop: isOpen ? "14px" : undefined,
+                                paddingBottom: isOpen ? "14px" : undefined,
+                                marginBottom: isOpen ? "6px" : undefined
+                              }}
                             >
                               <div className="flex items-center gap-2.5">
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                                  activeCount > 0 ? "bg-amber-100/70 text-amber-800" : "bg-slate-100 text-slate-400"
-                                }`}>
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors" style={{ backgroundColor: activeCount > 0 ? "var(--accent-soft)" : "var(--bg-overlay)", color: activeCount > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
                                   <IconComponent className="h-4.5 w-4.5" />
                                 </div>
                                 <div className="flex flex-col items-start gap-0.5">
-                                  <span className="text-xs font-black text-slate-800">{cat.label}</span>
-                                  <span className="text-[11px] font-bold text-slate-400 font-mono">
+                                  <span className="text-xs font-black" style={{ color: "var(--text-primary)" }}>{cat.label}</span>
+                                  <span className="text-[11px] number-fmt" style={{ color: "var(--text-muted)" }}>
                                     {activeCount} / {totalCount} نشط
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-                                {/* Quick Category Bulk Actions */}
-                                <div className="flex items-center gap-1 bg-white border border-slate-200/60 p-0.5 rounded-lg shadow-sm">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 p-0.5 rounded-lg shadow-sm" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
                                   <SmartTooltip content="تمكين الكل للقسم">
                                     <button
                                       type="button"
                                       onClick={() => handleToggleCategoryAll(cat.pages, "all")}
-                                      className="flex h-6 px-1.5 items-center justify-center rounded-md text-[9px] font-bold text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition"
+                                      className="flex h-6 px-1.5 items-center justify-center rounded-md text-[9px] font-bold transition"
+                                      style={{ color: "var(--text-muted)" }}
                                     >
                                       تمكين الكل
                                     </button>
                                   </SmartTooltip>
-                                  <div className="h-3 w-px bg-slate-200" />
+                                  <div className="h-3 w-px" style={{ backgroundColor: "var(--border-subtle)" }} />
                                   <SmartTooltip content="حظر الكل للقسم">
                                     <button
                                       type="button"
                                       onClick={() => handleToggleCategoryAll(cat.pages, "none")}
-                                      className="flex h-6 px-1.5 items-center justify-center rounded-md text-[9px] font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                      className="flex h-6 px-1.5 items-center justify-center rounded-md text-[9px] font-bold transition"
+                                      style={{ color: "var(--text-muted)" }}
                                     >
                                       تعطيل الكل
                                     </button>
@@ -1018,20 +1020,20 @@ export default function UsersPage() {
                                 </div>
 
                                 {!permSearch && (
-                                  <div className="text-slate-400">
+                                  <div style={{ color: "var(--text-muted)" }}>
                                     {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                   </div>
                                 )}
                               </div>
                             </div>
 
-                            {/* Pages inside this Category - Indented with vertical dashed connector line */}
                             {isOpen && (
                               <motion.div 
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: "auto" }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className="mr-5 pr-4 border-r-2 border-dashed border-amber-500/20 bg-slate-50/50 rounded-xl flex flex-col gap-2.5 mt-2 py-2.5 pl-2.5"
+                                className="mr-5 pr-4 rounded-xl flex flex-col gap-2.5 mt-2 py-2.5 pl-2.5"
+                                style={{ borderRight: "2px dashed var(--border-subtle)", backgroundColor: "var(--bg-overlay)" }}
                               >
                                 {cat.pages.map((pageKey) => {
                                   const meta = PAGE_PERMISSIONS[pageKey];
@@ -1044,54 +1046,44 @@ export default function UsersPage() {
                                   return (
                                     <div 
                                       key={pageKey}
-                                      className={`border transition-all duration-300 rounded-xl p-3 bg-white relative before:absolute before:-right-4 before:top-8 before:w-4 before:h-[2px] before:border-t-2 before:border-dashed before:border-amber-500/20 ${
-                                        hasView 
-                                          ? "border-amber-200/80 shadow-[0_2px_8px_-3px_rgba(245,158,11,0.06)]" 
-                                          : "border-slate-100 opacity-70 hover:opacity-100"
-                                      }`}
+                                      className="border transition-all duration-300 rounded-xl p-3 relative"
+                                      style={{ backgroundColor: "var(--bg-surface)", borderColor: hasView ? "var(--border-accent)" : "var(--border-normal)", opacity: hasView ? 1 : 0.7 }}
                                     >
-                                      {/* Page Header */}
                                       <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
                                           <div className="flex flex-col items-start gap-0.5">
-                                            {/* Eyebrow Breadcrumb Tag */}
-                                            <span className="text-[9px] font-black text-amber-600/70 tracking-wide uppercase">
+                                            <span className="text-[9px] font-black tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
                                               {cat.label}
                                             </span>
-                                            <span className="text-2sm font-black text-slate-800">{meta.label}</span>
+                                            <span className="text-2sm font-black" style={{ color: "var(--text-primary)" }}>{meta.label}</span>
                                           </div>
                                           
-                                          {/* Glowing Status badge */}
                                           {status === "full" && (
-                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/50 flex items-center gap-0.5">
-                                              <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 border" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)", borderColor: "color-mix(in srgb, var(--primary) 30%, transparent)" }}>
+                                              <span className="h-1 w-1 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
                                               كاملة
                                             </span>
                                           )}
                                           {status === "custom" && (
-                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/50 flex items-center gap-0.5">
-                                              <span className="h-1 w-1 rounded-full bg-amber-500 animate-pulse" />
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 border" style={{ backgroundColor: "var(--accent-soft)", color: "var(--text-primary)", borderColor: "var(--border-accent)" }}>
+                                              <span className="h-1 w-1 rounded-full animate-pulse" style={{ backgroundColor: "var(--text-primary)" }} />
                                               مخصصة
                                             </span>
                                           )}
                                           {status === "blocked" && (
-                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200/40">
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full border" style={{ backgroundColor: "var(--bg-overlay)", color: "var(--text-muted)", borderColor: "var(--border-subtle)" }}>
                                               محظورة
                                             </span>
                                           )}
                                         </div>
 
-                                        {/* Segmented Preset Controls */}
-                                        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/50 shadow-inner select-none shrink-0">
+                                        <div className="flex p-0.5 rounded-lg border shadow-inner select-none shrink-0" style={{ backgroundColor: "var(--bg-overlay)", borderColor: "var(--border-subtle)" }}>
                                           <SmartTooltip content="حظر الوصول — لا توجد صلاحيات">
                                             <button
                                               type="button"
                                               onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: [] }))}
-                                              className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
-                                                status === "blocked"
-                                                  ? "bg-rose-600 text-white shadow-sm"
-                                                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                              }`}
+                                              className="flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all"
+                                              style={{ backgroundColor: status === "blocked" ? "var(--primary)" : "transparent", color: status === "blocked" ? "white" : "var(--text-muted)" }}
                                             >
                                               <Lock className="h-2.5 w-2.5" />
                                               حظر
@@ -1101,11 +1093,8 @@ export default function UsersPage() {
                                             <button
                                               type="button"
                                               onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: ["view"] }))}
-                                              className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
-                                                status === "custom" && currentActions.length === 1 && currentActions.includes("view")
-                                                  ? "bg-primary text-white shadow-sm"
-                                                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-200"
-                                              }`}
+                                              className="flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all"
+                                              style={{ backgroundColor: status === "custom" && currentActions.length === 1 && currentActions.includes("view") ? "var(--primary)" : "transparent", color: status === "custom" && currentActions.length === 1 && currentActions.includes("view") ? "white" : "var(--text-muted)" }}
                                             >
                                               <Eye className="h-2.5 w-2.5" />
                                               عرض
@@ -1116,11 +1105,8 @@ export default function UsersPage() {
                                               <button
                                                 type="button"
                                                 onClick={() => setPermissions(prev => ({ ...prev, [pageKey]: [...meta.actions] }))}
-                                                className={`flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all ${
-                                                  status === "full"
-                                                    ? "bg-amber-600 text-white shadow-sm"
-                                                    : "text-slate-400 hover:text-amber-700 hover:bg-amber-50"
-                                                }`}
+                                                className="flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-md transition-all"
+                                                style={{ backgroundColor: status === "full" ? "var(--primary)" : "transparent", color: status === "full" ? "white" : "var(--text-muted)" }}
                                               >
                                                 <Check className="h-2.5 w-2.5" />
                                                 كامل
@@ -1130,9 +1116,8 @@ export default function UsersPage() {
                                         </div>
                                       </div>
 
-                                      {/* Sub actions Chips */}
                                       {hasView && meta.actions.length > 1 && (
-                                        <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-100/60">
+                                        <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
                                           {meta.actions
                                             .filter((act) => act !== "view")
                                             .map((act) => {
@@ -1142,13 +1127,10 @@ export default function UsersPage() {
                                                   <button
                                                     type="button"
                                                     onClick={() => toggleAction(pageKey, act)}
-                                                    className={`h-7 px-2.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 select-none ${
-                                                      checked 
-                                                        ? "bg-primary text-white border-primary font-black shadow-sm" 
-                                                        : "bg-slate-50 text-slate-500 border-slate-200/60 hover:bg-slate-100 hover:text-slate-700"
-                                                    }`}
+                                                    className="h-7 px-2.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 select-none"
+                                                    style={{ backgroundColor: checked ? "var(--primary)" : "var(--bg-overlay)", color: checked ? "white" : "var(--text-secondary)", borderColor: checked ? "var(--primary)" : "var(--border-subtle)" }}
                                                   >
-                                                    {checked && <Check className="h-3 w-3 text-amber-500" />}
+                                                    {checked && <Check className="h-3 w-3" />}
                                                     {ACTION_LABELS[act]}
                                                   </button>
                                                 </SmartTooltip>
@@ -1167,7 +1149,7 @@ export default function UsersPage() {
                     </AnimatePresence>
                     
                     {filteredCategories.length === 0 && (
-                      <div className="text-center py-12 text-xs font-bold text-slate-400 bg-white border border-slate-100 rounded-2xl">
+                      <div className="text-center py-12 text-xs font-bold rounded-2xl border" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-muted)", borderColor: "var(--border-normal)" }}>
                         لم يتم العثور على صفحات مطابقة للبحث
                       </div>
                     )}
@@ -1179,7 +1161,8 @@ export default function UsersPage() {
                   type="button"
                   onClick={handleSavePermissions}
                   disabled={permSaving || permLoading}
-                  className="w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white bg-amber-600 hover:bg-amber-700 transition-all shadow-xl disabled:opacity-50"
+                  className="w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50"
+                  style={{ backgroundColor: "var(--primary)" }}
                 >
                   <Save className="h-4 w-4" />
                   {permSaving ? "جاري الحفظ..." : "حفظ الصلاحيات"}
@@ -1213,19 +1196,20 @@ export default function UsersPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
+              className="w-full max-w-md rounded-3xl shadow-2xl border overflow-hidden"
+              style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
             >
-              <div className={`p-6 flex items-start gap-4 border-b ${deleteRefs ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"}`}>
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${deleteRefs ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-600"}`}>
-                  <AlertTriangle className="h-6 w-6" />
+              <div className="p-6 flex items-start gap-4 border-b" style={{ backgroundColor: deleteRefs ? "var(--bg-overlay)" : "var(--bg-overlay)", borderColor: "var(--border-subtle)" }}>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: "var(--accent-soft)" }}>
+                  <AlertTriangle className="h-6 w-6" style={{ color: "var(--text-primary)" }} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-lg font-black text-slate-900">
+                  <h3 className="text-lg font-black" style={{ color: "var(--text-primary)" }}>
                     {deleteRefs ? "تعذّر حذف المستخدم" : "تأكيد حذف المستخدم"}
                   </h3>
-                  <p className="text-sm font-bold text-slate-500">
+                  <p className="text-sm font-bold" style={{ color: "var(--text-secondary)" }}>
                     {deleteTarget.full_name || deleteTarget.username}
-                    <span className="text-slate-400 font-mono"> @{deleteTarget.username}</span>
+                    <span className="font-mono" style={{ color: "var(--text-muted)" }}> @{deleteTarget.username}</span>
                   </p>
                 </div>
               </div>
@@ -1233,16 +1217,16 @@ export default function UsersPage() {
               <div className="p-6 flex flex-col gap-4">
                 {deleteRefs ? (
                   <>
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">
+                    <p className="text-sm font-bold leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                       لا يمكن حذف هذا المستخدم لأنه مرتبط بسجلات في النظام. يمكنك
-                      <span className="text-amber-700"> تعطيله </span>
+                      <span style={{ color: "var(--primary)" }}> تعطيله </span>
                       بدلاً من ذلك للحفاظ على سلامة البيانات والسجل التاريخي.
                     </p>
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 divide-y divide-slate-100 overflow-hidden">
+                    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-overlay)" }}>
                       {deleteRefs.map((ref) => (
-                        <div key={ref.label} className="flex items-center justify-between px-4 py-2.5">
-                          <span className="text-sm font-bold text-slate-700">{ref.label}</span>
-                          <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-mono">
+                        <div key={ref.label} className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <span className="text-sm font-bold" style={{ color: "var(--text-secondary)" }}>{ref.label}</span>
+                          <span className="text-[11px] number-fmt px-2 py-0.5 rounded-md border" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
                             {ref.count}
                           </span>
                         </div>
@@ -1250,7 +1234,7 @@ export default function UsersPage() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm font-bold text-slate-600 leading-relaxed">
+                  <p className="text-sm font-bold leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     سيتم حذف المستخدم نهائياً. لا يمكن التراجع عن هذا الإجراء.
                     سجلّات النشاط القديمة ستبقى محفوظة دون نسبتها لهذا المستخدم.
                   </p>
@@ -1261,7 +1245,8 @@ export default function UsersPage() {
                     type="button"
                     onClick={closeDeleteModal}
                     disabled={deleting}
-                    className="flex-1 h-11 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200 transition disabled:opacity-50"
+                    className="flex-1 h-11 rounded-xl text-sm font-black transition disabled:opacity-50"
+                    style={{ backgroundColor: "var(--bg-overlay)", color: "var(--text-secondary)" }}
                   >
                     إلغاء
                   </button>
@@ -1270,7 +1255,8 @@ export default function UsersPage() {
                       type="button"
                       onClick={deactivateUser}
                       disabled={deleting}
-                      className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-amber-600 text-white text-sm font-black hover:bg-amber-700 transition disabled:opacity-50"
+                      className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl text-white text-sm font-black transition disabled:opacity-50"
+                      style={{ backgroundColor: "var(--primary)" }}
                     >
                       <Power className="h-4 w-4" />
                       {deleting ? "جاري التعطيل..." : "تعطيل المستخدم"}
@@ -1280,7 +1266,8 @@ export default function UsersPage() {
                       type="button"
                       onClick={confirmDelete}
                       disabled={deleting}
-                      className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 transition disabled:opacity-50"
+                      className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl text-white text-sm font-black transition disabled:opacity-50"
+                      style={{ backgroundColor: "var(--primary)" }}
                     >
                       <Trash2 className="h-4 w-4" />
                       {deleting ? "جاري الحذف..." : "حذف نهائي"}

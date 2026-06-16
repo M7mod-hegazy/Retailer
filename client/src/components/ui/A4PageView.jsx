@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { formatNumber } from "../../utils/currency";
 
 function fmtDateEG(iso) {
   if (!iso) return "";
@@ -83,7 +84,7 @@ function A4Sheet({
             ) : null}
             <div style={{ marginTop: 2 }}>طباعة: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</div>
             <div style={{ marginTop: 2, fontWeight: 800, color: accent }}>
-              صفحة {pageNum.toLocaleString("en-US")} / {totalPages.toLocaleString("en-US")}
+              صفحة {formatNumber(pageNum, { decimals: 0 })} / {formatNumber(totalPages, { decimals: 0 })}
             </div>
           </div>
         </div>
@@ -146,7 +147,7 @@ function A4Sheet({
                       if (dateCol) {
                         display = fmtDateEG(value);
                       } else if (numeric) {
-                        display = `${col.type === "money" && currency ? `${currency} ` : ""}${Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })}${col.type === "percent" ? "%" : ""}`;
+                        display = `${col.type === "money" && currency ? `${currency} ` : ""}${formatNumber(value)}${col.type === "percent" ? "%" : ""}`;
                       } else {
                         display = value == null ? "-" : String(value);
                       }
@@ -209,12 +210,12 @@ function A4Sheet({
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   }}
-                  title={numeric ? Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 }) : undefined}
+                  title={numeric ? formatNumber(val) : undefined}
                 >
                   {val != null
-                    ? (numeric
-                      ? `${col.type === "money" && currency ? `${currency} ` : ""}${Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}${col.type === "percent" ? "%" : ""}`
-                      : String(val))
+                  ? (numeric
+                    ? `${col.type === "money" && currency ? `${currency} ` : ""}${formatNumber(val)}${col.type === "percent" ? "%" : ""}`
+                    : String(val))
                     : ""}
                 </div>
               );
@@ -251,8 +252,8 @@ function A4Sheet({
         }}
       >
         <span>تم التصدير: {new Date().toLocaleDateString("ar-EG-u-nu-latn")}</span>
-        <span>إجمالي الصفوف: {totalRows.toLocaleString("en-US")}</span>
-        <span>صفحة {pageNum.toLocaleString("en-US")} من {totalPages.toLocaleString("en-US")}</span>
+        <span>إجمالي الصفوف: {formatNumber(totalRows, { decimals: 0 })}</span>
+        <span>صفحة {formatNumber(pageNum, { decimals: 0 })} من {formatNumber(totalPages, { decimals: 0 })}</span>
       </div>
     </div>
   );

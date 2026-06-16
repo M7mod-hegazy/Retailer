@@ -54,7 +54,8 @@ const PAPER_OPTIONS = [
 ];
 
 const FONT_FAMILIES = [
-  { value: "Noto Sans Arabic", label: "Noto Sans Arabic — موصى به" },
+  { value: "Tahoma", label: "Tahoma — موصى به (حراري واضح)" },
+  { value: "Noto Sans Arabic", label: "Noto Sans Arabic" },
   { value: "sans-serif", label: "Arial — حديث"    },
   { value: "serif",      label: "Times — رسمي"    },
   { value: "monospace",  label: "Courier — حرارية" },
@@ -66,7 +67,7 @@ const DEFAULTS = {
   receipt_header: "أهلاً وسهلاً بكم",
   receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
   header_font_size: 16, body_font_size: 13, footer_font_size: 11,
-  item_font_size: 13, print_font: "Noto Sans Arabic", logo_max_height: 48,
+  item_font_size: 13, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   margin_top: 4, margin_side: 4, qr_size: 44,
   show_cashier_name: true, show_customer_name: true, show_tax: true,
@@ -320,7 +321,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       <div style={{ fontSize: `${get(s,"item_font_size")}px`, marginBottom: "5px" }}>
         <BlockRenderer blocks={customBlocks} position="before_meta" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
         <div style={{ display: "flex", justifyContent: "space-between" }}><span>رقم الفاتورة:</span><span style={{ fontWeight: "bold" }} onClick={() => onElementClick("invoice_prefix")}>{get(s,"invoice_prefix")}-2025-0042</span></div>
-        {get(s,"show_invoice_date")   !== false && <div style={{ display: "flex", justifyContent: "space-between" }}><span>التاريخ:</span><span>{new Date().toLocaleDateString("ar-SA-u-nu-latn")}</span></div>}
+        {get(s,"show_invoice_date")   !== false && <div style={{ display: "flex", justifyContent: "space-between" }}><span>التاريخ:</span><span>{new Date().toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")}</span></div>}
         {get(s,"show_customer_name")  !== false && <div onClick={() => onElementClick("show_customer_name")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_customer_name") }}><span>العميل:</span><span>محمد الهيجازي</span></div>}
         {get(s,"show_cashier_name")   !== false && <div onClick={() => onElementClick("show_cashier_name")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_cashier_name") }}><span>الكاشير:</span><span>أحمد صالح</span></div>}
       </div>
@@ -329,25 +330,25 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       <div style={{ borderTop: dashed, margin: "5px 0" }} />
       <BlockRenderer blocks={customBlocks} position="before_items" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
 
-      <table style={{ width: "100%", fontSize: `${get(s,"item_font_size")}px`, borderCollapse: "collapse" }}>
+      <table style={{ width: "100%", fontSize: `${get(s,"item_font_size")}px`, borderCollapse: "collapse", fontWeight: 700 }}>
         <thead><tr style={{ borderBottom: solid }}>
-          {get(s,"show_item_code") !== false && <th style={{ textAlign: "right", paddingBottom: "3px", color: "inherit", opacity: 0.6, fontSize: "9px" }}>كود</th>}
-          <th style={{ textAlign: "right", paddingBottom: "3px" }}>الصنف</th>
-          <th style={{ textAlign: "center" }}>كمية</th>
-          <th style={{ textAlign: "left" }}>إجمالي</th>
+          {get(s,"show_item_code") !== false && <th style={{ textAlign: "center", padding: "0 5px 3px", color: "inherit", fontWeight: 700, fontSize: "10px" }}>كود</th>}
+          <th style={{ textAlign: "center", padding: "0 5px 3px", fontWeight: 700 }}>الصنف</th>
+          <th style={{ textAlign: "center", padding: "0 5px 3px", fontWeight: 700 }}>كمية</th>
+          <th style={{ textAlign: "center", padding: "0 5px 3px", fontWeight: 700 }}>إجمالي</th>
         </tr></thead>
         <tbody>
           <tr>
-            {get(s,"show_item_code") !== false && <td style={{ textAlign: "right", padding: "2px 0", fontSize: "9px", opacity: 0.6, fontFamily: "monospace" }}>SKU-001</td>}
-            <td style={{ textAlign: "right", padding: "2px 0" }}>قميص قطني L</td>
-            <td style={{ textAlign: "center" }}>2</td>
-            <td style={{ textAlign: "left" }}>120.00</td>
+            {get(s,"show_item_code") !== false && <td style={{ textAlign: "center", padding: "3px 5px", fontSize: "10px", fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>SKU-001</td>}
+            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700 }}>قميص قطني L</td>
+            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>2</td>
+            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>120.00</td>
           </tr>
           <tr>
-            {get(s,"show_item_code") !== false && <td style={{ textAlign: "right", padding: "2px 0", fontSize: "9px", opacity: 0.6, fontFamily: "monospace" }}>SKU-002</td>}
-            <td style={{ textAlign: "right", padding: "2px 0" }}>بنطلون جينز</td>
-            <td style={{ textAlign: "center" }}>1</td>
-            <td style={{ textAlign: "left" }}>110.00</td>
+            {get(s,"show_item_code") !== false && <td style={{ textAlign: "center", padding: "3px 5px", fontSize: "10px", fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>SKU-002</td>}
+            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700 }}>بنطلون جينز</td>
+            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>1</td>
+            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>110.00</td>
           </tr>
         </tbody>
       </table>
@@ -459,7 +460,7 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
           <div onClick={() => onElementClick("invoice_prefix")} style={{ fontSize: "10px", color: "#64748b", ...hl("invoice_prefix") }}>{get(s,"invoice_prefix")}-2025-0042</div>
         </div>
         <div style={{ textAlign: "left", fontSize: "10px", color: "#64748b" }}>
-          {get(s,"show_invoice_date")  !== false && <div>التاريخ: {new Date().toLocaleDateString("ar-SA-u-nu-latn")}</div>}
+          {get(s,"show_invoice_date")  !== false && <div>التاريخ: {new Date().toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")}</div>}
           {get(s,"show_customer_name") !== false && <div onClick={() => onElementClick("show_customer_name")} style={hl("show_customer_name")}>العميل: محمد الهيجازي</div>}
           {get(s,"show_cashier_name")  !== false && <div onClick={() => onElementClick("show_cashier_name")} style={hl("show_cashier_name")}>الكاشير: أحمد صالح</div>}
         </div>
@@ -640,7 +641,7 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
         <div style={{ textAlign:"left" }}>
           <div style={{ fontSize:"18px", fontWeight:900, color:accent }}>{title}</div>
           <div style={{ fontSize:"10px", color:"#64748b", fontFamily:"monospace" }}>{docNo}</div>
-          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA-u-nu-latn")}</div>}
+          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")}</div>}
         </div>
       </div>
 
@@ -951,7 +952,7 @@ function DailyTreasuryPreview({ s }) {
         </div>
         <div style={{ textAlign:"left" }}>
           <div style={{ fontSize:"18px", fontWeight:900, color:accent }}>تقرير الخزينة اليومي</div>
-          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA-u-nu-latn")}</div>}
+          {get(s,"show_invoice_date") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>{new Date().toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")}</div>}
           {get(s,"show_cashier_name") !== false && <div style={{ fontSize:"10px", color:"#94a3b8" }}>الكاشير: أحمد صالح</div>}
         </div>
       </div>

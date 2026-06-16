@@ -14,8 +14,9 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 const PAYMENT_METHOD_AR = {
@@ -175,7 +176,7 @@ function InstallmentsBadge({ debtId }) {
                       : "bg-slate-50/40 border-slate-200/80 text-slate-600"
                   }`}>
                   <span className="font-semibold text-slate-600">القسط {s.installment_no} — {fmtDate(s.due_date)}</span>
-                  <span className="font-bold font-mono text-[11px]">{fmt(s.amount)}</span>
+                  <span className="number-fmt text-[11px]">{fmt(s.amount)}</span>
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${isPaid
                       ? "bg-emerald-100/80 border-emerald-200 text-emerald-800"
                       : isOverdue
@@ -593,7 +594,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
               return (
                 <div className="flex flex-col items-center gap-[3px] shrink-0 self-start pt-1 w-[76px]">
                   <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">قبل</span>
-                  <span className={`text-[9px] font-black font-mono px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
+                  <span className={`text-[9px] number-fmt-primary px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
                     ev.balanceBefore > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
                     : ev.balanceBefore < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
                     : "bg-slate-50 text-slate-500 border-slate-200/70"
@@ -604,7 +605,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                   </svg>
 
                   <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">بعد</span>
-                  <span className={`text-[9px] font-black font-mono px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
+                  <span className={`text-[9px] number-fmt-primary px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
                     ev.balanceAfter > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
                     : ev.balanceAfter < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
                     : "bg-slate-50/80 text-slate-400 border-slate-200/50"
@@ -682,7 +683,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                               >
                                 <span className={`h-1.5 w-1.5 rounded-full ${style.dot} animate-pulse`} />
                                 {arMethod(chip.method)}
-                                <span className="font-mono text-[11px] font-black">{fmt(chip.amount)}</span>
+                                <span className="number-fmt-primary text-[11px]">{fmt(chip.amount)}</span>
                                 {isMulti && <span className="opacity-60 text-[8.5px] font-bold mr-0.5">({pct}%)</span>}
                               </span>
                             );
@@ -732,7 +733,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                           <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
                             {isOpening ? "القيمة الافتتاحية" : isDocRow ? "إجمالي الفاتورة" : ev.type === "return" ? "إجمالي المرتجع" : ev.type === "payment" ? "المبلغ المسدد" : "قيمة التسوية"}
                           </span>
-                          <div className="text-[18px] font-black text-slate-800 font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                          <div className="text-[18px] number-fmt-primary text-slate-800 tracking-tight leading-none flex items-baseline gap-0.5 truncate">
                             <span>{fmt(isOpening ? ev.impactAmount : isDocRow ? ev.invoiceTotal : ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}</span>
                             <span className="text-[9.5px] font-bold text-slate-400 mr-0.5">ج.م</span>
                           </div>
@@ -755,7 +756,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                                   ? "المضاف للمديونية"
                                   : "المخصوم من المديونية"}
                             </span>
-                            <div className="text-[18px] font-black font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                            <div className="text-[18px] number-fmt-primary tracking-tight leading-none flex items-baseline gap-0.5 truncate">
                               <span className="text-sm font-black select-none leading-none mr-0.5">
                                 {ev.impactDir === "add" || isMulti ? "+" : "−"}
                               </span>
@@ -1167,7 +1168,7 @@ export default function CustomerAccountsPage() {
           </div>
 
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-[23px] font-black font-mono tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
+            <span className={`text-[23px] number-fmt-primary tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
               {summaryLoading ? (
                 <span className="inline-block w-16 h-7 bg-slate-200 rounded animate-pulse" />
               ) : (
@@ -1244,7 +1245,7 @@ export default function CustomerAccountsPage() {
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 select-none">
-                  <span className={`text-sm font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  <span className={`text-sm number-fmt-primary tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                     {fmt(Math.abs(b))}
                   </span>
                   {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">عليه دين</span>}
@@ -1337,7 +1338,7 @@ export default function CustomerAccountsPage() {
                         {bal > 0 ? "صافي الرصيد المستحق بذمته" : bal < 0 ? "الرصيد الدائن للعميل" : "رصيد الحساب مسوّى"}
                       </div>
                       <div className="flex items-baseline gap-1 mt-1">
-                        <div className={`text-[20px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
+                        <div className={`text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
                           {fmt(Math.abs(bal))}
                         </div>
                         <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
@@ -1348,7 +1349,7 @@ export default function CustomerAccountsPage() {
                     <div className="mt-2.5 space-y-1.5">
                       <div className="flex justify-between text-[9.5px] font-extrabold text-slate-455">
                         <span className={creditPct > 90 ? "text-rose-600" : creditPct > 70 ? "text-orange-600" : "text-emerald-600"}>مستنفذ من الحد {Math.round(creditPct)}%</span>
-                        <span className="font-mono text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
+                        <span className="number-fmt-primary text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
                       </div>
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
                         <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
@@ -1490,20 +1491,20 @@ export default function CustomerAccountsPage() {
                             {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 truncate">{line.item_code || line.code}</span>}
                             <span className="text-2sm font-bold text-slate-800 truncate">{line.item_name || line.name}</span>
                           </div>
-                          <div className="col-span-2 text-center font-mono text-[11px] text-slate-650">{line.quantity}</div>
-                          <div className="col-span-2 text-center font-mono text-[11px] text-slate-650">{fmt(line.unit_price)}</div>
-                          <div className="col-span-1 text-center font-mono text-[11px] text-rose-500">{line.discount > 0 ? fmt(line.discount) : "—"}</div>
-                          <div className="col-span-2 text-left font-mono text-[11px] font-bold text-slate-800">{fmt(line.line_total)}</div>
+                          <div className="col-span-2 text-center number-fmt text-[11px] text-slate-650">{line.quantity}</div>
+                          <div className="col-span-2 text-center number-fmt text-[11px] text-slate-650">{fmt(line.unit_price)}</div>
+                          <div className="col-span-1 text-center number-fmt text-[11px] text-rose-500">{line.discount > 0 ? fmt(line.discount) : "—"}</div>
+                          <div className="col-span-2 text-left number-fmt text-[11px] text-slate-800">{fmt(line.line_total)}</div>
                         </div>
                       ))}
                     </div>
                     <div className="bg-primary text-white px-4 py-4.5">
-                      <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">إجمالي الأصناف الفرعي</span><span className="font-mono">{fmt(detailData.subtotal)} ج.م</span></div>
-                      {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">خصم إضافي للفاتورة</span><span className="font-mono text-rose-350">- {fmt(detailData.discount)} ج.م</span></div>}
-                      {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">رسوم / تكلفة إضافية</span><span className="font-mono text-amber-350">+ {fmt(detailData.increase)} ج.م</span></div>}
+                      <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">إجمالي الأصناف الفرعي</span><span className="number-fmt">{fmt(detailData.subtotal)} ج.م</span></div>
+                      {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">خصم إضافي للفاتورة</span><span className="number-fmt text-rose-350">- {fmt(detailData.discount)} ج.م</span></div>}
+                      {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">رسوم / تكلفة إضافية</span><span className="number-fmt text-amber-350">+ {fmt(detailData.increase)} ج.م</span></div>}
                       <div className="flex justify-between text-sm font-bold border-t border-slate-700/80 pt-3 mt-3">
                         <span className="text-slate-355">إجمالي قيمة الفاتورة النهائي</span>
-                        <span className="font-mono text-emerald-350">{fmt(detailData.total)} ج.م</span>
+                        <span className="number-fmt text-emerald-350">{fmt(detailData.total)} ج.م</span>
                       </div>
                     </div>
                   </div>
@@ -1524,7 +1525,7 @@ export default function CustomerAccountsPage() {
                               }`}>
                               {arMethod(p.method) || p.method_name || p.method}
                             </span>
-                            <span className="font-mono font-bold text-sm text-slate-800">{fmt(p.amount)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
+                            <span className="number-fmt text-sm text-slate-800">{fmt(p.amount)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
                           </div>
                         ))}
                       </div>
@@ -1621,8 +1622,8 @@ export default function CustomerAccountsPage() {
                                     </div>
                                   </td>
                                   <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
-                                  <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_price)}</td>
-                                  <td className="px-3 py-2 text-center font-mono font-black text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>
+                                  <td className="px-2 py-2 text-center number-fmt text-slate-600">{fmt(l.unit_price)}</td>
+                                  <td className="px-3 py-2 text-center number-fmt-primary text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1630,18 +1631,18 @@ export default function CustomerAccountsPage() {
                               {(Number(d.discount) > 0 || Number(d.increase) > 0) && (
                                 <tr>
                                   <td colSpan={3} className="px-3 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
-                                  <td className="px-3 py-1.5 text-center font-mono font-bold text-slate-600">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
+                                  <td className="px-3 py-1.5 text-center number-fmt text-slate-600">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
                                 </tr>
                               )}
                               {Number(d.discount) > 0 && (
-                                <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-rose-600">خصم المرتجع</td><td className="px-3 py-1.5 text-center font-mono font-bold text-rose-600">− {fmt(d.discount)}</td></tr>
+                                <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-rose-600">خصم المرتجع</td><td className="px-3 py-1.5 text-center number-fmt text-rose-600">− {fmt(d.discount)}</td></tr>
                               )}
                               {Number(d.increase) > 0 && (
-                                <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-emerald-600">زيادة المرتجع</td><td className="px-3 py-1.5 text-center font-mono font-bold text-emerald-600">+ {fmt(d.increase)}</td></tr>
+                                <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-emerald-600">زيادة المرتجع</td><td className="px-3 py-1.5 text-center number-fmt text-emerald-600">+ {fmt(d.increase)}</td></tr>
                               )}
                               <tr className="border-t border-slate-200">
                                 <td colSpan={3} className="px-3 py-2 text-right font-black text-slate-800">صافي المرتجع</td>
-                                <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-sm">{fmt(d.total)}</td>
+                                <td className="px-3 py-2 text-center number-fmt-primary text-slate-900 text-sm">{fmt(d.total)}</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -1655,13 +1656,13 @@ export default function CustomerAccountsPage() {
                           {Number(d.cash_amount) > 0.005 && (
                             <div className="flex justify-between items-center">
                               <span className="font-bold text-slate-500">نقداً (صندوق)</span>
-                              <span className="font-mono font-bold text-emerald-700">{fmt(d.cash_amount)} ج.م</span>
+                              <span className="number-fmt text-emerald-700">{fmt(d.cash_amount)} ج.م</span>
                             </div>
                           )}
                           {Number(d.credit_amount) > 0.005 && (
                             <div className="flex justify-between items-center">
                               <span className="font-bold text-slate-500">خصم من الآجل (رصيد)</span>
-                              <span className="font-mono font-bold text-rose-600">{fmt(d.credit_amount)} ج.م</span>
+                              <span className="number-fmt text-rose-600">{fmt(d.credit_amount)} ج.م</span>
                             </div>
                           )}
                         </div>
@@ -1719,14 +1720,14 @@ export default function CustomerAccountsPage() {
               {bal > 0 && (
                 <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 mb-4 text-2sm font-bold text-rose-800 flex justify-between items-center">
                   <span>إجمالي الرصيد المستحق بذمته:</span>
-                  <span className="font-mono font-bold text-sm">{fmt(bal)} ج.م</span>
+                  <span className="number-fmt text-sm">{fmt(bal)} ج.م</span>
                 </div>
               )}
               <div className="space-y-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">المبلغ المقبوض أو المسترد <span className="text-rose-500">*</span></label>
                   <input ref={payAmountRef} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] font-bold font-mono outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] number-fmt outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قناة استلام أو رد النقدية <span className="text-rose-500">*</span></label>
@@ -1766,7 +1767,7 @@ export default function CustomerAccountsPage() {
               <p className="text-2sm text-slate-450 font-bold mb-4">
                 العميل: <span className="text-slate-800 font-bold">{selected.name}</span>
                 {" — "}قبل التسوية:
-                <span className={`font-mono font-bold ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
+                <span className={`number-fmt ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
               </p>
               <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-3.5 mb-4">
                 <p className="text-[10.5px] font-semibold text-amber-800 leading-relaxed flex gap-1.5 items-start">
@@ -1790,14 +1791,14 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قيمة التسوية المطلوبة <span className="text-rose-500">*</span></label>
                   <input ref={adjAmountRef} type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] font-bold font-mono outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] number-fmt outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
                 </div>
                 {adjForm.amount > 0 && (() => {
                   const newBal = adjForm.direction === "subtract" ? bal - Number(adjForm.amount) : bal + Number(adjForm.amount);
                   return (
                     <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
                       <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع لحساب العميل بعد الحفظ:</p>
-                      <p className={`text-[17px] font-bold font-mono ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"}`}>
+                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"}`}>
                         {fmt(Math.abs(newBal))} ج.م
                       </p>
                     </div>

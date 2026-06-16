@@ -5,8 +5,9 @@ import api from "../../services/api";
 import PrintPreviewModal from "../print/PrintPreviewModal";
 import AjalStatementTemplate from "../print/templates/AjalStatementTemplate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "-");
 
 export default function InstallmentsTab({ party, partyType = "customer", accent = "amber", onChanged }) {
@@ -118,19 +119,19 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       <div className="grid grid-cols-4 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-black text-slate-400">إجمالي الأقساط</div>
-          <div className="mt-1 text-[20px] font-black font-mono text-slate-900">{fmt(stats.total)}</div>
+          <div className="mt-1 text-[20px] number-fmt-primary text-slate-900">{fmt(stats.total)}</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-black text-slate-400">المسدد</div>
-          <div className="mt-1 text-[20px] font-black font-mono text-emerald-700">{fmt(stats.paid)}</div>
+          <div className="mt-1 text-[20px] number-fmt-primary text-emerald-700">{fmt(stats.paid)}</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-black text-slate-400">المتبقي</div>
-          <div className="mt-1 text-[20px] font-black font-mono text-amber-700">{fmt(stats.remaining)}</div>
+          <div className="mt-1 text-[20px] number-fmt-primary text-amber-700">{fmt(stats.remaining)}</div>
         </div>
         <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-black text-rose-400">متأخر</div>
-          <div className="mt-1 text-[20px] font-black font-mono text-rose-700">{stats.overdue}</div>
+          <div className="mt-1 text-[20px] number-fmt-primary text-rose-700">{stats.overdue}</div>
         </div>
       </div>
 
@@ -178,7 +179,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                       <td className="px-4 py-3 font-mono text-[11px] text-slate-600">{s.invoice_no || `AJAL-${s.debt_id}`}</td>
                       <td className="px-4 py-3 font-black">{s.installment_no}</td>
                       <td className="px-4 py-3 text-slate-500">{fmtDate(s.due_date)}</td>
-                      <td className="px-4 py-3 font-black font-mono text-slate-800">{fmt(s.amount)}</td>
+                      <td className="px-4 py-3 number-fmt-primary text-slate-800">{fmt(s.amount)}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${statusCls}`}>{statusLabel}</span>
                       </td>
@@ -231,11 +232,11 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl bg-slate-50 p-2 text-center">
                     <div className="text-[11px] font-black text-slate-400">مبلغ القسط</div>
-                    <div className="text-[15px] font-black font-mono text-slate-800">{fmt(selected.amount)}</div>
+                    <div className="text-[15px] number-fmt-primary text-slate-800">{fmt(selected.amount)}</div>
                   </div>
                   <div className="rounded-xl bg-slate-50 p-2 text-center">
                     <div className="text-[11px] font-black text-slate-400">تاريخ الاستحقاق</div>
-                    <div className="text-[15px] font-black font-mono text-slate-800">{fmtDate(selected.due_date)}</div>
+                    <div className="text-[15px] number-fmt text-slate-800">{fmtDate(selected.due_date)}</div>
                   </div>
                 </div>
 
@@ -245,7 +246,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                     <div className="text-[11px] font-black text-slate-400 mb-1">الفاتورة</div>
                     <div className="flex items-center justify-between">
                       <span className="text-2sm font-black text-slate-900">{selected.invoice_no}</span>
-                      <span className="text-2sm font-black font-mono text-slate-700">
+                      <span className="text-2sm number-fmt-primary text-slate-700">
                         {fmt(selected.invoice_total)} ج.م
                       </span>
                     </div>
@@ -290,9 +291,9 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
 
                 {/* Debt info */}
                 <div className="border-t border-slate-100 pt-3 text-[11px] text-slate-500 space-y-1">
-                  <div className="flex justify-between"><span>الأصل:</span><span className="font-mono font-black text-slate-700">{fmt(selected.original_amount)}</span></div>
-                  <div className="flex justify-between"><span>المدفوع:</span><span className="font-mono font-black text-emerald-700">{fmt(selected.paid_amount)}</span></div>
-                  <div className="flex justify-between"><span>المتبقي:</span><span className="font-mono font-black text-rose-700">{fmt(selected.original_amount - selected.paid_amount)}</span></div>
+                  <div className="flex justify-between"><span>الأصل:</span><span className="number-fmt-primary text-slate-700">{fmt(selected.original_amount)}</span></div>
+                  <div className="flex justify-between"><span>المدفوع:</span><span className="number-fmt-primary text-emerald-700">{fmt(selected.paid_amount)}</span></div>
+                  <div className="flex justify-between"><span>المتبقي:</span><span className="number-fmt-primary text-rose-700">{fmt(selected.original_amount - selected.paid_amount)}</span></div>
                 </div>
               </div>
             </div>

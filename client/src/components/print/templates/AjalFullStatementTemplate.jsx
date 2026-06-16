@@ -1,6 +1,7 @@
 ﻿import React from "react";
+import { formatNumber } from "../../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 const STATUS_COLORS = {
   open: { background: "#dbeafe", color: "#1d4ed8" },

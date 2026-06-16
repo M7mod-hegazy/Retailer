@@ -19,9 +19,10 @@ import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import PermissionGate from "../../components/ui/PermissionGate";
 import toast from "react-hot-toast";
+import { formatNumber } from "../../utils/currency";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 export default function PaymentFormPage() {

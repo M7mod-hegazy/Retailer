@@ -9,9 +9,10 @@ import toast from "react-hot-toast";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(v);
 }
 function dateStr(d) {
   if (!d) return "—";
@@ -210,9 +211,9 @@ export default function InstallmentsPage() {
                           {dateStr(debt.due_date)}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-left font-mono text-sm font-bold text-slate-700">{fmt(debt.original_amount)}</td>
-                      <td className="px-5 py-3.5 text-left font-mono text-sm font-bold text-emerald-600">{fmt(debt.paid_amount)}</td>
-                      <td className="px-5 py-3.5 text-left font-mono text-sm font-black text-slate-800">{fmt(remaining)}</td>
+                      <td className="px-5 py-3.5 text-left number-fmt-primary text-sm text-slate-700">{fmt(debt.original_amount)}</td>
+                      <td className="px-5 py-3.5 text-left number-fmt-primary text-sm text-emerald-600">{fmt(debt.paid_amount)}</td>
+                      <td className="px-5 py-3.5 text-left number-fmt-primary text-sm text-slate-800">{fmt(remaining)}</td>
                       <td className="px-5 py-3.5 text-center">
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-black ${st.color}`}>
                           {st.label}
@@ -253,15 +254,15 @@ export default function InstallmentsPage() {
               </div>
               <div className="flex justify-between text-2sm">
                 <span className="font-bold text-slate-500">المبلغ الأصلي</span>
-                <span className="font-black font-mono text-slate-700">{fmt(selectedDebt.original_amount)}</span>
+                <span className="number-fmt-primary text-slate-700">{fmt(selectedDebt.original_amount)}</span>
               </div>
               <div className="flex justify-between text-2sm">
                 <span className="font-bold text-slate-500">المسدد</span>
-                <span className="font-black font-mono text-emerald-600">{fmt(selectedDebt.paid_amount)}</span>
+                <span className="number-fmt-primary text-emerald-600">{fmt(selectedDebt.paid_amount)}</span>
               </div>
               <div className="flex justify-between text-2sm border-t border-slate-200 pt-1 mt-1">
                 <span className="font-black text-slate-700">المتبقي</span>
-                <span className="font-black font-mono text-rose-600">{fmt(Number(selectedDebt.original_amount) - Number(selectedDebt.paid_amount))}</span>
+                <span className="number-fmt-primary text-rose-600">{fmt(Number(selectedDebt.original_amount) - Number(selectedDebt.paid_amount))}</span>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">

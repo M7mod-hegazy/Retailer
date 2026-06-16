@@ -4,10 +4,14 @@ const { ipcMain, app, dialog, BrowserWindow, nativeImage } = require("electron")
 const { execFileSync, execSync } = require("child_process");
 const { closeDb, getDbPath, initDb, getDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
+const { firstWritableDir } = require("../server/src/config/paths");
 
 
 function safeDbPath() {
-  return process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
+  if (process.env.DB_PATH) return process.env.DB_PATH;
+  // Never fall back to process.cwd() — it is the read-only install dir in the packaged app.
+  const dir = firstWritableDir([path.join(process.cwd(), "data")], "db");
+  return path.join(dir, "retailer.db");
 }
 
 function verifyOwnerMaintenancePassword(password) {
@@ -129,29 +133,68 @@ function setupIpc(window) {
   // to the configured printer (no OS dialog). Returns { success:false } so the
   // renderer can fall back to the dialog-based iframe path when this fails.
   ipcMain.handle("print:silent", async (_event, payload = {}) => {
-    const { html = "", deviceName = "", copies = 1 } = payload;
+    const { html = "", deviceName = "", copies = 1, pageSizeStr = "" } = payload;
     if (!html) return { success: false, error: "no_html" };
     const os = require("os");
     const tmpFile = path.join(os.tmpdir(), `retailer-print-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
     let printWin = null;
     try {
       fs.writeFileSync(tmpFile, html, "utf8");
+      // javascript must stay enabled so we can wait for fonts and measure the
+      // rendered height below. The HTML is our own trusted print document (no
+      // scripts); sandbox + a local temp file keep it isolated.
       printWin = new BrowserWindow({
         show: false,
-        webPreferences: { offscreen: false, javascript: false, sandbox: true },
+        webPreferences: { offscreen: false, sandbox: true },
       });
       await printWin.loadFile(tmpFile);
-      // Allow fonts/images/layout to settle before printing.
-      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Electron's silent print IGNORES the CSS `@page { size }` rule, so a thermal
+      // job sent without an explicit pageSize comes out on the driver's default
+      // geometry — frequently a blank page. Wait for web fonts + layout to settle,
+      // then measure the real content height and pass an explicit pageSize.
+      let contentHeightPx = 0;
+      try {
+        contentHeightPx = await printWin.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const measure = () => resolve(Math.ceil(Math.max(
+              document.body.scrollHeight, document.documentElement.scrollHeight, 1)));
+            const ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+            ready.then(() => requestAnimationFrame(() => requestAnimationFrame(measure)));
+          })
+        `);
+      } catch { /* fall back to default geometry below */ }
+
+      const MM = 1000;             // microns per millimetre
+      const PX = 25400 / 96;       // microns per CSS pixel @96dpi
+      const printOptions = {
+        silent: true,
+        printBackground: true,
+        deviceName: deviceName || undefined,
+        copies: Math.max(1, Number(copies) || 1),
+        margins: { marginType: "none" },
+      };
+      // Thermal rolls: explicit width + measured height (auto-height paper).
+      // A4/A5: a named size Electron understands. If the height couldn't be
+      // measured we leave pageSize unset so the driver's own default applies,
+      // rather than forcing a tiny page that would clip the receipt.
+      const rollWidthMm = /^58mm/.test(pageSizeStr) ? 58 : /^80mm/.test(pageSizeStr) ? 80 : 0;
+      if (rollWidthMm && contentHeightPx > 0) {
+        printOptions.pageSize = {
+          width: rollWidthMm * MM,
+          height: Math.ceil(contentHeightPx * PX),
+        };
+      } else if (/^148mm/.test(pageSizeStr)) {
+        printOptions.pageSize = "A5";
+      } else if (!rollWidthMm && pageSizeStr) {
+        printOptions.pageSize = "A4";
+      }
+
+      // A small extra frame so the very last paint lands before the print snapshot.
+      await new Promise((resolve) => setTimeout(resolve, 80));
       const result = await new Promise((resolve) => {
         printWin.webContents.print(
-          {
-            silent: true,
-            printBackground: true,
-            deviceName: deviceName || undefined,
-            copies: Math.max(1, Number(copies) || 1),
-            margins: { marginType: "none" },
-          },
+          printOptions,
           (success, failureReason) => resolve({ success, failureReason }),
         );
       });

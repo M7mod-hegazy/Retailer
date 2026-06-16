@@ -309,6 +309,18 @@ const FIELD_META = {
     defaultValue: "western",
     group: "appearance",
   },
+  font_weight: {
+    label: { ar: "وزن الخط", en: "Font Weight" },
+    hint: { ar: "درجة ثخانة النص العام في النظام", en: "General text font weight" },
+    defaultValue: 700,
+    group: "appearance",
+  },
+  number_font_weight: {
+    label: { ar: "وزن الأرقام", en: "Number Weight" },
+    hint: { ar: "درجة ثخانة الأرقام في النظام", en: "Number font weight" },
+    defaultValue: 700,
+    group: "appearance",
+  },
 
   // ─── Printing — Paper & Margins ───────────────────────────────────
   receipt_width: {

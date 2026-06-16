@@ -3,6 +3,7 @@ import { Receipt, X, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 const PAYMENT_LABELS = {
   cash: "نقدي", bank_transfer: "بنك/فيزا", credit: "آجل",
@@ -10,7 +11,7 @@ const PAYMENT_LABELS = {
 };
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(n);
 }
 
 function todayStr() {

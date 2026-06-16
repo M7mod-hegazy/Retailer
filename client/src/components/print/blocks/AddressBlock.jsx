@@ -9,7 +9,7 @@ export default function AddressBlock({ settings: s, family }) {
   const flex = ALIGN[g(s, "address_alignment")] || "flex-start";
   const fontSize = `${g(s, "address_font_size")}px`;
   const isPage = family === "page";
-  const spanStyle = isPage ? { fontSize, color: "#94a3b8" } : { fontSize };
+  const spanStyle = isPage ? { fontSize, color: "#475569", fontWeight: 600 } : { fontSize };
   const sepStyle = isPage
     ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }
     : { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" };
@@ -21,7 +21,7 @@ export default function AddressBlock({ settings: s, family }) {
     if (!showAddr && !showPhone) return null;
     return (
       <div key={i} style={{ display: "flex", gap: "8px", justifyContent: flex, ...(i > 0 ? sepStyle : {}) }}>
-        {showAddr && <span style={isPage ? spanStyle : { ...spanStyle, opacity: 0.6 }}>{addr}</span>}
+        {showAddr && <span style={isPage ? spanStyle : { ...spanStyle, fontWeight: 600 }}>{addr}</span>}
         {showPhone && <span style={spanStyle}>{phone}</span>}
       </div>
     );

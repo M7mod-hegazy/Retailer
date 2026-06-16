@@ -25,6 +25,7 @@ import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
 import { SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate } from "./reportsCenterConfig";
+import { formatNumber } from "../../utils/currency";
 
 const CLS_ARABIC = {
   "cls_sales_daily": "الملخص اليومي",
@@ -765,8 +766,8 @@ export default function SourceWorkspacePage() {
                     <td className="py-1.5 px-2 text-zinc-800 font-medium">{item.item_name}</td>
                     <td className="py-1.5 px-2 text-zinc-500 font-mono text-left" dir="ltr">{item.code || item.barcode || "-"}</td>
                     <td className="py-1.5 px-2 text-zinc-700 tabular-nums">{item.quantity}</td>
-                    <td className="py-1.5 px-2 text-zinc-700 tabular-nums text-left" dir="ltr">{Number(item.unit_price).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-                    <td className="py-1.5 px-2 text-zinc-800 tabular-nums font-bold text-left" dir="ltr">{Number(item.line_total).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    <td className="py-1.5 px-2 text-zinc-700 tabular-nums text-left" dir="ltr">{formatNumber(item.unit_price)}</td>
+                    <td className="py-1.5 px-2 text-zinc-800 tabular-nums font-bold text-left" dir="ltr">{formatNumber(item.line_total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1105,7 +1106,7 @@ export default function SourceWorkspacePage() {
                 >
                   {isFetching ? "جاري التحديث..." : "البيانات"}
                 </motion.span>
-                <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{totalRows.toLocaleString("en-US")} صف</span>
+                <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{formatNumber(totalRows, { decimals: 0 })} صف</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative" ref={columnDropdownRef}>
@@ -1187,7 +1188,7 @@ export default function SourceWorkspacePage() {
                             const suffix = c.type === "percent" ? "%" : "";
                             return (
                               <span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
-                                {num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
+                                {formatNumber(num)}{suffix}
                               </span>
                             );
                           }
@@ -1229,7 +1230,7 @@ export default function SourceWorkspacePage() {
                       >
                         {hasVal ? (
                           <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
-                            {Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                            {formatNumber(val)}
                           </span>
                         ) : (
                           <span className="text-[11px] font-bold text-emerald-600">الإجمالي</span>
@@ -1243,11 +1244,11 @@ export default function SourceWorkspacePage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-3 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
                 <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500">
-                  <span>إجمالي الصفحات: {totalPages.toLocaleString("en-US")}</span>
+                  <span>إجمالي الصفحات: {formatNumber(totalPages, { decimals: 0 })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-30"><ChevronRight size={16} /></button>
-                  <span className="text-2sm font-bold text-zinc-700 px-2">{currentPage.toLocaleString("en-US")} / {totalPages.toLocaleString("en-US")}</span>
+                  <span className="text-2sm font-bold text-zinc-700 px-2">{formatNumber(currentPage, { decimals: 0 })} / {formatNumber(totalPages, { decimals: 0 })}</span>
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-30"><ChevronLeft size={16} /></button>
                 </div>
               </div>
@@ -1304,7 +1305,7 @@ export default function SourceWorkspacePage() {
           const openingBal = summary.opening_balance;
           const subtitleParts = [];
           if (partyName) subtitleParts.push(partyName);
-          if (openingBal != null) subtitleParts.push(`الرصيد الافتتاحي: ${Number(openingBal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
+          if (openingBal != null) subtitleParts.push(`الرصيد الافتتاحي: ${formatNumber(openingBal)}`);
           const computedSubtitle = subtitleParts.length ? subtitleParts.join(" | ") : undefined;
           return (
             <ReportPrintTemplate

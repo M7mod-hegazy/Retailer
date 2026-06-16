@@ -17,6 +17,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
+import { formatNumber } from "../../utils/currency";
 
 const FADE_UP = {
   hidden: { opacity: 0, y: 20 },
@@ -51,10 +52,10 @@ function formatDateTime(d) {
   return `${day}/${m}/${y}, ${hh}:${min}`;
 }
 function formatQty(v) {
-  return Number(v || 0).toLocaleString("en-US");
+  return formatNumber(v, { decimals: 0 });
 }
 function fmtMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatNumber(v);
 }
 
 function TransferDetailModal({ transfer, onClose, onEdit }) {
@@ -124,9 +125,9 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
                     <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-400">{l.item_code || l.barcode || "—"}</div>
                     <div className="px-3 border-l border-slate-100 text-sm font-black text-slate-900">{l.item_name}</div>
                     <div className="px-2 text-center border-l border-slate-100 text-2sm font-bold text-slate-500">{l.unit_name || "—"}</div>
-                    <div className="px-2 text-center border-l border-slate-100 font-black font-mono text-[15px] text-slate-900">{formatQty(l.quantity)}</div>
+                    <div className="px-2 text-center border-l border-slate-100 number-fmt-primary text-[15px] text-slate-900">{formatQty(l.quantity)}</div>
                     <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-600">{fmtMoney(l.unit_cost)}</div>
-                    <div className="px-2 text-center font-black font-mono text-sm text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                    <div className="px-2 text-center number-fmt-primary text-sm text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
                   </div>
                 ))
               )}
@@ -134,7 +135,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
 
             <div className="flex items-center justify-between bg-slate-950 px-8 py-6 text-white">
               <span className="text-[11px] font-black uppercase tracking-widest opacity-60">الكمية الكلية</span>
-              <span className="text-[2.5rem] font-black font-mono tracking-tighter leading-none">
+              <span className="text-[2.5rem] number-fmt-primary tracking-tighter leading-none">
                 {formatQty((d.lines || []).reduce((s, l) => s + Number(l.quantity || 0), 0))}
               </span>
             </div>
@@ -588,7 +589,7 @@ export default function BranchTransferPage() {
                             <div className="h-8 w-px bg-zinc-200 shrink-0" />
                             <div className="flex flex-col items-center">
                               <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">الكمية</span>
-                              <span className="text-[20px] font-black font-mono text-zinc-950 mt-0.5">{formatQty(row.total_qty)}</span>
+                              <span className="text-[20px] number-fmt-primary text-zinc-950 mt-0.5">{formatQty(row.total_qty)}</span>
                             </div>
                           </div>
 
@@ -687,8 +688,8 @@ export default function BranchTransferPage() {
                           <td className="px-5 py-4 font-bold text-zinc-800">{r.item_name || "—"}</td>
                           <td className="px-5 py-4 text-center font-bold text-zinc-500">{r.unit_name || "—"}</td>
                           <td className="px-5 py-4 text-center font-bold text-zinc-600">{r.warehouse_name || "—"}</td>
-                          <td className="px-5 py-4 text-center font-mono font-black text-zinc-900">{r.quantity}</td>
-                          <td className="px-5 py-4 text-center font-mono font-black text-zinc-600">{fmtMoney(r.unit_cost)}</td>
+                          <td className="px-5 py-4 text-center number-fmt-primary text-zinc-900">{r.quantity}</td>
+                          <td className="px-5 py-4 text-center number-fmt-primary text-zinc-600">{fmtMoney(r.unit_cost)}</td>
                           <td className="px-5 py-4 text-center">
                             <button
                               onClick={() => { setActiveTransfer({ id: r.transfer_id, reference_no: r.reference_no }); setDetailOpen(true); }}

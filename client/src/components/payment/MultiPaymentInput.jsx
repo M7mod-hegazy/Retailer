@@ -2,8 +2,9 @@
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import api from "../../services/api";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 export default function MultiPaymentInput({
   totalAmount = 0,
@@ -108,7 +109,7 @@ export default function MultiPaymentInput({
             value={line.amount}
             disabled={disabled}
             onChange={(event) => updateLine(idx, "amount", event.target.value)}
-            className="w-32 h-10 rounded-xl border border-slate-300 px-3 text-left text-sm font-black font-mono outline-none focus:border-violet-500 ltr:text-left"
+            className="w-32 h-10 rounded-xl border border-slate-300 px-3 text-left text-sm number-fmt outline-none focus:border-violet-500 ltr:text-left"
             dir="ltr"
           />
           {value.length > 1 && (

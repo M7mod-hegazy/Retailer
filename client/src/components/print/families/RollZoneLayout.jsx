@@ -21,7 +21,9 @@ const DIVIDER_BEFORE = { meta: "5px", items: "5px", totals: "5px", payments: "5p
 export default function RollZoneLayout({ items, settings: s }) {
   const accent = g(s, "accent_color");
   const itemFont = `${g(s, "item_font_size")}px`;
-  const dashed = `1px dashed ${accent}66`;
+  // Solid (no alpha) — thermal heads render a 40%-alpha line as a faint, broken
+  // dotted trail. A full-strength dashed divider stays crisp on the roll.
+  const dashed = `1px dashed ${accent}`;
   const addressAtBottom = s.address_position === "bottom";
 
   // Split into the body items (in order) and the optional bottom address block.

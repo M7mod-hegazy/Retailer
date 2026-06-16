@@ -43,26 +43,25 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
     const showCode = cols ? cols.some((c) => c.key === "code") : g(s, "show_item_code") !== false;
     if (cols) {
       return (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize, marginBottom: "8px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize, marginBottom: "8px", fontWeight: 600 }}>
           <thead>
-            <tr style={{ background: accent, color: "#fff" }}>
-              <th style={{ textAlign: "right", padding: "4px 6px", ...cellBorder }}>#</th>
+            <tr style={{ background: accent, color: "#fff", fontWeight: 700 }}>
+              <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700, ...cellBorder }}>#</th>
               {cols.map((c) => (
-                <th key={c.key} style={{ textAlign: c.align || "right", padding: "4px 6px", ...cellBorder, ...(c.key === "code" ? { fontSize: "9px", opacity: 0.85 } : {}) }}>{c.label || HEADER[c.key]}</th>
+                <th key={c.key} style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700, ...cellBorder, ...(c.key === "code" ? { fontSize: "10px" } : {}) }}>{c.label || HEADER[c.key]}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {lines.map((line, i) => (
               <tr key={i} style={{ background: zebra && i % 2 === 0 ? "#f8fafc" : "#fff" }}>
-                <td style={{ padding: "3px 6px", color: "#94a3b8", ...cellBorder }}>{i + 1}</td>
+                <td style={{ padding: "3px 6px", color: "#475569", fontWeight: 700, ...cellBorder }}>{i + 1}</td>
                 {cols.map((c) => (
                   <td key={c.key} style={{
                     textAlign: c.align || (c.key === "name" ? "right" : c.key === "total" ? "left" : "center"),
-                    padding: "3px 6px", ...cellBorder,
-                    ...(c.key === "code" ? { fontSize: "9px", color: "#94a3b8", fontFamily: "monospace" } : {}),
-                    ...(c.key === "name" ? { fontWeight: 600 } : {}),
-                    ...(c.key === "total" ? { fontWeight: 700 } : {}),
+                    padding: "3px 6px", fontWeight: 700, ...cellBorder,
+                    ...(c.key === "code" ? { fontSize: "10px", color: "#334155", fontFamily: "monospace" } : {}),
+                    ...(c.key === "total" ? { fontWeight: 800 } : {}),
                   }}>{VALUE[c.key](line)}</td>
                 ))}
               </tr>
@@ -72,26 +71,26 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
       );
     }
     return (
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize, marginBottom: "8px" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize, marginBottom: "8px", fontWeight: 600 }}>
         <thead>
-          <tr style={{ background: accent, color: "#fff" }}>
-            <th style={{ textAlign: "right", padding: "4px 6px" }}>#</th>
-            {showCode && <th style={{ textAlign: "center", padding: "4px 6px", fontSize: "9px", opacity: 0.85 }}>كود</th>}
-            <th style={{ textAlign: "right", padding: "4px 6px" }}>المنتج</th>
-            <th style={{ textAlign: "center", padding: "4px 6px" }}>كمية</th>
-            <th style={{ textAlign: "center", padding: "4px 6px" }}>سعر</th>
-            <th style={{ textAlign: "left", padding: "4px 6px" }}>إجمالي</th>
+          <tr style={{ background: accent, color: "#fff", fontWeight: 700 }}>
+            <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700 }}>#</th>
+            {showCode && <th style={{ textAlign: "center", padding: "4px 6px", fontSize: "10px", fontWeight: 700 }}>كود</th>}
+            <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700 }}>المنتج</th>
+            <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700 }}>كمية</th>
+            <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700 }}>سعر</th>
+            <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 700 }}>إجمالي</th>
           </tr>
         </thead>
         <tbody>
           {lines.map((line, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? "#f8fafc" : "#fff" }}>
-              <td style={{ padding: "3px 6px", color: "#94a3b8" }}>{i + 1}</td>
-              {showCode && <td style={{ textAlign: "center", padding: "3px 6px", fontSize: "9px", color: "#94a3b8", fontFamily: "monospace" }}>{codeOf(line)}</td>}
-              <td style={{ padding: "3px 6px", fontWeight: 600 }}>{nameOf(line)}</td>
-              <td style={{ textAlign: "center", padding: "3px 6px" }}>{line.quantity}</td>
-              <td style={{ textAlign: "center", padding: "3px 6px" }}>{priceOf(line).toFixed(2)}</td>
-              <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: 700 }}>{lineTotalOf(line).toFixed(2)}</td>
+              <td style={{ padding: "3px 6px", color: "#475569", fontWeight: 700 }}>{i + 1}</td>
+              {showCode && <td style={{ textAlign: "center", padding: "3px 6px", fontSize: "10px", color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{codeOf(line)}</td>}
+              <td style={{ padding: "3px 6px", fontWeight: 700 }}>{nameOf(line)}</td>
+              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{line.quantity}</td>
+              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{priceOf(line).toFixed(2)}</td>
+              <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: 800 }}>{lineTotalOf(line).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>
@@ -102,11 +101,11 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   const solid = `1px solid ${accent}`;
   if (cols) {
     return (
-      <table style={{ width: "100%", fontSize, borderCollapse: "collapse" }}>
+      <table style={{ width: "100%", fontSize, borderCollapse: "collapse", fontWeight: 700 }}>
         <thead>
           <tr style={{ borderBottom: solid }}>
             {cols.map((c) => (
-              <th key={c.key} style={{ textAlign: c.align || "right", paddingBottom: "3px", ...(c.key === "code" ? { opacity: 0.6, fontSize: "9px" } : {}) }}>{c.label || (c.key === "name" ? "الصنف" : HEADER[c.key])}</th>
+              <th key={c.key} style={{ textAlign: c.align || "right", paddingBottom: "3px", fontWeight: 700, ...(c.key === "code" ? { fontSize: "10px" } : {}) }}>{c.label || (c.key === "name" ? "الصنف" : HEADER[c.key])}</th>
             ))}
           </tr>
         </thead>
@@ -116,8 +115,8 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
               {cols.map((c) => (
                 <td key={c.key} style={{
                   textAlign: c.align || (c.key === "qty" ? "center" : c.key === "total" ? "left" : "right"),
-                  padding: "2px 0",
-                  ...(c.key === "code" ? { fontSize: "9px", opacity: 0.6, fontFamily: "monospace" } : {}),
+                  padding: "2px 0", fontWeight: 700,
+                  ...(c.key === "code" ? { fontSize: "10px", fontFamily: "monospace" } : {}),
                 }}>{VALUE[c.key](line)}</td>
               ))}
             </tr>
@@ -128,23 +127,30 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   }
 
   const showCode = g(s, "show_item_code") !== false;
+  // Thermal printers can't reproduce gray/opacity — it dithers into a faint,
+  // half-printed smudge. Keep every cell solid black and bold so the product
+  // name, code and numbers stay crisp on the roll.
+  // Even horizontal padding on every cell so columns keep a consistent gap (the
+  // code used to sit flush against the product name) and centered headers.
+  const cell = { padding: "3px 5px", fontWeight: 700 };
+  const head = { ...cell, textAlign: "center" };
   return (
-    <table style={{ width: "100%", fontSize, borderCollapse: "collapse" }}>
+    <table style={{ width: "100%", fontSize, borderCollapse: "collapse", fontWeight: 700 }}>
       <thead>
         <tr style={{ borderBottom: solid }}>
-          {showCode && <th style={{ textAlign: "right", paddingBottom: "3px", opacity: 0.6, fontSize: "9px" }}>كود</th>}
-          <th style={{ textAlign: "right", paddingBottom: "3px" }}>الصنف</th>
-          <th style={{ textAlign: "center" }}>كمية</th>
-          <th style={{ textAlign: "left" }}>إجمالي</th>
+          {showCode && <th style={{ ...head, fontSize: "10px" }}>كود</th>}
+          <th style={head}>الصنف</th>
+          <th style={head}>كمية</th>
+          <th style={head}>إجمالي</th>
         </tr>
       </thead>
       <tbody>
         {lines.map((line, i) => (
           <tr key={i}>
-            {showCode && <td style={{ textAlign: "right", padding: "2px 0", fontSize: "9px", opacity: 0.6, fontFamily: "monospace" }}>{codeOf(line)}</td>}
-            <td style={{ textAlign: "right", padding: "2px 0" }}>{nameOf(line)}</td>
-            <td style={{ textAlign: "center" }}>{line.quantity}</td>
-            <td style={{ textAlign: "left" }}>{lineTotalOf(line).toFixed(2)}</td>
+            {showCode && <td style={{ ...cell, textAlign: "center", fontSize: "10px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{codeOf(line)}</td>}
+            <td style={{ ...cell, textAlign: "right" }}>{nameOf(line)}</td>
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{line.quantity}</td>
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{lineTotalOf(line).toFixed(2)}</td>
           </tr>
         ))}
       </tbody>

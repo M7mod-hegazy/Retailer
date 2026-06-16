@@ -6,16 +6,12 @@ import Modal from "../ui/Modal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import DataGrid from "../ui/DataGrid";
 import Highlight from "../ui/Highlight";
+import { formatNumber } from "../../utils/currency";
 
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
-function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 function formatMoney(v) {
-  return Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return formatNumber(v, { decimals: 3 });
 }
 function formatArabicDateTime(date) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
@@ -129,7 +125,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
                       <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
-                      <td className="px-3 py-2.5 text-center font-mono font-black text-amber-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
+                      <td className="px-3 py-2.5 text-center number-fmt text-amber-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
                       <td className="px-3 py-2.5 text-center">
                         {returned > 0 ? <span className="text-amber-600 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
                       </td>
@@ -143,23 +139,23 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
             <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">المجموع الفرعي</span>
-                <span className="font-black font-mono text-slate-700">{formatMoney(subtotal)}</span>
+                <span className="number-fmt-primary text-slate-700">{formatMoney(subtotal)}</span>
               </div>
               {Number(d.discount) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">خصم</span>
-                  <span className="font-black font-mono text-rose-600">- {formatMoney(d.discount)}</span>
+                  <span className="number-fmt-primary text-rose-600">- {formatMoney(d.discount)}</span>
                 </div>
               )}
               {Number(d.increase) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">إضافة</span>
-                  <span className="font-black font-mono text-emerald-600">+ {formatMoney(d.increase)}</span>
+                  <span className="number-fmt-primary text-emerald-600">+ {formatMoney(d.increase)}</span>
                 </div>
               )}
               <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1">
                 <span className="font-black text-slate-800">الإجمالي</span>
-                <span className="font-black font-mono text-slate-900">{formatMoney(d.total)} ج.م</span>
+                <span className="number-fmt-primary text-slate-900">{formatMoney(d.total)} ج.م</span>
               </div>
             </div>
             {d.payments?.length > 0 && (
@@ -168,7 +164,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
                 {d.payments.map((p, i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-slate-600">{p.method_name || "—"}</span>
-                    <span className="font-black font-mono text-slate-800">{formatMoney(p.amount)}</span>
+                    <span className="number-fmt-primary text-slate-800">{formatMoney(p.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -326,7 +322,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
     { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.doc_no },
     { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
     { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-sm font-black text-amber-700", render: (inv) => (
+    { id: "total", header: "الإجمالي", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-amber-700", render: (inv) => (
       <div className="flex flex-col gap-0.5">
         <span>{formatMoney(inv.total)}</span>
         {(Number(inv.discount) > 0 || Number(inv.increase) > 0) && (
@@ -345,7 +341,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
             {splits.map((s, i) => { const info = PAYMENT_METHOD_STYLES[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
               <div key={i} className="flex items-center gap-1">
                 <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(s.amount)}</span>
+                <span className="text-[11px] number-fmt text-slate-500">{formatMoney(s.amount)}</span>
               </div>
             ); })}
           </div>
@@ -355,12 +351,12 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
       return (
         <div className="flex flex-col gap-0.5">
           {info ? <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span> : <span className="text-[11px] font-bold text-slate-600">{inv.payment_method || "—"}</span>}
-          <span className="text-[11px] font-mono font-bold text-slate-500">{formatMoney(inv.total)}</span>
+          <span className="text-[11px] number-fmt text-slate-500">{formatMoney(inv.total)}</span>
         </div>
       );
     } },
     { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
-    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
+    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
   ];
 
   return (
@@ -479,12 +475,12 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
           <div className="flex items-center gap-4 rounded-sm bg-amber-800 px-4 py-3">
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest">عدد الفواتير</span>
-              <span className="font-mono text-[20px] font-black text-white leading-none">{summary.count}</span>
+              <span className="number-fmt-primary text-[20px] text-white leading-none">{summary.count}</span>
             </div>
             <div className="h-8 w-px bg-amber-700" />
             <div className="flex flex-col">
               <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest">إجمالي المشتريات</span>
-              <span className="font-mono text-[20px] font-black text-amber-300 leading-none">{formatMoney(summary.total)}</span>
+              <span className="number-fmt-primary text-[20px] text-amber-300 leading-none">{formatMoney(summary.total)}</span>
             </div>
           </div>
           <div className="max-h-[420px] overflow-auto rounded-sm border border-amber-200">

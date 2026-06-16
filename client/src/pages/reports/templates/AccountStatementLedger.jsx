@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
+import { formatNumber } from "../../../utils/currency";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmtNum(n) {
-  const v = Number(n || 0);
-  return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatNumber(n);
 }
 
 function fmtDate(iso) {
@@ -180,7 +180,7 @@ export default function AccountStatementLedger({ rows = [], summary = {}, partyT
             return (
               <React.Fragment key={`${g.type}-${g.ref_no || idx}-${idx}`}>
                 <tr className={`${headBg} ${noImpact ? "" : "hover:bg-emerald-50/30"}`} style={{ breakInside: "avoid" }}>
-                  <td className={`${cell} text-center font-bold tabular-nums ${ribbon} ${noImpact ? "text-amber-700/70" : "text-zinc-400"}`}>{(idx + 1).toLocaleString("en-US")}</td>
+                  <td className={`${cell} text-center font-bold tabular-nums ${ribbon} ${noImpact ? "text-amber-700/70" : "text-zinc-400"}`}>{formatNumber(idx + 1, { decimals: 0 })}</td>
                   <td className={`${cell} text-center whitespace-nowrap ${noImpact ? "opacity-70" : ""}`}>
                     <div className="font-bold text-zinc-700 tabular-nums leading-tight" dir="ltr">{fmtDate(g.datetime || g.date)}</div>
                     {fmtTime(g.datetime) && <div className="text-[10px] text-zinc-400 tabular-nums leading-tight" dir="ltr">{fmtTime(g.datetime)}</div>}
@@ -232,7 +232,7 @@ export default function AccountStatementLedger({ rows = [], summary = {}, partyT
                           {g.items.map((it, i) => (
                             <tr key={i} className="bg-white">
                               <td className="px-2 py-1 text-[11px] font-semibold text-zinc-700 border border-zinc-200 break-words">{it.item_name || "—"}{it.code ? <span className="text-zinc-400 font-normal"> · {it.code}</span> : null}</td>
-                              <td className="px-2 py-1 text-[11px] text-center text-zinc-700 border border-zinc-200 tabular-nums" dir="ltr">{Number(it.quantity || 0).toLocaleString("en-US")}</td>
+                              <td className="px-2 py-1 text-[11px] text-center text-zinc-700 border border-zinc-200 tabular-nums" dir="ltr">{formatNumber(it.quantity, { decimals: 0 })}</td>
                               <td className="px-2 py-1 text-[11px] text-center text-zinc-700 border border-zinc-200 tabular-nums" dir="ltr">{fmtNum(it.unit_price)}</td>
                               <td className="px-2 py-1 text-[11px] text-center font-bold text-zinc-800 border border-zinc-200 tabular-nums" dir="ltr">{fmtNum(it.line_total)}</td>
                             </tr>

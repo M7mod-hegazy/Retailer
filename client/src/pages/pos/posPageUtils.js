@@ -1,16 +1,9 @@
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5000");
+import { formatNumber } from "../../utils/currency";
 
-export function resolveImageUrl(u) {
-  if (!u) return null;
-  if (u.startsWith("http") || u.startsWith("data:")) return u;
-  return `${BASE_URL}${u.startsWith("/") ? "" : "/"}${u}`;
-}
+export { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 export function formatMoney(value) {
-  return Number(value || 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
+  return formatNumber(value, { decimals: 3 });
 }
 
 export function formatArabicDate(date) {

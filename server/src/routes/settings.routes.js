@@ -221,7 +221,27 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
   const { sql, params } = buildUpdate(current, updates);
   db.prepare(sql).run(...params);
 
-  req.audit("bulk_edit", "settings", updates, `⚙️ تم تحديث إعدادات متعددة (${Object.keys(updates).length} إعداد)`);
+  // Build a diff of only the keys that actually changed value
+  // Normalize both sides to handle DB string "5235.0" vs request number 5235
+  const changes = {};
+  for (const key of Object.keys(updates)) {
+    const newVal = coerceVal(key, updates[key]);
+    const oldVal = coerceVal(key, current[key]);
+    // String comparison first (fast path)
+    if (String(oldVal) === String(newVal)) continue;
+    // Numeric comparison: "5235.0" and 5235 are semantically equal
+    const nOld = Number(oldVal), nNew = Number(newVal);
+    if (!isNaN(nOld) && !isNaN(nNew) && nOld === nNew) continue;
+    // Real change — store raw values for the audit trail (client will clean display)
+    changes[key] = { from: current[key], to: newVal };
+  }
+  const changedCount = Object.keys(changes).length;
+  const changedKeys = Object.keys(changes).slice(0, 5).join("، ");
+  const desc = changedCount > 0
+    ? `⚙️ تم تحديث ${changedCount} إعداد${changedCount > 5 ? ` (${changedKeys}، ...)` : ` (${changedKeys})`}`
+    : `⚙️ تم حفظ الإعدادات (بدون تغيير)`;
+
+  req.audit("bulk_edit", "settings", changes, desc);
   res.json({ success: true, data: getSettings() });
 });
 

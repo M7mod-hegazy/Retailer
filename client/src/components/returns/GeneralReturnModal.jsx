@@ -4,6 +4,8 @@ import { X, Search, Trash2 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import SearchDropdown from "../ui/SearchDropdown";
+import ProductSearchField from "../ui/ProductSearchField";
+import { formatNumber } from "../../utils/currency";
 
 const REASONS = [
   { value: "defective", label: "عيب في المنتج" },
@@ -14,7 +16,7 @@ const REASONS = [
 ];
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return formatNumber(n);
 }
 
 export default function GeneralReturnModal({ open, onClose, onSuccess }) {
@@ -232,38 +234,20 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           {/* Item search */}
           <div>
             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">إضافة أصناف</label>
-            <div className="relative">
-              <input
-                value={itemQuery}
-                onChange={e => { setItemQuery(e.target.value); }}
-                onFocus={e => e.target.select()}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const q = itemQuery.trim();
-                    if (itemResults.length > 0) addItem(itemResults[0]);
-                    else if (q) addItem({ id: -1, name: q, code: q });
-                  }
-                }}
-                placeholder="ابحث عن صنف بالاسم أو الباركود..."
-                className="w-full rounded-xl border border-slate-300 pr-9 pl-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
-              />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              {itemQuery && (
-                <SearchDropdown
-                  items={itemResults}
-                  onPick={addItem}
-                  activeIndex={-1}
-                  query={itemQuery}
-                  emptyLabel="لا توجد نتائج"
-                  rawText={itemQuery}
-                  onPickRawText={(txt) => addItem({ id: -1, name: txt, code: txt })}
-                  onLoadMore={loadMoreItems}
-                  hasMoreFromServer={itemHasMore}
-                  isLoadingMore={isLoadingMoreItems}
-                />
-              )}
-            </div>
+            <ProductSearchField
+              query={itemQuery}
+              onQueryChange={(val) => setItemQuery(val)}
+              results={itemResults}
+              onPick={addItem}
+              emptyLabel="لا توجد نتائج"
+              rawText={itemQuery}
+              onPickRawText={(txt) => addItem({ id: -1, name: txt, code: txt })}
+              onLoadMore={loadMoreItems}
+              hasMore={itemHasMore}
+              isLoadingMore={isLoadingMoreItems}
+              showChip={false}
+              placeholder="ابحث عن صنف بالاسم أو الباركود..."
+            />
           </div>
 
           {/* Lines table */}
@@ -301,7 +285,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                           className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-rose-400"
                         />
                       </td>
-                      <td className="px-4 py-2.5 font-black font-mono text-rose-700">
+                      <td className="px-4 py-2.5 number-fmt text-rose-700">
                         {fmt(line.quantity * line.unit_price)}
                       </td>
                       <td className="px-4 py-2.5">
@@ -315,7 +299,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                 <tfoot className="bg-rose-50 border-t border-rose-200">
                   <tr>
                     <td colSpan={3} className="px-4 py-3 font-black text-rose-800 text-right">الإجمالي</td>
-                    <td className="px-4 py-3 font-black font-mono text-rose-800 text-[15px]">{fmt(total)} ج.م</td>
+                    <td className="px-4 py-3 number-fmt-primary text-rose-800 text-[15px]">{fmt(total)} ج.م</td>
                     <td />
                   </tr>
                 </tfoot>

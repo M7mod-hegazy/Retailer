@@ -14,8 +14,9 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
 
@@ -137,7 +138,7 @@ function InstallmentsBadge({ debtId }) {
             return (
               <div key={s.id} className={`flex items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold ${isPaid ? "bg-emerald-50 text-emerald-700" : isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-50 text-slate-600"}`}>
                 <span>القسط {s.installment_no} — {fmtDate(s.due_date)}</span>
-                <span className="font-black font-mono">{fmt(s.amount)}</span>
+                <span className="number-fmt-primary">{fmt(s.amount)}</span>
                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isPaid ? "bg-emerald-200 text-emerald-800" : isOverdue ? "bg-rose-200 text-rose-800" : "bg-slate-200 text-slate-700"}`}>
                   {isPaid ? "مسدد" : isOverdue ? "متأخر" : "معلق"}
                 </span>
@@ -572,7 +573,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
               return (
                 <div className="flex flex-col items-center gap-[3px] shrink-0 self-start pt-1 w-[76px]">
                   <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">قبل</span>
-                  <span className={`text-[9px] font-black font-mono px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
+                  <span className={`text-[9px] number-fmt-primary px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
                     ev.balanceBefore > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
                     : ev.balanceBefore < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
                     : "bg-slate-50 text-slate-500 border-slate-200/70"
@@ -583,7 +584,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                   </svg>
 
                   <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">بعد</span>
-                  <span className={`text-[9px] font-black font-mono px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
+                  <span className={`text-[9px] number-fmt-primary px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
                     ev.balanceAfter > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
                     : ev.balanceAfter < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
                     : "bg-slate-50/80 text-slate-400 border-slate-200/50"
@@ -661,7 +662,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                               >
                                 <span className={`h-1.5 w-1.5 rounded-full ${style.dot} animate-pulse`} />
                                 {arMethod(chip.method)}
-                                <span className="font-mono text-[11px] font-black">{fmt(chip.amount)}</span>
+                                <span className="number-fmt-primary text-[11px]">{fmt(chip.amount)}</span>
                                 {isMulti && <span className="opacity-60 text-[8.5px] font-bold mr-0.5">({pct}%)</span>}
                               </span>
                             );
@@ -711,7 +712,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                           <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
                             {isOpening ? "القيمة الافتتاحية" : isDocRow ? "إجمالي الفاتورة" : ev.type === "return" ? "إجمالي المرتجع" : ev.type === "payment" ? "المبلغ المسدد" : "قيمة التسوية"}
                           </span>
-                          <div className="text-[18px] font-black text-slate-800 font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                          <div className="text-[18px] number-fmt-primary text-slate-800 tracking-tight leading-none flex items-baseline gap-0.5 truncate">
                             <span>{fmt(isOpening ? ev.impactAmount : isDocRow ? ev.invoiceTotal : ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}</span>
                             <span className="text-[9.5px] font-bold text-slate-400 mr-0.5">ج.م</span>
                           </div>
@@ -734,7 +735,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                                   ? "المضاف للآجل"
                                   : "المخصوم من الرصيد"}
                             </span>
-                            <div className="text-[18px] font-black font-mono tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                            <div className="text-[18px] number-fmt-primary tracking-tight leading-none flex items-baseline gap-0.5 truncate">
                               <span className="text-sm font-black select-none leading-none mr-0.5">
                                 {ev.impactDir === "add" || isMulti ? "+" : "−"}
                               </span>
@@ -1091,7 +1092,7 @@ export default function SupplierAccountsPage() {
           </div>
 
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-[23px] font-black font-mono tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
+            <span className={`text-[23px] number-fmt-primary tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
               {summaryLoading ? (
                 <span className="inline-block w-16 h-7 bg-slate-200 rounded animate-pulse" />
               ) : (
@@ -1154,7 +1155,7 @@ export default function SupplierAccountsPage() {
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 select-none">
-                  <span className={`text-sm font-black font-mono tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  <span className={`text-sm number-fmt-primary tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                     {fmt(Math.abs(b))}
                   </span>
                   {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">له مستحق</span>}
@@ -1242,7 +1243,7 @@ export default function SupplierAccountsPage() {
                         {bal > 0 ? "له مستحق بذمتنا" : bal < 0 ? "عليه مستحق لنا" : "رصيد الحساب مسوّى"}
                       </div>
                       <div className="flex items-baseline gap-1 mt-1">
-                        <div className={`text-[20px] font-black font-mono leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
+                        <div className={`text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
                           {fmt(Math.abs(bal))}
                         </div>
                         <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-455" : bal < 0 ? "text-emerald-455" : "text-slate-455"}`}>ج.م</span>
@@ -1340,10 +1341,10 @@ export default function SupplierAccountsPage() {
                     <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{detailData.supplier_name || "—"}</span></div>
                     <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(detailData.created_at)}</span></div>
                     <div><span className="font-black text-slate-400">طريقة الدفع:</span> <span className="font-bold text-slate-800">{PM[detailData.payment_method] || detailData.payment_method || "—"}</span></div>
-                    <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="font-black font-mono text-slate-900">{fmt(detailData.total)} ج.م</span></div>
-                    <div><span className="font-black text-slate-400">المدفوع:</span> <span className="font-bold font-mono text-emerald-700">{fmt(paid)} ج.م</span></div>
+                    <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="number-fmt-primary text-slate-900">{fmt(detailData.total)} ج.م</span></div>
+                    <div><span className="font-black text-slate-400">المدفوع:</span> <span className="number-fmt text-emerald-700">{fmt(paid)} ج.م</span></div>
                     {Number(detailData.debt_remaining) > 0.005 && (
-                      <div><span className="font-black text-slate-400">المتبقي (آجل):</span> <span className="font-bold font-mono text-rose-600">{fmt(detailData.debt_remaining)} ج.م</span></div>
+                      <div><span className="font-black text-slate-400">المتبقي (آجل):</span> <span className="number-fmt text-rose-600">{fmt(detailData.debt_remaining)} ج.م</span></div>
                     )}
                   </div>
                 </div>
@@ -1369,8 +1370,8 @@ export default function SupplierAccountsPage() {
                               </div>
                             </td>
                             <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
-                            <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_cost)}</td>
-                            <td className="px-3 py-2 text-center font-mono font-black text-orange-700">{fmt(l.line_total || (l.quantity * l.unit_cost))}</td>
+                            <td className="px-2 py-2 text-center number-fmt text-slate-600">{fmt(l.unit_cost)}</td>
+                            <td className="px-3 py-2 text-center number-fmt-primary text-orange-700">{fmt(l.line_total || (l.quantity * l.unit_cost))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1466,8 +1467,8 @@ export default function SupplierAccountsPage() {
                                   </div>
                                 </td>
                                 <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
-                                <td className="px-2 py-2 text-center font-mono text-slate-600">{fmt(l.unit_cost)}</td>
-                                <td className="px-3 py-2 text-center font-mono font-black text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_cost))}</td>
+                                <td className="px-2 py-2 text-center number-fmt text-slate-600">{fmt(l.unit_cost)}</td>
+                                <td className="px-3 py-2 text-center number-fmt-primary text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_cost))}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1475,18 +1476,18 @@ export default function SupplierAccountsPage() {
                             {(Number(d.discount) > 0 || Number(d.increase) > 0) && (
                               <tr>
                                 <td colSpan={3} className="px-3 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
-                                <td className="px-3 py-1.5 text-center font-mono font-bold text-slate-600">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
+                                <td className="px-3 py-1.5 text-center number-fmt text-slate-600">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
                               </tr>
                             )}
                             {Number(d.discount) > 0 && (
-                              <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-rose-600">خصم المرتجع</td><td className="px-3 py-1.5 text-center font-mono font-bold text-rose-600">− {fmt(d.discount)}</td></tr>
+                              <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-rose-600">خصم المرتجع</td><td className="px-3 py-1.5 text-center number-fmt-primary text-rose-600">− {fmt(d.discount)}</td></tr>
                             )}
                             {Number(d.increase) > 0 && (
-                              <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-emerald-600">زيادة المرتجع</td><td className="px-3 py-1.5 text-center font-mono font-bold text-emerald-600">+ {fmt(d.increase)}</td></tr>
+                              <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-emerald-600">زيادة المرتجع</td><td className="px-3 py-1.5 text-center number-fmt-primary text-emerald-600">+ {fmt(d.increase)}</td></tr>
                             )}
                             <tr className="border-t border-slate-200">
                               <td colSpan={3} className="px-3 py-2 text-right font-black text-slate-800">صافي المرتجع</td>
-                              <td className="px-3 py-2 text-center font-mono font-black text-slate-900 text-sm">{fmt(d.total)}</td>
+                              <td className="px-3 py-2 text-center number-fmt-primary text-slate-900 text-sm">{fmt(d.total)}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -1500,13 +1501,13 @@ export default function SupplierAccountsPage() {
                         {Number(d.cash_amount) > 0.005 && (
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-slate-500">نقداً (صندوق)</span>
-                            <span className="font-mono font-bold text-emerald-700">{fmt(d.cash_amount)} ج.م</span>
+                            <span className="number-fmt text-emerald-700">{fmt(d.cash_amount)} ج.م</span>
                           </div>
                         )}
                         {Number(d.credit_amount) > 0.005 && (
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-slate-500">خصم من الآجل (رصيد)</span>
-                            <span className="font-mono font-bold text-rose-600">{fmt(d.credit_amount)} ج.م</span>
+                            <span className="number-fmt text-rose-600">{fmt(d.credit_amount)} ج.م</span>
                           </div>
                         )}
                       </div>
@@ -1559,14 +1560,14 @@ export default function SupplierAccountsPage() {
             <p className="text-2sm text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
             {bal > 0 && (
               <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 text-2sm font-bold text-rose-800">
-                له مستحق <span className="font-mono font-black">{fmt(bal)} ج.م</span>
+                له مستحق <span className="number-fmt-primary">{fmt(bal)} ج.م</span>
               </div>
             )}
             <div className="space-y-4">
               <div>
                 <label className="text-2sm font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input ref={payAmountRef} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
+                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] number-fmt-primary outline-none focus:border-orange-500" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
               </div>
               <div>
                 <label className="text-2sm font-black text-slate-600 mb-1.5 block">وسيلة الدفع <span className="text-rose-500">*</span></label>
@@ -1604,7 +1605,7 @@ export default function SupplierAccountsPage() {
             <p className="text-2sm text-slate-500 font-bold mb-5">
               المورد: <span className="text-slate-800">{selected.name}</span>
               {" — "}الرصيد الحالي:
-              <span className={`font-mono font-black ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
+              <span className={`number-fmt-primary ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
             </p>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
               <p className="text-[11px] font-black text-amber-800">⚠️ التسوية اليدوية تعدّل رصيد المورد مباشرة بدون تأثير على الخزنة. تُسجَّل في الحركات.</p>
@@ -1625,7 +1626,7 @@ export default function SupplierAccountsPage() {
               <div>
                 <label className="text-2sm font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input ref={adjAmountRef} type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
-                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] font-black font-mono outline-none focus:border-orange-500" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
+                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] number-fmt-primary outline-none focus:border-orange-500" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
               </div>
               <div>
                 <label className="text-2sm font-black text-slate-600 mb-1.5 block">سبب التسوية</label>

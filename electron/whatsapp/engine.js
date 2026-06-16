@@ -12,7 +12,10 @@ function getAuthDir() {
     const { app } = require("electron");
     return path.join(app.getPath("userData"), "wa_auth");
   } catch (_) {
-    return path.join(process.cwd(), "data", "wa_auth");
+    // Plain-Node / dev fallback — prefer the configured writable root, never the
+    // (read-only) install dir that process.cwd() points at in the packaged app.
+    const root = process.env.RETAILER_DATA_DIR || process.env.UPLOADS_DIR || require("os").tmpdir();
+    return path.join(root, "wa_auth");
   }
 }
 

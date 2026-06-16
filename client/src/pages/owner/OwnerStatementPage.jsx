@@ -37,6 +37,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
+import { formatNumber } from "../../utils/currency";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const COST_METHODS = [
@@ -145,7 +146,7 @@ function costMethodFromSearch(searchParams) {
 }
 
 function money(value) {
-  return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatNumber(value);
 }
 
 function displayValue(row, key, type) {
@@ -153,7 +154,7 @@ function displayValue(row, key, type) {
   if (key === "cost_method_label") return row.cost_method_label || COST_METHOD_LABELS[row.cost_method] || row.cost_method || "—";
   if ((key === "actual_cash" || key === "discrepancy") && row[key] == null) return "—";
   if (type === "money") return money(row[key]);
-  if (type === "number") return Number(row[key] || 0).toLocaleString("en-US");
+  if (type === "number") return formatNumber(row[key]);
   return String(row[key] ?? "—").slice(0, 120);
 }
 

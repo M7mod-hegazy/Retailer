@@ -3,8 +3,9 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { X, Phone, MapPin, Edit2, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import api from "../../services/api";
 import Button from "../ui/Button";
+import { formatNumber } from "../../utils/currency";
 
-const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => formatNumber(n);
 
 function parseJson(val) {
   try { return JSON.parse(val || "[]"); } catch { return []; }
@@ -138,7 +139,7 @@ export default function SupplierInfoModal({ open, supplierId, onClose, onUpdated
                 <span className={`text-[11px] font-black uppercase tracking-wide ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                   {bal > 0 ? "عليه رصيد" : bal < 0 ? "له رصيد" : "مسوّى"}
                 </span>
-                <span className={`text-[18px] font-black font-mono ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                <span className={`text-[18px] number-fmt-primary ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
                   {fmt(Math.abs(bal))} <span className="text-[11px]">ج.م</span>
                 </span>
               </div>

@@ -20,6 +20,7 @@ import PermissionGate from "../ui/PermissionGate";
 import { usePermission } from "../../hooks/usePermission";
 import PermissionDeniedModal from "../ui/PermissionDeniedModal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { formatNumber } from "../../utils/currency";
 
 function createInitialState(fields, source = {}) {
   return fields.reduce((acc, field) => ({ ...acc, [field.name]: source[field.name] ?? field.initialValue ?? "" }), {});
@@ -267,50 +268,47 @@ export default function SimpleCrudPage({
     <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl">
       <PermissionDeniedModal open={permDenied} onClose={() => setPermDenied(false)} />
       
-      {/* Impeccable Animated Architectural Background */}
+      {/* Animated Architectural Background */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-        {/* Base Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_srgb,var(--border-normal)_10%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_srgb,var(--border-normal)_10%,transparent)_1px,transparent_1px)] bg-[size:32px_32px]" />
+        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to_right,var(--border-subtle) 1px,transparent 1px),linear-gradient(to_bottom,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
         
-        {/* Cinematic Shimmer Sweep — skipped in reduced-motion mode so it
-            stops repainting forever on low-end machines. */}
         {!reduceMotion && (
           <motion.div
             animate={{ x: ["-150%", "200%"] }}
             transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12 mix-blend-overlay"
+            className="absolute inset-0 w-[40%] h-full skew-x-12"
+            style={{ background: "linear-gradient(to right,transparent,color-mix(in srgb,var(--text-primary) 8%,transparent),transparent)", mixBlendMode: "overlay" }}
           />
         )}
         
-        {/* Center Spotlight / Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_50%_40%,transparent_0%,rgba(250,250,250,0.95)_100%)]" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 40%,transparent 0%,var(--bg-base) 100%)" }} />
       </div>
 
       {/* Cinematic Hero Header */}
-      <header className="relative z-10 w-full pt-24 pb-16 px-8">
+      <header className="relative z-10 w-full pt-24 pb-16 px-4 md:px-8">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-[1400px] mx-auto flex flex-col items-start justify-center"
         >
-          <div className="flex items-center gap-3 text-slate-400 mb-8">
+          <div className="flex items-center gap-3 mb-8" style={{ color: "var(--text-muted)" }}>
             <motion.div 
               initial={{ width: 0 }} 
               animate={{ width: 32 }} 
               transition={{ delay: 0.5, duration: 0.8 }}
-              className="h-px bg-zinc-400"
+              className="h-px" style={{ backgroundColor: "var(--text-muted)" }}
             />
             <Database className="h-3 w-3" />
             <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">نظام الإدارة الأساسي</span>
           </div>
           
-          <h1 className="max-w-4xl text-5xl md:text-7xl font-black text-zinc-950 tracking-tighter leading-[1.1] mb-6">
+          <h1 className="max-w-4xl text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter leading-[1.1] mb-6" style={{ color: "var(--text-primary)" }}>
             {title}
           </h1>
           
           {description && (
-            <p className="max-w-[65ch] text-base font-medium text-slate-500 leading-relaxed border-r-2 border-zinc-900 pr-5">
+            <p className="max-w-[65ch] text-base font-medium leading-relaxed pr-5" style={{ color: "var(--text-secondary)", borderRight: "2px solid var(--text-primary)" }}>
               {description}
             </p>
           )}
@@ -318,7 +316,7 @@ export default function SimpleCrudPage({
       </header>
 
       {/* Bento Grid Layout */}
-      <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-8 pb-32">
+      <main className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto px-4 md:px-8 pb-32">
         
         {/* Top Action Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -328,13 +326,16 @@ export default function SimpleCrudPage({
             transition={{ delay: 0.2, duration: 0.6 }}
             className="relative group w-full md:w-96"
           >
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-zinc-900 transition-colors" />
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors" style={{ color: "var(--text-muted)" }} />
             <input
               data-help="search-bar"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="البحث الفوري في السجلات..."
-              className="w-full h-12 bg-white/80 backdrop-blur-md rounded-xl pr-12 pl-6 text-sm font-bold text-zinc-800 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-zinc-900/10 shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-white placeholder:text-slate-400"
+              className="w-full h-12 rounded-xl pr-12 pl-6 text-sm font-bold outline-none transition-all shadow-sm border"
+              style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
+              onFocus={(e) => { e.target.style.borderColor = "var(--border-accent)"; e.target.style.boxShadow = "0 0 0 2px var(--border-accent)"; }}
+              onBlur={(e) => { e.target.style.borderColor = "var(--border-normal)"; e.target.style.boxShadow = "none"; }}
             />
           </motion.div>
           <motion.div
@@ -349,7 +350,8 @@ export default function SimpleCrudPage({
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => exportToCSV(rows, columnDefs, title)}
-                    className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
+                    className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black transition-all shadow-sm border"
+                    style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
                   >
                     <Download className="h-4 w-4" /> تصدير السجلات
                   </motion.button>
@@ -359,7 +361,8 @@ export default function SimpleCrudPage({
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => exportToCSV(rows, columnDefs, title)}
-                  className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm border border-slate-200"
+                  className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black transition-all shadow-sm border"
+                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
                 >
                   <Download className="h-4 w-4" /> تصدير السجلات
                 </motion.button>
@@ -369,7 +372,7 @@ export default function SimpleCrudPage({
         </div>
 
         {/* The Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 grid-flow-dense items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 grid-flow-dense items-start">
           
           {/* Table Container (70%) */}
           <motion.div
@@ -377,7 +380,8 @@ export default function SimpleCrudPage({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-8 bg-white/95 backdrop-blur-3xl rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100"
+            className="lg:col-span-8 rounded-3xl p-4 md:p-6 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-x-auto"
+            style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
           >
             <DataTable
               columns={columns}
@@ -393,7 +397,8 @@ export default function SimpleCrudPage({
                   type="button"
                   onClick={() => loadRows(true)}
                   disabled={loadingMore}
-                  className="flex items-center gap-2 h-11 px-6 rounded-xl text-sm font-black text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all shadow-sm border border-slate-200 disabled:opacity-50"
+                  className="flex items-center gap-2 h-11 px-6 rounded-xl text-sm font-black transition-all shadow-sm border disabled:opacity-50"
+                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-overlay)", borderColor: "var(--border-normal)" }}
                 >
                   {loadingMore ? "جاري التحميل..." : `تحميل المزيد — ${rows.length} من ${meta.total}`}
                 </button>
@@ -406,25 +411,22 @@ export default function SimpleCrudPage({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className={`lg:col-span-4 sticky top-10 flex flex-col backdrop-blur-3xl rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-hidden transition-all duration-300 ${
-              editingRow 
-                ? 'bg-amber-50/95 border-amber-300 shadow-amber-500/10 ring-4 ring-amber-500/10' 
-                : 'bg-white/95 border-slate-100'
-            }`}
+            className="lg:col-span-4 sticky top-10 flex flex-col rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border overflow-hidden transition-all duration-300"
+            style={{ backgroundColor: "var(--bg-surface)", borderColor: editingRow ? "var(--border-accent)" : "var(--border-normal)" }}
           >
-            <div className={`p-8 pb-6 flex items-center justify-between border-b ${editingRow ? 'border-amber-200/50' : 'border-slate-50/50'}`}>
+            <div className="p-8 pb-6 flex items-center justify-between border-b" style={{ borderColor: editingRow ? "var(--border-accent)" : "var(--border-subtle)" }}>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className={`text-xl font-black tracking-tight ${editingRow ? 'text-amber-900' : 'text-zinc-900'}`}>
+                  <h2 className="text-xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
                     {editingRow ? 'وضع التعديل' : 'إضافة جديد'}
                   </h2>
                   {editingRow && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-800 text-[9px] font-black tracking-widest uppercase animate-pulse">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase animate-pulse" style={{ backgroundColor: "var(--accent-soft)", color: "var(--text-primary)" }}>
                       نشط الآن
                     </span>
                   )}
                 </div>
-                <p className={`text-[11px] font-bold uppercase tracking-widest mt-1 ${editingRow ? 'text-amber-700/70' : 'text-slate-400'}`}>
+                <p className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{ color: "var(--text-muted)" }}>
                   {editingRow ? `تحديث السجل ID: ${editingRow.id}` : 'إنشاء سجل جديد'}
                 </p>
               </div>
@@ -433,7 +435,8 @@ export default function SimpleCrudPage({
                   <motion.button 
                     whileTap={{ scale: 0.9 }}
                     onClick={startCreate}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-950 transition-colors shadow-sm"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors shadow-sm"
+                    style={{ backgroundColor: "var(--accent-soft)", color: "var(--text-primary)" }}
                   >
                     <X className="h-5 w-5" />
                   </motion.button>
@@ -441,7 +444,7 @@ export default function SimpleCrudPage({
               )}
             </div>
 
-            <form ref={formRef} onSubmit={handleSubmit} className={`p-8 pt-6 flex flex-col gap-6 ${editingRow ? 'bg-amber-100/20' : 'bg-slate-50/30'}`}>
+            <form ref={formRef} onSubmit={handleSubmit} className="p-8 pt-6 flex flex-col gap-6" style={{ backgroundColor: "var(--bg-overlay)" }}>
               <div className="space-y-5">
                 {fields.map((field, idx) => (
                   <motion.div 
@@ -451,16 +454,17 @@ export default function SimpleCrudPage({
                     transition={{ delay: 0.5 + (idx * 0.1) }}
                     className="flex flex-col gap-2 relative group"
                   >
-                    <label className={`text-[11px] font-black uppercase tracking-widest flex items-center justify-between ${editingRow ? 'text-amber-900/70' : 'text-slate-500'}`}>
+                    <label className="text-[11px] font-black uppercase tracking-widest flex items-center justify-between" style={{ color: "var(--text-secondary)" }}>
                       {field.label}
-                      {field.required && <span className={`text-[9px] font-bold ${editingRow ? 'text-amber-600' : 'text-zinc-400'}`}>مطلوب</span>}
+                      {field.required && <span className="text-[9px] font-bold" style={{ color: "var(--text-muted)" }}>مطلوب</span>}
                     </label>
                     <div className="relative">
                       {field.type === "toggle" ? (
                         <button
                           type="button"
                           onClick={() => setForm(prev => ({ ...prev, [field.name]: prev[field.name] ? 0 : 1 }))}
-                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 ${form[field.name] ? "bg-emerald-500" : "bg-slate-300"}`}
+                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form[field.name] ? "bg-emerald-500" : "bg-slate-300"}`}
+                          style={{ outline: "none" }}
                         >
                           <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${form[field.name] ? "translate-x-6" : "translate-x-1"}`} />
                         </button>
@@ -476,21 +480,16 @@ export default function SimpleCrudPage({
                             onEnter: idx === fields.length - 1 ? () => formRef.current?.requestSubmit() : undefined,
                           })}
                           onChange={(e) => setForm(prev => ({ ...prev, [field.name]: e.target.value }))}
-                          className={`w-full h-12 bg-white rounded-xl px-4 text-sm font-bold outline-none shadow-sm border ${
-                            editingRow
-                              ? 'text-amber-950 border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-amber-300'
-                              : 'text-zinc-900 border-slate-200 focus:border-zinc-400 placeholder:text-slate-300'
-                          }`}
+                          className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none shadow-sm border"
+                          style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: editingRow ? "var(--border-accent)" : "var(--border-normal)" }}
                           placeholder={`إدخال ${field.label}...`}
                         />
                       )}
                     </div>
-                    {/* Live balance preview for opening_balance field */}
                     {field.name === "opening_balance" && form[field.name] !== "" && (() => {
                       const bal = Number(form[field.name] || 0);
                       const isDebit = bal > 0;
                       const isCredit = bal < 0;
-                      const isZero = bal === 0;
                       return (
                         <div className={`mt-2 flex items-center justify-between rounded-xl px-3 py-2 border transition-all duration-200 ${
                           isDebit
@@ -507,7 +506,7 @@ export default function SimpleCrudPage({
                           <span className={`text-[15px] font-black font-mono ${
                             isDebit ? "text-rose-600" : isCredit ? "text-emerald-600" : "text-slate-400"
                           }`}>
-                            {Math.abs(bal).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            {formatNumber(Math.abs(bal))}
                             <span className="text-[11px] font-bold mr-1 opacity-70">ج.م</span>
                           </span>
                         </div>
