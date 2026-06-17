@@ -1,5 +1,6 @@
 ﻿import React from "react";
 import { formatNumber } from "../../../utils/currency";
+import { resolveImageUrl } from "../../../utils/resolveImageUrl";
 
 const fmt = (n) => formatNumber(n);
 
@@ -39,7 +40,7 @@ export default function AjalFullStatementTemplate({ party, debts = [], settings 
       {/* Header */}
       <div style={{ borderBottom: `3px solid ${accent_color}`, paddingBottom: 16, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          {show_logo && logo_url && <img src={logo_url} alt="" style={{ maxHeight: 60, marginBottom: 8 }} />}
+          {show_logo && logo_url && <img src={resolveImageUrl(logo_url)} alt="" style={{ maxHeight: 60, marginBottom: 8 }} />}
           <div style={{ fontSize: 18, fontWeight: 900, color: accent_color }}>{company_name}</div>
           <div style={{ color: "#64748b", fontSize: 11 }}>{address}</div>
           <div style={{ color: "#64748b", fontSize: 11 }}>{phone}</div>

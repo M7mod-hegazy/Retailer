@@ -18,6 +18,7 @@ import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DataGrid from "../../components/ui/DataGrid";
 import PanelEdgeRail from "./parts/PanelEdgeRail";
+import InstallmentPlanner from "../../components/pos/InstallmentPlanner";
 import HeldDropdown from "./parts/HeldDropdown";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import GalleryModal from "./parts/GalleryModal";
@@ -89,7 +90,12 @@ export default function POSListView({ vm }) {
     lineWarnings,
     amountPaid, setAmountPaid,
     amountReceived, setAmountReceived,
-    installmentDueDate, setInstallmentDueDate,
+    installmentStartDate, setInstallmentStartDate,
+    installmentCount, setInstallmentCount,
+    installmentFrequency, setInstallmentFrequency,
+    installmentCustomDays, setInstallmentCustomDays,
+    installmentRows, handleInstallmentRowChange,
+    installmentRemaining, installmentAllocated, installmentBalanced,
     selectedBankId, setSelectedBankId,
     multiCash, setMultiCash,
     multiCredit, setMultiCredit,
@@ -136,8 +142,6 @@ export default function POSListView({ vm }) {
   const notesRef = useRef(null);
   const sellerRef = useRef(null);
   const bankRef = useRef(null);
-  const installmentAmountRef = useRef(null);
-  const installmentDateRef = useRef(null);
   const multiCashRef = useRef(null);
   const multiCreditRef = useRef(null);
   const handleFieldEnter = useFieldNavigation();
@@ -153,6 +157,9 @@ export default function POSListView({ vm }) {
   }, []);
 
   const removeUndoRefs = useRef({});
+  const [confirmDelKey, setConfirmDelKey] = useState(null);
+  const delTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(delTimerRef.current), []);
   const handleRemoveWithUndo = useCallback((row) => {
     const key = cartLineKey(row);
     const lineData = { ...row };
@@ -313,8 +320,6 @@ export default function POSListView({ vm }) {
         onBankChange={setSelectedBankId}
         amountPaid={amountPaid}
         onAmountPaidChange={setAmountPaid}
-        installmentDueDate={installmentDueDate}
-        onInstallmentDueDateChange={setInstallmentDueDate}
         multiCash={multiCash}
         onMultiCashChange={setMultiCash}
         multiCredit={multiCredit}
@@ -818,30 +823,17 @@ export default function POSListView({ vm }) {
               </div>
             )}
             {paymentType === "installments" && (
-              <div className="mt-4 flex flex-col gap-2.5 rounded-xl bg-violet-50/50 border border-violet-100 p-4">
-                <div className="text-[11px] font-black text-violet-700 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> إعداد الأقساط
-                </div>
-                <div className="flex flex-col divide-y divide-violet-100/60">
-                  <div className="flex items-center gap-3 py-2 first:pt-0">
-                    <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600">💰 دفعة مقدم</span>
-                    <input ref={installmentAmountRef} type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00"
-                      onKeyDown={(e) => handleFieldEnter(e, { nextRef: installmentDateRef })}
-                      className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                  </div>
-                  <div className="flex items-center gap-3 py-2 last:pb-0">
-                    <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600">📅 تاريخ استحقاق القسط</span>
-                    <input ref={installmentDateRef} type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)}
-                      onKeyDown={(e) => handleFieldEnter(e, { nextRef: notesRef, prevRef: installmentAmountRef })}
-                      className="w-36 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                  </div>
-                </div>
-                {customer && (
-                  <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-3 py-1.5 text-center border border-violet-200">
-                    المتبقي كأقساط: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))} على {customer.name}
-                  </div>
-                )}
-              </div>
+              <InstallmentPlanner
+                remaining={installmentRemaining}
+                downPayment={amountPaid} setDownPayment={setAmountPaid}
+                count={installmentCount} setCount={setInstallmentCount}
+                frequency={installmentFrequency} setFrequency={setInstallmentFrequency}
+                customDays={installmentCustomDays} setCustomDays={setInstallmentCustomDays}
+                startDate={installmentStartDate} setStartDate={setInstallmentStartDate}
+                rows={installmentRows} onRowChange={handleInstallmentRowChange}
+                allocated={installmentAllocated} balanced={installmentBalanced}
+                customer={customer} formatMoney={formatMoney}
+              />
             )}
             {paymentType === "multi" && (
               <div className="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
@@ -1207,9 +1199,9 @@ export default function POSListView({ vm }) {
               renderExpandedRow={null}
               onRowClick={null}
               columns={[
-                { id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", render: (_, i) => i + 1 },
-                ...(visibleColumns.includes("sku") ? [{ id: "sku", header: "الكود", width: 75, minWidth: 55, sortable: false, headerClass: "text-center px-1", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.item_code || item?.code || l.code || "-"}</span>; } }] : []),
-                  ...(visibleColumns.includes("name") ? [{ id: "name", header: "البيان", width: 200, minWidth: 100, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-1", headerClass: "text-right px-2", render: (l) => {
+                { id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", render: (_, i) => i + 1 },
+                ...(visibleColumns.includes("sku") ? [{ id: "sku", header: "الكود", width: 75, minWidth: 55, sortable: false, headerClass: "text-center px-1 hdr-center", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.item_code || item?.code || l.code || "-"}</span>; } }] : []),
+                  ...(visibleColumns.includes("name") ? [{ id: "name", header: "البيان", width: 200, minWidth: 100, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-1 text-center", headerClass: "text-center px-2 hdr-center", render: (l) => {
                       const item = items.find(it => it.id === l.item_id);
                       const imgUrl = item?.primary_image_url || item?.image_url || item?.image || l.primary_image_url;
                       const resolved = imgUrl ? resolveImageUrl(imgUrl) : null;
@@ -1217,14 +1209,14 @@ export default function POSListView({ vm }) {
                       const warnings = lineWarnings[lineKey] || [];
                       const hasError = warnings.some((w) => w.type === "error");
                       return (
-                        <div className="flex items-center gap-1.5 w-full min-w-0">
+                        <div className="flex items-center justify-center gap-1.5 w-full min-w-0">
                           {resolved ? (
                             <button type="button" onClick={(e) => { e.stopPropagation(); const imgs = item?.image_urls?.length ? item.image_urls : [resolved]; openGallery(imgs); }}
                               className="shrink-0 rounded overflow-hidden border border-slate-200 hover:border-indigo-300"
                             >
                               <img src={resolved} alt={l.item_name} className="w-[22px] h-[22px] object-cover" />
                             </button>
-                          ) : <div className="w-[22px] h-[22px] shrink-0 rounded bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-3 h-3 text-slate-300"/></div>}
+                          ) : null}
                           <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                             <span className={`truncate text-2sm font-black leading-tight ${hasError ? "text-rose-700" : "text-slate-800"}`}>{l.item_name}</span>
                             {warnings.length > 0 && (
@@ -1237,7 +1229,7 @@ export default function POSListView({ vm }) {
                       );
                     }
                   }] : []),
-              ...(visibleColumns.includes("quantity") ? [{ id: "quantity", header: "الكمية", width: 80, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
+              ...(visibleColumns.includes("quantity") ? [{ id: "quantity", header: "الكمية", width: 80, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
                   const maxStock = getLineMaxStock(l.item_id, l.warehouse_id);
                   const hasLimit = stockLoaded && maxStock !== Infinity;
                   const atLimit  = hasLimit && Number(l.quantity) >= maxStock;
@@ -1258,7 +1250,7 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100", render: (l) => {
+              ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l) => {
                   const isOverride = l.item_id !== -1 && l.master_sale_price > 0 && Math.abs(Number(l.unit_price) - Number(l.master_sale_price)) > 0.001;
                   return (
                     <div className="relative w-full" title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}>
@@ -1271,7 +1263,7 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("lineDiscount") ? [{ id: "lineDiscount", header: "خصم", width: 90, minWidth: 70, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100", render: (l) => {
+              ...(visibleColumns.includes("lineDiscount") ? [{ id: "lineDiscount", header: "خصم", width: 90, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l) => {
                   const lineKey = cartLineKey(l);
                   const mode = discountModes[lineKey] || "flat";
                   const lineMax = Number(l.unit_price) * Number(l.quantity);
@@ -1296,7 +1288,7 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("warehouseId") ? [{ id: "warehouseId", header: "المخزن", width: 100, minWidth: 70, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative", render: (l) => {
+              ...(visibleColumns.includes("warehouseId") ? [{ id: "warehouseId", header: "المخزن", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100 relative", render: (l) => {
                   const whStock = stockLevels[l.item_id] || stockLevels[Number(l.item_id)] || stockLevels[String(l.item_id)] || {};
                   const lineQty = Number(l.quantity) || 1;
                   const currentWhId = l.warehouse_id || staging.warehouseId;
@@ -1320,9 +1312,9 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("unit") ? [{ id: "unit", header: "الوحدة", width: 65, minWidth: 50, sortable: false, headerClass: "text-center", cellClass: "text-center text-[10px] font-bold text-slate-600 border-l border-slate-100 px-1 truncate", render: (l) => l.unit_name || "أساسية" }] : []),
+              ...(visibleColumns.includes("unit") ? [{ id: "unit", header: "الوحدة", width: 65, minWidth: 50, sortable: false, headerClass: "text-center hdr-center", cellClass: "text-center text-[10px] font-bold text-slate-600 border-l border-slate-100 px-1 truncate", render: (l) => l.unit_name || "أساسية" }] : []),
               ...(canViewProfit && visibleColumns.includes("profit_pct") ? [{
-                id: "profit_pct", header: "الربح", width: 80, minWidth: 60, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                id: "profit_pct", header: "الربح", width: 80, minWidth: 60, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100 relative",
                 render: (l) => {
                   const item = items.find(i => String(i.id) === String(l.item_id));
                   const cost = Number(item?.purchase_price || item?.current_cost || 0);
@@ -1347,14 +1339,37 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("barcode") ? [{ id: "barcode", header: "الباركود", width: 100, minWidth: 70, sortable: false, headerClass: "text-center", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.barcode || l.item_barcode || "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("cost_price") ? [{ id: "cost_price", header: "سعر الشراء", width: 85, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{Number(item?.purchase_price || item?.current_cost || 0).toFixed(2)}</span>; } }] : []),
-              ...(visibleColumns.includes("category") ? [{ id: "category", header: "التصنيف", width: 90, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center text-[10px] text-slate-500 border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.category_name || l.category_name || "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("wholesale_price") ? [{ id: "wholesale_price", header: "سعر الجملة", width: 80, minWidth: 60, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); const wp = item?.wholesale_price || 0; return <span className={wp > 0 ? 'text-amber-700' : 'text-slate-400'}>{wp > 0 ? Number(wp).toFixed(2) : "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("total") ? [{ id: "total", header: "الإجمالي", width: 90, minWidth: 70, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-xs text-slate-900 bg-slate-50/50 border-l border-slate-100 truncate", render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0)) }] : []),
-              { id: "actions", header: "", width: 40, minWidth: 30, sortable: false, cellClass: "p-0 text-center", render: (row) => (
-                  <button onClick={() => handleRemoveWithUndo(row)} className="inline-flex h-[34px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors"><X className="h-3.5 w-3.5" /></button>
-                )
+              ...(visibleColumns.includes("barcode") ? [{ id: "barcode", header: "الباركود", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.barcode || l.item_barcode || "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("cost_price") ? [{ id: "cost_price", header: "سعر الشراء", width: 85, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{Number(item?.purchase_price || item?.current_cost || 0).toFixed(2)}</span>; } }] : []),
+              ...(visibleColumns.includes("category") ? [{ id: "category", header: "التصنيف", width: 90, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center text-[10px] text-slate-500 border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.category_name || l.category_name || "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("wholesale_price") ? [{ id: "wholesale_price", header: "سعر الجملة", width: 80, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); const wp = item?.wholesale_price || 0; return <span className={wp > 0 ? 'text-amber-700' : 'text-slate-400'}>{wp > 0 ? Number(wp).toFixed(2) : "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("total") ? [{ id: "total", header: "الإجمالي", width: 90, minWidth: 70, sortable: true, headerClass: "text-center px-2 hdr-center", cellClass: "text-center px-2 number-fmt-primary text-xs text-slate-900 bg-slate-50/50 border-l border-slate-100 truncate", render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0)) }] : []),
+              { id: "actions", header: "إجراءات", width: 70, minWidth: 60, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 text-center", render: (row) => {
+                  const key = cartLineKey(row);
+                  const armed = confirmDelKey === key;
+                  return (
+                    <button
+                      onClick={() => {
+                        if (armed) { clearTimeout(delTimerRef.current); setConfirmDelKey(null); handleRemoveWithUndo(row); }
+                        else {
+                          setConfirmDelKey(key);
+                          clearTimeout(delTimerRef.current);
+                          delTimerRef.current = setTimeout(() => setConfirmDelKey(null), 3000);
+                        }
+                      }}
+                      title={armed ? "اضغط مرة أخرى للتأكيد" : "حذف الصنف"}
+                      className={`inline-flex h-[34px] w-full items-center justify-center gap-1 transition-all duration-150 ${
+                        armed
+                          ? "bg-rose-500 text-white font-black text-[10px] shadow-inner"
+                          : "text-slate-400 hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+                      }`}
+                    >
+                      {armed
+                        ? <><Trash2 className="h-3.5 w-3.5" /><span>تأكيد</span></>
+                        : <X className="h-3.5 w-3.5" />}
+                    </button>
+                  );
+                }
               },
             ]}
           />
@@ -1372,7 +1387,18 @@ export default function POSListView({ vm }) {
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
             ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
-          ] : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[paymentType] || paymentType, amount: totals.total }],
+          ] : paymentType === "installments"
+            ? (Number(amountPaid) > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: Number(amountPaid) }] : [])
+            : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: totals.total }],
+          ...(paymentType === "installments" ? { installment_plan: installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) } : {}),
+          notes: invoiceNotes || null,
+          discount: Number(discount || 0) + Number(promotionDiscount || 0),
+          increase: Number(increase || 0),
+          total: totals.total,
+          tax_enabled: taxCalc.taxAmount > 0 ? 1 : 0,
+          tax_amount: taxCalc.taxAmount,
+          tax_rate: taxCalc.taxAmount > 0 ? (taxRate != null ? Number(taxRate) : Number(storeSettings?.tax_rate || 0)) : 0,
+          tax_type: storeSettings?.tax_type || null,
         }}
         settings={storeSettings} operationLabel="فاتورة مبيعات نقدية"
         onConfirmPrint={() => saveInvoice(false)} confirmLabel="حفظ وطباعة"

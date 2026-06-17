@@ -4,7 +4,7 @@ export const DEFAULTS = {
   header_font_size: 16, body_font_size: 12, footer_font_size: 10,
   item_font_size: 12, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
-  margin_top: 4, margin_side: 4, qr_size: 44,
+  margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
   show_cashier_name: true, show_customer_name: true, show_tax: true,
   show_footer: true, show_qr: false, show_logo: true,
   show_discount_line: true, show_payment_details: true, show_subtotal: true,

@@ -370,6 +370,27 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     [allUnits, allWarehouses, databaseItems, mapping, skuConflictIssues, systemCategories, warehouseRequiredRows, workingRows],
   );
   const blockingIssues = useMemo(() => validationIssues.filter((issue) => issue.severity === "error"), [validationIssues]);
+
+  const ISSUE_TO_STEP = {
+    name: "columns",
+    code: "categories",
+    unit_name: "units",
+    warehouse_id: "warehouses",
+    storage_plan: "duplicates",
+    category_name: "categories",
+  };
+
+  const blockingIssuesByType = useMemo(() => {
+    const byType = {};
+    blockingIssues.forEach((issue) => {
+      const stepId = ISSUE_TO_STEP[issue.field] || "final";
+      if (!byType[stepId]) byType[stepId] = { count: 0, stepId, field: issue.field, sample: issue.message };
+      byType[stepId].count += 1;
+    });
+    return Object.values(byType).sort((a, b) => b.count - a.count);
+  }, [blockingIssues]);
+
+  const hasBlockingIssues = blockingIssues.length > 0;
   const analyzedRows = useMemo(() => analyzeRows(workingRows, databaseItems || []), [databaseItems, workingRows]);
   const exactExistingRows = useMemo(() => workingRows.filter((row) => findExactExistingProduct(databaseItems || [], row)), [databaseItems, workingRows]);
   const codelessRows = useMemo(() => workingRows.filter((row) => !String(row.code || "").trim() || !parseSkuCode(row.code)), [workingRows]);
@@ -497,7 +518,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
       if (!byPrefix.has(sku.prefix)) {
         byPrefix.set(sku.prefix, {
           prefix: sku.prefix,
-          name: String(skuCategoryNames[sku.prefix] || row.category_name || "").trim() || `قسم SKU ${sku.prefix}`,
+          name: String(skuCategoryNames[sku.prefix] || row.category_name || "").trim() || `فئة ${sku.prefix}`,
           rows: [],
           names: new Set(),
         });
@@ -1182,7 +1203,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     };
   }
 
-  async function ensureSkuCategories() {
+  const ensureSkuCategories = useCallback(async () => {
     if (!missingSkuCategories.length) return systemCategories;
     setCategorySyncing(true);
     try {
@@ -1209,7 +1230,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     } finally {
       setCategorySyncing(false);
     }
-  }
+  }, [missingSkuCategories, systemCategories]);
 
   const buildSubmitRows = useCallback((categoryList) => {
     const moveExistingRows = analyzedRows
@@ -1334,7 +1355,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     } finally {
       setLoading(false);
     }
-  }, [blockingIssues.length, buildSubmitRows, fileName, onImported, sourceFile, systemCategories]);
+  }, [blockingIssues.length, buildSubmitRows, ensureSkuCategories, fileName, onImported, sourceFile, systemCategories]);
 
   return {
     ITEM_FIELDS,
@@ -1356,6 +1377,8 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     applyValueToRows,
     autoAssignCodes,
     blockingIssues,
+    blockingIssuesByType,
+    hasBlockingIssues,
     bulkField,
     bulkScope,
     bulkValue,

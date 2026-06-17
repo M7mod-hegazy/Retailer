@@ -1,4 +1,5 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 let Database;
 try {
@@ -60,7 +61,12 @@ function runMigrations(db) {
   }
 }
 
-function openDatabase(dbPath = path.join(process.cwd(), "data", "retailer.db")) {
+// Default path never resolves to process.cwd() (= read-only install dir in the
+// packaged app → EPERM). Callers normally pass an explicit, already-writable path;
+// the env var + temp fallback only guard a bare openDatabase() call.
+function openDatabase(
+  dbPath = process.env.DB_PATH || path.join(os.tmpdir(), "ElHegaziRetailer-db", "retailer.db"),
+) {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   applyPragmas(db);

@@ -11,6 +11,7 @@ import { ROUTES } from "../../constants/routes";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import helpContent from "../../help/helpContent";
 import { getHelpPageKey } from "../../help/routeHelp";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import { motion, AnimatePresence } from "framer-motion";
 
 const EXTRA_BREADCRUMB_PARENTS = [
@@ -160,7 +161,7 @@ export default function Topbar() {
           
           <Link to="/dashboard" className="hidden sm:flex items-center justify-center w-10 h-10 bg-white border border-zinc-200/80 rounded-[14px] shadow-sm shrink-0 transition-transform hover:scale-105 overflow-hidden">
             {settings?.logo_url ? (
-              <img src={settings.logo_url} alt="App Logo" className="w-full h-full object-contain p-1" />
+              <img src={resolveImageUrl(settings.logo_url)} alt="App Logo" className="w-full h-full object-contain p-1" />
             ) : (
               <div className="w-full h-full bg-zinc-950 flex items-center justify-center text-white">
                 <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">

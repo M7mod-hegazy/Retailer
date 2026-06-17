@@ -837,7 +837,7 @@ export default function CustomerAccountsPage() {
   const [walkInId, setWalkInId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(() => searchParams.get("filter") || "all");
   const [viewMode, setViewMode] = useState("normal"); // "normal" | "fast" (walk_in_wa)
   const [selected, setSelected] = useState(null);
 
@@ -850,6 +850,9 @@ export default function CustomerAccountsPage() {
   // Summary
   const [netBalance, setNetBalance] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Installments due per customer: { [id]: { overdue, due_today, upcoming } }
+  const [installmentDue, setInstallmentDue] = useState({});
 
   // Invoice detail modal
   const [detailInvoice, setDetailInvoice] = useState(null);
@@ -901,6 +904,17 @@ export default function CustomerAccountsPage() {
     finally { setSummaryLoading(false); }
   }, []);
 
+  const loadInstallmentsDue = useCallback(async () => {
+    try {
+      const r = await api.get("/api/ajal-debts/due-parties?party_type=customer");
+      const map = {};
+      (r.data.data || []).forEach((row) => {
+        map[row.party_id] = { overdue: Number(row.overdue || 0), due_today: Number(row.due_today || 0), upcoming: Number(row.upcoming || 0) };
+      });
+      setInstallmentDue(map);
+    } catch { setInstallmentDue({}); }
+  }, []);
+
   const loadNotes = useCallback(async () => {
     if (!selected) return;
     setNotesLoading(true);
@@ -915,6 +929,7 @@ export default function CustomerAccountsPage() {
 
   useEffect(() => { loadCustomers(); }, [loadCustomers]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { loadInstallmentsDue(); }, [loadInstallmentsDue]);
   useEffect(() => { if (activeTab === "notes") loadNotes(); }, [activeTab, loadNotes]);
 
   // ── URL sync ──────────────────────────────────────────────
@@ -1035,6 +1050,10 @@ export default function CustomerAccountsPage() {
     if (!matchesSearch) return false;
     if (filter === "debtors") return Number(c.opening_balance) > 0;
     if (filter === "creditors") return Number(c.opening_balance) < 0;
+    if (filter === "installments") {
+      const d = installmentDue[c.id];
+      return d && (d.overdue > 0 || d.due_today > 0 || d.upcoming > 0);
+    }
     return true;
   });
 
@@ -1110,7 +1129,7 @@ export default function CustomerAccountsPage() {
           </div>
 
           <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
-            {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }].map(f => (
+            {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }, { id: "installments", label: "أقساط مستحقة" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className="flex-1 py-1.5 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
                 style={{ color: filter === f.id ? "var(--primary)" : "var(--text-secondary)" }}
@@ -1197,7 +1216,7 @@ export default function CustomerAccountsPage() {
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
               {viewMode === "fast" ? <span className="text-3xl opacity-70">📱</span> : <Users className="h-9 w-9 text-slate-300 opacity-60" />}
               <p className="text-2sm font-bold text-slate-400">
-                {search ? "لا يوجد نتائج مطابقة للبحث" : viewMode === "fast" ? "لا توجد جهات واتساب سريعة بعد" : "لا يوجد عملاء"}
+                {search ? "لا يوجد نتائج مطابقة للبحث" : filter === "installments" ? "لا توجد أقساط مستحقة حالياً" : viewMode === "fast" ? "لا توجد جهات واتساب سريعة بعد" : "لا يوجد عملاء"}
               </p>
               {viewMode === "fast" && !search && (
                 <p className="text-[11px] font-bold text-slate-350 max-w-[220px]">تُسجّل تلقائياً من زر واتساب السريع في نقطة البيع</p>
@@ -1208,13 +1227,24 @@ export default function CustomerAccountsPage() {
             const lim = Number(c.credit_limit || 0);
             const nearLimit = lim > 0 && b >= lim * 0.9;
             const isSelected = selected?.id === c.id;
+            const inst = installmentDue[c.id];
+            const instLabel = inst
+              ? (inst.overdue > 0 ? { text: `${inst.overdue} متأخر`, tone: "danger" }
+                : inst.due_today > 0 ? { text: `${inst.due_today} اليوم`, tone: "warning" }
+                : inst.upcoming > 0 ? { text: `${inst.upcoming} قسط`, tone: "muted" } : null)
+              : null;
+            const instStyle = instLabel && {
+              danger:  { color: "var(--danger-text)",  backgroundColor: "var(--danger-bg)",  borderColor: "var(--danger-border)" },
+              warning: { color: "var(--warning-text)", backgroundColor: "var(--warning-bg)", borderColor: "var(--warning-border)" },
+              muted:   { color: "var(--text-muted)",   backgroundColor: "var(--bg-input)",   borderColor: "var(--border-subtle)" },
+            }[instLabel.tone];
             return (
               <motion.div
                 key={c.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: Math.min(0.2, index * 0.015) }}
-                onClick={() => selectCustomer(c, activeTab)}
+                onClick={() => selectCustomer(c, filter === "installments" ? "installments" : activeTab)}
                 className={`py-3.5 px-4.5 cursor-pointer border-b border-slate-100/80 transition-all duration-200 relative group flex items-center justify-between gap-3 ${isSelected
                     ? "bg-blue-50/65 border-r-[4.5px] border-r-blue-600 border-b-blue-100/40"
                     : "bg-transparent border-r-[4.5px] border-r-transparent hover:bg-slate-100/40"
@@ -1237,6 +1267,11 @@ export default function CustomerAccountsPage() {
                       {nearLimit && (
                         <span className="flex items-center shrink-0" title="تنبيه: اقتراب من الحد الائتماني">
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                        </span>
+                      )}
+                      {instLabel && (
+                        <span className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-md border leading-none" style={instStyle} title="أقساط مستحقة">
+                          {instLabel.text}
                         </span>
                       )}
                     </div>

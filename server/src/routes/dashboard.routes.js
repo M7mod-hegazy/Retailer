@@ -13,10 +13,15 @@ router.get("/", requirePagePermission("analytics", "view"), (_req, res) => {
   const itemsCount = db.prepare("SELECT COUNT(*) AS c FROM items").get().c;
   const customersCount = db.prepare("SELECT COUNT(*) AS c FROM customers").get().c;
   const openShift = db.prepare("SELECT * FROM shifts WHERE status='open' ORDER BY id DESC LIMIT 1").get() || null;
-  const upcomingInstallments = db
-    .prepare("SELECT COUNT(*) AS c FROM installments WHERE remaining > 0 AND next_due_date IS NOT NULL")
-    .get().c;
-  res.json({ success: true, data: { todaySales, weekSales, itemsCount, customersCount, openShift, upcomingInstallments } });
+  const today = new Date().toISOString().slice(0, 10);
+  const schedBase = `FROM ajal_schedules sch
+    JOIN ajal_debts d ON d.id = sch.debt_id
+    JOIN invoices inv ON inv.id = d.invoice_id AND inv.payment_type = 'installments'
+    WHERE sch.status != 'paid' AND d.status NOT IN ('paid','voided') AND COALESCE(d.party_type,'customer') = 'customer'`;
+  const overdueInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) < date(?)`).get(today).c;
+  const dueTodayInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) = date(?)`).get(today).c;
+  const upcomingInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) >= date(?)`).get(today).c;
+  res.json({ success: true, data: { todaySales, weekSales, itemsCount, customersCount, openShift, upcomingInstallments, overdueInstallments, dueTodayInstallments } });
 });
 
 module.exports = router;

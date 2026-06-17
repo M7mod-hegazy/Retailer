@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldNavigation } from "../../../hooks/useFieldNavigation";
-import { ArrowUpDown, ChevronDown, ChevronUp, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, ChevronDown, ChevronUp, RotateCcw, Trash2 } from "lucide-react";
 import { List } from "react-window";
 import { FIELD_META } from "./useImportWizard";
 
@@ -96,6 +96,7 @@ function Row({ index, style, rows, columns, wizard, showActions }) {
         <div className="sticky right-0 z-10 flex w-[124px] shrink-0 items-center gap-3 border-l border-slate-100 bg-inherit px-4">
           <input type="checkbox" checked={selected} onChange={() => wizard.toggleRowSelection(row.__rowNumber)} className="h-4 w-4 rounded accent-slate-900" title="تحديد الصف للعمليات الجماعية" />
           <span className="font-mono text-xs font-black text-slate-500">صف {row.__rowNumber}</span>
+          {hasError && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-500" title="هذا الصف يحتوي على أخطاء" />}
         </div>
 
         {showActions ? (

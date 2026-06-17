@@ -1,13 +1,24 @@
 const path = require("path");
 const { openDatabase } = require("../../../electron/dbManager");
+const { firstWritableDir } = require("./paths");
 
 let dbInstance = null;
 let dbPathRef = null;
 
+// Resolve the SQLite path, guaranteeing a writable location. In the packaged app
+// ensurePackagedEnv sets DB_PATH to %ProgramData%; the cwd fallback (dev/standalone)
+// is routed through firstWritableDir so it can never land in a read-only install dir
+// (which would EPERM on mkdir and take the whole server down → disconnect overlay).
+function resolveDbPath(customPath) {
+  if (customPath) return customPath;
+  if (process.env.DB_PATH) return process.env.DB_PATH;
+  const dir = firstWritableDir([path.join(process.cwd(), "data")], "db");
+  return path.join(dir, "retailer.db");
+}
+
 function initDb(customPath) {
   if (!dbInstance) {
-    const resolved =
-      customPath || process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
+    const resolved = resolveDbPath(customPath);
     dbPathRef = resolved;
     dbInstance = openDatabase(resolved);
   }
@@ -26,7 +37,7 @@ function closeDb() {
 }
 
 function getDbPath() {
-  return dbPathRef || process.env.DB_PATH || path.join(process.cwd(), "data", "retailer.db");
+  return dbPathRef || resolveDbPath();
 }
 
 function getDb() {

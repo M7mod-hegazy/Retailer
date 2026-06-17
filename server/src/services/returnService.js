@@ -5,6 +5,7 @@ const { assertCanWriteForDate, normalizeDate } = require("./dailySessionService"
 const { getSnapshotCosts } = require("./waccService");
 const { captureSalesReturnLineOverrides } = require("./overrideTrackingService");
 const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
+const { isFeatureEnabled } = require("../utils/features");
 
 function generateAmendmentDocNo(originalDocNo, db, table) {
   const base = originalDocNo.replace(/-A\d+$/, "");
@@ -175,8 +176,10 @@ function createReturn(invoiceId, payload) {
         reference_id: returnId,
       });
 
-      // FEFO batch restore: add returned qty to newest-expiry dated batch
-      const batchItem = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+      // FEFO batch restore: add returned qty to newest-expiry dated batch (only when feature enabled)
+      const batchItem = isFeatureEnabled(db, "feature_expiry")
+        ? db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id)
+        : null;
       if (batchItem?.track_expiry) {
         const newestBatch = db.prepare(
           "SELECT id FROM item_batches WHERE item_id = ? AND warehouse_id = ? AND expiry_date IS NOT NULL ORDER BY expiry_date DESC LIMIT 1"
@@ -272,8 +275,10 @@ function createGeneralReturn(payload) {
 
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: Number(line.quantity), movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
 
-      // FEFO batch restore for standalone returns
-      const batchItem2 = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+      // FEFO batch restore for standalone returns (only when feature enabled)
+      const batchItem2 = isFeatureEnabled(db, "feature_expiry")
+        ? db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id)
+        : null;
       if (batchItem2?.track_expiry) {
         const newestBatch2 = db.prepare(
           "SELECT id FROM item_batches WHERE item_id = ? AND warehouse_id = ? AND expiry_date IS NOT NULL ORDER BY expiry_date DESC LIMIT 1"

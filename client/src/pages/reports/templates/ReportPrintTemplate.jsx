@@ -1,6 +1,7 @@
 ﻿import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import AccountStatementLedger from "./AccountStatementLedger";
 import { formatNumber } from "../../../utils/currency";
+import { resolveImageUrl } from "../../../utils/resolveImageUrl";
 
 function safeText(value) {
   if (value == null) return "";
@@ -234,7 +235,7 @@ export default function ReportPrintTemplate({
   const logoEl = showLogo && settings.logo_url ? (
     <div style={{ textAlign: logoAlignment, marginBottom: "3mm" }}>
       <img
-        src={settings.logo_url}
+        src={resolveImageUrl(settings.logo_url)}
         alt=""
         style={{
           maxHeight: logoMaxHeight,

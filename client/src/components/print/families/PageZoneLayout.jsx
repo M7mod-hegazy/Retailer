@@ -20,7 +20,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s }) {
   const receiptHeader = byType("receipt_header_text");
   const meta = byType("doc_number", "doc_date");
   const body = items.filter((it) => it.group === "body" || it.group === "inserted").map((it) => it.node);
-  const totals = byType("subtotal", "discount", "tax", "grand_total");
+  const totals = byType("subtotal", "discount", "increase", "tax", "grand_total");
   const payments = byType("payments");
   const footerText = byType("footer_text");
   const qr = byType("qr");

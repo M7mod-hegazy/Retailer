@@ -1,6 +1,19 @@
 ﻿const cron = require("node-cron");
 const { getDb } = require("../config/database");
 const NotificationModel = require("../models/notification.model");
+const logger = require("../config/logger");
+
+// node-cron does NOT catch errors thrown inside a task callback. These jobs run
+// synchronous better-sqlite3 queries that throw on a locked/corrupt DB, and an
+// uncaught throw here would otherwise crash the embedded server (→ disconnect overlay).
+// Wrap every scheduled callback so a failed tick is logged and swallowed.
+function runSafely(name, fn) {
+  try {
+    fn();
+  } catch (err) {
+    logger.error({ message: `Scheduled job failed: ${name}`, error: err.message, stack: err.stack });
+  }
+}
 
 function scanAndCreateNotifications() {
   const db = getDb();
@@ -38,7 +51,7 @@ function scanAndCreateNotifications() {
 }
 
 function startNotificationJobs() {
-  return cron.schedule("*/30 * * * *", scanAndCreateNotifications, { scheduled: true });
+  return cron.schedule("*/30 * * * *", () => runSafely("notifications", scanAndCreateNotifications), { scheduled: true });
 }
 
 function cleanupAuditLogs() {
@@ -54,7 +67,7 @@ function cleanupAuditLogs() {
 }
 
 function startAuditLogCleanupJob() {
-  return cron.schedule("0 2 * * *", cleanupAuditLogs, { scheduled: true });
+  return cron.schedule("0 2 * * *", () => runSafely("auditLogCleanup", cleanupAuditLogs), { scheduled: true });
 }
 
 function scanOverdueDebts() {
@@ -72,6 +85,7 @@ function scanOverdueDebts() {
     WHERE ad.status = 'open'
       AND ad.due_date IS NOT NULL
       AND date(ad.due_date) < date(?)
+      AND NOT EXISTS (SELECT 1 FROM invoices i2 WHERE i2.id = ad.invoice_id AND i2.payment_type = 'installments')
   `).all(today);
 
   for (const debt of overdueDebts) {
@@ -101,8 +115,54 @@ function scanOverdueDebts() {
   }
 }
 
+// Per-installment alerting. Debt-level scanOverdueDebts skips debts that have a schedule
+// (see NOT EXISTS above); those are covered here at the individual-installment granularity.
+function scanInstallmentSchedules() {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const rows = db.prepare(`
+    SELECT sch.id, sch.debt_id, sch.installment_no, sch.due_date, sch.amount, sch.status,
+           d.customer_id, c.name AS customer_name
+    FROM ajal_schedules sch
+    JOIN ajal_debts d ON d.id = sch.debt_id
+    JOIN invoices inv ON inv.id = d.invoice_id AND inv.payment_type = 'installments'
+    LEFT JOIN customers c ON c.id = d.customer_id
+    WHERE sch.status != 'paid'
+      AND COALESCE(d.party_type, 'customer') = 'customer'
+      AND d.status NOT IN ('paid', 'voided')
+      AND date(sch.due_date) <= date(?)
+  `).all(today);
+
+  for (const r of rows) {
+    const overdue = r.due_date < today;
+    // Dedupe per schedule per day (body carries #<schedule_id>)
+    const tag = `قسط#${r.id}`;
+    const already = db.prepare(`
+      SELECT id FROM notifications WHERE body LIKE ? AND date(created_at) = date(?)
+    `).get(`%${tag}%`, today);
+    if (already) continue;
+
+    const amount = Number(r.amount || 0).toLocaleString('en-US');
+    const name = r.customer_name || `عميل #${r.customer_id}`;
+    const dueFmt = new Date(r.due_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    NotificationModel.create({
+      title: overdue ? "⏰ قسط متأخر" : "📅 قسط مستحق اليوم",
+      body: overdue
+        ? `${tag} — ${name} — قسط ${r.installment_no} بمبلغ ${amount} ج — استحق في ${dueFmt}`
+        : `${tag} — ${name} — قسط ${r.installment_no} بمبلغ ${amount} ج — مستحق اليوم`,
+      type: "warning",
+      link: "/accounts/customers?filter=installments",
+    });
+  }
+}
+
 function startOverdueDebtsJob() {
-  return cron.schedule("0 8 * * *", scanOverdueDebts, { scheduled: true });
+  return cron.schedule("0 8 * * *", () => {
+    runSafely("overdueDebts", scanOverdueDebts);
+    runSafely("installmentSchedules", scanInstallmentSchedules);
+  }, { scheduled: true });
 }
 
 function scanBirthdays() {
@@ -138,7 +198,7 @@ function scanBirthdays() {
 }
 
 function startBirthdayJob() {
-  return cron.schedule("0 9 * * *", scanBirthdays, { scheduled: true });
+  return cron.schedule("0 9 * * *", () => runSafely("birthdays", scanBirthdays), { scheduled: true });
 }
 
 module.exports = {
@@ -147,6 +207,7 @@ module.exports = {
   cleanupAuditLogs,
   startAuditLogCleanupJob,
   scanOverdueDebts,
+  scanInstallmentSchedules,
   startOverdueDebtsJob,
   scanBirthdays,
   startBirthdayJob,

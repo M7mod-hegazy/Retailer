@@ -10,6 +10,7 @@ const { capturePurchaseReturnLineOverrides } = require("../services/overrideTrac
 const { applyReturnAdjustment } = require("../services/returnService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { isFeatureEnabled } = require("../utils/features");
 const NotificationModel = require("../models/notification.model");
 
 const router = express.Router();
@@ -531,7 +532,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         });
 
         // FEFO batch capture: insert into item_batches when expiry_date is provided for tracked items
-        if (line.expiry_date) {
+        if (line.expiry_date && isFeatureEnabled(db, "feature_expiry")) {
           const trackRow = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
           if (trackRow?.track_expiry) {
             db.prepare(

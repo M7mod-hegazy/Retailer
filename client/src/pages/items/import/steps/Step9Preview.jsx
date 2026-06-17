@@ -19,7 +19,7 @@ const WARNING_MESSAGES = {
   high_discount: "خصم مرتفع جداً مقارنة بسعر البيع",
   negative_stock: "سيؤدي إلى مخزون سالب",
   low_margin: "هامش الربح منخفض جداً",
-  duplicate_code: "كود SKU مكرر في النظام",
+  duplicate_code: "كود مكرر في النظام",
   missing_barcode: "الباركود مفقود",
   price_mismatch: "تباين في السعر مقارنة بالسجلات السابقة",
   quantity_zero: "الكمية صفر",

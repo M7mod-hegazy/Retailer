@@ -17,6 +17,7 @@ import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import POSListView from "./POSListView";
 import POSDetailedView from "./POSDetailedView";
+import { generateInstallments } from "../../components/pos/InstallmentPlanner";
 import {
   resolveImageUrl,
   formatMoney,
@@ -166,7 +167,15 @@ export default function POSPage() {
   // Payment
   const [amountPaid, setAmountPaid]         = useState("");
   const [amountReceived, setAmountReceived] = useState("");
-  const [installmentDueDate, setInstallmentDueDate] = useState("");
+  // Installment plan (POS multi-installment): generator inputs + the editable rows.
+  const [installmentStartDate, setInstallmentStartDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [installmentCount, setInstallmentCount] = useState("3");
+  const [installmentFrequency, setInstallmentFrequency] = useState("monthly");
+  const [installmentCustomDays, setInstallmentCustomDays] = useState("30");
+  const [installmentRows, setInstallmentRows] = useState([]);
   const [selectedBankId, setSelectedBankId]         = useState("");
   const [selectedTreasuryId, setSelectedTreasuryId] = useState("");
   const [activeMultiPayments, setActiveMultiPayments] = useState([]);
@@ -685,6 +694,18 @@ export default function POSPage() {
     && (storeSettings?.tax_type === 'inclusive' || storeSettings?.tax_type === 'exclusive');
   const paidAmountNumber   = Number(amountPaid || 0);
   const creditRemaining    = Math.max(0, totals.total - Math.max(0, paidAmountNumber));
+
+  // ── Installment plan: regenerate rows when the generator inputs change; row-level
+  // edits write to installmentRows directly so they persist until an input changes.
+  const installmentRemaining = Math.max(0, totals.total - paidAmountNumber);
+  useEffect(() => {
+    if (paymentType !== "installments") return;
+    setInstallmentRows(generateInstallments(installmentRemaining, installmentCount, installmentFrequency, installmentCustomDays, installmentStartDate));
+  }, [paymentType, installmentRemaining, installmentCount, installmentFrequency, installmentCustomDays, installmentStartDate]);
+  const installmentAllocated = installmentRows.reduce((s, r) => s + Number(r.amount || 0), 0);
+  const installmentBalanced  = installmentRows.length > 0 && Math.abs(installmentRemaining - installmentAllocated) <= 0.01;
+  const handleInstallmentRowChange = (index, field, value) =>
+    setInstallmentRows((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
   const changeAmount       = Math.max(0, Number(amountReceived || 0) - totals.total);
   const promotionSummary = useMemo(() => {
     if (!promotionDiscount || !(appliedPromotions || []).length) return "";
@@ -940,7 +961,7 @@ export default function POSPage() {
     setSelectedBankId("");
     setSelectedTreasuryId("");
     setActiveMultiPayments([]);
-    setInstallmentDueDate("");
+    setInstallmentRows([]);
     setMultiCash("");
     setMultiCredit("");
     setMultiCustomAmounts({});
@@ -1134,6 +1155,15 @@ export default function POSPage() {
     if ((paymentType === "credit" || paymentType === "installments") && !customer?.id) {
       setCustomerCreateOpen(true); setSaveMessage("البيع الآجل والأقساط تتطلب تحديد عميل."); return;
     }
+    if (paymentType === "installments") {
+      if (installmentRemaining > 0 && !installmentRows.length) {
+        setSaveMessage("يرجى إعداد جدول الأقساط."); setTimeout(() => setSaveMessage(""), 4000); return;
+      }
+      if (installmentRemaining > 0 && !installmentBalanced) {
+        setSaveMessage(`مجموع الأقساط لا يساوي المتبقي (${formatMoney(installmentRemaining)}).`);
+        setTimeout(() => setSaveMessage(""), 5000); return;
+      }
+    }
     if (paymentType === "bank_transfer" && !selectedBankId && banks.length > 0) {
       setSaveMessage("يرجى اختيار البنك."); setTimeout(() => setSaveMessage(""), 4000); return;
     }
@@ -1184,7 +1214,10 @@ export default function POSPage() {
         promotion_discount: promotionDiscount,
         payment_type: paymentType,
         amount_paid:  (paymentType === "credit" || paymentType === "installments") ? Math.max(0, paidAmountNumber) : totals.total,
-        due_date:     paymentType === "installments" ? (installmentDueDate || null) : null,
+        due_date:     null,
+        installment_plan: paymentType === "installments"
+          ? installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0) }))
+          : undefined,
         bank_id:      selectedBankId  ? Number(selectedBankId)  : null,
         treasury_id:  selectedTreasuryId ? Number(selectedTreasuryId) : null,
         payments:     paymentType === "multi" ? [
@@ -1251,7 +1284,13 @@ export default function POSPage() {
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ];
         }
-        const nameMap = { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" };
+        // Installments: the amount actually collected now is the down payment. The
+        // remaining is shown as the schedule (installment_plan), not a lump "أقساط" line.
+        if (paymentType === "installments") {
+          const dp = Math.max(0, paidAmountNumber);
+          return dp > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: dp }] : [];
+        }
+        const nameMap = { cash: "نقدي", credit: "آجل", bank: "بنك" };
         return [{ method: paymentType, method_name: nameMap[paymentType] || paymentType, amount: totals.total }];
       };
       const _savedInvoiceData = response.data?.data;
@@ -1266,6 +1305,7 @@ export default function POSPage() {
         storeName: storeSettings.company_name || "المتجر",
         storeAddress: storeSettings.address || "",
         payments: buildPaymentsSnap(),
+        installment_plan: paymentType === "installments" ? installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) : [],
         notes: invoiceNotes || null,
         tax_amount: _savedInvoiceData?.tax_amount ?? taxCalc.taxAmount,
         tax_rate: _savedInvoiceData?.tax_rate ?? taxCalc.taxRate ?? 0,
@@ -1469,7 +1509,12 @@ export default function POSPage() {
     lineWarnings,
     amountPaid, setAmountPaid,
     amountReceived, setAmountReceived,
-    installmentDueDate, setInstallmentDueDate,
+    installmentStartDate, setInstallmentStartDate,
+    installmentCount, setInstallmentCount,
+    installmentFrequency, setInstallmentFrequency,
+    installmentCustomDays, setInstallmentCustomDays,
+    installmentRows, handleInstallmentRowChange,
+    installmentRemaining, installmentAllocated, installmentBalanced,
     selectedBankId, setSelectedBankId,
     multiCash, setMultiCash,
     multiCredit, setMultiCredit,

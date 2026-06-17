@@ -9,6 +9,7 @@ const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discount
 const { captureLeadFromSale } = require("./leadCapture");
 const { assertNotVariantParent } = require("../routes/variants.routes");
 const { validateAndSellSerials } = require("../utils/serialValidation");
+const { isFeatureEnabled } = require("../utils/features");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -89,11 +90,17 @@ function getInvoiceWithLines(invoiceId) {
 
   // Remaining unpaid debt tied to this invoice (will be reversed on cancel/amend)
   const ajalDebt = db.prepare(
-    "SELECT original_amount, paid_amount FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice' AND status != 'voided' ORDER BY id DESC LIMIT 1"
+    "SELECT id, original_amount, paid_amount FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice' AND status != 'voided' ORDER BY id DESC LIMIT 1"
   ).get(invoiceId);
   const debt_remaining = ajalDebt
     ? Math.max(0, Number(ajalDebt.original_amount) - Number(ajalDebt.paid_amount || 0))
     : 0;
+
+  // Installment schedule (if this sale was sold on an installment plan) — lets the
+  // receipt/A4 print the full plan on reprint, not just a single line.
+  const installment_plan = ajalDebt
+    ? db.prepare("SELECT installment_no, due_date, amount, status FROM ajal_schedules WHERE debt_id = ? ORDER BY installment_no").all(ajalDebt.id)
+    : [];
 
   return {
     ...recalculateInvoiceStatus(db, invoiceId),
@@ -109,6 +116,7 @@ function getInvoiceWithLines(invoiceId) {
       amount: allocation.amount,
     })),
     debt_remaining,
+    installment_plan,
   };
 }
 
@@ -360,8 +368,10 @@ function createInvoice(payload) {
         lr.lastInsertRowid
       );
 
-      // FEFO batch deduction for items with expiry tracking
-      const batchItem = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id);
+      // FEFO batch deduction for items with expiry tracking (only when feature enabled)
+      const batchItem = isFeatureEnabled(db, "feature_expiry")
+        ? db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id)
+        : null;
       if (batchItem?.track_expiry) {
         let remaining = line.quantity;
         const batches = db.prepare(
@@ -506,16 +516,37 @@ function createInvoice(payload) {
 
       if (remainingAmount > 0 && payload.customer_id) {
         db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(remainingAmount, payload.customer_id);
-        db.prepare(`
+
+        // Multi-installment plan: the client sends the final, balanced rows so we persist them
+        // as ajal_schedules at sale time (the customer-account tracker reads these). The debt's
+        // due_date is set to the first installment's date so overdue summaries stay meaningful.
+        const plan = Array.isArray(payload.installment_plan) ? payload.installment_plan : null;
+        const firstDue = plan && plan.length ? plan[0].due_date : (payload.due_date || null);
+
+        const debtRes = db.prepare(`
           INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
           VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
         `).run(
           inv.lastInsertRowid,
           payload.customer_id,
           remainingAmount,
-          payload.due_date || null,
+          firstDue,
           payload.notes || null,
         );
+
+        if (plan && plan.length) {
+          const planSum = plan.reduce((s, r) => s + Number(r.amount || 0), 0);
+          if (Math.abs(planSum - remainingAmount) > 0.01) {
+            // Throwing rolls back the whole sale transaction — no orphan debt/schedules.
+            throw new Error(`مجموع الأقساط (${planSum}) لا يساوي المبلغ المتبقي (${remainingAmount})`);
+          }
+          const insSched = db.prepare(
+            "INSERT INTO ajal_schedules (debt_id, installment_no, due_date, amount, status) VALUES (?, ?, ?, ?, 'pending')"
+          );
+          plan.forEach((r, i) => {
+            insSched.run(debtRes.lastInsertRowid, Number(r.installment_no) || (i + 1), r.due_date, Number(r.amount || 0));
+          });
+        }
       }
     } else if (amountReceived > 0) {
       // Plain cash / default fallback

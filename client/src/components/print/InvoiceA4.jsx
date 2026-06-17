@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 /**
  * A4 Formal Invoice Print Template
@@ -8,7 +9,9 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
 
   const lines = invoice.lines || [];
   const payments = invoice.payments || [];
+  const installmentPlan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan : [];
   const currency = settings.currency_symbol || "ر.س";
+  const fmtDueDate = (d) => { const s = String(d || "").slice(0, 10); const [y, m, dd] = s.split("-"); return dd ? `${dd}/${m}/${y}` : s; };
   const subtotal = lines.reduce((s, l) => s + (l.unit_price * l.quantity), 0);
   const totalDiscount = lines.reduce((s, l) => s + (l.discount_amount || 0), 0);
   // Snapshot fields are authoritative: tax_amount 0 means no tax was charged (no phantom
@@ -37,7 +40,7 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
         <div>
           {settings.logo_url && settings.logo_on_invoices !== false && settings.logo_on_invoices !== 0 ? (
             <img
-              src={settings.logo_url}
+              src={resolveImageUrl(settings.logo_url)}
               alt={settings.company_name || "Logo"}
               style={{ maxHeight: "72px", maxWidth: "180px", objectFit: "contain", marginBottom: "10px" }}
             />
@@ -145,6 +148,33 @@ const InvoiceA4 = React.forwardRef(function InvoiceA4({ invoice, settings = {} }
               ))}
               {change > 0.01 && <tr><td style={{ padding: "4px 12px", fontWeight: "bold", color: "#16a34a" }}>الباقي للعميل</td><td style={{ padding: "4px 12px", textAlign: "left", fontWeight: "bold", color: "#16a34a" }}>{change.toFixed(2)} {currency}</td></tr>}
               {remaining > 0.01 && <tr><td style={{ padding: "4px 12px", fontWeight: "bold", color: "#dc2626" }}>المتبقي</td><td style={{ padding: "4px 12px", textAlign: "left", fontWeight: "bold", color: "#dc2626" }}>{remaining.toFixed(2)} {currency}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Installment schedule */}
+      {installmentPlan.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#1e40af" }}>جدول الأقساط ({installmentPlan.length})</div>
+          <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9" }}>
+                <th style={{ textAlign: "right", padding: "6px 12px", border: "1px solid #e2e8f0" }}>#</th>
+                <th style={{ textAlign: "right", padding: "6px 12px", border: "1px solid #e2e8f0" }}>تاريخ الاستحقاق</th>
+                <th style={{ textAlign: "left", padding: "6px 12px", border: "1px solid #e2e8f0" }}>المبلغ</th>
+                <th style={{ textAlign: "center", padding: "6px 12px", border: "1px solid #e2e8f0" }}>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {installmentPlan.map((r, i) => (
+                <tr key={i}>
+                  <td style={{ padding: "5px 12px", border: "1px solid #e2e8f0", fontWeight: 600 }}>{r.installment_no ?? i + 1}</td>
+                  <td style={{ padding: "5px 12px", border: "1px solid #e2e8f0" }} dir="ltr">{fmtDueDate(r.due_date)}</td>
+                  <td style={{ padding: "5px 12px", border: "1px solid #e2e8f0", textAlign: "left", fontWeight: 600 }}>{Number(r.amount || 0).toFixed(2)} {currency}</td>
+                  <td style={{ padding: "5px 12px", border: "1px solid #e2e8f0", textAlign: "center" }}>{r.status === "paid" ? "مسدد" : "معلق"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

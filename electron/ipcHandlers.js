@@ -140,11 +140,23 @@ function setupIpc(window) {
     let printWin = null;
     try {
       fs.writeFileSync(tmpFile, html, "utf8");
+      // Lay the hidden window out at the *paper* width so the receipt — which is
+      // `width:<roll>mm; margin:0 auto` — centers with ZERO offset. With the old
+      // default ~800px window, the 80mm receipt was centered inside an 800px body;
+      // the forced 80mm print sheet (captured from x=0) then grabbed only the left
+      // slice, so every roll print came out shifted right, clipped on the left, and
+      // never filled the paper. Matching the window content width to the roll width
+      // makes the body == the receipt width, so it aligns to the origin and fills.
+      const rollWidthMm = /^58mm/.test(pageSizeStr) ? 58 : /^80mm/.test(pageSizeStr) ? 80 : 0;
+      const winWidthPx = rollWidthMm ? Math.ceil((rollWidthMm * 96) / 25.4) : 800;
       // javascript must stay enabled so we can wait for fonts and measure the
       // rendered height below. The HTML is our own trusted print document (no
       // scripts); sandbox + a local temp file keep it isolated.
       printWin = new BrowserWindow({
         show: false,
+        width: winWidthPx,
+        height: 1200,
+        useContentSize: true,
         webPreferences: { offscreen: false, sandbox: true },
       });
       await printWin.loadFile(tmpFile);
@@ -178,7 +190,6 @@ function setupIpc(window) {
       // A4/A5: a named size Electron understands. If the height couldn't be
       // measured we leave pageSize unset so the driver's own default applies,
       // rather than forcing a tiny page that would clip the receipt.
-      const rollWidthMm = /^58mm/.test(pageSizeStr) ? 58 : /^80mm/.test(pageSizeStr) ? 80 : 0;
       if (rollWidthMm && contentHeightPx > 0) {
         printOptions.pageSize = {
           width: rollWidthMm * MM,

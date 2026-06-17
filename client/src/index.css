@@ -18,14 +18,14 @@
 
   /* ─── Background System ─── */
   /* Ultra-clean bright backgrounds for clear visibility */
-  --bg-base:       #f4f6f8; /* Soft cool gray for outer hull */
+  --bg-base:       #f8f6f3; /* Warm neutral for outer hull */
   --bg-surface:    #ffffff; /* Pure white for actionable areas */
   --bg-elevated:   #ffffff;
   --bg-overlay:    rgba(255, 255, 255, 0.85);
   --bg-sidebar:    #f8fafc;
   --bg-topbar:     rgba(255, 255, 255, 0.95);
-  --bg-input:      #f1f5f9;
-  --bg-input-hover:#e2e8f0;
+  --bg-input:      #f5f3f0;
+  --bg-input-hover:#eeebe7;
   --scroll-track:  #e8ecf2;
   --scroll-thumb:  rgba(15, 23, 42, 0.35);
   --scroll-thumb-hover: rgba(15, 23, 42, 0.55);
@@ -72,7 +72,7 @@
   --success-light:   rgba(16, 185, 129, 0.1);
 
   --danger:          #dc2626;
-  --danger-bg:       #fef2f2;
+  --danger-bg:       #fdf5f5;
   --danger-text:     #b91c1c;
   --danger-border:   #fca5a5;
   --danger-light:    rgba(239, 68, 68, 0.1);
@@ -127,6 +127,40 @@
   --card-top-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --surface-ring:       inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   --input-well:         inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ADAPTIVE ACCENT SYSTEM
+   Tokens for the two surfaces that hardcoded colours used to break on:
+     1. "Feature" panels — deliberately high-contrast zones (dashboard hero,
+        feature headers) that should read dark/elevated on EVERY theme.
+     2. "On-primary" chips/labels — insets sitting ON a coloured primary
+        surface (icon tiles, kbd pills, secondary labels).
+   Both are DERIVED from each theme's own --text-primary / --primary / --bg
+   vars, so all 12 presets + custom work with no per-theme edits. Consumed via
+   bg-[var(--token)] utilities, which also bypass the colorThemeOverrides layer.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Light themes: text-primary is dark → a near-black charcoal carrying a hint
+     of the brand hue. Deliberate dark feature surface, white text on top. */
+  --surface-feature:     color-mix(in srgb, var(--text-primary) 90%, var(--primary));
+  --surface-feature-2:   color-mix(in srgb, var(--text-primary) 82%, var(--primary));
+  --on-feature:          #ffffff;
+  --on-feature-muted:    rgba(255, 255, 255, 0.64);
+  --on-feature-faint:    rgba(255, 255, 255, 0.10);
+
+  /* A frosted white veil reads as a clean recessed tile on ANY primary hue
+     (every theme's --primary is saturated/dark enough for white per the
+     theme contract), unlike a flat black scrim which muddies. */
+  --chip-on-primary:       rgba(255, 255, 255, 0.16);
+  --chip-on-primary-hover: rgba(255, 255, 255, 0.26);
+  --chip-on-primary-ring:  inset 0 0 0 1px rgba(255, 255, 255, 0.20);
+}
+[data-theme="dark"] {
+  /* On dark themes text-primary is light, so the light-mix above would invert.
+     Build the feature surface from the elevated surface, tinted toward brand. */
+  --surface-feature:   color-mix(in srgb, var(--bg-elevated) 76%, var(--primary));
+  --surface-feature-2: color-mix(in srgb, var(--bg-elevated) 62%, var(--primary));
 }
 
 /* Every primary-coloured BUTTON/LINK (incl. the swept ones using the bg-primary
@@ -705,7 +739,7 @@ textarea {
   }
 
   /* ── per-input sizing (intentionally different per field) ── */
-  .entry-field--item  { flex: 6 1 220px; max-width: 360px; }
+  .entry-field--item  { flex: 6 1 340px; min-width: 300px; max-width: 520px; }
   .entry-field--qty   { flex: 0 1 80px; }
   .entry-field--price { flex: 0 1 132px; }
   .entry-field--disc  { flex: 0 1 80px; }
@@ -2440,14 +2474,14 @@ html[data-theme="dark"],
 html[data-theme="light"],
 html[data-theme="global"] {
   color-scheme: light;
-  --bg-base: #f3f6fb;
+  --bg-base: #f8f6f3;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
-  --bg-overlay: #eef3f8;
+  --bg-overlay: rgba(255, 255, 255, 0.85);
   --bg-sidebar: #ffffff;
   --bg-topbar: rgba(255, 255, 255, 0.9);
-  --bg-input: #eff4f9;
-  --bg-input-hover: #e7edf5;
+  --bg-input: #f5f3f0;
+  --bg-input-hover: #eeebe7;
   --scroll-track: #e4eaf2;
   --scroll-thumb: #a0b4cc;
   --scroll-thumb-hover: #7e96b2;
@@ -2467,6 +2501,11 @@ html[data-theme="global"] {
   --border-normal: #c9d6e5;
   --border-strong: #a9bbd2;
   --border-accent: rgba(10, 143, 105, 0.35);
+}
+
+/* ─── Dark theme ―── */
+html[data-theme="dark"] {
+  --danger-bg: #2d1f1f;
 }
 
 /* Login V3 */

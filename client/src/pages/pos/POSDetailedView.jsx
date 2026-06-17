@@ -14,6 +14,7 @@ import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DataGrid from "../../components/ui/DataGrid";
 import PanelEdgeRail from "./parts/PanelEdgeRail";
+import InstallmentPlanner from "../../components/pos/InstallmentPlanner";
 import HeldDropdown from "./parts/HeldDropdown";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import GalleryModal from "./parts/GalleryModal";
@@ -86,7 +87,12 @@ export default function POSDetailedView({ vm }) {
     taxFeatureOn, taxCalc,
     amountPaid, setAmountPaid,
     amountReceived, setAmountReceived,
-    installmentDueDate, setInstallmentDueDate,
+    installmentStartDate, setInstallmentStartDate,
+    installmentCount, setInstallmentCount,
+    installmentFrequency, setInstallmentFrequency,
+    installmentCustomDays, setInstallmentCustomDays,
+    installmentRows, handleInstallmentRowChange,
+    installmentRemaining, installmentAllocated, installmentBalanced,
     selectedBankId, setSelectedBankId,
     multiCash, setMultiCash,
     multiCredit, setMultiCredit,
@@ -146,8 +152,6 @@ export default function POSDetailedView({ vm }) {
   const sellerRef = useRef(null);
   const waLeadRef = useRef(null);
   const bankSelectRef = useRef(null);
-  const amountPaidRef = useRef(null);
-  const installmentDueDateRef = useRef(null);
   const multiCashRef = useRef(null);
   const multiCreditRef = useRef(null);
 
@@ -244,8 +248,6 @@ export default function POSDetailedView({ vm }) {
         onBankChange={setSelectedBankId}
         amountPaid={amountPaid}
         onAmountPaidChange={setAmountPaid}
-        installmentDueDate={installmentDueDate}
-        onInstallmentDueDateChange={setInstallmentDueDate}
         multiCash={multiCash}
         onMultiCashChange={setMultiCash}
         multiCredit={multiCredit}
@@ -1091,22 +1093,18 @@ export default function POSDetailedView({ vm }) {
                 </div>
               )}
               {paymentType === "installments" && (
-                <div className="flex flex-col gap-2 rounded-xl bg-violet-50/50 border border-violet-100 p-3">
-                  <div className="text-[11px] font-black text-violet-700 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" /> إعداد الأقساط
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[11px] font-bold text-slate-500 shrink-0">دفعة:</span>
-                      <input ref={amountPaidRef} type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onKeyDown={(e) => handleFieldNav(e, { nextRef: installmentDueDateRef })} placeholder="0" className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[11px] font-bold text-slate-500 shrink-0">الاستحقاق:</span>
-                      <input ref={installmentDueDateRef} type="date" dir="ltr" value={installmentDueDate} onChange={e => setInstallmentDueDate(e.target.value)} onKeyDown={(e) => handleFieldNav(e, { prevRef: amountPaidRef })} className="flex-1 min-w-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-bold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                    </div>
-                  </div>
-                  <div className="text-[11px] font-black text-violet-700 bg-violet-100/60 rounded-lg px-2 py-1 text-center border border-violet-200 truncate">المتبقي كأقساط: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))}</div>
-                </div>
+                <InstallmentPlanner
+                  compact
+                  remaining={installmentRemaining}
+                  downPayment={amountPaid} setDownPayment={setAmountPaid}
+                  count={installmentCount} setCount={setInstallmentCount}
+                  frequency={installmentFrequency} setFrequency={setInstallmentFrequency}
+                  customDays={installmentCustomDays} setCustomDays={setInstallmentCustomDays}
+                  startDate={installmentStartDate} setStartDate={setInstallmentStartDate}
+                  rows={installmentRows} onRowChange={handleInstallmentRowChange}
+                  allocated={installmentAllocated} balanced={installmentBalanced}
+                  customer={customer} formatMoney={formatMoney}
+                />
               )}
               {paymentType === "multi" && (
                 <div className="flex flex-col gap-2 rounded-xl bg-slate-50/60 border border-slate-200 p-3">
@@ -1400,7 +1398,8 @@ export default function POSDetailedView({ vm }) {
             unit_name: l.unit_name || "",
             code: l.code || "",
           })),
-          payments: lastSavedInvoice.payments || [{ method: lastSavedInvoice.paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[lastSavedInvoice.paymentType] || lastSavedInvoice.paymentType, amount: lastSavedInvoice.totals?.total }],
+          payments: lastSavedInvoice.payments || [{ method: lastSavedInvoice.paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[lastSavedInvoice.paymentType] || lastSavedInvoice.paymentType, amount: lastSavedInvoice.totals?.total }],
+          installment_plan: lastSavedInvoice.installment_plan || [],
           notes: lastSavedInvoice.notes || null,
           discount: Number(lastSavedInvoice.discount || 0) + Number(lastSavedInvoice.promotionDiscount || 0),
           increase: Number(lastSavedInvoice.increase || 0),
@@ -1425,7 +1424,10 @@ export default function POSDetailedView({ vm }) {
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
             ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
-          ] : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك", installments: "أقساط" }[paymentType] || paymentType, amount: totals.total }],
+          ] : paymentType === "installments"
+            ? (Number(amountPaid) > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: Number(amountPaid) }] : [])
+            : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: totals.total }],
+          installment_plan: paymentType === "installments" ? installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) : [],
           notes: invoiceNotes || null,
           discount: Number(discount || 0) + Number(promotionDiscount || 0),
           increase: Number(increase || 0),

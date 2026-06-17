@@ -571,8 +571,20 @@ const FIELD_META = {
   show_qr: {
     label: { ar: "إظهار رمز QR", en: "Show QR Code" },
     hint: { ar: "عرض رمز الاستجابة السريعة للتحقق في أسفل الفاتورة", en: "Display verification QR code at the bottom" },
-    defaultValue: 1,
+    defaultValue: 0,
     group: "printing_visibility",
+  },
+  qr_alignment: {
+    label: { ar: "محاذاة رمز QR", en: "QR Code Alignment" },
+    hint: { ar: "محاذاة رمز QR في أسفل المستند — يمين أو وسَط أو يسار", en: "QR code alignment at the bottom of the document" },
+    defaultValue: "right",
+    group: "printing",
+  },
+  qr_content: {
+    label: { ar: "محتوى رمز QR", en: "QR Code Content" },
+    hint: { ar: "رابط أو نص مخصص لترميزه في QR — اتركه فارغاً لاستخدام بيانات الفاتورة تلقائياً", en: "Custom URL or text to encode in the QR — leave empty for auto invoice data" },
+    defaultValue: "",
+    group: "printing",
   },
   show_barcode_line: {
     label: { ar: "إظهار باركود المنتج", en: "Show Product Barcode" },

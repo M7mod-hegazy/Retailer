@@ -35,7 +35,6 @@ export default function PosStickyTotalBar({
   amountReceived, onAmountReceivedChange,
   banks = [], selectedBankId, onBankChange,
   amountPaid, onAmountPaidChange,
-  installmentDueDate, onInstallmentDueDateChange,
   multiCash, onMultiCashChange, multiCredit, onMultiCreditChange,
   customPayMethods = [], multiCustomAmounts = {}, onMultiCustomAmountChange,
   customerName, customerId, customerBalance = 0,
@@ -491,13 +490,10 @@ export default function PosStickyTotalBar({
               <input type="number" min="0" value={amountPaid || ""}
                 onChange={(e) => onAmountPaidChange?.(e.target.value)} placeholder="0"
                 className="w-10 rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
-              <span className="text-[11px] font-bold text-zinc-700">الاستحقاق:</span>
-              <input type="date" value={installmentDueDate || ""}
-                onChange={(e) => onInstallmentDueDateChange?.(e.target.value)}
-                className="w-[85px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-[11px] font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
               <span className="text-[11px] font-bold text-violet-800">
                 قسط {formatMoney(Math.max(0, total - Number(amountPaid || 0)))}
               </span>
+              <span className="text-[10px] font-bold text-zinc-400">وسّع اللوحة لجدولة الأقساط</span>
             </div>
           )}
 

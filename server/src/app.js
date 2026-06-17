@@ -58,6 +58,8 @@ const repairOrdersRoutes = require("./routes/repairOrders.routes");
 const restaurantRoutes = require("./routes/restaurant.routes");
 const goldRoutes = require("./routes/gold.routes");
 const { errorHandler } = require("./middleware/errorHandler");
+const logger = require("./config/logger");
+const { getDb } = require("./config/database");
 
 function createApp() {
   const app = express();
@@ -82,7 +84,31 @@ function createApp() {
   app.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
   app.use(express.json({ limit: "10mb" }));
 
-  app.get(["/health", "/api/health"], (_req, res) => res.json({ ok: true }));
+  // Health check. Stays a 200 even if the DB probe fails (a momentary lock must NOT be
+  // read as "server down" by the client), but reports db status for diagnostics. Wrapped
+  // so it can never itself throw/hang and become a crash source.
+  app.get(["/health", "/api/health"], (_req, res) => {
+    let db = true;
+    try {
+      getDb().prepare("SELECT 1").get();
+    } catch (_e) {
+      db = false;
+    }
+    res.json({ ok: true, db });
+  });
+
+  // Best-effort client diagnostics sink — records WHY a renderer saw a disconnect
+  // (timeout vs connection-refused vs crash vs port-mismatch) so a random production
+  // incident is explainable from the server log. No auth, never throws.
+  app.post("/api/diag/client-event", (req, res) => {
+    try {
+      logger.warn({ message: "client-diag", event: req.body || {} });
+    } catch (_e) {
+      /* diagnostics must never break anything */
+    }
+    res.json({ ok: true });
+  });
+
   app.use("/api/auth", authRoutes);
   app.use("/api/settings", settingsRoutes);
   app.use("/api/dashboard", dashboardRoutes);

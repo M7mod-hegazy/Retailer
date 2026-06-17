@@ -2,10 +2,12 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowUpDown, 
-  Check, 
-  ChevronDown, 
-  ChevronUp, 
-  Copy, 
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Copy,
   Download,
   GripVertical, 
   Layers, 
@@ -106,7 +108,11 @@ const EMPTY_DRAFT = {
 };
 
 const DENSITY_CLS = { compact: "py-1.5", normal: "py-2.5", spacious: "py-4" };
-const ITEM_PAGE_SIZE = 200;
+const ITEM_PAGE_SIZE = 100;
+// Sentinel for the "show all products across every category" filter mode.
+// In this mode the catalog is read-only — new items cannot be created because
+// they have no category to belong to.
+const ALL_CATEGORIES = "all";
 
 // ─── Cell input ───────────────────────────────────────────────────────────────
 const Cell = React.forwardRef(function Cell(
@@ -371,6 +377,8 @@ export default function ItemsListPage() {
   const [units, setUnits]             = useState([]);
   const [items, setItems]             = useState([]);
   const [itemsMeta, setItemsMeta]     = useState({ total: 0, offset: 0, hasMore: false });
+  const [page, setPage]               = useState(1);
+  const pageRef                       = useRef(1);
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [search, setSearch]           = useState(deepLinkQuery);
   const [loading, setLoading]         = useState(true);
@@ -390,6 +398,7 @@ export default function ItemsListPage() {
   const serialsEnabled = useFeatureEnabled("feature_serials");
   const goldEnabled = useFeatureEnabled("feature_gold");
   const scaleEnabled = useFeatureEnabled("feature_scale_barcodes");
+  const expiryEnabled = useFeatureEnabled("feature_expiry");
   const anyItemFeature = multiUnitEnabled || variantsEnabled || serialsEnabled || goldEnabled || scaleEnabled;
   const [unitsItem, setUnitsItem] = useState(null);
   const [variantsItem, setVariantsItem] = useState(null);
@@ -492,15 +501,18 @@ export default function ItemsListPage() {
 
   const loadItems = useCallback(async (categoryId, searchText = "", inclDeleted = false, opts = {}) => {
     const trimmedSearch = searchText.trim();
-    const offset = Number(opts.offset || 0);
+    // Default to the current page's offset so post-mutation reloads keep the
+    // user on the same page; navigation/reset callers pass an explicit offset.
+    const offset = opts.offset != null ? Number(opts.offset) : (pageRef.current - 1) * ITEM_PAGE_SIZE;
     const append = Boolean(opts.append);
+    const isAllCategories = categoryId === ALL_CATEGORIES;
     if (!categoryId && !trimmedSearch) {
       setItems([]);
       setItemsMeta({ total: 0, offset: 0, hasMore: false });
       return;
     }
     const params = { limit: ITEM_PAGE_SIZE, offset };
-    if (categoryId) params.category_id = categoryId;
+    if (categoryId && !isAllCategories) params.category_id = categoryId;
     if (trimmedSearch) params.search = trimmedSearch;
     if (inclDeleted) params.include_deleted = "1";
     const res = await api.get("/api/items", { params });
@@ -563,7 +575,7 @@ export default function ItemsListPage() {
   }, [loadCategories, loadUnits, loadItems]);
 
   useEffect(() => {
-    if (!loading) { setSearch(""); loadItems(selectedCatId, "", showDeleted); }
+    if (!loading) { setSearch(""); setPage(1); pageRef.current = 1; loadItems(selectedCatId, "", showDeleted, { offset: 0 }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCatId, showDeleted]);
 
@@ -571,6 +583,9 @@ export default function ItemsListPage() {
     () => categories.find((c) => c.id === selectedCatId) ?? null,
     [categories, selectedCatId],
   );
+
+  // "Show all products" view: read-only — creating items is disabled here.
+  const isAllCats = selectedCatId === ALL_CATEGORIES;
 
   // ── sort ──────────────────────────────────────────────────────────────────
 
@@ -634,11 +649,17 @@ export default function ItemsListPage() {
     );
   }
 
-  async function loadMoreItems() {
-    if (!itemsMeta.hasMore || loadingMore) return;
+  const totalPages = Math.max(1, Math.ceil((itemsMeta.total || 0) / ITEM_PAGE_SIZE));
+
+  async function goToPage(target) {
+    const next = Math.min(Math.max(1, target), totalPages);
+    if (next === page || loadingMore) return;
+    setPage(next);
+    pageRef.current = next;
     setLoadingMore(true);
     try {
-      await loadItems(selectedCatId, search, showDeleted, { offset: itemsMeta.offset, append: true });
+      await loadItems(selectedCatId, search, showDeleted, { offset: (next - 1) * ITEM_PAGE_SIZE });
+      scrollContainerRef.current?.scrollTo({ top: 0 });
     } finally {
       setLoadingMore(false);
     }
@@ -780,7 +801,7 @@ export default function ItemsListPage() {
   }
 
   async function createFromNewRow() {
-    if (!newRow.name.trim() || !selectedCatId) return;
+    if (!newRow.name.trim() || !selectedCatId || isAllCats) return;
     setSavingRowId("new");
     try {
       await api.post("/api/items", { ...buildPayload(newRow, null), code: newRow.code || "" });
@@ -952,7 +973,7 @@ export default function ItemsListPage() {
     setDragOverId(null);
     const srcId = dragItemId.current;
     dragItemId.current = null;
-    if (!srcId || srcId === targetId) return;
+    if (!srcId || srcId === targetId || isAllCats) return;
 
     // Build new ordered_ids by moving src to target's position
     const oldOrder = [...items].map((i) => i.id);
@@ -1084,12 +1105,12 @@ export default function ItemsListPage() {
                <div data-help="search-bar" className="relative flex-1 group">
                   <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                   <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)}
-                     onKeyDown={(e) => { if (e.key === "Enter") loadItems(selectedCatId, search, showDeleted); handleKeyDown(e, { nextRef: catSelectRef }); }}
+                     onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); pageRef.current = 1; loadItems(selectedCatId, search, showDeleted, { offset: 0 }); } handleKeyDown(e, { nextRef: catSelectRef }); }}
                      placeholder="بحث سريع (الاسم، الباركود، الكود الداخلي)..."
                      className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {search && (
-                      <button onClick={() => { setSearch(""); loadItems(selectedCatId, "", showDeleted); }} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                      <button onClick={() => { setSearch(""); setPage(1); pageRef.current = 1; loadItems(selectedCatId, "", showDeleted, { offset: 0 }); }} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
                         <X className="h-3 w-3" />
                       </button>
                     )}
@@ -1100,9 +1121,11 @@ export default function ItemsListPage() {
                </div>
                <div data-help="category-filter" className="relative w-72 group">
                   <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                  <select ref={catSelectRef} value={selectedCatId ?? ""} onChange={(e) => setSelectedCatId(Number(e.target.value))}
+                  <select ref={catSelectRef} value={selectedCatId ?? ""}
+                     onChange={(e) => { const v = e.target.value; setSelectedCatId(v === ALL_CATEGORIES ? ALL_CATEGORIES : Number(v)); }}
                      onKeyDown={(e) => handleKeyDown(e, { nextRef: nameInputRef, prevRef: searchRef })}
                      className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-black text-slate-700 outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm">
+                    <option value={ALL_CATEGORIES}>كل الأصناف — عرض فقط</option>
                     {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.sku_prefix ? `${cat.sku_prefix} — ` : ""}{cat.name}</option>)}
                   </select>
                   <ChevronDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:rotate-180 transition-transform" />
@@ -1111,11 +1134,15 @@ export default function ItemsListPage() {
             
             <div className="flex items-center gap-3">
                <button onClick={() => setShowSkuGaps((prev) => !prev)}
-                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm uppercase tracking-widest ${showSkuGaps ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}>
+                  disabled={isAllCats}
+                  title={isAllCats ? "غير متاح في وضع عرض كل الأصناف — اختر فئة محددة" : undefined}
+                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed ${showSkuGaps ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}>
                   <Box className="h-3.5 w-3.5" /> {showSkuGaps ? "إخفاء الفراغات" : "عرض فراغات SKU"}
                </button>
                <button onClick={() => setShowDeleted((p) => !p)}
-                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm uppercase tracking-widest ${
+                  disabled={isAllCats}
+                  title={isAllCats ? "غير متاح في وضع عرض كل الأصناف — اختر فئة محددة" : undefined}
+                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed ${
                     showDeleted
                       ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100"
                       : "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -1128,24 +1155,6 @@ export default function ItemsListPage() {
                </button>
             </div>
          </div>
-
-         {/* Bounded page notice */}
-         {displayItems.total > displayItems.loaded && (
-           <div className="flex flex-wrap items-center gap-3 bg-amber-50 px-6 py-2 border-b border-amber-100">
-             <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-             <span className="text-[11px] font-bold text-amber-800">تم تحميل {displayItems.loaded} صنف من إجمالي {displayItems.total} للحفاظ على سرعة الصفحة.</span>
-             {itemsMeta.hasMore && (
-               <button
-                 type="button"
-                 onClick={loadMoreItems}
-                 disabled={loadingMore}
-                 className="rounded-sm border border-amber-200 bg-white px-3 py-1 text-[11px] font-black text-amber-700 hover:bg-amber-100 disabled:opacity-60"
-               >
-                 {loadingMore ? "جاري التحميل..." : "تحميل المزيد"}
-               </button>
-             )}
-           </div>
-         )}
 
           {/* Items Table Workspace */}
           <div className="flex flex-col" style={{ maxHeight: '70vh' }}>
@@ -1162,12 +1171,14 @@ export default function ItemsListPage() {
                    </th>
                    <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">صورة</th>
                    <th className="w-9 px-1 py-3 text-center text-[11px] font-black text-slate-400">نشط</th>
+                    {expiryEnabled && (
                     <th className="w-16 px-1 py-3 text-center" title="تتبع تواريخ الانتهاء — فعّل لكل صنف حساس">
                       <div className="flex flex-col items-center gap-0.5">
                         <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">FEFO</span>
                         <span className="text-[9px] font-bold text-slate-400 leading-none">انتهاء</span>
                       </div>
                     </th>
+                    )}
                    <SortTh label="الكود" sortKey="code" sortConfig={sortConfig} onSort={toggleSort} resizableKey="code" width={colWidths.code} onResizeStart={onResizeStart} />
                    <SortTh label="الاسم / المواصفات" sortKey="name" sortConfig={sortConfig} onSort={toggleSort} resizableKey="name" width={colWidths.name} onResizeStart={onResizeStart} />
                    <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>
@@ -1249,11 +1260,11 @@ export default function ItemsListPage() {
 
                    return (
                      <tr key={item.id}
-                       draggable={!isDeleted}
-                       onDragStart={(e) => !isDeleted && onDragStart(e, item.id)}
-                       onDragOver={(e) => !isDeleted && onDragOver(e, item.id)}
+                       draggable={!isDeleted && !isAllCats}
+                       onDragStart={(e) => !isDeleted && !isAllCats && onDragStart(e, item.id)}
+                       onDragOver={(e) => !isDeleted && !isAllCats && onDragOver(e, item.id)}
                        onDragLeave={() => setDragOverId(null)}
-                       onDrop={(e) => !isDeleted && onDrop(e, item.id)}
+                       onDrop={(e) => !isDeleted && !isAllCats && onDrop(e, item.id)}
                        onDragEnd={() => setDragOverId(null)}
                        className={`group transition-all duration-200
                          ${isDeleted ? "bg-rose-50/60 border-r-4 border-rose-300" : isSelected ? "bg-sky-50/40" : "hover:bg-slate-50/50"}
@@ -1288,6 +1299,7 @@ export default function ItemsListPage() {
                        <td className="px-1 py-1 text-center border-l border-slate-100">
                           {!isDeleted && <ActiveToggle active={d.is_active !== false && d.is_active !== 0} onToggle={() => toggleActive(item)} />}
                        </td>
+                       {expiryEnabled && (
                        <td className="px-1 py-1 text-center border-l border-slate-100">
                           {!isDeleted && (
                             <button type="button"
@@ -1307,6 +1319,7 @@ export default function ItemsListPage() {
                             </button>
                           )}
                        </td>
+                       )}
                        <td className="px-4 py-1 border-l border-slate-100">
                           <span className="font-mono text-2sm font-black text-slate-400 tracking-tighter">{item.code || "—"}</span>
                        </td>
@@ -1445,8 +1458,21 @@ export default function ItemsListPage() {
              {/* New Item Creation Row */}
              {!loading && (
                <tfoot className="sticky bottom-0 z-20 bg-slate-100 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] border-t border-slate-200">
+                  {isAllCats ? (
+                  <tr className="bg-amber-50">
+                     <td colSpan={COLS} className="px-6 py-4">
+                       <div className="flex items-center justify-center gap-3 text-amber-800" dir="rtl">
+                         <AlertTriangle className="h-5 w-5 shrink-0" />
+                         <span className="text-2sm font-black">
+                           أنت في وضع عرض كل الأصناف — لا يمكن إضافة صنف جديد هنا. اختر فئة محددة من القائمة بالأعلى لإضافة الأصناف.
+                         </span>
+                       </div>
+                     </td>
+                  </tr>
+                  ) : (
                   <tr className="bg-white">
                      <td colSpan="3" className="px-2 text-[11px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد</td>
+                     {expiryEnabled && (
                      <td className="px-1 py-1 text-center border-l border-slate-100">
                        <button type="button"
                          title={newRow.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
@@ -1461,6 +1487,7 @@ export default function ItemsListPage() {
                          </span>
                        </button>
                      </td>
+                     )}
                      <td className="px-2">
                         <div className="flex items-center justify-center gap-1">
                           <span className={`font-mono text-[11px] font-black tracking-tighter ${newRow.code ? "text-violet-700" : "text-slate-400 opacity-60"}`}>{nextCodePreview}</span>
@@ -1515,6 +1542,7 @@ export default function ItemsListPage() {
                         </PermissionGate>
                      </td>
                   </tr>
+                  )}
                </tfoot>
              )}
             </table>
@@ -1526,6 +1554,38 @@ export default function ItemsListPage() {
               <div style={{ width: Math.max(tableScrollWidth, 1), height: 1 }} />
             </div>
           </div>
+
+          {/* Pagination */}
+          {!loading && itemsMeta.total > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/60 px-6 py-3" dir="rtl">
+              <span className="text-[11px] font-bold text-slate-500">
+                عرض {(page - 1) * ITEM_PAGE_SIZE + 1}–{Math.min(page * ITEM_PAGE_SIZE, itemsMeta.total)} من {itemsMeta.total} صنف
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => goToPage(1)} disabled={page <= 1 || loadingMore}
+                    className="rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed">الأولى</button>
+                  <button type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1 || loadingMore}
+                    className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"><ChevronRight className="h-4 w-4" /></button>
+                  {(() => {
+                    const span = 2;
+                    const start = Math.max(1, page - span);
+                    const end = Math.min(totalPages, page + span);
+                    const nums = [];
+                    for (let p = start; p <= end; p += 1) nums.push(p);
+                    return nums.map((p) => (
+                      <button key={p} type="button" onClick={() => goToPage(p)} disabled={loadingMore}
+                        className={`min-w-[32px] rounded-sm border px-2 py-1.5 text-[11px] font-black transition-colors ${p === page ? "border-primary bg-primary text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"}`}>{p}</button>
+                    ));
+                  })()}
+                  <button type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages || loadingMore}
+                    className="flex items-center rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"><ChevronLeft className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => goToPage(totalPages)} disabled={page >= totalPages || loadingMore}
+                    className="rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed">الأخيرة</button>
+                </div>
+              )}
+            </div>
+          )}
        </div>
 
       {/* Floating UI Elements */}

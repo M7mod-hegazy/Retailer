@@ -184,7 +184,7 @@ export default function DesktopLayout({ children, branding }) {
 
         <Topbar />
 
-        <main className="relative z-10 flex-1 h-0 overflow-y-auto flex flex-col pointer-events-auto">
+        <main className="relative flex-1 h-0 overflow-y-auto flex flex-col pointer-events-auto">
           {children}
         </main>
       </div>

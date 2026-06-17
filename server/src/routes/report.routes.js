@@ -9,6 +9,7 @@ const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("..
 const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
+const { featureGate } = require("../utils/features");
 
 const router = express.Router();
 router.use(authRequired);
@@ -463,7 +464,7 @@ router.get("/margin-alerts", requirePagePermission("reports", "view"), (_req, re
 });
 
 // Expiry tracking dashboard data — includes expired, critical, warning, valid
-router.get("/expiring-soon", requirePagePermission("reports", "view"), (req, res) => {
+router.get("/expiring-soon", requirePagePermission("reports", "view"), featureGate("feature_expiry"), (req, res) => {
   try {
     const db = getDb();
     const lookahead = Math.max(1, Math.min(365, Number(req.query.days || 30)));

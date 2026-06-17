@@ -8,6 +8,7 @@ import {
   Loader2, Filter, ClipboardList,
 } from "lucide-react";
 import api from "../../services/api";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
@@ -204,6 +205,7 @@ const COLOR_MAP = {
 
 export default function PurchaseFormPage() {
   usePageTour('purchases');
+  const expiryEnabled = useFeatureEnabled("feature_expiry");
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -644,7 +646,7 @@ export default function PurchaseFormPage() {
           update_master_wholesale_price: stagingLocks.wholesale,
         });
       }
-      const tracksExpiry = selectedItem.track_expiry === 1 || selectedItem.track_expiry === true;
+      const tracksExpiry = expiryEnabled && (selectedItem.track_expiry === 1 || selectedItem.track_expiry === true);
       return [...prev, {
         item_id: selectedItem.id,
         name: selectedItem.name,
@@ -1324,8 +1326,8 @@ export default function PurchaseFormPage() {
                   />
                 </div>
 
-                {/* Expiry / batch inputs — only shown for items with track_expiry */}
-                {selectedItem && (selectedItem.track_expiry === 1 || selectedItem.track_expiry === true) && (
+                {/* Expiry / batch inputs — only shown for tracked items when FEFO feature is enabled */}
+                {expiryEnabled && selectedItem && (selectedItem.track_expiry === 1 || selectedItem.track_expiry === true) && (
                   <div className="flex flex-col gap-1 basis-full mt-1 p-2 rounded-sm border border-blue-200 bg-blue-50/60">
                     <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">تتبع الانتهاء (FEFO)</p>
                     <div className="flex gap-2">

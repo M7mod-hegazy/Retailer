@@ -127,7 +127,7 @@ function coerceVal(col, raw) {
 const FEATURE_KEYS = [
   "feature_multi_unit", "feature_variants", "feature_serials",
   "feature_scale_barcodes", "feature_repair_orders", "feature_restaurant",
-  "feature_gold", "feature_promotions",
+  "feature_gold", "feature_promotions", "feature_expiry",
 ];
 
 // Apply feature-flag rules to an updates object in place.

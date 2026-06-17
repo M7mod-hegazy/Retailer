@@ -9,6 +9,7 @@ import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS
 import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, GhostPreviewRows, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 
 const SOURCE_CAT_MAP = {
   sales: "sales",
@@ -132,6 +133,7 @@ function previewKeyForSource(sourceId) {
 
 export default function ReportsCenter() {
   usePageTour('reports');
+  const expiryEnabled = useFeatureEnabled("feature_expiry");
   const navigate = useNavigate();
   const { t } = useTranslation();
   const store = useReportsStore();
@@ -178,13 +180,14 @@ export default function ReportsCenter() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let rows = SOURCES;
+    if (!expiryEnabled) rows = rows.filter((s) => s.id !== "expiry");
     if (activeCat !== "all") rows = rows.filter((s) => SOURCE_CAT_MAP[s.id] === activeCat);
     if (onlyFavs) rows = rows.filter((s) => store.favorites.has(s.id));
     if (q) {
       rows = rows.filter((s) => s.label.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
     }
     return rows;
-  }, [activeCat, store.favorites, onlyFavs, search]);
+  }, [activeCat, store.favorites, onlyFavs, search, expiryEnabled]);
 
   const selectedSource = useMemo(() => filtered.find((s) => s.id === selectedId) || null, [filtered, selectedId]);
 

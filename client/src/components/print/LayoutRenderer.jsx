@@ -13,7 +13,20 @@ import { overrideCss, overrideBox } from "./layout/layoutModel";
 // production print path (editing=false / no designer), so output stays clean.
 export default function LayoutRenderer({ family = "roll", invoice = {}, settings = {}, layout = null, size = "A4", editing = false, designer = null }) {
   const famLayout = (layout || settings.layout || {})[family] || {};
-  const order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : DEFAULT_ORDER[family];
+  let order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : DEFAULT_ORDER[family];
+  // "increase" (رسوم/إضافة) is a newer money block. Layouts saved before it
+  // existed won't list it, so surface it right after the discount line (falling
+  // back to just before the grand total). Safe to force in — IncreaseBlock
+  // renders nothing when there are no fees.
+  if (!order.includes("increase")) {
+    order = [...order];
+    const at = order.indexOf("discount");
+    if (at >= 0) order.splice(at + 1, 0, "increase");
+    else {
+      const gt = order.indexOf("grand_total");
+      if (gt >= 0) order.splice(gt, 0, "increase"); else order.push("increase");
+    }
+  }
   const perBlock = famLayout.perBlock || {};
   const designerInserts = Array.isArray(famLayout.inserted)
     ? famLayout.inserted.map((b) => ({ id: b.id, after: b.after, type: b.type, props: b.props || {} }))

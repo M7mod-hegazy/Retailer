@@ -1,4 +1,5 @@
 ﻿import React from "react";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 /**
  * 80mm Thermal Receipt Print Component
@@ -9,7 +10,9 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
 
   const lines = invoice.lines || [];
   const payments = invoice.payments || [];
+  const installmentPlan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan : [];
   const currency = settings.currency_symbol || "ر.س";
+  const fmtDue = (d) => { const s = String(d || "").slice(0, 10); const [y, m, dd] = s.split("-"); return dd ? `${dd}/${m}/${y}` : s; };
 
   const subtotal = lines.reduce((s, l) => s + (l.unit_price * l.quantity), 0);
   const totalDiscount = lines.reduce((s, l) => s + (l.discount_amount || 0), 0);
@@ -69,7 +72,7 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
       <div style={{ textAlign: "center", marginBottom: "8px" }}>
         {settings.logo_url && settings.logo_on_receipts !== false && settings.logo_on_receipts !== 0 ? (
           <img
-            src={settings.logo_url}
+            src={resolveImageUrl(settings.logo_url)}
             alt={settings.company_name || "Logo"}
             style={{ maxHeight: "48px", maxWidth: "100%", objectFit: "contain", margin: "0 auto 6px" }}
           />
@@ -184,6 +187,21 @@ const Receipt80mm = React.forwardRef(function Receipt80mm({ invoice, settings = 
           </div>
         )}
       </div>
+
+      {installmentPlan.length > 0 && (
+        <>
+          <div style={{ borderTop: "1px dashed #000", margin: "6px 0" }} />
+          <div style={{ fontSize: "11px" }}>
+            <div style={{ fontWeight: "bold", marginBottom: "2px" }}>جدول الأقساط ({installmentPlan.length}):</div>
+            {installmentPlan.map((r, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>قسط {r.installment_no ?? i + 1} <span dir="ltr">{fmtDue(r.due_date)}</span>:</span>
+                <span dir="ltr">{currency} {Number(r.amount || 0).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {invoice.notes && (
         <>

@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
+import { useInstallmentAlertStore } from "../../stores/installmentAlertStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
-import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup, useMotionValue, useSpring } from "framer-motion";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -423,6 +424,12 @@ export default function DashboardPage() {
   usePageTour('dashboard');
   const user = useAuthStore((state) => state.user);
   const updateAvailable = useUpdateStore((state) => state.available);
+  const bannerDismissed = useUpdateStore((state) => state.bannerDismissed);
+  const dismissBanner = useUpdateStore((state) => state.dismissBanner);
+  const installmentAlertDismissed = useInstallmentAlertStore((state) => state.dismissed);
+  const dismissInstallmentAlert = useInstallmentAlertStore((state) => state.dismiss);
+  const refreshInstallmentAlert = useInstallmentAlertStore((state) => state.refresh);
+  const [installmentAlert, setInstallmentAlert] = useState({ overdue: 0, dueToday: 0 });
   const navigate = useNavigate();
   const location = useLocation();
   const canView = usePermissionFilter();
@@ -441,7 +448,8 @@ export default function DashboardPage() {
       api.get("/api/categories"),
       api.get("/api/items"),
       api.get("/api/settings"),
-    ]).then(([catsRes, itemsRes, settingsRes]) => {
+      api.get("/api/dashboard").catch(() => null),
+    ]).then(([catsRes, itemsRes, settingsRes, dashRes]) => {
       if (cancelled) return;
       const cats = Array.isArray(catsRes.data?.data) ? catsRes.data.data : [];
       const items = Array.isArray(itemsRes.data?.data) ? itemsRes.data.data : [];
@@ -450,6 +458,11 @@ export default function DashboardPage() {
       if (data && typeof data === "object" && !Array.isArray(data)) {
         setSettings(data);
       }
+      const dash = dashRes?.data?.data;
+      if (dash) {
+        setInstallmentAlert({ overdue: Number(dash.overdueInstallments || 0), dueToday: Number(dash.dueTodayInstallments || 0) });
+      }
+      refreshInstallmentAlert();
     }).catch(() => {
       if (!cancelled) setNoItems(false);
     }).finally(() => {
@@ -480,6 +493,12 @@ export default function DashboardPage() {
   const [activeTabId, setActiveTabId] = useState(visibleModules[0]?.id || null);
 
   useEffect(() => {
+    if (visibleModules.length > 0 && !visibleModules.some((m) => m.id === activeTabId)) {
+      setActiveTabId(visibleModules[0].id);
+    }
+  }, [visibleModules, activeTabId]);
+
+  useEffect(() => {
     function handleKeyDown(e) {
       if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
       if (e.key === "F2") { e.preventDefault(); navigate("/pos"); }
@@ -501,20 +520,20 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] overflow-x-hidden selection:bg-primary/30" dir="rtl">
 
-      {/* Dark hero */}
-      <div className="bg-zinc-950 px-6 md:px-12 pt-12 pb-24 rounded-b-[3rem] relative">
+      {/* Feature hero — adaptive dark/elevated surface, correct on every theme */}
+      <div className="bg-[var(--surface-feature)] px-6 md:px-12 pt-12 pb-24 rounded-b-[3rem] relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--primary-glow)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none" />
 
         <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/10 text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl">
+            <div className="w-16 h-16 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 text-[var(--on-feature)] rounded-[1.2rem] flex items-center justify-center shadow-2xl">
               <Command className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-1">
-                مرحباً بك، <span className="text-white underline decoration-primary/60 decoration-2 underline-offset-4">{user?.name?.split(" ")[0] || "مدير"}</span>
+              <h1 className="text-3xl md:text-4xl font-black text-[var(--on-feature)] tracking-tight mb-1">
+                مرحباً بك، <span className="text-[var(--on-feature)] underline decoration-primary/60 decoration-2 underline-offset-4">{user?.name?.split(" ")[0] || "مدير"}</span>
               </h1>
-              <p className="text-sm font-bold text-zinc-400">
+              <p className="text-sm font-bold text-[var(--on-feature-muted)]">
                 {settings.company_name || settings.branch_name
                   ? `${settings.company_name || ""} ${settings.company_name && settings.branch_name ? "—" : ""} ${settings.branch_name || ""}`
                   : "نظام إدارة الموارد ونقاط البيع المتكامل"}
@@ -531,16 +550,16 @@ export default function DashboardPage() {
             return (
               <motion.div key={item.path} variants={FADE_UP}>
                 {isPOS ? (
-                  <div className={`group relative flex items-stretch rounded-[2rem] transition-all duration-500 overflow-hidden bg-primary hover:bg-primary-600 shadow-[0_0_40px_var(--primary-glow)] hover:-translate-y-2`}>
+                  <div className={`group relative flex items-stretch rounded-[2rem] transition-all duration-300 overflow-hidden bg-primary shadow-[0_0_40px_var(--primary-glow)] hover:-translate-y-1 hover:shadow-[0_18px_44px_var(--primary-glow)]`}>
                     <Link to={item.path} title={TOOLTIPS[item.pageKey] || item.label} className="flex flex-1 items-center gap-6 p-6 min-w-0">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-black/20 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-[var(--chip-on-primary)] shadow-[var(--chip-on-primary-ring)] text-[var(--on-feature)] transition-transform duration-300 group-hover:scale-105">
                         <item.icon className="h-7 w-7" strokeWidth={1.5} />
                       </div>
                       <div className="min-w-0 z-10">
-                        <div className="text-xl font-black text-white mb-1">{item.label}</div>
+                        <div className="text-xl font-black text-[var(--on-feature)] mb-1">{item.label}</div>
                         {shortcut && (
-                          <div className="text-xs font-bold flex items-center gap-2 text-emerald-100">
-                            <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-black/20 text-white">{shortcut}</kbd>
+                          <div className="text-xs font-bold flex items-center gap-2 text-[var(--on-feature-muted)]">
+                            <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-[var(--chip-on-primary)] text-[var(--on-feature)]">{shortcut}</kbd>
                             <span>اختصار لوحة المفاتيح</span>
                           </div>
                         )}
@@ -549,25 +568,25 @@ export default function DashboardPage() {
                     <Link
                       to="/sales"
                       title="سجل المبيعات"
-                      className="flex items-center justify-center w-16 shrink-0 border-r border-emerald-400/50 bg-black/10 hover:bg-black/25 transition-colors"
+                      className="flex items-center justify-center w-16 shrink-0 border-r border-white/15 bg-[var(--chip-on-primary)] hover:bg-[var(--chip-on-primary-hover)] transition-colors"
                     >
-                      <ShoppingBag className="h-6 w-6 text-white/80" strokeWidth={1.5} />
+                      <ShoppingBag className="h-6 w-6 text-[var(--on-feature-muted)]" strokeWidth={1.5} />
                     </Link>
                   </div>
                 ) : (
                   <Link
                     to={item.path}
                     title={TOOLTIPS[item.pageKey] || item.label}
-                    className="group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-500 overflow-hidden bg-primary hover:bg-primary-600 shadow-[0_0_40px_var(--primary-glow)] hover:-translate-y-2"
+                    className="group relative flex items-center gap-6 rounded-[2rem] p-6 transition-all duration-300 overflow-hidden bg-primary shadow-[0_0_40px_var(--primary-glow)] hover:-translate-y-1 hover:shadow-[0_18px_44px_var(--primary-glow)]"
                   >
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-black/20 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-[var(--chip-on-primary)] shadow-[var(--chip-on-primary-ring)] text-[var(--on-feature)] transition-transform duration-300 group-hover:scale-105">
                       <item.icon className="h-7 w-7" strokeWidth={1.5} />
                     </div>
                     <div className="min-w-0 z-10">
-                      <div className="text-xl font-black text-white mb-1">{item.label}</div>
+                      <div className="text-xl font-black text-[var(--on-feature)] mb-1">{item.label}</div>
                       {shortcut && (
-                        <div className="text-xs font-bold flex items-center gap-2 text-emerald-100">
-                          <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-black/20 text-white">{shortcut}</kbd>
+                        <div className="text-xs font-bold flex items-center gap-2 text-[var(--on-feature-muted)]">
+                          <kbd className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-[var(--chip-on-primary)] text-[var(--on-feature)]">{shortcut}</kbd>
                           <span>اختصار لوحة المفاتيح</span>
                         </div>
                       )}
@@ -581,28 +600,87 @@ export default function DashboardPage() {
       </div>
 
       {/* Update available banner */}
-      {updateAvailable && (
-        <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
-          <div className="rounded-[2rem] border-2 border-emerald-200 bg-emerald-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-emerald-200/20 backdrop-blur-sm">
-            <div className="flex items-center gap-5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                <ArrowDownCircle className="h-7 w-7" />
+      <AnimatePresence>
+        {updateAvailable && !bannerDismissed && (
+          <motion.div
+            variants={FADE_UP}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20"
+          >
+            <div className="relative rounded-[2rem] border-2 border-emerald-200 bg-emerald-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-emerald-200/20 backdrop-blur-sm">
+              <button
+                onClick={dismissBanner}
+                className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                  <ArrowDownCircle className="h-7 w-7" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-emerald-900">تحديث جديد متاح!</h3>
+                  <p className="mt-1 text-sm font-bold text-emerald-700">إصدار جديد من النظام متاح للتحميل. انتقل إلى صفحة التحديثات للتثبيت.</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-emerald-900">تحديث جديد متاح!</h3>
-                <p className="mt-1 text-sm font-bold text-emerald-700">إصدار جديد من النظام متاح للتحميل. انتقل إلى صفحة التحديثات للتثبيت.</p>
-              </div>
+              <Link
+                to="/updates"
+                className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-700/20 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl active:scale-95"
+              >
+                <ArrowUpRight className="h-4.5 w-4.5" />
+                الانتقال للتحديثات
+              </Link>
             </div>
-            <Link
-              to="/updates"
-              className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-700/20 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl active:scale-95"
-            >
-              <ArrowUpRight className="h-4.5 w-4.5" />
-              الانتقال للتحديثات
-            </Link>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Installments due / overdue — dismissible (reappears daily) */}
+      <AnimatePresence>
+        {!installmentAlertDismissed && (installmentAlert.overdue > 0 || installmentAlert.dueToday > 0) && (
+          <motion.div
+            variants={FADE_UP}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20"
+          >
+            <div className="relative rounded-[2rem] border-2 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg backdrop-blur-sm"
+              style={{ backgroundColor: "var(--danger-bg)", borderColor: "var(--danger-border)" }}>
+              <button
+                onClick={dismissInstallmentAlert}
+                className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:opacity-80"
+                style={{ backgroundColor: "var(--danger-light)", color: "var(--danger-text)" }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+                  style={{ backgroundColor: "var(--danger-light)", color: "var(--danger-text)" }}>
+                  <AlertCircle className="h-7 w-7" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black" style={{ color: "var(--danger-text)" }}>تنبيه الأقساط</h3>
+                  <p className="mt-1 text-sm font-bold" style={{ color: "var(--danger-text)" }}>
+                    {installmentAlert.overdue > 0 && `${installmentAlert.overdue} قسط متأخر السداد`}
+                    {installmentAlert.overdue > 0 && installmentAlert.dueToday > 0 && " — "}
+                    {installmentAlert.dueToday > 0 && `${installmentAlert.dueToday} قسط مستحق اليوم`}
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/accounts/customers?filter=installments"
+                className="inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-700/20 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl active:scale-95"
+              >
+                <ArrowUpRight className="h-4.5 w-4.5" />
+                متابعة الأقساط
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Critical settings warning */}
       {!checkingEmpty && (
@@ -649,23 +727,25 @@ export default function DashboardPage() {
         </div>
 
         {/* Module tabs */}
-        <div data-help="module-tabs" className="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-zinc-200/60 shadow-lg shadow-zinc-200/20 overflow-x-auto hide-scrollbar mb-8">
-          {visibleModules.map((module) => (
-            <button
-              key={module.id}
-              onClick={() => setActiveTabId(module.id)}
-              className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group transition-colors hover:bg-zinc-100"
-            >
-              {activeTabId === module.id && (
-                <motion.div layoutId="active-tab" className="absolute inset-0 bg-primary rounded-3xl" transition={{ type: "spring", stiffness: 300, damping: 25 }} />
-              )}
-              <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} strokeWidth={2} />
-              <span className={`text-sm font-black tracking-wide relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-900"}`}>
-                {module.title}
-              </span>
-            </button>
-          ))}
-        </div>
+        <LayoutGroup>
+          <div data-help="module-tabs" className="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-zinc-200/60 shadow-lg shadow-zinc-200/20 overflow-x-auto hide-scrollbar mb-8">
+            {visibleModules.map((module) => (
+              <button
+                key={module.id}
+                onClick={() => setActiveTabId(module.id)}
+                className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group transition-colors hover:bg-zinc-100"
+              >
+                {activeTabId === module.id && (
+                  <motion.div layoutId="active-tab" className="absolute inset-0 bg-primary rounded-3xl" transition={{ type: "spring", stiffness: 300, damping: 25 }} />
+                )}
+                <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} strokeWidth={2} />
+                <span className={`text-sm font-black tracking-wide relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-900"}`}>
+                  {module.title}
+                </span>
+              </button>
+            ))}
+          </div>
+        </LayoutGroup>
 
         {/* Cards grid */}
         <AnimatePresence mode="wait">

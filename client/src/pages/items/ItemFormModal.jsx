@@ -20,6 +20,7 @@ export default function ItemFormModal({ editItem, onSaved }) {
   const scaleEnabled = useFeatureEnabled("feature_scale_barcodes");
   const serialsEnabled = useFeatureEnabled("feature_serials");
   const goldEnabled = useFeatureEnabled("feature_gold");
+  const expiryEnabled = useFeatureEnabled("feature_expiry");
 
   const handleKeyDown = useFieldNavigation();
 
@@ -166,7 +167,9 @@ export default function ItemFormModal({ editItem, onSaved }) {
         <Checkbox label="خدمة (غير مخزنية)" checked={form.is_service} onChange={v => set("is_service", v)} />
         <Checkbox label="نشط" checked={form.is_active} onChange={v => set("is_active", v)} />
         <Checkbox label="معفى من الضريبة" checked={form.tax_exempt} onChange={v => set("tax_exempt", v)} />
-        <Checkbox label="تتبع تواريخ الانتهاء (FEFO)" checked={form.track_expiry} onChange={v => set("track_expiry", v)} />
+        {expiryEnabled && (
+          <Checkbox label="تتبع تواريخ الانتهاء (FEFO)" checked={form.track_expiry} onChange={v => set("track_expiry", v)} />
+        )}
         {serialsEnabled && (
           <Checkbox label="تتبع السيريال / IMEI" checked={form.track_serials} onChange={v => set("track_serials", v)} />
         )}

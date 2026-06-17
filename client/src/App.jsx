@@ -317,7 +317,7 @@ export default function App() {
                     <Route path="reports/center" element={<PermissionRoute page="reports"><ReportsCenterPage /></PermissionRoute>} />
                     <Route path="reports/source/:sourceKey/:classificationId/:dataMode" element={<PermissionRoute page="reports"><SourceWorkspacePage /></PermissionRoute>} />
                     <Route path="reports/owner-statement" element={<PermissionRoute page="reports"><OwnerStatementPage /></PermissionRoute>} />
-                    <Route path="reports/expiry-report" element={<PermissionRoute page="reports"><ExpiryReportPage /></PermissionRoute>} />
+                    <Route path="reports/expiry-report" element={<PermissionRoute page="reports"><FeatureRoute featureKey="feature_expiry"><ExpiryReportPage /></FeatureRoute></PermissionRoute>} />
                     <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><ReportWorkspacePage /></PermissionRoute>} />
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />

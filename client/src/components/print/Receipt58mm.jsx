@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = {} }, ref) {
   if (!invoice) return null;
@@ -55,7 +56,7 @@ const Receipt58mm = React.forwardRef(function Receipt58mm({ invoice, settings = 
       <div style={{ textAlign: "center", marginBottom: "6px" }}>
         {settings.logo_url && settings.logo_on_receipts !== false && settings.logo_on_receipts !== 0 ? (
           <img
-            src={settings.logo_url}
+            src={resolveImageUrl(settings.logo_url)}
             alt={settings.company_name || "Logo"}
             style={{ maxHeight: "36px", maxWidth: "100%", objectFit: "contain", margin: "0 auto 4px" }}
           />

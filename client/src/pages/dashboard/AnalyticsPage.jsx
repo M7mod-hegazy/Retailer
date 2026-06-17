@@ -11,6 +11,7 @@ import api from "../../services/api";
 import CurrencyDisplay from "../../components/ui/CurrencyDisplay";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 
 const zeroSummary = {
   todaySales: 0,
@@ -34,6 +35,7 @@ function ChartTooltip({ active, payload, label, isCurrency = true }) {
 
 export default function AnalyticsPage() {
   usePageTour('analytics');
+  const expiryEnabled = useFeatureEnabled("feature_expiry");
   const handleKeyDown = useFieldNavigation();
   const navigate = useNavigate();
   const [summary, setSummary] = useState(zeroSummary);
@@ -699,7 +701,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Expiry Tracking Dashboard — Fully rebuilt */}
+        {/* Expiry Tracking Dashboard — Fully rebuilt (gated by FEFO feature) */}
+        {expiryEnabled && (
         <div className="rounded-[28px] bg-white/70 backdrop-blur-xl border border-amber-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 flex flex-col gap-5">
           {/* Header */}
           <div className="flex items-center gap-3">
@@ -910,6 +913,7 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
+        )}
 
       </div>
     </div>

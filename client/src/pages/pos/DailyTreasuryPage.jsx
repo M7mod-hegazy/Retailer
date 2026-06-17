@@ -383,6 +383,7 @@ export default function DailyTreasuryPage() {
   const withdrawalPaymentRef = useRef(null);
   const withdrawalSubmitRef = useRef(null);
 
+  const denomRefs = useRef([]);
   const handleKeyDown = useFieldNavigation();
 
   const isToday = date === todayStr();
@@ -2341,7 +2342,7 @@ export default function DailyTreasuryPage() {
                     <span className="text-left">الإجمالي الفرعي</span>
                   </div>
                   <div className="space-y-2">
-                    {DENOMS.map((d) => (
+                    {DENOMS.map((d, idx) => (
                       <div key={d} className="grid grid-cols-3 items-center gap-3 bg-[var(--bg-surface)] p-2 rounded-2xl border border-[var(--border-subtle)] shadow-sm transition-colors hover:border-blue-200">
                         <span className="text-sm font-black text-[var(--text-primary)] px-2 flex items-center gap-2">
                           <Banknote className="h-4 w-4 text-emerald-500 opacity-50" />
@@ -2350,8 +2351,10 @@ export default function DailyTreasuryPage() {
                         <input
                           type="number"
                           min="0"
+                          ref={el => { denomRefs.current[idx] = el; }}
                           value={counts[d] || ""}
                           onChange={(e) => setCounts((p) => ({ ...p, [d]: e.target.value }))}
+                          onKeyDown={e => handleKeyDown(e, { nextRef: idx < DENOMS.length - 1 ? { current: denomRefs.current[idx + 1] } : undefined })}
                           className="h-10 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-3 text-center text-[15px] font-black number-fmt outline-none focus:bg-[var(--bg-surface)] focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all"
                           placeholder="0"
                         />

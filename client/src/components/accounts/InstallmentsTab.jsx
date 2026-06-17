@@ -60,9 +60,10 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       else {
         acc.remaining += Number(s.amount || 0);
         if (s.due_date < today) acc.overdue += 1;
+        else if (s.due_date === today) acc.dueToday += 1;
       }
       return acc;
-    }, { total: 0, paid: 0, remaining: 0, overdue: 0 });
+    }, { total: 0, paid: 0, remaining: 0, overdue: 0, dueToday: 0 });
   }, [schedules, today]);
 
   const filtered = useMemo(() => {
@@ -115,6 +116,19 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
 
   return (
     <div className="space-y-4">
+      {/* Persistent warning — stays visible while installments are overdue / due today */}
+      {(stats.overdue > 0 || stats.dueToday > 0) && (
+        <div className="flex items-center gap-3 rounded-2xl border px-4 py-3"
+          style={{ backgroundColor: "var(--danger-bg)", borderColor: "var(--danger-border)" }}>
+          <AlertCircle className="h-5 w-5 shrink-0" style={{ color: "var(--danger-text)" }} />
+          <div className="text-2sm font-black" style={{ color: "var(--danger-text)" }}>
+            {stats.overdue > 0 && `${stats.overdue} قسط متأخر السداد`}
+            {stats.overdue > 0 && stats.dueToday > 0 && " — "}
+            {stats.dueToday > 0 && `${stats.dueToday} قسط مستحق اليوم`}
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

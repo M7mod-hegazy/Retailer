@@ -11,7 +11,7 @@ const SECTION = {
   receipt_header_text: "headtext",
   doc_number: "meta", doc_date: "meta", customer: "meta", cashier: "meta",
   items_table: "items",
-  subtotal: "totals", discount: "totals", tax: "totals", grand_total: "totals",
+  subtotal: "totals", discount: "totals", increase: "totals", tax: "totals", grand_total: "totals",
   payments: "payments",
   footer_text: "footer", qr: "qr",
 };

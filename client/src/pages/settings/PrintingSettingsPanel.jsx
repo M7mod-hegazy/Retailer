@@ -3,7 +3,7 @@ import {
   Ruler, Hash, AlignLeft, Baseline, ListChecks, Eye, Receipt,
   FileBarChart2, ToggleLeft, ToggleRight, Info, Zap, MousePointerClick,
   RefreshCw, FileText
-} from "lucide-react";
+, QrCode } from "lucide-react";
 import { BlockRenderer, CustomTextBlocksSection, getCustomBlocks, saveCustomBlocks } from "./CustomTextBlocks";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -18,6 +18,7 @@ import { PrintThermalDoc, PrintA4Doc } from "../../components/print/PrintDoc";
 import { Maximize2, Printer as PrinterIcon } from "lucide-react";
 import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap } from "../../services/printService";
 import { getHint as fmHint } from "../../utils/fieldMeta";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 // Mock invoice for the live preview of invoice-style docs — rendered through the
 // shared block library so the preview matches print AND the Designer layout.
@@ -69,9 +70,9 @@ const DEFAULTS = {
   header_font_size: 16, body_font_size: 13, footer_font_size: 11,
   item_font_size: 13, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
-  margin_top: 4, margin_side: 4, qr_size: 44,
+  margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
   show_cashier_name: true, show_customer_name: true, show_tax: true,
-  show_footer: true, show_qr: true, show_logo: true,
+  show_footer: true, show_qr: false, show_logo: true,
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
   show_notes: true,
   show_phone: true, show_address: true, show_tax_id: true,
@@ -235,6 +236,50 @@ function ToggleSwitch({ checked, onChange, label, hint, fieldKey, hovered, onHov
   );
 }
 
+function QrPreview({ settings: s, onClick }) {
+  const size = get(s, "qr_size");
+  const alignment = get(s, "qr_alignment") || "right";
+  const customContent = get(s, "qr_content");
+  const alignMap = { right: "flex-end", center: "center", left: "flex-start" };
+  const [dataUrl, setDataUrl] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const QRCode = await import("qrcode");
+        if (cancelled) return;
+        const content = customContent || JSON.stringify({
+          seller: get(s, "company_name") || "",
+          vat: get(s, "tax_id") || "",
+          date: new Date().toISOString(),
+          total: 0,
+          tax: 0,
+        });
+        const url = await QRCode.default.toDataURL(content, {
+          width: size,
+          margin: 1,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        if (!cancelled) setDataUrl(url);
+      } catch {
+        if (!cancelled) setDataUrl(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [size, customContent]);
+
+  return (
+    <div style={{ display: "flex", justifyContent: alignMap[alignment], marginTop: "8px" }}>
+      {dataUrl ? (
+        <img src={dataUrl} alt="QR" onClick={onClick} style={{ width: `${size}px`, height: `${size}px`, cursor: "pointer" }} />
+      ) : (
+        <div onClick={onClick} style={{ width: `${size}px`, height: `${size}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888", cursor: "pointer" }}>QR</div>
+      )}
+    </div>
+  );
+}
+
 function PaperPicker({ value, onChange }) {
   return (
     <div className="grid grid-cols-4 gap-3">
@@ -307,7 +352,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
     <div dir="rtl" style={{ fontFamily, fontSize: `${get(s,"body_font_size")}px`, width: w, margin: "0 auto", padding: `${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color: accent, background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
       {/* Header */}
       <div onClick={() => onElementClick("header_section")} style={{ textAlign: get(s,"logo_alignment"), marginBottom: "8px", ...hl("header_section") }}>
-        {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight: `${get(s,"logo_max_height")}px`, objectFit: "contain", margin: "0 auto 4px" }} />}
+        {get(s,"show_logo") !== false && s.logo_url && <img src={resolveImageUrl(s.logo_url)} alt="" style={{ maxHeight: `${get(s,"logo_max_height")}px`, objectFit: "contain", margin: "0 auto 4px" }} />}
         <div style={{ fontSize: `${get(s,"header_font_size")}px`, fontWeight: "900" }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
         {get(s,"show_branch")   !== false && <div style={hl("show_branch")}   onClick={e => { e.stopPropagation(); onElementClick("show_branch"); }}>{s.branch_name || "الفرع الرئيسي"}</div>}
         {!addressAtBottom && <AddressBlock />}
@@ -374,7 +419,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       )}
 
       {get(s,"show_qr") !== false && (
-        <div onClick={() => onElementClick("show_qr")} style={{ margin: "8px auto 0", width: `${get(s,"qr_size")}px`, height: `${get(s,"qr_size")}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888", cursor: "pointer", ...hl("show_qr") }}>QR</div>
+        <QrPreview settings={s} onClick={() => onElementClick("show_qr")} />
       )}
 
       {addressAtBottom && (
@@ -444,7 +489,7 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
       {/* Header */}
       <div onClick={() => onElementClick("header_section")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `3px solid ${accent}`, paddingBottom: "8px", marginBottom: "10px", ...hl("header_section") }}>
         <div>
-          {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight: `${get(s,"logo_max_height")}px`, objectFit: "contain" }} />}
+          {get(s,"show_logo") !== false && s.logo_url && <img src={resolveImageUrl(s.logo_url)} alt="" style={{ maxHeight: `${get(s,"logo_max_height")}px`, objectFit: "contain" }} />}
         </div>
         <div>
           <div style={{ fontSize: `${get(s,"header_font_size")}px`, fontWeight: "900", color: accent }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
@@ -511,7 +556,9 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
         <div onClick={() => onElementClick("receipt_footer")} style={{ textAlign: "center", fontSize: `${get(s,"footer_font_size")}px`, color: "#94a3b8", fontStyle: "italic", ...hl("receipt_footer") }}>{get(s,"receipt_footer")}</div></>
       )}
 
-      {get(s,"show_qr") !== false && <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}><div onClick={() => onElementClick("show_qr")} style={{ width: `${get(s,"qr_size")}px`, height: `${get(s,"qr_size")}px`, background: "#f0f0f0", border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#888", cursor: "pointer", ...hl("show_qr") }}>QR</div></div>}
+      {get(s,"show_qr") !== false && (
+        <QrPreview settings={s} onClick={() => onElementClick("show_qr")} />
+      )}
 
       {addressAtBottom && (
         <div style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44`, fontSize: "10px", color: "#94a3b8", textAlign: "center" }}>
@@ -633,7 +680,7 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
       {/* ── Company header ── */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`3px solid ${accent}`, paddingBottom:"10px", marginBottom:"12px" }}>
         <div>
-          {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight:`${get(s,"logo_max_height")}px`, marginBottom:"4px" }} />}
+          {get(s,"show_logo") !== false && s.logo_url && <img src={resolveImageUrl(s.logo_url)} alt="" style={{ maxHeight:`${get(s,"logo_max_height")}px`, marginBottom:"4px" }} />}
           <div style={{ fontSize:`${get(s,"header_font_size")}px`, fontWeight:900, color:accent }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
           {get(s,"show_branch")  !== false && <div style={{ fontSize:"10px", color:"#64748b" }}>{s.branch_name || "الفرع الرئيسي"}</div>}
           {!addressAtBottom && <AddressBlock />}
@@ -945,7 +992,7 @@ function DailyTreasuryPreview({ s }) {
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`3px solid ${accent}`, paddingBottom:"10px", marginBottom:"14px" }}>
         <div>
-          {get(s,"show_logo") !== false && s.logo_url && <img src={s.logo_url} alt="" style={{ maxHeight:`${get(s,"logo_max_height")}px`, marginBottom:"4px" }} />}
+          {get(s,"show_logo") !== false && s.logo_url && <img src={resolveImageUrl(s.logo_url)} alt="" style={{ maxHeight:`${get(s,"logo_max_height")}px`, marginBottom:"4px" }} />}
           <div style={{ fontSize:`${get(s,"header_font_size")}px`, fontWeight:900, color:accent }}>{s.company_name || "إلهيجازي للتجزئة"}</div>
           {get(s,"show_branch")  !== false && <div style={{ fontSize:"10px", color:"#64748b" }}>{s.branch_name || "الفرع الرئيسي"}</div>}
           {!addressAtBottom && <AddressBlock />}
@@ -1517,7 +1564,6 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             {cf("item_font_size",   "خط الأصناف",    null, <Stepper value={get(s,"item_font_size")}   onChange={v => onChange("item_font_size", v)}   min={8}  max={16} unit="px" />)}
             {cf("footer_font_size", "خط التذييل",    null, <Stepper value={get(s,"footer_font_size")} onChange={v => onChange("footer_font_size", v)} min={8}  max={16} unit="px" />)}
             {cf("logo_max_height",  "ارتفاع الشعار", null, <Stepper value={get(s,"logo_max_height")}  onChange={v => onChange("logo_max_height", v)}  min={20} max={100} unit="px" />)}
-            {cf("qr_size",          "حجم رمز QR",    null, <Stepper value={get(s,"qr_size")}          onChange={v => onChange("qr_size", v)}          min={28} max={100} unit="px" />)}
           </div>
         </section>
 
@@ -1584,6 +1630,26 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             </div>
           </div>
         </section>
+
+        {/* QR Code */}
+        {get(s, "show_qr") !== false && (
+          <section>
+            <SectionLabel icon={QrCode} title="رمز QR" hint="تحكم في حجم ومحاذاة رمز QR في أسفل المستند" />
+            <div className="grid grid-cols-2 gap-4">
+              {cf("qr_size", "حجم رمز QR", null, <Stepper value={get(s,"qr_size")} onChange={v => onChange("qr_size", v)} min={28} max={100} unit="px" />)}
+              {cf("qr_alignment", "محاذاة رمز QR", null,
+                <StyledSelect value={get(s,"qr_alignment") || "right"} onChange={e => onChange("qr_alignment", e.target.value)} options={[
+                  {value:"right", label:"يمين"},
+                  {value:"center", label:"وسط"},
+                  {value:"left", label:"يسار"},
+                ]} />)}
+            </div>
+            <div className="mt-3">
+              {cf("qr_content", "محتوى رمز QR", "اتركه فارغاً لترميز بيانات الفاتورة تلقائياً",
+                <StyledInput value={get(s,"qr_content") || ""} onChange={e => onChange("qr_content", e.target.value)} placeholder="https://example.com/invoice/..." />)}
+            </div>
+          </section>
+        )}
 
         {/* Custom Text Blocks */}
         <section>

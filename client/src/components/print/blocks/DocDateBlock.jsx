@@ -7,12 +7,14 @@ export default function DocDateBlock({ invoice = {}, settings: s, family }) {
   // Force the Gregorian (ميلادي) calendar — bare "ar-SA" defaults to the Umm al-Qura
   // (Hijri) calendar, which printed dates like "1447/12/29 هـ" on receipts.
   const date = d.toLocaleDateString("ar-SA-u-ca-gregory-nu-latn");
+  const time = d.toLocaleTimeString("ar-SA-u-ca-gregory-nu-latn", { hour: "2-digit", minute: "2-digit" });
+  const dateTime = `${date} ${time}`;
   if (family === "page") {
-    return <div style={{ fontSize: "10px", color: "#334155", fontWeight: 600 }}>{date}</div>;
+    return <div style={{ fontSize: "10px", color: "#334155", fontWeight: 600 }}>{dateTime}</div>;
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>التاريخ:</span><span>{date}</span>
+      <span>التاريخ:</span><span>{dateTime}</span>
     </div>
   );
 }

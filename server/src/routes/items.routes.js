@@ -5,6 +5,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
+const { isFeatureEnabled } = require("../utils/features");
 
 const router = express.Router();
 // Guards against two overlapping imports committing at once (better-sqlite3 is
@@ -579,7 +580,7 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
       payload.description || null,
       payload.is_active === false ? 0 : 1,
       0,
-      payload.track_expiry ? 1 : 0,
+      (isFeatureEnabled(getDb(), "feature_expiry") && payload.track_expiry) ? 1 : 0,
     );
 
   const imageUrls = normalizeImageUrls(payload);
@@ -672,7 +673,9 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
       payload.description ?? existing.description,
       payload.is_active === undefined ? existing.is_active : payload.is_active === false ? 0 : 1,
       Number(payload.min_stock_qty ?? existing.min_stock_qty ?? 0),
-      payload.track_expiry === undefined ? (existing.track_expiry || 0) : payload.track_expiry ? 1 : 0,
+      !isFeatureEnabled(db, "feature_expiry")
+        ? (existing.track_expiry || 0)
+        : payload.track_expiry === undefined ? (existing.track_expiry || 0) : payload.track_expiry ? 1 : 0,
       id,
     );
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, BadgePercent, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, BadgePercent, CalendarClock, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
@@ -118,6 +118,24 @@ const FEATURES = [
       "نقطة البيع ← تسعير تلقائي: وزن × سعر العيار + المصنعية + تنبيه إدخال سعر اليوم",
       "الفواتير ← حفظ تفاصيل الذهب وعرضها في التفاصيل والمطبوعات",
     ],
+  },
+  {
+    key: "feature_expiry",
+    icon: CalendarClock,
+    color: "bg-orange-500",
+    ringColor: "ring-orange-200",
+    name: "تتبع تواريخ الانتهاء (FEFO)",
+    desc: "تتبع دفعات الأصناف بتاريخ صلاحية لكل دفعة، مع صرف الأقرب انتهاءً أولاً (FEFO) عند البيع، وتنبيهات بالأصناف المنتهية أو القريبة من الانتهاء.",
+    recommendedFor: ["سوبر ماركت", "صيدلية", "أغذية ومشروبات", "ألبان"],
+    affectedPages: [
+      "قاعدة الأصناف ← خانة «تتبع تواريخ الانتهاء (FEFO)» لكل صنف (نافذة الصنف + مفتاح سريع في القائمة)",
+      "المشتريات ← إدخال تاريخ الانتهاء ورقم الدفعة عند استلام الأصناف المتتبَّعة",
+      "فواتير المبيعات ← خصم المخزون من الدفعة الأقرب انتهاءً أولاً (FEFO) تلقائياً",
+      "المرتجعات ← إعادة الكمية المرتجعة إلى أحدث دفعة للصنف",
+      "التقارير ← تقرير «انتهاء الصلاحية» (منتهي / حرج / تحذير / ساري)",
+      "لوحة التحليلات ← بطاقة رصد صلاحية الدفعات القريبة من الانتهاء",
+    ],
+    disableWarning: "البيانات تُحفظ — دفعات الصلاحية تبقى مخزّنة وتعمل فور التفعيل.",
   },
   {
     key: "feature_promotions",

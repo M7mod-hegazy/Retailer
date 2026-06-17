@@ -985,7 +985,7 @@ export default function SalesHubPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl p-7"
+              className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl p-7"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4 mb-5">

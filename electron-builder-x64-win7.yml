@@ -31,7 +31,7 @@ artifactName: "2_INSTALL_SECOND_ElHegazi-Retailer-x64-v${version}.exe"
 
 nsis:
   oneClick: false
-  allowToChangeInstallationDirectory: true
+  allowToChangeInstallationDirectory: false
   allowElevation: true
   perMachine: true
   createDesktopShortcut: always

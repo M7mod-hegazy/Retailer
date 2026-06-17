@@ -36,7 +36,7 @@ artifactName: 2b_FOR_32BIT_WIN7_ElHegazi-Retailer-ia32.exe
 
 nsis:
   oneClick: false
-  allowToChangeInstallationDirectory: true
+  allowToChangeInstallationDirectory: false
   allowElevation: true
   perMachine: true
   createDesktopShortcut: always

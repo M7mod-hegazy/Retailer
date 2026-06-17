@@ -45,9 +45,9 @@ export default function Step5Categories({ wizard }) {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-xl font-black text-slate-900 font-display">الفئات والأكواد SKU</h3>
+              <h3 className="text-xl font-black text-slate-900 font-display">الفئات والأكواد</h3>
               <p className="mt-1.5 text-sm font-medium text-slate-500 font-title">
-                راجع بادئة كل SKU. إذا كان اسم الفئة موجودا من الملف فليس مطلوبا تغييره، وسيتم إنشاء الفئة بهذا الاسم وقت المعاينة والتنفيذ.
+                راجع بادئة كل كود. إذا كان اسم الفئة موجودا من الملف فليس مطلوبا تغييره، وسيتم إنشاء الفئة بهذا الاسم وقت المعاينة والتنفيذ.
               </p>
             </div>
             {wizard.missingSkuCategories.length > 0 || wizard.codelessRows.length > 0 ? (
@@ -66,7 +66,7 @@ export default function Step5Categories({ wizard }) {
             ) : (
               <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
                 <CheckCircle2 className="h-4 w-4" />
-                كل بادئات SKU لها فئات موجودة
+                كل بادئات الأكواد لها فئات موجودة
               </div>
             )}
           </div>
@@ -95,7 +95,7 @@ export default function Step5Categories({ wizard }) {
               1. كل فئة لها اسم ستُنشأ تلقائيا في النظام بالاسم الذي كتبته.
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              2. الصفوف بدون SKU تحتاج اختيار بادئة لتوليد أكواد آمنة تلقائيا.
+              2. الصفوف بدون كود تحتاج اختيار بادئة لتوليد أكواد آمنة تلقائيا.
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               3. عند النقر على "التالي" أو "معاينة" سيتم حفظ كل الأسماء التي أدخلتها.
@@ -114,7 +114,7 @@ export default function Step5Categories({ wizard }) {
               <div key={entry.prefix} className={`rounded-2xl border p-5 shadow-sm transition-all duration-300 ${ready ? "border-emerald-200 bg-emerald-50/35" : "border-amber-200 bg-amber-50/50"} ${justSaved ? "ring-2 ring-emerald-300 scale-[1.01]" : ""}`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-base font-black text-slate-900 font-display">فئة SKU #{entry.prefix}</div>
+                    <div className="text-base font-black text-slate-900 font-display">فئة الكود #{entry.prefix}</div>
                     <div className="mt-0.5 text-xs font-bold text-slate-500 font-mono">{entry.rows.length} صف</div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export default function Step5Categories({ wizard }) {
       ) : (
         <div className="rounded-2xl border border-emerald-250 bg-emerald-50/60 p-5 text-sm font-black text-emerald-800 shadow-sm flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-          كل بادئات SKU لها فئات موجودة. ليست هناك حاجة لإنشاء فئات جديدة.
+          كل بادئات الأكواد لها فئات موجودة. ليست هناك حاجة لإنشاء فئات جديدة.
         </div>
       )}
 

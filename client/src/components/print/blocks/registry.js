@@ -12,6 +12,7 @@ import CashierBlock from "./CashierBlock";
 import ItemsTableBlock from "./ItemsTableBlock";
 import SubtotalBlock from "./SubtotalBlock";
 import DiscountBlock from "./DiscountBlock";
+import IncreaseBlock from "./IncreaseBlock";
 import TaxBlock from "./TaxBlock";
 import GrandTotalBlock from "./GrandTotalBlock";
 import PaymentsBlock from "./PaymentsBlock";
@@ -39,6 +40,7 @@ export const BLOCK_REGISTRY = {
   items_table:         { component: ItemsTableBlock,        label: "جدول الأصناف",   group: "body",     families: ALL },
   subtotal:            { component: SubtotalBlock,          label: "الإجمالي الفرعي", group: "money",    families: ALL },
   discount:            { component: DiscountBlock,          label: "الخصم",          group: "money",    families: ALL },
+  increase:            { component: IncreaseBlock,          label: "رسوم إضافية",    group: "money",    families: ALL },
   tax:                 { component: TaxBlock,               label: "الضريبة",        group: "money",    families: ALL },
   grand_total:         { component: GrandTotalBlock,        label: "المستحق",        group: "money",    families: ALL },
   payments:            { component: PaymentsBlock,          label: "تفاصيل الدفع",   group: "money",    families: ALL },

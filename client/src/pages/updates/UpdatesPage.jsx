@@ -1,19 +1,24 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import ReactMarkdown from "react-markdown";
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from "framer-motion";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useBlocker } from "react-router-dom";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import {
   CheckCircle2,
   ArrowDownCircle,
+  AlertTriangle,
   AlertCircle,
   Loader2,
   RefreshCw,
   ArrowUpRight,
   Server,
   Zap,
+  X,
+  ShieldAlert,
+  Save,
+  Wifi,
+  Monitor,
+  RotateCw,
 } from "lucide-react";
 import { useUpdateStore } from "../../stores/updateStore";
-import { toast } from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
 
 const FADE_UP = {
@@ -78,11 +83,39 @@ const Shimmer = () => (
 
 export default function UpdatesPage() {
   usePageTour('updates');
-  const { t } = useTranslation();
   const { available, downloaded, info, progress, error, checking, setChecking } = useUpdateStore();
 
   const [currentVersion, setCurrentVersion] = useState("1.0.0");
-  const [lastCheckedAt, setLastCheckedAt] = useState(Date.now() - 86400000); 
+  const [lastCheckedAt, setLastCheckedAt] = useState(Date.now() - 86400000);
+  const [confirmAction, setConfirmAction] = useState(null); // 'download' | 'install'
+  const [confirmed, setConfirmed] = useState(false);
+
+  const isUpdating = (checking && progress !== null) || downloaded;
+
+  // Block navigation during update process
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isUpdating && nextLocation.pathname !== currentLocation.pathname
+  );
+
+  // When navigation is blocked during update, force-reset it (user cannot leave)
+  useEffect(() => {
+    if (blocker.state === "blocked" && isUpdating) {
+      blocker.reset();
+    }
+  }, [blocker.state, isUpdating, blocker]);
+
+  // Block browser close during update
+  useEffect(() => {
+    const handler = (e) => {
+      if (isUpdating) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isUpdating]);
 
   useEffect(() => {
     window.electronAPI?.getVersion?.().then((v) => {
@@ -114,7 +147,18 @@ export default function UpdatesPage() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
+    setConfirmAction('download');
+    setConfirmed(false);
+  };
+
+  const handleInstallNow = () => {
+    setConfirmAction('install');
+    setConfirmed(false);
+  };
+
+  const executeDownload = useCallback(async () => {
+    setConfirmAction(null);
     setChecking(true);
     if (window.electronAPI) {
       armSafetyTimeout();
@@ -122,11 +166,12 @@ export default function UpdatesPage() {
     } else {
       setTimeout(() => setChecking(false), 2000);
     }
-  };
+  }, [setChecking, armSafetyTimeout]);
 
-  const handleInstallNow = async () => {
+  const executeInstall = useCallback(async () => {
+    setConfirmAction(null);
     window.electronAPI?.invoke("update:install-now");
-  };
+  }, []);
 
   // Ultra-premium mesh background
   const BackgroundMesh = () => (
@@ -159,7 +204,7 @@ export default function UpdatesPage() {
         className="relative z-10 max-w-6xl mx-auto"
       >
         {/* Cinematic Header with Splitting Text Effect */}
-        <motion.header variants={FADE_UP} className="mb-20">
+        <motion.header variants={FADE_UP} className="mb-14">
           <div className="flex items-center gap-4 mb-6">
             <motion.div 
               animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
@@ -228,7 +273,10 @@ export default function UpdatesPage() {
                       {typeof error === "string" ? error : "فشل التحقق من التحديثات. يرجى مراجعة اتصال الإنترنت."}
                     </span>
                   ) : available && !downloaded ? (
-                    "اكتشفنا تحسينات جديدة وميزات أمنية متقدمة. نقترح تثبيت التحديث لضمان أفضل أداء لمنشأتك."
+                    <span>
+                      الإصدار <strong className="text-zinc-900">{info?.version}</strong> جاهز للتحميل.{" "}
+                      راجع سجل التغييرات أدناه لمعرفة كل ما هو جديد، ثم ثبّت التحديث لضمان أفضل أداء واستقرار لمنشأتك.
+                    </span>
                   ) : downloaded ? (
                     <span className="text-emerald-700 bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100 inline-block">
                       تم تحميل التحديث بنجاح ومستعد للتثبيت. يرجى تأكيد العملية.
@@ -274,14 +322,15 @@ export default function UpdatesPage() {
                   </MagneticButton>
                 ) : downloaded ? (
                   <MagneticButton
-                    data-help="download-button"
+                    data-help="install-button"
                     onClick={handleInstallNow}
-                    className="px-8 py-4 bg-emerald-500 text-white rounded-2xl font-black hover:bg-emerald-600 transition-colors hover:shadow-xl shadow-emerald-500/20 text-sm"
+                    className="px-8 py-4 bg-amber-500 text-white rounded-2xl font-black hover:bg-amber-600 transition-colors hover:shadow-xl shadow-amber-500/20 text-sm"
                   >
-                    تأكيد التثبيت وإعادة التشغيل
+                    <ShieldAlert className="w-4 h-4" /> تأكيد التثبيت وإعادة التشغيل
                   </MagneticButton>
                 ) : available ? (
                   <MagneticButton
+                    data-help="download-button"
                     onClick={handleDownload}
                     disabled={checking}
                     className="px-8 py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl transition-shadow disabled:opacity-50 text-sm"
@@ -380,9 +429,18 @@ export default function UpdatesPage() {
               </div>
             </div>
             
-            <div className="prose prose-zinc prose-lg max-w-none text-zinc-600 font-medium leading-[2] prose-h3:text-zinc-950 prose-h3:font-black prose-h3:tracking-tight prose-a:text-emerald-600 hover:prose-a:text-emerald-700">
+            <div className="prose prose-zinc prose-lg max-w-none text-zinc-600 font-medium leading-[2] prose-h3:text-zinc-950 prose-h3:font-black prose-h3:tracking-tight prose-a:text-emerald-600 hover:prose-a:text-emerald-700 [&_ul]:list-disc [&_ul]:pr-6 [&_li]:my-1 [&_p]:my-2">
               {info?.releaseNotes ? (
-                <ReactMarkdown>{info.releaseNotes}</ReactMarkdown>
+                <div
+                  dir="rtl"
+                  dangerouslySetInnerHTML={{
+                    __html: typeof info.releaseNotes === "string"
+                      ? info.releaseNotes
+                      : Array.isArray(info.releaseNotes)
+                        ? info.releaseNotes.map((n) => n.note || "").join("<br/>")
+                        : "",
+                  }}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <motion.div 
@@ -400,6 +458,148 @@ export default function UpdatesPage() {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* ─── Confirmation Modal ─── */}
+      <AnimatePresence>
+        {confirmAction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 200, damping: 25 }}
+              className="w-full max-w-xl bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-white/20 relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                  <AlertTriangle className="h-7 w-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-zinc-950">
+                    {confirmAction === 'download' ? 'تأكيد تحميل التحديث' : 'تأكيد تثبيت التحديث'}
+                  </h3>
+                  <p className="text-sm font-medium text-zinc-500 mt-0.5">
+                    {confirmAction === 'download'
+                      ? 'سيتم تحميل وتثبيت إصدار جديد من النظام. يرجى قراءة التنبيهات أدناه قبل المتابعة.'
+                      : 'سيتم تثبيت التحديث وإعادة تشغيل النظام فوراً. هذا الإجراء لا يمكن التراجع عنه.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-3 mb-8">
+                {(confirmAction === 'download'
+                  ? [
+                      { icon: Save, text: 'احفظ جميع أعمالك المفتوحة — سيتم إعادة تشغيل النظام بعد التثبيت.' },
+                      { icon: X, text: 'تأكد من إغلاق جميع النوافذ الأخرى (تقارير، فواتير مفتوحة).' },
+                      { icon: Wifi, text: 'تأكد من اتصال الإنترنت — قد يلزم تحميل بيانات إضافية.' },
+                      { icon: RotateCw, text: 'بعد التثبيت، سيُعاد تشغيل النظام تلقائياً.' },
+                    ]
+                  : [
+                      { icon: Save, text: 'تأكد من حفظ جميع المعاملات المعلقة (فواتير، سندات).' },
+                      { icon: Monitor, text: 'سيتم إغلاق البرنامج بالكامل وإعادة فتحه.' },
+                      { icon: AlertTriangle, text: 'قد تستغرق عملية التثبيت بضع دقائق — لا تقم بإطفاء الجهاز.' },
+                      { icon: CheckCircle2, text: 'بعد الانتهاء، سيفتح البرنامج تلقائياً وكل شيء سيكون محدثاً.' },
+                    ]
+                ).map((step, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                      <step.icon className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-bold text-amber-900 leading-relaxed pt-0.5">{step.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Checkbox */}
+              <label className="flex items-start gap-3 mb-8 p-4 rounded-2xl bg-zinc-50 border border-zinc-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={() => setConfirmed((c) => !c)}
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded-lg border-zinc-300 text-primary focus:ring-primary/30 accent-primary"
+                />
+                <span className="text-sm font-bold text-zinc-700 leading-relaxed">
+                  {confirmAction === 'download'
+                    ? 'أقر بأنني حفظت أعمالي وأريد المتابعة'
+                    : 'أقر بأنني مستعد لإعادة تشغيل النظام'}
+                </span>
+              </label>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setConfirmAction(null); setConfirmed(false); }}
+                  className="flex-1 rounded-2xl border border-zinc-200 px-6 py-3.5 text-sm font-black text-zinc-600 hover:bg-zinc-50 transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={confirmAction === 'download' ? executeDownload : executeInstall}
+                  disabled={!confirmed}
+                  className={`flex-1 rounded-2xl px-6 py-3.5 text-sm font-black text-white shadow-lg transition-all disabled:opacity-40 ${
+                    confirmAction === 'download'
+                      ? 'bg-primary hover:bg-primary-700 shadow-primary-700/20'
+                      : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+                  }`}
+                >
+                  {confirmAction === 'download' ? 'تأكيد وبدء التحميل' : 'تأكيد التثبيت وإعادة التشغيل'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── In-Progress Overlay (non-dismissable) ─── */}
+      <AnimatePresence>
+        {isUpdating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-black/70 backdrop-blur-xl p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              className="flex flex-col items-center text-center max-w-md"
+            >
+              <div className="relative flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/20 mb-8">
+                <Loader2 className="h-10 w-10 text-white animate-spin" />
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-emerald-400/20 to-transparent" />
+              </div>
+              <h2 className="text-2xl font-black text-white mb-3">جاري تحديث النظام</h2>
+              <p className="text-white/60 font-medium text-lg leading-relaxed">
+                عملية التحديث قيد التنفيذ. يرجى الانتظار حتى اكتمالها — لا تغلق البرنامج أو الجهاز.
+              </p>
+              {progress && progress.percent > 0 && (
+                <div className="w-full max-w-xs mt-8">
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-xs font-black tracking-widest text-white/40 uppercase">جاري التحميل</span>
+                    <span className="text-xl font-black text-white">{progress.percent.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-white rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress.percent}%` }}
+                      transition={{ ease: "linear" }}
+                    />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

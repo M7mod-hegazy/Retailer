@@ -113,6 +113,31 @@ router.get("/summary", requirePagePermission("installments", "view"), (req, res)
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// GET /api/ajal-debts/due-parties — parties with unpaid installments due today / overdue.
+// Powers the customer-accounts list badges + the "installments due" filter.
+router.get("/due-parties", requirePagePermission("installments", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const partyType = normalizePartyType(req.query.party_type);
+    const idCol = partyIdColumn(partyType);
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = db.prepare(`
+      SELECT d.${idCol} AS party_id,
+        SUM(CASE WHEN date(sch.due_date) < date(?) THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN date(sch.due_date) = date(?) THEN 1 ELSE 0 END) AS due_today,
+        SUM(CASE WHEN date(sch.due_date) > date(?) THEN 1 ELSE 0 END) AS upcoming
+      FROM ajal_schedules sch
+      JOIN ajal_debts d ON d.id = sch.debt_id
+      JOIN invoices inv ON inv.id = d.invoice_id AND inv.payment_type = 'installments'
+      WHERE sch.status != 'paid'
+        AND d.status NOT IN ('paid','voided')
+        AND COALESCE(d.party_type,'customer') = ?
+      GROUP BY d.${idCol}
+    `).all(today, today, today, partyType).filter((r) => r.party_id != null);
+    res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // GET /api/ajal-debts
 router.get("/", requirePagePermission("installments", "view"), (req, res) => {
   try {
