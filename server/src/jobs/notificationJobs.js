@@ -2,6 +2,7 @@
 const { getDb } = require("../config/database");
 const NotificationModel = require("../models/notification.model");
 const logger = require("../config/logger");
+const { today: cairoToday } = require("../utils/datetime");
 
 // node-cron does NOT catch errors thrown inside a task callback. These jobs run
 // synchronous better-sqlite3 queries that throw on a locked/corrupt DB, and an
@@ -30,7 +31,7 @@ function scanAndCreateNotifications() {
 
   // Roll up into a single notification so the every-30-min scan never spams the
   // user with one notification per item. Dedupe per day like scanOverdueDebts.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = cairoToday();
   const alreadyNotified = db
     .prepare(
       `SELECT id FROM notifications
@@ -72,7 +73,7 @@ function startAuditLogCleanupJob() {
 
 function scanOverdueDebts() {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = cairoToday();
 
   // Find overdue debts (due_date < today, status open, not voided)
   const overdueDebts = db.prepare(`
@@ -119,7 +120,7 @@ function scanOverdueDebts() {
 // (see NOT EXISTS above); those are covered here at the individual-installment granularity.
 function scanInstallmentSchedules() {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = cairoToday();
 
   const rows = db.prepare(`
     SELECT sch.id, sch.debt_id, sch.installment_no, sch.due_date, sch.amount, sch.status,
@@ -167,7 +168,7 @@ function startOverdueDebtsJob() {
 
 function scanBirthdays() {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = cairoToday();
   const monthDay = today.slice(5); // MM-DD
 
   const customers = db.prepare(`

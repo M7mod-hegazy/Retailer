@@ -1,15 +1,215 @@
-import React, { useState, useCallback } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import React, { useState, useCallback, useMemo } from "react";
+import { CheckCircle2, Loader2, Info, ChevronDown } from "lucide-react";
 import StepTable from "../StepTable";
 import WarehouseChoicePanel from "./WarehouseChoicePanel";
 
+function UnitGeneralRule({ wizard, rowsCount, fileUnits, missingUnits }) {
+  const hasNoUnits = fileUnits.length === 0;
+  const [generalAction, setGeneralAction] = useState(() => hasNoUnits ? "apply_first" : "create_missing");
+  const [applied, setApplied] = useState(false);
+  const [specificUnit, setSpecificUnit] = useState("");
+
+  const allUnits = wizard.units || [];
+  const missingCount = missingUnits.length;
+  const missingRowsCount = missingUnits.reduce((sum, u) => sum + u.rows.length, 0);
+  const totalRows = wizard.workingRows?.length || 0;
+
+  const actions = useMemo(() => {
+    const list = [];
+    if (hasNoUnits) {
+      list.push(
+        { value: "apply_first", label: "تطبيق أول وحدة", desc: `تطبيق أول وحدة متاحة في النظام على جميع الصفوف.` },
+      );
+      if (allUnits.length > 1) {
+        list.push(
+          { value: "apply_specific", label: "تطبيق وحدة محددة", desc: "اختر وحدة من النظام لتطبيقها على جميع الصفوف." },
+        );
+      }
+      list.push(
+        { value: "create_new", label: "إنشاء وحدة جديدة", desc: "إنشاء وحدة جديدة وتطبيقها على جميع الصفوف." },
+      );
+    } else {
+      list.push(
+        { value: "apply_first", label: "تطبيق أول وحدة", desc: `تطبيق أول وحدة متاحة على الصفوف الناقصة.` },
+      );
+      if (missingCount > 0) {
+        list.push(
+          { value: "create_missing", label: "إنشاء الوحدات الناقصة", desc: `إنشاء ${missingCount} وحدة غير موجودة في النظام.` },
+        );
+      }
+      list.push(
+        { value: "link_all", label: "ربط الكل بأول وحدة", desc: "ربط جميع وحدات الملف غير الموجودة بأول وحدة متاحة." },
+      );
+    }
+    return list;
+  }, [hasNoUnits, missingCount, allUnits.length]);
+
+  const projections = useMemo(() => ({
+    apply_first: { rows: hasNoUnits ? rowsCount : rowsCount },
+    apply_specific: { rows: hasNoUnits ? rowsCount : rowsCount },
+    create_new: { rows: hasNoUnits ? rowsCount : rowsCount, units: 1 },
+    create_missing: { rows: missingRowsCount, units: missingCount },
+    link_all: { rows: missingRowsCount },
+  }), [hasNoUnits, rowsCount, missingRowsCount, missingCount]);
+
+  async function executeAction() {
+    if (hasNoUnits) {
+      const targetValue = allUnits[0]?.name || "";
+      if (generalAction === "apply_first") {
+        wizard.applyValueToRows("unit_name", targetValue, wizard.workingRows, "الوحدة", "unit-all");
+      } else if (generalAction === "apply_specific") {
+        if (specificUnit) wizard.applyValueToRows("unit_name", specificUnit, wizard.workingRows, "الوحدة", "unit-all");
+      } else if (generalAction === "create_new") {
+        const name = specificUnit || "وحدة";
+        const created = await wizard.createMissingUnit(name);
+        if (created?.name) wizard.applyValueToRows("unit_name", created.name, wizard.workingRows, "الوحدة", "unit-all");
+      }
+    } else {
+      if (generalAction === "create_missing") {
+        wizard.createAllMissingUnits();
+      } else if (generalAction === "apply_first") {
+        wizard.applyQuickUnitFix();
+      } else if (generalAction === "apply_specific") {
+        if (specificUnit) {
+          wizard.setQuickUnitValue(specificUnit);
+          setTimeout(() => wizard.applyQuickUnitFix(), 0);
+        } else {
+          wizard.applyQuickUnitFix();
+        }
+      } else if (generalAction === "create_new") {
+        const name = specificUnit || "وحدة";
+        wizard.createAndApplyUnit(name, name);
+      } else if (generalAction === "link_all") {
+        if (specificUnit) {
+          wizard.setQuickUnitValue(specificUnit);
+          setTimeout(() => wizard.applyQuickUnitFix(), 0);
+        } else {
+          wizard.applyQuickUnitFix();
+        }
+      }
+    }
+    setApplied(true);
+  }
+
+  const needsSpecificUnit = generalAction === "apply_specific" || generalAction === "create_new" || generalAction === "link_all";
+
+  if (applied) return (
+    <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
+      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+      <div className="flex-1">
+        <div className="text-sm font-black text-emerald-900">تم تطبيق قاعدة الوحدات</div>
+        <div className="text-xs font-bold text-emerald-700 mt-0.5">يمكنك تعديل الاختيار أو المتابعة.</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setApplied(false)}
+        className="shrink-0 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-xs font-black text-emerald-700 shadow-sm transition hover:bg-emerald-50 active:scale-[0.98]"
+      >
+        تغيير الاختيار
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h4 className="text-base font-black text-slate-900 font-display mb-4">
+        {hasNoUnits ? "تطبيق وحدة على الصفوف" : "قاعدة عامة لجميع الوحدات"}
+      </h4>
+      <p className="mt-1 text-sm font-bold text-slate-500 font-title mb-4">
+        {hasNoUnits
+          ? "لم نجد عمود وحدة واضح في الملف. اختر خيارا لتطبيق وحدة على جميع الصفوف."
+          : `${rowsCount} صف يحتاج وحدة. اختر كيفية التعامل مع الوحدات غير الموجودة.`}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {actions.map((action) => {
+          const active = generalAction === action.value;
+          const proj = projections[action.value];
+          return (
+            <button
+              key={action.value}
+              type="button"
+              onClick={() => { setGeneralAction(action.value); setApplied(false); setSpecificUnit(""); }}
+              className={`rounded-xl border p-4 text-right transition-all duration-200 text-sm ${
+                active
+                  ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+              }`}
+            >
+              <div className="font-black text-slate-900">{action.label}</div>
+              <div className="mt-1 text-xs font-semibold text-slate-500 leading-relaxed">{action.desc}</div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs font-black">
+                {proj.rows > 0 && (
+                  <span className={`rounded-lg px-2 py-0.5 tabular-nums ${
+                    active ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    {proj.rows} صف
+                  </span>
+                )}
+                {proj.units > 0 && (
+                  <span className={`rounded-lg px-2 py-0.5 tabular-nums ${
+                    active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    {proj.units} وحدة جديدة
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {needsSpecificUnit && (
+        <div className="mt-3 flex items-center gap-3">
+          <select
+            value={specificUnit}
+            onChange={(e) => setSpecificUnit(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-300 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+          >
+            <option value="">{generalAction === "create_new" ? "اسم الوحدة الجديدة" : "اختر وحدة"}</option>
+            {allUnits.map((unit) => (
+              <option key={unit.id} value={unit.name}>{unit.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div className="mt-4 flex items-center gap-3">
+        {!applied ? (
+          <button
+            type="button"
+            onClick={executeAction}
+            disabled={needsSpecificUnit && !specificUnit}
+            className="rounded-xl bg-emerald-700 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 active:scale-[0.98] disabled:opacity-40"
+          >
+            تأكيد الاختيار
+          </button>
+        ) : (
+          <>
+            <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-800 ring-1 ring-emerald-200">
+              <CheckCircle2 className="h-4 w-4" />
+              تم تطبيق القرارات بنجاح
+            </div>
+            <button
+              type="button"
+              onClick={() => setApplied(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+            >
+              تغيير الاختيار
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function UnitFixPanel({ wizard, rowsCount }) {
   const fileUnits = wizard.fileUnitOptions || [];
+  const missingUnits = wizard.missingUnits || [];
   const [createNames, setCreateNames] = useState({});
   const [selectedUnits, setSelectedUnits] = useState({});
   const [resolvedKeys, setResolvedKeys] = useState(new Set());
   const [resolvingKey, setResolvingKey] = useState(null);
   const [appliedQuickFix, setAppliedQuickFix] = useState(false);
+  const [expanded, setExpanded] = useState(fileUnits.length > 0);
 
   const markResolved = useCallback((key) => {
     setResolvedKeys((prev) => new Set(prev).add(key));
@@ -20,144 +220,144 @@ function UnitFixPanel({ wizard, rowsCount }) {
   const totalCount = fileUnits.length;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h4 className="text-base font-black text-slate-900 font-display">اختر ماذا نفعل بالوحدات</h4>
-          <p className="mt-1 text-sm font-bold text-slate-500 font-title">
-            النظام قرأ الوحدة من ملفك. اختر اعتمادها كما هي، أو أنشئها إذا كانت غير موجودة.
-          </p>
-        </div>
-        <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600">
-          {rowsCount} صف يحتاج مراجعة
-        </span>
-      </div>
+    <div className="space-y-4">
+      <UnitGeneralRule wizard={wizard} rowsCount={rowsCount} fileUnits={fileUnits} missingUnits={missingUnits} />
 
-      {/* Decision progress */}
       {fileUnits.length > 0 && (
-        <div className="mt-3 flex items-center gap-3">
-          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${totalCount ? (resolvedCount / totalCount) * 100 : 0}%` }}
-            />
-          </div>
-          <span className="text-xs font-black text-slate-500 whitespace-nowrap">{resolvedCount} / {totalCount} تم</span>
-        </div>
-      )}
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-sm font-black text-slate-700 hover:bg-slate-50 transition"
+          >
+            <span>{expanded ? "إخفاء التفاصيل" : "إظهار التفاصيل"} — تعديل قرارات الوحدات الفردية</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
 
-      {fileUnits.length ? (
-        <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50/40">
-          {fileUnits.map((entry) => {
-            const isResolved = resolvedKeys.has(entry.name);
-            const createName = createNames[entry.name] ?? entry.name;
-            const selectedUnit = selectedUnits[entry.name] || "";
-            const isResolving = resolvingKey === entry.name && wizard.categorySyncing;
+          {expanded && (
+            <div className="border-t border-slate-100 p-5">
+              {fileUnits.length > 0 && (
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${totalCount ? (resolvedCount / totalCount) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-black text-slate-500 whitespace-nowrap">{resolvedCount} / {totalCount} تم</span>
+                </div>
+              )}
 
-            if (isResolved) {
-              const chosenText = selectedUnits[entry.name]
-                ? `مرتبطة بوحدة: ${selectedUnits[entry.name]}`
-                : `سيُنشئ باسم: ${createNames[entry.name] || entry.name}`;
-              return (
-                <div key={entry.name} className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                      <div>
-                        <span className="text-sm font-black text-slate-900">{entry.name}</span>
-                        <div className="mt-0.5 text-xs font-bold text-emerald-700">{chosenText}</div>
+              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50/40">
+                {fileUnits.map((entry) => {
+                  const isResolved = resolvedKeys.has(entry.name);
+                  const createName = createNames[entry.name] ?? entry.name;
+                  const selectedUnit = selectedUnits[entry.name] || "";
+                  const isResolving = resolvingKey === entry.name && wizard.categorySyncing;
+
+                  if (isResolved) {
+                    const chosenText = selectedUnits[entry.name]
+                      ? `مرتبطة بوحدة: ${selectedUnits[entry.name]}`
+                      : `سيُنشئ باسم: ${createNames[entry.name] || entry.name}`;
+                    return (
+                      <div key={entry.name} className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                            <div>
+                              <span className="text-sm font-black text-slate-900">{entry.name}</span>
+                              <div className="mt-0.5 text-xs font-bold text-emerald-700">{chosenText}</div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setResolvedKeys((prev) => { const n = new Set(prev); n.delete(entry.name); return n; })}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50 transition"
+                          >
+                            تغيير
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                  <div key={entry.name} className="grid gap-4 p-4 xl:grid-cols-[minmax(180px,1fr)_minmax(260px,0.95fr)_minmax(260px,0.95fr)] xl:items-end">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-black text-slate-900 font-display">{entry.name}</span>
+                        <span className={`rounded-lg px-2 py-1 text-[10px] font-black ${entry.exists ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                          {entry.exists ? "موجودة في النظام" : "غير موجودة"}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs font-bold text-slate-500">
+                        {entry.rows.length} صف {entry.sample ? `- مثال: ${entry.sample}` : ""}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setResolvedKeys((prev) => { const n = new Set(prev); n.delete(entry.name); return n; })}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50 transition"
-                    >
-                      تغيير
-                    </button>
+
+                    <div className="grid gap-2">
+                      <label className="text-[11px] font-black text-slate-500">إنشاء أو استخدام بهذا الاسم</label>
+                      <div className="flex gap-2">
+                        <input
+                          value={createName}
+                          onChange={(event) => setCreateNames((prev) => ({ ...prev, [entry.name]: event.target.value }))}
+                          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-300 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setResolvingKey(entry.name);
+                            if (entry.exists && createName.trim() === entry.name) {
+                              wizard.applyFileUnitChoice(entry.name, entry.name);
+                            } else {
+                              await wizard.createAndApplyUnit(entry.name, createName);
+                            }
+                            markResolved(entry.name);
+                          }}
+                          className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-white transition hover:bg-primary-600 active:scale-[0.98] disabled:opacity-40 inline-flex items-center gap-1.5"
+                          disabled={wizard.categorySyncing || !String(createName || "").trim()}
+                        >
+                          {isResolving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                          {entry.exists && createName.trim() === entry.name ? "استخدام" : "إنشاء واستخدام"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-[11px] font-black text-slate-500">أو اربطها بوحدة موجودة</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={selectedUnit}
+                          onChange={(event) => setSelectedUnits((prev) => ({ ...prev, [entry.name]: event.target.value }))}
+                          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-300 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                        >
+                          <option value="">اختر وحدة</option>
+                          {wizard.units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            wizard.applyFileUnitChoice(entry.name, selectedUnit);
+                            setResolvedKeys((prev) => new Set(prev).add(entry.name));
+                          }}
+                          className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] disabled:opacity-40"
+                          disabled={!selectedUnit}
+                        >
+                          استخدامها
+                        </button>
+                      </div>
+                    </div>
+
                   </div>
-                </div>
-              );
-            }
-
-            return (
-            <div key={entry.name} className="grid gap-4 p-4 xl:grid-cols-[minmax(180px,1fr)_minmax(260px,0.95fr)_minmax(260px,0.95fr)] xl:items-end">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-base font-black text-slate-900 font-display">{entry.name}</span>
-                  <span className={`rounded-lg px-2 py-1 text-[10px] font-black ${entry.exists ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                    {entry.exists ? "موجودة في النظام" : "غير موجودة"}
-                  </span>
-                </div>
-                <div className="mt-1 text-xs font-bold text-slate-500">
-                  {entry.rows.length} صف {entry.sample ? `- مثال: ${entry.sample}` : ""}
-                </div>
+                  );
+                })}
               </div>
-
-              <div className="grid gap-2">
-                <label className="text-[11px] font-black text-slate-500">إنشاء أو استخدام بهذا الاسم</label>
-                <div className="flex gap-2">
-                  <input
-                    value={createName}
-                    onChange={(event) => setCreateNames((prev) => ({ ...prev, [entry.name]: event.target.value }))}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-300 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setResolvingKey(entry.name);
-                      if (entry.exists && createName.trim() === entry.name) {
-                        wizard.applyFileUnitChoice(entry.name, entry.name);
-                      } else {
-                        await wizard.createAndApplyUnit(entry.name, createName);
-                      }
-                      markResolved(entry.name);
-                    }}
-                    className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-white transition hover:bg-primary-600 active:scale-[0.98] disabled:opacity-40 inline-flex items-center gap-1.5"
-                    disabled={wizard.categorySyncing || !String(createName || "").trim()}
-                  >
-                    {isResolving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                    {entry.exists && createName.trim() === entry.name ? "استخدام" : "إنشاء واستخدام"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-[11px] font-black text-slate-500">أو اربطها بوحدة موجودة</label>
-                <div className="flex gap-2">
-                  <select
-                    value={selectedUnit}
-                    onChange={(event) => setSelectedUnits((prev) => ({ ...prev, [entry.name]: event.target.value }))}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-300 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
-                  >
-                    <option value="">اختر وحدة</option>
-                    {wizard.units.map((unit) => <option key={unit.id} value={unit.name}>{unit.name}</option>)}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      wizard.applyFileUnitChoice(entry.name, selectedUnit);
-                      setResolvedKeys((prev) => new Set(prev).add(entry.name));
-                    }}
-                    className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] disabled:opacity-40"
-                    disabled={!selectedUnit}
-                  >
-                    استخدامها
-                  </button>
-                </div>
-              </div>
-
             </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500">
-          لم نجد وحدة واضحة داخل الملف. افتح الخيارات المتقدمة لتطبيق وحدة واحدة على الصفوف الناقصة.
+          )}
         </div>
       )}
 
-      <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <details className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
         <summary className="cursor-pointer text-sm font-black text-slate-700">خيارات متقدمة</summary>
         <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
           <select
@@ -230,7 +430,6 @@ export default function FixStep({ wizard, type, goNext }) {
   const isWarehouse = type === "warehouse";
   const rows = isUnit ? wizard.unitErrorRows : isWarehouse ? wizard.warehouseErrorRows : wizard.storageErrorRows;
   const resolved = rows.length === 0;
-  const tableRows = resolved ? wizard.workingRows : rows;
   const title = isUnit ? "إصلاح الوحدات" : isWarehouse ? "إصلاح المخازن" : "إصلاح قرارات المخزون";
   const helper = rows.length
     ? `${rows.length} صف يحتاج قرارا هنا.`
@@ -270,7 +469,7 @@ export default function FixStep({ wizard, type, goNext }) {
         </div>
       ) : null}
 
-      {isUnit ? <UnitFixPanel wizard={wizard} rowsCount={rows.length} /> : null}
+      {isUnit ? <UnitFixPanel wizard={wizard} rowsCount={rows.length || wizard.workingRows?.length || 0} /> : null}
 
       {isWarehouse ? (
         <WarehouseChoicePanel
@@ -280,15 +479,17 @@ export default function FixStep({ wizard, type, goNext }) {
         />
       ) : null}
 
-      <StepTable
-        wizard={wizard}
-        rows={tableRows}
-        columns={isUnit ? ["code", "name", "unit_name"] : ["code", "name", "store_name", "warehouse_id", "storage_plan"]}
-        title={title}
-        helper={helper}
-        showActions={false}
-        height={360}
-      />
+      {!resolved && (
+        <StepTable
+          wizard={wizard}
+          rows={rows}
+          columns={isUnit ? ["code", "name", "unit_name"] : ["code", "name", "store_name", "warehouse_id", "storage_plan"]}
+          title={title}
+          helper={helper}
+          showActions={false}
+          height={360}
+        />
+      )}
     </div>
   );
 }

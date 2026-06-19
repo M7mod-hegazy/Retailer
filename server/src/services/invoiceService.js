@@ -10,6 +10,7 @@ const { captureLeadFromSale } = require("./leadCapture");
 const { assertNotVariantParent } = require("../routes/variants.routes");
 const { validateAndSellSerials } = require("../utils/serialValidation");
 const { isFeatureEnabled } = require("../utils/features");
+const { nowSql, toSql } = require("../utils/datetime");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -41,7 +42,7 @@ function recalculateInvoiceStatus(db, invoiceId) {
 
   const becomesPaid = status === "paid" && invoice.status !== "paid";
   if (becomesPaid) {
-    db.prepare("UPDATE invoices SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, invoiceId);
+    db.prepare("UPDATE invoices SET status = ?, paid_at = datetime('now', 'localtime') WHERE id = ?").run(status, invoiceId);
   } else {
     db.prepare("UPDATE invoices SET status = ? WHERE id = ?").run(status, invoiceId);
   }
@@ -279,7 +280,7 @@ function createInvoice(payload) {
 
     const inv = db
       .prepare(
-        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
       )
       .run(
         invoiceNo,
@@ -301,7 +302,7 @@ function createInvoice(payload) {
       );
 
     db.prepare("UPDATE invoices SET created_at = ? WHERE id = ?")
-      .run(`${createdDate} ${new Date().toTimeString().slice(0, 8)}`, inv.lastInsertRowid);
+      .run(`${createdDate} ${toSql(new Date()).slice(11)}`, inv.lastInsertRowid);
 
     const createdInvoiceLines = [];
     for (const line of normalizedLines) {
@@ -692,7 +693,7 @@ function cancelInvoice(invoiceId, reason, userId) {
     if (!invoice) { const e = new Error("الفاتورة غير موجودة"); e.status = 404; throw e; }
     if (invoice.status === "cancelled") { const e = new Error("الفاتورة ملغاة بالفعل"); e.status = 400; throw e; }
 
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const now = nowSql();
     db.prepare("UPDATE invoices SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
       .run(now, userId || 1, reason.trim(), invoiceId);
 
@@ -913,7 +914,7 @@ function editInvoice(invoiceId, payload, userId) {
     const newStatus = remainingAmount > 0 ? (amountReceived > 0 ? 'partial' : 'unpaid') : 'paid';
     db.prepare(`
       UPDATE invoices SET customer_id = ?, subtotal = ?, discount = ?, increase = ?, total = ?,
-        payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = CURRENT_TIMESTAMP,
+        payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = datetime('now', 'localtime'),
         updated_by = ?, notes = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?
       WHERE id = ?
     `).run(

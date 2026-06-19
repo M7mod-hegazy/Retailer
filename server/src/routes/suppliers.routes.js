@@ -3,6 +3,7 @@ const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { partyTxnSum } = require("../services/partyBalanceService");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -20,7 +21,7 @@ function ensureNotesSchema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
       note TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
+      created_at TEXT DEFAULT (datetime('now', 'localtime')),
       created_by INTEGER REFERENCES users(id)
     )`);
   } catch (_) {}
@@ -117,19 +118,24 @@ router.put("/:id", requirePagePermission("suppliers", "edit"), (req, res) => {
   res.json({ success: true, data: getDb().prepare("SELECT * FROM suppliers WHERE id = ?").get(req.params.id) });
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function supplierRelated(db, id) {
+  return [
+    { label: "فواتير مشتريات", count: countSafe(db, "SELECT COUNT(*) AS c FROM purchases WHERE supplier_id = ?", id) },
+    { label: "أوامر شراء", count: countSafe(db, "SELECT COUNT(*) AS c FROM purchase_orders WHERE supplier_id = ?", id) },
+    { label: "مدفوعات", count: countSafe(db, "SELECT COUNT(*) AS c FROM payments WHERE party_type = 'supplier' AND party_id = ?", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("suppliers", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(supplierRelated(getDb(), req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("suppliers", "delete"), (req, res) => {
   try {
     const db = getDb();
-    
-    // Check for related records (purchases)
-    const purchaseCount = db.prepare("SELECT COUNT(*) AS c FROM purchases WHERE supplier_id = ?").get(req.params.id);
-    const purchaseOrderCount = db.prepare("SELECT COUNT(*) AS c FROM purchase_orders WHERE supplier_id = ?").get(req.params.id);
-    
-    const hasTransactions = 
-      Number(purchaseCount?.c || 0) > 0 ||
-      Number(purchaseOrderCount?.c || 0) > 0;
-    
-    if (hasTransactions) {
+
+    if (hasAnyRelated(supplierRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE suppliers SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "suppliers", { id: req.params.id }, `👤 تم أرشفة مورد`, `/definitions/suppliers/${req.params.id}`);
@@ -295,8 +301,8 @@ router.post("/import/batches/:id/undo", requirePagePermission("suppliers", "impo
     for (const id of insertedIds) {
       const hasActivity =
         db.prepare("SELECT COUNT(*) AS c FROM purchases WHERE supplier_id = ?").get(id)?.c > 0 ||
-        db.prepare("SELECT COUNT(*) AS c FROM payments WHERE supplier_id = ?").get(id)?.c > 0 ||
-        db.prepare("SELECT COUNT(*) AS c FROM purchase_receipts WHERE supplier_id = ?").get(id)?.c > 0;
+        db.prepare("SELECT COUNT(*) AS c FROM payments WHERE party_type = 'supplier' AND party_id = ?").get(id)?.c > 0 ||
+        db.prepare("SELECT COUNT(*) AS c FROM purchase_orders WHERE supplier_id = ?").get(id)?.c > 0;
       if (hasActivity) return res.status(409).json({ success: false, reason: "activity", detail: `supplier ${id} has transactions` });
     }
 
@@ -311,7 +317,7 @@ router.post("/import/batches/:id/undo", requirePagePermission("suppliers", "impo
       for (const id of insertedIds) {
         db.prepare("DELETE FROM suppliers WHERE id = ?").run(id);
       }
-      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=CURRENT_TIMESTAMP, undone_by=? WHERE id=?")
+      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=datetime('now', 'localtime'), undone_by=? WHERE id=?")
         .run(req.user?.id || null, batchId);
     })();
 

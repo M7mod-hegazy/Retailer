@@ -5,6 +5,7 @@ import {
   ArrowDownToLine, ArrowUpFromLine, RotateCcw,
   Search, ArrowLeftRight, Package, X, Loader2,
   SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -204,6 +205,7 @@ export default function BranchTransferPage() {
   const itemInputRef = useRef(null);
   const debouncedItemQuery = useDebounce(itemQuery, 300);
 
+  const [branchesCount, setBranchesCount] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTransfer, setActiveTransfer] = useState(null);
   const [page, setPage] = useState(1);
@@ -233,6 +235,10 @@ export default function BranchTransferPage() {
 
   useEffect(() => {
     api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get("/api/branches").then(r => setBranchesCount((r.data.data || []).length)).catch(() => setBranchesCount(0));
   }, []);
 
   function handleShowDetail(row) {
@@ -339,6 +345,29 @@ export default function BranchTransferPage() {
           </div>
         </motion.header>
 
+        {/* Warning: no branches */}
+        {branchesCount === 0 && (
+          <motion.div initial="hidden" animate="visible" variants={FADE_UP}
+            className="flex items-start gap-4 bg-[var(--warning-bg)] border border-[var(--warning-border)] rounded-[1.5rem] p-5 shadow-sm"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--warning-bg)] text-[var(--warning-text)]">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-black text-[var(--warning-text)]">لم يتم إنشاء أي فروع بعد</span>
+              <p className="text-xs font-bold text-[var(--warning-text)]/70 leading-relaxed">
+                يجب إنشاء فرع واحد على الأقل قبل استخدام حركات النقل الداخلي.
+                {" "}
+                <button onClick={() => navigate("/definitions/branches")}
+                  className="underline underline-offset-2 hover:text-[var(--warning-text)] transition-colors"
+                >
+                  انتقل إلى إدارة الفروع
+                </button>
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Tab Pill Slider */}
         <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col gap-2">
           <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5 self-start">
@@ -360,26 +389,9 @@ export default function BranchTransferPage() {
             </button>
           </div>
           <AnimatePresence mode="wait">
-            <motion.p
-              key={activeTab}
-              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.15 }}
-              className="text-[11px] font-bold text-zinc-400 px-2"
-            >
-              {activeTab === "transfers"
-                ? "عرض وبحث في جميع حركات النقل المسجلة"
-                : "تتبّع حركات صنف بعينه عبر كامل سجل المستندات"}
-            </motion.p>
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Search & Filters Card */}
-        <motion.div initial="hidden" animate="visible" variants={FADE_UP}
-          className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4"
-        >
-          {activeTab === "transfers" ? (
+            {activeTab === "transfers" ? (
             <>
-              <div className="flex flex-col md:flex-row items-start gap-4">
+              <div className="flex flex-wrap gap-4">
                 <div data-help="search-bar" className="relative flex-1 w-full">
                   <Search className="absolute top-1/2 -translate-y-1/2 right-4 h-4 w-4 text-zinc-400" />
                   <input
@@ -521,6 +533,7 @@ export default function BranchTransferPage() {
               </div>
             </>
           )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Results Area */}

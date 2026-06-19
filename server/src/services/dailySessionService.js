@@ -1,9 +1,10 @@
+const { today: cairoToday } = require("../utils/datetime");
+
+// Egypt-local (Cairo) calendar date "YYYY-MM-DD" — the single source of truth
+// for which business day a session/transaction belongs to.
 function localDate(value = new Date()) {
   const d = value instanceof Date ? value : new Date(value);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return cairoToday(d);
 }
 
 function addDays(dateText, days) {
@@ -555,7 +556,7 @@ function closeDailySession(db, dateText, actualCash, notes, userId) {
   db.prepare(`
     UPDATE daily_sessions
     SET actual_cash = ?, closing_balance = ?, discrepancy = ?,
-        status = 'closed', notes = ?, closed_at = datetime('now'), closed_by = ?
+        status = 'closed', notes = ?, closed_at = datetime('now', 'localtime'), closed_by = ?
     WHERE id = ?
   `).run(actual, actual, discrepancy, notes || null, userId || 1, session.id);
 

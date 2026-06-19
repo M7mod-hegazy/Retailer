@@ -83,7 +83,7 @@ router.post("/", requirePagePermission("repair_orders", "add"), (req, res) => {
     b.notes || null, b.estimated_delivery || null,
     b.branch_id || null, req.user?.id || null,
     Number(b.warranty_days || 0),
-    b.received_at || new Date().toISOString(),
+    b.received_at || require("../utils/datetime").nowSql(),
   ).lastInsertRowid;
 
   // Log initial status
@@ -93,7 +93,7 @@ router.post("/", requirePagePermission("repair_orders", "add"), (req, res) => {
   if (Number(b.deposit_amount || 0) > 0 && b.treasury_id) {
     const payId = db.prepare(`
       INSERT INTO payments (party_type, party_id, amount, method, treasury_id, notes, created_by, created_at)
-      VALUES (?,?,?,?,?,?,?,datetime('now'))
+      VALUES (?,?,?,?,?,?,?,datetime('now', 'localtime'))
     `).run("repair_order", id, Number(b.deposit_amount), b.payment_method || "cash", Number(b.treasury_id), `دفعة أولى — طلب صيانة #${id}`, req.user?.id || null).lastInsertRowid;
     // Update repair_order_id link
     try { db.prepare("UPDATE payments SET repair_order_id = ? WHERE id = ?").run(id, payId); } catch {}
@@ -116,7 +116,7 @@ router.put("/:id", requirePagePermission("repair_orders", "edit"), (req, res) =>
       customer_id=?, device_type=?, device_brand=?, device_model=?, serial_number=?,
       reported_issue=?, diagnosis=?, priority=?, assigned_to=?,
       estimated_cost=?, final_cost=?, notes=?, estimated_delivery=?, warranty_days=?,
-      updated_at=datetime('now')
+      updated_at=datetime('now', 'localtime')
     WHERE id=?
   `).run(
     b.customer_id ?? order.customer_id, b.device_type ?? order.device_type,
@@ -144,9 +144,9 @@ router.patch("/:id/status", requirePagePermission("repair_orders", "edit"), (req
   const validStatuses = ["received", "diagnosing", "waiting_parts", "in_repair", "waiting_customer", "ready", "delivered", "cancelled"];
   if (!validStatuses.includes(status)) return res.status(400).json({ success: false, message: "Invalid status" });
 
-  db.prepare("UPDATE repair_orders SET status=?, updated_at=datetime('now') WHERE id=?").run(status, id);
+  db.prepare("UPDATE repair_orders SET status=?, updated_at=datetime('now', 'localtime') WHERE id=?").run(status, id);
   if (status === "delivered") {
-    db.prepare("UPDATE repair_orders SET delivered_at=datetime('now') WHERE id=?").run(id);
+    db.prepare("UPDATE repair_orders SET delivered_at=datetime('now', 'localtime') WHERE id=?").run(id);
   }
   db.prepare("INSERT INTO repair_order_status_log (repair_order_id, from_status, to_status, changed_by, note) VALUES (?,?,?,?,?)").run(id, order.status, status, req.user?.id || null, note || null);
 
@@ -224,7 +224,7 @@ router.post("/:id/deliver", requirePagePermission("repair_orders", "edit"), (req
     const invoiceNum = db.prepare("SELECT COALESCE(MAX(CAST(REPLACE(invoice_number, 'INV-', '') AS INTEGER)), 0) + 1 AS n FROM invoices").get().n;
     const invId = db.prepare(`
       INSERT INTO invoices (invoice_number, customer_id, invoice_type, status, subtotal, discount, tax, total, notes, created_by, branch_id, created_at, updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now', 'localtime'),datetime('now', 'localtime'))
     `).run(
       `INV-${String(invoiceNum).padStart(5, "0")}`,
       customerId || null, "sale", "paid",
@@ -241,7 +241,7 @@ router.post("/:id/deliver", requirePagePermission("repair_orders", "edit"), (req
     `).run(invId, `صيانة — ${order.device_brand || ""} ${order.device_model || ""}`.trim(), finalCost, finalCost);
 
     // Update repair order
-    db.prepare("UPDATE repair_orders SET invoice_id=?, final_cost=?, status='delivered', delivered_at=datetime('now'), updated_at=datetime('now') WHERE id=?").run(invId, finalCost, id);
+    db.prepare("UPDATE repair_orders SET invoice_id=?, final_cost=?, status='delivered', delivered_at=datetime('now', 'localtime'), updated_at=datetime('now', 'localtime') WHERE id=?").run(invId, finalCost, id);
     db.prepare("INSERT INTO repair_order_status_log (repair_order_id, from_status, to_status, changed_by, note) VALUES (?,?,?,?,?)").run(id, order.status, "delivered", req.user?.id || null, "فاتورة تسليم");
 
     return invId;
@@ -256,7 +256,7 @@ router.post("/:id/deliver", requirePagePermission("repair_orders", "edit"), (req
 router.delete("/:id", requirePagePermission("repair_orders", "delete"), (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
-  db.prepare("UPDATE repair_orders SET status='cancelled', updated_at=datetime('now') WHERE id=?").run(id);
+  db.prepare("UPDATE repair_orders SET status='cancelled', updated_at=datetime('now', 'localtime') WHERE id=?").run(id);
   req.audit("delete", "repair_orders", { id }, `إلغاء طلب صيانة #${id}`);
   res.json({ success: true });
 });

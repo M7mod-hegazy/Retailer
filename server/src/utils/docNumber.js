@@ -1,4 +1,5 @@
 const { getDb } = require("../config/database");
+const { dayStamp } = require("./datetime");
 
 /**
  * Generate a sequential document number in format PREFIX-YYYYMMDD-NNN(N).
@@ -10,9 +11,8 @@ const { getDb } = require("../config/database");
 function generateDocNumber(type, overridePrefix) {
   const db = getDb();
 
-  // YYYYMMDD of today (local time)
-  const now = new Date();
-  const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  // YYYYMMDD of today in Egypt local time (Cairo)
+  const day = dayStamp();
 
   // Prefix from settings_kv or fallback. POS sales are invoices — default to "INV"
   // (not the raw "POS_" that type.slice(0,4) would yield) so the saved number matches

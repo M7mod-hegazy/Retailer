@@ -4,6 +4,7 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { toSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -87,7 +88,7 @@ router.post("/", requirePagePermission("withdrawals", "add"), (req, res) => {
       payload.category_id || null,
       payload.note || null,
       payload.payment_method || "cash",
-      `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+      `${createdDate} ${toSql(new Date()).slice(11)}`,
       req.user?.id || 1,
     );
     req.audit("create", "withdrawals", { id: result.lastInsertRowid }, `💰 تم تسجيل سحب بمبلغ: ${payload.amount}`);

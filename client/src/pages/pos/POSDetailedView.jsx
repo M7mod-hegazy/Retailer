@@ -5,6 +5,7 @@ import {
   ListTodo, Loader2, Minus, PackageCheck, PauseCircle, Plus, Printer,
   Receipt, RefreshCw, RotateCcw, Search, ShieldCheck, ShoppingCart,
   Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText,
+  Wand2,
 } from "lucide-react";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
@@ -239,8 +240,7 @@ export default function POSDetailedView({ vm }) {
         onCustomerCreate={() => setCustomerCreateOpen(true)}
         onCustomerClear={() => { setCustomer(null); setCustomerQuery(""); setPaymentType("cash"); }}
         onCustomerInfo={() => setCustomerInfoOpen(true)}
-        quickCustomers={customers.slice(0, 3)}
-        onCustomerQuickSelect={(c) => { setCustomer(c); setCustomerQuery(c.name); }}
+
         amountReceived={amountReceived}
         onAmountReceivedChange={setAmountReceived}
         banks={banks}
@@ -1112,24 +1112,36 @@ export default function POSDetailedView({ vm }) {
                     <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-1 min-w-0">
                       <span className="text-2sm font-bold text-slate-600 shrink-0">💵 نقدي</span>
                       <input ref={multiCashRef} type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} onKeyDown={(e) => handleFieldNav(e, { nextRef: multiCreditRef })} placeholder="0"
                         className="w-16 shrink-0 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                      <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); setMultiCash(String(Math.max(0, totals.total - c - cr))); }}
+                        className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
+                        <Wand2 className="h-2.5 w-2.5" />
+                      </button>
                     </div>
                     {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
-                      <div key={m.id} className="flex items-center gap-1.5 min-w-0">
+                      <div key={m.id} className="flex items-center gap-1 min-w-0">
                         <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 truncate">{m.icon} {m.name}</span>
                         <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0"
                           className="w-16 shrink-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                        <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => !mm.name?.includes('بنك') && !mm.name?.includes('تحويل') && mm.icon !== '🏦' && mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); setMultiCustomAmounts(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr))})); }}
+                          className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
+                          <Wand2 className="h-2.5 w-2.5" />
+                        </button>
                       </div>
                     ))}
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-1 min-w-0">
                       <span className={`flex-1 min-w-0 text-2sm font-bold truncate ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
                       <input ref={multiCreditRef} type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)} onKeyDown={(e) => handleFieldNav(e, { prevRef: multiCashRef })}
                         placeholder={customer?.id ? "0" : "—"}
                         disabled={!customer?.id}
                         className={`w-16 shrink-0 rounded-lg px-2 py-1 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                      <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiCredit(String(Math.max(0, totals.total - ca - c))); }}
+                        className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
+                        <Wand2 className="h-2.5 w-2.5" />
+                      </button>
                     </div>
                   </div>
                   {(() => {
@@ -1169,11 +1181,6 @@ export default function POSDetailedView({ vm }) {
                   </button>
                 </PermissionGate>
                 <div className="flex gap-2">
-                  <PermissionGate page="pos" action="add">
-                    <button type="button" onClick={() => setSaveConfirmOpen(true)} disabled={!lines.length || isSaving || hasBlockingErrors} className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-2sm font-black transition-all ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"}`}>
-                      حفظ فقط
-                    </button>
-                  </PermissionGate>
                   <PermissionGate page="pos" action="void">
                     <button type="button" onClick={() => setCancelModalOpen(true)} disabled={!lines.length} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-2sm font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                       <Trash2 className="h-4 w-4" /> إلغاء

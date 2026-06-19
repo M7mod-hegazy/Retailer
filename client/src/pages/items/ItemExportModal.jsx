@@ -34,7 +34,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
 
   const handleExport = () => {
     if (!exportRows.length || !selectedFields.length) return;
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const category = selectedCategoryName || "all";
     exportItemsToExcel(exportRows, selectedFields, `items-${category}-${stamp}.xlsx`);
     onClose?.();

@@ -1,6 +1,6 @@
 {
   "name": "retailer",
-  "version": "1.0.4",
+  "version": "1.0.14",
   "main": "electron/main.js",
   "scripts": {
     "dev": "npm run kill:retailer-processes && concurrently -k \"npm:dev:server\" \"npm:dev:client\" \"npm:dev:electron\"",
@@ -20,6 +20,7 @@
     "dist:win7": "node ./electron/scripts/build-win7-test.js --arch=x64",
     "dist:win7:ia32": "node ./electron/scripts/build-win7-test.js --arch=ia32",
     "dist:win7:test": "node ./electron/scripts/build-win7-test.js",
+    "publish:win7": "node ./electron/scripts/publish-release.js",
     "release": "npm run build && npm run electron:rebuild && electron-builder --win --publish always",
     "release:win11": "npm run build && npm run electron:rebuild && electron-builder --win --config electron-builder-x64-win11.yml --publish always",
     "windows:configure-users": "powershell -NoProfile -ExecutionPolicy Bypass -File ./electron/scripts/configure-local-users.ps1",

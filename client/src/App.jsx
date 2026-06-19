@@ -1,10 +1,13 @@
 import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import WelcomeWizard from "./components/welcome/WelcomeWizard";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import { usePerformanceStore } from "./stores/performanceStore";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./services/queryClient";
 import AppShell from "./components/layout/AppShell";
 import ServerDownOverlay from "./components/ServerDownOverlay";
+import RootErrorFallback from "./pages/error/RootErrorFallback";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
 import ScreenLock from "./components/auth/ScreenLock";
@@ -13,9 +16,10 @@ import FullPageLoader from "./components/ui/FullPageLoader";
 import { useCanView } from "./hooks/usePermission";
 import { useUpdateStore } from "./stores/updateStore";
 import api from "./services/api";
+import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorFallbackPage from "./pages/error/ErrorFallbackPage";
 const UnauthorizedPage = lazy(() => import("./pages/auth/UnauthorizedPage"));
 const NotFoundPage = lazy(() => import("./pages/error/NotFoundPage"));
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const ActivationPage = lazy(() => import("./pages/auth/ActivationPage"));
@@ -99,6 +103,17 @@ const SupplierAccountsPage = lazy(() => import("./pages/accounts/SupplierAccount
 const AccountImportPage = lazy(() => import("./pages/accounts/import/AccountImportPage"));
 const UpdatesPage = lazy(() => import("./pages/updates/UpdatesPage"));
 const HistoryPage = lazy(() => import("./pages/history/HistoryPage"));
+
+// Resets the error boundary on every route change by keying it to the pathname.
+// Without this, an error on page A persists when navigating to page B.
+function RouteErrorBoundary({ children }) {
+  const { pathname } = useLocation();
+  return (
+    <ErrorBoundary key={pathname} FallbackComponent={ErrorFallbackPage}>
+      {children}
+    </ErrorBoundary>
+  );
+}
 
 function PermissionRoute({ page, children }) {
   const canView = useCanView(page);
@@ -187,7 +202,16 @@ function SetupGate({ children }) {
 }
 
 export default function App() {
-  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError } = useUpdateStore();
+  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setManualProgress, setManualComplete, setManualError } = useUpdateStore();
+  const token = useAuthStore((s) => s.token);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    window.electronAPI?.isFirstRun?.().then((isFirst) => {
+      if (isFirst) setShowWelcome(true);
+    }).catch(() => {});
+  }, [token]);
 
   // Bind framer-motion (JS-driven animations) to the performance settings.
   // The CSS perf classes only affect CSS animations; framer-motion animates via
@@ -218,21 +242,36 @@ export default function App() {
         });
       }),
       window.electronAPI?.on('update:error', (e) => setError(e)),
+      window.electronAPI?.on('update:manual-progress', (p) => setManualProgress(p)),
+      window.electronAPI?.on('update:manual-complete', (d) => {
+        setManualComplete(d.filePath);
+        toast.success("تم تحميل ملف التثبيت!", {
+          icon: "📦",
+          style: { background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", fontWeight: 700 },
+          duration: 10000,
+        });
+      }),
+      window.electronAPI?.on('update:manual-error', (e) => setManualError(e.message || e)),
     ];
     return () => {
       cleanups.forEach((cleanup) => cleanup?.());
     };
-  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError]);
+  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setManualProgress, setManualComplete, setManualError]);
 
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
+    {/* Top-level safety net: catches crashes in the gates, AppShell, and the
+        providers themselves — everything the per-route boundary sits inside —
+        so a layout error shows a recoverable screen instead of a white page. */}
+    <ErrorBoundary FallbackComponent={RootErrorFallback}>
     <Suspense fallback={<FullPageLoader />}>
       <LicenseGate>
       <SetupGate>
       <ServerDownOverlay />
-      <Toaster position="top-left" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} />
+      <Toaster position="top-center" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} containerStyle={{ marginTop: "64px" }} />
       <ScreenLock />
       <GlobalSearchPage />
+      {showWelcome && <WelcomeWizard onClose={() => setShowWelcome(false)} />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<NotFoundPage />} />
@@ -242,6 +281,7 @@ export default function App() {
             <AuthGuard>
               <AppShell>
                 <QueryClientProvider client={queryClient}>
+                <RouteErrorBoundary>
                 <Routes>
                   <Route path="unauthorized" element={<UnauthorizedPage />} />
                   <Route path="dashboard" element={<DashboardPage />} />
@@ -337,6 +377,7 @@ export default function App() {
                     <Route path="gold/rates" element={<PermissionRoute page="settings"><GoldRatesPage /></PermissionRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
+                  </RouteErrorBoundary>
                   </QueryClientProvider>
                 </AppShell>
               </AuthGuard>
@@ -346,6 +387,7 @@ export default function App() {
       </SetupGate>
       </LicenseGate>
       </Suspense>
+    </ErrorBoundary>
     </MotionConfig>
     );
   }

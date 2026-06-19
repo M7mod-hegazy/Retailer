@@ -5,6 +5,13 @@ export const DEFAULTS = {
   item_font_size: 12, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
+  // Thermal print-head calibration. A real 80mm/58mm head can only print across a
+  // band narrower than the paper (≈72mm/48mm) and that band is often offset from
+  // the paper edges, so a receipt laid out edge-to-edge gets clipped on one side
+  // and shows blank feed on the other — and symmetric margins can't fix the
+  // asymmetry. `print_area_width` (mm, 0 = full paper) narrows the printed content
+  // to the head's printable band; `print_shift_x` (mm, ±) slides it into that band.
+  print_area_width: 0, print_shift_x: 0,
   show_cashier_name: true, show_customer_name: true, show_tax: true,
   show_footer: true, show_qr: false, show_logo: true,
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
@@ -24,6 +31,41 @@ export const g = (s, k) => {
   }
   return raw;
 };
+
+/** Physical roll paper width in mm for the active receipt size. */
+export function rollPaperWidthMm(s) {
+  return g(s, "receipt_width") === "58mm" ? 58 : 80;
+}
+
+/**
+ * Standard printable band (mm) for a roll size — what a real thermal head can
+ * actually reach, narrower than the paper. Used as the default so content isn't
+ * clipped at the paper edge out of the box. (80mm paper ≈ 72mm, 58mm ≈ 48mm.)
+ */
+export function rollDefaultPrintWidthMm(paperMm) {
+  return paperMm === 58 ? 48 : 72;
+}
+
+/**
+ * Effective printed content width in mm: the calibrated band (`print_area_width`)
+ * when explicitly set, otherwise the standard printable band for the paper size.
+ * Never wider than the paper.
+ */
+export function rollPrintWidthMm(s) {
+  const paper = rollPaperWidthMm(s);
+  const eff = Number(g(s, "print_area_width"));
+  return Number.isFinite(eff) && eff > 0
+    ? Math.min(eff, paper)
+    : rollDefaultPrintWidthMm(paper);
+}
+
+// Faux extra-bold for the thermal roll. Tahoma and most Windows-installed fonts
+// only ship regular + bold, so font-weight ≥700 stops getting any heavier. A
+// text stroke paints an outline around each glyph, physically thickening the
+// digits so prices/quantities/totals stay punchy on the roll. currentColor keeps
+// the stroke the same shade as the text (solid black on thermal).
+export const HEAVY_NUM = { fontWeight: 900, WebkitTextStroke: "0.5px currentColor" };
+export const HEAVY_VAL = { fontWeight: 900, WebkitTextStroke: "0.4px currentColor" };
 
 export function parseJsonArray(v) {
   try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }

@@ -19,6 +19,7 @@ function BankModal({ bank, mode, onClose, onDone }) {
   const submitBtnRef = useRef(null);
   const [form, setForm] = useState({ amount: "", reference: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   async function submit() {
     if (!form.amount) return;

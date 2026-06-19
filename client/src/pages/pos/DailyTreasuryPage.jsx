@@ -17,12 +17,10 @@ import { usePageTour } from "../../hooks/usePageTour";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import { formatNumber } from "../../utils/currency";
+import { todayCairo } from "../../utils/dateHelpers";
 
 const fmt = (n) => formatNumber(n);
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const todayStr = () => todayCairo();
 const DENOMS = [200, 100, 50, 20, 10, 5, 1, 0.5, 0.25];
 
 const PAYMENT_METHOD_AR = {
@@ -156,7 +154,7 @@ function AmountCell({ t }) {
     : [];
   const splitsTotal = splits.reduce((s, x) => s + x.amt, 0);
 
-  /* ── ZERO CASH ──────────────────────────────────────────── */
+  /* ── ZERO CASH — non-cash methods only (card, wallet, etc.) ── */
   if (isZeroCash) {
     return (
       <div className="w-full rounded-xl border border-[var(--border-normal)] overflow-hidden bg-[var(--bg-surface)]">
@@ -167,16 +165,28 @@ function AmountCell({ t }) {
         <div className="px-3 pt-2 pb-2.5 flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">الإجمالي</span>
-            {/* ∅ badge */}
-            <span className="inline-flex items-center gap-1 bg-[var(--bg-overlay)] border border-[var(--border-normal)] rounded-full px-1.5 py-0.5">
-              <span className="w-1 h-1 rounded-full bg-slate-400" />
-              <span className="text-[7px] font-black text-[var(--text-secondary)] tracking-wide">لا يؤثر</span>
+            <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">
+              <span className="w-1 h-1 rounded-full bg-amber-400" />
+              <span className="text-[7px] font-black text-amber-600 tracking-wide">لا يؤثر على الخزنة</span>
             </span>
           </div>
           <span className="number-fmt-primary text-[16px] text-[var(--text-secondary)] leading-none">{fmt(total)}</span>
-          <div className="flex items-center gap-1 bg-[var(--bg-overlay)] border border-[var(--border-subtle)] rounded-lg px-2 py-1">
-            <span className="text-[8px] font-black text-[var(--text-muted)]">صفر نقدي — لا يؤثر على الخزنة</span>
-          </div>
+          <span className="text-[9px] font-bold text-amber-600/70">صفر نقدي — لا يؤثر على الخزنة</span>
+          {/* Payment method breakdown */}
+          {splits.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {splits.map((s, i) => {
+                const label = PAYMENT_METHOD_AR[s.key] || s.key;
+                const isCreditSplit = s.key === "credit";
+                const pct = splitsTotal > 0 ? Math.round((s.amt / splitsTotal) * 100) : 0;
+                return (
+                  <span key={i} className={`inline-flex items-center gap-1 text-[8px] font-black px-1.5 py-0.5 rounded-md ${isCreditSplit ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>
+                    {label} <span className="font-mono opacity-70">{pct}%</span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
           {/* Credit portion for zero-cash returns */}
           {isReturn && creditAmt > 0.005 && (
             <div className={`flex items-center justify-between rounded-lg px-2 py-1 border ${isSalesReturn ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-100"}`}>

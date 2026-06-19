@@ -6,6 +6,7 @@ const { auditMutation } = require("../middleware/audit");
 const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
 const { isFeatureEnabled } = require("../utils/features");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 // Guards against two overlapping imports committing at once (better-sqlite3 is
@@ -654,7 +655,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
 
   db.prepare(
       `UPDATE items
-       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, updated_at = CURRENT_TIMESTAMP
+       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, updated_at = datetime('now', 'localtime')
        WHERE id = ?`,
     )
     .run(
@@ -709,9 +710,9 @@ router.post("/:id/swap/:otherId", requirePagePermission("items", "add"), (req, r
   if (!a || !b) return res.status(404).json({ success: false, message: "Item not found" });
 
   db.transaction(() => {
-    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
       .run(b.code, b.sku_sequence, a.id);
-    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
       .run(a.code, a.sku_sequence, b.id);
   })();
 
@@ -731,7 +732,7 @@ router.post("/reorder", requirePagePermission("items", "add"), (req, res) => {
   db.transaction(() => {
     ordered_ids.forEach((id, index) => {
       const seq = index + 1;
-      db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
         .run(`${prefix}.${seq}`, seq, Number(id));
     });
   })();
@@ -743,7 +744,7 @@ router.delete("/:id", requirePagePermission("items", "delete"), (req, res) => {
   try {
     const existing = getDb().prepare("SELECT id FROM items WHERE id = ?").get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "الصنف غير موجود" });
-    getDb().prepare("UPDATE items SET deleted_at = datetime('now'), is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+    getDb().prepare("UPDATE items SET deleted_at = datetime('now', 'localtime'), is_active = 0, updated_at = datetime('now', 'localtime') WHERE id = ?").run(req.params.id);
     req.audit("delete", "items", { id: req.params.id }, `📦 تم حذف صنف`);
     return res.json({ success: true });
   } catch (err) {
@@ -755,7 +756,7 @@ router.post("/:id/restore", requirePagePermission("items", "add"), (req, res) =>
   try {
     const existing = getDb().prepare("SELECT id FROM items WHERE id = ?").get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "الصنف غير موجود" });
-    getDb().prepare("UPDATE items SET deleted_at = NULL, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+    getDb().prepare("UPDATE items SET deleted_at = NULL, is_active = 1, updated_at = datetime('now', 'localtime') WHERE id = ?").run(req.params.id);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, message: "تعذر استعادة الصنف" });
@@ -865,7 +866,7 @@ function ensureImportOpeningBalance(db, itemId, payload, warehouseId, quantity) 
   const qty = Number(quantity || 0);
   if (qty <= 0 || unitCost <= 0) return null;
 
-  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const now = nowSql();
   const item = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(itemId);
   const docNo = `OB-IMPORT-${itemId}`;
   let purchase = db.prepare("SELECT id FROM purchases WHERE doc_no = ?").get(docNo);
@@ -1041,7 +1042,7 @@ function updateSmartItem(db, id, rawPayload, createCategories) {
 
   db.prepare(
     `UPDATE items
-     SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, updated_at = CURRENT_TIMESTAMP
+     SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, updated_at = datetime('now', 'localtime')
      WHERE id = ?`,
   ).run(
     sku.code,
@@ -1148,7 +1149,7 @@ function validateImportRows(db, rows) {
 
 const DRY_RUN_ROLLBACK = "__DRY_RUN_ROLLBACK__";
 
-router.post("/import", requirePagePermission("items", "add"), (req, res, next) => {
+router.post("/import", express.json({ limit: "50mb" }), requirePagePermission("items", "add"), (req, res, next) => {
   const db = getDb();
   const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
   const overwriteExisting = req.body?.overwrite_existing === true;
@@ -1261,28 +1262,6 @@ router.post("/import", requirePagePermission("items", "add"), (req, res, next) =
           });
 
           if (dryRun) throw new Error(DRY_RUN_ROLLBACK);
-
-          // ---- Persist the batch (same transaction as the data writes) ----
-          const batchInfo = insertWithAvailableColumns(db, "import_batches", {
-            user_id: req.user?.id || null,
-            file_name: req.body?.file_name || null,
-            file_hash: fileHash,
-            file_blob: fileBuffer,
-            file_mime: req.body?.file_mime || null,
-            file_size: fileBuffer ? fileBuffer.length : null,
-            row_count: rows.length,
-            inserted: data.inserted,
-            updated: data.updated,
-            skipped: data.skipped,
-            failed: data.failed,
-            status: "active",
-          });
-          const batchId = batchInfo.lastInsertRowid;
-          const insertSnap = db.prepare(
-            "INSERT INTO import_batch_items (batch_id, item_id, action, was_new, warehouse_id, qty_added, prior_stock, prior_item_json, ob_purchase_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          );
-          snapshots.forEach((s) => insertSnap.run(batchId, s.item_id, s.action, s.was_new, s.warehouse_id, s.qty_added, s.prior_stock, s.prior_item_json, s.ob_purchase_id));
-          data.batch_id = batchId;
         });
 
         try {
@@ -1292,6 +1271,38 @@ router.post("/import", requirePagePermission("items", "add"), (req, res, next) =
             return res.json({ success: true, dry_run: true, data: { ...data, preview, warnings: validation.warnings } });
           }
           throw error;
+        }
+
+        // ---- Persist the batch record AFTER the main transaction commits ----
+        // Kept in a separate try-catch so a missing/broken import_batches table
+        // can never roll back already-committed item data.
+        try {
+          const batchTx = db.transaction(() => {
+            const batchInfo = insertWithAvailableColumns(db, "import_batches", {
+              user_id: req.user?.id || null,
+              file_name: req.body?.file_name || null,
+              file_hash: fileHash,
+              file_blob: fileBuffer,
+              file_mime: req.body?.file_mime || null,
+              file_size: fileBuffer ? fileBuffer.length : null,
+              row_count: rows.length,
+              inserted: data.inserted,
+              updated: data.updated,
+              skipped: data.skipped,
+              failed: data.failed,
+              status: "active",
+            });
+            const batchId = batchInfo.lastInsertRowid;
+            const insertSnap = db.prepare(
+              "INSERT INTO import_batch_items (batch_id, item_id, action, was_new, warehouse_id, qty_added, prior_stock, prior_item_json, ob_purchase_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            );
+            snapshots.forEach((s) => insertSnap.run(batchId, s.item_id, s.action, s.was_new, s.warehouse_id, s.qty_added, s.prior_stock, s.prior_item_json, s.ob_purchase_id));
+            data.batch_id = batchId;
+          });
+          batchTx();
+        } catch (batchErr) {
+          // Non-fatal: items are already saved. Log and continue.
+          console.error("[import] Failed to record import batch:", batchErr.message);
         }
 
         return res.json({ success: true, data: { ...data, warnings: validation.warnings } });
@@ -1313,7 +1324,7 @@ router.post("/import", requirePagePermission("items", "add"), (req, res, next) =
 
       const updateStmt = db.prepare(
         `UPDATE items
-         SET name = ?, sale_price = ?, purchase_price = ?, updated_at = CURRENT_TIMESTAMP
+         SET name = ?, sale_price = ?, purchase_price = ?, updated_at = datetime('now', 'localtime')
          WHERE id = ?`,
       );
 
@@ -1525,7 +1536,7 @@ router.post("/import/batches/:id/undo", requirePagePermission("items", "import_u
         if (!newItemIds.includes(itemId)) recomputeWACCForItem(itemId, db);
       }
 
-      db.prepare("UPDATE import_batches SET status = 'undone', undone_at = CURRENT_TIMESTAMP, undone_by = ? WHERE id = ?").run(req.user?.id || null, batchId);
+      db.prepare("UPDATE import_batches SET status = 'undone', undone_at = datetime('now', 'localtime'), undone_by = ? WHERE id = ?").run(req.user?.id || null, batchId);
     });
     tx();
 
@@ -1603,7 +1614,7 @@ router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, r
       `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by, source)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'bulk_update')`
     );
-    const updateItem = db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`);
+    const updateItem = db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`);
 
     const run = db.transaction(() => {
       for (const item of items) {
@@ -1657,7 +1668,7 @@ router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (
             const newPrice = calcNewPrice(item.old_price, direction, adjustment_type, v);
             if (newPrice === item.old_price) continue;
             insertHistory.run(item.id, field, item.old_price, newPrice, adjustment_type, v, reason, operationId, changedBy, null);
-            db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`).run(newPrice, item.id);
+            db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(newPrice, item.id);
             ruleChanges++;
             totalChanges++;
           }
@@ -1695,7 +1706,7 @@ router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (
           }
           if (newPrice === item.old_price) continue;
           insertHistory.run(item_id, field, item.old_price, newPrice, adjType, adjValue, reason, operationId, changedBy, null);
-          db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`).run(newPrice, item_id);
+          db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(newPrice, item_id);
           totalChanges++;
         }
       }
@@ -1723,7 +1734,7 @@ router.post("/bulk-price-rollback", requirePagePermission("items", "add"), (req,
     let restored = 0;
     const run = db.transaction(() => {
       for (const h of history) {
-        db.prepare(`UPDATE items SET ${h.field} = ?, updated_at = datetime('now') WHERE id = ?`).run(h.old_value, h.item_id);
+        db.prepare(`UPDATE items SET ${h.field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(h.old_value, h.item_id);
         restored++;
       }
       db.prepare("DELETE FROM price_history WHERE operation_id = ?").run(operation_id);

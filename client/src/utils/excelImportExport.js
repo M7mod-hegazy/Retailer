@@ -17,8 +17,8 @@ const NUMBER_FIELDS = new Set([
 const UNIT_SUFFIX_PATTERN = /^\s*([-+]?\d+(?:[.,]\d+)?)\s*([^\d.,+-].*?)?\s*$/;
 
 export const ITEM_FIELDS = [
-  { key: "code", label: "الكود", aliases: ["code", "sku", "item code", "codenumberofmode", "كود", "الكود", "رقم الصنف"] },
-  { key: "name", label: "اسم الصنف", required: true, aliases: ["name", "text64", "product name", "item name", "اسم", "الاسم", "اسم الصنف", "اسم المنتج", "الصنف"] },
+  { key: "code", label: "الكود", aliases: ["code", "sku", "item code", "codenumberofmode", "كود", "الكود", "رقم الصنف", "كود الصنف", "الرمز", "المعرف", "رقم المادة", "كود المادة"] },
+  { key: "name", label: "اسم الصنف", required: true, aliases: ["name", "text64", "product name", "item name", "اسم", "الاسم", "اسم الصنف", "اسم المنتج", "الصنف", "الاسم العربي", "اسم العربي", "المادة", "الصنف بالعربي", "اسم المادة", "الاسم بالعربي"] },
   { key: "name_en", label: "الاسم الإنجليزي", aliases: ["english name", "name en", "name_en", "الاسم الانجليزي", "الاسم الإنجليزي"] },
   { key: "barcode", label: "الباركود", aliases: ["barcode", "bar code", "باركود", "الباركود"] },
   { key: "store_name", label: "المخزن", aliases: ["nameofstore", "store", "store name", "warehouse", "warehouse name", "المخزن", "اسم المخزن"] },
@@ -38,10 +38,20 @@ export const ITEM_FIELDS = [
 ];
 
 export const ACCOUNT_FIELDS = [
-  { key: 'name', label: 'الاسم', required: true, aliases: ['name', 'resources', 'اسم', 'الاسم', 'اسم العميل', 'اسم المورد'] },
-  { key: 'phone', label: 'الهاتف', aliases: ['phone', 'mobile', 'هاتف', 'جوال', 'موبايل'] },
-  { key: 'address', label: 'العنوان', aliases: ['address', 'عنوان', 'العنوان'] },
-  { key: 'opening_balance', label: 'الرصيد الافتتاحي', aliases: ['raseed', 'balance', 'رصيد', 'الرصيد', 'رصيد افتتاحي', 'الرصيد الافتتاحي', 'opening balance'] },
+  { key: 'name', label: 'الاسم', required: true, aliases: ['name', 'resources', 'اسم', 'الاسم', 'اسم العميل', 'اسم المورد', 'العميل', 'المورد', 'customer', 'supplier', 'vendor', 'client', 'account', 'الحساب', 'اسم الحساب', 'الاسم بالعربي', 'الاسم بالكامل', 'full name', 'customer name', 'supplier name', 'company name', 'اسم الشركة', 'الشركة', 'account name', 'الحساب'] },
+  { key: 'phone', label: 'الهاتف', aliases: ['phone', 'mobile', 'هاتف', 'جوال', 'موبايل', 'phone number', 'tel', 'telephone', 'contact', 'رقم الهاتف', 'رقم الجوال', 'تليفون', 'رقم الموبايل', 'رقم التواصل', 'phone1', 'phone 1'] },
+  { key: 'address', label: 'العنوان', aliases: ['address', 'عنوان', 'العنوان', 'location', 'مكان', 'موقع', 'الموقع', 'address line', 'full address', 'العنوان بالكامل'] },
+  { key: 'opening_balance', label: 'الرصيد الافتتاحي', aliases: ['raseed', 'balance', 'رصيد', 'الرصيد', 'رصيد افتتاحي', 'الرصيد الافتتاحي', 'opening balance', 'initial balance', 'بداية رصيد', 'credit', 'credit limit', 'حد ائتمان', 'opening', 'initial credit', 'opening bal'] },
+];
+
+export const ACCOUNT_EXPORT_FIELDS = [
+  { key: 'name', label: 'الاسم' },
+  { key: 'phone', label: 'الهاتف' },
+  { key: 'address', label: 'العنوان' },
+  { key: 'opening_balance', label: 'الرصيد الافتتاحي' },
+  { key: 'code', label: 'الكود' },
+  { key: 'credit_limit', label: 'الحد الائتماني' },
+  { key: 'payment_terms', label: 'شروط الدفع' },
 ];
 
 export const EXPORT_FIELDS = ITEM_FIELDS.filter((field) => field.key !== "image_urls").concat([
@@ -101,8 +111,79 @@ export function detectHeaderRow(rows, fields = ITEM_FIELDS) {
   return best;
 }
 
-export function detectColumnHeaders(headers, fields = ITEM_FIELDS) {
+function analyzeTexts(samples) {
+  const texts = samples.map((v) => String(v ?? "").trim()).filter(Boolean);
+  return {
+    texts,
+    hasArabic: texts.some((v) => /[\u0600-\u06FF]/.test(v)),
+    allNumeric: texts.length > 0 && texts.every((v) => /^-?[\d.,]+$/.test(v)),
+    avgLen: texts.length ? texts.reduce((s, v) => s + v.length, 0) / texts.length : 0,
+    dotCodeCount: texts.filter((v) => /^\d+\.\d+$/.test(v)).length,
+    longNumericCount: texts.filter((v) => /^\d{6,15}$/.test(v)).length,
+    intCount: texts.filter((v) => /^\d+$/.test(v)).length,
+    hasDecimal: texts.filter((v) => /\./.test(v)).length,
+  };
+}
+
+function scoreField(fieldKey, analysis) {
+  const { hasArabic, allNumeric, avgLen, dotCodeCount, longNumericCount, intCount, hasDecimal, texts } = analysis;
+  let score = 0;
+  if (fieldKey === "name" && hasArabic && !allNumeric && avgLen > 4) score = 8;
+  else if (fieldKey === "name" && hasArabic && avgLen > 3) score = 5;
+  if (fieldKey === "code" && dotCodeCount >= texts.length * 0.5) {
+    const priceDecimal = texts.filter((v) => /^\d+\.\d{2}$/.test(v)).length;
+    if (priceDecimal < texts.length * 0.5) score = 9;
+  } else if (fieldKey === "code" && !hasArabic && avgLen < 10 && !allNumeric) score = 5;
+  if (fieldKey === "barcode" && longNumericCount >= texts.length * 0.5) score = 9;
+  if (["sale_price", "purchase_price", "wholesale_price"].includes(fieldKey) && allNumeric && avgLen < 10) {
+    score = hasDecimal >= texts.length * 0.5 ? 8 : 6;
+  }
+  if (fieldKey === "stock_quantity") {
+    if (allNumeric && intCount === texts.length) score = 7;
+    else if (texts.filter(looksLikeQuantityWithUnit).length >= texts.length * 0.5) score = 7;
+  }
+  if (fieldKey === "unit_name" && hasArabic && avgLen < 5) score = 6;
+  if (fieldKey === "category_name" && hasArabic && avgLen > 3 && avgLen < 15) score = 4;
+  return score;
+}
+
+function contentContradictsField(samples, fieldKey) {
+  const texts = samples.map((v) => String(v ?? "").trim()).filter(Boolean);
+  if (texts.length < 2) return false;
+  const hasArabic = texts.some((v) => /[\u0600-\u06FF]/.test(v));
+  const allNumeric = texts.every((v) => /^-?[\d.,]+$/.test(v));
+  const avgLen = texts.reduce((s, v) => s + v.length, 0) / texts.length;
+  if (fieldKey === "name") {
+    const codeLike = texts.filter((v) => /^[\w.\-/]+$/.test(v) && !/[\u0600-\u06FF]/.test(v)).length;
+    return codeLike === texts.length && !hasArabic && avgLen < 12;
+  }
+  if (fieldKey === "code") return hasArabic && avgLen > 5;
+  if (fieldKey === "barcode") return hasArabic || !allNumeric || texts.some((v) => String(v).replace(/[.,]/g, "").length < 6);
+  if (["sale_price", "purchase_price", "wholesale_price"].includes(fieldKey)) return !allNumeric;
+  if (fieldKey === "stock_quantity") {
+    const qtyWithUnitCount = texts.filter(looksLikeQuantityWithUnit).length;
+    if (qtyWithUnitCount >= texts.length * 0.5) return false;
+    return !allNumeric || texts.some((v) => /\./.test(v) && !/^\d+\.0+$/.test(v));
+  }
+  if (fieldKey === "unit_name") return allNumeric || (hasArabic && avgLen > 6);
+  if (fieldKey === "category_name") return allNumeric;
+  return false;
+}
+
+function detectFieldByContent(samples, availableFields) {
+  const analysis = analyzeTexts(samples);
+  if (analysis.texts.length < 2) return null;
+  const results = [];
+  for (const field of availableFields) {
+    const score = scoreField(field.key, analysis);
+    if (score > 0) results.push({ key: field.key, score: field.key === "name" ? score + 1 : score });
+  }
+  return results.sort((a, b) => b.score - a.score)[0]?.key || null;
+}
+
+export function detectColumnHeaders(headers, fields = ITEM_FIELDS, dataRows = []) {
   const mapping = {};
+
   headers.forEach((header, index) => {
     const normalizedHeader = normalizeText(header);
     if (!normalizedHeader) return;
@@ -117,6 +198,19 @@ export function detectColumnHeaders(headers, fields = ITEM_FIELDS) {
       mapping[index] = match.key;
     }
   });
+
+  if (!dataRows.length) return mapping;
+
+  for (const colIdx of Object.keys(mapping).map(Number)) {
+    const samples = dataRows.slice(0, 10).map((row) => row[colIdx]).filter((v) => v !== undefined && v !== null && String(v).trim() !== "").slice(0, 5);
+    if (samples.length < 2) continue;
+    if (contentContradictsField(samples, mapping[colIdx])) {
+      delete mapping[colIdx];
+    }
+  }
+
+  // Do not guess mapping based on cell content fallback, as it leads to incorrect mappings for columns like TotalSelling/TotalBuying.
+  // We only map columns that match the configured aliases in header names.
   return mapping;
 }
 
@@ -190,6 +284,12 @@ function looksLikeUnitText(value) {
   if (!text || text.length > 28) return false;
   if (/[-+]?\d/.test(text)) return false;
   return /[\p{L}]/u.test(text);
+}
+
+function looksLikeQuantityWithUnit(value) {
+  const text = String(value ?? "").trim();
+  const match = text.match(UNIT_SUFFIX_PATTERN);
+  return match != null && String(match[2] || "").trim().length > 0;
 }
 
 export function parseNumber(value) {
@@ -269,14 +369,14 @@ export function toApiPayload(row, categories = [], units = [], fallbackCategoryI
     category_name: row.category_name || "",
     unit_id: unit?.id || null,
     unit_name: row.unit_name || "",
-    sale_price: parseNumber(row.sale_price),
-    wholesale_price: parseNumber(row.wholesale_price),
-    purchase_price: parseNumber(row.purchase_price),
-    tax_rate: parseNumber(row.tax_rate),
+    sale_price: row.sale_price !== undefined ? parseNumber(row.sale_price) : undefined,
+    wholesale_price: row.wholesale_price !== undefined ? parseNumber(row.wholesale_price) : undefined,
+    purchase_price: row.purchase_price !== undefined ? parseNumber(row.purchase_price) : undefined,
+    tax_rate: row.tax_rate !== undefined ? parseNumber(row.tax_rate) : undefined,
     item_type: row.item_type || "product",
     description: row.description || null,
     is_active: row.is_active === undefined || row.is_active === "" ? true : !["0", "false", "لا", "no"].includes(normalizeKey(row.is_active)),
-    min_stock_qty: parseNumber(row.min_stock_qty),
+    min_stock_qty: row.min_stock_qty !== undefined && row.min_stock_qty !== "" ? parseNumber(row.min_stock_qty) : undefined,
     image_urls: String(row.image_urls || "").split(/[\n,]+/).map((url) => url.trim()).filter(Boolean),
   };
 }
@@ -301,6 +401,19 @@ export function exportItemsToExcel(items, selectedFields, filename) {
     return row;
   });
   downloadWorkbook(filename, [{ name: "Items", rows }]);
+}
+
+export function exportAccountsToExcel(items, selectedFields, filename) {
+  const rows = items.map((item) => {
+    const row = {};
+    selectedFields.forEach((fieldKey) => {
+      const field = ACCOUNT_EXPORT_FIELDS.find((entry) => entry.key === fieldKey);
+      if (!field) return;
+      row[field.label] = item[fieldKey] ?? '';
+    });
+    return row;
+  });
+  downloadWorkbook(filename, [{ name: 'Accounts', rows }]);
 }
 
 export function downloadImportTemplate() {

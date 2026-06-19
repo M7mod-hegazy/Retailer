@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -59,20 +60,24 @@ router.put("/:id", requirePagePermission("branches", "edit"), (req, res, next) =
   }
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function branchRelated(db, id) {
+  return [
+    { label: "تحويلات فروع", count: countSafe(db, "SELECT COUNT(*) AS c FROM branch_transfers WHERE from_branch_id = ? OR to_branch_id = ?", id, id) },
+    { label: "مستخدمون", count: countSafe(db, "SELECT COUNT(*) AS c FROM users WHERE branch_id = ?", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("branches", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(branchRelated(getDb(), Number(req.params.id))) });
+});
+
 router.delete("/:id", requirePagePermission("branches", "delete"), (req, res, next) => {
   try {
     const db = getDb();
     const id = Number(req.params.id);
-    
-    // Check for related records
-    const transferCount = db.prepare("SELECT COUNT(*) AS c FROM branch_transfers WHERE from_branch_id = ? OR to_branch_id = ?").get(id, id);
-    const userCount = db.prepare("SELECT COUNT(*) AS c FROM users WHERE branch_id = ?").get(id);
-    
-    const hasRecords = 
-      Number(transferCount?.c || 0) > 0 ||
-      Number(userCount?.c || 0) > 0;
-    
-    if (hasRecords) {
+
+    if (hasAnyRelated(branchRelated(db, id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE branches SET is_active = 0 WHERE id = ?").run(id);
       req.audit("delete", "branches", { id }, `⚙️ تم أرشفة فرع`);

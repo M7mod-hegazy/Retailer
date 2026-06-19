@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals } from "./blockUtils";
+import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
 
 const fmtDate = (d) => {
   if (!d) return "";
@@ -70,12 +70,12 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
       {payments.map((p, i) => (
         <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
           <span>{p.method_name || "نقداً"}:</span>
-          <span>{currency} {Number(p.amount).toFixed(2)}</span>
+          <span style={HEAVY_VAL}>{currency} {Number(p.amount).toFixed(2)}</span>
         </div>
       ))}
       {paid > grandTotal && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>الباقي:</span><span>{currency} {change.toFixed(2)}</span>
+          <span>الباقي:</span><span style={HEAVY_VAL}>{currency} {change.toFixed(2)}</span>
         </div>
       )}
       {plan.length > 0 && (
@@ -84,7 +84,7 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
           {plan.map((r, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
               <span>قسط {r.installment_no ?? i + 1} <span dir="ltr">{fmtDate(r.due_date)}</span>:</span>
-              <span dir="ltr">{currency} {Number(r.amount).toFixed(2)}</span>
+              <span dir="ltr" style={HEAVY_VAL}>{currency} {Number(r.amount).toFixed(2)}</span>
             </div>
           ))}
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", borderTop: "1px solid #000", marginTop: "2px", paddingTop: "2px" }}>

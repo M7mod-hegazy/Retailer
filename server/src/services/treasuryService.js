@@ -1,4 +1,5 @@
 const { getDb } = require("../config/database");
+const { nowSql } = require("../utils/datetime");
 
 function transferTreasury({ source_id, destination_id, amount, reference, notes, user_id }) {
   const db = getDb();
@@ -39,7 +40,7 @@ function transferTreasury({ source_id, destination_id, amount, reference, notes,
       throw error;
     }
 
-    const now = new Date().toISOString();
+    const now = nowSql();
 
     // 3. Deduct from source
     db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(transferAmount, source_id);

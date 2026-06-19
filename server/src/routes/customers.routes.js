@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 const { partyTxnSum } = require("../services/partyBalanceService");
 
 const router = express.Router();
@@ -20,7 +21,7 @@ function ensureNotesSchema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
       note TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
+      created_at TEXT DEFAULT (datetime('now', 'localtime')),
       created_by INTEGER REFERENCES users(id)
     )`);
   } catch (_) {}
@@ -120,6 +121,25 @@ router.put("/:id", requirePagePermission("customers", "edit"), (req, res) => {
   res.json({ success: true, data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function customerRelated(db, id) {
+  return [
+    { label: "فواتير", count: countSafe(db, "SELECT COUNT(*) AS c FROM invoices WHERE customer_id = ?", id) },
+    { label: "عروض أسعار", count: countSafe(db, "SELECT COUNT(*) AS c FROM quotations WHERE customer_id = ?", id) },
+    { label: "مدفوعات", count: countSafe(db, "SELECT COUNT(*) AS c FROM payments WHERE party_type = 'customer' AND party_id = ?", id) },
+    { label: "مرتجعات مبيعات", count: countSafe(db, "SELECT COUNT(*) AS c FROM sales_returns WHERE customer_id = ?", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("customers", "delete"), (req, res) => {
+  const db = getDb();
+  const settings = db.prepare("SELECT walk_in_customer_id FROM settings WHERE id = 1").get();
+  if (settings?.walk_in_customer_id && String(settings.walk_in_customer_id) === String(req.params.id)) {
+    return res.json({ success: true, data: buildImpact([], { blocked: "لا يمكن حذف العميل الافتراضي للمبيعات النقدية" }) });
+  }
+  res.json({ success: true, data: buildImpact(customerRelated(db, req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("customers", "delete"), (req, res) => {
   try {
     const db = getDb();
@@ -127,20 +147,8 @@ router.delete("/:id", requirePagePermission("customers", "delete"), (req, res) =
     if (settings?.walk_in_customer_id && String(settings.walk_in_customer_id) === String(req.params.id)) {
       return res.status(403).json({ success: false, message: "لا يمكن حذف العميل الافتراضي للمبيعات النقدية" });
     }
-    
-    // Check for related records
-    const invoiceCount = db.prepare("SELECT COUNT(*) AS c FROM invoices WHERE customer_id = ?").get(req.params.id);
-    const quotationCount = db.prepare("SELECT COUNT(*) AS c FROM quotations WHERE customer_id = ?").get(req.params.id);
-    const paymentCount = db.prepare("SELECT COUNT(*) AS c FROM payments WHERE customer_id = ?").get(req.params.id);
-    const salesReturnCount = db.prepare("SELECT COUNT(*) AS c FROM sales_returns WHERE customer_id = ?").get(req.params.id);
-    
-    const hasTransactions = 
-      Number(invoiceCount?.c || 0) > 0 ||
-      Number(quotationCount?.c || 0) > 0 ||
-      Number(paymentCount?.c || 0) > 0 ||
-      Number(salesReturnCount?.c || 0) > 0;
-    
-    if (hasTransactions) {
+
+    if (hasAnyRelated(customerRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE customers SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "customers", { id: req.params.id }, `👤 تم أرشفة عميل`, `/definitions/customers/${req.params.id}`);
@@ -324,7 +332,7 @@ router.post("/import/batches/:id/undo", requirePagePermission("customers", "impo
     for (const id of insertedIds) {
       const hasActivity =
         db.prepare("SELECT COUNT(*) AS c FROM invoices WHERE customer_id = ?").get(id)?.c > 0 ||
-        db.prepare("SELECT COUNT(*) AS c FROM payments WHERE customer_id = ?").get(id)?.c > 0 ||
+        db.prepare("SELECT COUNT(*) AS c FROM payments WHERE party_type = 'customer' AND party_id = ?").get(id)?.c > 0 ||
         db.prepare("SELECT COUNT(*) AS c FROM quotations WHERE customer_id = ?").get(id)?.c > 0 ||
         db.prepare("SELECT COUNT(*) AS c FROM sales_returns WHERE customer_id = ?").get(id)?.c > 0;
       if (hasActivity) return res.status(409).json({ success: false, reason: "activity", detail: `customer ${id} has transactions` });
@@ -341,7 +349,7 @@ router.post("/import/batches/:id/undo", requirePagePermission("customers", "impo
       for (const id of insertedIds) {
         db.prepare("DELETE FROM customers WHERE id = ?").run(id);
       }
-      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=CURRENT_TIMESTAMP, undone_by=? WHERE id=?")
+      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=datetime('now', 'localtime'), undone_by=? WHERE id=?")
         .run(req.user?.id || null, batchId);
     })();
 

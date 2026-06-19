@@ -67,7 +67,14 @@ api.interceptors.response.use(
       resetApiBaseUrl();
       if (consecutiveDisconnects >= 2 && !overlayDispatched && typeof window !== "undefined") {
         overlayDispatched = true;
-        window.dispatchEvent(new CustomEvent("server:unreachable"));
+        // Carry what we know so the overlay can show a specific, fixable message
+        // instead of a generic "disconnected". The authoritative cause still comes
+        // from the Electron main process (server:status), this is the web fallback.
+        window.dispatchEvent(
+          new CustomEvent("server:unreachable", {
+            detail: { kind, code: error?.code || null, url: reqUrl },
+          }),
+        );
         reportClientDiag({ type: "disconnect", code: error?.code || null, url: reqUrl });
       }
     } else if (kind === "timeout") {

@@ -1,3 +1,8 @@
+// Pin the whole process to Egypt local time so any bare `new Date()` path is
+// correct regardless of the host machine's timezone. Must run before anything
+// touches Date. Centralized Cairo helpers live in ./utils/datetime.js.
+process.env.TZ = "Africa/Cairo";
+
 require("dotenv").config();
 const { createApp } = require("./app");
 const { initDb, getDb } = require("./config/database");
@@ -16,7 +21,7 @@ const logger = require("./config/logger");
 function ensureDefaultsExist() {
   const db = getDb();
 
-  db.prepare("UPDATE settings SET wizard_completed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1").run();
+  db.prepare("UPDATE settings SET wizard_completed = 1, updated_at = datetime('now', 'localtime') WHERE id = 1").run();
 
   const warehouse = db.prepare("SELECT id FROM warehouses LIMIT 1").get();
   if (!warehouse) {
@@ -51,7 +56,7 @@ function ensureDefaultsExist() {
        invoice_prefix = 'INV-', purchase_prefix = 'PUR-',
        fiscal_year_start = 'January', date_format = 'dd/MM/yyyy',
        language = 'ar', receipt_width = '80mm',
-       updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
+       updated_at = datetime('now', 'localtime') WHERE id = 1`,
     ).run();
   }
 }

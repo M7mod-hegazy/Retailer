@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
         setExpiryStats(expiringRes.data?.stats || null);
         setWarehouses(whRes.data?.data || []);
 
-        const todayIso = new Date().toISOString().slice(0, 10);
+        const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
         const expenseTotal = (expensesRes.data?.data || [])
           .filter((row) => String(row.created_at || "").slice(0, 10) === todayIso)
           .reduce((sum, row) => sum + Number(row.amount || 0), 0);

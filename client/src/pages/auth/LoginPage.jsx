@@ -49,6 +49,22 @@ export default function LoginPage() {
   const [focusedField, setFocusedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPerf, setShowPerf] = useState(false);
+  const [clock, setClock] = useState(new Date());
+  const [appVersion, setAppVersion] = useState("");
+
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    window.electronAPI?.getVersion?.().then((v) => {
+      if (v) setAppVersion(v);
+    });
+  }, []);
+
+  const clockTime = clock.toLocaleTimeString("ar-EG", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+  const clockDate = clock.toLocaleDateString("ar-EG", { timeZone: "Africa/Cairo", weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const [customerBranding, setCustomerBranding] = useState({ logo_url: null, company_name: "", branch_name: "" });
   const perfPreset = usePerformanceStore((s) => s.preset);
   const perfSettings = usePerformanceStore((s) => s.settings);
@@ -211,7 +227,26 @@ export default function LoginPage() {
 
           {/* RIGHT: The Authentication Form */}
           <div className="relative w-full max-w-[460px] mx-auto lg:mr-auto lg:ml-0 order-1 lg:order-2">
-            
+
+            {/* Clock + Version */}
+            <div className="flex items-center justify-center gap-3 mb-6" dir="ltr">
+              {appVersion && (
+                <div className="bg-white/80 backdrop-blur-xl border border-white shadow-sm rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] font-black text-slate-500 tracking-widest">{appVersion.replace(/^v/i, "")}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-white shadow-sm rounded-[1.2rem] px-4 py-2.5">
+                <div className="flex flex-col items-end">
+                  <span className="text-lg font-black tabular-nums text-slate-700 leading-none tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {clockTime}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 tracking-wider mt-0.5">
+                    {clockDate}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Form Container (Premium Soft Glass) */}
             <div className="relative bg-white/95 backdrop-blur-3xl border-t border-l border-white border-r border-b border-slate-200/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.08),0_0_1px_1px_rgba(15,23,42,0.03)]">
               
@@ -340,10 +375,6 @@ export default function LoginPage() {
                 </div>
               </form>
             </div>
-            
-            {/* Form Bottom Footnote */}
-            <p className="text-center text-slate-400 text-sm font-semibold mt-8 drop-shadow-sm">الجلسة محلية وآمنة. تم اعتماد مظهر موحد للنظام بالكامل.</p>
-
             {/* Performance Settings Modal */}
             {showPerf && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={() => setShowPerf(false)}>

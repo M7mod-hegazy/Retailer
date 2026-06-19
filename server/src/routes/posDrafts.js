@@ -33,9 +33,9 @@ router.post("/", (req, res) => {
     const hasLabel = cols.includes("label");
     const insertSql = hasLabel
       ? `INSERT INTO pos_drafts (type, label, lines_json, customer_json, discount, increase, payment_type, held_at, notes, tax_enabled, tax_rate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?)`
       : `INSERT INTO pos_drafts (type, lines_json, customer_json, discount, increase, payment_type, held_at, notes, tax_enabled, tax_rate)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?)`;
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?)`;
     const values = [
       type,
       ...(hasLabel ? [label || null] : []),

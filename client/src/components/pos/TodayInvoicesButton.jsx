@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
+import { todayCairo } from "../../utils/dateHelpers";
 
 const PAYMENT_LABELS = {
   cash: "نقدي", bank_transfer: "بنك/فيزا", credit: "آجل",
@@ -15,8 +16,7 @@ function fmt(n) {
 }
 
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayCairo();
 }
 
 export default function TodayInvoicesButton({ variant = "default" }) {

@@ -14,10 +14,11 @@ export default function Step10Done({ wizard }) {
         تم معالجة الملف وتطبيق التغييرات على قاعدة البيانات بأمان.
       </p>
 
-      <div className="mx-auto mt-8 grid max-w-xl gap-3 grid-cols-2 sm:grid-cols-4 text-right">
+      <div className="mx-auto mt-8 grid max-w-4xl gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5 text-right">
         {[
           ["مضاف جديد", result.inserted || 0, "text-emerald-700 border-emerald-200 bg-emerald-50/30", FileText],
-          ["تم تحديثه", result.updated || 0, "text-sky-700 border-sky-200 bg-sky-50/30", ArrowLeftRight],
+          ["تحديث أسعار", wizard.importStats?.priceUpdates || 0, "text-violet-700 border-violet-200 bg-violet-50/30", ArrowLeftRight],
+          ["تحديث بيانات", result.updated || 0, "text-sky-700 border-sky-200 bg-sky-50/30", ArrowLeftRight],
           ["تم تخطيه", result.skipped || 0, "text-slate-500 border-slate-200 bg-slate-50/30", Ban],
           ["فشل الاستيراد", result.failed || 0, "text-rose-700 border-rose-200 bg-rose-50/30", AlertOctagon],
         ].map(([label, value, styles, Icon]) => (

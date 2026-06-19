@@ -15,6 +15,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import { formatNumber } from "../../utils/currency";
+import AccountExportModal from "./AccountExportModal";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -135,7 +136,7 @@ function parseAllPaymentSplits(splits) {
 function InstallmentsBadge({ debtId }) {
   const [open, setOpen] = useState(false);
   const [schedules, setSchedules] = useState(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   const load = useCallback(async () => {
     if (schedules !== null) { setOpen(o => !o); return; }
@@ -870,6 +871,7 @@ export default function CustomerAccountsPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   // Forms
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "" });
@@ -1088,22 +1090,9 @@ export default function CustomerAccountsPage() {
                 <div className="w-px h-4 bg-slate-200 shrink-0" />
                 <PermissionGate page="customer_accounts" action="print">
                   <button
-                    onClick={() => {
-                      const rows = customers.map(c => [c.name, c.phone || "", c.addresses || "", Number(c.opening_balance || 0)]);
-                      const header = ["الاسم", "الهاتف", "العنوان", "الرصيد الافتتاحي"];
-                      const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-                      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = "customers.csv";
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                      URL.revokeObjectURL(url);
-                    }}
+                    onClick={() => setShowExport(true)}
                     className="flex h-8 w-8 items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 active:scale-[0.95] transition-all duration-200 cursor-pointer"
-                    title="تصدير CSV"
+                    title="تصدير Excel"
                   >
                     <Download className="h-3.5 w-3.5" />
                   </button>
@@ -1474,7 +1463,7 @@ export default function CustomerAccountsPage() {
       {/* ── Invoice Detail Modal ══════════════════════════════ */}
       <AnimatePresence>
         {detailInvoice && (
-          <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} width="650px">
+          <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }}>
             <div className="p-6">
               {detailInvoiceIsOriginal && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
@@ -1590,7 +1579,7 @@ export default function CustomerAccountsPage() {
       {/* ── Return Detail Modal ══════════════════════════════ */}
       <AnimatePresence>
         {detailReturn && (
-          <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} width="640px">
+          <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                 <div>
@@ -1728,14 +1717,12 @@ export default function CustomerAccountsPage() {
 
       <AddCustomerModal
         open={showCreate}
-        onClose={() => setShowCreate(false)}
         onCreated={handleCustomerCreated}
       />
 
       <CustomerInfoModal
         open={showEdit}
         customerId={selected?.id}
-        onClose={() => setShowEdit(false)}
         onUpdated={(updated) => {
           setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
           setSelected(updated);
@@ -1744,9 +1731,9 @@ export default function CustomerAccountsPage() {
 
       {/* Payment Modal */}
       <AnimatePresence>
-        {showPayment && selected && (
-          <Modal onClose={() => setShowPayment(false)}>
-            <div className="p-6">
+      {showPayment && selected && (
+        <Modal onClose={() => setShowPayment(false)}>
+          <div className="p-6">
               <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
                 <h2 className="text-[16px] font-black text-slate-850">{bal < 0 ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"}</h2>
                 <button onClick={() => setShowPayment(false)} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"><X className="h-4 w-4" /></button>
@@ -1792,9 +1779,9 @@ export default function CustomerAccountsPage() {
 
       {/* Adjust Modal */}
       <AnimatePresence>
-        {showAdjust && selected && (
-          <Modal onClose={() => setShowAdjust(false)}>
-            <div className="p-6">
+      {showAdjust && selected && (
+        <Modal onClose={() => setShowAdjust(false)}>
+          <div className="p-6">
               <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
                 <h2 className="text-[16px] font-black text-slate-850">تسوية رصيد حساب العميل يدوياً</h2>
                 <button onClick={() => setShowAdjust(false)} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"><X className="h-4 w-4" /></button>
@@ -1857,6 +1844,14 @@ export default function CustomerAccountsPage() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* Export Modal */}
+      <AccountExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        entityType="customers"
+        accounts={customers}
+      />
     </div>
   );
 }

@@ -230,9 +230,23 @@ export function useAccountImportWizard({ entityType, onImported }) {
   }, [rows, runImport]);
 
   const proceedFromColumns = useCallback(() => {
-    applyNewMapping();
+    if (!rawRows.length) return;
+    const dataRows = rawRows.slice(headerIndex + 1).filter(row => row.some(cell => String(cell ?? "").trim()));
+    const fieldToCol = {};
+    Object.entries(mapping).forEach(([colIdx, field]) => { fieldToCol[field] = Number(colIdx); });
+    const mappedRows = dataRows.map((row, i) => ({
+      __rowNumber: i + 1,
+      name: String(row[fieldToCol.name] ?? "").trim(),
+      phone: String(row[fieldToCol.phone] ?? "").trim(),
+      address: String(row[fieldToCol.address] ?? "").trim(),
+      opening_balance: Number(row[fieldToCol.opening_balance] ?? 0) || 0,
+    }));
+    const enriched = enrichRows(mappedRows, existingAccounts);
+    setRows(enriched);
+    setDuplicateActions({});
+    setResult(null);
     setStep(3);
-  }, []);
+  }, [rawRows, headerIndex, mapping, enrichRows, existingAccounts]);
 
   const reset = useCallback(() => {
     setStep(1);

@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -48,19 +49,23 @@ router.put("/:id", requirePagePermission("banks", "edit"), (req, res) => {
   res.json({ success: true, data: getDb().prepare("SELECT * FROM banks WHERE id = ?").get(req.params.id) });
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function bankRelated(db, id) {
+  return [
+    { label: "حركات بنكية", count: countSafe(db, "SELECT COUNT(*) AS c FROM bank_transactions WHERE bank_id = ?", id) },
+    { label: "طرق دفع", count: countSafe(db, "SELECT COUNT(*) AS c FROM payment_methods WHERE target_id = ? AND type = 'bank'", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("banks", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(bankRelated(getDb(), req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("banks", "delete"), (req, res) => {
   try {
     const db = getDb();
-    
-    // Check for related records
-    const txCount = db.prepare("SELECT COUNT(*) AS c FROM bank_transactions WHERE bank_id = ?").get(req.params.id);
-    const paymentMethodCount = db.prepare("SELECT COUNT(*) AS c FROM payment_methods WHERE target_id = ? AND type = 'bank'").get(req.params.id);
-    
-    const hasRecords = 
-      Number(txCount?.c || 0) > 0 ||
-      Number(paymentMethodCount?.c || 0) > 0;
-    
-    if (hasRecords) {
+
+    if (hasAnyRelated(bankRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE banks SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "banks", { id: req.params.id }, `💰 تم أرشفة بنك`);

@@ -390,7 +390,7 @@ function saveOwnerStatement({ id, period_start, period_end, cost_method, notes, 
       }
       db.prepare(`
         UPDATE owner_statements
-        SET period_start = ?, period_end = ?, cost_method = ?, notes = ?, updated_at = datetime('now')
+        SET period_start = ?, period_end = ?, cost_method = ?, notes = ?, updated_at = datetime('now', 'localtime')
         WHERE id = ?
       `).run(period_start, period_end, payload.cost_method, notes || null, statementId);
       db.prepare("DELETE FROM owner_statement_values WHERE statement_id = ?").run(statementId);
@@ -470,7 +470,7 @@ function lockOwnerStatement(id, userId) {
     throw err;
   }
   if (existing.status !== "locked") {
-    db.prepare("UPDATE owner_statements SET status = 'locked', locked_at = datetime('now'), locked_by = ? WHERE id = ?")
+    db.prepare("UPDATE owner_statements SET status = 'locked', locked_at = datetime('now', 'localtime'), locked_by = ? WHERE id = ?")
       .run(userId || null, id);
   }
   return getOwnerStatement(id);

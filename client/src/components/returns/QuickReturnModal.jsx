@@ -468,16 +468,17 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                       <button
                         key={p.label}
                         onClick={() => {
+                          const ymd = (dt) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(dt);
                           const today = new Date();
-                          const to = today.toISOString().split("T")[0];
+                          const to = ymd(today);
                           let from;
                           if (p.month) {
-                            from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+                            from = ymd(new Date(today.getFullYear(), today.getMonth(), 1));
                           } else if (p.days === 0) {
                             from = to;
                           } else {
                             const d = new Date(today); d.setDate(d.getDate() - p.days);
-                            from = d.toISOString().split("T")[0];
+                            from = ymd(d);
                           }
                           setDateFrom(from); setDateTo(to);
                         }}

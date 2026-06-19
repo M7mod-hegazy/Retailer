@@ -3,6 +3,7 @@ import {
   AlertTriangle, Printer, Save, PanelRightOpen, User, PauseCircle,
   FilePlus, Plus, X, Banknote, CreditCard, Wallet, Calendar, Layers,
   ChevronDown, Trash2, Loader2, ExternalLink, Search,
+  Wand2,
 } from "lucide-react";
 import HeldDropdown from "../../pages/pos/parts/HeldDropdown";
 import SearchDropdown from "../ui/SearchDropdown";
@@ -39,7 +40,7 @@ export default function PosStickyTotalBar({
   customPayMethods = [], multiCustomAmounts = {}, onMultiCustomAmountChange,
   customerName, customerId, customerBalance = 0,
   onCustomerLookup, onCustomerCreate, onCustomerClear, onCustomerInfo,
-  quickCustomers = [], onCustomerQuickSelect,
+
   displayBalance,
   customerQuery, onCustomerQueryChange,
   customerLookupOpen, onCustomerLookupOpenChange,
@@ -47,7 +48,7 @@ export default function PosStickyTotalBar({
   onCustomerPick, onCustomerKeyDown,
   hasErrors = false, errorCount = 0,
   disabled = false, isSaving = false, canHold = false,
-  onHold, onPrint, onSave, onSaveOnly, onCancel,
+  onHold, onPrint, onSaveOnly, onCancel,
   onExpand, onNewInvoice,
   heldInvoices = [], heldDropdownOpen, onHeldToggle,
   onResumeHeld, onDiscardHeld, onCloseHeld,
@@ -121,7 +122,7 @@ export default function PosStickyTotalBar({
                 onBlur={() => { setTimeout(() => onCustomerLookupOpenChange?.(false), 200); }}
                 onKeyDown={onCustomerKeyDown}
                 placeholder={hasCustomer ? customerName : "ابحث عن عميل..."}
-                className="w-[85px] bg-transparent text-2sm font-bold text-zinc-700 outline-none placeholder:text-zinc-400"
+                className="w-[120px] bg-transparent text-2sm font-bold text-zinc-700 outline-none placeholder:text-zinc-400"
               />
               {hasCustomer && onCustomerClear && (
                 <button type="button" onClick={onCustomerClear}
@@ -154,18 +155,6 @@ export default function PosStickyTotalBar({
               </div>
             )}
           </div>
-
-          {/* Quick customer buttons */}
-          {!hasCustomer && quickCustomers.length > 0 && (
-            <div className="flex items-center gap-1 shrink-0">
-              {quickCustomers.map((c) => (
-                <button key={c.id} type="button" onClick={() => onCustomerQuickSelect?.(c)}
-                  className="px-1.5 py-0.5 rounded bg-slate-100 text-2sm font-bold text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors whitespace-nowrap">
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Held invoices */}
           {heldInvoices.length > 0 && onHeldToggle && (
@@ -245,7 +234,7 @@ export default function PosStickyTotalBar({
                 onBlur={() => { setTimeout(() => onCustomerLookupOpenChange?.(false), 200); }}
                 onKeyDown={onCustomerKeyDown}
                 placeholder={hasCustomer ? customerName : "ابحث عن عميل..."}
-                className="w-[85px] bg-transparent text-2sm font-bold text-zinc-700 outline-none placeholder:text-zinc-400"
+                className="w-[120px] bg-transparent text-2sm font-bold text-zinc-700 outline-none placeholder:text-zinc-400"
               />
               {hasCustomer && onCustomerClear && (
                 <button type="button" onClick={onCustomerClear}
@@ -278,18 +267,6 @@ export default function PosStickyTotalBar({
               </div>
             )}
           </div>
-
-          {/* ─── Quick customer buttons ─── */}
-          {!hasCustomer && quickCustomers.length > 0 && (
-            <div className="flex items-center gap-1 shrink-0">
-              {quickCustomers.map((c) => (
-                <button key={c.id} type="button" onClick={() => onCustomerQuickSelect?.(c)}
-                  className="px-1.5 py-0.5 rounded bg-slate-100 text-2sm font-bold text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors whitespace-nowrap">
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
 
           <span className="h-5 w-px bg-zinc-200 shrink-0" />
 
@@ -347,7 +324,7 @@ export default function PosStickyTotalBar({
                   }
                 }}
                 placeholder="0"
-                className="w-10 rounded border border-amber-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-amber-400 transition-colors" />
+                className="min-w-[30px] rounded border border-amber-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-amber-400 transition-colors" />
               <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">خصم</span>
               {onDiscountModeChange && (
                 <button type="button" onClick={() => onDiscountModeChange(discountMode === "pct" ? "flat" : "pct")}
@@ -378,7 +355,7 @@ export default function PosStickyTotalBar({
                   }
                 }}
                 placeholder="0"
-                className="w-10 rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
+                className="min-w-[30px] rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
               <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">إضافة</span>
               {onIncreaseModeChange && (
                 <button type="button" onClick={() => onIncreaseModeChange(increaseMode === "pct" ? "flat" : "pct")}
@@ -464,7 +441,7 @@ export default function PosStickyTotalBar({
               <span className="text-[11px] font-bold text-zinc-700">المبلغ:</span>
               <input type="number" min="0" value={amountReceived || ""}
                 onChange={(e) => onAmountReceivedChange(e.target.value)} placeholder="0"
-                className="w-12 rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
+                className="min-w-[35px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
               {Number(amountReceived) > 0 && (
                 <span className={`text-[11px] font-bold ${Number(amountReceived) >= total ? "text-emerald-700" : "text-rose-600"}`}>
                   {Number(amountReceived) >= total ? "تمام" : `باقي ${formatMoney(Math.abs(Number(amountReceived) - total), 0)}`}
@@ -489,7 +466,7 @@ export default function PosStickyTotalBar({
               <span className="text-[11px] font-bold text-zinc-700">الدفعة:</span>
               <input type="number" min="0" value={amountPaid || ""}
                 onChange={(e) => onAmountPaidChange?.(e.target.value)} placeholder="0"
-                className="w-10 rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
+                className="min-w-[35px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
               <span className="text-[11px] font-bold text-violet-800">
                 قسط {formatMoney(Math.max(0, total - Number(amountPaid || 0)))}
               </span>
@@ -509,25 +486,37 @@ export default function PosStickyTotalBar({
           )}
 
           {paymentType === "multi" && (
-            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm shrink-0">
-              <span className="text-2sm font-bold text-emerald-800">نقدي:</span>
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
+              <span className="text-2sm font-bold text-emerald-800 shrink-0">نقدي:</span>
               <input type="number" min="0" value={multiCash || ""}
                 onChange={(e) => onMultiCashChange?.(e.target.value)} placeholder="0"
-                className="w-14 rounded border border-emerald-200 bg-emerald-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
+                className="w-[60px] rounded border border-emerald-200 bg-emerald-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
+              <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCashChange?.(String(Math.max(0, total - c - Number(multiCredit||0)))); }}
+                className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
+                <Wand2 className="h-2.5 w-2.5" />
+              </button>
               {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
                 <div key={m.id} className="flex items-center gap-0.5">
                   <span className="text-2sm font-bold text-violet-800 whitespace-nowrap">{m.icon} {m.name}:</span>
-                  <input type="number" min="0" value={multiCustomAmounts[m.id] || ""}
-                    onChange={(e) => onMultiCustomAmountChange?.(m.id, e.target.value)} placeholder="0"
-                    className="w-14 rounded border border-violet-200 bg-violet-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
+                    <input type="number" min="0" value={multiCustomAmounts[m.id] || ""}
+                      onChange={(e) => onMultiCustomAmountChange?.(m.id, e.target.value)} placeholder="0"
+                      className="w-[60px] rounded border border-violet-200 bg-violet-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
+                  <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); onMultiCustomAmountChange?.(m.id, String(Math.max(0, total - ca - others - cr))); }}
+                    className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
+                    <Wand2 className="h-2.5 w-2.5" />
+                  </button>
                 </div>
               ))}
-              <span className="text-2sm font-bold text-amber-800">آجل:</span>
+              <span className="text-2sm font-bold text-amber-800 shrink-0">آجل:</span>
               <input type="number" min="0" value={multiCredit || ""}
                 onChange={(e) => onMultiCreditChange?.(e.target.value)}
                 disabled={!hasCustomer} placeholder={hasCustomer ? "0" : "—"}
-                className="w-14 rounded border border-amber-200 bg-amber-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-amber-400 transition-colors disabled:opacity-40" />
-              <span className={`px-2 py-1 rounded text-2sm font-bold ${multiBalanced ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                className="w-[60px] rounded border border-amber-200 bg-amber-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-amber-400 transition-colors disabled:opacity-40" />
+              <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCreditChange?.(String(Math.max(0, total - ca - c))); }}
+                className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
+                <Wand2 className="h-2.5 w-2.5" />
+              </button>
+              <span className={`px-2 py-1 rounded text-2sm font-bold shrink-0 ${multiBalanced ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
                 {formatMoney(multiEntered)}/{formatMoney(total)}
               </span>
             </div>
@@ -538,13 +527,13 @@ export default function PosStickyTotalBar({
               <span className="text-[11px] font-bold text-zinc-700">المبلغ:</span>
               <input type="number" min="0" value={amountReceived || ""}
                 onChange={(e) => onAmountReceivedChange?.(e.target.value)} placeholder="0"
-                className="w-12 rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
+                className="min-w-[35px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
             </div>
           )}
         </div>
 
         {/* ═══════════════ Row 4: Actions ═══════════════ */}
-        <div className="flex items-center gap-2 px-3 py-1 bg-white">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1 bg-white">
           {heldInvoices.length > 0 && onHeldToggle && (
             <div className="relative shrink-0">
               <button type="button" onClick={onHeldToggle}
@@ -584,14 +573,6 @@ export default function PosStickyTotalBar({
 
           {onSaveOnly && (
             <button type="button" onClick={onSaveOnly} disabled={!canDoPayment}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
-              {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              حفظ فقط
-            </button>
-          )}
-
-          {onSave && (
-            <button type="button" onClick={onSave} disabled={!canDoPayment}
               className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
               {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
               حفظ <kbd className="rounded bg-zinc-100 px-1 text-[9px] text-zinc-400 font-mono">F9</kbd>

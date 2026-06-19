@@ -12,6 +12,7 @@ import PermissionGate from "../ui/PermissionGate";
 import { formatNumber } from "../../utils/currency";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
+import { todayCairo } from "../../utils/dateHelpers";
 
 function formatMoney(v) {
   return formatNumber(v, { decimals: 3 });
@@ -20,7 +21,7 @@ function formatArabicDateTime(date) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 function toDateInput(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  return todayCairo(date);
 }
 
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {

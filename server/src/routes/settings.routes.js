@@ -157,7 +157,7 @@ function buildUpdate(current, updates) {
   const cols = Object.keys(current).filter(k => !skip.has(k) && SAFE_COL.test(k));
   const setClauses = cols.map(c => `${c} = ?`);
   const params = cols.map(c => coerceVal(c, next[c]));
-  const sql = `UPDATE settings SET ${setClauses.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = 1`;
+  const sql = `UPDATE settings SET ${setClauses.join(", ")}, updated_at = datetime('now', 'localtime') WHERE id = 1`;
   return { sql, params };
 }
 

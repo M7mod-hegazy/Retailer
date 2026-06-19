@@ -867,6 +867,20 @@ export function PageTour() {
     };
   }, [recalculate]);
 
+  // Safety hatch: Escape always dismisses the tour/picker. Even if a future overlay change
+  // were to trap pointer input, the user can always recover with the keyboard.
+  useEffect(() => {
+    if (!isTourVisible && !isPickerVisible) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        if (isPickerVisible) closePicker();
+        else completeTour();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isTourVisible, isPickerVisible, completeTour, closePicker]);
+
   // Show picker
   if (isPickerVisible && activeTourPageKey) {
     return (
@@ -890,11 +904,19 @@ export function PageTour() {
 
   return (
     <>
-      {/* Full-screen dim */}
+      {/* Full-screen dim.
+          In spotlight mode this layer is transparent and must NOT capture clicks/focus —
+          otherwise it sits on top of the whole page (z-9990) and makes every input
+          unfocusable while a tour is open (the tour auto-triggers on definitions pages).
+          Only the centered fallback (no target found) actually dims the page and closes
+          the tour on click. */}
       <div
         className="fixed inset-0 z-[9990]"
-        style={{ background: isCentered ? 'rgba(0,0,0,0.5)' : 'transparent' }}
-        onClick={completeTour}
+        style={{
+          background: isCentered ? 'rgba(0,0,0,0.5)' : 'transparent',
+          pointerEvents: isCentered ? 'auto' : 'none',
+        }}
+        onClick={isCentered ? completeTour : undefined}
       />
 
       {/* Spotlight cutout (only when target found) */}

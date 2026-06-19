@@ -28,7 +28,7 @@ import { SCOPE_OPTIONS } from "./reportsCenterConfig";
 import { formatNumber } from "../../utils/currency";
 
 function formatDate(date) {
-  return date.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
 function isValidDateString(value) {
@@ -849,7 +849,7 @@ export default function ReportWorkspacePage() {
       setExportProgress((prev) => prev ? { ...prev, percent: 100 } : null);
       const extMap = { pdf: "pdf", excel: "xlsx", word: "docx" };
       const ext = extMap[format] || "xlsx";
-      const filename = `${definition?.slug || reportSlug}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const filename = `${definition?.slug || reportSlug}-${formatDate(new Date(), "YYYY-MM-DD")}.${ext}`;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

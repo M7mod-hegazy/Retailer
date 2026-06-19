@@ -206,7 +206,7 @@ const TYPE_LABELS = {
 };
 
 function formatDate(date) {
-  return date.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
 const CHART_COLORS = ["#059669", "#2563EB", "#7C3AED", "#D97706", "#DC2626", "#0891B2", "#F59E0B", "#EC4899"];
@@ -804,7 +804,7 @@ export default function SourceWorkspacePage() {
       setExportProgress((prev) => prev ? { ...prev, percent: 100 } : null);
       const extMap = { pdf: "pdf", excel: "xlsx", word: "docx" };
       const ext = extMap[format] || "xlsx";
-      const filename = `${sourceKey}-${classificationId}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const filename = `${sourceKey}-${classificationId}-${formatDate(new Date())}.${ext}`;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url; link.download = filename;

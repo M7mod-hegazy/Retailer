@@ -72,9 +72,10 @@ function assertBinaryArch(arch) {
 function cachePathFor(arch) {
   const electronVersion = require(path.join(ROOT, 'node_modules', 'electron', 'package.json')).version;
   const sqliteVersion = require(path.join(ROOT, 'node_modules', 'better-sqlite3', 'package.json')).version;
+  const abi = process.versions.modules;
   return path.join(
     ROOT, '.native-cache',
-    `electron-${electronVersion}_better-sqlite3-${sqliteVersion}_${arch}`,
+    `electron-${electronVersion}_abi-${abi}_better-sqlite3-${sqliteVersion}_${arch}`,
     'better_sqlite3.node'
   );
 }

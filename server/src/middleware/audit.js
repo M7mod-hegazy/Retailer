@@ -8,7 +8,7 @@ function auditMutation(req, _res, next) {
     // return null instead of throwing.
     try {
       const db = getDb();
-      const info = db.prepare("INSERT INTO audit_logs (user_id, action, resource, payload_json, description, link) VALUES (?, ?, ?, ?, ?, ?)").run(
+      const info = db.prepare("INSERT INTO audit_logs (user_id, action, resource, payload_json, description, link, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))").run(
         Number.isInteger(req.user?.id) ? req.user.id : null,
         action,
         resource,

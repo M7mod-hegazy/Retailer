@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
+const { today } = require("../utils/datetime");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { featureGate } = require("../utils/features");
@@ -13,7 +14,7 @@ router.use(auditMutation);
 // Get today's rates (or latest available)
 router.get("/rates/today", requirePagePermission("pos", "view"), (req, res) => {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = today();
   const rows = db.prepare("SELECT * FROM gold_rates WHERE rate_date = ? ORDER BY karat").all(today);
   if (rows.length > 0) return res.json({ success: true, data: rows, date: today });
 
@@ -38,7 +39,7 @@ router.post("/rates", requirePagePermission("settings", "add"), (req, res) => {
   const { rates, rate_date } = req.body || {};
   if (!Array.isArray(rates) || rates.length === 0) return res.status(400).json({ success: false, message: "rates array required" });
 
-  const date = rate_date || new Date().toISOString().slice(0, 10);
+  const date = rate_date || today();
   const insert = db.prepare("INSERT OR REPLACE INTO gold_rates (rate_date, karat, price_per_gram, currency, source, created_by) VALUES (?,?,?,?,?,?)");
 
   const tx = db.transaction(() => {
@@ -56,7 +57,7 @@ router.post("/rates", requirePagePermission("settings", "add"), (req, res) => {
 router.get("/rates/:karat", requirePagePermission("pos", "view"), (req, res) => {
   const db = getDb();
   const karat = Number(req.params.karat);
-  const date = req.query.date || new Date().toISOString().slice(0, 10);
+  const date = req.query.date || today();
   const row = db.prepare("SELECT * FROM gold_rates WHERE karat = ? AND rate_date <= ? ORDER BY rate_date DESC LIMIT 1").get(karat, date);
   if (!row) return res.status(404).json({ success: false, message: `No rate for ${karat}K` });
   res.json({ success: true, data: row });
@@ -72,7 +73,7 @@ router.get("/price", requirePagePermission("pos", "view"), (req, res) => {
   if (!item || !item.is_gold_item) return res.status(400).json({ success: false, message: "Not a gold item" });
 
   const karat = item.gold_karat || 21;
-  const date = new Date().toISOString().slice(0, 10);
+  const date = today();
   const rate = db.prepare("SELECT * FROM gold_rates WHERE karat = ? AND rate_date <= ? ORDER BY rate_date DESC LIMIT 1").get(karat, date);
   if (!rate) return res.status(404).json({ success: false, message: `No rate for ${karat}K` });
 

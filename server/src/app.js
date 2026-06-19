@@ -57,6 +57,7 @@ const serialsRoutes = require("./routes/serials.routes");
 const repairOrdersRoutes = require("./routes/repairOrders.routes");
 const restaurantRoutes = require("./routes/restaurant.routes");
 const goldRoutes = require("./routes/gold.routes");
+const maintenanceRoutes = require("./routes/maintenance.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 const logger = require("./config/logger");
 const { getDb } = require("./config/database");
@@ -163,6 +164,7 @@ function createApp() {
   app.use("/api/repair-orders", repairOrdersRoutes);
   app.use("/api/restaurant", restaurantRoutes);
   app.use("/api/gold", goldRoutes);
+  app.use("/api/maintenance", maintenanceRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");

@@ -1,11 +1,12 @@
 const { roundMoney, multiplyMoney, divideMoney } = require("../utils/money");
+const { nowSql } = require("../utils/datetime");
 
 function hasTable(db, table) {
   return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 }
 
 function normalizeOccurredAt(value) {
-  if (!value) return new Date().toISOString().replace("T", " ").slice(0, 19);
+  if (!value) return nowSql();
   const text = String(value);
   return text.includes("T") ? text.replace("T", " ").slice(0, 19) : text.slice(0, 19);
 }

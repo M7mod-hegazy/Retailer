@@ -15,6 +15,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import { formatNumber } from "../../utils/currency";
+import AccountExportModal from "./AccountExportModal";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -109,7 +110,7 @@ const TYPE_CARD_STYLE = {
 function InstallmentsBadge({ debtId }) {
   const [open, setOpen] = useState(false);
   const [schedules, setSchedules] = useState(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   const load = useCallback(async () => {
     if (schedules !== null) { setOpen(o => !o); return; }
@@ -843,6 +844,7 @@ export default function SupplierAccountsPage() {
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "" });
   const [adjForm, setAdjForm] = useState({ amount: "", direction: "subtract", reason: "" });
   const [saving, setSaving] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   // Copy badges state hook
   const [copiedBadge, setCopiedBadge] = useState(null);
@@ -1023,22 +1025,9 @@ export default function SupplierAccountsPage() {
                 <div className="w-px h-4 bg-slate-200 shrink-0" />
                 <PermissionGate page="supplier_accounts" action="print">
                   <button
-                    onClick={() => {
-                      const rows = suppliers.map(s => [s.name, s.phone || "", s.addresses || "", Number(s.opening_balance || 0)]);
-                      const header = ["الاسم", "الهاتف", "العنوان", "الرصيد الافتتاحي"];
-                      const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-                      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = "suppliers.csv";
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                      URL.revokeObjectURL(url);
-                    }}
+                    onClick={() => setShowExport(true)}
                     className="flex h-8 w-8 items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 active:scale-[0.95] transition-all duration-200 cursor-pointer"
-                    title="تصدير CSV"
+                    title="تصدير Excel"
                   >
                     <Download className="h-3.5 w-3.5" />
                   </button>
@@ -1645,6 +1634,14 @@ export default function SupplierAccountsPage() {
           </div>
         </Modal>
       )}
+
+      {/* Export Modal */}
+      <AccountExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        entityType="suppliers"
+        accounts={suppliers}
+      />
     </div>
   );
 }

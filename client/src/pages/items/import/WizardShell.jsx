@@ -7,8 +7,8 @@ import Step5Categories from "./steps/Step5Categories";
 import StepSkuConflicts from "./steps/StepSkuConflicts";
 import Step6Duplicates from "./steps/Step6Duplicates";
 import Step7Existing from "./steps/Step7Existing";
-import Step8FinalTable from "./steps/Step8FinalTable";
-import Step9Preview from "./steps/Step9Preview";
+import StepPrices from "./steps/StepPrices";
+import StepReview from "./steps/StepReview";
 import Step10Done from "./steps/Step10Done";
 
 const STEP_LABELS = {
@@ -20,8 +20,8 @@ const STEP_LABELS = {
   "sku-conflicts": { title: "تضارب الأكواد", helper: "اختر أي صف يحتفظ بالرمز عندما يظهر نفس الكود لمنتجات مختلفة." },
   duplicates: { title: "تكرار المخزون", helper: "ادمج الكميات أو وزّع عبر المخازن لكل منتج مكرر." },
   existing: { title: "المنتجات الموجودة", helper: "قرّر هل تريد تحديث المنتجات المطابقة أو تخطيها أو استلام مخزون فقط." },
-  final: { title: "الجدول النهائي", helper: "راجع الصفوف، عدّل القيم، غيّر الإجراء لكل صف، واحذف ما لا تريد استيراده." },
-  preview: { title: "معاينة وتنفيذ", helper: "يتم تشغيل محاكاة جافة تلقائيا قبل أي كتابة فعلية في قاعدة البيانات." },
+  prices: { title: "تحديث الأسعار", helper: "قارن أسعار الملف مع النظام واختر أي أنواع الأسعار ستتغير." },
+  review: { title: "مراجعة وتنفيذ", helper: "راجع القرارات لكل صنف، غيّر الإجراء، ثم نفّذ الاستيراد بنقرة واحدة." },
   done: { title: "تم", helper: "ملخص النتائج مع رابط للسجل للتحميل والتراجع." },
 };
 
@@ -34,8 +34,8 @@ const STEP_TITLE_SHORT = {
   "sku-conflicts": "تضارب",
   duplicates: "تكرار",
   existing: "موجود",
-  final: "الجدول",
-  preview: "معاينة",
+  prices: "الأسعار",
+  review: "مراجعة",
   done: "تم",
 };
 
@@ -55,11 +55,17 @@ function makeSteps(wizard) {
     { id: "warehouses", title: STEP_LABELS.warehouses.title, helper: STEP_LABELS.warehouses.helper, isApplicable: () => wizard.warehouseErrorRows.length > 0, Component: (props) => <FixStep {...props} type="warehouse" /> },
     { id: "units", title: STEP_LABELS.units.title, helper: STEP_LABELS.units.helper, always: true, Component: (props) => <FixStep {...props} type="unit" /> },
     { id: "categories", title: STEP_LABELS.categories.title, helper: STEP_LABELS.categories.helper, isApplicable: () => wizard.missingSkuCategories.length > 0 || wizard.codelessRows.length > 0, Component: Step5Categories },
-    { id: "sku-conflicts", title: STEP_LABELS["sku-conflicts"].title, helper: STEP_LABELS["sku-conflicts"].helper, isApplicable: () => wizard.fileSkuConflicts.length > 0, Component: StepSkuConflicts },
+    { id: "sku-conflicts", title: STEP_LABELS["sku-conflicts"].title, helper: STEP_LABELS["sku-conflicts"].helper, isApplicable: () => wizard.fileSkuConflicts.length > 0 && !wizard.skuConflictsResolved, Component: StepSkuConflicts },
     { id: "duplicates", title: STEP_LABELS.duplicates.title, helper: STEP_LABELS.duplicates.helper, isApplicable: () => wizard.duplicateGroups.length > 0, Component: Step6Duplicates },
     { id: "existing", title: STEP_LABELS.existing.title, helper: STEP_LABELS.existing.helper, isApplicable: () => wizard.exactExistingRows.length > 0, Component: Step7Existing },
-    { id: "final", title: STEP_LABELS.final.title, helper: STEP_LABELS.final.helper, always: true, Component: Step8FinalTable },
-    { id: "preview", title: STEP_LABELS.preview.title, helper: STEP_LABELS.preview.helper, always: true, Component: Step9Preview },
+    { id: "prices", title: STEP_LABELS.prices.title, helper: STEP_LABELS.prices.helper, isApplicable: () => {
+      const hasPriced = wizard.pricedRows?.length > 0;
+      const hasUnmapped = wizard.unmappedPriceFields?.length > 0;
+      const hasUpdatingRows = wizard.exactExistingRows?.some(row => wizard.rowAction(row) === "update");
+      const hasInsertRows = wizard.workingRows?.some(row => wizard.rowAction(row) === "insert");
+      return hasPriced || (hasUnmapped && ((hasUpdatingRows && wizard.updateExistingPrices) || hasInsertRows));
+    }, Component: StepPrices },
+    { id: "review", title: STEP_LABELS.review.title, helper: STEP_LABELS.review.helper, always: true, Component: StepReview },
     { id: "done", title: STEP_LABELS.done.title, helper: STEP_LABELS.done.helper, always: true, Component: Step10Done },
   ];
 }
@@ -68,11 +74,11 @@ function firstProblemStep(wizard, blockingIssuesByType) {
   if (!Object.values(wizard.mapping).includes("name")) return "columns";
   if (wizard.warehouseErrorRows.length) return "warehouses";
   if (wizard.unitErrorRows.length) return "units";
-  if (wizard.fileSkuConflicts?.length) return "sku-conflicts";
+  if (wizard.fileSkuConflicts?.length && !wizard.skuConflictsResolved) return "sku-conflicts";
   if (wizard.storageErrorRows.length) return "duplicates";
   if (blockingIssuesByType?.length) {
     const first = blockingIssuesByType[0];
-    return first.stepId || "final";
+    return first.stepId || "review";
   }
   return null;
 }
@@ -155,11 +161,12 @@ export default function WizardShell({ wizard }) {
     if (stepId === "warehouses") return wizard.warehouseErrorRows?.length > 0;
     if (stepId === "units") return wizard.unitErrorRows?.length > 0;
     if (stepId === "categories") return wizard.codelessRows?.length > 0 || wizard.missingSkuCategories?.some((entry) => !String(wizard.skuCategoryNames?.[entry.prefix] ?? entry.name ?? "").trim());
-    if (stepId === "sku-conflicts") return wizard.fileSkuConflicts?.length > 0;
+    if (stepId === "sku-conflicts") return wizard.fileSkuConflicts?.length > 0 && !wizard.skuConflictsResolved;
     if (stepId === "duplicates") return wizard.storageErrorRows?.length > 0;
     if (stepId === "existing") return wizard.exactExistingRows?.length > 0;
-    if (stepId === "final") return wizard.hasBlockingIssues;
-    if (stepId === "preview" || stepId === "done") return false;
+    if (stepId === "prices") return false;
+    if (stepId === "review") return wizard.hasBlockingIssues;
+    if (stepId === "done") return false;
     return false;
   }
 
@@ -169,7 +176,7 @@ export default function WizardShell({ wizard }) {
     const targetIndex = visibleSteps.findIndex((s) => s.id === stepId);
     if (targetIndex === -1) return false;
     if (targetIndex <= currentIndex) return true;
-    if (stepId === "preview" || stepId === "final") return !wizard.hasBlockingIssues;
+    if (stepId === "review") return !wizard.hasBlockingIssues;
     return true;
   }
 
@@ -223,7 +230,7 @@ export default function WizardShell({ wizard }) {
 
     if (currentStep.id === "sku-conflicts") {
       const conflicts = wizard.fileSkuConflicts?.length || 0;
-      if (conflicts > 0) {
+      if (conflicts > 0 && !wizard.skuConflictsResolved) {
         return { isValid: false, reason: `${conflicts} كود مستخدم من قبل عدة منتجات. اختر أي صف يحتفظ بكل كود أو طبق قرارا جماعيا.`, shortReason: `أصلح ${conflicts} تضارب أكواد` };
       }
       return { isValid: true, reason: "تم حل جميع تضاربات الأكواد. يمكنك المتابعة مع الاستيراد.", shortReason: "تم حل التضاربات" };
@@ -231,7 +238,10 @@ export default function WizardShell({ wizard }) {
 
     if (currentStep.id === "duplicates") {
       const count = wizard.duplicateGroups?.length || 0;
-      return { isValid: true, reason: `${count} منتج يظهر أكثر من مرة في الملف. قرار الدمج/التوزيع معلق.`, shortReason: `${count} تكرار معلق` };
+      if (count > 0 && !wizard.duplicatesConfirmed) {
+        return { isValid: false, reason: `${count} منتج مكرر — اختر قراراً لكل مجموعة واضغط تأكيد للمتابعة.`, shortReason: `أكّد قرار ${count} تكرار` };
+      }
+      return { isValid: true, reason: "تم تأكيد قرارات التكرار.", shortReason: "التكرارات مؤكدة" };
     }
 
     if (currentStep.id === "existing") {
@@ -239,12 +249,28 @@ export default function WizardShell({ wizard }) {
       return { isValid: true, reason: `تم العثور على ${count} منتج يطابق السجلات الموجودة. جاهز للتحديث أو التخطي أو استلام مخزون فقط.`, shortReason: `${count} منتج مطابق` };
     }
 
-    if (currentStep.id === "final") {
-      const errorRows = wizard.workingRows?.filter((row) => wizard.issuesForRow(row.__rowNumber).some((iss) => iss.severity === "error")).length || 0;
-      if (errorRows > 0) {
-        return { isValid: false, reason: `${errorRows} صفوف بها أخطاء في الجدول النهائي. أصلحها للمتابعة.`, shortReason: `أصلح ${errorRows} خطأ` };
+    if (currentStep.id === "prices") {
+      const activeFields = Array.from(wizard.changedPriceFields || []);
+      const unmappedFields = wizard.unmappedPriceFields || [];
+      const allFieldsToConfirm = [...activeFields, ...unmappedFields];
+      const missingConfirmations = allFieldsToConfirm.filter((f) => !wizard.pricePolicies?.[f]);
+
+      if (missingConfirmations.length > 0) {
+        return { isValid: false, reason: `الرجاء تحديد إجراء (تحديث، تصفير، أو تجاهل) لجميع حقول الأسعار.`, shortReason: "حدد قراراً للأسعار" };
       }
-      return { isValid: true, reason: "الجدول خال من الأخطاء وجاهز للمعاينة النهائية.", shortReason: "الجدول جاهز" };
+
+      const count = wizard.pricedRows?.length || 0;
+      const fields = wizard.changedPriceFields?.size || 0;
+      const updateCount = ["sale_price", "purchase_price", "wholesale_price"].filter((f) => wizard.changedPriceFields?.has(f) && wizard.pricePolicies?.[f] === "update").length;
+      return { isValid: true, reason: `${count} منتج بفروق أسعار في ${fields} نوع. ${updateCount} نوع سعر سيتحدث.`, shortReason: `${count} فرق سعر` };
+    }
+
+    if (currentStep.id === "review") {
+      const errorRows = wizard.blockingIssues?.length || 0;
+      if (errorRows > 0) {
+        return { isValid: false, reason: `${errorRows} أخطاء محظورة. أصلحها قبل الاستيراد.`, shortReason: `أصلح ${errorRows} خطأ` };
+      }
+      return { isValid: true, reason: "جميع البيانات جاهزة للاستيراد.", shortReason: "جاهز للاستيراد" };
     }
 
     return { isValid: true, reason: "", shortReason: "" };
@@ -353,8 +379,10 @@ export default function WizardShell({ wizard }) {
         >
           <ChevronRight className="h-5 w-5" /> السابق
         </button>
-        <div className="text-sm font-bold text-slate-500 font-title">{nextStep ? `التالي: ${nextStep.title}` : "لا توجد خطوات أخرى"}</div>
-        {currentStep.id !== "preview" && currentStep.id !== "done" ? (
+        <div className="text-sm font-bold text-slate-500 font-title">
+          {currentStep.id === "review" ? "مراجعة القرارات والتنفيذ" : currentStep.id === "done" ? "اكتمل الاستيراد" : nextStep ? `التالي: ${nextStep.title}` : "لا توجد خطوات أخرى"}
+        </div>
+        {currentStep.id !== "done" ? (
           <div className="relative group/next flex items-center gap-3.5">
             {validationStatus.reason && (
               <div className={`absolute bottom-full left-0 mb-3.5 z-40 w-72 p-4 rounded-2xl border bg-white shadow-elevated text-xs font-bold leading-relaxed transition-all duration-350 transform origin-bottom-left scale-90 opacity-0 pointer-events-none group-hover/next:scale-100 group-hover/next:opacity-100 group-hover/next:pointer-events-auto ${
@@ -390,49 +418,35 @@ export default function WizardShell({ wizard }) {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => goNext()}
-              disabled={!nextStep || wizard.loading || Boolean(transition)}
-              className={`inline-flex items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-md transition-all duration-200 hover:bg-primary-600 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
-                shake
-                  ? "animate-shake bg-rose-700 hover:bg-rose-800 shadow-rose-900/10"
-                  : ""
-              }`}
-            >
-              التالي <ChevronLeft className="h-5 w-5" />
-            </button>
+            {currentStep.id === "review" ? (
+              <button
+                type="button"
+                onClick={() => wizard.runImport({ dryRun: false })}
+                disabled={wizard.loading || wizard.hasBlockingIssues || Boolean(transition)}
+                className={`inline-flex items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-md transition-all duration-200 hover:bg-primary-600 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
+                  shake ? "animate-shake bg-rose-700 hover:bg-rose-800 shadow-rose-900/10" : ""
+                }`}
+              >
+                {wizard.loading ? (
+                  <><Loader2 className="h-4.5 w-4.5 animate-spin" /> جاري التنفيذ...</>
+                ) : (
+                  <><Database className="h-4.5 w-4.5" /> استيراد الآن</>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => goNext()}
+                disabled={!nextStep || wizard.loading || Boolean(transition)}
+                className={`inline-flex items-center gap-2.5 rounded-xl bg-primary px-6 py-3.5 text-sm font-black text-white shadow-md transition-all duration-200 hover:bg-primary-600 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
+                  shake ? "animate-shake bg-rose-700 hover:bg-rose-800 shadow-rose-900/10" : ""
+                }`}
+              >
+                التالي <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
           </div>
-        ) : currentStep.id === "preview" ? (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveStep("final")}
-              disabled={wizard.loading || Boolean(transition)}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 disabled:opacity-40"
-            >
-              العودة إلى الجدول
-            </button>
-            <button
-              type="button"
-              onClick={() => wizard.runImport({ dryRun: false })}
-              disabled={!wizard.preview || wizard.loading || Boolean(transition)}
-              className="inline-flex items-center gap-2.5 rounded-xl bg-emerald-700 px-6 py-3 text-sm font-black text-white shadow-md shadow-emerald-700/10 transition-all duration-200 hover:bg-emerald-800 hover:shadow-lg active:scale-95 disabled:opacity-40"
-            >
-              <Database className="h-4.5 w-4.5" />
-              {wizard.loading ? "جارٍ التنفيذ..." : "تنفيذ الآن"}
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setActiveStep("final")}
-            disabled={wizard.loading || currentStep.id === "done" || Boolean(transition)}
-            className="rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 disabled:opacity-40"
-          >
-            العودة إلى الجدول
-          </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

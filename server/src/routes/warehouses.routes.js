@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -46,19 +47,23 @@ router.put("/:id", requirePagePermission("warehouses", "edit"), (req, res) => {
   res.json({ success: true, data: getDb().prepare("SELECT * FROM warehouses WHERE id = ?").get(req.params.id) });
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function warehouseRelated(db, id) {
+  return [
+    { label: "أرصدة مخزون", count: countSafe(db, "SELECT COUNT(*) AS c FROM stock_levels WHERE warehouse_id = ? AND quantity != 0", id) },
+    { label: "حركات مخزنية", count: countSafe(db, "SELECT COUNT(*) AS c FROM stock_movements WHERE warehouse_id = ?", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("warehouses", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(warehouseRelated(getDb(), req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("warehouses", "delete"), (req, res) => {
   try {
     const db = getDb();
-    
-    // Check for related records
-    const stockCount = db.prepare("SELECT COUNT(*) AS c FROM stock_movements WHERE warehouse_id = ?").get(req.params.id);
-    const itemCount = db.prepare("SELECT COUNT(*) AS c FROM item_stock WHERE warehouse_id = ?").get(req.params.id);
-    
-    const hasRecords = 
-      Number(stockCount?.c || 0) > 0 ||
-      Number(itemCount?.c || 0) > 0;
-    
-    if (hasRecords) {
+
+    if (hasAnyRelated(warehouseRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE warehouses SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "warehouses", { id: req.params.id }, `📦 تم أرشفة مستودع`);

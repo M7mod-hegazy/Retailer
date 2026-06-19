@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   TrendingUp, Plus, Pencil, Trash2, Search, Download, Calendar,
   X, ChevronDown, RefreshCw, AlertTriangle, Filter, Database, Check,
-  CreditCard, Banknote, HelpCircle, Command
+  CreditCard, Banknote, HelpCircle, Command, ArrowLeftRight
 } from "lucide-react";
+
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
@@ -15,7 +16,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
 function Highlight({ text, query }) {
   if (!query) return <span>{text}</span>;
@@ -517,7 +518,7 @@ export default function RevenuesListPage() {
             </div>
 
             {/* Bottom Row: Controls */}
-            <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2 w-full">
               
               {/* Add Button */}
               <PermissionGate page="revenues" action="add">

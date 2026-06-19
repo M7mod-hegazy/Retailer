@@ -27,7 +27,7 @@ class UserModel {
     const role = patch.role ?? existing.role;
     const isActive = patch.is_active ?? existing.is_active;
 
-    db.prepare("UPDATE users SET username = ?, role = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    db.prepare("UPDATE users SET username = ?, role = ?, is_active = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
       .run(username, role, isActive, id);
 
     return this.findById(id);

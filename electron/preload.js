@@ -5,7 +5,8 @@ const allowedChannels = {
   print: ["print:receipt", "print:preview", "print:silent", "print:list-printers"],
   dialogs: ["dialog:open-file", "dialog:save-file"],
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
-  updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error", "update:check", "update:download", "update:install-now"],
+  diag: ["diag:get-report", "diag:open-logs", "diag:run-and-fix"],
+  updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error", "update:check", "update:download", "update:install-now", "update:manual-progress", "update:manual-complete", "update:manual-error", "update:get-manual-info", "update:start-manual-download", "update:cancel-manual-download", "update:open-installer"],
   app: ["app:set-icon", "get:api-url"],
   server: ["server:status"],
   wa: ["wa:status", "wa:link", "wa:unlink", "wa:send", "wa:status-update"],
@@ -15,6 +16,9 @@ const allowedChannels = {
 const api = {
   getVersion() {
     return ipcRenderer.invoke("system:get-version");
+  },
+  isFirstRun() {
+    return ipcRenderer.invoke("app:is-first-run");
   },
   getApiUrl() {
     return ipcRenderer.invoke("get:api-url");

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldNavigation } from "../../../hooks/useFieldNavigation";
 import { AlertTriangle, ArrowUpDown, ChevronDown, ChevronUp, RotateCcw, Trash2 } from "lucide-react";
 import { List } from "react-window";
@@ -82,7 +82,7 @@ function TableInput({ row, field, wizard }) {
   );
 }
 
-function Row({ index, style, rows, columns, wizard, showActions }) {
+const Row = memo(function Row({ index, style, rows, columns, wizard, showActions }) {
   const row = rows[index];
   if (!row) return null;
   const selected = wizard.selectedRows.has(row.__rowNumber);
@@ -125,7 +125,7 @@ function Row({ index, style, rows, columns, wizard, showActions }) {
       </div>
     </div>
   );
-}
+});
 
 export default function StepTable({ wizard, rows, columns, title, helper, showActions = true, height = 520 }) {
   const [page, setPage] = useState(1);
@@ -138,10 +138,13 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
   const pageSizeRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
 
+  const issuesForRow = wizard.issuesForRow;
+  const duplicateRowNumbers = wizard.duplicateRowNumbers;
+
   const tableCounts = useMemo(() => {
-    const hasError = (row) => wizard.issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error");
-    const hasIssue = (row) => wizard.issuesForRow(row.__rowNumber).length > 0;
-    const isDuplicate = (row) => wizard.duplicateRowNumbers?.has(row.__rowNumber) || row.__combinedRows?.length;
+    const hasError = (row) => issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error");
+    const hasIssue = (row) => issuesForRow(row.__rowNumber).length > 0;
+    const isDuplicate = (row) => duplicateRowNumbers?.has(row.__rowNumber) || row.__combinedRows?.length;
     return {
       all: rows.length,
       errors: rows.filter(hasError).length,
@@ -149,29 +152,33 @@ export default function StepTable({ wizard, rows, columns, title, helper, showAc
       unmapped: rows.filter(hasIssue).length,
       ready: rows.filter((row) => !hasError(row)).length,
     };
-  }, [rows, wizard]);
+  }, [rows, issuesForRow, duplicateRowNumbers]);
 
   const displayedRows = useMemo(() => {
-    if (tableFilter === "errors") return rows.filter((row) => wizard.issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error"));
-    if (tableFilter === "duplicates") return rows.filter((row) => wizard.duplicateRowNumbers?.has(row.__rowNumber) || row.__combinedRows?.length);
-    if (tableFilter === "unmapped") return rows.filter((row) => wizard.issuesForRow(row.__rowNumber).length > 0);
-    if (tableFilter === "ready") return rows.filter((row) => !wizard.issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error"));
+    if (tableFilter === "errors") return rows.filter((row) => issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error"));
+    if (tableFilter === "duplicates") return rows.filter((row) => duplicateRowNumbers?.has(row.__rowNumber) || row.__combinedRows?.length);
+    if (tableFilter === "unmapped") return rows.filter((row) => issuesForRow(row.__rowNumber).length > 0);
+    if (tableFilter === "ready") return rows.filter((row) => !issuesForRow(row.__rowNumber).some((issue) => issue.severity === "error"));
     return rows;
-  }, [rows, tableFilter, wizard]);
+  }, [rows, tableFilter, issuesForRow, duplicateRowNumbers]);
 
   const totalPages = Math.max(1, Math.ceil(displayedRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageRows = useMemo(() => displayedRows.slice((safePage - 1) * pageSize, safePage * pageSize), [displayedRows, pageSize, safePage]);
   const rowStart = displayedRows.length ? (safePage - 1) * pageSize + 1 : 0;
   const rowEnd = displayedRows.length ? rowStart + pageRows.length - 1 : 0;
-  const selectedTableRows = useMemo(() => rows.filter((row) => wizard.selectedRows.has(row.__rowNumber)), [rows, wizard.selectedRows]);
+  const selectedRows = wizard.selectedRows;
+  const bulkScope = wizard.bulkScope;
+  const bulkField = wizard.bulkField;
+
+  const selectedTableRows = useMemo(() => rows.filter((row) => selectedRows.has(row.__rowNumber)), [rows, selectedRows]);
   const bulkTargetRows = useMemo(() => {
-    if (wizard.bulkScope === "selected") return selectedTableRows;
-    if (wizard.bulkScope === "invalid") return rows.filter((row) => wizard.issuesFor(row.__rowNumber, wizard.bulkField).some((issue) => issue.severity === "error"));
-    if (wizard.bulkScope === "duplicates") return rows.filter((row) => wizard.duplicateRowNumbers?.has(row.__rowNumber) || row.__combinedRows?.length);
-    if (wizard.bulkScope === "visible") return displayedRows;
+    if (bulkScope === "selected") return selectedTableRows;
+    if (bulkScope === "invalid") return rows.filter((row) => issuesForRow(row.__rowNumber, bulkField).some((issue) => issue.severity === "error"));
+    if (bulkScope === "duplicates") return rows.filter((row) => duplicateRowNumbers?.has(row.__rowNumber) || row.__combinedRows?.length);
+    if (bulkScope === "visible") return displayedRows;
     return rows;
-  }, [displayedRows, rows, selectedTableRows, wizard]);
+  }, [displayedRows, rows, selectedTableRows, bulkScope, bulkField, issuesForRow, duplicateRowNumbers]);
   const bulkTargetCount = bulkTargetRows.length;
   const bulkValueIsEmpty = String(wizard.bulkValue ?? "").trim() === "";
 

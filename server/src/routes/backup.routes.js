@@ -224,7 +224,7 @@ router.put("/settings", can("create"), (req, res, next) => {
 
     getDb()
       .prepare(
-        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
+        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = datetime('now', 'localtime') WHERE id = 1",
       )
       .run(autoBackupEnabled, autoBackupPath, intervalHours);
 

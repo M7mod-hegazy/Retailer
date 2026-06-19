@@ -52,7 +52,7 @@ function toggle(id) {
 }
 
 function getActivePromotions(referenceDate = new Date()) {
-  const date = referenceDate.toISOString().slice(0, 10);
+  const date = require("../utils/datetime").today(referenceDate);
   return getDb()
     .prepare(
       "SELECT * FROM promotions WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at >= ?) ORDER BY id ASC",

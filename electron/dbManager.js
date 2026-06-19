@@ -32,6 +32,7 @@ function applyPragmas(db) {
 }
 
 function runMigrations(db) {
+  const { reportMigrationProgress } = require("./migrationEvents");
   ensureMigrationsTable(db);
   if (!fs.existsSync(MIGRATIONS_DIR)) return;
 
@@ -39,6 +40,11 @@ function runMigrations(db) {
     .readdirSync(MIGRATIONS_DIR)
     .filter((name) => /^\d+_.*\.js$/.test(name))
     .sort();
+
+  const pending = files.filter((f) => !db.prepare("SELECT 1 FROM _migrations WHERE id = ?").get(f.replace(/\.js$/, "")));
+  if (pending.length > 0) {
+    reportMigrationProgress(`جاري تحديث قاعدة البيانات... (${pending.length} تحديث)`);
+  }
 
   for (const file of files) {
     const id = file.replace(/\.js$/, "");
@@ -70,6 +76,25 @@ function openDatabase(
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   applyPragmas(db);
+
+  // Flush any stale WAL journal from a prior crash
+  try { db.pragma("wal_checkpoint(TRUNCATE)"); } catch (_) {}
+
+  // Verify database integrity after possible crash
+  try {
+    const rows = db.pragma("integrity_check");
+    const ok = rows.every((r) => r && String(r.integrity_check || r) === "ok");
+    if (!ok) {
+      db.close();
+      throw new Error(
+        `تلف في قاعدة البيانات بالمسار: ${dbPath}. استخدم صفحة النسخ الاحتياطي لاستعادة نسخة سليمة.`,
+      );
+    }
+  } catch (err) {
+    if (err.message && err.message.includes("تلف في قاعدة البيانات")) throw err;
+    // integrity_check pragma itself failed — non-fatal, log and continue
+  }
+
   runMigrations(db);
   try { db.pragma("optimize"); } catch (_) {}
   return db;

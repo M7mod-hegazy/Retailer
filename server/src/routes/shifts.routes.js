@@ -52,7 +52,7 @@ router.post("/close", requirePagePermission("pos", "add"), (req, res, next) => {
       throw error;
     }
     const closingCash = Number(req.body?.closing_cash || 0);
-    db.prepare("UPDATE shifts SET status='closed', closed_at=CURRENT_TIMESTAMP, closing_cash=? WHERE id=?").run(
+    db.prepare("UPDATE shifts SET status='closed', closed_at=datetime('now', 'localtime'), closing_cash=? WHERE id=?").run(
       closingCash,
       shiftId,
     );

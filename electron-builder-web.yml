@@ -13,6 +13,8 @@ files:
   - server/**/*
   - package.json
   - "!server/data/**"
+  - "!server/undefined/**"
+  - "!server/backups/**"
   - "!server/**/__tests__/**"
   - "!**/*.map"
 
@@ -34,6 +36,7 @@ artifactName: ${productName}-${version}-${arch}.exe
 
 nsis:
   oneClick: false
+  include: electron/nsis/installer.nsh
   allowToChangeInstallationDirectory: true
   allowElevation: true
   perMachine: true

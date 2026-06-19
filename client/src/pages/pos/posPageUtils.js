@@ -1,4 +1,5 @@
 import { formatNumber } from "../../utils/currency";
+import { todayCairo } from "../../utils/dateHelpers";
 
 export { resolveImageUrl } from "../../utils/resolveImageUrl";
 
@@ -25,7 +26,7 @@ export function formatArabicDateTime(date) {
 }
 
 export function toDateInput(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  return todayCairo(date);
 }
 
 export const WALK_IN_CUSTOMER = { id: null, name: "زبون نقدي", phone: "", opening_balance: 0 };

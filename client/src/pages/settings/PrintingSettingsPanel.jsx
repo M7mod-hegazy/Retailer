@@ -71,6 +71,7 @@ const DEFAULTS = {
   item_font_size: 13, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
+  print_area_width: 0, print_shift_x: 0,
   show_cashier_name: true, show_customer_name: true, show_tax: true,
   show_footer: true, show_qr: false, show_logo: true,
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
@@ -316,7 +317,11 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
     outlineOffset: "2px", borderRadius: "1px", cursor: "pointer", transition: "outline 0.1s",
   });
 
-  const w = get(s, "receipt_width") === "58mm" ? "58mm" : "80mm";
+  // Mirror the print path's effective width so «عرض الطباعة» is visible here too
+  // (the on-screen preview ignores the physical horizontal shift). Defaults to the
+  // standard printable band (72mm/48mm) so the preview matches what actually prints.
+  const paperW = get(s, "receipt_width") === "58mm" ? 58 : 80;
+  const w = `${Number(get(s, "print_area_width")) > 0 ? Math.min(Number(get(s, "print_area_width")), paperW) : (paperW === 58 ? 48 : 72)}mm`;
   const addressAtBottom = get(s, "address_position") === "bottom";
 
   const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
@@ -1528,6 +1533,26 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
               </div>
             )}
           </div>
+
+          {(width === "58mm" || width === "80mm") && (() => {
+            const paperNum = width === "58mm" ? 58 : 80;
+            const autoW = paperNum === 58 ? 48 : 72;
+            const effW = Number(get(s,"print_area_width")) > 0 ? Number(get(s,"print_area_width")) : autoW;
+            return (
+              <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/60 p-3">
+                <div className="text-[11px] font-black uppercase tracking-widest text-amber-700">معايرة الطابعة الحرارية</div>
+                <div className="mt-0.5 text-[11px] font-bold text-amber-600/80">
+                  مضبوطة افتراضياً على عرض الطباعة القياسي ({autoW}مم) لمنع قص المحتوى. إن بقي القص في طابعتك، صغّر «عرض الطباعة» أكثر، ثم حرّكه بـ«الإزاحة الأفقية» ليتمركز.
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  {cf("print_area_width", "عرض الطباعة الفعلي", `أقصى عرض يطبعه رأس الطابعة (الورق ${paperNum}مم)`,
+                    <Stepper value={effW} onChange={v => onChange("print_area_width", v)} min={30} max={paperNum} unit="mm" />)}
+                  {cf("print_shift_x", "الإزاحة الأفقية", "حرّك المحتوى يميناً (+) أو يساراً (−) ليتمركز",
+                    <Stepper value={get(s,"print_shift_x")} onChange={v => onChange("print_shift_x", v)} min={-15} max={15} unit="mm" />)}
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* Prefixes */}

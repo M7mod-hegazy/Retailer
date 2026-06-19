@@ -147,7 +147,7 @@ export function RDate({ value, onChange }) {
 }
 
 // ─── Date Preset Chips ────────────────────────────────────────────────────────
-const fmtD = (d) => d.toISOString().slice(0, 10);
+const fmtD = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 export const DATE_PRESETS = [
   { label: "اليوم",     get: () => { const t = new Date(); return { from: fmtD(t), to: fmtD(t) }; } },
   { label: "هذا الأسبوع", get: () => { const t = new Date(), s = new Date(t); s.setDate(t.getDate() - t.getDay()); return { from: fmtD(s), to: fmtD(t) }; } },

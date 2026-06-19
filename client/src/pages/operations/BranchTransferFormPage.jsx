@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine, ArrowUpFromLine, ArrowLeft, Package, ImageIcon,
   Trash2, Warehouse, FileText, Settings, Printer, CheckCircle, ShoppingCart, Plus, CalendarClock,
@@ -882,282 +882,292 @@ export default function BranchTransferFormPage() {
         <div className="flex flex-col gap-5">
 
           {/* Item entry bar */}
-          <section className="bg-white border gap-3 text-center border-slate-200 rounded-[16px] p-4 shadow-[0_5px_20px_rgba(0,0,0,0.03)] relative z-40">
-            <div className="flex flex-row items-center justify-center gap-3 flex-wrap xl:flex-nowrap">
-
-              {selectedItem && (
-                <div
-                  className="w-14 h-14 mt-[22px] shrink-0 rounded-[12px] border-2 border-indigo-100 overflow-hidden shadow-md group relative bg-white flex items-center justify-center cursor-pointer"
-                  onClick={() => {
-                    const img = selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image;
-                    if (img) { setImagePreviewUrl(img); setImageModalOpen(true); }
-                  }}
-                >
-                  {selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image ? (
-                    <>
-                      <img src={resolveImageUrl(selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image)} alt="product" className="w-full h-full object-cover hover:scale-[1.05] transition-all" />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        <ImageIcon className="w-5 h-5 text-white drop-shadow-md" />
-                      </div>
-                    </>
-                  ) : (
-                    <Package className="w-6 h-6 text-slate-300" />
-                  )}
-                </div>
-              )}
-
-              {/* Item search */}
-              <div className="relative flex-[2.5] min-w-[240px] flex flex-col">
-                <label className="text-[11px] font-bold text-slate-500 mb-1.5 block text-center">المادة / الصنف (بحث)</label>
-                <ProductSearchField
-                  ref={itemInputRef}
-                  query={itemQuery}
-                  onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
-                  results={filteredItems}
-                  onPick={handlePickItem}
-                  selectedItem={selectedItem}
-                  onLoadMore={loadMoreItems}
-                  hasMore={itemHasMore}
-                  isLoadingMore={isLoadingMoreItems}
-                  placeholder="ابحث بالاسم أو كود SKU..."
-                />
-              </div>
-
-              {/* Warehouse table */}
-              <div className="flex flex-col gap-1.5 w-[170px] shrink-0">
-                <div className="flex items-center justify-between px-1">
-                  <label className="text-[11px] font-bold text-slate-500 text-center">المخزن</label>
-                  {selectedItem && !isReceive && (
-                    <span className="text-[9px] font-black text-slate-400">
-                      للإضافة: {(() => {
-                        const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
-                        const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
-                        return avail;
-                      })()}
-                    </span>
-                  )}
-                </div>
-                <div
-                  ref={warehouseTableRef}
-                  tabIndex={0}
-                  className="border border-slate-200 rounded-[10px] bg-slate-50/50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-inner"
-                  style={{ height: "80px" }}
-                  onKeyDown={(e) => {
-                    const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
-                    if (e.key === "ArrowDown") { e.preventDefault(); const next = warehouses[Math.min(idx + 1, warehouses.length - 1)]; if (next) setStaging(s => ({ ...s, warehouseId: String(next.id) })); }
-                    else if (e.key === "ArrowUp") { e.preventDefault(); const prev = warehouses[Math.max(idx - 1, 0)]; if (prev) setStaging(s => ({ ...s, warehouseId: String(prev.id) })); }
-                    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); costInputRef.current?.focus(); costInputRef.current?.select?.(); }
-                  }}
-                >
-                  <table className="w-full text-[11px] border-collapse">
-                    <tbody>
-                      {warehouses.map(w => {
-                        const rawQty = selectedItem ? getStockQty(selectedItem.id, w.id) : 0;
-                        const inCart = selectedItem ? lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
-                        const avail = Math.max(0, rawQty - inCart);
-                        const isSelected = String(staging.warehouseId) === String(w.id);
-                        const insufficient = !isReceive && selectedItem && Number(staging.quantity) > avail;
-                        const isLow = avail > 0 && avail < 5;
-                        const isEmpty = avail === 0;
-                        let stockColor = "text-slate-400";
-                        if (insufficient) stockColor = "text-rose-600 font-black";
-                        else if (isEmpty) stockColor = "text-slate-300";
-                        else if (isLow) stockColor = "text-amber-600 font-black";
-                        else stockColor = "text-emerald-600 font-black";
-                        let bgColor = "";
-                        if (isSelected && insufficient) bgColor = "bg-rose-50";
-                        else if (isSelected) bgColor = "bg-indigo-50";
-                        return (
-                          <tr key={w.id}
-                            onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
-                            className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${bgColor || (isSelected ? "bg-indigo-50" : "hover:bg-slate-100")}`}
-                          >
-                            <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"} ${insufficient ? "line-through opacity-60" : ""}`}>{w.name}</td>
-                            <td className={`px-2 py-1 number-fmt text-center tabular-nums ${stockColor}`}>{avail}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {selectedItem && !isReceive && (() => {
-                  const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
-                  const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
-                  if (Number(staging.quantity) > avail) {
-                    return (
-                      <div className="flex items-center gap-1 rounded-sm bg-rose-50 border border-rose-200 px-2 py-1 text-[10px] font-bold text-rose-700 leading-tight">
-                        <AlertTriangle className="h-3 w-3 shrink-0" />
-                        المتاح {avail}
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              {/* Unit — auto-detected from item */}
-              <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
-                <label className="text-[11px] font-bold text-slate-500 text-center">الوحدة</label>
-                <div className="w-full h-11 flex items-center justify-center border border-slate-200 rounded-[10px] bg-slate-100/50 px-2 text-2sm font-bold text-slate-600 shadow-inner">
-                  {selectedItem ? (selectedItem.unit_name || "أساسية") : "—"}
-                </div>
-              </div>
-
-              {/* Cost / Price */}
-              <div className="flex flex-col gap-1 w-[100px] shrink-0">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-500">{isReceive ? "التكلفة" : "السعر"}</label>
-                  {isReceive && (
-                    <button type="button"
-                      onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
-                      title={stagingLocks.purchase ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
-                      className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
-                        stagingLocks.purchase ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}>
-                      <Lock size={8} className={stagingLocks.purchase ? "" : "opacity-50"} />
-                      {stagingLocks.purchase ? "يحدّث" : "للمستند"}
-                    </button>
-                  )}
-                </div>
-                <input
-                  ref={costInputRef}
-                  type="number" step="any"
-                  value={staging.unitCost}
-                  onChange={e => setStaging(s => ({ ...s, unitCost: e.target.value }))}
-                  onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: sellInputRef, prevRef: warehouseTableRef })}
-                  className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
-                    isReceive && !stagingLocks.purchase
-                      ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
-                      : isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price)
-                        ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                        : `border-slate-200 bg-slate-50/50 focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10`
-                  }`}
-                />
-                {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
-                  <span className="text-[9px] text-center leading-tight">
-                    <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
-                    <span className="text-slate-300 mx-0.5">→</span>
-                    <span className={`number-fmt-primary ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
-                      {Number(staging.unitCost).toFixed(2)}
-                    </span>
-                  </span>
+          <section className="bg-white border border-slate-200 rounded-[16px] p-5 shadow-[0_5px_20px_rgba(0,0,0,0.03)] relative z-40">
+            <div className="flex flex-col gap-5">
+              
+              {/* Row 1: Product Selection & Warehouse */}
+              <div className="flex flex-col md:flex-row items-start gap-4">
+                
+                {selectedItem && (
+                  <div
+                    className="w-14 h-14 mt-6 shrink-0 rounded-[12px] border-2 border-indigo-100 overflow-hidden shadow-md group relative bg-white flex items-center justify-center cursor-pointer"
+                    onClick={() => {
+                      const img = selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image;
+                      if (img) { setImagePreviewUrl(img); setImageModalOpen(true); }
+                    }}
+                  >
+                    {selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image ? (
+                      <>
+                        <img src={resolveImageUrl(selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image)} alt="product" className="w-full h-full object-cover hover:scale-[1.05] transition-all" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          <ImageIcon className="w-5 h-5 text-white drop-shadow-md" />
+                        </div>
+                      </>
+                    ) : (
+                      <Package className="w-6 h-6 text-slate-300" />
+                    )}
+                  </div>
                 )}
-              </div>
 
-              {/* Selling price */}
-              <div className="flex flex-col gap-1 w-[100px] shrink-0">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-500">{isReceive ? "سعر البيع" : "مستهلك"}</label>
-                  {isReceive && (
-                    <button type="button"
-                      onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
-                      title={stagingLocks.sale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
-                      className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
-                        stagingLocks.sale ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}>
-                      <Lock size={8} className={stagingLocks.sale ? "" : "opacity-50"} />
-                      {stagingLocks.sale ? "يحدّث" : "للمستند"}
-                    </button>
-                  )}
+                {/* Item search */}
+                <div className="relative flex-1 min-w-[240px] flex flex-col text-right">
+                  <label className="text-[11px] font-bold text-slate-500 mb-1.5 block">المادة / الصنف (بحث)</label>
+                  <ProductSearchField
+                    ref={itemInputRef}
+                    query={itemQuery}
+                    onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
+                    results={filteredItems}
+                    onPick={handlePickItem}
+                    selectedItem={selectedItem}
+                    onLoadMore={loadMoreItems}
+                    hasMore={itemHasMore}
+                    isLoadingMore={isLoadingMoreItems}
+                    placeholder="ابحث بالاسم أو كود SKU..."
+                  />
                 </div>
-                <input
-                  ref={sellInputRef}
-                  type="number" step="any"
-                  value={staging.sellingPrice}
-                  onChange={e => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
-                  onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: isReceive ? wholesaleInputRef : qtyInputRef, prevRef: costInputRef })}
-                  className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
-                    isReceive && !stagingLocks.sale
-                      ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
-                      : isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price)
-                        ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                        : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
-                  }`}
-                />
-                {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
-                  <span className="text-[9px] text-center leading-tight">
-                    <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
-                    <span className="text-slate-300 mx-0.5">→</span>
-                    <span className={`number-fmt-primary ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
-                      {Number(staging.sellingPrice).toFixed(2)}
-                    </span>
-                  </span>
-                )}
+
+                {/* Warehouse table */}
+                <div className="flex flex-col gap-1.5 w-full md:w-[220px] shrink-0 text-right">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[11px] font-bold text-slate-500">المخزن</label>
+                    {selectedItem && !isReceive && (
+                      <span className="text-[9px] font-black text-slate-400">
+                        للإضافة: {(() => {
+                          const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
+                          const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
+                          return avail;
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    ref={warehouseTableRef}
+                    tabIndex={0}
+                    className="border border-slate-200 rounded-[10px] bg-slate-50/50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-inner"
+                    style={{ height: "80px" }}
+                    onKeyDown={(e) => {
+                      const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
+                      if (e.key === "ArrowDown") { e.preventDefault(); const next = warehouses[Math.min(idx + 1, warehouses.length - 1)]; if (next) setStaging(s => ({ ...s, warehouseId: String(next.id) })); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); const prev = warehouses[Math.max(idx - 1, 0)]; if (prev) setStaging(s => ({ ...s, warehouseId: String(prev.id) })); }
+                      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); costInputRef.current?.focus(); costInputRef.current?.select?.(); }
+                    }}
+                  >
+                    <table className="w-full text-[11px] border-collapse">
+                      <tbody>
+                        {warehouses.map(w => {
+                          const rawQty = selectedItem ? getStockQty(selectedItem.id, w.id) : 0;
+                          const inCart = selectedItem ? lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
+                          const avail = Math.max(0, rawQty - inCart);
+                          const isSelected = String(staging.warehouseId) === String(w.id);
+                          const insufficient = !isReceive && selectedItem && Number(staging.quantity) > avail;
+                          const isLow = avail > 0 && avail < 5;
+                          const isEmpty = avail === 0;
+                          let stockColor = "text-slate-400";
+                          if (insufficient) stockColor = "text-rose-600 font-black";
+                          else if (isEmpty) stockColor = "text-slate-300";
+                          else if (isLow) stockColor = "text-amber-600 font-black";
+                          else stockColor = "text-emerald-600 font-black";
+                          let bgColor = "";
+                          if (isSelected && insufficient) bgColor = "bg-rose-50";
+                          else if (isSelected) bgColor = "bg-indigo-50";
+                          return (
+                            <tr key={w.id}
+                              onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
+                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${bgColor || (isSelected ? "bg-indigo-50" : "hover:bg-slate-100")}`}
+                            >
+                              <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"} ${insufficient ? "line-through opacity-60" : ""}`}>{w.name}</td>
+                              <td className={`px-2 py-1 number-fmt text-center tabular-nums ${stockColor}`}>{avail}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {selectedItem && !isReceive && (() => {
+                    const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
+                    const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
+                    if (Number(staging.quantity) > avail) {
+                      return (
+                        <div className="flex items-center gap-1 rounded-sm bg-rose-50 border border-rose-200 px-2 py-1 text-[10px] font-bold text-rose-700 leading-tight">
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          المتاح {avail}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
               </div>
 
-              {/* Wholesale price — receive only */}
-              {isReceive && (
-                <div className="flex flex-col gap-1 w-[100px] shrink-0">
+              {/* Row 2: Pricing, Quantity & Add Button */}
+              <div className="flex flex-wrap items-end gap-3.5 border-t border-slate-100 pt-4 text-right">
+                
+                {/* Unit — auto-detected from item */}
+                <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
+                  <label className="text-[11px] font-bold text-slate-500">الوحدة</label>
+                  <div className="w-full h-11 flex items-center justify-center border border-slate-200 rounded-[10px] bg-slate-100/50 px-2 text-2sm font-bold text-slate-600 shadow-inner">
+                    {selectedItem ? (selectedItem.unit_name || "أساسية") : "—"}
+                  </div>
+                </div>
+
+                {/* Cost / Price */}
+                <div className="flex flex-col gap-1 w-[110px] shrink-0">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-500">جملة</label>
-                    <button type="button"
-                      onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
-                      title={stagingLocks.wholesale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
-                      className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
-                        stagingLocks.wholesale ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}>
-                      <Lock size={8} className={stagingLocks.wholesale ? "" : "opacity-50"} />
-                      {stagingLocks.wholesale ? "يحدّث" : "للمستند"}
-                    </button>
+                    <label className="text-[11px] font-bold text-slate-500">{isReceive ? "التكلفة" : "السعر"}</label>
+                    {isReceive && (
+                      <button type="button"
+                        onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
+                        title={stagingLocks.purchase ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
+                        className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
+                          stagingLocks.purchase ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                        }`}>
+                        <Lock size={8} className={stagingLocks.purchase ? "" : "opacity-50"} />
+                        {stagingLocks.purchase ? "يحدّث" : "للمستند"}
+                      </button>
+                    )}
                   </div>
                   <input
-                    ref={wholesaleInputRef}
+                    ref={costInputRef}
                     type="number" step="any"
-                    value={staging.wholesalePrice}
-                    onChange={e => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
+                    value={staging.unitCost}
+                    onChange={e => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
-                    onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: qtyInputRef, prevRef: sellInputRef })}
+                    onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: sellInputRef, prevRef: warehouseTableRef })}
                     className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
-                      !stagingLocks.wholesale
+                      isReceive && !stagingLocks.purchase
                         ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
-                        : selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price)
+                        : isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price)
                           ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                          : "border-slate-200 bg-slate-50/50 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-400/10"
+                          : `border-slate-200 bg-slate-50/50 focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10`
                     }`}
                   />
-                  {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                  {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
                     <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
                       <span className="text-slate-300 mx-0.5">→</span>
-                      <span className={`number-fmt-primary ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
-                        {Number(staging.wholesalePrice).toFixed(2)}
+                      <span className={`number-fmt-primary ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                        {Number(staging.unitCost).toFixed(2)}
                       </span>
                     </span>
                   )}
                 </div>
-              )}
 
-              {/* Quantity */}
-              <div className="flex flex-col gap-1.5 w-[75px] shrink-0">
-                <label className="text-[11px] font-bold text-slate-500 text-center">الكمية</label>
-                {selectedItem && staging.warehouseId && (
-                  <span className="text-[11px] font-bold text-slate-400 text-center -mb-1">
-                    متاح: {Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0))}
-                  </span>
+                {/* Selling price */}
+                <div className="flex flex-col gap-1.5 w-[110px] shrink-0">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-500">{isReceive ? "سعر البيع" : "مستهلك"}</label>
+                    {isReceive && (
+                      <button type="button"
+                        onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
+                        title={stagingLocks.sale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
+                        className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
+                          stagingLocks.sale ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                        }`}>
+                        <Lock size={8} className={stagingLocks.sale ? "" : "opacity-50"} />
+                        {stagingLocks.sale ? "يحدّث" : "للمستند"}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={sellInputRef}
+                    type="number" step="any"
+                    value={staging.sellingPrice}
+                    onChange={e => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: isReceive ? wholesaleInputRef : qtyInputRef, prevRef: costInputRef })}
+                    className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
+                      isReceive && !stagingLocks.sale
+                        ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                        : isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price)
+                          ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
+                          : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
+                    }`}
+                  />
+                  {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
+                    <span className="text-[9px] text-center leading-tight">
+                      <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
+                      <span className="text-slate-300 mx-0.5">→</span>
+                      <span className={`number-fmt-primary ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                        {Number(staging.sellingPrice).toFixed(2)}
+                      </span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Wholesale price — receive only */}
+                {isReceive && (
+                  <div className="flex flex-col gap-1 w-[110px] shrink-0">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-500">جملة</label>
+                      <button type="button"
+                        onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
+                        title={stagingLocks.wholesale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للمستند فقط — اضغط للتحديث"}
+                        className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all ${
+                          stagingLocks.wholesale ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
+                        }`}>
+                        <Lock size={8} className={stagingLocks.wholesale ? "" : "opacity-50"} />
+                        {stagingLocks.wholesale ? "يحدّث" : "للمستند"}
+                      </button>
+                    </div>
+                    <input
+                      ref={wholesaleInputRef}
+                      type="number" step="any"
+                      value={staging.wholesalePrice}
+                      onChange={e => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: qtyInputRef, prevRef: sellInputRef })}
+                      className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
+                        !stagingLocks.wholesale
+                          ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                          : selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price)
+                            ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
+                            : "border-slate-200 bg-slate-50/50 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-400/10"
+                      }`}
+                    />
+                    {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                      <span className="text-[9px] text-center leading-tight">
+                        <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
+                        <span className="text-slate-300 mx-0.5">→</span>
+                        <span className={`number-fmt-primary ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                          {Number(staging.wholesalePrice).toFixed(2)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
                 )}
-                <input
-                  ref={qtyInputRef}
-                  type="number" min="0.001" step="any"
-                  value={staging.quantity}
-                  onChange={e => setStaging(s => ({ ...s, quantity: e.target.value }))}
-                  onFocus={e => e.target.select()}
-                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: addBtnRef, prevRef: sellInputRef })}
-                  className="w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-sm number-fmt-primary text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
-                />
+
+                {/* Quantity */}
+                <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
+                  <label className="text-[11px] font-bold text-slate-500">الكمية</label>
+                  {selectedItem && staging.warehouseId && (
+                    <span className="text-[9px] font-bold text-slate-400 text-center -mb-1">
+                      متاح: {Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0))}
+                    </span>
+                  )}
+                  <input
+                    ref={qtyInputRef}
+                    type="number" min="0.001" step="any"
+                    value={staging.quantity}
+                    onChange={e => setStaging(s => ({ ...s, quantity: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: addBtnRef, prevRef: sellInputRef })}
+                    className="w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-sm number-fmt-primary text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
+                  />
+                </div>
+
+                {/* Add button */}
+                <button
+                  ref={addBtnRef}
+                  onClick={addLine}
+                  onKeyDown={(e) => handleFieldKeyDown(e, { prevRef: qtyInputRef, onEnter: addLine })}
+                  disabled={!selectedItem}
+                  className="flex h-11 w-[100px] shrink-0 items-center justify-center gap-2 rounded-[10px] bg-primary text-sm font-black text-white shadow-md hover:bg-primary-600 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 transition-all focus:ring-4 focus:ring-slate-800/20"
+                >
+                  <Plus className="h-4 w-4" /> إضافة
+                </button>
               </div>
 
-              {/* Add button */}
-              <button
-                ref={addBtnRef}
-                onClick={addLine}
-                onKeyDown={(e) => handleFieldKeyDown(e, { prevRef: qtyInputRef, onEnter: addLine })}
-                disabled={!selectedItem}
-                className="flex mt-[22px] h-11 w-[90px] shrink-0 items-center justify-center gap-2 rounded-[10px] bg-primary text-sm font-black text-white shadow-md hover:bg-primary-600 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 transition-all focus:ring-4 focus:ring-slate-800/20"
-              >
-                <Plus className="h-4 w-4" /> إضافة
-              </button>
             </div>
           </section>
 

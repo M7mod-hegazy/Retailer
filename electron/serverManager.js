@@ -1,5 +1,7 @@
 const path = require("path");
 const { logError } = require("./crashLogger");
+const { closeDb } = require("../server/src/config/database");
+const { runStartupDiagnostics, classifyStartError } = require("./startupDiagnostics");
 
 let serverRef = null;
 let stopping = false;
@@ -10,22 +12,35 @@ let restartCount = 0;
 // the unrecoverable "fatal" screen.
 const MAX_RESTARTS = 5;
 
-function notifyRenderer(status, message = "") {
+function notifyRenderer(status, message = "", extra = {}) {
   // Persist every transition so a random production disconnect is explainable from the
   // crash log (%ProgramData%\ElHegaziRetailer\logs), distinguishing crash vs restart vs
   // fatal vs recovery, with the current port for spotting a port-mismatch.
+  const port = process.env.ACTUAL_PORT || "?";
   logError(
     `server:status → ${status}`,
-    `${message || ""} (port=${process.env.ACTUAL_PORT || "?"}, restartCount=${restartCount})`,
+    `${message || ""} (cause=${extra.cause || "?"}, port=${port}, restartCount=${restartCount})`,
   );
   try {
     const { BrowserWindow } = require("electron");
+    const payload = { status, message, port: process.env.ACTUAL_PORT || null, ...extra };
     BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) win.webContents.send("server:status", { status, message });
+      if (!win.isDestroyed()) win.webContents.send("server:status", payload);
     });
   } catch (_e) {
     // renderer not ready yet — ignore
   }
+}
+
+// Fire-and-forget: run the full diagnostic suite and re-notify the renderer with
+// the precise cause so the overlay can show a specific, fixable message instead
+// of a generic "server is down". Never throws.
+function diagnoseAndNotify(status, message, startError) {
+  runStartupDiagnostics({ startError })
+    .then((report) => {
+      notifyRenderer(status, message, { cause: report.cause, report: true });
+    })
+    .catch(() => {});
 }
 
 function clearServerModuleCache() {
@@ -36,9 +51,15 @@ function clearServerModuleCache() {
   });
 }
 
-async function attemptRestart() {
+async function attemptRestart(lastError) {
   if (restartCount >= MAX_RESTARTS) {
-    notifyRenderer("fatal", "فشل إعادة التشغيل بعد عدة محاولات. أعد تشغيل البرنامج.");
+    // Out of retries — run the full diagnostic so the fatal screen names the real
+    // cause (DB locked, EPERM, port exhausted, loopback blocked …) instead of a
+    // generic message, and write diagnostic-report.json for support.
+    notifyRenderer("fatal", "فشل إعادة التشغيل بعد عدة محاولات. أعد تشغيل البرنامج.", {
+      cause: classifyStartError(lastError),
+    });
+    diagnoseAndNotify("fatal", "فشل إعادة التشغيل بعد عدة محاولات. أعد تشغيل البرنامج.", lastError);
     return;
   }
 
@@ -48,6 +69,11 @@ async function attemptRestart() {
 
   await new Promise((r) => setTimeout(r, delay));
 
+  // Release the old DB connection before clearing the module cache,
+  // so a fresh initDb() in the restarted server opens a clean connection
+  // instead of finding a stale singleton.
+  try { closeDb(); } catch (_) {}
+
   clearServerModuleCache();
   serverRef = null;
 
@@ -55,8 +81,8 @@ async function attemptRestart() {
     await startEmbeddedServer();
     restartCount = 0;
     notifyRenderer("online");
-  } catch (_err) {
-    await attemptRestart();
+  } catch (err) {
+    await attemptRestart(err);
   }
 }
 
@@ -89,17 +115,22 @@ function startEmbeddedServer() {
 
         // Notify the renderer if the http.Server closes while the app is still running,
         // then attempt an automatic restart.
+        let lastServerError = null;
+
         server.on("close", () => {
           if (!stopping) {
             serverRef = null;
-            notifyRenderer("down", "توقف الخادم الداخلي بشكل غير متوقع");
-            attemptRestart();
+            notifyRenderer("down", "توقف الخادم الداخلي بشكل غير متوقع", {
+              cause: lastServerError ? classifyStartError(lastServerError) : "transient-disconnect",
+            });
+            attemptRestart(lastServerError);
           }
         });
 
         server.on("error", (err) => {
           if (!stopping) {
-            notifyRenderer("down", err.message);
+            lastServerError = err;
+            notifyRenderer("down", err.message, { cause: classifyStartError(err) });
             // Don't restart on error events — the close event will fire next and handle it.
           }
         });

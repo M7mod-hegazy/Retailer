@@ -127,11 +127,11 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
 
     if (payload.password) {
       db.prepare(
-        "UPDATE users SET full_name = ?, username = ?, password_hash = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        "UPDATE users SET full_name = ?, username = ?, password_hash = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
       ).run(full_name, username, String(payload.password), role, is_active, can_view_updates, req.params.id);
     } else {
       db.prepare(
-        "UPDATE users SET full_name = ?, username = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        "UPDATE users SET full_name = ?, username = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
       ).run(full_name, username, role, is_active, can_view_updates, req.params.id);
     }
 
@@ -333,10 +333,6 @@ router.put("/:id/permissions", (req, res, next) => {
       const err = new Error("User not found");
       err.status = 404;
       throw err;
-    }
-
-    if (target.role === "admin") {
-      return res.status(403).json({ error: "cannot_modify_admin_permissions" });
     }
 
     const payload = req.body || {};

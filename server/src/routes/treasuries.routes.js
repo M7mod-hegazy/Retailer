@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -38,21 +39,23 @@ router.put("/:id", requirePagePermission("daily_treasury", "edit"), (req, res) =
   res.json({ success: true, data: getDb().prepare("SELECT * FROM treasuries WHERE id = ?").get(req.params.id) });
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function treasuryRelated(db, id) {
+  return [
+    { label: "مدفوعات", count: countSafe(db, "SELECT COUNT(*) AS c FROM payments WHERE treasury_id = ?", id) },
+    { label: "طرق دفع", count: countSafe(db, "SELECT COUNT(*) AS c FROM payment_methods WHERE target_id = ? AND type = 'cash'", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("daily_treasury", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(treasuryRelated(getDb(), req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("daily_treasury", "delete"), (req, res) => {
   try {
     const db = getDb();
-    
-    // Check for related records
-    const paymentCount = db.prepare("SELECT COUNT(*) AS c FROM payments WHERE treasury_id = ?").get(req.params.id);
-    const paymentMethodCount = db.prepare("SELECT COUNT(*) AS c FROM payment_methods WHERE target_id = ? AND type = 'cash'").get(req.params.id);
-    const shiftCount = db.prepare("SELECT COUNT(*) AS c FROM shifts WHERE treasury_id = ?").get(req.params.id);
-    
-    const hasRecords = 
-      Number(paymentCount?.c || 0) > 0 ||
-      Number(paymentMethodCount?.c || 0) > 0 ||
-      Number(shiftCount?.c || 0) > 0;
-    
-    if (hasRecords) {
+
+    if (hasAnyRelated(treasuryRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE treasuries SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "treasuries", { id: req.params.id }, `💰 تم أرشفة خزينة`);

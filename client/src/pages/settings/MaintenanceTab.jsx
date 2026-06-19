@@ -1,9 +1,14 @@
 import React from "react";
 import BackupSettingsTab from "./BackupSettingsTab";
+import DatabaseHealthSection from "./DatabaseHealthSection";
+import SystemDiagnosticsSection from "./SystemDiagnosticsSection";
 
-// The data/backup hub. Auto-backup, manual backup, restore, export and
-// database-empty all live in BackupSettingsTab, which manages its own state
-// via the /api/backup endpoints.
 export default function MaintenanceTab() {
-  return <BackupSettingsTab />;
+  return (
+    <div className="space-y-6">
+      <BackupSettingsTab />
+      <SystemDiagnosticsSection />
+      <DatabaseHealthSection />
+    </div>
+  );
 }

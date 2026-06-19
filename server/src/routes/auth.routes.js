@@ -191,7 +191,7 @@ router.post("/change-password", authRequired, (req, res, next) => {
   }
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  getDb().prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, req.user.id);
+  getDb().prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now', 'localtime') WHERE id = ?").run(hash, req.user.id);
   req.audit("change_password", "auth", { user_id: req.user.id }, `👤 تم تغيير كلمة المرور للمستخدم #${req.user.id}`);
   return res.json({ success: true, data: { changed: true } });
 });

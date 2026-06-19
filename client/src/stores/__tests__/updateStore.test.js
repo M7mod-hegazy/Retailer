@@ -62,6 +62,34 @@ describe("updateStore", () => {
     expect(useUpdateStore.getState().checking).toBe(false);
   });
 
+  it("setChecking(true) records lastCheckedAt and clears prior error", () => {
+    useUpdateStore.setState({ error: "old", lastCheckedAt: null });
+    useUpdateStore.getState().setChecking(true);
+    const state = useUpdateStore.getState();
+    expect(state.checking).toBe(true);
+    expect(state.error).toBeNull();
+    expect(typeof state.lastCheckedAt).toBe("number");
+  });
+
+  it("setAvailable resets stale manual-download state from a previous update", () => {
+    useUpdateStore.setState({
+      manualFilePath: "C:/old/installer.exe",
+      manualError: "old error",
+      manualDownloading: true,
+      downloadUrl: "https://old",
+      fileSize: 123,
+    });
+    useUpdateStore.getState().setAvailable({ version: "3.0.0" });
+    const state = useUpdateStore.getState();
+    expect(state.available).toBe(true);
+    expect(state.manualFilePath).toBeNull();
+    expect(state.manualError).toBeNull();
+    expect(state.manualDownloading).toBe(false);
+    expect(state.downloadUrl).toBeNull();
+    expect(state.fileSize).toBeNull();
+    expect(typeof state.lastCheckedAt).toBe("number");
+  });
+
   it("reset restores all defaults", () => {
     useUpdateStore.setState({
       available: true,

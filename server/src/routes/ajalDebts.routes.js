@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
+const { today } = require("../utils/datetime");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
@@ -60,7 +61,7 @@ function recalcDebt(db, debtId) {
   if (remaining <= 0) status = "paid";
   else if (d.due_date && new Date(d.due_date) < new Date()) status = "overdue";
   else if (d.paid_amount > 0) status = "partial";
-  db.prepare("UPDATE ajal_debts SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, debtId);
+  db.prepare("UPDATE ajal_debts SET status = ?, updated_at = datetime('now', 'localtime') WHERE id = ?").run(status, debtId);
 }
 
 // GET /api/ajal-debts/summary
@@ -69,7 +70,7 @@ router.get("/summary", requirePagePermission("installments", "view"), (req, res)
     const db = getDb();
     const partyType = normalizePartyType(req.query.party_type);
     const idCol = partyIdColumn(partyType);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = require("../utils/datetime").today();
 
     // Optional per-party filtering
     const partyId = partyType === "supplier" ? req.query.supplier_id : req.query.customer_id;
@@ -120,7 +121,7 @@ router.get("/due-parties", requirePagePermission("installments", "view"), (req, 
     const db = getDb();
     const partyType = normalizePartyType(req.query.party_type);
     const idCol = partyIdColumn(partyType);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = require("../utils/datetime").today();
     const rows = db.prepare(`
       SELECT d.${idCol} AS party_id,
         SUM(CASE WHEN date(sch.due_date) < date(?) THEN 1 ELSE 0 END) AS overdue,
@@ -142,7 +143,7 @@ router.get("/due-parties", requirePagePermission("installments", "view"), (req, 
 router.get("/", requirePagePermission("installments", "view"), (req, res) => {
   try {
     const db = getDb();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = require("../utils/datetime").today();
     const partyType = normalizePartyType(req.query.party_type);
     const idCol = partyIdColumn(partyType);
     const { status, customer_id, supplier_id, search = "", overdue } = req.query;
@@ -270,7 +271,7 @@ router.post("/:id/pay", requirePagePermission("installments", "add"), (req, res)
 
     db.transaction(() => {
       for (const line of paymentLines) {
-        db.prepare(`INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by) VALUES (?, ?, ?, ?, ?, ?)`)
+        db.prepare(`INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))`)
           .run(debt.id, line.amount, line.method_id || 1, createdDate, notes || null, req.user?.id || 1);
 
         const pm = db.prepare("SELECT type, category, name, excludes_from_treasury FROM payment_methods WHERE id = ?").get(line.method_id || 1);
@@ -337,7 +338,7 @@ router.post("/:id/schedule", requirePagePermission("installments", "add"), (req,
         const d = new Date(start);
         d.setDate(d.getDate() + freqDays * i);
         db.prepare("INSERT INTO ajal_schedules (debt_id, installment_no, due_date, amount, status) VALUES (?, ?, ?, ?, 'pending')")
-          .run(debt.id, i, d.toISOString().slice(0, 10), i === installments ? remaining - perInstallment * (i - 1) : perInstallment);
+          .run(debt.id, i, today(d), i === installments ? remaining - perInstallment * (i - 1) : perInstallment);
       }
     })();
 
@@ -385,7 +386,7 @@ router.patch("/schedules/:id", requirePagePermission("installments", "edit"), (r
     if (updates.length === 0) return res.status(400).json({ success: false, message: "لا توجد تغييرات" });
 
     params.push(req.params.id);
-    db.prepare(`UPDATE ajal_schedules SET ${updates.join(", ")}, updated_at = datetime('now') WHERE id = ?`).run(...params);
+    db.prepare(`UPDATE ajal_schedules SET ${updates.join(", ")}, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(...params);
     res.json({ success: true, data: db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -411,9 +412,9 @@ router.post("/schedules/:id/pay", requirePagePermission("installments", "add"), 
 
     db.transaction(() => {
       const pmId = payment_method_id || 1;
-      db.prepare("INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+      db.prepare("INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))")
         .run(schedule.debt_id, payAmount, pmId, createdDate, notes || null, req.user?.id || 1);
-      db.prepare("UPDATE ajal_schedules SET status = 'paid', paid_at = datetime('now') WHERE id = ?").run(schedule.id);
+      db.prepare("UPDATE ajal_schedules SET status = 'paid', paid_at = datetime('now', 'localtime') WHERE id = ?").run(schedule.id);
       db.prepare("UPDATE ajal_debts SET paid_amount = paid_amount + ? WHERE id = ?").run(payAmount, schedule.debt_id);
       recalcDebt(db, schedule.debt_id);
 

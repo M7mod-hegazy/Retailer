@@ -12,6 +12,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { isFeatureEnabled } = require("../utils/features");
 const NotificationModel = require("../models/notification.model");
+const { nowSql, toSql, today } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -78,7 +79,7 @@ function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
   recordMovement(db, {
     item_id: line.item_id,
     warehouse_id: line.warehouse_id || options.warehouse_id || null,
-    occurred_at: options.occurred_at || new Date().toISOString().replace("T", " ").slice(0, 19),
+    occurred_at: options.occurred_at || nowSql(),
     movement_type: options.movement_type || (line.is_opening_balance ? "opening_balance" : "purchase"),
     quantity,
     unit_cost: line.unit_cost,
@@ -169,7 +170,7 @@ function applyPurchaseFinancials(db, opts) {
       if (isCreditMethod(pm)) { /* credit portion handled below — no cash/bank movement */ }
       else if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
       else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
-      try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount) VALUES (?, ?, ?)").run(purchaseId, Number(pmt.method_id), amount); } catch (_) {}
+      try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(purchaseId, Number(pmt.method_id), amount); } catch (_) {}
     }
     let creditSum = 0;
     for (const pmt of payments) {
@@ -470,7 +471,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       const result = db
         .prepare("INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, notes, source_purchase_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .run(docNo, payload.supplier_id || null, total, discount, increase, paymentMethod,
-             `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+             `${createdDate} ${toSql(new Date()).slice(11)}`,
              payload.user_id || req.user?.id || null,
              payload.notes || null,
              payload.source_purchase_order_id || null);
@@ -520,7 +521,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           warehouse_id: warehouseId,
           quantity: qty,
           unit_cost: cost,
-        }, { occurred_at: `${createdDate} ${new Date().toTimeString().slice(0, 8)}` });
+        }, { occurred_at: `${createdDate} ${toSql(new Date()).slice(11)}` });
 
         adjustStock({
           item_id: line.item_id,
@@ -599,7 +600,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
             db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
           }
           try {
-            db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount) VALUES (?, ?, ?)").run(purchaseId, Number(pmt.method_id), amount);
+            db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(purchaseId, Number(pmt.method_id), amount);
           } catch (_) {}
         }
 
@@ -750,7 +751,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       const purchaseReturnResult = db
         .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, cash_amount, credit_amount, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
         .run(returnDocNo, purchase.id, purchase.supplier_id || null, adjTotal, discount, increase, settlementType, prCashAmt, prCreditAmt, treasuryId,
-             payload.user_id || req.user?.id || null, `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
+             payload.user_id || req.user?.id || null, `${createdDate} ${toSql(new Date()).slice(11)}`);
 
       const prId = purchaseReturnResult.lastInsertRowid;
 
@@ -890,7 +891,7 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       const newTotal = Math.max(0, lineSum - editDiscount + editIncrease);
 
       // 4. Update purchase header (incl. payment_method + supplier) BEFORE applying financials
-      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ?, notes = ? WHERE id = ?")
+      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = datetime('now', 'localtime'), updated_by = ?, notes = ? WHERE id = ?")
         .run(newTotal, editDiscount, editIncrease, newPaymentMethod, newSupplierId, userId,
              req.body.notes !== undefined ? (req.body.notes || null) : (purchase.notes || null),
              purchase.id);
@@ -944,7 +945,7 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
   }
   if (purchase.amended_by) { const e = new Error("هذه الفاتورة عُدِّلت بالفعل"); e.status = 400; throw e; }
 
-  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const now = nowSql();
 
   // Reverse stock
   for (const line of purchase.lines || []) {
@@ -1055,11 +1056,11 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
       const amendIncrease = Math.max(0, Number(payload.increase || 0));
       newTotal = Math.max(0, newTotal - amendDiscount + amendIncrease);
 
-      const createdDate = normalizeDate(payload.created_at || new Date().toISOString().slice(0, 10));
+      const createdDate = normalizeDate(payload.created_at || today());
       const newResult = db.prepare(
         "INSERT INTO purchases (doc_no, supplier_id, total, discount, increase, payment_method, created_at, created_by, amendment_of, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
       ).run(newDocNo, payload.supplier_id || original.supplier_id || null, newTotal, amendDiscount, amendIncrease, paymentMethod,
-            `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+            `${createdDate} ${toSql(new Date()).slice(11)}`,
             payload.user_id || req.user?.id || null, original.id,
             payload.notes !== undefined ? (payload.notes || null) : (original.notes || null));
 
@@ -1099,7 +1100,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
           warehouse_id: warehouseId,
           quantity: qty,
           unit_cost: cost,
-        }, { occurred_at: `${createdDate} ${new Date().toTimeString().slice(0, 8)}` });
+        }, { occurred_at: `${createdDate} ${toSql(new Date()).slice(11)}` });
         adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: qty, movement_type: "purchase", reference_type: "purchase", reference_id: newPurchaseId });
       }
       // WACC replay after all lines inserted
@@ -1127,7 +1128,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
           if (!pm) continue;
           if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
           else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
-          try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount) VALUES (?, ?, ?)").run(newPurchaseId, Number(pmt.method_id), amount); } catch (_) {}
+          try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(newPurchaseId, Number(pmt.method_id), amount); } catch (_) {}
         }
       }
 
@@ -1159,7 +1160,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       if (!purchase) { const e = new Error("Purchase not found"); e.status = 404; throw e; }
       if (purchase.status === "voided") { const e = new Error("Purchase already voided"); e.status = 400; throw e; }
 
-      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+      const now = nowSql();
       for (const line of purchase.lines || []) {
         recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_void", occurred_at: now });
         adjustStock({
@@ -1276,7 +1277,7 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
         db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(cancelPrCreditAmt, pr.supplier_id);
       }
 
-      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+      const now = nowSql();
       db.prepare("UPDATE purchase_returns SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
         .run(now, user_id || null, reason.trim(), pr.id);
 
@@ -1373,7 +1374,7 @@ function editPurchaseReturn(db, returnId, payload) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
     ).run(newTotal, newSettlement, newPrCashAmt, newPrCreditAmt, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, returnId);
 
     return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(returnId);
@@ -1411,7 +1412,7 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
       } else if (original.settlement_type === 'account' && original.supplier_id) {
         db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(original.total, original.supplier_id);
       }
-      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+      const now = nowSql();
       db.prepare("UPDATE purchase_returns SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
         .run(now, payload.user_id || null, `تعديل — ${payload.reason.trim()}`, original.id);
 
@@ -1431,13 +1432,13 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
         ? (payload.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1)
         : null;
 
-      const createdDate = normalizeDate(payload.created_at || new Date().toISOString().slice(0, 10));
+      const createdDate = normalizeDate(payload.created_at || today());
       const newPr = db.prepare(
         "INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, treasury_id, status, created_by, amendment_of, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)"
       ).run(newDocNo, payload.purchase_id || original.purchase_id || null,
             payload.supplier_id || original.supplier_id || null,
             newTotal, newDiscount, newIncrease, settlementType, treasuryId, payload.user_id || null, original.id,
-            `${createdDate} ${new Date().toTimeString().slice(0, 8)}`);
+            `${createdDate} ${toSql(new Date()).slice(11)}`);
 
       const newPrId = newPr.lastInsertRowid;
 

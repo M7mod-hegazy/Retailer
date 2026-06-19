@@ -34,7 +34,7 @@ function captureLeadFromSale(db, payload, normalizedLines) {
         name = COALESCE(leads.name, excluded.name),
         last_purchase_item = excluded.last_purchase_item,
         last_purchase_category = excluded.last_purchase_category,
-        updated_at = datetime('now')
+        updated_at = datetime('now', 'localtime')
     `).run(norm, String(cap.phone), name, lastItem, lastCategory);
   } catch (_) {
     // swallow — lead capture must never break invoice creation

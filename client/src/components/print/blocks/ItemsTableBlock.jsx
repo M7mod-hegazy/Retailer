@@ -1,5 +1,5 @@
 import React from "react";
-import { g } from "./blockUtils";
+import { g, HEAVY_NUM, HEAVY_VAL } from "./blockUtils";
 
 const lineTotalOf = (line) =>
   ((Number(line.unit_price) || Number(line.unit_cost) || 0) * Number(line.quantity)) - (Number(line.discount_amount) || 0);
@@ -132,10 +132,10 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   // name, code and numbers stay crisp on the roll.
   // Even horizontal padding on every cell so columns keep a consistent gap (the
   // code used to sit flush against the product name) and centered headers.
-  const cell = { padding: "3px 5px", fontWeight: 700 };
+  const cell = { padding: "3px 5px", fontWeight: 800 };
   const head = { ...cell, textAlign: "center" };
   return (
-    <table style={{ width: "100%", fontSize, borderCollapse: "collapse", fontWeight: 700 }}>
+    <table style={{ width: "100%", fontSize, borderCollapse: "collapse", fontWeight: 800 }}>
       <thead>
         <tr style={{ borderBottom: solid }}>
           {showCode && <th style={{ ...head, fontSize: "10px" }}>كود</th>}
@@ -148,9 +148,9 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
         {lines.map((line, i) => (
           <tr key={i}>
             {showCode && <td style={{ ...cell, textAlign: "center", fontSize: "10px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{codeOf(line)}</td>}
-            <td style={{ ...cell, textAlign: "right" }}>{nameOf(line)}</td>
-            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{line.quantity}</td>
-            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{lineTotalOf(line).toFixed(2)}</td>
+            <td style={{ ...cell, textAlign: "right", ...HEAVY_VAL }}>{nameOf(line)}</td>
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", ...HEAVY_NUM }}>{line.quantity}</td>
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", ...HEAVY_NUM }}>{lineTotalOf(line).toFixed(2)}</td>
           </tr>
         ))}
       </tbody>

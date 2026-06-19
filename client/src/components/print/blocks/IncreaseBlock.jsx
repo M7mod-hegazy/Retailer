@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals } from "./blockUtils";
+import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
 
 // Invoice-level surcharge / extra fees (رسوم / إضافة). Mirrors DiscountBlock but
 // adds to the total. Hidden when zero so it only prints when fees were charged.
@@ -17,7 +17,7 @@ export default function IncreaseBlock({ invoice = {}, settings: s, family }) {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>رسوم إضافية:</span><span>+ {currency} {totalIncrease.toFixed(2)}</span>
+      <span>رسوم إضافية:</span><span style={HEAVY_VAL}>+ {currency} {totalIncrease.toFixed(2)}</span>
     </div>
   );
 }

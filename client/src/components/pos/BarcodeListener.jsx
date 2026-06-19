@@ -14,6 +14,7 @@ export default function BarcodeListener() {
     let lastKeyTime = 0;
 
     async function handleKeydown(event) {
+      if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA" || event.target.isContentEditable) return;
       const now = Date.now();
       if (now - lastKeyTime > 300) buffer = "";
       lastKeyTime = now;

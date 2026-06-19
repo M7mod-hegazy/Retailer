@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals } from "./blockUtils";
+import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
 
 export default function DiscountBlock({ invoice = {}, settings: s, family }) {
   if (g(s, "show_discount_line") === false) return null;
@@ -16,7 +16,7 @@ export default function DiscountBlock({ invoice = {}, settings: s, family }) {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>الخصم:</span><span>- {currency} {totalDiscount.toFixed(2)}</span>
+      <span>الخصم:</span><span style={HEAVY_VAL}>- {currency} {totalDiscount.toFixed(2)}</span>
     </div>
   );
 }

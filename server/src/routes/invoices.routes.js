@@ -408,7 +408,7 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
     if (discount > 20 && invoice?.id) {
       const db = getDb();
       const alreadyNotified = db.prepare(
-        "SELECT id FROM notifications WHERE title = ? AND body LIKE ? AND date(created_at) = date('now') LIMIT 1"
+        "SELECT id FROM notifications WHERE title = ? AND body LIKE ? AND date(created_at) = date('now', 'localtime') LIMIT 1"
       ).get('💸 خصم كبير مطبق', `%#${invoice.id}%`);
       if (!alreadyNotified) {
         NotificationModel.create({

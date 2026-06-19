@@ -23,7 +23,7 @@ router.get("/search", requirePagePermission("items", "view"), (req, res) => {
   `).get(serial);
   if (!row) return res.status(404).json({ error: "السيريال غير موجود" });
   const warrantyDate = row.warranty_months && row.sold_at
-    ? new Date(new Date(row.sold_at).getTime() + row.warranty_months * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+    ? require("../utils/datetime").today(new Date(new Date(row.sold_at).getTime() + row.warranty_months * 30 * 24 * 3600 * 1000))
     : null;
   res.json({ success: true, data: { ...row, warranty_expires: warrantyDate } });
 });

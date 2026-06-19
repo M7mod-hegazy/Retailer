@@ -9,7 +9,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
 
 function toDateInput(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 function fmtDateTime(d) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {

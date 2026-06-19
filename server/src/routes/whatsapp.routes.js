@@ -121,7 +121,7 @@ router.put("/templates/:kind", requirePagePermission("settings", "edit"), (req, 
     const { body } = req.body;
     db.prepare(`
       INSERT INTO message_templates (kind, body) VALUES (?,?)
-      ON CONFLICT(kind) DO UPDATE SET body=excluded.body, updated_at=datetime('now')
+      ON CONFLICT(kind) DO UPDATE SET body=excluded.body, updated_at=datetime('now', 'localtime')
     `).run(kind, body || "");
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }

@@ -24,6 +24,7 @@ import {
   WALK_IN_CUSTOMER,
   DEFAULT_WAREHOUSE,
 } from "./posPageUtils";
+import { todayCairo } from "../../utils/dateHelpers";
 
 const PAYMENT_TYPES = [
   { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
@@ -170,7 +171,7 @@ export default function POSPage() {
   // Installment plan (POS multi-installment): generator inputs + the editable rows.
   const [installmentStartDate, setInstallmentStartDate] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return todayCairo(d);
   });
   const [installmentCount, setInstallmentCount] = useState("3");
   const [installmentFrequency, setInstallmentFrequency] = useState("monthly");
@@ -332,6 +333,8 @@ export default function POSPage() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; stop(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [healthCheckInterval]);
+
+  useEffect(() => () => { if (rafRef.current) window.cancelAnimationFrame(rafRef.current); }, []);
 
   // Restore active cart and held invoices from DB on mount.
   // Skip cart restore when entering edit mode — the edit prefill owns the cart.
@@ -952,7 +955,7 @@ export default function POSPage() {
     setPendingBelowCostAdd(false);
     setPriceType("retail");
     setLastSalePrice(null);
-    window.requestAnimationFrame(() => listItemInputRef.current?.focus());
+    rafRef.current = window.requestAnimationFrame(() => listItemInputRef.current?.focus());
   }
 
   function resetPaymentFields() {
@@ -991,9 +994,9 @@ export default function POSPage() {
     setDetailedSearchOpen(false);
     // Focus next field depending on view mode
     if (viewMode === "list") {
-      window.requestAnimationFrame(() => { listWhRef.current?.focus(); });
+      rafRef.current = window.requestAnimationFrame(() => { listWhRef.current?.focus(); });
     } else {
-      window.requestAnimationFrame(() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select(); });
+      rafRef.current = window.requestAnimationFrame(() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select(); });
     }
   }
 
@@ -1446,6 +1449,7 @@ export default function POSPage() {
   const listPriceRef     = useRef(null);
   const listDiscRef      = useRef(null);
   const listWhRef        = useRef(null);
+  const rafRef           = useRef(null);
   const listAddBtnRef    = useRef(null);
 
   function handleListFieldKeyDown(e, nextRef, prevRef) {
@@ -1528,7 +1532,7 @@ export default function POSPage() {
     panelEffectiveCollapsed, panelWidth,
     expandPanel, togglePanel, startPanelResize,
     handleHold,
-    selectedItem, staging, setStaging,
+    selectedItem, setSelectedItem, staging, setStaging,
     itemNameQuery, setItemNameQuery,
     itemLookupOpen, setItemLookupOpen,
     activeLookupIndex, setActiveLookupIndex,

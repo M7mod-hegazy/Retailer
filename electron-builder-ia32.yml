@@ -9,6 +9,8 @@ files:
   - server/**/*
   - package.json
   - "!server/data/**"
+  - "!server/undefined/**"
+  - "!server/backups/**"
   - "!server/**/__tests__/**"
   - "!**/*.map"
 
@@ -36,6 +38,7 @@ artifactName: 2b_FOR_32BIT_WIN7_ElHegazi-Retailer-ia32.exe
 
 nsis:
   oneClick: false
+  include: electron/nsis/installer.nsh
   allowToChangeInstallationDirectory: false
   allowElevation: true
   perMachine: true

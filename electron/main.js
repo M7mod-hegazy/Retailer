@@ -1,5 +1,11 @@
+// Pin the process to Egypt local time before anything touches Date, so the
+// embedded server and any bare `new Date()` path use Cairo regardless of the
+// host machine's timezone.
+process.env.TZ = "Africa/Cairo";
+
 const { app, BrowserWindow, dialog, powerMonitor } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const { createTray, destroyTray } = require("./tray");
 const { buildMenu } = require("./menuBuilder");
 const { setupIpc } = require("./ipcHandlers");
@@ -309,8 +315,50 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     if (!isDev) ensurePackagedEnv();
 
+    // ── Downgrade warning ─────────────────────────────────────────────────
+    if (!isDev) {
+      const versionFile = path.join(app.getPath("userData"), "version.json");
+      const current = app.getVersion();
+      try {
+        if (fs.existsSync(versionFile)) {
+          const { version: prev } = JSON.parse(fs.readFileSync(versionFile, "utf8"));
+          if (prev && prev !== current) {
+            const parseSemver = (v) => v.split(".").map(Number);
+            const [pa, pb, pc] = parseSemver(prev);
+            const [ca, cb, cc] = parseSemver(current);
+            const isDowngrade = ca < pa || (ca === pa && cb < pb) || (ca === pa && cb === pb && cc < pc);
+            if (isDowngrade) {
+              const choice = dialog.showMessageBoxSync(null, {
+                type: "warning",
+                title: "تحذير: تراجع في الإصدار",
+                message: "أنت تشغّل إصداراً أقدم مما كان مُثبّتاً",
+                detail: `الإصدار السابق: ${prev}\nالإصدار الحالي: ${current}\n\nالتراجع قد يُتلف قاعدة البيانات. يُنصح بالنسخ الاحتياطي أولاً.`,
+                buttons: ["متابعة على مسؤوليتي", "إغلاق البرنامج"],
+                defaultId: 1,
+                cancelId: 1,
+              });
+              if (choice === 1) { app.exit(0); return; }
+            }
+          }
+        }
+        fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+        fs.writeFileSync(versionFile, JSON.stringify({ version: current }));
+      } catch (_) {}
+    }
+
     // Show splash immediately so the user sees feedback
     createSplashWindow();
+
+    // ── Migration progress → splash ───────────────────────────────────────
+    const { setMigrationProgress } = require("./migrationEvents");
+    setMigrationProgress((msg) => {
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        const safe = msg.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        splashWindow.webContents
+          .executeJavaScript(`typeof updateStatus==='function'&&updateStatus('${safe}')`)
+          .catch(() => {});
+      }
+    });
 
     try {
       // Wait for the Express server to be fully ready BEFORE opening the window.
@@ -319,14 +367,31 @@ if (!gotTheLock) {
         await startEmbeddedServer();
       }
     } catch (err) {
-      // Server failed to start — log it, show a readable error screen, and keep
-      // it open (don't instantly quit) so the user can read/copy the details.
+      // Server failed to start — log it, run the self-diagnostic to identify the
+      // real cause, then show a readable, cause-specific error screen and keep it
+      // open (don't instantly quit) so the user can read/copy the details.
       logError("Embedded server failed to start", err);
       destroySplash();
+
+      const { runStartupDiagnostics, describeCause } = require("./startupDiagnostics");
+      let cause = null;
+      let reportPathStr = null;
+      try {
+        const { classifyStartError, reportPath } = require("./startupDiagnostics");
+        cause = classifyStartError(err);
+        // Full probe suite (writes diagnostic-report.json) — best-effort.
+        await runStartupDiagnostics({ startError: err }).then((r) => { cause = r.cause; }).catch(() => {});
+        reportPathStr = reportPath();
+      } catch (_e) {}
+
+      const text = describeCause(cause);
       const win = showErrorScreen({
-        title: "فشل تشغيل الخادم الداخلي",
-        friendly: "تعذّر بدء تشغيل قاعدة البيانات أو الخادم الداخلي للبرنامج.",
-        detail: (err && err.stack) || (err && err.message) || String(err),
+        title: text.title,
+        friendly: text.friendly,
+        detail:
+          `[cause=${cause}]\n` +
+          ((err && err.stack) || (err && err.message) || String(err)) +
+          (reportPathStr ? `\n\nDiagnostic report: ${reportPathStr}` : ""),
       });
       // Quit once the user closes the error window.
       if (win) win.on("closed", () => app.quit());
@@ -364,13 +429,6 @@ if (!gotTheLock) {
       runCloseBackup();
     } catch (_) {}
 
-    try {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        await mainWindow.webContents.executeJavaScript(
-          'window.localStorage.removeItem("retailer.auth");',
-        );
-      }
-    } catch (_) {}
     destroyTray();
     stopEmbeddedServer().catch(() => {});
   });

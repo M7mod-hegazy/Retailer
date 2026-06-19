@@ -728,7 +728,7 @@ router.post("/:date/reopen", requirePagePermission("daily_treasury", "add"), (re
       UPDATE daily_sessions
       SET status = 'open', closed_at = NULL, closed_by = NULL,
           closing_balance = NULL, actual_cash = NULL, discrepancy = NULL,
-          reopened_at = datetime('now'), reopened_by = ?, reopen_reason = ?
+          reopened_at = datetime('now', 'localtime'), reopened_by = ?, reopen_reason = ?
       WHERE id = ?
     `).run(req.user?.id || 1, req.body?.reason || null, session.id);
 
@@ -752,7 +752,7 @@ router.patch("/:date/opening-balance", requirePagePermission("daily_treasury", "
 
     db.prepare(`
       UPDATE daily_sessions
-      SET opening_balance = ?, opening_adjusted_at = datetime('now'), opening_adjusted_by = ?, opening_adjust_reason = ?
+      SET opening_balance = ?, opening_adjusted_at = datetime('now', 'localtime'), opening_adjusted_by = ?, opening_adjust_reason = ?
       WHERE id = ?
     `).run(Number(opening_balance), req.user?.id || 1, String(reason).trim(), session.id);
 

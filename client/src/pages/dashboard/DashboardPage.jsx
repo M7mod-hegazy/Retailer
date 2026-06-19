@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
@@ -11,6 +11,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useElectron } from "../../hooks/useElectron";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
 
@@ -422,6 +423,20 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   usePageTour('dashboard');
+  const { getVersion } = useElectron();
+  const [appVersion, setAppVersion] = useState('');
+  useEffect(() => {
+    try {
+      const result = getVersion();
+      if (result && typeof result.then === 'function') {
+        result.then((v) => setAppVersion(v || '')).catch(() => setAppVersion(''));
+      } else {
+        setAppVersion(result || '');
+      }
+    } catch {
+      setAppVersion('');
+    }
+  }, []);
   const user = useAuthStore((state) => state.user);
   const updateAvailable = useUpdateStore((state) => state.available);
   const bannerDismissed = useUpdateStore((state) => state.bannerDismissed);
@@ -517,6 +532,15 @@ export default function DashboardPage() {
   const activeModule = visibleModules.find((m) => m.id === activeTabId) || visibleModules[0];
   const closeModal = useCallback(() => setQuickModal(null), []);
 
+  // ─── Live Clock ─────────────────────────────────────────────────────────────
+  const [clock, setClock] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const clockTime = useMemo(() => clock.toLocaleTimeString("ar-EG", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }), [clock]);
+  const clockDate = useMemo(() => clock.toLocaleDateString("ar-EG", { timeZone: "Africa/Cairo", weekday: "long", year: "numeric", month: "long", day: "numeric" }), [clock]);
+
   return (
     <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] overflow-x-hidden selection:bg-primary/30" dir="rtl">
 
@@ -533,11 +557,43 @@ export default function DashboardPage() {
               <h1 className="text-3xl md:text-4xl font-black text-[var(--on-feature)] tracking-tight mb-1">
                 مرحباً بك، <span className="text-[var(--on-feature)] underline decoration-primary/60 decoration-2 underline-offset-4">{user?.name?.split(" ")[0] || "مدير"}</span>
               </h1>
-              <p className="text-sm font-bold text-[var(--on-feature-muted)]">
-                {settings.company_name || settings.branch_name
-                  ? `${settings.company_name || ""} ${settings.company_name && settings.branch_name ? "—" : ""} ${settings.branch_name || ""}`
-                  : "نظام إدارة الموارد ونقاط البيع المتكامل"}
-              </p>
+              {(() => {
+                const safeVal = (v) => (!v || v === "null" || v === "undefined" ? "" : v.trim());
+                const cName = safeVal(settings.company_name);
+                const bName = safeVal(settings.branch_name);
+                return (cName || bName) ? (
+                  <p className="text-sm font-bold text-[var(--on-feature-muted)]">
+                    {cName}{cName && bName ? " — " : ""}{bName}
+                  </p>
+                ) : (
+                  <Link
+                    to="/settings?tab=identity"
+                    className="text-sm font-bold text-[var(--on-feature-muted)] hover:text-[var(--on-feature)] underline decoration-dashed underline-offset-2 transition-colors flex items-center gap-1"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                    اضغط لتعيين اسم المنشأة والفرع
+                  </Link>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Live Clock + version */}
+          <div className="flex items-center gap-3" dir="ltr">
+            {appVersion && appVersion !== "web" && (
+              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl">
+                <span className="text-[10px] font-black text-[var(--on-feature-muted)] tracking-widest">{String(appVersion).replace(/^v/i, "")}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-3 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-[1.2rem] px-5 py-3 shadow-2xl">
+              <div className="flex flex-col items-end">
+                <span className="text-2xl md:text-3xl font-black tabular-nums text-[var(--on-feature)] leading-none tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {clockTime}
+                </span>
+                <span className="text-[10px] font-bold text-[var(--on-feature-muted)] tracking-wider mt-0.5">
+                  {clockDate}
+                </span>
+              </div>
             </div>
           </div>
         </header>

@@ -1,12 +1,27 @@
-﻿import React from "react";
+﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
 import { usePageTour } from "../../hooks/usePageTour";
 import { formatNumber } from "../../utils/currency";
+import api from "../../services/api";
+import toast from "react-hot-toast";
+import AccountExportModal from "../accounts/AccountExportModal";
 
 export default function CustomersListPage() {
   usePageTour('customers');
   const navigate = useNavigate();
+  const [showExport, setShowExport] = useState(false);
+  const [exportData, setExportData] = useState([]);
+
+  const handleExportClick = async () => {
+    try {
+      const res = await api.get("/api/customers");
+      setExportData(res.data.data || []);
+      setShowExport(true);
+    } catch {
+      toast.error("فشل تحميل بيانات العملاء للتصدير");
+    }
+  };
 
   return (
     <>
@@ -29,6 +44,8 @@ export default function CustomersListPage() {
       title="العملاء"
       description="عرض العملاء مع الرصيد والحد الائتماني. انقر على صف لعرض الملف الكامل."
       endpoint="/api/customers"
+      importPath="/accounts/customers/import"
+      onExport={handleExportClick}
       fields={[
         { name: "name", label: "اسم العميل", required: true },
         { name: "phone", label: "الهاتف" },
@@ -59,6 +76,12 @@ export default function CustomersListPage() {
       })}
       onRowClick={(row) => navigate(`/definitions/customers/${row.id}`)}
     />
+      <AccountExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        entityType="customers"
+        accounts={exportData}
+      />
     </>
   );
 }

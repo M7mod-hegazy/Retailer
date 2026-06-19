@@ -10,6 +10,8 @@ files:
   - shared/**/*
   - package.json
   - "!server/data/**"
+  - "!server/undefined/**"
+  - "!server/backups/**"
   - "!server/**/__tests__/**"
   - "!**/*.map"
 
@@ -31,6 +33,7 @@ artifactName: "2_INSTALL_SECOND_ElHegazi-Retailer-x64-v${version}.exe"
 
 nsis:
   oneClick: false
+  include: electron/nsis/installer.nsh
   allowToChangeInstallationDirectory: false
   allowElevation: true
   perMachine: true

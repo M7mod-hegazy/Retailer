@@ -1,10 +1,12 @@
 const fs = require("fs");
 const path = require("path");
-const { ipcMain, app, dialog, BrowserWindow, nativeImage } = require("electron");
+const { ipcMain, app, dialog, BrowserWindow, nativeImage, shell } = require("electron");
 const { execFileSync, execSync } = require("child_process");
 const { closeDb, getDbPath, initDb, getDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
 const { firstWritableDir } = require("../server/src/config/paths");
+const { resolveLogDir, getLogPath } = require("./crashLogger");
+const { runStartupDiagnostics, readReport } = require("./startupDiagnostics");
 
 
 function safeDbPath() {
@@ -50,9 +52,72 @@ function setupIpc(window) {
 
   ipcMain.handle("system:get-version", () => app.getVersion());
 
+  // First-run flag: written by NSIS installer, consumed once then deleted
+  ipcMain.handle("app:is-first-run", () => {
+    const flagPath = require("path").join(app.getPath("userData"), "first-run.flag");
+    const fs = require("fs");
+    if (fs.existsSync(flagPath)) {
+      try { fs.unlinkSync(flagPath); } catch (_) {}
+      return true;
+    }
+    return false;
+  });
+
   ipcMain.handle("get:api-url", () => {
     const port = process.env.ACTUAL_PORT || "5000";
     return `http://127.0.0.1:${port}`;
+  });
+
+  // ── Diagnostics (work even when the embedded server is down) ──────────────
+  // Return the last written diagnostic-report.json plus a tail of today's crash
+  // log so the UI can show a copyable, support-friendly report.
+  ipcMain.handle("diag:get-report", () => {
+    let logTail = "";
+    try {
+      const content = fs.readFileSync(getLogPath(), "utf8");
+      logTail = content.split("\n").slice(-200).join("\n");
+    } catch (_e) {}
+    return {
+      report: readReport(),
+      logTail,
+      logDir: resolveLogDir(),
+      port: process.env.ACTUAL_PORT || null,
+      dbPath: process.env.DB_PATH || null,
+      appVersion: app.getVersion(),
+    };
+  });
+
+  // Open the log folder in the OS file explorer.
+  ipcMain.handle("diag:open-logs", async () => {
+    try {
+      const dir = resolveLogDir();
+      const err = await shell.openPath(dir);
+      return { ok: !err, dir, error: err || null };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  // Re-run the full diagnostic suite and attempt safe auto-fixes:
+  //   - if the server isn't listening, try to (re)start it (picks a free port);
+  //   - report what was attempted so the UI can guide the user on the rest.
+  ipcMain.handle("diag:run-and-fix", async () => {
+    const actions = [];
+    let serverUp = !!process.env.ACTUAL_PORT;
+
+    if (!serverUp) {
+      try {
+        const { startEmbeddedServer } = require("./serverManager");
+        await startEmbeddedServer();
+        serverUp = !!process.env.ACTUAL_PORT;
+        actions.push({ key: "restart-server", ok: serverUp });
+      } catch (e) {
+        actions.push({ key: "restart-server", ok: false, error: e.message });
+      }
+    }
+
+    const report = await runStartupDiagnostics({}).catch(() => null);
+    return { report, actions, serverUp, cause: report ? report.cause : null };
   });
 
   ipcMain.handle("app:set-icon", async () => {
@@ -357,6 +422,26 @@ function setupIpc(window) {
 
   ipcMain.handle("update:install-now", () => {
     updater.quitAndInstall();
+    return { success: true };
+  });
+
+  // ─── Manual Update IPC ───────────────────────────────────────────────────
+  ipcMain.handle("update:get-manual-info", () => {
+    return updater.getManualDownloadInfo();
+  });
+
+  ipcMain.handle("update:start-manual-download", () => {
+    updater.startManualDownload();
+    return { success: true };
+  });
+
+  ipcMain.handle("update:cancel-manual-download", () => {
+    updater.cancelManualDownload();
+    return { success: true };
+  });
+
+  ipcMain.handle("update:open-installer", () => {
+    updater.openInstaller();
     return { success: true };
   });
 }

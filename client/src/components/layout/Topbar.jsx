@@ -113,7 +113,7 @@ export default function Topbar() {
   }
 
   const unreadItems = useMemo(() => items.filter((n) => !n.is_read).slice(0, 10), [items]);
-  const today = useMemo(() => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }).format(new Date()), []);
+  const today = useMemo(() => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { timeZone: "Africa/Cairo", weekday: "long", day: "numeric", month: "long" }).format(new Date()), []);
   const currentLabel = routeLabelMatchers.find((entry) => location.pathname.startsWith(entry.match))?.label || "العمل اليومي";
   const breadcrumbs = useBreadcrumbs(location.pathname, dynamicBreadcrumb);
 

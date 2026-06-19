@@ -359,6 +359,7 @@
           statusTxt.style.opacity = 1;
         }, 200);
       }
+      window.updateStatus = changeStatusText;
 
       function switchBlueprintGroup(oldIdx, newIdx) {
         const oldGroup = document.getElementById(steps[oldIdx].groupId);

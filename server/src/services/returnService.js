@@ -6,6 +6,7 @@ const { getSnapshotCosts } = require("./waccService");
 const { captureSalesReturnLineOverrides } = require("./overrideTrackingService");
 const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
 const { isFeatureEnabled } = require("../utils/features");
+const { nowSql, toSql } = require("../utils/datetime");
 
 function generateAmendmentDocNo(originalDocNo, db, table) {
   const base = originalDocNo.replace(/-A\d+$/, "");
@@ -145,7 +146,7 @@ function createReturn(invoiceId, payload) {
         creditAmt,
         payload.notes || null,
         payload.user_id || null,
-        `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+        `${createdDate} ${toSql(new Date()).slice(11)}`,
         taxFields.tax_enabled,
         taxFields.tax_rate,
         taxFields.tax_amount,
@@ -336,7 +337,7 @@ function cancelSalesReturn(returnId, reason, userId) {
       db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(cancelCreditAmt, sr.customer_id);
     }
 
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const now = nowSql();
     db.prepare("UPDATE sales_returns SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
       .run(now, userId || null, reason.trim(), returnId);
 
@@ -569,7 +570,7 @@ function editSalesReturn(returnId, payload, userId) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
     ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, returnId);
 
     // 7. Recalculate linked invoice status

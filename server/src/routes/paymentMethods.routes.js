@@ -11,7 +11,7 @@ router.get("/", requirePagePermission("payment_methods", "view"), (_req, res) =>
     let rows = db.prepare("SELECT * FROM payment_methods ORDER BY id ASC").all();
     const monthStart = new Date();
     monthStart.setDate(1);
-    const from = monthStart.toISOString().slice(0, 10);
+    const from = require("../utils/datetime").today(monthStart);
     const stats = {};
 
     try {

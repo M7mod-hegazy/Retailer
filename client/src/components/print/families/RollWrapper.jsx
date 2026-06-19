@@ -1,8 +1,14 @@
 import React from "react";
-import { g } from "../blocks/blockUtils";
+import { g, rollPrintWidthMm } from "../blocks/blockUtils";
 
 export default function RollWrapper({ settings: s, children }) {
-  const w = (s.receipt_width || g(s, "receipt_width")) === "58mm" ? "58mm" : "80mm";
+  // Width the content is actually printed at — the calibrated printable band
+  // (print_area_width) when set, otherwise the full paper width.
+  const widthMm = rollPrintWidthMm(s);
+  // Horizontal nudge (mm, ±) to slide content into the head's printable window.
+  // transform is physical (works the same in RTL) and does NOT change layout
+  // height, so the silent-print height measurement stays accurate.
+  const shiftX = Number(g(s, "print_shift_x")) || 0;
   return (
     <div dir="rtl" style={{
       // Always fall back to a Windows-installed Arabic font so the packaged
@@ -10,15 +16,16 @@ export default function RollWrapper({ settings: s, children }) {
       // renders names/codes crisply instead of a thin serif fallback.
       fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
       fontSize: `${g(s, "body_font_size")}px`,
-      fontWeight: 600,
-      // Full paper width, edge to edge — `box-sizing: border-box` is the actual
-      // fix for the "cut from both sides" bug: without it, width(80mm)+padding(8mm)
-      // rendered an 88mm box that overflowed the paper. With it the box is exactly
-      // 80mm and the padding keeps content inside the head's printable area.
-      width: w, margin: "0 auto",
+      fontWeight: 700,
+      // `box-sizing: border-box` keeps the box exactly `widthMm` (padding inside)
+      // instead of width+padding overflowing the paper. `widthMm` defaults to the
+      // full paper width but can be narrowed to the print head's printable band so
+      // a real thermal printer no longer clips the content at the paper edge.
+      width: `${widthMm}mm`, margin: "0 auto",
       boxSizing: "border-box",
       padding: `${g(s, "margin_top")}mm ${g(s, "margin_side")}mm`,
       color: g(s, "accent_color"), background: "#fff",
+      ...(shiftX ? { transform: `translateX(${shiftX}mm)` } : {}),
     }}>{children}</div>
   );
 }

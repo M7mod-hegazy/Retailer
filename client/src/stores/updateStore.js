@@ -11,19 +11,54 @@ const getStoredDismissed = () => {
 }
 
 export const useUpdateStore = create((set) => ({
+  // Auto update state
   available: false,
   downloaded: false,
   info: null,
   progress: null,
   error: null,
   checking: false,
+  phase: 'idle',
+  lastCheckedAt: null,
+
+  // Manual download state
+  manualAvailable: false,
+  manualDownloading: false,
+  manualProgress: null,
+  manualFilePath: null,
+  manualError: null,
+  downloadUrl: null,
+  fileSize: null,
+
   bannerDismissed: getStoredDismissed(),
-  setChecking: (v) => set({ checking: v }),
-  setAvailable: (info) => set({ available: true, info, checking: false }),
-  setNotAvailable: () => set({ available: false, checking: false }),
-  setProgress: (p) => set({ progress: p }),
-  setDownloaded: (info) => set({ downloaded: true, info, checking: false }),
-  setError: (e) => set({ error: e, checking: false }),
+
+  // Auto update actions
+  setChecking: (v) => set({ checking: v, phase: v ? 'checking' : 'idle', ...(v ? { error: null, lastCheckedAt: Date.now() } : {}) }),
+  // A newly detected update must clear any stale manual-download state from a
+  // previous update (file path / error) so the manual section starts fresh.
+  setAvailable: (info) => set({
+    available: true, info, checking: false, phase: 'available', lastCheckedAt: Date.now(),
+    manualAvailable: true, manualDownloading: false, manualProgress: null,
+    manualFilePath: null, manualError: null, downloadUrl: null, fileSize: null,
+  }),
+  setNotAvailable: () => set({ available: false, checking: false, phase: 'up-to-date', manualAvailable: false, lastCheckedAt: Date.now() }),
+  setProgress: (p) => set((state) =>
+    state.phase === 'ready-to-install' || state.phase === 'installing'
+      ? { progress: p }
+      : { progress: p, phase: 'downloading' }
+  ),
+  setDownloaded: (info) => set({ downloaded: true, info, checking: false, phase: 'ready-to-install', progress: { percent: 100 } }),
+  setError: (e) => set({ error: e, checking: false, phase: 'idle', lastCheckedAt: Date.now() }),
+  setPhase: (phase) => set({ phase }),
+
+  // Manual download actions
+  setManualInfo: (d) => set({ manualAvailable: true, downloadUrl: d.downloadUrl, fileSize: d.fileSize }),
+  setManualProgress: (p) => set({ manualProgress: p, manualDownloading: true, manualError: null }),
+  setManualComplete: (filePath) => set({ manualFilePath: filePath, manualDownloading: false }),
+  setManualError: (e) => set({ manualError: e, manualDownloading: false }),
+  resetManual: () => set({ manualAvailable: false, manualDownloading: false, manualProgress: null, manualFilePath: null, manualError: null, downloadUrl: null, fileSize: null }),
+
+  // Banner
   dismissBanner: () => {
     try { localStorage.setItem(BANNER_DISMISSED_KEY, 'true') } catch {}
     set({ bannerDismissed: true })
@@ -32,5 +67,10 @@ export const useUpdateStore = create((set) => ({
     try { localStorage.setItem(BANNER_DISMISSED_KEY, 'false') } catch {}
     set({ bannerDismissed: false })
   },
-  reset: () => set({ available: false, downloaded: false, info: null, progress: null, error: null, checking: false }),
+  reset: () => set({
+    available: false, downloaded: false, info: null, progress: null,
+    error: null, checking: false, phase: 'idle', lastCheckedAt: null,
+    manualAvailable: false, manualDownloading: false, manualProgress: null,
+    manualFilePath: null, manualError: null, downloadUrl: null, fileSize: null,
+  }),
 }))

@@ -6,7 +6,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 /* ── Utility date helpers ─────────────────────────── */
-const fmt = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+// YYYY-MM-DD in Egypt local time (Cairo), so a picked day never shifts via UTC.
+const fmt = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 
 const today       = () => fmt(new Date());
 const yesterday   = () => { const d = new Date(); d.setDate(d.getDate() - 1); return fmt(d); };

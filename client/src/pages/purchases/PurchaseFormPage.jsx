@@ -52,7 +52,7 @@ function formatArabicDateTime(date) {
 }
 
 function toDateInput(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
 function UnitCell({ unitName }) {
@@ -233,7 +233,7 @@ export default function PurchaseFormPage() {
   const [sourcePO, setSourcePO] = useState(null); // { id, doc_no } when this invoice is converted from a purchase order
   const poPrefillApplied = useRef(false);
   const [defaultWarehouseId, setDefaultWarehouseId] = useState("");
-  const [docDate, setDocDate] = useState(new Date().toISOString().split("T")[0]);
+  const [docDate, setDocDate] = useState(toDateInput());
   const [refNo, setRefNo] = useState(() => {
     const now = new Date();
     const yy = String(now.getFullYear()).slice(-2);

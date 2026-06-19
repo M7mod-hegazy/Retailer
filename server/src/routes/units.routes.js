@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -46,14 +47,22 @@ router.put("/:id", requirePagePermission("units", "edit"), (req, res) => {
   res.json({ success: true, data: getDb().prepare("SELECT * FROM units WHERE id = ?").get(req.params.id) });
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function unitRelated(db, id) {
+  return [
+    { label: "أصناف", count: countSafe(db, "SELECT COUNT(*) AS c FROM items WHERE unit_id = ?", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("units", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(unitRelated(getDb(), req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("units", "delete"), (req, res) => {
   try {
     const db = getDb();
-    
-    // Check for related items
-    const itemCount = db.prepare("SELECT COUNT(*) AS c FROM items WHERE unit_id = ?").get(req.params.id);
-    
-    if (Number(itemCount?.c || 0) > 0) {
+
+    if (hasAnyRelated(unitRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE units SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "units", { id: req.params.id }, `⚙️ تم أرشفة وحدة`);

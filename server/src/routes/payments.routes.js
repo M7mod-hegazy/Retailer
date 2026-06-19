@@ -5,6 +5,7 @@ const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessi
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
+const { toSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -128,7 +129,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
           payload.bank_id || null,
           requestedAllocated,
           amount - requestedAllocated,
-          `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+          `${createdDate} ${toSql(new Date()).slice(11)}`,
           req.user?.id || null,
         );
 

@@ -8,6 +8,7 @@ const { captureBranchTransferLineOverrides } = require("../services/overrideTrac
 const { applyLinePriceUpdates, revertLinePriceUpdates } = require("../services/priceLockService");
 const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
+const { nowSql, dayStamp } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -21,7 +22,7 @@ function recordBranchReceiveCost(db, transferId, line, options = {}) {
   recordMovement(db, {
     item_id: line.item_id,
     warehouse_id: line.warehouse_id || null,
-    occurred_at: options.occurred_at || new Date().toISOString().replace("T", " ").slice(0, 19),
+    occurred_at: options.occurred_at || nowSql(),
     movement_type: options.movement_type || "branch_receive",
     quantity,
     unit_cost: line.unit_cost || 0,
@@ -37,7 +38,7 @@ function buildRefNo(type, id, dateStr) {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return dayStamp();
 }
 
 // GET /api/branch-transfers/next-ref?type=receive|send
@@ -395,7 +396,7 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
 
       // Update header metadata (keep reference_no, type, created_at)
       db.prepare(
-        "UPDATE branch_transfers SET partner_branch = ?, notes = ?, warehouse_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        "UPDATE branch_transfers SET partner_branch = ?, notes = ?, warehouse_id = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
       ).run(
         partner_branch || null,
         notes || null,
@@ -552,7 +553,7 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
         }
       }
 
-      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+      const now = nowSql();
       db.prepare(
         "UPDATE branch_transfers SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?"
       ).run(now, cancelUserId, reason.trim() || null, id);

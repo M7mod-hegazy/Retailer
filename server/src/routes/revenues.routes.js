@@ -4,6 +4,8 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, buildImpact } = require("../utils/relatedRecords");
+const { toSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -37,10 +39,28 @@ router.put("/categories/:id", requirePagePermission("revenues", "edit"), (req, r
   res.json({ success: true, data: getDb().prepare("SELECT * FROM revenue_categories WHERE id = ?").get(req.params.id) });
 });
 
+// Revenue categories have no soft-delete, so a category that is in use is BLOCKED, not archived.
+router.get("/categories/:id/delete-impact", requirePagePermission("revenues", "delete"), (req, res) => {
+  const c = countSafe(getDb(), "SELECT COUNT(*) AS c FROM revenues WHERE category_id = ?", req.params.id);
+  const inUse = c === null || Number(c) > 0;
+  res.json({ success: true, data: inUse
+    ? buildImpact([], { blocked: "لا يمكن حذف الفئة لأنها مرتبطة بإيرادات مسجلة" })
+    : buildImpact([]) });
+});
+
 router.delete("/categories/:id", requirePagePermission("revenues", "delete"), (req, res) => {
-  getDb().prepare("DELETE FROM revenue_categories WHERE id = ?").run(req.params.id);
-  req.audit("delete", "revenueCategories", { id: req.params.id }, `💰 تم حذف فئة إيراد`);
-  res.json({ success: true });
+  try {
+    const c = countSafe(getDb(), "SELECT COUNT(*) AS c FROM revenues WHERE category_id = ?", req.params.id);
+    if (c === null || Number(c) > 0) {
+      return res.status(409).json({ success: false, message: "لا يمكن حذف الفئة لأنها مرتبطة بإيرادات مسجلة" });
+    }
+    getDb().prepare("DELETE FROM revenue_categories WHERE id = ?").run(req.params.id);
+    req.audit("delete", "revenueCategories", { id: req.params.id }, `💰 تم حذف فئة إيراد`);
+    res.json({ success: true });
+  } catch (err) {
+    if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف الفئة لأنها مرتبطة بإيرادات" });
+    res.status(500).json({ success: false, message: "تعذر الحذف" });
+  }
 });
 
 router.get("/", requirePagePermission("revenues", "view"), (req, res) => {
@@ -81,7 +101,7 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
           payload.payment_method || "cash",
           payload.treasury_id || null,
           payload.bank_id || null,
-          `${createdDate} ${new Date().toTimeString().slice(0, 8)}`,
+          `${createdDate} ${toSql(new Date()).slice(11)}`,
           req.user?.id || null,
         );
       const amount = Number(payload.amount || 0);
@@ -105,7 +125,7 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
   try {
     const db = getDb();
     const payload = req.body || {};
-    db.prepare(`UPDATE revenues SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now') WHERE id = ?`)
+    db.prepare(`UPDATE revenues SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now', 'localtime') WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
     req.audit("update", "revenues", { id: req.params.id }, `💰 تم تعديل إيراد #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`);
     res.json({ success: true, data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(req.params.id) });

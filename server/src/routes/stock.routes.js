@@ -234,7 +234,7 @@ router.delete("/movements/:id", requirePagePermission("stock_transfer", "delete"
     db.transaction(() => {
       db.prepare("UPDATE stock_levels SET quantity = quantity - ? WHERE item_id = ? AND warehouse_id = ?")
         .run(movement.quantity, movement.item_id, movement.warehouse_id);
-      db.prepare("UPDATE stock_movements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+      db.prepare("UPDATE stock_movements SET deleted_at = datetime('now', 'localtime') WHERE id = ?")
         .run(id);
     })();
 
@@ -476,7 +476,7 @@ router.delete("/physical-count/sessions/:id", requirePagePermission("stock_trans
       throw error;
     }
     db.prepare(
-      "UPDATE physical_count_sessions SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      "UPDATE physical_count_sessions SET status = 'cancelled', updated_at = datetime('now', 'localtime') WHERE id = ?",
     ).run(sessionId);
     res.json({ success: true });
   } catch (error) {
@@ -512,18 +512,18 @@ router.post("/physical-count/sessions/:id/lines", requirePagePermission("stock_t
       db.prepare(
         `INSERT INTO physical_count_lines
            (session_id, item_id, warehouse_id, system_quantity, counted_quantity, variance, touched, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+         VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now', 'localtime'))`,
       ).run(session.id, itemId, warehouseId, systemQty, countedQty, countedQty - systemQty);
     } else {
       db.prepare(
         `UPDATE physical_count_lines
-         SET counted_quantity = ?, variance = ?, touched = 1, updated_at = CURRENT_TIMESTAMP
+         SET counted_quantity = ?, variance = ?, touched = 1, updated_at = datetime('now', 'localtime')
          WHERE session_id = ? AND item_id = ? AND COALESCE(warehouse_id, 0) = COALESCE(?, 0)`,
       ).run(countedQty, countedQty - line.system_quantity, session.id, itemId, warehouseId);
     }
 
     // Update session updated_at so "last saved" is fresh
-    db.prepare("UPDATE physical_count_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(session.id);
+    db.prepare("UPDATE physical_count_sessions SET updated_at = datetime('now', 'localtime') WHERE id = ?").run(session.id);
 
     // Return lightweight response (just line stats) to avoid re-sending all lines
     const stats = db
@@ -573,7 +573,7 @@ router.post("/physical-count/sessions/:id/confirm", requirePagePermission("stock
       }
 
       db.prepare(
-        "UPDATE physical_count_sessions SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE physical_count_sessions SET status = 'completed', updated_at = datetime('now', 'localtime') WHERE id = ?",
       ).run(sessionId);
 
       return getSessionWithLines(db, sessionId);

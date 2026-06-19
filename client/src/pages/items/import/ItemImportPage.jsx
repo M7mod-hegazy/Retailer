@@ -12,6 +12,7 @@ export default function ItemImportPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get("tab") === "history" ? "history" : "upload");
+  const [historyKey, setHistoryKey] = useState(0);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
   const [items, setItems] = useState([]);
@@ -31,7 +32,13 @@ export default function ItemImportPage() {
 
   useEffect(() => { loadRefData(); }, [loadRefData]);
   useEffect(() => {
-    setTab(searchParams.get("tab") === "history" ? "history" : "upload");
+    const nextTab = searchParams.get("tab") === "history" ? "history" : "upload";
+    setTab((prev) => {
+      if (nextTab === "history" && prev !== "history") {
+        setHistoryKey((k) => k + 1);
+      }
+      return nextTab;
+    });
   }, [searchParams]);
 
   const wizard = useImportWizard({
@@ -45,6 +52,7 @@ export default function ItemImportPage() {
   const switchTab = (nextTab) => {
     setTab(nextTab);
     setSearchParams(nextTab === "history" ? { tab: "history" } : {});
+    if (nextTab === "history") setHistoryKey((k) => k + 1);
   };
 
   return (
@@ -86,7 +94,7 @@ export default function ItemImportPage() {
         {tab === "upload" ? (
           <WizardShell wizard={wizard} />
         ) : (
-          <ImportHistoryTab />
+          <ImportHistoryTab key={historyKey} />
         )}
       </div>
     </div>

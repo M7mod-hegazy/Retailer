@@ -178,7 +178,7 @@ function resolveIssue(issueId, action, userId, db) {
 
   db.prepare(`
     UPDATE integrity_check_issues
-    SET resolved_at = datetime('now'), resolved_by = ?, resolution = ?
+    SET resolved_at = datetime('now', 'localtime'), resolved_by = ?, resolution = ?
     WHERE id = ?
   `).run(userId ?? null, action, issueId);
 

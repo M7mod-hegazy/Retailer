@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   TrendingDown, Plus, Pencil, Trash2, Search, Download, Calendar,
   X, ChevronDown, RefreshCw, AlertTriangle, Filter, Database, Check,
@@ -15,7 +15,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
 function Highlight({ text, query }) {
   if (!query) return <span>{text}</span>;
@@ -524,7 +524,7 @@ export default function ExpensesListPage() {
             </div>
 
             {/* Bottom Row: Controls */}
-            <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2 w-full">
               
               {/* Add Button */}
               <PermissionGate page="expenses" action="add">

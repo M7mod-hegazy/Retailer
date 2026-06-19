@@ -42,13 +42,13 @@ function applyMasterPriceUpdate(itemId, field, newValue, source, operationId, ch
     return { applied: false, oldValue, newValue: rounded, warning: null };
   }
 
-  db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`)
+  db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`)
     .run(rounded, itemId);
 
   db.prepare(`
     INSERT INTO price_history
       (item_id, field, old_value, new_value, adjustment_type, adjustment_value, source, operation_id, changed_by, changed_at)
-    VALUES (?, ?, ?, ?, 'set', ?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, 'set', ?, ?, ?, ?, datetime('now', 'localtime'))
   `).run(itemId, field, oldValue, rounded, rounded, source, operationId, changedBy ?? null);
 
   return { applied: true, oldValue, newValue: rounded, warning: null };
@@ -95,13 +95,13 @@ function revertMasterPrice(itemId, field, sourceOperationId, source, changedBy, 
 
   const restoreTo = roundMoney(ourEntry.old_value);
 
-  db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now') WHERE id = ?`)
+  db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`)
     .run(restoreTo, itemId);
 
   db.prepare(`
     INSERT INTO price_history
       (item_id, field, old_value, new_value, adjustment_type, adjustment_value, source, operation_id, changed_by, changed_at)
-    VALUES (?, ?, ?, ?, 'set', ?, 'revert', ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, 'set', ?, 'revert', ?, ?, datetime('now', 'localtime'))
   `).run(itemId, field, current, restoreTo, restoreTo, `REVERT-${sourceOperationId}`, changedBy ?? null);
 
   return { reverted: true, reason: null };

@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals } from "./blockUtils";
+import { g, computeTotals, HEAVY_NUM } from "./blockUtils";
 
 export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
   const { subtotal, grandTotal } = computeTotals(invoice, s);
@@ -19,7 +19,7 @@ export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
   if (Math.abs(subtotal - grandTotal) < 0.01) return null;
   return (
     <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, borderTop: `1px solid ${accent}`, paddingTop: "3px", marginTop: "4px" }}>
-      <span>المستحق:</span><span>{currency} {grandTotal.toFixed(2)}</span>
+      <span style={HEAVY_NUM}>المستحق:</span><span style={HEAVY_NUM}>{currency} {grandTotal.toFixed(2)}</span>
     </div>
   );
 }

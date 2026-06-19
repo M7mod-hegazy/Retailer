@@ -56,7 +56,7 @@ function validateAndSellSerials(db, line, invoiceId, invoiceLineId) {
         throw err;
       }
       warnings.push(`السيريال ${serial} غير موجود — تم تسجيله كبيع دون مخزون`);
-      db.prepare("INSERT OR IGNORE INTO item_serials (item_id, serial, status, invoice_id, invoice_line_id, sold_at) VALUES (?, ?, 'sold', ?, ?, datetime('now'))").run(line.item_id, serial, invoiceId, invoiceLineId);
+      db.prepare("INSERT OR IGNORE INTO item_serials (item_id, serial, status, invoice_id, invoice_line_id, sold_at) VALUES (?, ?, 'sold', ?, ?, datetime('now', 'localtime'))").run(line.item_id, serial, invoiceId, invoiceLineId);
       continue;
     }
     if (row.status !== "in_stock") {
@@ -65,7 +65,7 @@ function validateAndSellSerials(db, line, invoiceId, invoiceLineId) {
       throw err;
     }
     const warranty = db.prepare("SELECT default_warranty_months FROM items WHERE id = ?").get(line.item_id)?.default_warranty_months || null;
-    db.prepare("UPDATE item_serials SET status='sold', invoice_id=?, invoice_line_id=?, sold_at=datetime('now'), warranty_months=? WHERE id=?").run(invoiceId, invoiceLineId, warranty, row.id);
+    db.prepare("UPDATE item_serials SET status='sold', invoice_id=?, invoice_line_id=?, sold_at=datetime('now', 'localtime'), warranty_months=? WHERE id=?").run(invoiceId, invoiceLineId, warranty, row.id);
   }
   return { warnings };
 }
@@ -86,7 +86,7 @@ function validateAndReturnSerials(db, line, invoiceId) {
       err.status = 400;
       throw err;
     }
-    db.prepare("UPDATE item_serials SET status='returned', returned_at=datetime('now') WHERE id=?").run(row.id);
+    db.prepare("UPDATE item_serials SET status='returned', returned_at=datetime('now', 'localtime') WHERE id=?").run(row.id);
   }
 }
 

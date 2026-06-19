@@ -51,7 +51,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
     api.get("/api/payment-methods").then(r => { const all = r.data.data || []; setPaymentMethods(all.filter(m => m.id !== 2)); }).catch(() => {});
   }, []);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   const stats = useMemo(() => {
     return schedules.reduce((acc, s) => {

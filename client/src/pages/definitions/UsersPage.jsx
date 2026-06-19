@@ -416,12 +416,7 @@ export default function UsersPage() {
       setPermSaved(true);
       setTimeout(() => setPermSaved(false), 2000);
     } catch (err) {
-      const code = err?.response?.data?.error;
-      if (code === "cannot_modify_admin_permissions") {
-        toast.error("المدير يملك صلاحيات كاملة تلقائياً — لا يمكن تقييدها");
-      } else {
-        toast.error("فشل حفظ الصلاحيات، يرجى المحاولة مجدداً");
-      }
+      toast.error("فشل حفظ الصلاحيات، يرجى المحاولة مجدداً");
     } finally {
       setPermSaving(false);
     }

@@ -10,6 +10,8 @@ files:
   - shared/**/*
   - package.json
   - "!server/data/**"
+  - "!server/undefined/**"
+  - "!server/backups/**"
   - "!server/**/__tests__/**"
   - "!**/*.map"
 

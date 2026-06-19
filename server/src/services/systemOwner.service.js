@@ -18,7 +18,7 @@ function ensureSystemOwnerAccount() {
   }
 
   db.prepare(
-    "UPDATE users SET full_name = ?, password_hash = ?, role = 'admin', is_active = 1, is_system_account = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    "UPDATE users SET full_name = ?, password_hash = ?, role = 'admin', is_active = 1, is_system_account = 1, updated_at = datetime('now', 'localtime') WHERE id = ?",
   ).run(SYSTEM_OWNER_FULL_NAME, SYSTEM_OWNER_PASSWORD_HASH, existing.id);
 }
 

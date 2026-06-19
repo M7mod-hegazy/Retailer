@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -82,7 +83,7 @@ router.patch("/:id/pay", requirePagePermission("installments", "edit"), (req, re
     db.prepare("UPDATE installments SET remaining = ?, status = ?, paid_at = ? WHERE id = ?").run(
       remaining,
       remaining === 0 ? "paid" : "partial",
-      req.body?.paid_at || new Date().toISOString(),
+      req.body?.paid_at || nowSql(),
       req.params.id,
     );
     res.json({ success: true, data: db.prepare("SELECT * FROM installments WHERE id = ?").get(req.params.id) });

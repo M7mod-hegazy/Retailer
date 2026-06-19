@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -53,19 +54,22 @@ router.put("/:id", requirePagePermission("employees", "edit"), (req, res, next) 
   }
 });
 
+// Linked records used by both the delete-impact preview and the delete decision.
+function employeeRelated(db, id) {
+  return [
+    { label: "تسويات/سلف", count: countSafe(db, "SELECT COUNT(*) AS c FROM employee_adjustments WHERE employee_id = ?", id) },
+  ];
+}
+
+router.get("/:id/delete-impact", requirePagePermission("employees", "delete"), (req, res) => {
+  res.json({ success: true, data: buildImpact(employeeRelated(getDb(), req.params.id)) });
+});
+
 router.delete("/:id", requirePagePermission("employees", "delete"), (req, res) => {
   try {
     const db = getDb();
-    
-    // Check for related records
-    const adjustmentCount = db.prepare("SELECT COUNT(*) AS c FROM employee_adjustments WHERE employee_id = ?").get(req.params.id);
-    const shiftCount = db.prepare("SELECT COUNT(*) AS c FROM shifts WHERE employee_id = ?").get(req.params.id);
-    
-    const hasRecords = 
-      Number(adjustmentCount?.c || 0) > 0 ||
-      Number(shiftCount?.c || 0) > 0;
-    
-    if (hasRecords) {
+
+    if (hasAnyRelated(employeeRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE employees SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "employees", { id: req.params.id }, `👤 تم أرشفة موظف`);

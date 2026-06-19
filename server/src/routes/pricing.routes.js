@@ -174,9 +174,10 @@ router.get("/analytics", requirePagePermission("bulk_price_update", "view"), (re
   try {
     const db = getDb();
 
-    const today   = new Date().toISOString().slice(0, 10);
-    const weekAgo = new Date(Date.now() - 7  * 86400000).toISOString().slice(0, 10);
-    const monAgo  = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const { today: cairoToday } = require("../utils/datetime");
+    const today   = cairoToday();
+    const weekAgo = cairoToday(new Date(Date.now() - 7  * 86400000));
+    const monAgo  = cairoToday(new Date(Date.now() - 30 * 86400000));
 
     const countInPeriod = (from) => db.prepare(
       "SELECT COUNT(*) as cnt FROM price_history WHERE date(changed_at) >= date(?)"

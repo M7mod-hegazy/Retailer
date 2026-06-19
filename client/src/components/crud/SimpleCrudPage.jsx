@@ -1,10 +1,11 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { usePerformanceStore } from "../../stores/performanceStore";
 import {
   Plus,
   Download,
+  Upload,
   Edit3,
   Trash2,
   CheckCircle2,
@@ -19,6 +20,7 @@ import SmartTooltip from "../ui/SmartTooltip";
 import PermissionGate from "../ui/PermissionGate";
 import { usePermission } from "../../hooks/usePermission";
 import PermissionDeniedModal from "../ui/PermissionDeniedModal";
+import DeleteImpactModal from "../ui/DeleteImpactModal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
 
@@ -71,9 +73,12 @@ export default function SimpleCrudPage({
   fields,
   buildPayload = (f) => f,
   searchKeys,
-  pageKey
+  pageKey,
+  onExport,
+  importPath,
 }) {
   const PAGE_SIZE = 100;
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState(null);
@@ -85,6 +90,7 @@ export default function SimpleCrudPage({
   const [form, setForm] = useState(() => createInitialState(fields));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [permDenied, setPermDenied] = useState(false);
+  const [deleteState, setDeleteState] = useState(null); // { id, itemName, impact, loading, confirming }
   const canAdd = usePermission(pageKey, 'add');
   const canEdit = usePermission(pageKey, 'edit');
   const reduceMotion = usePerformanceStore((s) => !s.settings.animations || s.settings.reduceMotion);
@@ -224,18 +230,42 @@ export default function SimpleCrudPage({
     setForm(createInitialState(fields, row));
   }
 
+  // Step 1: open the warning modal and fetch what this record is linked to.
   async function handleDelete(id) {
-    if (!window.confirm("تأكيد الحذف؟")) return;
+    const row = rowsRef.current.find((r) => r.id === id);
+    const nameKey = columnDefs?.[0]?.key;
+    const itemName = (nameKey && row?.[nameKey]) || row?.name || `#${id}`;
+    setDeleteState({ id, itemName, impact: null, loading: true, confirming: false });
     try {
-      const res = await api.delete(`${endpoint}/${id}`);
+      const res = await api.get(`${endpoint}/${id}/delete-impact`);
+      setDeleteState((s) => (s && s.id === id ? { ...s, impact: res.data?.data || { mode: "unknown" }, loading: false } : s));
+    } catch {
+      // No impact endpoint (or it failed) — fall back to a generic warning; delete still works.
+      setDeleteState((s) => (s && s.id === id ? { ...s, impact: { mode: "unknown" }, loading: false } : s));
+    }
+  }
+
+  // Step 2: user confirmed in the modal — perform the actual delete/archive.
+  async function performDelete() {
+    const ds = deleteState;
+    if (!ds) return;
+    setDeleteState((s) => (s ? { ...s, confirming: true } : s));
+    try {
+      const res = await api.delete(`${endpoint}/${ds.id}`);
       if (res.data?.archived) {
         toast.success(res.data?.message || "تم أرشفة السجل لأنه مرتبط ببيانات أخرى");
       } else {
         toast.success("تم الحذف بنجاح");
       }
+      setDeleteState(null);
       loadRows(false);
-      if (editingRow?.id === id) startCreate();
-    } catch { toast.error("فشل الحذف - السجل مرتبط ببيانات أخرى"); }
+      if (editingRow?.id === ds.id) startCreate();
+    } catch (err) {
+      setDeleteState(null);
+      // The axios interceptor already shows a toast for 5xx errors — avoid double-toasting.
+      if (err?.response?.status >= 500) return;
+      toast.error(err?.response?.data?.message || "فشل الحذف - السجل مرتبط ببيانات أخرى");
+    }
   }
 
   // Keep the refs the memoized table cells call pointed at the latest handlers.
@@ -267,6 +297,15 @@ export default function SimpleCrudPage({
   return (
     <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl">
       <PermissionDeniedModal open={permDenied} onClose={() => setPermDenied(false)} />
+      <DeleteImpactModal
+        open={!!deleteState}
+        itemName={deleteState?.itemName}
+        impact={deleteState?.impact}
+        loading={!!deleteState?.loading}
+        confirming={!!deleteState?.confirming}
+        onCancel={() => setDeleteState(null)}
+        onConfirm={performDelete}
+      />
       
       {/* Animated Architectural Background */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
@@ -342,29 +381,39 @@ export default function SimpleCrudPage({
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
+            className="flex items-center gap-2"
           >
-            <SmartTooltip content="تحميل البيانات بصيغة CSV">
+            {importPath && (
+              <button
+                onClick={() => navigate(importPath)}
+                className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black transition-all shadow-sm border"
+                style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+              >
+                <Upload className="h-4 w-4" /> استيراد من Excel
+              </button>
+            )}
+            <SmartTooltip content={onExport ? "تصدير إلى Excel" : "تحميل البيانات بصيغة CSV"}>
               {pageKey ? (
                 <PermissionGate page={pageKey} action="print">
                   <motion.button
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => exportToCSV(rows, columnDefs, title)}
+                    onClick={() => onExport ? onExport() : exportToCSV(rows, columnDefs, title)}
                     className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black transition-all shadow-sm border"
                     style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
                   >
-                    <Download className="h-4 w-4" /> تصدير السجلات
+                    <Download className="h-4 w-4" /> {onExport ? "تصدير Excel" : "تصدير السجلات"}
                   </motion.button>
                 </PermissionGate>
               ) : (
                 <motion.button
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => exportToCSV(rows, columnDefs, title)}
+                  onClick={() => onExport ? onExport() : exportToCSV(rows, columnDefs, title)}
                   className="flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-2sm font-black transition-all shadow-sm border"
                   style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
                 >
-                  <Download className="h-4 w-4" /> تصدير السجلات
+                  <Download className="h-4 w-4" /> {onExport ? "تصدير Excel" : "تصدير السجلات"}
                 </motion.button>
               )}
             </SmartTooltip>
