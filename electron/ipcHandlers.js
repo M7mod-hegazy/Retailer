@@ -384,10 +384,13 @@ function setupIpc(window) {
   const licenseGate = require("./licenseGate");
 
   ipcMain.handle("license:getStatus", () => {
+    // `packaged` lets the renderer fail CLOSED in the installed app while staying
+    // lenient in dev/web. It is reported by the main process (trusted), not the
+    // renderer, so it cannot be faked from the page.
     try {
-      return licenseGate.getStatus();
+      return { ...licenseGate.getStatus(), packaged: !!app.isPackaged };
     } catch (e) {
-      return { activated: false, reason: "gate_error", error: e.message };
+      return { activated: false, reason: "gate_error", packaged: !!app.isPackaged, error: e.message };
     }
   });
 

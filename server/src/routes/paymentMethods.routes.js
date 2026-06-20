@@ -5,9 +5,23 @@ const { getDb } = require("../config/database");
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
 
+let _cashSeeded = false;
+function ensureCashMethod() {
+  if (_cashSeeded) return;
+  _cashSeeded = true;
+  try {
+    const db = getDb();
+    const cash = db.prepare("SELECT id FROM payment_methods WHERE id = 1").get();
+    if (!cash) {
+      db.prepare("INSERT OR IGNORE INTO payment_methods (id, name, is_system, category, icon, type) VALUES (1, 'نقدي', 1, 'cash', '💵', 'cash')").run();
+    }
+  } catch (_) {}
+}
+
 router.get("/", requirePagePermission("payment_methods", "view"), (_req, res) => {
   try {
     const db = getDb();
+    ensureCashMethod();
     let rows = db.prepare("SELECT * FROM payment_methods ORDER BY id ASC").all();
     const monthStart = new Date();
     monthStart.setDate(1);

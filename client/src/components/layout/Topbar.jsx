@@ -19,7 +19,12 @@ const EXTRA_BREADCRUMB_PARENTS = [
   { match: /^\/pos$/, parents: [{ label: "فواتير المبيعات", path: "/sales" }], current: "نقطة البيع (POS)" },
   { match: /^\/invoices\//, parents: [{ label: "فواتير المبيعات", path: "/sales" }, { label: "نقطة البيع (POS)", path: "/pos" }] },
   { match: /^\/purchases\/new$/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة جديدة" },
-  { match: /^\/purchases\/(?!new$|orders|returns)/, parent: { label: "فواتير المشتريات", path: "/purchases" }, current: "فاتورة مشتريات" },
+  { match: /^\/purchases\/(?!new$|orders|returns)/, parent: { label: "فواتير المشتريات", path: "/purchases" } },
+  { match: /^\/purchases\/orders\/new$/, parents: [{ label: "طلبات التوريد", path: "/purchases/orders" }], current: "طلب توريد جديد" },
+  { match: /^\/purchases\/orders\/\d+\/edit$/, parents: [{ label: "طلبات التوريد", path: "/purchases/orders" }], current: "تعديل أمر التوريد" },
+  { match: /^\/purchases\/orders$/, current: "طلبات التوريد" },
+  { match: /^\/operations\/quotations\/new$/, parents: [{ label: "عرض سعر", path: "/operations/quotations" }], current: "عرض سعر جديد" },
+  { match: /^\/operations\/quotations$/, current: "عرض سعر" },
 ];
 
 function useBreadcrumbs(pathname, dynamicBreadcrumb) {

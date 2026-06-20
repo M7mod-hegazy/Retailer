@@ -3,11 +3,12 @@ import api from "../../services/api";
 import {
   Plus, Calendar, User, PackageCheck, Clock, CheckCircle2,
   MoreVertical, Eye, Warehouse, Search, X, BadgeCheck, XCircle, Package,
-  ChevronRight, Pencil
+  ChevronRight, Pencil, Printer
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
@@ -72,6 +73,8 @@ export default function PurchaseOrdersPage() {
   const [convertingId, setConvertingId] = useState(null);
 
   const [detailOrder, setDetailOrder] = useState(null);
+  const [printPreview, setPrintPreview] = useState(false);
+  const [printOrder, setPrintOrder] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const menuRef = useRef(null);
@@ -115,6 +118,8 @@ export default function PurchaseOrdersPage() {
         supplier_id: order.supplier_id,
         supplier_name: order.supplier_name,
         warehouse_id: order.warehouse_id || null,
+        discount: order.discount || 0,
+        increase: order.increase || 0,
         lines: (order.lines || [])
           .filter(l => Number(l.remaining_quantity) > 0)
           .map(l => ({
@@ -387,9 +392,13 @@ export default function PurchaseOrdersPage() {
         </div>
 
       {/* Detail Modal — full breakdown */}
-      <Modal open={!!detailOrder} onClose={() => setDetailOrder(null)} title={`طلب التوريد ${detailOrder?.doc_no || `PO-${String(detailOrder?.id || 0).padStart(5, "0")}`}`} maxWidth="max-w-4xl">
+      <Modal open={!!detailOrder} onClose={() => setDetailOrder(null)} title={`طلب التوريد ${detailOrder?.doc_no || ""}`} maxWidth="max-w-4xl">
         {detailOrder && (
           <div className="space-y-6 p-2">
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-black text-slate-900">{detailOrder.doc_no}</span>
+              <StatusBadge status={detailOrder.status} />
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50/60 p-5 rounded-2xl border border-slate-200/50">
               <div>
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">المورد</span>
@@ -401,11 +410,15 @@ export default function PurchaseOrdersPage() {
               </div>
               <div>
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">تاريخ الإصدار</span>
-                <span className="text-sm font-black font-mono text-slate-900">{new Date(detailOrder.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+                <span className="text-sm font-black font-mono text-slate-900">{new Date(detailOrder.created_at).toLocaleString("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
               </div>
               <div>
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">المخزن المقترح</span>
                 <span className="text-sm font-black text-slate-900">{warehouses.find(w => String(w.id) === String(detailOrder.warehouse_id))?.name || "—"}</span>
+              </div>
+              <div>
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">المحرر</span>
+                <span className="text-sm font-black text-slate-900">{detailOrder.created_by_name || "—"}</span>
               </div>
             </div>
 
@@ -414,43 +427,110 @@ export default function PurchaseOrdersPage() {
             )}
 
             <div className="rounded-2xl border border-slate-200/60 bg-white overflow-hidden">
-              <div className="grid grid-cols-[90px_1fr_70px_70px_70px_70px_110px] bg-slate-50 border-b border-slate-200">
-                {["الكود", "الصنف", "الوحدة", "المطلوب", "المُستلَم", "المتبقي", "الإجمالي"].map((h, i) => (
-                  <div key={i} className={`px-3 py-3 text-[11px] font-black uppercase text-slate-400 tracking-widest ${i === 6 ? "text-left" : "text-center"} ${i < 6 ? "border-l border-slate-200/50" : ""} ${i === 1 ? "!text-right" : ""}`}>{h}</div>
+              <div className="grid grid-cols-[80px_1fr_60px_60px_80px_80px_80px_80px_90px_100px] bg-slate-50 border-b border-slate-200">
+                {["الكود", "الصنف", "الكمية", "الوحدة", "التكلفة", "سعر البيع", "سعر الجملة", "الربح", "المخزن", "الإجمالي"].map((h, i) => (
+                  <div key={i} className={`px-2 py-3 text-[11px] font-black uppercase text-slate-400 tracking-widest ${i === 9 ? "text-left" : "text-center"} ${i < 9 ? "border-l border-slate-200/50" : ""} ${i === 1 ? "!text-right" : ""}`}>{h}</div>
                 ))}
               </div>
               <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-50">
-                {(detailOrder.lines || []).map(l => (
-                  <div key={l.id} className="grid grid-cols-[90px_1fr_70px_70px_70px_70px_110px] items-center px-1 py-2 hover:bg-slate-50/60">
-                    <div className="px-2 text-center font-mono text-2sm text-slate-500">{l.item_code || "—"}</div>
-                    <div className="px-2 text-sm font-bold text-slate-800 truncate">{l.item_name}</div>
-                    <div className="px-2 text-center text-2sm font-bold text-slate-600">{l.unit_name || "أساسية"}</div>
-                    <div className="px-2 text-center font-black text-sm">{l.quantity}</div>
-                    <div className="px-2 text-center font-black text-sm text-emerald-600">{l.received_quantity || 0}</div>
-                    <div className="px-2 text-center font-black text-sm text-amber-500">{l.remaining_quantity}</div>
-                    <div className="px-2 text-left number-fmt-primary text-sm text-slate-900">{formatMoney(l.quantity * l.unit_cost)}</div>
-                  </div>
-                ))}
+                {(detailOrder.lines || []).map(l => {
+                  const profit = Number(l.selling_price || 0) - Number(l.unit_cost || 0);
+                  const pct = Number(l.unit_cost) > 0 ? (profit / Number(l.unit_cost)) * 100 : 0;
+                  return (
+                    <div key={l.id} className="grid grid-cols-[80px_1fr_60px_60px_80px_80px_80px_80px_90px_100px] items-center px-1 py-2 hover:bg-slate-50/60">
+                      <div className="px-2 text-center font-mono text-2sm text-slate-500">{l.item_code || "—"}</div>
+                      <div className="px-2 text-sm font-bold text-slate-800 break-words leading-tight">{l.item_name}</div>
+                      <div className="px-2 text-center font-black text-sm">{l.quantity}</div>
+                      <div className="px-2 text-center text-2sm font-bold text-slate-600">{l.unit_name || "أساسية"}</div>
+                      <div className="px-2 text-center number-fmt-primary text-sm text-slate-500">{formatMoney(l.unit_cost)}</div>
+                      <div className="px-2 text-center number-fmt-primary text-sm text-emerald-700">{formatMoney(l.selling_price || 0)}</div>
+                      <div className="px-2 text-center number-fmt-primary text-sm text-slate-600">{formatMoney(l.wholesale_price || 0)}</div>
+                      <div className="px-2 text-center">
+                        <span className={`number-fmt-primary text-sm ${profit > 0 ? "text-emerald-600" : profit < 0 ? "text-rose-600" : "text-slate-400"}`}>
+                          {formatMoney(profit)}{Number(l.selling_price) > 0 && Number(l.unit_cost) > 0 ? ` (${pct.toFixed(1)}%)` : ""}
+                        </span>
+                      </div>
+                      <div className="px-2 text-center text-2sm font-bold text-slate-600 truncate">{l.warehouse_name || "—"}</div>
+                      <div className="px-2 text-left number-fmt-primary text-sm text-slate-900">{formatMoney(l.quantity * l.unit_cost)}</div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-t border-slate-200">
-                <span className="text-2sm font-bold text-slate-500">عدد الأصناف: <span className="font-black text-slate-800">{(detailOrder.lines || []).length}</span></span>
-                <span className="text-sm font-bold text-slate-500">القيمة الإجمالية: <span className="number-fmt-primary text-slate-900">{formatMoney((detailOrder.lines || []).reduce((a, l) => a + l.quantity * l.unit_cost, 0))}</span> ج.م</span>
+              <div className="flex flex-col gap-3 px-5 py-3 bg-slate-50 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-2sm font-bold text-slate-500">عدد الأصناف: <span className="font-black text-slate-800">{(detailOrder.lines || []).length}</span></span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2sm font-bold text-slate-400">المجموع الفرعي:</span>
+                    <span className="number-fmt-primary text-sm font-black text-slate-700">{formatMoney((detailOrder.lines || []).reduce((a, l) => a + l.quantity * l.unit_cost, 0))}</span>
+                  </div>
+                </div>
+                {(Number(detailOrder.discount) > 0 || Number(detailOrder.increase) > 0) && (
+                  <div className="flex items-center justify-end gap-4">
+                    {Number(detailOrder.discount) > 0 && (
+                      <span className="text-2sm font-black text-rose-500 number-fmt">- {formatMoney(detailOrder.discount)} خصم</span>
+                    )}
+                    {Number(detailOrder.increase) > 0 && (
+                      <span className="text-2sm font-black text-blue-500 number-fmt">+ {formatMoney(detailOrder.increase)} رسوم</span>
+                    )}
+                    <span className="text-2sm font-bold text-slate-500">الإجمالي النهائي:</span>
+                    <span className="number-fmt-primary text-[18px] font-black text-emerald-700">
+                      {formatMoney(Math.max(0, (detailOrder.lines || []).reduce((a, l) => a + l.quantity * l.unit_cost, 0) - Number(detailOrder.discount || 0) + Number(detailOrder.increase || 0)))}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">ج.م</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {(detailOrder.status === "pending" || detailOrder.status === "approved") && (
-              <PermissionGate page="purchase_orders" action="edit">
-                <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              <PermissionGate page="purchase_orders" action="print">
+                <button onClick={() => { setPrintOrder(detailOrder); setPrintPreview(true); }}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-sm">
+                  <Printer className="h-4 w-4" /> طباعة
+                </button>
+              </PermissionGate>
+              {(detailOrder.status === "pending" || detailOrder.status === "approved" || detailOrder.status === "partially_received") && (
+                <PermissionGate page="purchase_orders" action="edit">
+                  <button onClick={() => { const oid = detailOrder.id; setDetailOrder(null); handleConvert(oid); }}
+                    className="flex items-center gap-2 rounded-xl bg-emerald-50 text-emerald-700 px-5 py-3 text-sm font-black hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                    تحويل لفاتورة
+                  </button>
+                </PermissionGate>
+              )}
+              {(detailOrder.status === "pending" || detailOrder.status === "approved") && (
+                <PermissionGate page="purchase_orders" action="edit">
                   <button onClick={() => { const oid = detailOrder.id; setDetailOrder(null); navigate(`/purchases/orders/${oid}/edit`); }}
-                    className="flex items-center gap-2 rounded-xl bg-amber-50 text-amber-700 px-6 py-3 text-sm font-black hover:bg-amber-500 hover:text-white transition-all">
+                    className="flex items-center gap-2 rounded-xl bg-amber-50 text-amber-700 px-5 py-3 text-sm font-black hover:bg-amber-500 hover:text-white transition-all shadow-sm">
                     <Pencil className="h-4 w-4" /> تعديل الأمر
                   </button>
-                </div>
-              </PermissionGate>
-            )}
+                </PermissionGate>
+              )}
+            </div>
           </div>
         )}
       </Modal>
+
+      {/* Print Preview */}
+      <PrintPreviewModal
+        open={printPreview}
+        onClose={() => { setPrintPreview(false); setPrintOrder(null); }}
+        docType="purchase_order"
+        invoice={{
+          invoice_no: printOrder?.doc_no || "",
+          customer_name: printOrder?.supplier_name || "",
+          created_at: printOrder?.created_at || new Date().toISOString(),
+          lines: (printOrder?.lines || []).map(l => ({
+            item_name: l.item_name,
+            code: l.item_code || "",
+            quantity: l.quantity,
+            unit_price: l.unit_cost,
+            discount_amount: 0,
+          })),
+          discount: printOrder?.discount || 0,
+          increase: printOrder?.increase || 0,
+        }}
+        operationLabel="أمر توريد"
+      />
 
       {/* Confirmations */}
       <ConfirmDialog open={!!confirmCancel} title="إلغاء طلب التوريد" message="سيتم إيقاف طلب التوريد هذا نهائياً. هل تود الاستمرار؟" onConfirm={handleCancel} onCancel={() => setConfirmCancel(null)} />

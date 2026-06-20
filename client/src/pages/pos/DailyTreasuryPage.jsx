@@ -1249,14 +1249,14 @@ export default function DailyTreasuryPage() {
                             <div className="rounded-3xl bg-primary text-white p-5 shadow-xl shadow-slate-900/20">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                                    <Wallet className="h-5 w-5 text-[var(--text-muted)]" />
+                                  <div className="h-10 w-10 rounded-xl bg-[var(--chip-on-primary)] flex items-center justify-center shrink-0">
+                                    <Wallet className="h-5 w-5 text-[var(--on-feature)]" />
                                   </div>
-                                  <div className="text-2sm font-bold text-[var(--text-muted)] uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
+                                  <div className="text-2sm font-bold text-[var(--on-feature-muted)] uppercase tracking-widest leading-tight">المتوقع<br />في الخزنة</div>
                                 </div>
                                 <div className="text-left">
-                                  <div className="number-fmt-primary text-[28px] tracking-tighter leading-none">{fmt(expected)}</div>
-                                  <div className="text-[11px] font-bold text-[var(--text-secondary)] mt-1">جنيه مصري</div>
+                                  <div className="number-fmt-primary text-[28px] tracking-tighter leading-none text-[var(--on-feature)]">{fmt(expected)}</div>
+                                  <div className="text-[11px] font-bold text-[var(--on-feature-muted)] mt-1">جنيه مصري</div>
                                 </div>
                               </div>
 
@@ -1267,8 +1267,8 @@ export default function DailyTreasuryPage() {
                                   className={"mt-4 w-full rounded-2xl p-3 border flex items-center justify-between " + (discrepancy >= 0 ? "bg-emerald-500/20 border-emerald-500/30" : "bg-rose-500/20 border-rose-500/30")}
                                 >
                                   <div>
-                                    <div className="text-[11px] font-bold text-[var(--text-muted)]">الرصيد الفعلي المُغلق</div>
-                                    <div className="number-fmt-primary text-[20px]">{fmt(sess.actual_cash)}</div>
+                                    <div className="text-[11px] font-bold text-[var(--on-feature-muted)]">الرصيد الفعلي المُغلق</div>
+                                    <div className="number-fmt-primary text-[20px] text-[var(--on-feature)]">{fmt(sess.actual_cash)}</div>
                                   </div>
                                   <div className={"text-sm font-black " + (discrepancy >= 0 ? "text-emerald-400" : "text-rose-400")}>
                                     الفرق: {discrepancy >= 0 ? "+" : ""}{fmt(discrepancy)} ج.م
@@ -1372,7 +1372,7 @@ export default function DailyTreasuryPage() {
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-[18px] leading-none shrink-0">{m.icon || "💳"}</span>
-                                            <span className="text-sm font-black text-[var(--text-primary)] truncate">{m.name}</span>
+                                             <span className="text-sm font-black text-[var(--text-primary)] whitespace-normal break-words leading-tight">{m.name}</span>
                                           </div>
                                           <div className="flex flex-col items-end shrink-0">
                                             <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">الصافي</span>
@@ -1822,8 +1822,8 @@ export default function DailyTreasuryPage() {
                           {slideOverDetails.lines.map((line, idx) => (
                             <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50 transition-colors">
                               <div className="col-span-5 flex flex-col min-w-0">
-                                <span className="text-[11px] font-black text-[var(--text-primary)] truncate">{line.item_name || line.name}</span>
-                                <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">{line.item_code || "#" + line.item_id}</span>
+                                <span className="text-[11px] font-black text-[var(--text-primary)] whitespace-normal break-words leading-tight">{line.item_name || line.name}</span>
+                                <span className="text-[9px] font-mono text-[var(--text-muted)] whitespace-normal break-words leading-tight">{line.item_code || "#" + line.item_id}</span>
                               </div>
                               <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{line.quantity}</div>
                               <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{fmt(line.unit_price)}</div>
@@ -1865,8 +1865,8 @@ export default function DailyTreasuryPage() {
                         {slideOverDetails.lines.map((line, idx) => (
                           <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50 transition-colors">
                             <div className="col-span-5 flex flex-col min-w-0">
-                              <span className="text-[11px] font-black text-[var(--text-primary)] truncate">{line.item_name || line.name}</span>
-                              <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">{line.code || line.item_code || "#" + line.item_id}</span>
+                              <span className="text-[11px] font-black text-[var(--text-primary)] whitespace-normal break-words leading-tight">{line.item_name || line.name}</span>
+                              <span className="text-[9px] font-mono text-[var(--text-muted)] whitespace-normal break-words leading-tight">{line.code || line.item_code || "#" + line.item_id}</span>
                             </div>
                             <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{line.quantity}</div>
                             <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{fmt(line.unit_price)}</div>
@@ -1976,8 +1976,8 @@ export default function DailyTreasuryPage() {
                         {slideOverDetails.lines.map((line, idx) => (
                           <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50/50">
                             <div className="col-span-6 flex flex-col min-w-0">
-                              <span className="text-[11px] font-black text-[var(--text-primary)] truncate">{line.item_name_ar || line.item_name || line.name}</span>
-                              <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">{line.item_code || line.code || line.barcode || "#" + line.item_id}</span>
+                              <span className="text-[11px] font-black text-[var(--text-primary)] whitespace-normal break-words leading-tight">{line.item_name_ar || line.item_name || line.name}</span>
+                              <span className="text-[9px] font-mono text-[var(--text-muted)] whitespace-normal break-words leading-tight">{line.item_code || line.code || line.barcode || "#" + line.item_id}</span>
                             </div>
                             <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{line.quantity}</div>
                             <div className="col-span-2 text-center number-fmt text-[11px] text-[var(--text-secondary)]">{fmt(line.unit_cost)}</div>

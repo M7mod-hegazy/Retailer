@@ -55,7 +55,10 @@ describe("verifyToken", () => {
 
   test("rejects a tampered payload (signature no longer matches)", () => {
     const { payload, signatureB64 } = decodeToken(sign());
-    payload.features = "enterprise"; // tamper
+    // Tamper a field that is actually part of the signed bytes. (features only
+    // encodes a trial/non-trial bit in RTL2, so changing "full"->"enterprise"
+    // would round-trip to the same bytes and legitimately still verify.)
+    payload.issuedTo = "Pirate Shop";
     const forged = encodeTokenV2(payload, Buffer.from(signatureB64, "base64"));
     const res = verifyToken(forged, opts());
     expect(res.valid).toBe(false);

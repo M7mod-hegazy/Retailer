@@ -3,7 +3,7 @@ import {
   Plus, Trash2, User, Package, Search,
   ShoppingCart, Printer, Save, ChevronLeft, Info,
   Calendar, X, ImageIcon, ZoomIn, AlertTriangle,
-  Grid, Clock, Banknote, CreditCard, Wallet, Layers, Minus, Plus as PlusIcon,
+  Grid, Clock, Banknote, CreditCard, Wallet, Layers, Minus, Plus as PlusIcon, Settings2,
   Loader2
 } from "lucide-react";
 import api from "../../services/api";
@@ -20,13 +20,40 @@ import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import toast from "react-hot-toast";
-import { buildQuotationPrintDoc } from "./quotationUtils";
+import { buildQuotationPrintDoc, formatQuotationNo } from "./quotationUtils";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import { useAuthStore } from "../../stores/authStore";
 import { formatNumber } from "../../utils/currency";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
+function formatArabicDateTime(date) {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  }).format(date);
+}
+
 const DRAFT_KEY = "qtn_draft";
+
+const COL_WIDTHS = {
+  index: "36px",
+  code: "70px",
+  name: "minmax(150px,2fr)",
+  unit: "70px",
+  unit_price: "80px",
+  quantity: "80px",
+  discount: "80px",
+  warehouse: "90px",
+  total: "90px",
+  actions: "36px",
+};
+
+const ALL_COLUMNS = ["index","code","name","unit","unit_price","quantity","discount","warehouse","total","actions"];
+const DEFAULT_VISIBLE = ["index","code","name","unit","quantity","unit_price","total","actions"];
 
 function formatMoney(v) {
   return formatNumber(v);
@@ -80,7 +107,15 @@ export default function QuotationFormPage() {
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const [warnModalOpen, setWarnModalOpen] = useState(false);
+  const currentUser = useAuthStore(s => s.user);
+  const [editActivation, setEditActivation] = useState(null);
+  const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } =
+    useInvoiceActivation("quotation", editActivation);
+  const wasSaved = useRef(false);
+  const isDirty = (cart.length > 0 || !!notes || !!expiresAt || !!selectedCustomer) && !wasSaved.current;
+  const { blocker } = useUnsavedChangesGuard(isDirty);
+  const [pendingNav, setPendingNav] = useState(null);
+  const showUnsavedModal = blocker.state === "blocked" || pendingNav !== null;
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
 
@@ -92,7 +127,19 @@ export default function QuotationFormPage() {
   const [browseLoading, setBrowseLoading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("retailer.quotation.visibleColumns") || "null") || DEFAULT_VISIBLE; } catch { return DEFAULT_VISIBLE; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("retailer.quotation.visibleColumns", JSON.stringify(visibleColumns)); } catch {}
+  }, [visibleColumns]);
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) setColSettingsOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ qty: 1, price: 0, discount: 0 });
@@ -250,6 +297,7 @@ export default function QuotationFormPage() {
       setBanks(banksRes.data?.data || []);
       if (edit) {
         const q = edit.data.data;
+        setEditActivation({ docNo: q.doc_no || null, createdAt: q.created_at || null });
         setSelectedCustomer(cust.data.data.find(c => c.id === q.customer_id));
         setCart(q.lines.map(l => ({
            id: l.item_id,
@@ -308,6 +356,7 @@ export default function QuotationFormPage() {
 
   function addStagedToCart() {
     if (!selectedItem) return;
+    activateInvoice();
     const qty = Math.max(1, staging.qty || 1);
     const price = Math.max(0, staging.price || 0);
     const discount = Math.max(0, staging.discount || 0);
@@ -337,6 +386,7 @@ export default function QuotationFormPage() {
   }
 
   function addToCart(item) {
+    activateInvoice();
     const defaultWhId = warehouses.length > 0 ? warehouses[0].id : null;
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
@@ -413,6 +463,7 @@ export default function QuotationFormPage() {
     setIsSaving(true);
     try {
       const payload = {
+        doc_no: docNo || null,
         customer_id: selectedCustomer?.id || null,
         notes,
         expires_at: expiresAt || null,
@@ -436,6 +487,7 @@ export default function QuotationFormPage() {
       if (selectedCustomer) {
         cart.forEach(i => saveRecentPrice(selectedCustomer.id, i.id, i.price));
       }
+      wasSaved.current = true;
       discardDraft();
       toast.success(editId ? "تم تحديث عرض السعر بنجاح" : "تم إنشاء عرض السعر بنجاح");
       navigate("/operations/quotations");
@@ -479,17 +531,42 @@ export default function QuotationFormPage() {
     notes,
     paymentType,
     editId,
-  }), [cart, selectedCustomer, totals, expiresAt, notes, paymentType, editId]);
+    cashierName: currentUser?.name || "",
+    docNo: docNo || null,
+  }), [cart, selectedCustomer, totals, expiresAt, notes, paymentType, editId, currentUser, docNo]);
+
+  const effectiveVisible = useMemo(() => {
+    const set = new Set(visibleColumns);
+    set.add("index");
+    set.add("actions");
+    return ALL_COLUMNS.filter(c => set.has(c));
+  }, [visibleColumns]);
+  const gridTemplate = effectiveVisible.map(c => COL_WIDTHS[c]).join(" ");
 
   return (
     <div className="flex h-full min-h-[600px] flex-col bg-[var(--bg-base)] font-sans overflow-hidden px-4 lg:px-8 pb-6">
       <DocumentHeaderBar
         onBack={() => {
-          if (cart.length > 0) setWarnModalOpen(true);
+          if (isDirty) setPendingNav("/operations/quotations");
           else navigate("/operations/quotations");
         }}
-        title={editId ? "تعديل عرض سعر" : "محرر عرض سعر"}
+        title={editId ? `تعديل عرض سعر ${docNo || formatQuotationNo(editId)}` : "عرض سعر جديد"}
         subtitle="إعداد عرض سعر احترافي للعميل قبل اعتماد الفاتورة"
+        extras={
+          <div className="flex gap-1.5 items-center">
+            {currentUser?.name && (
+              <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                المحرر: {currentUser.name}
+              </div>
+            )}
+            <input disabled
+              value={invoiceIsActive ? (docNo || "") : "—"}
+              className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
+            <input disabled
+              value={invoiceIsActive && invoiceCreatedAt ? formatArabicDateTime(new Date(invoiceCreatedAt)) : "—"}
+              className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
+          </div>
+        }
         actions={
           <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
             <DocumentActionButton variant="primary" identity="slate" icon={Save} onClick={handleSave} loading={isSaving}>
@@ -500,7 +577,7 @@ export default function QuotationFormPage() {
       />
 
       <div className="flex flex-1 min-h-0">
-         <div className="flex flex-1 flex-col p-4 gap-4 overflow-hidden">
+             <div className="flex flex-1 flex-col p-4 gap-4 overflow-hidden min-w-0">
              {/* Entry Bar — Quotation */}
               <section className="rounded-md border border-amber-200 bg-white shadow-sm shrink-0 overflow-hidden">
                 <div className="bg-amber-50 border-b border-amber-200 px-3 py-1.5 flex items-center gap-2">
@@ -658,22 +735,50 @@ export default function QuotationFormPage() {
               </section>
 
              {/* Cart Table */}
-             <div className="flex flex-1 flex-col overflow-hidden rounded-md border border-amber-200/60 bg-white shadow-sm">
+              <div className="flex flex-1 flex-col overflow-x-auto rounded-md border border-amber-200/60 bg-white shadow-sm">
                 <div className="flex items-center gap-2 border-b border-amber-200/60 bg-amber-50/80 px-3 py-1">
                   <span className="rounded-sm bg-amber-600 px-1.5 py-[1px] text-[9px] font-black text-white">عرض سعر</span>
                   <span className="text-[10px] font-bold text-amber-700">أصـناف عرض السعر</span>
                 </div>
-                <div className="grid grid-cols-[36px_70px_minmax(150px,2fr)_70px_80px_80px_80px_90px_90px_36px] items-center border-b border-slate-300 bg-slate-50 text-[11px] font-black uppercase text-slate-500">
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">#</div>
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكود</div>
-                    <div className="px-2 py-2.5 border-l border-slate-200">البيان</div>
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">الوحدة</div>
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">سعر الوحدة</div>
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكمية</div>
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">الخصم</div>
-                    <div className="px-1 py-2.5 border-l border-slate-200 text-center">المخزن</div>
-                    <div className="px-2 py-2.5 border-l border-slate-200 text-left">الإجمالي</div>
-                    <div></div>
+                <div className="flex items-center justify-between px-3 py-1.5 border-b border-amber-200/60 bg-amber-50/40">
+                  <span className="text-xs font-bold text-slate-500">الأصناف ({cart.length})</span>
+                  <div ref={colSettingsRef} className="relative">
+                    <button onClick={() => setColSettingsOpen(p => !p)}
+                      className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                      title="تخصيص الأعمدة"
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </button>
+                    {colSettingsOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
+                        <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                        {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
+                          const labels = { code: "الكود", name: "البيان", unit: "الوحدة", warehouse: "المخزن", quantity: "الكمية", unit_price: "سعر الوحدة", discount: "الخصم", total: "الإجمالي" };
+                          return (
+                            <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                              <input type="checkbox" checked={visibleColumns.includes(cid)}
+                                onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                              />
+                              {labels[cid] || cid}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ gridTemplateColumns: gridTemplate }} className="grid items-center border-b border-slate-300 bg-slate-50 text-[11px] font-black uppercase text-slate-500">
+                    {effectiveVisible.includes("index") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">#</div>}
+                    {effectiveVisible.includes("code") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكود</div>}
+                    {effectiveVisible.includes("name") && <div className="px-2 py-2.5 border-l border-slate-200">البيان</div>}
+                    {effectiveVisible.includes("unit") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الوحدة</div>}
+                    {effectiveVisible.includes("unit_price") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">سعر الوحدة</div>}
+                    {effectiveVisible.includes("quantity") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكمية</div>}
+                    {effectiveVisible.includes("discount") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الخصم</div>}
+                    {effectiveVisible.includes("warehouse") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">المخزن</div>}
+                    {effectiveVisible.includes("total") && <div className="px-2 py-2.5 border-l border-slate-200 text-left">الإجمالي</div>}
+                    {effectiveVisible.includes("actions") && <div></div>}
                  </div>
 
                 <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
@@ -694,80 +799,97 @@ export default function QuotationFormPage() {
                      const discountPct = getDiscountPercent(item);
                      const rowKey = `${item.id}-${idx}`;
                      return (
-                     <div key={rowKey} className={`grid grid-cols-[36px_70px_minmax(150px,2fr)_70px_80px_80px_80px_90px_90px_36px] items-center text-2sm transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                        <div className="px-1 py-2.5 text-center font-mono text-slate-400 border-l border-slate-50 text-[11px]">{idx + 1}</div>
-                        <div className="px-1 py-2.5 border-l border-slate-50">
-                          <span className="font-mono text-[11px] font-bold text-slate-500 truncate block">{item.code || item.barcode || "—"}</span>
-                        </div>
-                        <div className="px-2 py-2.5 font-black text-slate-800 border-l border-slate-50">
-                           <div className="flex items-center gap-2">
-                             {(() => {
-                               const itemObj = items.find(i => i.id === item.id);
-                               const imgUrl = itemObj?.primary_image_url || itemObj?.image_url || itemObj?.image;
-                               if (imgUrl) {
-                                 return (
-                                   <button onClick={() => { setImagePreviewUrl(resolveImageUrl(imgUrl)); setImageModalOpen(true); }} className="shrink-0 group relative rounded-md overflow-hidden border border-slate-200">
-                                     <img src={resolveImageUrl(imgUrl)} alt={item.name} className="w-7 h-7 object-cover" />
-                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <ZoomIn className="w-3 h-3 text-white" />
-                                     </div>
-                                   </button>
-                                 );
-                               }
-                               return (
-                                 <div className="w-7 h-7 shrink-0 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-3.5 h-3.5 text-slate-300"/></div>
-                               );
-                             })()}
-                             <div className="flex flex-col min-w-0">
-                               <span className="text-2sm truncate">{item.name}</span>
-                               {item.stock > 0 && <span className="text-[9px] font-bold text-slate-400">المخزون: {item.stock}</span>}
-                             </div>
+                      <div key={rowKey} style={{ gridTemplateColumns: gridTemplate }} className={`grid items-center text-2sm transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                         {effectiveVisible.includes("index") && (
+                           <div className="px-1 py-2.5 text-center font-mono text-slate-400 border-l border-slate-50 text-[11px]">{idx + 1}</div>
+                         )}
+                         {effectiveVisible.includes("code") && (
+                           <div className="px-1 py-2.5 border-l border-slate-50">
+                             <span className="font-mono text-[11px] font-bold text-slate-500 whitespace-normal break-words block">{item.code || item.barcode || "—"}</span>
                            </div>
-                        </div>
-                        <div className="px-1 py-2.5 border-l border-slate-50 text-center font-bold text-slate-500 text-[11px]">
-                          {item.unit_name || "أساسية"}
-                        </div>
-                        <div className="px-1 py-2.5 border-l border-slate-50">
-                           <input type="number" min="0" step="0.01" value={item.price}
-                             onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, price: Math.max(0, Number(e.target.value)) } : i))}
-                             className={`w-full bg-transparent text-center font-black text-slate-700 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px] ${origPrice !== null && origPrice !== item.price ? 'text-amber-700' : ''}`}
-                           />
-                           {origPrice !== null && origPrice !== item.price && (
-                             <div className="text-[9px] font-bold text-amber-400 text-center line-through">{formatMoney(origPrice)}</div>
-                           )}
-                        </div>
-                        <div className="px-1 py-2.5 border-l border-slate-50">
-                           <input type="number" min="1" step="1" value={item.qty}
-                             onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, qty: Math.max(1, Number(e.target.value)) } : i))}
-                             className="w-full bg-transparent text-center font-black text-slate-700 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px]"
-                           />
-                        </div>
-                        <div className="px-1 py-2.5 border-l border-slate-50 relative">
-                           <input type="number" min="0" step="0.01" value={item.discount}
-                             onChange={(e) => handleDiscountChange(item.id, e.target.value)}
-                             className="w-full bg-transparent text-center font-black text-slate-400 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px]"
-                           />
-                           {discountPct > 0 && (
-                             <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-rose-400 bg-rose-50 px-1 rounded-full">{discountPct}%</span>
-                           )}
-                        </div>
-                        <div className="px-1 py-2.5 border-l border-slate-50">
-                          <select value={item.warehouse_id || ''} onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, warehouse_id: e.target.value ? Number(e.target.value) : null } : i))}
-                            className="w-full bg-transparent text-center font-bold text-slate-600 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[11px]"
-                          >
-                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                          </select>
-                        </div>
-                        <div className="px-2 py-2.5 text-left font-black text-slate-900 border-l border-slate-50 text-[13px]">
-                           {formatMoney((item.price * item.qty) - item.discount)}
-                        </div>
-                        <div className="px-1 flex justify-center">
-                           <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))}
-                             className="text-slate-300 hover:text-rose-500 transition-colors">
-                              <Trash2 className="h-3.5 w-3.5" />
-                           </button>
-                        </div>
-                     </div>
+                         )}
+                         {effectiveVisible.includes("name") && (
+                           <div className="px-2 py-2.5 font-black text-slate-800 border-l border-slate-50">
+                              <div className="flex items-center gap-2">
+                                {(() => {
+                                  const itemObj = items.find(i => i.id === item.id);
+                                  const imgUrl = itemObj?.primary_image_url || itemObj?.image_url || itemObj?.image;
+                                  if (imgUrl) {
+                                    return (
+                                      <button onClick={() => { setImagePreviewUrl(resolveImageUrl(imgUrl)); setImageModalOpen(true); }} className="shrink-0 group relative rounded-md overflow-hidden border border-slate-200">
+                                        <img src={resolveImageUrl(imgUrl)} alt={item.name} className="w-7 h-7 object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <ZoomIn className="w-3 h-3 text-white" />
+                                        </div>
+                                      </button>
+                                    );
+                                   }
+                                 })()}
+                                 <div className="flex flex-col min-w-0">
+                                   <span className="text-2sm whitespace-normal break-words">{item.name}</span>
+                                  {item.stock > 0 && <span className="text-[9px] font-bold text-slate-400">المخزون: {item.stock}</span>}
+                                </div>
+                              </div>
+                           </div>
+                         )}
+                         {effectiveVisible.includes("unit") && (
+                           <div className="px-1 py-2.5 border-l border-slate-50 text-center font-bold text-slate-500 text-[11px]">
+                             {item.unit_name || "أساسية"}
+                           </div>
+                         )}
+                         {effectiveVisible.includes("unit_price") && (
+                           <div className="px-1 py-2.5 border-l border-slate-50">
+                              <input type="number" min="0" step="0.01" value={item.price}
+                                onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, price: Math.max(0, Number(e.target.value)) } : i))}
+                                className={`w-full bg-transparent text-center font-black text-slate-700 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px] ${origPrice !== null && origPrice !== item.price ? 'text-amber-700' : ''}`}
+                              />
+                              {origPrice !== null && origPrice !== item.price && (
+                                <div className="text-[9px] font-bold text-amber-400 text-center line-through">{formatMoney(origPrice)}</div>
+                              )}
+                           </div>
+                         )}
+                         {effectiveVisible.includes("quantity") && (
+                           <div className="px-1 py-2.5 border-l border-slate-50">
+                              <input type="number" min="1" step="1" value={item.qty}
+                                onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, qty: Math.max(1, Number(e.target.value)) } : i))}
+                                className="w-full bg-transparent text-center font-black text-slate-700 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px]"
+                              />
+                           </div>
+                         )}
+                         {effectiveVisible.includes("discount") && (
+                           <div className="px-1 py-2.5 border-l border-slate-50 relative">
+                              <input type="number" min="0" step="0.01" value={item.discount}
+                                onChange={(e) => handleDiscountChange(item.id, e.target.value)}
+                                className="w-full bg-transparent text-center font-black text-slate-400 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px]"
+                              />
+                              {discountPct > 0 && (
+                                <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-rose-400 bg-rose-50 px-1 rounded-full">{discountPct}%</span>
+                              )}
+                           </div>
+                         )}
+                         {effectiveVisible.includes("warehouse") && (
+                           <div className="px-1 py-2.5 border-l border-slate-50">
+                             <select value={item.warehouse_id || ''} onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, warehouse_id: e.target.value ? Number(e.target.value) : null } : i))}
+                               className="w-full bg-transparent text-center font-bold text-slate-600 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[11px]"
+                             >
+                               {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                             </select>
+                           </div>
+                         )}
+                         {effectiveVisible.includes("total") && (
+                           <div className="px-2 py-2.5 text-left font-black text-slate-900 border-l border-slate-50 text-[13px]">
+                              {formatMoney((item.price * item.qty) - item.discount)}
+                           </div>
+                         )}
+                         {effectiveVisible.includes("actions") && (
+                           <div className="px-1 flex justify-center">
+                              <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))}
+                                className="text-slate-300 hover:text-rose-500 transition-colors">
+                                 <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                           </div>
+                         )}
+                      </div>
                      );
                    })}
                </div>
@@ -806,7 +928,7 @@ export default function QuotationFormPage() {
                     {showCustomerList && filteredCustomers.length > 0 && (
                       <div className="absolute top-full right-0 z-20 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-xl">
                          {filteredCustomers.map(c => (
-                           <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustomerList(false); }}
+                            <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustomerList(false); activateInvoice(); }}
                              className="flex w-full flex-col px-4 py-2 text-right hover:bg-slate-50 border-b last:border-0 border-slate-50">
                               <span className="text-2sm font-black text-slate-800">{c.name}</span>
                               <span className="text-[11px] font-bold text-slate-400">{c.phone}</span>
@@ -1159,30 +1281,17 @@ export default function QuotationFormPage() {
         }}
       />
 
-      {/* Confirm Leave Warning */}
-      <Modal open={warnModalOpen} onClose={() => setWarnModalOpen(false)} title="تحذير: مغادرة الصفحة" size="md">
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
-              <AlertTriangle className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">تجاهل عرض السعر؟</h3>
-              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
-                هل أنت متأكد من رغبتك في المغادرة؟ سيتم <span className="text-rose-600">إلغاء التعديلات غير المحفوظة</span> ولن يتم حفظها.
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setWarnModalOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-              تراجع وإكمال العرض
-            </button>
-            <button onClick={() => { discardDraft(); navigate("/operations/quotations"); }} className="rounded-sm bg-rose-600 px-5 py-2 text-sm font-black text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20">
-              نعم، تجاهل ومغادرة
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <UnsavedChangesModal
+        open={showUnsavedModal}
+        onStay={() => { setPendingNav(null); blocker.reset?.(); }}
+        onLeave={() => {
+          discardDraft();
+          const path = pendingNav;
+          setPendingNav(null);
+          if (path) navigate(path);
+          else blocker.proceed?.();
+        }}
+      />
 
       <PrintPreviewModal
         open={previewOpen}
@@ -1191,6 +1300,11 @@ export default function QuotationFormPage() {
         settings={appSettings || {}}
         docType="quotation"
         operationLabel="عرض سعر"
+        confirmLabel="حفظ وطباعة"
+        onConfirmPrint={handleSave}
+        onSaveOnly={handleSave}
+        saveOnlyLabel="حفظ فقط"
+        isSaving={isSaving}
       />
 
     </div>

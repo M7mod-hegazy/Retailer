@@ -48,7 +48,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
 
   useEffect(() => { loadSchedules(); }, [loadSchedules]);
   useEffect(() => {
-    api.get("/api/payment-methods").then(r => { const all = r.data.data || []; setPaymentMethods(all.filter(m => m.id !== 2)); }).catch(() => {});
+    api.get("/api/payment-methods").then(r => { const all = r.data.data || []; setPaymentMethods(all.filter(m => m.category !== 'credit')); }).catch(() => {});
   }, []);
 
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());

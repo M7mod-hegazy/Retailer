@@ -143,12 +143,14 @@ function LicenseGate({ children }) {
     }
     try {
       const status = await api.invoke("license:getStatus");
-      // Not-configured (no embedded key yet) and gate errors fail OPEN so a
-      // bug or un-set-up build never bricks a paying customer.
+      // Packaged (installed) app fails CLOSED: only a real activation passes, so
+      // the lock cannot be bypassed by forcing a not-configured/gate error.
+      // Dev/web builds (status.packaged === false) fail OPEN on those reasons so
+      // development and un-set-up builds are never blocked.
       const activated =
         !!status.activated ||
-        status.reason === "not_configured" ||
-        status.reason === "gate_error";
+        (!status.packaged &&
+          (status.reason === "not_configured" || status.reason === "gate_error"));
       setState({ loading: false, activated, status });
     } catch (_e) {
       setState({ loading: false, activated: true, status: null });

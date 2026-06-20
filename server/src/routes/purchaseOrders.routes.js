@@ -39,9 +39,10 @@ router.get("/", requirePagePermission("purchase_orders", "view"), (req, res) => 
   if (date_from) { conditions.push("date(po.created_at) >= date(?)"); params.push(date_from); }
   if (date_to)   { conditions.push("date(po.created_at) <= date(?)"); params.push(date_to); }
   const orders = db.prepare(`
-    SELECT po.*, s.name AS supplier_name
+    SELECT po.*, s.name AS supplier_name, u.full_name AS created_by_name
     FROM purchase_orders po
     LEFT JOIN suppliers s ON s.id = po.supplier_id
+    LEFT JOIN users u ON u.id = po.created_by
     WHERE ${conditions.join(" AND ")}
     ORDER BY po.id DESC
   `).all(...params);
@@ -77,8 +78,10 @@ router.get("/:id", requirePagePermission("purchase_orders", "view"), (req, res, 
   try {
     const db = getDb();
     const order = db.prepare(`
-      SELECT po.*, s.name AS supplier_name
-      FROM purchase_orders po LEFT JOIN suppliers s ON s.id = po.supplier_id
+      SELECT po.*, s.name AS supplier_name, u.full_name AS created_by_name
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON s.id = po.supplier_id
+      LEFT JOIN users u ON u.id = po.created_by
       WHERE po.id = ?
     `).get(req.params.id);
     if (!order) {
@@ -107,10 +110,11 @@ router.get("/:id", requirePagePermission("purchase_orders", "view"), (req, res, 
 router.post("/", requirePagePermission("purchase_orders", "add"), (req, res) => {
   const db = getDb();
   const payload = req.body || {};
-  const docNo = generateDocNumber('purchase_order');
+  const clientDocNo = typeof payload.doc_no === "string" ? payload.doc_no.trim() : "";
+  const docNo = clientDocNo || generateDocNumber('purchase_order');
   const result = db
-    .prepare("INSERT INTO purchase_orders (doc_no, supplier_id, warehouse_id, status, notes) VALUES (?, ?, ?, 'pending', ?)")
-    .run(docNo, payload.supplier_id || null, payload.warehouse_id || null, payload.notes || null);
+    .prepare("INSERT INTO purchase_orders (doc_no, supplier_id, warehouse_id, status, notes, discount, increase, created_by) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)")
+    .run(docNo, payload.supplier_id || null, payload.warehouse_id || null, payload.notes || null, Math.max(0, Number(payload.discount || 0)), Math.max(0, Number(payload.increase || 0)), req.user?.id || null);
 
   for (const line of payload.lines || []) {
     db.prepare(
@@ -143,8 +147,8 @@ router.put("/:id", requirePagePermission("purchase_orders", "edit"), (req, res, 
         const e = new Error("لا يمكن تعديل أمر توريد ملغى"); e.status = 400; throw e;
       }
       const payload = req.body || {};
-      db.prepare("UPDATE purchase_orders SET supplier_id = ?, warehouse_id = ?, notes = ? WHERE id = ?")
-        .run(payload.supplier_id || null, payload.warehouse_id || null, payload.notes || null, req.params.id);
+      db.prepare("UPDATE purchase_orders SET supplier_id = ?, warehouse_id = ?, notes = ?, discount = ?, increase = ? WHERE id = ?")
+        .run(payload.supplier_id || null, payload.warehouse_id || null, payload.notes || null, Math.max(0, Number(payload.discount || 0)), Math.max(0, Number(payload.increase || 0)), req.params.id);
       // No received quantities exist → safe to fully replace lines.
       db.prepare("DELETE FROM purchase_order_lines WHERE purchase_order_id = ?").run(req.params.id);
       for (const line of payload.lines || []) {

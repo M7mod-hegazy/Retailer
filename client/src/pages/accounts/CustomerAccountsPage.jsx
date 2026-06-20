@@ -892,7 +892,7 @@ export default function CustomerAccountsPage() {
       const wid = settingsReq.data.data?.walk_in_customer_id || null;
       setWalkInId(wid);
       setCustomers((res.data.data || []).filter(c => c.id !== wid));
-      setPaymentMethods((methodsReq.data.data || []).filter(m => m.id !== 2));
+      setPaymentMethods((methodsReq.data.data || []).filter(m => m.category !== 'credit'));
     } catch { toast.error("فشل تحميل العملاء"); }
     finally { setLoading(false); }
   }, []);
@@ -1512,8 +1512,8 @@ export default function CustomerAccountsPage() {
                       {detailData.lines?.map((line, i) => (
                         <div key={i} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/40 transition-colors">
                           <div className="col-span-5 flex flex-col min-w-0">
-                            {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 truncate">{line.item_code || line.code}</span>}
-                            <span className="text-2sm font-bold text-slate-800 truncate">{line.item_name || line.name}</span>
+                            {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 whitespace-normal break-words leading-tight">{line.item_code || line.code}</span>}
+                            <span className="text-2sm font-bold text-slate-800 whitespace-normal break-words leading-tight">{line.item_name || line.name}</span>
                           </div>
                           <div className="col-span-2 text-center number-fmt text-[11px] text-slate-650">{line.quantity}</div>
                           <div className="col-span-2 text-center number-fmt text-[11px] text-slate-650">{fmt(line.unit_price)}</div>

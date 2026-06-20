@@ -4,6 +4,7 @@ import {
   Trash2, Warehouse, FileText, Settings, Printer, CheckCircle, ShoppingCart, Plus, CalendarClock,
   ZoomIn, ZoomOut, Maximize, ChevronDown, Hash, Clock, Search, Layers,
   AlertTriangle, TrendingUp, Lock, Loader2, ExternalLink, CheckCircle2,
+  Settings2,
 } from "lucide-react";
 import api from "../../services/api";
 import { useNavigate, useSearchParams, useParams, Link } from "react-router-dom";
@@ -94,6 +95,23 @@ export default function BranchTransferFormPage() {
   // Header modals
   const [todayModalOpen, setTodayModalOpen] = useState(false);
   const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
+
+  // Column visibility
+  const ALL_COLUMNS = ["index","code","name","unit","warehouse","quantity","unit_cost","selling_price","profit_pct","wholesale_price","locks","total_cost","actions"];
+  const DEFAULT_VISIBLE = ["index","code","name","unit","warehouse","quantity","unit_cost","selling_price","total_cost","actions"];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("retailer.branchTransfer.visibleColumns") || "null") || DEFAULT_VISIBLE; } catch { return DEFAULT_VISIBLE; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("retailer.branchTransfer.visibleColumns", JSON.stringify(visibleColumns)); } catch {}
+  }, [visibleColumns]);
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) setColSettingsOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleManageBranches = () => navigate("/definitions/branches");
 
@@ -440,27 +458,25 @@ export default function BranchTransferFormPage() {
       render: (_, i) => i + 1,
     },
     {
-      id: "image", header: "صورة", width: 55, sortable: false, headerClass: "text-center", cellClass: "p-1.5 border-l border-slate-100 flex items-center justify-center",
-      render: (l) => l.primary_image_url ? (
-        <img
-          src={resolveImageUrl(l.primary_image_url)}
-          alt="product"
-          className="w-9 h-9 object-cover rounded-[8px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-slate-200"
-          onClick={() => { setImagePreviewUrl(l.primary_image_url); setImageModalOpen(true); }}
-        />
-      ) : (
-        <div className="w-9 h-9 rounded-[8px] bg-slate-100 flex items-center justify-center border border-slate-200 shadow-inner">
-          <Package className="w-4 h-4 text-slate-300"/>
-        </div>
-      ),
-    },
-    {
       id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-slate-500 border-l border-slate-100 text-center",
       render: (l) => l.code,
     },
     {
-      id: "name", header: "البيان", width: 160, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-2", headerClass: "text-right px-2",
-      render: (l) => l.item_name,
+      id: "name", header: "البيان", width: 200, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-2", headerClass: "text-right px-2",
+      render: (l) => (
+        <div className="flex items-center gap-2">
+          {l.primary_image_url && (
+            <img
+              src={resolveImageUrl(l.primary_image_url)}
+              alt="product"
+              className="w-7 h-7 shrink-0 object-cover rounded-[6px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-slate-200"
+              onClick={() => { setImagePreviewUrl(l.primary_image_url); setImageModalOpen(true); }}
+            />
+          )}
+          <span className="whitespace-normal break-words leading-tight">{l.item_name}</span>
+        </div>
+      ),
+      sortValue: (l) => l.item_name,
     },
     {
       id: "unit", header: "الوحدة", width: 80, sortable: false, headerClass: "text-center", cellClass: "text-center text-2sm font-bold text-slate-500 border-l border-slate-100",
@@ -645,7 +661,8 @@ export default function BranchTransferFormPage() {
     ),
   };
 
-  const columns = [...baseColumns, ...extraColumns, actionsColumn];
+  const columns = [...baseColumns, ...extraColumns, actionsColumn]
+    .filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id));
 
   const displayRef = isEditMode ? lockedRef : draftRef;
   const displayDate = isEditMode ? lockedDate : draftTime;
@@ -879,7 +896,7 @@ export default function BranchTransferFormPage() {
         </div>
 
         {/* Right: item entry + lines */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 min-w-0">
 
           {/* Item entry bar */}
           <section className="bg-white border border-slate-200 rounded-[16px] p-5 shadow-[0_5px_20px_rgba(0,0,0,0.03)] relative z-40">
@@ -1188,13 +1205,42 @@ export default function BranchTransferFormPage() {
             </div>
           )}
 
+          <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
+            <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
+            <div ref={colSettingsRef} className="relative">
+              <button onClick={() => setColSettingsOpen(p => !p)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                title="تخصيص الأعمدة"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+              {colSettingsOpen && (
+                <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
+                  <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                  {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
+                    const labels = { code: "الكود", name: "البيان", unit: "الوحدة", warehouse: "المخزن", quantity: "الكمية", unit_cost: "التكلفة", selling_price: "سعر البيع", profit_pct: "نسبة الربح", wholesale_price: "جملة", locks: "قفل", total_cost: "الإجمالي" };
+                    return (
+                      <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                        <input type="checkbox" checked={visibleColumns.includes(cid)}
+                          onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                        />
+                        {labels[cid] || cid}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           <DataGrid
             data={lines}
             rowKey={(row, i) => `${row.item_id}-${i}`}
             emptyMessage="لا يوجد أصناف في مسودة المستند"
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2 text-slate-300" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-[16px] border border-slate-200 shadow-[0_5px_20px_rgba(0,0,0,0.03)] min-h-[350px]"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-[16px] border border-slate-200 shadow-[0_5px_20px_rgba(0,0,0,0.03)] max-h-[440px]"
             rowClass={isReceive ? (l) => {
               const anyUnlocked = l.update_master_purchase_price === false || l.update_master_purchase_price === 0 ||
                                   l.update_master_sale_price === false || l.update_master_sale_price === 0 ||
@@ -1209,6 +1255,7 @@ export default function BranchTransferFormPage() {
       <PrintPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
+        docType="branch_transfer"
         invoice={invoiceDummy}
         settings={storeSettings}
         operationLabel={isReceive ? "وثيقة استلام فروع" : "وثيقة تحويل فروع"}
@@ -1298,7 +1345,7 @@ export default function BranchTransferFormPage() {
               <tbody>
                 {priceChangedLines.map((l, i) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2 font-bold text-slate-800 max-w-[140px] truncate">{l.item_name}</td>
+                     <td className="px-3 py-2 font-bold text-slate-800 max-w-[140px] whitespace-normal break-words leading-tight">{l.item_name}</td>
                     <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_purchase_price) > 0 ? Number(l.original_purchase_price).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_purchase_price) ? (

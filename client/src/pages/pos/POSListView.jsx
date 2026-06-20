@@ -1223,8 +1223,8 @@ export default function POSListView({ vm }) {
                               <img src={resolved} alt={l.item_name} className="w-[22px] h-[22px] object-cover" />
                             </button>
                           ) : null}
-                          <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-                            <span className={`truncate text-2sm font-black leading-tight ${hasError ? "text-rose-700" : "text-slate-800"}`}>{l.item_name}</span>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className={`whitespace-normal break-words text-2sm font-black leading-tight ${hasError ? "text-rose-700" : "text-slate-800"}`}>{l.item_name}</span>
                             {warnings.length > 0 && (
                               <span className={`shrink-0 text-[8px] font-black px-1 py-0.5 rounded-sm ${warnings.some(w => w.type === "error") ? "text-rose-600 bg-rose-50 border border-rose-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}
                                 title={warnings.map(w => w.msg).join(" | ")}

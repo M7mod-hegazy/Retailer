@@ -59,6 +59,7 @@ const restaurantRoutes = require("./routes/restaurant.routes");
 const goldRoutes = require("./routes/gold.routes");
 const maintenanceRoutes = require("./routes/maintenance.routes");
 const { errorHandler } = require("./middleware/errorHandler");
+const { licenseEnforce } = require("./middleware/licenseEnforce");
 const logger = require("./config/logger");
 const { getDb } = require("./config/database");
 
@@ -109,6 +110,12 @@ function createApp() {
     }
     res.json({ ok: true });
   });
+
+  // License enforcement (packaged app only; no-op in dev/web/tests). Mounted
+  // AFTER /health and the diag sink above so those always work, and on /api so
+  // the SPA HTML/assets are never blocked. Activation itself runs over IPC, not
+  // the API, so blocking /api on an unactivated machine is safe.
+  app.use("/api", licenseEnforce);
 
   app.use("/api/auth", authRoutes);
   app.use("/api/settings", settingsRoutes);

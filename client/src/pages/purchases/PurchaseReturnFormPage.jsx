@@ -2,8 +2,9 @@
 import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
-  Package, UserPlus, Calendar, Loader2, ChevronDown, Filter,
+  Package, UserPlus, Calendar, Loader2, ChevronDown, Filter, Settings2,
 } from "lucide-react";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
@@ -103,7 +104,7 @@ function OriginalPurchasePreview({ purchase }) {
             return (
               <div key={i} className="flex items-center justify-between gap-2 text-[11px] leading-tight">
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-slate-700 truncate">{l.item_name_ar || l.item_name || l.name || `#${l.item_id}`}</span>
+                  <span className="font-bold text-slate-700 whitespace-normal break-words leading-tight">{l.item_name_ar || l.item_name || l.name || `#${l.item_id}`}</span>
                   {code && <span className="font-mono text-[8px] text-slate-400 leading-none">{code}</span>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0 font-mono text-slate-500">
@@ -238,6 +239,31 @@ export default function PurchaseReturnFormPage() {
   const [printPreview, setPrintPreview] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
+
+  const ALL_COLUMNS_DIRECT = [
+    { id: "code", label: "الكود" },
+    { id: "item", label: "الصنف" },
+    { id: "warehouse", label: "المستودع" },
+    { id: "unit", label: "الوحدة" },
+    { id: "selling_price", label: "سعر البيع" },
+    { id: "purchase_price", label: "سعر الشراء" },
+    { id: "return_cost", label: "سعر المرتجع" },
+    { id: "quantity", label: "الكمية" },
+    { id: "total", label: "الإجمالي" },
+    { id: "actions", label: "" },
+  ];
+  const allDirectIds = ALL_COLUMNS_DIRECT.map(c => c.id);
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { const s = localStorage.getItem("retailer.purchaseReturn.visibleColumns"); return s ? JSON.parse(s) : allDirectIds; } catch { return allDirectIds; }
+  });
+  useEffect(() => { localStorage.setItem("retailer.purchaseReturn.visibleColumns", JSON.stringify(visibleColumns)); }, [visibleColumns]);
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    function h(e) { if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) setColSettingsOpen(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
   const itemInputRef = useRef(null);
   const stagingWHRef = useRef(null);
@@ -397,6 +423,7 @@ export default function PurchaseReturnFormPage() {
             already_returned: alreadyReturned,
             qty_to_return: returnLine ? Number(returnLine.quantity) : 0,
             checked: !!returnLine,
+            primary_image_url: l.primary_image_url || null,
           };
         }).filter(l => l.original_qty - l.already_returned > 0 || returnedIds.has(l.purchase_line_id)));
       }).catch(() => {});
@@ -409,6 +436,7 @@ export default function PurchaseReturnFormPage() {
         unit_cost: Number(l.unit_cost || l.unit_price || 0),
         purchase_price: Number(l.purchase_price || 0),
         sale_price: 0,
+        primary_image_url: l.primary_image_url || null,
         quantity: Number(l.quantity),
         warehouse_id: l.warehouse_id || "",
         warehouse_name: warehouses.find(w => String(w.id) === String(l.warehouse_id))?.name || "—",
@@ -523,6 +551,7 @@ export default function PurchaseReturnFormPage() {
         unit_cost: cost,
         purchase_price: purchasePrice,
         sale_price: Number(stagingItem.sale_price || 0),
+        primary_image_url: stagingItem.primary_image_url || null,
         quantity: finalQty,
         warehouse_id: stagingWarehouseId,
         warehouse_name: warehouses.find(w => String(w.id) === String(stagingWarehouseId))?.name || "",
@@ -592,6 +621,7 @@ export default function PurchaseReturnFormPage() {
       already_returned: Number(l.returned_quantity || 0),
       qty_to_return: 0,
       checked: false,
+      primary_image_url: l.primary_image_url || null,
     })).filter(l => l.original_qty - l.already_returned > 0));
     if (pur.supplier_id) {
       const name = pur.supplier_name || String(pur.supplier_id);
@@ -1222,7 +1252,7 @@ export default function PurchaseReturnFormPage() {
         </aside>
 
         {/* Right Panel */}
-        <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 p-4">
+        <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 p-4 min-w-0">
 
           {mode === "direct" && (
             <div className="flex flex-1 flex-col gap-4 overflow-hidden">
@@ -1320,50 +1350,73 @@ export default function PurchaseReturnFormPage() {
                 </div>
               )}
               {cart.length > 0 ? (
-                <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-end">
+                    <div className="relative" ref={colSettingsRef}>
+                      <button onClick={() => setColSettingsOpen(o => !o)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-2sm font-bold text-slate-500 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+                        <Settings2 className="h-3.5 w-3.5" /> إعدادات الأعمدة
+                      </button>
+                      {colSettingsOpen && (
+                        <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-lg border border-slate-200 bg-white shadow-xl p-2">
+                          {ALL_COLUMNS_DIRECT.filter(c => c.id !== "actions").map(c => (
+                            <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded cursor-pointer">
+                              <input type="checkbox" checked={visibleColumns.includes(c.id)}
+                                onChange={() => setVisibleColumns(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                                className="h-3.5 w-3.5 rounded border-slate-300 accent-amber-600" />
+                              {c.label}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                   <table className="w-full text-right">
                     <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
                       <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
-                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-400 text-center w-14">الكود</th>
-                        <th className="px-4 py-2.5 text-2sm font-bold text-slate-700">الصنف</th>
-                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">المستودع</th>
-                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>
-                        <th className="px-3 py-2.5 text-center">
+                        {visibleColumns.includes("code") && <th className="px-3 py-2.5 text-[11px] font-bold text-slate-400 text-center w-14">الكود</th>}
+                        {visibleColumns.includes("item") && <th className="px-4 py-2.5 text-2sm font-bold text-slate-700">الصنف</th>}
+                        {visibleColumns.includes("warehouse") && <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">المستودع</th>}
+                        {visibleColumns.includes("unit") && <th className="px-3 py-2.5 text-[11px] font-bold text-slate-500 text-center">الوحدة</th>}
+                        {visibleColumns.includes("selling_price") && <th className="px-3 py-2.5 text-center">
                           <div className="flex flex-col items-center gap-px">
                             <span className="text-[11px] font-bold text-slate-400">سعر البيع</span>
                             <span className="text-[9px] font-medium text-slate-300 leading-none">للمعاينة فقط</span>
                           </div>
-                        </th>
-                        <th className="px-3 py-2.5 text-center">
+                        </th>}
+                        {visibleColumns.includes("purchase_price") && <th className="px-3 py-2.5 text-center">
                           <div className="flex flex-col items-center gap-px">
                             <span className="text-[11px] font-bold text-slate-400">سعر الشراء</span>
                             <span className="text-[9px] font-medium text-slate-300 leading-none">للمعاينة فقط</span>
                           </div>
-                        </th>
-                        <th className="px-3 py-2.5 text-center">
+                        </th>}
+                        {visibleColumns.includes("return_cost") && <th className="px-3 py-2.5 text-center">
                           <div className="flex flex-col items-center gap-px">
                             <span className="text-2sm font-black text-amber-700">سعر المرتجع</span>
                             <span className="text-[9px] font-medium text-slate-400 leading-none">قابل للتعديل</span>
                           </div>
-                        </th>
-                        <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">الكمية</th>
-                        <th className="px-3 py-2.5 text-2sm font-black text-slate-700 text-center">الإجمالي</th>
-                        {!isLocked && <th className="px-3 py-2.5 w-10"></th>}
+                        </th>}
+                        {visibleColumns.includes("quantity") && <th className="px-3 py-2.5 text-[11px] font-bold text-slate-600 text-center">الكمية</th>}
+                        {visibleColumns.includes("total") && <th className="px-3 py-2.5 text-2sm font-black text-slate-700 text-center">الإجمالي</th>}
+                        {!isLocked && visibleColumns.includes("actions") && <th className="px-3 py-2.5 w-10"></th>}
                       </tr>
                     </thead>
                     <tbody>
                       {cart.map((l, idx) => (
                         <tr key={l.key} className="border-b border-slate-100 hover:bg-slate-50/80 animate-slide-up [&>*+*]:border-r [&>*+*]:border-slate-100" style={{ animationDelay: `${idx * 50}ms` }}>
-                          <td className="px-3 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
-                          <td className="px-4 py-3 text-sm font-bold text-slate-800">{l.item_name}</td>
-                          <td className="px-2 py-2 text-center">
-                            {!isLocked ? (
+                          {visibleColumns.includes("code") && <td className="px-3 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>}
+                          {visibleColumns.includes("item") && <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                            <div className="flex items-center gap-2">
+                              {l.primary_image_url && (
+                                <img src={resolveImageUrl(l.primary_image_url)} alt="" className="w-6 h-6 shrink-0 object-cover rounded-[4px] border border-slate-200" />
+                              )}
+                              {l.item_name}
+                            </div>
+                          </td>}
+                          {visibleColumns.includes("warehouse") && (function(){
+                            const whEl = !isLocked ? (
                               <div className="flex flex-col items-center gap-1">
-                                <select
-                                  value={l.warehouse_id}
-                                  onChange={e => updateCartWarehouse(l.key, e.target.value)}
-                                  className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-amber-400 focus:bg-white focus:ring-1 focus:ring-amber-100 transition-colors cursor-pointer"
-                                >
+                                <select value={l.warehouse_id} onChange={e => updateCartWarehouse(l.key, e.target.value)} className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-amber-400 focus:bg-white focus:ring-1 focus:ring-amber-100 transition-colors cursor-pointer">
                                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                                 {(() => {
@@ -1382,26 +1435,27 @@ export default function PurchaseReturnFormPage() {
                               </div>
                             ) : (
                               <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-2sm font-bold text-slate-600">{l.warehouse_name}</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-center text-2sm font-bold text-slate-500">{l.unit_name}</td>
-                          <td className="px-3 py-2.5 text-center">
+                            );
+                            return <td className="px-2 py-2 text-center">{whEl}</td>;
+                          })()}
+                          {visibleColumns.includes("unit") && <td className="px-3 py-3 text-center text-2sm font-bold text-slate-500">{l.unit_name}</td>}
+                          {visibleColumns.includes("selling_price") && <td className="px-3 py-2.5 text-center">
                             <div
                               className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm number-fmt text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر البيع — للمعاينة فقط"
                             >
                               {l.sale_price > 0 ? formatMoney(l.sale_price) : "—"}
                             </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
+                          </td>}
+                          {visibleColumns.includes("purchase_price") && <td className="px-3 py-2.5 text-center">
                             <div
                               className="inline-flex items-center justify-center rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm number-fmt text-slate-400 cursor-not-allowed select-none min-w-[80px]"
                               title="سعر الشراء — للمعاينة فقط"
                             >
                               {l.purchase_price > 0 ? formatMoney(l.purchase_price) : "—"}
                             </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
+                          </td>}
+                          {visibleColumns.includes("return_cost") && <td className="px-3 py-2.5 text-center">
                             {!isLocked ? (
                               <div className="flex flex-col items-center gap-0.5">
                               <input type="number" step="any" min="0" value={l.unit_cost}
@@ -1416,8 +1470,8 @@ export default function PurchaseReturnFormPage() {
                             ) : (
                               <span className="text-sm font-black text-slate-700 number-fmt">{formatMoney(l.unit_cost)}</span>
                             )}
-                          </td>
-                          <td className="px-3 py-3 text-center">
+                          </td>}
+                          {visibleColumns.includes("quantity") && <td className="px-3 py-3 text-center">
                             {!isLocked ? (
                               <div className="flex items-center justify-center gap-1">
                                 <button onClick={() => updateCartQty(l.key, -1)} className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-95 transition-all"><Minus className="h-3 w-3" /></button>
@@ -1425,13 +1479,14 @@ export default function PurchaseReturnFormPage() {
                                 <button onClick={() => updateCartQty(l.key, 1)} className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-95 transition-all"><Plus className="h-3 w-3" /></button>
                               </div>
                             ) : <span className="text-sm font-black text-slate-700">{l.quantity}</span>}
-                          </td>
-                          <td className="px-3 py-3 text-center text-sm font-black text-amber-700 number-fmt">{formatMoney(l.unit_cost * l.quantity)}</td>
-                          {!isLocked && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button></td>}
+                          </td>}
+                          {visibleColumns.includes("total") && <td className="px-3 py-3 text-center text-sm font-black text-amber-700 number-fmt">{formatMoney(l.unit_cost * l.quantity)}</td>}
+                          {!isLocked && visibleColumns.includes("actions") && <td className="px-3 py-3 text-center"><button onClick={() => removeCartLine(l.key)} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button></td>}
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-slate-200 bg-white text-slate-400">
@@ -1468,7 +1523,7 @@ export default function PurchaseReturnFormPage() {
                         </button>
                       )}
                     </div>
-                    <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                       <table className="w-full text-right">
                         <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
                           <tr>
@@ -1496,7 +1551,14 @@ export default function PurchaseReturnFormPage() {
                                     className="h-4 w-4 rounded border-slate-300 accent-amber-600 cursor-pointer disabled:cursor-not-allowed" />
                                 </td>
                                 <td className="px-2 py-3 text-center text-[11px] font-mono text-slate-400">{l.item_code || "—"}</td>
-                                <td className="px-3 py-3 text-sm font-bold text-slate-800">{l.item_name}</td>
+                                <td className="px-3 py-3 text-sm font-bold text-slate-800">
+                                  <div className="flex items-center gap-2">
+                                    {l.primary_image_url && (
+                                      <img src={resolveImageUrl(l.primary_image_url)} alt="" className="w-6 h-6 shrink-0 object-cover rounded-[4px] border border-slate-200" />
+                                    )}
+                                    {l.item_name}
+                                  </div>
+                                </td>
                                 <td className="px-3 py-3 text-center">
                                   <div className="flex items-center justify-center gap-1">
                                     <span className={`text-2sm number-fmt ${l.purchase_price > 0 && l.unit_cost < l.purchase_price ? "text-rose-600 font-bold" : "text-slate-600"}`}>

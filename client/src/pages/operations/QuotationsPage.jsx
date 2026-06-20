@@ -205,7 +205,7 @@ export default function QuotationsPage() {
       setConvertTarget(null);
       setActiveQuotation(null);
       navigate("/pos", { state: buildQuotationPosState(full) });
-      toast.success(`تم فتح نقطة البيع ببيانات ${formatQuotationNo(full.id)} — راجع ثم أكّد البيع`, { duration: 5000 });
+      toast.success(`تم فتح نقطة البيع ببيانات ${full.doc_no || formatQuotationNo(full.id)} — راجع ثم أكّد البيع`, { duration: 5000 });
     } catch (err) {
       toast.error(err?.response?.data?.message || "تعذّر تحميل بيانات العرض");
     }
@@ -292,7 +292,7 @@ export default function QuotationsPage() {
   }
 
   function handleWhatsAppShare(row) {
-    const text = `*عرض سعر ${formatQuotationNo(row.id)}*\nالعميل: ${row.customer_name || `#${row.customer_id}`}\nالإجمالي: ${formatMoney(row.total)} ج.م\nالحالة: ${QUOTATION_STATUS[row.status]?.label || row.status}\nتاريخ الإصدار: ${formatDate(row.created_at)}${row.expires_at ? `\nصلاحية: ${formatDate(row.expires_at)}` : ''}`;
+    const text = `*عرض سعر ${row.doc_no || formatQuotationNo(row.id)}*\nالعميل: ${row.customer_name || `#${row.customer_id}`}\nالإجمالي: ${formatMoney(row.total)} ج.م\nالحالة: ${QUOTATION_STATUS[row.status]?.label || row.status}\nتاريخ الإصدار: ${formatDate(row.created_at)}${row.expires_at ? `\nصلاحية: ${formatDate(row.expires_at)}` : ''}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   }
@@ -449,7 +449,7 @@ export default function QuotationsPage() {
                           </div>
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-3">
-                              <span className="font-mono text-[18px] font-black text-slate-900 tracking-tight">{formatQuotationNo(row.id)}</span>
+                              <span className="font-mono text-[18px] font-black text-slate-900 tracking-tight">{row.doc_no || formatQuotationNo(row.id)}</span>
                               <StatusBadge status={effStatus} expiresAt={row.expires_at} />
                             </div>
                             <div className="flex items-center gap-2 text-sm font-bold text-slate-500 mt-1">
@@ -570,7 +570,7 @@ export default function QuotationsPage() {
           )}
         </div>
 
-      <Modal open={!!activeQuotation} onClose={() => setActiveQuotation(null)} title={activeQuotation ? `عرض سعر ${formatQuotationNo(activeQuotation.id)}` : "عرض سعر"} maxWidth="max-w-5xl">
+      <Modal open={!!activeQuotation} onClose={() => setActiveQuotation(null)} title={activeQuotation ? `عرض سعر ${activeQuotation.doc_no || formatQuotationNo(activeQuotation.id)}` : "عرض سعر"} maxWidth="max-w-5xl">
         {activeQuotation && (
           <div className="space-y-6 p-2">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -582,6 +582,7 @@ export default function QuotationsPage() {
                 { label: "عدد الأصناف", value: `${(activeQuotation.lines || []).length} صنف` },
                 { label: "زيادة / نقصان", value: `${formatMoney(activeQuotation.increase || 0)} / ${formatMoney(activeQuotation.decrease || 0)}` },
                 { label: "الضريبة", value: activeQuotation.tax_enabled ? `${formatMoney(activeQuotation.tax_amount || 0)} (${activeQuotation.tax_rate || 0}%)` : "غير مفعّلة" },
+                { label: "المحرر", value: activeQuotation.created_by_name || "—" },
               ].map((item) => (
                 <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{item.label}</span>
@@ -614,8 +615,8 @@ export default function QuotationsPage() {
                 {(activeQuotation.lines || []).map((line) => (
                   <div key={line.id} className="grid grid-cols-[1fr_80px_90px_90px_90px_110px] items-center px-2 py-3 hover:bg-slate-50/80">
                     <div className="px-2">
-                      <p className="text-sm font-black text-slate-900 truncate">{line.item_name}</p>
-                      <p className="font-mono text-[10px] text-slate-400 truncate">{line.item_code || line.barcode || "—"}</p>
+                      <p className="text-sm font-black text-slate-900 break-words leading-tight">{line.item_name}</p>
+                      <p className="font-mono text-[10px] text-slate-400 break-words">{line.item_code || line.barcode || "—"}</p>
                     </div>
                     <div className="text-center font-black text-sm">{line.quantity}</div>
                     <div className="text-center font-mono text-sm text-slate-600">{formatMoney(line.unit_price)}</div>
@@ -625,9 +626,30 @@ export default function QuotationsPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-center justify-between bg-violet-950 px-6 py-5 text-white">
-                <span className="text-sm font-black opacity-70">إجمالي العرض</span>
-                <span className="text-3xl number-fmt-primary">{formatMoney(activeQuotation.total)} <span className="text-sm font-sans opacity-50">ج.م</span></span>
+              <div className="flex flex-col gap-2 bg-violet-950 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-black opacity-70">المجموع الفرعي</span>
+                  <span className="text-lg number-fmt-primary">{formatMoney(activeQuotation.lines?.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.unit_price || 0), 0) || 0)}</span>
+                </div>
+                {(Number(activeQuotation.increase) > 0 || Number(activeQuotation.decrease) > 0) && (
+                  <div className="flex items-center justify-end gap-4">
+                    {Number(activeQuotation.increase) > 0 && (
+                      <span className="text-sm font-black text-blue-300">+ {formatMoney(activeQuotation.increase)} رسوم</span>
+                    )}
+                    {Number(activeQuotation.decrease) > 0 && (
+                      <span className="text-sm font-black text-rose-300">- {formatMoney(activeQuotation.decrease)} خصم</span>
+                    )}
+                    <span className="text-sm font-black opacity-70">الإجمالي النهائي:</span>
+                    <span className="text-3xl number-fmt-primary">{formatMoney(activeQuotation.total)}</span>
+                    <span className="text-sm font-sans opacity-50">ج.م</span>
+                  </div>
+                )}
+                {!Number(activeQuotation.increase) && !Number(activeQuotation.decrease) && (
+                  <div className="flex items-center justify-between border-t border-violet-800/50 pt-2">
+                    <span className="text-sm font-black opacity-70">الإجمالي النهائي</span>
+                    <span className="text-3xl number-fmt-primary">{formatMoney(activeQuotation.total)} <span className="text-sm font-sans opacity-50">ج.م</span></span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -685,12 +707,12 @@ export default function QuotationsPage() {
       <ConfirmDialog
         open={!!convertTarget}
         title="فتح العرض في نقطة البيع"
-        message={`سيتم فتح نقطة البيع مع كل بيانات ${formatQuotationNo(convertTarget?.id)} للعميل "${convertTarget?.customer_name}" — يمكنك مراجعة الأصناف والأسعار قبل تأكيد البيع.`}
+        message={`سيتم فتح نقطة البيع مع كل بيانات ${convertTarget?.doc_no || formatQuotationNo(convertTarget?.id)} للعميل "${convertTarget?.customer_name}" — يمكنك مراجعة الأصناف والأسعار قبل تأكيد البيع.`}
         onConfirm={() => handleConvertToPos()}
         onCancel={() => setConvertTarget(null)}
       />
 
-      {deleteTarget && <DramaticDeleteConfirm itemName={`QTN-${String(deleteTarget.id).padStart(5, "0")}`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
+      {deleteTarget && <DramaticDeleteConfirm itemName={deleteTarget.doc_no || formatQuotationNo(deleteTarget.id)} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
     </div>
   );
 }

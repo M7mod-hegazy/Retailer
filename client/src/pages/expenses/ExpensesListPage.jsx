@@ -72,7 +72,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute right-0 top-[calc(100%+8px)] w-56 bg-white/90 backdrop-blur-2xl rounded-2xl border border-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] p-1.5 z-[100]"
+            className="absolute left-0 top-[calc(100%+8px)] w-56 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-2xl rounded-2xl border border-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] p-1.5 z-[100]"
           >
             <div className="max-h-[250px] overflow-y-auto no-scrollbar flex flex-col gap-0.5">
               <button
@@ -483,7 +483,7 @@ export default function ExpensesListPage() {
       <SplineHeader />
 
       {/* Hero Content */}
-      <div className="relative z-10 px-8 pt-12 pb-8 max-w-5xl mx-auto w-full">
+      <div className="relative z-30 px-8 pt-12 pb-8 max-w-5xl mx-auto w-full">
         {/* Removed the massive stats header - We will integrate it into the control panel */}
         <div className="flex flex-col items-center text-center gap-4 mb-10">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 shadow-sm border border-rose-200">

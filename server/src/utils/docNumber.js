@@ -20,7 +20,7 @@ function generateDocNumber(type, overridePrefix) {
   let prefix = overridePrefix;
   if (!prefix) {
     const row = db.prepare("SELECT value FROM settings_kv WHERE key = ?").get(`doc_prefix_${type}`);
-    prefix = row?.value || (type === "pos_sale" ? "INV" : type.toUpperCase().slice(0, 4));
+    prefix = row?.value || (type === "pos_sale" ? "INV" : type === "quotation" ? "QTN" : type.toUpperCase().slice(0, 4));
   }
 
   // INV (pos_sale) uses 4 digits; all others use 3

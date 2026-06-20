@@ -2,6 +2,7 @@
 import {
   Plus,
   Search,
+  Settings2,
   Trash2,
   User,
   Package,
@@ -16,9 +17,11 @@ import {
   ImageIcon,
   ZoomIn,
   AlertTriangle,
-  Save,
-  Warehouse,
-  ClipboardList
+  ClipboardList,
+  Tag,
+  Printer,
+  Loader2,
+  Save
 } from "lucide-react";
 import api from "../../services/api";
 import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
@@ -33,11 +36,25 @@ import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
+import { useAuthStore } from "../../stores/authStore";
 import { formatNumber } from "../../utils/currency";
 
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
+
+function formatArabicDateTime(date) {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  }).format(date);
+}
+
+function toDateInput(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
 
 export default function PurchaseOrderFormPage() {
   const navigate = useNavigate();
@@ -45,6 +62,12 @@ export default function PurchaseOrderFormPage() {
   const { id: editId } = useParams();
   const isEditMode = !!editId;
   const [loadedDocNo, setLoadedDocNo] = useState("");
+  const [loadedCreatedAt, setLoadedCreatedAt] = useState(null);
+  const [editActivation, setEditActivation] = useState(null);
+  const [docDate, setDocDate] = useState(toDateInput());
+  const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } =
+    useInvoiceActivation("purchase_order", editActivation);
+  const currentUser = useAuthStore(s => s.user);
 
   const ITEM_PAGE = 20;
 
@@ -57,6 +80,8 @@ export default function PurchaseOrderFormPage() {
   const [warehouses, setWarehouses] = useState([]);
   const [defaultWarehouseId, setDefaultWarehouseId] = useState("");
   const [perWhStockMap, setPerWhStockMap] = useState({}); // { item_id: { wh_id: qty } }
+  const [discount, setDiscount] = useState(0);
+  const [increase, setIncrease] = useState(0);
   
   // Form States
   const [supplier, setSupplier] = useState(null);
@@ -66,6 +91,7 @@ export default function PurchaseOrderFormPage() {
   const [warnModalOpen, setWarnModalOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [printPreview, setPrintPreview] = useState(false);
   
   // Entry States
   const [itemQuery, setItemQuery] = useState("");
@@ -95,6 +121,23 @@ export default function PurchaseOrderFormPage() {
   const notesRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
+
+  // Column visibility
+  const ALL_COLUMNS = ["index","code","name","quantity","unit_id","unit_cost","selling_price","wholesale_price","profit","warehouse_id","total_cost","actions"];
+  const DEFAULT_VISIBLE = ["index","code","name","quantity","unit_id","unit_cost","selling_price","wholesale_price","warehouse_id","total_cost","actions"];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("retailer.purchaseOrder.visibleColumns") || "null") || DEFAULT_VISIBLE; } catch { return DEFAULT_VISIBLE; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("retailer.purchaseOrder.visibleColumns", JSON.stringify(visibleColumns)); } catch {}
+  }, [visibleColumns]);
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) setColSettingsOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // --- Keyboard Navigation Hook ---
   const handleKeyDown = useFieldNavigation();
@@ -159,12 +202,17 @@ export default function PurchaseOrderFormPage() {
     api.get(`/api/purchase-orders/${editId}`).then(res => {
       const o = res.data.data;
       setLoadedDocNo(o.doc_no || "");
+      setLoadedCreatedAt(o.created_at || null);
+      setEditActivation({ docNo: o.doc_no || "", createdAt: o.created_at || null });
+      if (o.created_at) setDocDate(toDateInput(new Date(o.created_at)));
       if (o.supplier_id) {
         api.get(`/api/suppliers/${o.supplier_id}`)
           .then(sr => { const s = sr.data.data; setSupplier(s); setSupplierQuery(s.name); })
           .catch(() => {});
       }
       setNotes(o.notes || "");
+      setDiscount(Math.max(0, Number(o.discount || 0)));
+      setIncrease(Math.max(0, Number(o.increase || 0)));
       if (o.warehouse_id) {
         setDefaultWarehouseId(String(o.warehouse_id));
         setStaging(st => ({ ...st, warehouseId: String(o.warehouse_id) }));
@@ -239,6 +287,7 @@ export default function PurchaseOrderFormPage() {
 
   // --- Logic ---
   function handlePickItem(item) {
+    activateInvoice();
     setSelectedItem(item);
     setItemQuery(item.name);
     setFilteredItems([]);
@@ -259,6 +308,7 @@ export default function PurchaseOrderFormPage() {
   }
 
   function handlePickSupplier(s) {
+    activateInvoice();
     setSupplier(s);
     setSupplierQuery(s.name);
     setSupplierLookupOpen(false);
@@ -270,6 +320,7 @@ export default function PurchaseOrderFormPage() {
 
   function addLine() {
     if (!selectedItem) return;
+    activateInvoice();
     const selectedUnit = units.find(u => String(u.id) === String(staging.unitId));
     const allowDecimal = selectedUnit?.allow_decimal !== 0;
     const rawQty = Number(staging.quantity || 1);
@@ -314,19 +365,22 @@ export default function PurchaseOrderFormPage() {
     }, 50);
   }
 
-  const totals = useMemo(() => ({
-    total: lines.reduce((acc, l) => acc + l.total, 0),
-    items: lines.length
-  }), [lines]);
+  const totals = useMemo(() => {
+    const sub = lines.reduce((acc, l) => acc + l.total, 0);
+    return { sub, total: Math.max(0, sub - discount + increase), items: lines.length };
+  }, [lines, discount, increase]);
 
   async function handleSave() {
     if (!lines.length) { setMessage({ text: "لا يوجد اصناف", type: "error" }); return; }
 
     setIsSaving(true);
     const body = {
+      doc_no: docNo || null,
       supplier_id: supplier?.id || null,
       warehouse_id: defaultWarehouseId ? Number(defaultWarehouseId) : null,
       notes: notes,
+      discount: Number(discount),
+      increase: Number(increase),
       lines: lines.map(l => ({
         item_id: l.item_id,
         quantity: l.quantity,
@@ -354,12 +408,26 @@ export default function PurchaseOrderFormPage() {
   }
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden px-4 lg:px-8 pb-6">
+    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-y-scroll px-4 lg:px-8 pb-6">
       {/* Header */}
       <DocumentHeaderBar
         onBack={() => { if (lines.length > 0) setWarnModalOpen(true); else navigate("/purchases/orders"); }}
-        title={isEditMode ? `تعديل أمر التوريد ${loadedDocNo || `PO-${String(editId).padStart(5, "0")}`}` : "طلب توريد جديد (Purchase Order)"}
+        title={isEditMode ? "تعديل أمر التوريد" : `طلب توريد ${docNo || "جديد"}`}
         subtitle={isEditMode ? "تعديل بنود الطلب قبل الاستلام" : "تخطيط المشتريات المستلمة لاحقاً"}
+        extras={
+          <div className="flex gap-1.5 items-center">
+            {currentUser?.name && (
+              <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                المحرر: {currentUser.name}
+              </div>
+            )}
+            <input disabled value={invoiceIsActive ? (docNo || "") : "—"}
+              className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
+            <input disabled
+              value={invoiceIsActive && invoiceCreatedAt ? formatArabicDateTime(new Date(invoiceCreatedAt)) : "—"}
+              className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
+          </div>
+        }
         actions={
           <>
             {message.text && (
@@ -367,6 +435,11 @@ export default function PurchaseOrderFormPage() {
                 {message.text}
               </div>
             )}
+            <PermissionGate page="purchase_orders" action="print">
+              <DocumentActionButton variant="print" icon={Printer} onClick={() => setPrintPreview(true)} disabled={!lines.length}>
+                معاينة وطباعة
+              </DocumentActionButton>
+            </PermissionGate>
             <PermissionGate page="purchase_orders" action="add">
               <DocumentActionButton
                 variant="primary"
@@ -381,7 +454,7 @@ export default function PurchaseOrderFormPage() {
         }
       />
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+      <main className="flex min-h-0 flex-1 flex-col p-4">
         <div className="mb-3 flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2.5">
           <ClipboardList className="h-4 w-4 text-indigo-600 shrink-0" />
           <p className="text-2sm font-black text-indigo-800">طلب توريد — ليس فاتورة. المخزون لن يتأثر حتى الاستلام في صفحة المشتريات.</p>
@@ -555,7 +628,35 @@ export default function PurchaseOrderFormPage() {
             </section>
 
             {/* Grid */}
-            <section className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-300 bg-white min-h-0">
+            <section className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-300 bg-white min-h-[500px]">
+              <div className="flex items-center justify-between px-3 py-2 shrink-0 border-b border-slate-100">
+                <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
+                <div ref={colSettingsRef} className="relative">
+                  <button onClick={() => setColSettingsOpen(p => !p)}
+                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                    title="تخصيص الأعمدة"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </button>
+                  {colSettingsOpen && (
+                    <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
+                      <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                      {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
+                        const labels = { code: "الكود", name: "البيان", quantity: "الكمية", unit_id: "الوحدة", unit_cost: "التكلفة", selling_price: "سعر البيع", wholesale_price: "سعر الجملة", profit: "الربح", warehouse_id: "المخزن", total_cost: "الإجمالي" };
+                        return (
+                          <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                            <input type="checkbox" checked={visibleColumns.includes(cid)}
+                              onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                            />
+                            {labels[cid] || cid}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
               <DataGrid
                 data={lines}
                 rowKey={(row, i) => i}
@@ -579,17 +680,15 @@ export default function PurchaseOrderFormPage() {
                       const imgUrl = item?.primary_image_url || item?.image_url || item?.image;
                       return (
                         <div className="flex items-center gap-2 py-1">
-                          {imgUrl ? (
+                          {imgUrl && (
                             <button onClick={() => { setImagePreviewUrl(resolveImageUrl(imgUrl)); setImageModalOpen(true); }} className="shrink-0 group relative rounded-md overflow-hidden border border-slate-200">
                               <img src={resolveImageUrl(imgUrl)} alt={l.name} className="w-8 h-8 object-cover" />
                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ZoomIn className="w-4 h-4 text-white" />
                               </div>
                             </button>
-                          ) : (
-                            <div className="w-8 h-8 shrink-0 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-4 h-4 text-slate-300"/></div>
                           )}
-                          <span className="truncate">{l.name}</span>
+                          <span className="whitespace-normal break-words leading-tight">{l.name}</span>
                         </div>
                       );
                     }
@@ -644,7 +743,7 @@ export default function PurchaseOrderFormPage() {
                     )
                   },
                   {
-                    id: "total", header: "إجمالي المتوقع", width: 140, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l-0",
+                    id: "total_cost", header: "إجمالي المتوقع", width: 140, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l-0",
                     sortValue: (l) => l.total,
                     render: (l) => formatNumber(l.total)
                   },
@@ -656,86 +755,150 @@ export default function PurchaseOrderFormPage() {
                       </button>
                     )
                   }
-                ]}
+                ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
               />
-              <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3">
-                 <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                       <span className="text-[11px] font-bold text-slate-400">إجمالي الأصناف:</span>
-                       <span className="text-sm font-black text-slate-700">{totals.items}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <span className="text-[11px] font-bold text-slate-400">إجمالي الكميات:</span>
-                       <span className="text-sm font-black text-slate-700 number-fmt">{lines.reduce((acc, l) => acc + l.quantity, 0)}</span>
-                    </div>
-                 </div>
-                 <div className="flex items-center gap-3">
-                    <span className="text-2sm font-bold text-slate-500 uppercase tracking-wider">القيمة الإجمالية المتوقعة</span>
-                    <span className="text-[20px] font-black text-slate-900 number-fmt">{formatNumber(totals.total)}</span>
-                    <span className="text-[11px] font-bold text-slate-400">ج.م</span>
-                 </div>
-              </div>
+               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3">
+                  <div className="flex items-center gap-6">
+                     <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400">إجمالي الأصناف:</span>
+                        <span className="text-sm font-black text-slate-700">{totals.items}</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400">إجمالي الكميات:</span>
+                        <span className="text-sm font-black text-slate-700 number-fmt">{lines.reduce((acc, l) => acc + l.quantity, 0)}</span>
+                     </div>
+                     {(discount > 0 || increase > 0) && (
+                       <div className="flex items-center gap-2">
+                         <span className="text-[11px] font-bold text-slate-400">الإجمالي الفرعي:</span>
+                         <span className="text-sm font-black text-slate-600 number-fmt">{formatNumber(totals.sub)}</span>
+                       </div>
+                     )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                     {discount > 0 && (
+                       <span className="text-2sm font-black text-rose-500 number-fmt">-{formatNumber(discount)}</span>
+                     )}
+                     {increase > 0 && (
+                       <span className="text-2sm font-black text-blue-500 number-fmt">+{formatNumber(increase)}</span>
+                     )}
+                     <span className="text-2sm font-bold text-slate-500 uppercase tracking-wider">القيمة الإجمالية المتوقعة</span>
+                     <span className="text-[20px] font-black text-slate-900 number-fmt">{formatNumber(totals.total)}</span>
+                     <span className="text-[11px] font-bold text-slate-400">ج.م</span>
+                  </div>
+               </div>
             </section>
           </div>
 
-          {/* Right Sidebar */}
-          <aside className="w-[320px] flex flex-col gap-4">
-             <div className="rounded-md border border-slate-300 bg-white p-5 shadow-sm">
-                <h3 className="mb-3 text-2sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <Warehouse className="h-4 w-4 text-slate-400" /> الرصيد الحالي للصنف
-                </h3>
-                {selectedItem ? (
-                  <div>
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 truncate">{selectedItem.name}</p>
-                    <div className="rounded border border-slate-100 divide-y divide-slate-100 max-h-[180px] overflow-y-auto">
-                      {warehouses.length === 0 ? (
-                        <div className="px-3 py-2 text-2sm text-slate-400 font-bold">لا توجد مخازن</div>
-                      ) : warehouses.map(w => {
-                        const qty = (perWhStockMap[selectedItem.id]?.[w.id]) || 0;
-                        return (
-                          <div key={w.id} className="flex items-center justify-between px-3 py-1.5 text-2sm">
-                            <span className="font-bold text-slate-600 truncate">{w.name}</span>
-                            <span className={`number-fmt-primary ${qty > 0 ? "text-slate-800" : "text-slate-300"}`}>{qty}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-2sm font-bold text-slate-400 text-center py-3">اختر صنفاً لعرض رصيده في المخازن</p>
-                )}
-             </div>
-             <div className="rounded-md border border-slate-300 bg-white p-5 shadow-md">
-                <h3 className="mb-4 text-2sm font-black text-slate-800 border-b pb-2 border-slate-100 uppercase tracking-widest flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-slate-400" /> حالة الطلب
-                </h3>
-                <div className="space-y-3">
-                   <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-200 text-amber-700">
-                         <Plus className="h-4 w-4" />
-                      </div>
-                      <div className="flex flex-col">
-                         <span className="text-2sm font-black text-amber-900">مسودة (Pending)</span>
-                         <span className="text-[11px] text-amber-600 font-bold">في انتظار المراجعة</span>
-                      </div>
-                   </div>
-                   <p className="text-[11px] leading-relaxed text-slate-400 text-center font-bold">
-                     تنبيه: تحويل أمر الشراء إلى "فاتورة مشتريات" سيتم فور استلام البضاعة في المخازن من خلال لوحة الاستلام.
-                   </p>
-                </div>
-             </div>
+           {/* Right Sidebar */}
+           <aside className="w-[320px] shrink-0 flex flex-col gap-4">
+              {/* Pricing + Discount/Increase */}
+              <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
+                  <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 border-slate-100 flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-slate-400" /> ملخص الإجماليات
+                  </h3>
 
-             <div className="rounded-md border border-slate-200 bg-white p-5 flex-1 flex flex-col justify-end">
-                 <button
-                  onClick={handleSave}
-                  className="w-full rounded-sm bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95"
-                 >
-                   {isEditMode ? "حفظ التعديلات" : "اعتماد وإرسال الطلب"}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between py-1.5 px-2 rounded bg-slate-50">
+                      <span className="text-2sm font-bold text-slate-500">المجموع الفرعي</span>
+                      <span className="text-sm font-black text-slate-800 number-fmt">{formatNumber(totals.sub)}</span>
+                    </div>
+                   <div className="flex flex-col gap-1.5 pr-2">
+                     <label className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                       <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> خصم
+                     </label>
+                     <input type="number" min="0"
+                       value={discount}
+                       onChange={(e) => setDiscount(Math.max(0, Number(e.target.value || 0)))}
+                       className="w-full rounded-sm border border-rose-200 bg-rose-50/50 px-3 py-2 text-sm font-black text-rose-900 outline-none focus:border-rose-400 text-center"
+                     />
+                   </div>
+                   <div className="flex flex-col gap-1.5 pr-2">
+                     <label className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
+                       <span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> رسوم / إضافة
+                     </label>
+                     <input type="number" min="0"
+                       value={increase}
+                       onChange={(e) => setIncrease(Math.max(0, Number(e.target.value || 0)))}
+                       className="w-full rounded-sm border border-blue-200 bg-blue-50/50 px-3 py-2 text-sm font-black text-blue-900 outline-none focus:border-blue-400 text-center"
+                     />
+                   </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                      <span className="text-sm font-black text-slate-700">الإجمالي النهائي</span>
+                      <span className="number-fmt-primary text-sm font-black text-emerald-700">{formatNumber(totals.total)}</span>
+                    </div>
+                 </div>
+              </div>
+              {/* Order Status */}
+              <div className="rounded-md border border-slate-300 bg-white p-5 shadow-md shrink-0">
+                 <h3 className="mb-4 text-2sm font-black text-slate-800 border-b pb-2 border-slate-100 uppercase tracking-widest flex items-center gap-2">
+                   <Clock className="h-4 w-4 text-slate-400" /> حالة الطلب
+                 </h3>
+                 <div className="space-y-3">
+                    <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-200 text-amber-700">
+                          <Plus className="h-4 w-4" />
+                       </div>
+                       <div className="flex flex-col">
+                          <span className="text-2sm font-black text-amber-900">مسودة (Pending)</span>
+                          <span className="text-[11px] text-amber-600 font-bold">في انتظار المراجعة</span>
+                       </div>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-slate-400 text-center font-bold">
+                      تنبيه: تحويل أمر الشراء إلى "فاتورة مشتريات" سيتم فور استلام البضاعة في المخازن من خلال لوحة الاستلام.
+                    </p>
+                 </div>
+              </div>
+
+              {/* Save / Print */}
+              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm shrink-0 flex flex-col gap-2">
+                 <PermissionGate page="purchase_orders" action="add">
+                  <button
+                   onClick={handleSave}
+                   className="w-full flex items-center justify-center gap-2 rounded-sm bg-primary py-3.5 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95 disabled:opacity-40"
+                   disabled={isSaving || !lines.length}
+                  >
+                    {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> جاري الحفظ...</> : <><Save className="h-4 w-4" /> {isEditMode ? "حفظ التعديلات" : "اعتماد وإرسال الطلب"}</>}
                  </button>
+                 </PermissionGate>
+                 <PermissionGate page="purchase_orders" action="print">
+                   <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
+                     className="w-full flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 py-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-slate-50 transition-all disabled:opacity-40">
+                     <Printer className="h-3.5 w-3.5" /> معاينة وطباعة
+                   </button>
+                 </PermissionGate>
              </div>
           </aside>
         </div>
       </main>
+      {/* Print Preview Modal */}
+      <PrintPreviewModal
+        open={printPreview}
+        onClose={() => setPrintPreview(false)}
+        docType="purchase_order"
+        invoice={{
+          invoice_no: docNo || loadedDocNo || "",
+          customer_name: supplier?.name || "",
+          cashier_name: currentUser?.name || "",
+          notes: notes || "",
+          created_at: invoiceCreatedAt || loadedCreatedAt || new Date().toISOString(),
+          lines: lines.map(l => ({
+            item_name: l.name,
+            code: l.code || "",
+            quantity: l.quantity,
+            unit_price: l.unit_cost,
+            discount_amount: 0,
+          })),
+          discount,
+          increase,
+        }}
+        operationLabel="أمر توريد"
+        confirmLabel="حفظ وطباعة"
+        onConfirmPrint={handleSave}
+        onSaveOnly={handleSave}
+        saveOnlyLabel="حفظ فقط"
+        isSaving={isSaving}
+      />
+
       {/* Image Preview Modal */}
       <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" size="md">
         <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-lg border border-slate-100">

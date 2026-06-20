@@ -1,8 +1,8 @@
-﻿import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ArrowLeft, Lock, Pencil, Trash2, AlertTriangle, CheckCircle2,
   User, Calendar, CreditCard, Banknote, Wallet, Clock, X,
-  Package, ShoppingCart, Printer, History,
+  Package, ShoppingCart, Printer, History, Settings2,
 } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useUiStore } from "../../stores/uiStore";
@@ -16,6 +16,7 @@ import DocumentActionButton from "../../components/document/DocumentActionButton
 import toast from "react-hot-toast";
 import { PAYMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 function CancelReasonModal({ title, onConfirm, onClose }) {
   const [reason, setReason] = useState("");
@@ -84,6 +85,25 @@ export default function InvoiceDetailPage() {
   const [timeline, setTimeline] = useState([]);
 
   const [cancelOpen, setCancelOpen] = useState(false);
+
+  const ALL_COLUMNS = ["index","code","name","quantity","unit_price","discount","line_total"];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem("retailer.invoiceDetail.visibleColumns");
+      return saved ? JSON.parse(saved) : ALL_COLUMNS;
+    } catch { return ALL_COLUMNS; }
+  });
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) {
+        setColSettingsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
@@ -272,6 +292,39 @@ export default function InvoiceDetailPage() {
           </section>
 
           {/* Lines */}
+          <div className="flex items-center justify-between shrink-0 px-2">
+            <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأصناف ({(invoice.lines || []).length})</span>
+            <div className="relative" ref={colSettingsRef}>
+              <button
+                onClick={() => setColSettingsOpen((v) => !v)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-all"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+              </button>
+              {colSettingsOpen && (
+                <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-2">
+                  <div className="text-[10px] font-black text-slate-400 px-2 pb-1 border-b border-slate-100 mb-1">إظهار الأعمدة</div>
+                  {ALL_COLUMNS.map((col) => (
+                    <label key={col} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns.includes(col)}
+                        onChange={() => {
+                          const next = visibleColumns.includes(col)
+                            ? visibleColumns.filter((c) => c !== col)
+                            : [...visibleColumns, col];
+                          setVisibleColumns(next);
+                          localStorage.setItem("retailer.invoiceDetail.visibleColumns", JSON.stringify(next));
+                        }}
+                        className="accent-indigo-500"
+                      />
+                      {col === "index" ? "#" : col === "code" ? "الكود" : col === "name" ? "الصنف" : col === "quantity" ? "الكمية" : col === "unit_price" ? "السعر" : col === "discount" ? "الخصم" : col === "line_total" ? "الإجمالي" : col}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <DataGrid
             data={invoice.lines || []}
             rowKey={(row, i) => `${row.item_id}-${i}`}
@@ -283,13 +336,13 @@ export default function InvoiceDetailPage() {
               { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
               { id: "code", header: "الكود", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] font-black text-slate-500 border-l border-slate-100",
                 render: (l) => l.item_code || l.code || l.barcode || "—" },
-              { id: "name", header: "الصنف", width: 200, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
-                render: (l) => <div className="py-1"><p className="text-sm font-black">{l.item_name || l.name}{l.sold_unit_name ? <span className="text-[11px] font-bold text-sky-600"> — {l.sold_unit_qty ?? ""} {l.sold_unit_name}</span> : null}</p></div> },
+              { id: "name", header: "الصنف", width: 220, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
+                render: (l) => <div className="flex items-center gap-2 py-1">{l.primary_image_url ? <img src={resolveImageUrl(l.primary_image_url)} alt="" className="w-[22px] h-[22px] rounded object-cover shrink-0" /> : null}<p className="text-sm font-black">{l.item_name || l.name}{l.sold_unit_name ? <span className="text-[11px] font-bold text-sky-600"> — {l.sold_unit_qty ?? ""} {l.sold_unit_name}</span> : null}</p></div> },
               { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt text-sm border-l border-slate-100", render: (l) => l.quantity },
               { id: "unit_price", header: "السعر", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-slate-100 text-slate-700", render: (l) => fmt(l.unit_price) },
               { id: "discount", header: "خصم", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-slate-100 text-amber-700", render: (l) => l.discount > 0 ? fmt(l.discount) : "—" },
               { id: "line_total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100", render: (l) => fmt(l.line_total) },
-            ]}
+            ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
           />
 
           {/* Amendment timeline */}
@@ -403,6 +456,7 @@ export default function InvoiceDetailPage() {
       <PrintPreviewModal
         open={printOpen}
         onClose={() => setPrintOpen(false)}
+        docType="sales_invoice"
         invoice={{
           invoice_no: invoice.invoice_no,
           created_at: invoice.created_at,
@@ -412,6 +466,7 @@ export default function InvoiceDetailPage() {
             quantity: l.quantity,
             unit_price: l.unit_price,
             discount_amount: l.discount || 0,
+            code: l.item_code || l.code || "",
           })),
         }}
         settings={printSettings}

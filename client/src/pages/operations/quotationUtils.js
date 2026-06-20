@@ -64,7 +64,7 @@ export function buildQuotationPosState(quotation) {
   return {
     from_quotation_id: quotation.id,
     prefill: {
-      quotation_no: formatQuotationNo(quotation.id),
+      quotation_no: quotation.doc_no || formatQuotationNo(quotation.id),
       quotation_created_at: quotation.created_at,
       quotation_expires_at: quotation.expires_at || null,
       customer_id: quotation.customer_id,
@@ -90,7 +90,7 @@ export function buildQuotationPosState(quotation) {
 }
 
 /** Build print preview document from quotation record or form state */
-export function buildQuotationPrintDoc({ quotation, cart, customer, totals, expiresAt, notes, paymentType, editId }) {
+export function buildQuotationPrintDoc({ quotation, cart, customer, totals, expiresAt, notes, paymentType, editId, cashierName, docNo }) {
   const lines = quotation?.lines || cart?.map((i) => ({
     item_code: i.code,
     item_name: i.name,
@@ -102,11 +102,13 @@ export function buildQuotationPrintDoc({ quotation, cart, customer, totals, expi
   })) || [];
 
   const id = quotation?.id || editId;
+  const effectiveDocNo = quotation?.doc_no || docNo || (id ? formatQuotationNo(id) : "QTN-مسودة");
   return {
-    invoice_number: id ? formatQuotationNo(id) : "QTN-مسودة",
-    invoice_no: id ? formatQuotationNo(id) : "QTN-مسودة",
+    invoice_number: effectiveDocNo,
+    invoice_no: effectiveDocNo,
     created_at: quotation?.created_at || new Date().toISOString(),
     customer_name: quotation?.customer_name || customer?.name || "—",
+    cashier_name: cashierName || "",
     expires_at: quotation?.expires_at || expiresAt || null,
     notes: quotation?.notes || notes || "",
     payment_type: quotation?.payment_type || paymentType || "cash",

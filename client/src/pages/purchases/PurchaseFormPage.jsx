@@ -5,7 +5,7 @@ import {
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
   ImageIcon, Printer, CheckCircle2, Layers, Lock, Pencil,
   FilePlus, Sparkles, Receipt, RefreshCw, ArrowUpDown, Save,
-  Loader2, Filter, ClipboardList,
+  Loader2, Filter, ClipboardList, Settings2,
 } from "lucide-react";
 import api from "../../services/api";
 import { useFeatureEnabled } from "../../hooks/useFeature";
@@ -277,6 +277,8 @@ export default function PurchaseFormPage() {
   const originalSnap = useRef(null);
   const isDirty = (lines.length > 0 || !!supplier) && !locked && !wasSaved.current;
   const { blocker } = useUnsavedChangesGuard(isDirty);
+  const [pendingNav, setPendingNav] = useState(null);
+  const showUnsavedModal = blocker.state === "blocked" || pendingNav !== null;
 
   const [printPreview, setPrintPreview] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
@@ -335,6 +337,23 @@ export default function PurchaseFormPage() {
   const [todayPurchPreviewOpen, setTodayPurchPreviewOpen] = useState(false);
   const [todayPurchVoidOpen, setTodayPurchVoidOpen] = useState(false);
   const [todayPurchVoidTarget, setTodayPurchVoidTarget] = useState(null);
+
+  // Column visibility
+  const ALL_COLUMNS = ["index","code","name","quantity","unit_id","unit_cost","selling_price","profit_pct","wholesale_price","locks","warehouse_id","expiry_date","total","actions"];
+  const DEFAULT_VISIBLE = ["index","code","name","quantity","unit_id","unit_cost","selling_price","wholesale_price","warehouse_id","total","actions"];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("retailer.purchase.visibleColumns") || "null") || DEFAULT_VISIBLE; } catch { return DEFAULT_VISIBLE; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("retailer.purchase.visibleColumns", JSON.stringify(visibleColumns)); } catch {}
+  }, [visibleColumns]);
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) setColSettingsOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const todayPurchFilteredItems = useMemo(() => {
     const q = todayPurchItemSearch.trim();
@@ -520,6 +539,8 @@ export default function PurchaseFormPage() {
       const s = suppliers.find(x => String(x.id) === String(fromPO.supplier_id));
       if (s) { setSupplier(s); setSupplierQuery(s.name); }
     }
+    setDiscount(Math.max(0, Number(fromPO.discount || 0)));
+    setIncrease(Math.max(0, Number(fromPO.increase || 0)));
     const headerWh = fromPO.warehouse_id ? String(fromPO.warehouse_id) : defaultWarehouseId;
     setLines((fromPO.lines || []).map(l => ({
       item_id: l.item_id,
@@ -668,6 +689,7 @@ export default function PurchaseFormPage() {
         track_expiry: tracksExpiry,
         expiry_date: tracksExpiry ? (staging.expiryDate || null) : null,
         batch_no: tracksExpiry ? (staging.batchNo || null) : null,
+        primary_image_url: selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image || null,
       }];
     });
     setSelectedItem(null);
@@ -966,7 +988,10 @@ export default function PurchaseFormPage() {
       {/* Header */}
       <DocumentHeaderBar
         accent="emerald-strong"
-        onBack={() => navigate("/purchases")}
+        onBack={() => {
+          if (isDirty) setPendingNav("/purchases");
+          else navigate("/purchases");
+        }}
         title={isEditMode ? "فاتورة مشتريات" : "فاتورة مشتريات جديدة"}
         subtitle={isEditMode ? (isLocked ? "محفوظة — اضغط تعديل للتغيير" : "وضع التعديل") : "إدخال مخزون جديد"}
         extras={
@@ -1358,6 +1383,36 @@ export default function PurchaseFormPage() {
             </section>
           )}
 
+          {/* Column visibility settings */}
+          <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
+            <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
+            <div ref={colSettingsRef} className="relative">
+              <button onClick={() => setColSettingsOpen(p => !p)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                title="تخصيص الأعمدة"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+              {colSettingsOpen && (
+                <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
+                  <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                  {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
+                    const labels = { code: "الكود", name: "البيان", quantity: "الكمية", unit_id: "الوحدة", unit_cost: "التكلفة", selling_price: "سعر البيع", profit_pct: "الربح", wholesale_price: "جملة", locks: "قفل", warehouse_id: "المخزن", expiry_date: "انتهاء", total: "الإجمالي" };
+                    return (
+                      <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                        <input type="checkbox" checked={visibleColumns.includes(cid)}
+                          onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                        />
+                        {labels[cid] || cid}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Lines DataGrid */}
           <DataGrid
             data-help="main-table"
@@ -1366,7 +1421,7 @@ export default function PurchaseFormPage() {
             emptyMessage="لا يوجد أصناف في الفاتورة بعد"
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0 animate-fade-in"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 max-h-[440px] animate-fade-in"
             rowClass={(l) => {
               const anyUnlocked = l.update_master_purchase_price === false || l.update_master_sale_price === false || l.update_master_wholesale_price === false;
               return anyUnlocked ? "!bg-amber-50" : "";
@@ -1378,10 +1433,18 @@ export default function PurchaseFormPage() {
                 id: "name", header: "البيان", width: 220, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-2", headerClass: "text-right px-2",
                 render: (l) => (
                   <div className="flex items-center gap-2 py-1">
-                    <div className="w-8 h-8 shrink-0 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><ImageIcon className="w-4 h-4 text-slate-300"/></div>
-                    <span className="truncate">{l.name}</span>
+                    {l.primary_image_url && (
+                      <img
+                        src={resolveImageUrl(l.primary_image_url)}
+                        alt="product"
+                        className="w-7 h-7 shrink-0 object-cover rounded-[6px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-slate-200"
+                        onClick={() => { const u = resolveImageUrl(l.primary_image_url); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }}
+                      />
+                    )}
+                    <span className="whitespace-normal break-words leading-tight">{l.name}</span>
                   </div>
-                )
+                ),
+                sortValue: (l) => l.name,
               },
               { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => {
@@ -1554,7 +1617,7 @@ export default function PurchaseFormPage() {
                 render: (l) => formatNumber(l.total) },
               { id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",
                 render: (_, i) => !isLocked && <button onClick={() => removeLine(i)} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors focus:outline-none"><X className="h-4 w-4" /></button> },
-            ]}
+            ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
           />
 
           {priceChangedLines.length > 0 && !isLocked && (
@@ -2415,6 +2478,7 @@ export default function PurchaseFormPage() {
             quantity: l.quantity,
             unit_price: l.unit_cost,
             discount_amount: 0,
+            code: l.code || "",
           })),
         }}
         settings={printSettings}
@@ -2427,9 +2491,14 @@ export default function PurchaseFormPage() {
       />
 
       <UnsavedChangesModal
-        open={blocker.state === "blocked"}
-        onStay={() => blocker.reset?.()}
-        onLeave={() => blocker.proceed?.()}
+        open={showUnsavedModal}
+        onStay={() => { setPendingNav(null); blocker.reset?.(); }}
+        onLeave={() => {
+          const path = pendingNav;
+          setPendingNav(null);
+          if (path) navigate(path);
+          else blocker.proceed?.();
+        }}
       />
     </div>
   );

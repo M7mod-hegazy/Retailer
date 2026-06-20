@@ -49,6 +49,7 @@ function buildQuotationPayload(payload = {}) {
   const total = linesTotal + increase - decrease;
   return {
     customer_id: payload.customer_id ? Number(payload.customer_id) : null,
+    doc_no: payload.doc_no || null,
     status: payload.status || "draft",
     notes: payload.notes || null,
     expires_at: payload.expires_at || null,

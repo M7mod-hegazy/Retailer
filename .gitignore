@@ -2,6 +2,7 @@ node_modules/
 client/node_modules/
 server/node_modules/
 client/dist/
+client/dist-check/
 release/
 .native-cache/
 *.log
@@ -34,3 +35,35 @@ Thumbs.db
 .qwen
 .trae
 .windsurf
+
+# ── Secrets: license signing keys (NEVER commit) ──
+*.pem
+*.p12
+*.pfx
+license-private*
+
+# ── Issued / generated license files (customer data) ──
+tools/**/licenses/
+*.key
+
+# ── Customer runtime data (backups, uploads) ──
+server/backups/
+server/uploads/
+server/undefined/
+undefined/
+uploads/
+
+# ── Downloaded Node runtimes & built tool binaries (rebuildable) ──
+tools/**/_build/
+*.exe
+
+# ── Vite dev cache & source maps ──
+client/.vite/
+*.map
+
+# ── Stray Windows redirect artifacts ──
+NUL
+nul
+
+# ── Junk data files ──
+*.xls

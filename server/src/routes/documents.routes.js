@@ -4,7 +4,7 @@ const router = express.Router();
 const { generateDocNumber } = require("../utils/docNumber");
 const { authRequired } = require("../middleware/auth");
 
-const VALID_TYPES = ["pos_sale", "purchase_receipt", "sales_return", "purchase_return"];
+const VALID_TYPES = ["pos_sale", "purchase_receipt", "sales_return", "purchase_return", "purchase_order", "quotation"];
 
 // POST /api/documents/reserve
 // Atomically increments the daily sequence and returns the reserved doc number.

@@ -10,7 +10,11 @@
 // report that licensing is not configured.
 //
 // You can also override at runtime with the RETAILER_LICENSE_PUBKEY env var
-// (handy for tests / staged builds).
+// (handy for tests / staged builds). SECURITY: this override is IGNORED in the
+// packaged (installed) app, so an attacker cannot point the app at their own key
+// by setting an environment variable before launching the .exe.
+
+const { isPackagedApp } = require("./runtime");
 
 const PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAiZPgMUK9AXEl9mjWpEDPTxgZUavDUZUvss83F0J0Ka8=
@@ -18,7 +22,8 @@ MCowBQYDK2VwAyEAiZPgMUK9AXEl9mjWpEDPTxgZUavDUZUvss83F0J0Ka8=
 `; // <-- keygen overwrites this line's value
 
 function getPublicKeyPem() {
-  const fromEnv = process.env.RETAILER_LICENSE_PUBKEY;
+  // In the installed app, trust ONLY the embedded key — never an env override.
+  const fromEnv = isPackagedApp() ? "" : process.env.RETAILER_LICENSE_PUBKEY;
   if (fromEnv && fromEnv.trim()) {
     // Allow \n-escaped single-line env values.
     return fromEnv.includes("BEGIN")

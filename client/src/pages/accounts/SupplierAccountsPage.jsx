@@ -863,7 +863,7 @@ export default function SupplierAccountsPage() {
         api.get("/api/payment-methods"),
       ]);
       setSuppliers(res.data.data || []);
-      setPaymentMethods((methodsReq.data.data || []).filter(m => m.id !== 2));
+      setPaymentMethods((methodsReq.data.data || []).filter(m => m.category !== 'credit'));
     } catch { toast.error("فشل تحميل الموردين"); }
     finally { setLoading(false); }
   }, []);

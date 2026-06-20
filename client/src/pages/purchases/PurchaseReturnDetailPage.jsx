@@ -301,6 +301,7 @@ export default function PurchaseReturnDetailPage() {
       <PrintPreviewModal
         open={printOpen}
         onClose={() => setPrintOpen(false)}
+        docType="purchase_return"
         invoice={{
           invoice_no: doc.doc_no,
           created_at: doc.created_at,
@@ -310,6 +311,7 @@ export default function PurchaseReturnDetailPage() {
             quantity: l.quantity,
             unit_price: l.unit_cost,
             discount_amount: 0,
+            code: l.item_code || l.code || "",
           })),
         }}
         settings={printSettings}

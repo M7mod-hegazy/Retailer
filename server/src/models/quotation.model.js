@@ -91,9 +91,11 @@ function all({ search = '', status = '', sort = 'q.id', order = 'DESC', page = 1
 
   const rows = db.prepare(`
     SELECT q.*, c.name AS customer_name,
+           u.full_name AS created_by_name,
            (SELECT COUNT(*) FROM quotation_lines ql WHERE ql.quotation_id = q.id) AS line_count
     FROM quotations q
     LEFT JOIN customers c ON c.id = q.customer_id
+    LEFT JOIN users u ON u.id = q.created_by
     ${where}
     ORDER BY ${sortCol} ${sortDir}
     LIMIT ? OFFSET ?
@@ -113,9 +115,11 @@ function allRaw() {
   const db = getDb();
   const rows = db.prepare(`
     SELECT q.*, c.name AS customer_name,
+           u.full_name AS created_by_name,
            (SELECT COUNT(*) FROM quotation_lines ql WHERE ql.quotation_id = q.id) AS line_count
     FROM quotations q
     LEFT JOIN customers c ON c.id = q.customer_id
+    LEFT JOIN users u ON u.id = q.created_by
     ORDER BY q.id DESC
   `).all();
   return attachLines(rows);
@@ -125,9 +129,11 @@ function findById(id) {
   ensureExtraColumns();
   const db = getDb();
   const row = db.prepare(`
-    SELECT q.*, c.name AS customer_name
+    SELECT q.*, c.name AS customer_name,
+           u.full_name AS created_by_name
     FROM quotations q
     LEFT JOIN customers c ON c.id = q.customer_id
+    LEFT JOIN users u ON u.id = q.created_by
     WHERE q.id = ?
   `).get(id);
   if (!row) return null;
@@ -152,8 +158,14 @@ function create(payload = {}) {
       user: payload._user,
       existing: payload._existingTax,
     });
+    const createdBy = payload._user?.id || null;
+    let docNo = payload.doc_no || null;
+    if (!docNo) {
+      const { generateDocNumber } = require('../utils/docNumber');
+      try { docNo = generateDocNumber('quotation'); } catch { docNo = `QTN-${String(Date.now()).slice(-6)}`; }
+    }
     const result = db.prepare(
-      "INSERT INTO quotations (customer_id, total, status, notes, expires_at, tax_enabled, tax_rate, tax_amount, tax_type, increase, decrease, payment_type, payment_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO quotations (customer_id, total, status, notes, expires_at, tax_enabled, tax_rate, tax_amount, tax_type, increase, decrease, payment_type, payment_note, created_by, doc_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).run(
       payload.customer_id || null,
       taxResult.total,
@@ -168,6 +180,8 @@ function create(payload = {}) {
       decreaseNum,
       payload.payment_type || 'cash',
       payload.payment_note || null,
+      createdBy,
+      docNo,
     );
 
     const quotationId = result.lastInsertRowid;

@@ -5,7 +5,7 @@ import {
   ListTodo, Loader2, Minus, PackageCheck, PauseCircle, Plus, Printer,
   Receipt, RefreshCw, RotateCcw, Search, ShieldCheck, ShoppingCart,
   Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText,
-  Wand2,
+  Wand2, Settings2,
 } from "lucide-react";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
@@ -144,6 +144,25 @@ export default function POSDetailedView({ vm }) {
   useEffect(() => {
     try { localStorage.setItem("retailer.pos.gridDisplayMode", gridDisplayMode); } catch {}
   }, [gridDisplayMode]);
+
+  const ALL_COLUMNS = ["image","code","name","price","stock","actions"];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem("retailer.posDetailed.visibleColumns");
+      return saved ? JSON.parse(saved) : ALL_COLUMNS;
+    } catch { return ALL_COLUMNS; }
+  });
+  const [colSettingsOpen, setColSettingsOpen] = useState(false);
+  const colSettingsRef = useRef(null);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (colSettingsRef.current && !colSettingsRef.current.contains(e.target)) {
+        setColSettingsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleFieldNav = useFieldNavigation();
   const discountRef = useRef(null);
@@ -633,7 +652,40 @@ export default function POSDetailedView({ vm }) {
             )}
           </div>
           ) : (
-             <div className="flex-1 overflow-y-auto bg-white custom-scrollbar flex flex-col">
+              <div className="flex-1 overflow-y-auto bg-white custom-scrollbar flex flex-col">
+                <div className="flex items-center justify-between shrink-0 px-3 pt-3 pb-1">
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأصناف ({detailedItemResults.length})</span>
+                  <div className="relative" ref={colSettingsRef}>
+                    <button
+                      onClick={() => setColSettingsOpen((v) => !v)}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-all"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                    </button>
+                    {colSettingsOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-2">
+                        <div className="text-[10px] font-black text-slate-400 px-2 pb-1 border-b border-slate-100 mb-1">إظهار الأعمدة</div>
+                        {ALL_COLUMNS.map((col) => (
+                          <label key={col} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={visibleColumns.includes(col)}
+                              onChange={() => {
+                                const next = visibleColumns.includes(col)
+                                  ? visibleColumns.filter((c) => c !== col)
+                                  : [...visibleColumns, col];
+                                setVisibleColumns(next);
+                                localStorage.setItem("retailer.posDetailed.visibleColumns", JSON.stringify(next));
+                              }}
+                              className="accent-indigo-500"
+                            />
+                            {col === "image" ? "صورة" : col === "code" ? "الكود" : col === "name" ? "اسم الصنف" : col === "price" ? "السعر" : col === "stock" ? "الرصيد" : col === "actions" ? "إجراءات" : col}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <DataGrid
                   data={detailedItemResults}
                   sortConfig={detailedSortConfig}
@@ -653,7 +705,7 @@ export default function POSDetailedView({ vm }) {
                     { id: "actions", header: "", width: 60, render: r => (
                         <button onClick={() => handleGridClickTracked(r)} className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100"><Plus className="h-4 w-4"/></button>
                     )}
-                  ]}
+                  ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
                 />
              </div>
           )}
@@ -1279,10 +1331,10 @@ export default function POSDetailedView({ vm }) {
                         {getItemImage(item) ? <img src={getItemImage(item)} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-slate-300"><ImageIcon className="h-3.5 w-3.5" /></div>}
                       </div>
                     </td>
-                    <td className="p-2 font-mono font-bold text-slate-600 group-hover:text-slate-200 border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.code}px` }}>{item.code || item.item_code || "—"}</td>
-                    <td className="p-2 font-black text-slate-800 group-hover:text-white border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.name}px` }}>{item.name}</td>
-                    <td className="p-2 font-mono font-bold text-slate-500 group-hover:text-slate-300 border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.barcode}px` }}>{item.barcode || "—"}</td>
-                    <td className="p-2 font-bold text-slate-500 group-hover:text-slate-300 border-l border-slate-50 truncate" style={{ maxWidth: `${detailedColWidths.category}px` }}>{item.category_name || "—"}</td>
+                    <td className="p-2 font-mono font-bold text-slate-600 group-hover:text-slate-200 border-l border-slate-50 whitespace-normal break-words leading-tight" style={{ maxWidth: `${detailedColWidths.code}px` }}>{item.code || item.item_code || "—"}</td>
+                    <td className="p-2 font-black text-slate-800 group-hover:text-white border-l border-slate-50 whitespace-normal break-words leading-tight" style={{ maxWidth: `${detailedColWidths.name}px` }}>{item.name}</td>
+                    <td className="p-2 font-mono font-bold text-slate-500 group-hover:text-slate-300 border-l border-slate-50 whitespace-normal break-words leading-tight" style={{ maxWidth: `${detailedColWidths.barcode}px` }}>{item.barcode || "—"}</td>
+                    <td className="p-2 font-bold text-slate-500 group-hover:text-slate-300 border-l border-slate-50 whitespace-normal break-words leading-tight" style={{ maxWidth: `${detailedColWidths.category}px` }}>{item.category_name || "—"}</td>
                     <td className="p-2 number-fmt-primary text-emerald-700 group-hover:text-emerald-300 border-l border-slate-50" style={{ maxWidth: `${detailedColWidths.price}px` }}>{formatMoney(item.sale_price || item.price || 0)}</td>
                     <td className="p-2 font-black text-slate-700 group-hover:text-slate-200" style={{ maxWidth: `${detailedColWidths.stock}px` }}>{Number(item.stock_quantity || item.stock || 0)}</td>
                   </tr>
