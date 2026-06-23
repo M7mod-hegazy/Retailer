@@ -293,7 +293,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM expenses e
           LEFT JOIN expense_categories ec ON ec.id = e.category_id
           LEFT JOIN users u ON u.id = e.created_by
@@ -312,7 +312,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM revenues r
           LEFT JOIN revenue_categories rc ON rc.id = r.category_id
           LEFT JOIN users u ON u.id = r.created_by
@@ -346,7 +346,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name,
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name,
                  CASE
                    WHEN p.payment_method = 'multi' THEN (
                      SELECT GROUP_CONCAT(
@@ -377,7 +377,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM payments py
           LEFT JOIN customers c ON c.id = py.party_id
           LEFT JOIN users u ON u.id = py.created_by
@@ -396,7 +396,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM payments py
           LEFT JOIN suppliers s ON s.id = py.party_id
           LEFT JOIN users u ON u.id = py.created_by
@@ -421,7 +421,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  sr.invoice_id,
                  i.invoice_no AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM sales_returns sr
           LEFT JOIN customers c ON c.id = sr.customer_id
           LEFT JOIN invoices i ON i.id = sr.invoice_id
@@ -446,7 +446,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  COALESCE(pr.credit_amount, 0) AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM purchase_returns pr
           LEFT JOIN suppliers s ON s.id = pr.supplier_id
           LEFT JOIN users u ON u.id = pr.created_by
@@ -473,7 +473,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM ajal_payments ap
           LEFT JOIN ajal_debts d ON d.id = ap.debt_id
           LEFT JOIN customers c ON c.id = d.customer_id
@@ -495,7 +495,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM ajal_payments ap
           LEFT JOIN ajal_debts d ON d.id = ap.debt_id
           LEFT JOIN customers c ON c.id = d.customer_id
@@ -517,7 +517,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM ajal_payments ap
           LEFT JOIN ajal_debts d ON d.id = ap.debt_id
           LEFT JOIN suppliers s ON s.id = d.supplier_id
@@ -537,7 +537,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 u.username AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
           FROM withdrawals w
           LEFT JOIN withdrawal_categories wc ON wc.id = w.category_id
           LEFT JOIN users u ON u.id = w.created_by
@@ -575,7 +575,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
              NULL AS invoice_id, NULL AS original_invoice_no,
              0 AS is_cancelled,
              NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-             NULL AS seller_name, u.username AS cancelled_by_name,
+             NULL AS seller_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS cancelled_by_name,
               CASE
                 WHEN i.payment_type = 'multi' THEN (
                   SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')

@@ -1,13 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Modal from "../../../components/ui/Modal";
+import { useDetach } from "../../../hooks/useDetach";
 
 // Zoomable image preview used when a cashier opens a product's images.
-export default function GalleryModal({ open, onClose, images, idx, setIdx, zoom, setZoom }) {
+export default function GalleryModal({ open, onClose, images, initialIdx = 0, initialZoom = 1 }) {
+  const [idx, setIdx] = useState(initialIdx);
+  const [zoom, setZoom] = useState(initialZoom);
+  const { handleDetach } = useDetach("gallery", {
+    onClose, getState: () => ({ images, initialIdx: idx, initialZoom: zoom }), actions: {},
+  });
   if (!open || !images.length) return null;
   const current = images[idx];
   return (
-    <Modal open={open} onClose={onClose} title="معاينة الصورة" size="lg">
+    <Modal open={open} onClose={onClose} onDetach={handleDetach} title="معاينة الصورة" size="lg">
       <div className="flex flex-col items-center gap-3 p-3 bg-slate-900 rounded-lg" style={{ minHeight: 320 }}>
         <div
           className="flex items-center justify-center w-full overflow-hidden rounded-md"

@@ -352,12 +352,12 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
               </div>
             </div>
             
-            <button 
-              onClick={onClose} 
-              className="rounded-2xl p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200 active:scale-90"
-              title="إغلاق"
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
             >
-              <X size={20} className="stroke-[1.8]" />
+              <X className="h-4 w-4" />
             </button>
           </div>
 
@@ -921,7 +921,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
             <motion.button 
               whileTap={{ scale: 0.96 }}
               onClick={onClose} 
-              className="rounded-xl bg-primary px-6 py-2.5 text-xs font-black text-white hover:bg-primary-600 transition-colors"
+              className="btn-danger rounded-xl px-6 py-2.5 text-xs font-black transition-colors"
             >
               إغلاق نافذة العرض
             </motion.button>

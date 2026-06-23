@@ -1194,7 +1194,7 @@ export default function StockLevelsPage() {
 
       </div>
 
-      <Modal open={Boolean(movementDetails) || movementLoading} onClose={() => setMovementDetails(null)} title="تفاصيل الحركة">
+      <Modal open={Boolean(movementDetails) || movementLoading} onClose={() => setMovementDetails(null)} title="تفاصيل الحركة" showDetach={false}>
         {movementLoading ? (
           <p className="text-sm font-bold text-slate-500">جاري التحميل...</p>
         ) : movementDetails ? (
@@ -1212,7 +1212,7 @@ export default function StockLevelsPage() {
         ) : null}
       </Modal>
 
-      <Modal open={Boolean(editMovement)} onClose={() => setEditMovement(null)} title="تعديل الحركة">
+      <Modal open={Boolean(editMovement)} onClose={() => setEditMovement(null)} title="تعديل الحركة" showDetach={false}>
         <div className="space-y-3">
           <p className="text-xs text-slate-500">تعديل ملاحظات الحركة #{editMovement?.id}</p>
           <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="w-full min-h-[120px] rounded border border-slate-300 p-3 text-sm outline-none focus:border-slate-800" placeholder="اكتب الملاحظات..." />

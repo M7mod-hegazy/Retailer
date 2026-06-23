@@ -2,12 +2,16 @@ const { app, shell } = require("electron");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { spawn } = require("child_process");
 
 let autoUpdater = null;
+let CancellationToken = null;
 
 try {
-  autoUpdater = require("electron-updater").autoUpdater;
+  const eu = require("electron-updater");
+  autoUpdater = eu.autoUpdater;
+  CancellationToken = eu.CancellationToken;
 } catch {
   // electron-updater not available (e.g. dev mode)
 }
@@ -15,6 +19,13 @@ try {
 let _mainWindow = null;
 let _lastUpdateInfo = null;
 let _manualDownloadReq = null;
+let _manualCanceled = false;
+let _downloadCancellationToken = null;
+let _lastDownloadedFilePath = null;
+
+const GH_OWNER = "M7mod-hegazy";
+const GH_REPO = "Retailer";
+const GH_RELEASE_BASE = `https://github.com/${GH_OWNER}/${GH_REPO}/releases/download`;
 
 function send(channel, payload) {
   if (_mainWindow && !_mainWindow.isDestroyed()) {
@@ -63,7 +74,25 @@ function downloadUpdate() {
     sendError("خدمة التحديث غير متاحة في هذه النسخة.");
     return;
   }
-  autoUpdater.downloadUpdate().catch(sendError);
+  // A CancellationToken lets the user stop an in-progress auto download at any
+  // time (electron-updater has no other cancel mechanism). A user cancel rejects
+  // the promise with a cancellation error — surface a clean reset, not an error.
+  _downloadCancellationToken = CancellationToken ? new CancellationToken() : undefined;
+  autoUpdater.downloadUpdate(_downloadCancellationToken).catch((err) => {
+    if (err && (err.code === "ERR_UPDATER_CANCELLED" || /cancel/i.test(err.message || ""))) {
+      send("update:canceled");
+    } else {
+      sendError(err);
+    }
+  }).finally(() => { _downloadCancellationToken = null; });
+}
+
+function cancelDownload() {
+  if (_downloadCancellationToken) {
+    _downloadCancellationToken.cancel();
+    _downloadCancellationToken = null;
+    send("update:canceled");
+  }
 }
 
 // ─── Auto-reopen helper (Windows 7 friendly) ──────────────────────────────
@@ -128,6 +157,10 @@ function spawnRelaunchHelper() {
 
 function quitAndInstall() {
   if (!autoUpdater) return;
+  // Signal the before-quit handler to skip the synchronous close-backup, which
+  // would otherwise freeze the install for several seconds on a large DB. The
+  // user is prompted to back up (one click) before the download starts instead.
+  app.isQuittingForUpdate = true;
   spawnRelaunchHelper();
   autoUpdater.quitAndInstall(true, true);
 }
@@ -167,20 +200,26 @@ function getManualDownloadInfo() {
     `ElHegazi-Retailer-${version}-${arch}.exe`;
   const downloadUrl = `${baseUrl}/${fileName}`;
   const fileSize = (match && match.size) || 0;
+  // sha512 (base64) from latest.yml — used to verify the manually downloaded
+  // installer's integrity before launching it (the auto path verifies natively).
+  const sha512 = (match && match.sha512) || null;
 
   return {
     available: true,
     downloadUrl,
     fileName,
     fileSize,
+    sha512,
     version,
   };
 }
 
-function startManualDownload() {
-  const info = getManualDownloadInfo();
-  if (!info.available) {
-    sendManualError("لا توجد معلومات تحديث متاحة.");
+// Shared downloader used by both the "update to latest" manual path and the
+// "install a specific version" rollback path. `info` = { available, downloadUrl,
+// fileName, fileSize, sha512, version }.
+function runDownload(info) {
+  if (!info || !info.available) {
+    sendManualError("لا توجد معلومات تحديث متاحة لهذا الإصدار.");
     return;
   }
 
@@ -192,21 +231,38 @@ function startManualDownload() {
   // For simplicity, remove partial and start fresh.
   try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (_) {}
 
+  _manualCanceled = false;
+
   const fileStream = fs.createWriteStream(filePath);
   let transferred = 0;
   const total = info.fileSize;
-  let startTime = Date.now();
-  let lastChunkTime = startTime;
-  let lastChunkTransferred = 0;
+  let lastEmitTime = Date.now();
+  let lastEmitTransferred = 0;
+  let speedEma = 0; // smoothed bytes/sec
+  let finished = false;
+  const hash = crypto.createHash("sha512");
 
   sendManualProgress(0, 0, 0, total);
 
   const failDownload = (message) => {
-    try { fileStream.close(); } catch (_) {}
+    if (finished) return;
+    finished = true;
+    try { fileStream.destroy(); } catch (_) {}
     try { fs.unlinkSync(filePath); } catch (_) {}
     _manualDownloadReq = null;
-    sendManualError(message);
+    // A user-initiated stop is not a failure — emit a clean canceled signal so
+    // the UI resets instead of showing a red error.
+    if (_manualCanceled) {
+      _manualCanceled = false;
+      send("update:manual-canceled");
+    } else {
+      sendManualError(message);
+    }
   };
+
+  // Disk-level failures (disk full, antivirus lock) surface here — without this
+  // handler a half-written installer would be left behind and later launched.
+  fileStream.on("error", (err) => failDownload(`تعذر حفظ الملف: ${err.message}`));
 
   // GitHub always 302-redirects release assets to its CDN, so we must follow
   // redirects AND re-attach the error/idle-timeout handlers to each hop
@@ -227,29 +283,51 @@ function startManualDownload() {
       }
 
       if (statusCode !== 200) {
+        response.resume();
         failDownload(`فشل التحميل. رمز الحالة: ${statusCode}`);
         return;
       }
 
+      // Pipe with backpressure so a slow disk (Win7 HDD) doesn't balloon memory.
+      response.pipe(fileStream);
+
       response.on("data", (chunk) => {
         transferred += chunk.length;
-        fileStream.write(chunk);
+        hash.update(chunk);
 
         const now = Date.now();
-        if (now - lastChunkTime >= 200) {
-          const elapsed = (now - startTime) / 1000 || 1;
-          const bytesPerSecond = Math.round(transferred / elapsed);
+        if (now - lastEmitTime >= 200) {
+          // Instantaneous speed over the last interval (responsive + accurate),
+          // smoothed with an EMA so the number doesn't jitter between samples.
+          const intervalSec = (now - lastEmitTime) / 1000;
+          const inst = (transferred - lastEmitTransferred) / (intervalSec || 0.2);
+          speedEma = speedEma ? speedEma * 0.6 + inst * 0.4 : inst;
           const percent = total > 0 ? Math.min((transferred / total) * 100, 100) : 0;
-          sendManualProgress(percent, bytesPerSecond, transferred, total);
-          lastChunkTime = now;
+          sendManualProgress(percent, Math.round(speedEma), transferred, total);
+          lastEmitTime = now;
+          lastEmitTransferred = transferred;
         }
       });
 
-      response.on("end", () => {
-        fileStream.end();
+      // Finalize only once the file stream has flushed everything to disk.
+      fileStream.on("finish", () => {
+        if (finished) return;
+
+        // Integrity check: a truncated/corrupt installer is the #1 cause of a
+        // "buggy" manual install — reject it instead of launching it.
+        if (info.sha512) {
+          const actual = hash.digest("base64");
+          if (actual !== info.sha512) {
+            failDownload("فشل التحقق من سلامة الملف — يرجى إعادة المحاولة.");
+            return;
+          }
+        }
+
+        finished = true;
         _manualDownloadReq = null;
+        _lastDownloadedFilePath = filePath; // openInstaller launches THIS file
         sendManualProgress(100, 0, transferred, total);
-        send("update:manual-complete", { filePath });
+        send("update:manual-complete", { filePath, version: info.version });
       });
     });
 
@@ -270,21 +348,138 @@ function startManualDownload() {
   request(info.downloadUrl, MAX_REDIRECTS);
 }
 
+function startManualDownload() {
+  runDownload(getManualDownloadInfo());
+}
+
+// ─── Version rollback / install a specific release ─────────────────────────
+
+// Minimal HTTPS GET → string, following redirects, with a GitHub User-Agent
+// (the API rejects requests without one). Used for the releases list + per-
+// version latest.yml.
+function httpGetText(url, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { "User-Agent": "ElHegazi-Retailer", Accept: "application/vnd.github+json" } }, (res) => {
+      const code = res.statusCode || 0;
+      if (code >= 300 && code < 400 && res.headers.location) {
+        res.resume();
+        if (redirectsLeft <= 0) return reject(new Error("too many redirects"));
+        return httpGetText(res.headers.location, redirectsLeft - 1).then(resolve, reject);
+      }
+      if (code !== 200) {
+        res.resume();
+        return reject(new Error(`HTTP ${code}`));
+      }
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (c) => { body += c; });
+      res.on("end", () => resolve(body));
+    });
+    req.on("error", reject);
+    req.setTimeout(20000, () => { req.destroy(new Error("timeout")); });
+  });
+}
+
+// Tiny latest.yml reader — extracts the primary installer file (url/sha512/size)
+// from electron-builder's metadata. Avoids a YAML dependency; the format is fixed.
+function parseLatestYml(text) {
+  const lines = text.split(/\r?\n/);
+  const files = [];
+  let cur = null;
+  for (const line of lines) {
+    const urlM = line.match(/^\s*-?\s*url:\s*(.+?)\s*$/);
+    const shaM = line.match(/^\s*sha512:\s*(.+?)\s*$/);
+    const sizeM = line.match(/^\s*size:\s*(\d+)\s*$/);
+    if (urlM) { cur = { url: urlM[1].replace(/^['"]|['"]$/g, "") }; files.push(cur); }
+    else if (shaM && cur && !cur.sha512) cur.sha512 = shaM[1].replace(/^['"]|['"]$/g, "");
+    else if (sizeM && cur && cur.size == null) cur.size = parseInt(sizeM[1], 10);
+  }
+  return files.filter((f) => f.url && /\.exe$/i.test(f.url));
+}
+
+// Build download info for an arbitrary published version from its own latest.yml
+// (every release reliably has one). Same shape as getManualDownloadInfo so it
+// flows through the shared downloader + integrity check.
+async function getVersionDownloadInfo(version) {
+  const v = String(version).replace(/^v/i, "");
+  const ymlUrl = `${GH_RELEASE_BASE}/v${v}/latest.yml`;
+  const text = await httpGetText(ymlUrl);
+  const files = parseLatestYml(text);
+  if (!files.length) throw new Error("no installer in release metadata");
+
+  // Prefer an asset matching this machine's arch; otherwise take the first
+  // (current releases ship a single ia32 installer that runs on x64 too).
+  const arch = process.arch === "x64" ? "x64" : "ia32";
+  const match = files.find((f) => f.url.toLowerCase().includes(arch)) || files[0];
+  const fileName = decodeURIComponent(match.url.split("/").pop());
+  return {
+    available: true,
+    downloadUrl: `${GH_RELEASE_BASE}/v${v}/${encodeURIComponent(fileName)}`,
+    fileName,
+    fileSize: match.size || 0,
+    sha512: match.sha512 || null,
+    version: v,
+  };
+}
+
+function downloadVersion(version) {
+  getVersionDownloadInfo(version)
+    .then((info) => runDownload(info))
+    .catch((err) => sendManualError(`تعذّر تجهيز الإصدار ${version}: ${err.message}`));
+}
+
+// List published releases for the version picker (newest first). Best-effort —
+// returns [] on network/API failure so the UI can show an empty state.
+async function listReleases() {
+  try {
+    const text = await httpGetText(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases?per_page=30`);
+    const arr = JSON.parse(text);
+    return (Array.isArray(arr) ? arr : [])
+      .filter((r) => r && r.tag_name && !r.draft)
+      .map((r) => ({
+        version: String(r.tag_name).replace(/^v/i, ""),
+        name: r.name || r.tag_name,
+        publishedAt: r.published_at || null,
+        prerelease: !!r.prerelease,
+      }));
+  } catch (_) {
+    return [];
+  }
+}
+
 function cancelManualDownload() {
   if (_manualDownloadReq) {
+    _manualCanceled = true; // tells failDownload to emit a clean cancel, not an error
     _manualDownloadReq.destroy();
     _manualDownloadReq = null;
   }
 }
 
 function openInstaller() {
-  const info = getManualDownloadInfo();
-  if (!info.available) return;
-  const downloadsDir = app.getPath("downloads");
-  const fileName = info.fileName || `ElHegazi-Retailer-${info.version}.exe`;
-  const filePath = path.join(downloadsDir, fileName);
+  // Launch the exact file that was last downloaded (works for both "update to
+  // latest" and a rollback to a specific older version). Fall back to deriving
+  // the latest installer's path if nothing was tracked this session.
+  let filePath = _lastDownloadedFilePath;
+  if (!filePath) {
+    const info = getManualDownloadInfo();
+    if (!info.available) return;
+    filePath = path.join(app.getPath("downloads"), info.fileName || `ElHegazi-Retailer-${info.version}.exe`);
+  }
   if (fs.existsSync(filePath)) {
-    shell.openPath(filePath);
+    // The manual installer runs with NSIS runAfterFinish:false on Win7 (VxKex
+    // shim constraint), so it won't relaunch the app on its own. Arm the same
+    // detached relaunch helper the auto path uses: it polls update-complete.flag
+    // (written by customInstall) and reopens the exe once install finishes.
+    spawnRelaunchHelper();
+    // Launch the installer, then quit THIS app gracefully. The NSIS customInit
+    // does `taskkill /F` after a 600ms sleep; quitting first lets better-sqlite3
+    // checkpoint/close the DB cleanly instead of being force-killed mid-write
+    // (which can corrupt the database). Skip the on-quit safety backup — the
+    // user is prompted to back up before downloading.
+    shell.openPath(filePath).then(() => {
+      app.isQuittingForUpdate = true;
+      setTimeout(() => { try { app.quit(); } catch (_) {} }, 800);
+    });
   } else {
     sendManualError("لم يتم العثور على ملف التثبيت.");
   }
@@ -294,9 +489,12 @@ module.exports = {
   setupAutoUpdater,
   checkForUpdates,
   downloadUpdate,
+  cancelDownload,
   quitAndInstall,
   getManualDownloadInfo,
   startManualDownload,
   cancelManualDownload,
   openInstaller,
+  listReleases,
+  downloadVersion,
 };

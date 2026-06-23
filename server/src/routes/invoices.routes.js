@@ -46,8 +46,8 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
              (SELECT invoice_no FROM invoices WHERE id = i.amended_by)   AS amended_by_no,
              c.name AS customer_name, c.phone AS customer_phone,
              e.name AS seller_name,
-             u.username AS cancelled_by_name,
-             u2.username AS created_by_username,
+             COALESCE(NULLIF(u.full_name, ''), u.username) AS cancelled_by_name,
+             COALESCE(NULLIF(u2.full_name, ''), u2.username) AS created_by_username,
              i.user_id AS created_by_user_id,
              (SELECT COUNT(*) FROM invoice_lines WHERE invoice_id = i.id) AS items_count,
              CASE
@@ -166,7 +166,7 @@ router.get("/returns", requirePagePermission("sales_returns", "view"), (req, res
     const safeSort = allowedSort.includes(sort) ? sort : "created_at";
     const safeDir = dir === "asc" ? "ASC" : "DESC";
     const returns = db.prepare(`
-      SELECT sr.*, c.name AS customer_name, i.invoice_no AS original_invoice_no, u.username AS created_by_username
+      SELECT sr.*, c.name AS customer_name, i.invoice_no AS original_invoice_no, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username
       FROM sales_returns sr
       LEFT JOIN customers c ON c.id = sr.customer_id
       LEFT JOIN invoices i ON i.id = sr.invoice_id
@@ -321,7 +321,7 @@ router.get("/items-search", requirePagePermission("pos", "view"), (req, res, nex
       SELECT il.id AS line_id, il.invoice_id, i.invoice_no, i.created_at, i.status,
              i.customer_id, c.name AS customer_name,
              i.payment_type AS payment_method, i.user_id,
-             u.username AS created_by_username,
+             COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
              il.item_id, it.name AS item_name, it.code AS item_code, it.barcode, it.purchase_price,
              il.quantity, il.unit_price, il.line_total,
              COALESCE((SELECT SUM(srl.quantity) FROM sales_return_lines srl WHERE srl.invoice_line_id = il.id), 0) AS already_returned,

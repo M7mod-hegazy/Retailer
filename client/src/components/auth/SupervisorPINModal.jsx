@@ -3,8 +3,12 @@ import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { useDetach } from "../../hooks/useDetach";
 
 export default function SupervisorPINModal({ open, action, details, onSuccess, onClose }) {
+  const { handleDetach } = useDetach("supervisor-pin", {
+    onClose, getState: () => ({ action, details }), actions: { success: () => onSuccess?.() },
+  });
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +31,7 @@ export default function SupervisorPINModal({ open, action, details, onSuccess, o
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="تأكيد مشرف النظام">
+    <Modal open={open} onClose={onClose} onDetach={handleDetach} title="تأكيد مشرف النظام">
       <form onSubmit={handleSubmit} className="space-y-4 text-center">
         <p className="mb-4 text-sm text-text-secondary">
           الإجراء المطلوب يحتاج إلى صلاحيات إشرافية. الرجاء إدخال رمز الإشراف.
@@ -39,14 +43,14 @@ export default function SupervisorPINModal({ open, action, details, onSuccess, o
             maxLength={6}
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="input code w-48 rounded-[20px] p-3 text-center text-3xl tracking-[1em]"
+            className="input code w-48 rounded-[20px] p-3 text-center text-3xl tracking-[1em] bg-white"
             placeholder="••••"
             dir="ltr"
             required
           />
         </div>
         <div className="flex justify-center gap-3">
-          <Button variant="secondary" type="button" onClick={onClose}>إلغاء</Button>
+          <Button variant="danger" type="button" onClick={onClose}>إلغاء</Button>
           <Button type="submit" disabled={loading || pin.length < 4}>تأكيد</Button>
         </div>
       </form>

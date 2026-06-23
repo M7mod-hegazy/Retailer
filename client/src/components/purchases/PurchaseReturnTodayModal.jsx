@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 import DataGrid from "../ui/DataGrid";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
@@ -70,8 +71,7 @@ const STATUS_STYLES = {
   cancelled: { label: "ملغي", cls: "bg-slate-100 text-slate-500 border-slate-200" },
 };
 
-function ReturnPreviewModal({ ret, onClose }) {
-  const navigate = useNavigate();
+function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -160,7 +160,7 @@ function ReturnPreviewModal({ ret, onClose }) {
       )}
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => { onClose(); navigate("/purchases/returns/new", { state: { edit_return_id: ret.id } }); }} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-sm font-black text-white hover:bg-amber-800 transition-colors">
+        <button onClick={() => { onClose(); propNavigate?.("/purchases/returns/new"); }} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-sm font-black text-white hover:bg-amber-800 transition-colors">
           <Pencil className="h-4 w-4" /> فتح وتعديل
         </button>
       </div>
@@ -168,33 +168,59 @@ function ReturnPreviewModal({ ret, onClose }) {
   );
 }
 
-export default function PurchaseReturnTodayModal({ open, onClose }) {
+export default function PurchaseReturnTodayModal({ open, onClose, initialFilters }) {
   const navigate = useNavigate();
+  const gotoTarget = (path) => {
+    if (window.location.search.includes("detachedModal=1") && window.electronAPI?.navigateParent) {
+      window.electronAPI.navigateParent(path);
+      window.electronAPI?.closeModalWindow?.();
+    } else {
+      navigate(path);
+    }
+  };
   const [data, setData] = useState([]);
   const [summary, setSummary] = useState({ count: 0, total: 0 });
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(toDateInput());
-  const [dateTo, setDateTo] = useState(toDateInput());
-  const [sort, setSort] = useState("created_at");
-  const [dir, setDir] = useState("desc");
-  const [userId, setUserId] = useState("");
+  const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
+  const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
+  const [sort, setSort] = useState(initialFilters?.sort ?? "created_at");
+  const [dir, setDir] = useState(initialFilters?.dir ?? "desc");
+  const [userId, setUserId] = useState(initialFilters?.userId ?? "");
   const [usersList, setUsersList] = useState([]);
-  const [docSearch, setDocSearch] = useState("");
-  const [itemSearch, setItemSearch] = useState("");
+  const [docSearch, setDocSearch] = useState(initialFilters?.docSearch ?? "");
+  const [itemSearch, setItemSearch] = useState(initialFilters?.itemSearch ?? "");
   const [rawItems, setRawItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
-  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierQuery, setSupplierQuery] = useState(initialFilters?.supplierQuery ?? "");
   const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
   const [activeSupplierIndex, setActiveSupplierIndex] = useState(0);
-  const [supplierId, setSupplierId] = useState("");
+  const [supplierId, setSupplierId] = useState(initialFilters?.supplierId ?? "");
   const [suppliers, setSuppliers] = useState([]);
   const [previewItem, setPreviewItem] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const handleKeyDown = useFieldNavigation();
+  const { handleDetach } = useDetach("purchase-return-today", {
+    onClose,
+    getState: () => ({
+      dateFrom, dateTo, sort, dir, userId, docSearch, itemSearch, supplierQuery, supplierId,
+    }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
+    actions: { navigate: (path) => navigate(path) },
+  });
   const docSearchRef = useRef(null);
   const itemSearchRef = useRef(null);
   const dateFromRef = useRef(null);
@@ -342,7 +368,7 @@ export default function PurchaseReturnTodayModal({ open, onClose }) {
     { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
-        <button onClick={() => { onClose(); navigate("/purchases/returns/new", { state: { edit_return_id: r.id } }); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={() => gotoTarget("/purchases/returns/new")} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
         <button onClick={() => handleCancel(r)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
     )},
@@ -359,14 +385,14 @@ export default function PurchaseReturnTodayModal({ open, onClose }) {
     { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
-        <button onClick={(e) => { e.stopPropagation(); onClose(); navigate("/purchases/returns/new", { state: { edit_return_id: r.return_id || r.id } }); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.stopPropagation(); gotoTarget("/purchases/returns/new"); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
       </div>
     )},
   ];
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="سجل مرتجعات المشتريات" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="سجل مرتجعات المشتريات" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="purchase-return-today">
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
@@ -514,7 +540,7 @@ export default function PurchaseReturnTodayModal({ open, onClose }) {
       </Modal>
       {/* Preview Modal */}
       <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة المرتجع">
-        {previewItem ? <ReturnPreviewModal ret={previewItem} onClose={() => setPreviewOpen(false)} /> : null}
+        {previewItem ? <ReturnPreviewModal ret={previewItem} onClose={() => setPreviewOpen(false)} onNavigate={gotoTarget} /> : null}
       </Modal>
       {/* Cancel Confirmation */}
       <ConfirmDialog

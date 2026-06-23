@@ -39,7 +39,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
             <button
               key={p}
               onClick={() => setReason(p)}
-              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
+              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "btn-danger" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
             >
               {p}
             </button>
@@ -55,7 +55,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
           <button
             onClick={() => reason.trim() && onConfirm(reason)}
             disabled={!reason.trim()}
-            className="flex-1 bg-rose-600 text-white rounded-xl py-2.5 text-sm font-black disabled:opacity-40 hover:bg-rose-700 transition-colors"
+            className="flex-1 btn-danger rounded-xl py-2.5 text-sm font-black disabled:opacity-40 transition-colors"
           >
             تأكيد
           </button>

@@ -111,7 +111,7 @@ router.get("/history", requirePagePermission("bulk_price_update", "view"), (req,
              i.code  AS item_code,
              i.category_id,
              c.name  AS category_name,
-             COALESCE(u.username, u.full_name, ph.changed_by) AS changed_by_username
+             COALESCE(NULLIF(u.full_name, ''), u.username, ph.changed_by) AS changed_by_username
       FROM price_history ph
       LEFT JOIN items i          ON i.id = ph.item_id
       LEFT JOIN item_categories c ON c.id = i.category_id
@@ -135,7 +135,7 @@ router.get("/history/:itemId", requirePagePermission("bulk_price_update", "view"
     if (!item) { const e = new Error("Item not found"); e.status = 404; throw e; }
 
     const history = db.prepare(`
-      SELECT ph.*, COALESCE(u.username, u.full_name, ph.changed_by) AS changed_by_username
+      SELECT ph.*, COALESCE(NULLIF(u.full_name, ''), u.username, ph.changed_by) AS changed_by_username
       FROM price_history ph
       LEFT JOIN users u ON u.id = CAST(ph.changed_by AS INTEGER)
       WHERE ph.item_id = ?

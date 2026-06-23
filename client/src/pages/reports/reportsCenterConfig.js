@@ -1,14 +1,15 @@
-import { TrendingUp, Package, Wallet, Receipt, FileText, Shield, ClipboardList, FileImage, FileSpreadsheet, Printer, Layers, RotateCcw, Truck, Users, UserCheck, CalendarCheck, Percent, LineChart, Search, ClipboardCheck, Clock } from "lucide-react";
+import { TrendingUp, Package, Wallet, Receipt, FileText, Shield, ClipboardList, FileImage, FileSpreadsheet, Printer, Layers, RotateCcw, Truck, Users, UserCheck, CalendarCheck, Percent, LineChart, Search, ClipboardCheck, Clock, Landmark, BadgePercent } from "lucide-react";
 
 export const CATEGORIES = [
-  { id: "sales",     label: "المبيعات",   icon: TrendingUp, color: "var(--success-DEFAULT,#10b981)" },
-  { id: "purchases", label: "المشتريات",  icon: Package,    color: "var(--info-DEFAULT,#3b82f6)" },
-  { id: "inventory", label: "المخزون",    icon: Layers,     color: "var(--primary-DEFAULT,#8b5cf6)" },
-  { id: "accounts",  label: "الحسابات",   icon: Wallet,     color: "var(--warning-DEFAULT,#f59e0b)" },
-  { id: "treasury",  label: "الخزينة",    icon: Receipt,    color: "#06b6d4" },
-  { id: "tax",       label: "الضرائب",    icon: FileText,   color: "var(--error-DEFAULT,#ef4444)" },
-  { id: "audit",     label: "الأفراد",    icon: Shield,     color: "var(--text-secondary,#94a3b8)" },
-  { id: "users",     label: "المستخدمين", icon: Users,      color: "#6366f1" },
+  { id: "sales",         label: "المبيعات",         icon: TrendingUp,  color: "var(--success-DEFAULT,#10b981)" },
+  { id: "purchases",     label: "المشتريات",        icon: Package,     color: "var(--info-DEFAULT,#3b82f6)" },
+  { id: "inventory",     label: "المخزون",          icon: Layers,      color: "var(--primary-DEFAULT,#8b5cf6)" },
+  { id: "accounts",      label: "الحسابات",         icon: Wallet,      color: "var(--warning-DEFAULT,#f59e0b)" },
+  { id: "treasury",      label: "الخزينة والبنوك",  icon: Landmark,    color: "#06b6d4" },
+  { id: "tax",           label: "الضرائب",          icon: FileText,    color: "var(--error-DEFAULT,#ef4444)" },
+  { id: "profitability", label: "الأرباح",          icon: BadgePercent, color: "#d946ef" },
+  { id: "audit",         label: "الأفراد والرقابة", icon: Shield,      color: "var(--text-secondary,#94a3b8)" },
+  { id: "users",         label: "المستخدمين",       icon: Users,       color: "#6366f1" },
 ];
 
 export const SOURCES = [
@@ -31,6 +32,7 @@ export const SOURCES = [
   { id: "net-profit",      label: "صافي الربح",          icon: LineChart,     color: "#1e40af" },
   { id: "expiry",          label: "انتهاء الصلاحية",     icon: Clock,         color: "#d97706" },
   { id: "owner-statement", label: "لوحة صاحب المحل",     icon: ClipboardCheck,color: "#0f172a" },
+  { id: "tax",             label: "الضرائب",             icon: Receipt,       color: "var(--error-DEFAULT,#ef4444)" },
 ];
 
 export const FORMAT_ICONS = {
@@ -66,6 +68,7 @@ export const SCOPE_OPTIONS = {
   revenues:        [{ type:"all",label:"الكل"}],
   treasury:        [{ type:"all",label:"الكل"}],
   "owner-statement": [{ type:"all",label:"الكل"}],
+  tax: [{ type:"all",label:"الكل"}],
 };
 
 // Category-level preview columns (used by card previews in ReportsCenter)
@@ -103,6 +106,10 @@ export const CAT_PREVIEW_COLUMNS = {
   tax: [
     {k:"tax_rate",l:"النسبة",t:"num"},{k:"taxable_sales",l:"المبيعات الخاضعة",t:"cur"},
     {k:"vat_amount",l:"قيمة الضريبة",t:"cur"},{k:"invoice_count",l:"عدد الفواتير",t:"num"},
+  ],
+  profitability: [
+    {k:"label",l:"البيان",t:"text"},{k:"amount",l:"المبلغ",t:"cur"},
+    {k:"pct",l:"%",t:"percent"},
   ],
   audit: [
     {k:"created_at",l:"التاريخ",t:"date"},{k:"full_name",l:"المستخدم",t:"text"},
@@ -145,6 +152,11 @@ export const CAT_GHOST_ROWS = {
   tax: [
     {tax_rate:"١٤٪",taxable_sales:"٥٬٢٠٠",vat_amount:"٧٢٨",invoice_count:"١٢"},
     {tax_rate:"٠٪",taxable_sales:"٣٬٨٠٠",vat_amount:"٠",invoice_count:"٥"},
+  ],
+  profitability: [
+    {label:"إجمالي الإيرادات",amount:"١٥٠٬٠٠٠",pct:"١٠٠٪"},
+    {label:"تكلفة البضاعة",amount:"٩٠٬٠٠٠",pct:"٦٠٪"},
+    {label:"إجمالي الربح",amount:"٦٠٬٠٠٠",pct:"٤٠٪"},
   ],
   audit: [
     {created_at:"١٤:٢٢ ٠٤/٠٥",full_name:"محمد السيد",action:"تعديل سعر",resource:"items/٨٨٢"},
@@ -328,6 +340,12 @@ export const FILTER_DIMENSIONS = {
     { key: "category_id", type: "lookup", entity: "category", label: "فئة المنتجات" },
   ],
   "owner-statement": [],
+  tax: [
+    { key: "customer_id", type: "lookup", entity: "customer", label: "العميل" },
+    { key: "supplier_id", type: "lookup", entity: "supplier", label: "المورد" },
+    { key: "status", type: "select", label: "الحالة", options: [{ value: "paid", label: "مدفوع" }, { value: "unpaid", label: "غير مدفوع" }, { value: "cancelled", label: "ملغي" }] },
+    { key: "payment_type", type: "select", label: "طريقة الدفع", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
+  ],
   treasury: [],
   installments: [],
   users: [
@@ -339,6 +357,13 @@ export const FILTER_DIMENSIONS = {
 export function fmtDate(d) { return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d); }
 
 export const CLASSIFICATIONS = {
+  tax: [
+    { id: "vat", label_key: "r23_title", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type"] },
+    { id: "output-vat", label_key: "r48_title", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"] },
+    { id: "input-vat", label_key: "r49_title", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
+    { id: "vat-filing-summary", label_key: "r50_title", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status"] },
+    { id: "returns-tax-effect", label_key: "r51_title", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [] },
+  ],
   "owner-statement": [
     { id: "worksheet", label_key: "cls_owner_statement", availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [] },
   ],

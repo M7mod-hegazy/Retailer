@@ -90,6 +90,12 @@ describe("updateStore", () => {
     expect(typeof state.lastCheckedAt).toBe("number");
   });
 
+  it("setAvailable resets bannerDismissed to false", () => {
+    useUpdateStore.setState({ bannerDismissed: true });
+    useUpdateStore.getState().setAvailable({ version: "3.0.0" });
+    expect(useUpdateStore.getState().bannerDismissed).toBe(false);
+  });
+
   it("reset restores all defaults", () => {
     useUpdateStore.setState({
       available: true,

@@ -1,5 +1,10 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BarChart3, Box, DollarSign, Pencil, Plus, Tag, Trash2, TrendingUp } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { 
+  ArrowRight, BarChart3, Box, DollarSign, Pencil, Plus, Tag, Trash2, 
+  ChevronLeft, ChevronRight, X, Sparkles, Database, AlertCircle, Info, Lock,
+  RefreshCw
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
@@ -8,22 +13,105 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 import { formatNumber } from "../../utils/currency";
-
-// ─── helpers ────────────────────────────────────────────────────────────────
-
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
-function CatThumb({ url }) {
-  const src = resolveImageUrl(url);
-  if (!src) return null;
-  return <img src={src} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover border" style={{ borderColor: "var(--border-normal)" }} />;
-}
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatMoney(v) {
   return formatNumber(v, { decimals: 0 });
 }
 
-// ─── main page ───────────────────────────────────────────────────────────────
+// ─── Procedural Category Avatar ─────────────────────────────────────────────
+function CategoryAvatar({ url, name, skuPrefix }) {
+  const src = resolveImageUrl(url);
+  if (src) {
+    return <img src={src} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover border border-slate-200/50 shadow-sm" />;
+  }
+
+  // Generate a distinct gradient color based on character codes of the name
+  const seed = (name || "").split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + (Number(skuPrefix) || 0);
+  const gradients = [
+    "from-rose-450 to-pink-550 text-rose-50 shadow-rose-500/10",
+    "from-amber-400 to-orange-500 text-amber-50 shadow-amber-500/10",
+    "from-emerald-400 to-teal-500 text-emerald-50 shadow-emerald-500/10",
+    "from-sky-400 to-indigo-500 text-sky-50 shadow-sky-500/10",
+    "from-violet-400 to-purple-500 text-violet-50 shadow-purple-500/10",
+    "from-cyan-400 to-blue-500 text-cyan-50 shadow-blue-500/10",
+  ];
+  const grad = gradients[seed % gradients.length];
+  const initials = (name || "").trim().slice(0, 2);
+
+  return (
+    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${grad} text-sm font-black shadow-lg uppercase`}>
+      {initials}
+    </div>
+  );
+}
+
+// ─── Spotlight Card Component ───────────────────────────────────────────────
+function SpotlightCard({ children, className = "", onClick, isSelected }) {
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCoords({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  return (
+    <div
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-[24px] border p-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] cursor-default ${
+        isSelected ? "ring-2 ring-emerald-500/20 border-emerald-500 bg-emerald-50/10" : "bg-white border-slate-200/60 hover:border-slate-350"
+      } ${className}`}
+    >
+      {isHovered && (
+        <div
+          className="pointer-events-none absolute inset-0 transition-opacity duration-300 z-0"
+          style={{
+            background: `radial-gradient(200px circle at ${coords.x}px ${coords.y}px, rgba(16, 185, 129, 0.05), transparent 80%)`,
+          }}
+        />
+      )}
+      <div className="relative z-10 h-full flex flex-col justify-between">{children}</div>
+    </div>
+  );
+}
+
+// ─── Background Spline Header ───────────────────────────────────────────────
+const SplineHeader = () => (
+  <div className="absolute top-0 left-0 right-0 h-[40vh] overflow-hidden pointer-events-none z-0 opacity-45">
+    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1000 200">
+      <defs>
+        <linearGradient id="emeraldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
+          <stop offset="50%" stopColor="#10b981" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <motion.path 
+        d="M-100,80 C150,130 250,30 450,80 C650,130 750,60 950,100 C1050,120 1150,80 1250,80" 
+        fill="none" stroke="url(#emeraldGradient)" strokeWidth="3"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{ duration: 2.2, ease: "easeInOut" }}
+      />
+      <motion.path 
+        d="M-100,100 C180,150 280,50 480,100 C680,150 780,80 980,120 C1080,140 1180,100 1280,100" 
+        fill="none" stroke="#10b981" strokeOpacity="0.08" strokeWidth="1"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 2.7, ease: "easeInOut", delay: 0.2 }}
+      />
+    </svg>
+    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--bg-base)]" />
+  </div>
+);
+
+// ─── Main Page Component ────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
   usePageTour('categories');
@@ -73,7 +161,7 @@ export default function CategoriesPage() {
 
   const isFirstCategory = categories.length === 0;
 
-  // ── category CRUD ──
+  // ── Category CRUD ──
   function openAddCategory() {
     const used = categories.map((cat) => Number(cat.sku_prefix)).filter(Number.isFinite);
     const nextPrefix = String((used.length ? Math.max(...used) : 0) + 1);
@@ -92,14 +180,21 @@ export default function CategoriesPage() {
     setSaving(true);
     try {
       if (catModal.mode === "add") {
-        const res = await api.post("/api/categories", { name: catDraft.name.trim(), sku_prefix: String(catDraft.sku_prefix || "").trim() || undefined, image_url: catDraft.image_url || null });
+        const res = await api.post("/api/categories", { 
+          name: catDraft.name.trim(), 
+          sku_prefix: String(catDraft.sku_prefix || "").trim() || undefined, 
+          image_url: catDraft.image_url || null 
+        });
         const newCat = res.data?.data;
         toast.success("تمت إضافة الفئة.");
         setCatModal(null);
         await loadAll();
         if (newCat?.id) setSelectedId(newCat.id);
       } else {
-        await api.put(`/api/categories/${catModal.data.id}`, { name: catDraft.name.trim(), image_url: catDraft.image_url || null });
+        await api.put(`/api/categories/${catModal.data.id}`, { 
+          name: catDraft.name.trim(), 
+          image_url: catDraft.image_url || null 
+        });
         toast.success("تم تحديث الفئة.");
         setCatModal(null);
         await loadAll();
@@ -131,11 +226,7 @@ export default function CategoriesPage() {
     }
   }
 
-  // ── derived ──
-  const selectedCategory = categories.find((c) => c.id === selectedId) ?? null;
-  const selectedItems = selectedId ? (itemsByCategory[selectedId] ?? []) : [];
-
-  // Category analytics
+  // ── Derived Analytics ──
   const categoryStats = useMemo(() => {
     const stats = {};
     for (const cat of categories) {
@@ -157,320 +248,364 @@ export default function CategoriesPage() {
     return stats;
   }, [categories, itemsByCategory]);
 
+  const aggregateStats = useMemo(() => {
+    const allItems = Object.values(itemsByCategory).flat();
+    const totalCategories = categories.length;
+    const totalItems = allItems.length;
+    const totalStock = allItems.reduce((sum, i) => sum + (i.stock_quantity || 0), 0);
+    const totalValue = allItems.reduce((sum, i) => sum + ((i.stock_quantity || 0) * (i.purchase_price || 0)), 0);
+    return { totalCategories, totalItems, totalStock, totalValue };
+  }, [categories, itemsByCategory]);
+
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center" dir="rtl" style={{ color: "var(--text-muted)" }}>
-        جاري تحميل البيانات…
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[var(--bg-base)] text-slate-400 gap-4" dir="rtl">
+        <RefreshCw className="h-8 w-8 animate-spin text-emerald-500 opacity-75" />
+        <span className="text-[11px] font-black tracking-widest uppercase">جاري مزامنة الفئات...</span>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 md:px-6 py-6 min-h-[100dvh]" style={{ backgroundColor: "var(--bg-base)" }} dir="rtl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-black" style={{ color: "var(--text-primary)" }}>أقسام الأصناف</h1>
-          <p className="text-sm font-bold" style={{ color: "var(--text-muted)" }}>إدارة تصنيفات المنتجات وتحليلاتها</p>
+    <div className="flex flex-col gap-6 px-6 md:px-8 py-8 min-h-[100dvh] relative bg-[var(--bg-base)]" dir="rtl">
+      
+      <SplineHeader />
+
+      {/* Hero Header */}
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 max-w-7xl mx-auto w-full">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-sm border border-emerald-250/20 shrink-0">
+            <Sparkles className="h-6 w-6 stroke-[1.8]" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-zinc-950 tracking-tight leading-none">أقسام الأصناف</h1>
+            <p className="text-xs font-bold text-slate-500 mt-2 block tracking-wider leading-none">إدارة تصنيفات المنتجات وتحليلاتها التشغيلية والمالية.</p>
+          </div>
         </div>
         <PermissionGate page="categories" action="add">
-        <button
-          data-help="add-button"
-          onClick={openAddCategory}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-primary-700 transition-all"
-        >
-          <Plus className="h-4 w-4" />
-          إضافة قسم جديد
-        </button>
+          <button
+            onClick={openAddCategory}
+            className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-600 active:scale-95 text-sm font-black text-white px-5 py-2.5 shadow-md shadow-emerald-500/10 transition-all shrink-0 self-start sm:self-center"
+          >
+            <Plus className="h-4.5 w-4.5 stroke-[2.5]" />
+            إضافة قسم جديد
+          </button>
         </PermissionGate>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border p-4 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+      {/* Bento Summary Stats Deck */}
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-7xl mx-auto w-full">
+        {/* Stat Card 1 */}
+        <div className="relative group rounded-3xl bg-[var(--bg-surface)] p-5 border border-[var(--border-normal)] shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100/50">
               <Tag className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}>إجمالي الأقسام</p>
-              <p className="text-[20px] font-black" style={{ color: "var(--text-primary)" }}>{categories.length}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">إجمالي الأقسام</p>
+              <p className="text-2xl font-black text-zinc-900 leading-none font-mono">{aggregateStats.totalCategories}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-xl border p-4 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+
+        {/* Stat Card 2 */}
+        <div className="relative group rounded-3xl bg-[var(--bg-surface)] p-5 border border-[var(--border-normal)] shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 border border-sky-100/50">
               <Box className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}>إجمالي الأصناف</p>
-              <p className="text-[20px] font-black" style={{ color: "var(--text-primary)" }}>{Object.values(itemsByCategory).flat().length}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">إجمالي الأصناف</p>
+              <p className="text-2xl font-black text-zinc-900 leading-none font-mono">{aggregateStats.totalItems}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-xl border p-4 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-              <BarChart3 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}>إجمالي المخزون</p>
-              <p className="text-[20px] font-black" style={{ color: "var(--text-primary)" }}>{formatMoney(Object.values(itemsByCategory).flat().reduce((sum, i) => sum + (i.stock_quantity || 0), 0))}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border p-4 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
-              <DollarSign className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}>قيمة المخزون</p>
-              <p className="text-[20px] font-black" style={{ color: "var(--text-primary)" }}>{formatMoney(Object.values(itemsByCategory).flat().reduce((sum, i) => sum + ((i.stock_quantity || 0) * (i.purchase_price || 0)), 0))}</p>
-            </div>
-          </div>
-        </div>
+
+
+
+
       </div>
 
-      {/* Categories Grid */}
-      <div data-help="main-table" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Categories Modern Grid */}
+      <div data-help="main-table" className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-7xl mx-auto w-full">
         {categories.map((cat) => {
           const stats = categoryStats[cat.id] || { totalItems: 0, activeItems: 0, totalStock: 0, totalValue: 0, avgMargin: 0 };
           const isSelected = cat.id === selectedId;
 
+          // Margin styling helpers
+          const marginColor = stats.avgMargin >= 30 
+            ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20" 
+            : stats.avgMargin >= 15 
+            ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20" 
+            : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-zinc-800/40";
+
           return (
-            <div
+            <SpotlightCard
               key={cat.id}
-              className={`group relative rounded-2xl border p-5 shadow-sm transition-all hover:shadow-md ${
-                isSelected ? "ring-2 ring-emerald-100" : ""
-              }`}
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: isSelected ? "var(--border-accent)" : "var(--border-normal)",
-              }}
+              isSelected={isSelected}
+              onClick={() => setSelectedId(cat.id)}
             >
               {/* Category Header */}
-              <div className="flex items-start gap-4 mb-4">
-                {cat.image_url ? (
-                  <CatThumb url={cat.image_url} />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--bg-overlay)", color: "var(--text-muted)" }}>
-                    <Tag className="h-5 w-5" />
-                  </div>
-                )}
+              <div className="flex items-start gap-4 mb-5">
+                <CategoryAvatar url={cat.image_url} name={cat.name} skuPrefix={cat.sku_prefix} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="rounded px-1.5 py-0.5 font-mono text-[11px] font-black" style={{ backgroundColor: "var(--bg-overlay)", color: "var(--text-secondary)" }}>
-                      {cat.sku_prefix}
+                    <span className="rounded-xl px-2.5 py-1 font-mono text-xs font-black border border-emerald-200/80 bg-emerald-50/50 text-emerald-700 shadow-sm leading-tight shrink-0">
+                      #{cat.sku_prefix || cat.id}
                     </span>
-                    <h3 className="text-[15px] font-black truncate" style={{ color: "var(--text-primary)" }}>{cat.name}</h3>
+                    <h3 className="text-base font-black text-zinc-900 truncate leading-none">{cat.name}</h3>
                   </div>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{stats.totalItems} صنف • {stats.activeItems} نشط</p>
-                </div>
-              </div>
-
-              {/* Stats Row */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <div className="rounded-lg px-2 py-2 text-center" style={{ backgroundColor: "var(--bg-overlay)" }}>
-                  <p className="text-[9px] font-black uppercase" style={{ color: "var(--text-muted)" }}>المخزون</p>
-                  <p className="text-sm font-black" style={{ color: "var(--text-primary)" }}>{formatMoney(stats.totalStock)}</p>
-                </div>
-                <div className="rounded-lg px-2 py-2 text-center" style={{ backgroundColor: "var(--bg-overlay)" }}>
-                  <p className="text-[9px] font-black uppercase" style={{ color: "var(--text-muted)" }}>القيمة</p>
-                  <p className="text-sm font-black" style={{ color: "var(--text-primary)" }}>{formatMoney(stats.totalValue)}</p>
-                </div>
-                <div className="rounded-lg px-2 py-2 text-center" style={{ backgroundColor: "var(--bg-overlay)" }}>
-                  <p className="text-[9px] font-black uppercase" style={{ color: "var(--text-muted)" }}>الهامش</p>
-                  <p className={`text-sm font-black ${stats.avgMargin >= 10 ? "text-emerald-600" : stats.avgMargin >= 5 ? "text-amber-600" : ""}`} style={{ color: stats.avgMargin < 5 ? "var(--text-primary)" : undefined }}>
-                    {stats.avgMargin.toFixed(1)}%
+                  <p className="text-[11px] font-bold text-slate-450 mt-2 block tracking-wider leading-none">
+                    {stats.totalItems} صنف <span className="text-slate-300 font-normal">|</span> {stats.activeItems} نشط
                   </p>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+              {/* Stats Row */}
+              <div className="grid grid-cols-1 gap-2.5 mb-5">
+                <div className="rounded-2xl p-2.5 text-center bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100/40">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">متوسط الهامش</p>
+                  <span className={`inline-flex px-2 py-0.5 rounded-lg border text-xs font-black leading-none font-mono ${marginColor}`}>
+                    {stats.avgMargin.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Heatmap Micro Margin bar */}
+              <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 mb-5 overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    stats.avgMargin >= 30 ? "bg-emerald-500" : stats.avgMargin >= 15 ? "bg-amber-500" : "bg-slate-400"
+                  }`} 
+                  style={{ width: `${Math.min(100, Math.max(5, stats.avgMargin))}%` }} 
+                />
+              </div>
+
+              {/* Actions & Navigation */}
+              <div className="flex items-center justify-between pt-3.5 border-t border-[var(--border-subtle)] relative z-25">
                 <Link
                   to={`/definitions/items?category=${cat.id}`}
-                  className="flex items-center gap-1.5 text-[11px] font-black text-indigo-600 hover:text-indigo-800 transition-colors"
+                  className="group/link flex items-center gap-1 text-[11px] font-black text-indigo-600 hover:text-indigo-850 transition-colors leading-none"
                 >
-                  <span>عرض الأصناف</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <span>عرض الأصناف بالقسم</span>
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/link:-translate-x-1" />
                 </Link>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                
+                <div className="flex items-center gap-1.5 transition-all">
                   <PermissionGate page="categories" action="edit">
-                  <button
-                    onClick={() => openEditCategory(cat)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 hover:text-slate-600" style={{ color: "var(--text-muted)" }}
-                    title="تعديل"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 shadow-sm transition-all cursor-pointer"
+                      title="تعديل"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                   </PermissionGate>
                   <PermissionGate page="categories" action="delete">
-                  <button
-                    onClick={() => setDeleteModal(cat)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-rose-50 hover:text-rose-600" style={{ color: "var(--text-muted)" }}
-                    title="حذف"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteModal(cat); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50/50 text-rose-500 hover:text-rose-700 hover:bg-rose-100/60 border border-rose-100/55 shadow-sm transition-all cursor-pointer"
+                      title="حذف"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </PermissionGate>
                 </div>
               </div>
-            </div>
+            </SpotlightCard>
           );
         })}
       </div>
 
       {/* Empty State */}
       {categories.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4" style={{ backgroundColor: "var(--bg-overlay)", color: "var(--text-muted)" }}>
-            <Tag className="h-8 w-8" />
+        <div className="relative z-10 flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-5 border border-slate-200/50">
+            <Tag className="h-7 w-7" />
           </div>
-          <h3 className="text-[16px] font-black" style={{ color: "var(--text-primary)" }}>لا توجد أقسام بعد</h3>
-          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>ابدأ بإنشاء قسم جديد لتنظيم أصنافك</p>
+          <h3 className="text-base font-black text-zinc-800">لا توجد أقسام بعد</h3>
+          <p className="text-xs font-bold text-slate-450 mt-2 leading-relaxed">أضف الأقسام التشغيلية لتنظيم كتالوج أصنافك وإظهار التحليلات المناسبة.</p>
           <PermissionGate page="categories" action="add">
-          <button
-            onClick={openAddCategory}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-lg hover:bg-primary-700 transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            {isFirstCategory ? "إنشاء القسم الأول (فئة 1)" : "إضافة قسم جديد"}
-          </button>
+            <button
+              onClick={openAddCategory}
+              className="mt-6 flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-600 active:scale-95 text-sm font-black text-white px-5 py-2.5 shadow-md shadow-emerald-500/10 transition-all"
+            >
+              <Plus className="h-4.5 w-4.5 stroke-[2.5]" />
+              {isFirstCategory ? "إنشاء القسم الأول (فئة 1)" : "إضافة قسم جديد"}
+            </button>
           </PermissionGate>
         </div>
       )}
 
-      {/* ── category modal ── */}
+      {/* ── Category Delete Dialog ── */}
+      <AnimatePresence>
         {deleteModal && (() => {
-        const linkedItems = itemsByCategory[deleteModal.id] ?? [];
-        const blocked = linkedItems.length > 0;
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" dir="rtl">
-            <div className="w-full max-w-lg rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--bg-surface)" }}>
-              <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${blocked ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
-                <Trash2 className="h-5 w-5" />
-              </div>
-              <h3 className="text-[18px] font-black" style={{ color: "var(--text-primary)" }}>
-                {blocked ? "لا يمكن حذف هذا القسم الآن" : "تأكيد حذف القسم"}
-              </h3>
-              <p className="mt-2 text-sm font-bold leading-6" style={{ color: "var(--text-secondary)" }}>
-                {blocked
-                  ? `القسم "${deleteModal.name}" مرتبط بعدد ${linkedItems.length} صنف. انقل الأصناف لقسم آخر أو احذفها أولا، ثم احذف القسم.`
-                  : `سيتم حذف القسم "${deleteModal.name}" نهائيا لأنه لا يحتوي على أصناف.`}
-              </p>
-              {blocked ? (
-                <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-3">
-                  <div className="text-[11px] font-black text-rose-700">أصناف مرتبطة بالقسم</div>
-                  <div className="mt-2 space-y-1">
-                    {linkedItems.slice(0, 4).map((item) => (
-                      <div key={item.id} className="truncate rounded-lg px-3 py-2 text-2sm font-bold" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}>
-                        {item.code ? `${item.code} - ` : ""}{item.name}
-                      </div>
-                    ))}
-                    {linkedItems.length > 4 ? (
-                      <div className="text-[11px] font-bold text-rose-600">و {linkedItems.length - 4} أصناف أخرى</div>
-                    ) : null}
-                  </div>
+          const linkedItems = itemsByCategory[deleteModal.id] ?? [];
+          const blocked = linkedItems.length > 0;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                onClick={() => setDeleteModal(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-white overflow-hidden"
+              >
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${blocked ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
+                  {blocked ? <AlertCircle className="h-6 w-6" /> : <Trash2 className="h-6 w-6" />}
                 </div>
-              ) : null}
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteModal(null)}
-                  className="rounded-xl border px-5 py-2.5 text-sm font-bold transition-colors hover:bg-slate-50" style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
-                >
-                  إغلاق
-                </button>
-                {!blocked ? (
+                
+                <h3 className="text-lg font-black text-zinc-950">
+                  {blocked ? "لا يمكن حذف هذا القسم الآن" : "تأكيد حذف القسم"}
+                </h3>
+                
+                <p className="mt-2 text-xs font-bold text-slate-500 leading-relaxed">
+                  {blocked
+                    ? `القسم "${deleteModal.name}" مرتبط بعدد ${linkedItems.length} صنف. انقل الأصناف لقسم آخر أو احذفها أولاً، لتتمكن من حذف القسم.`
+                    : `سيتم حذف القسم "${deleteModal.name}" نهائياً من قاعدة البيانات لأنه لا يحتوي على أي أصناف مرتبطة.`}
+                </p>
+
+                {blocked && (
+                  <div className="mt-4 rounded-2xl border border-rose-100/50 bg-rose-50/50 p-4">
+                    <div className="text-[11px] font-black text-rose-700 flex items-center gap-1 mb-2">
+                      <Info className="h-3 w-3" /> الأصناف المرتبطة بالقسم
+                    </div>
+                    <div className="space-y-1.5 max-h-[160px] overflow-y-auto no-scrollbar">
+                      {linkedItems.slice(0, 4).map((item) => (
+                        <div key={item.id} className="truncate rounded-xl border border-rose-100/30 bg-white px-3 py-2 text-2sm font-bold text-slate-700">
+                          {item.code ? `${item.code} - ` : ""}{item.name}
+                        </div>
+                      ))}
+                      {linkedItems.length > 4 && (
+                        <div className="text-[10px] font-black text-rose-600 text-center mt-1">
+                          و {linkedItems.length - 4} أصناف أخرى مرتبطة
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex justify-end gap-2">
                   <button
                     type="button"
-                    disabled={saving}
-                    onClick={() => deleteCategory(deleteModal)}
-                    className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white hover:bg-primary-700 disabled:opacity-50"
+                    onClick={() => setDeleteModal(null)}
+                    className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
                   >
-                    {saving ? "جار الحذف..." : "حذف القسم"}
+                    إغلاق
                   </button>
-                ) : null}
-              </div>
+                  {!blocked && (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => deleteCategory(deleteModal)}
+                      className="rounded-xl bg-rose-600 text-white font-black text-sm px-5 py-2.5 hover:bg-rose-700 disabled:opacity-50 transition-all shadow-md shadow-rose-500/10"
+                    >
+                      {saving ? "جاري الحذف..." : "حذف القسم"}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
+      </AnimatePresence>
 
-      {catModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" dir="rtl">
-          <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--bg-surface)" }}>
-            <h3 className="mb-4 text-[18px] font-black" style={{ color: "var(--text-primary)" }}>
-              {catModal.mode === "edit" ? "تعديل القسم" : isFirstCategory ? "إضافة القسم الأول (الفئة 1)" : `إضافة قسم جديد — الفئة ${String(Number(catDraft.sku_prefix) || categories.length + 1)}`}
-            </h3>
-            <form onSubmit={submitCategory} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}>كود SKU للفئة</label>
-                <input
-                  ref={skuPrefixRef}
-                  readOnly={catModal.mode === "edit"}
-                  value={catDraft.sku_prefix}
-                  onChange={(e) => setCatDraft((p) => ({ ...p, sku_prefix: e.target.value.replace(/[^\d]/g, "") }))}
-                  onKeyDown={e => handleKeyDown(e, { nextRef: nameRef })}
-                  className={`w-full rounded-xl border px-4 py-2.5 font-mono text-sm font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 ${catModal.mode === "edit" ? "text-slate-500" : ""}`}
-                  style={{
-                    backgroundColor: catModal.mode === "edit" ? "var(--bg-overlay)" : "var(--bg-input)",
-                    color: catModal.mode === "edit" ? "var(--text-muted)" : "var(--text-primary)",
-                    borderColor: "var(--border-normal)",
-                  }}
-                />
-                {catModal.mode === "add" ? (
-                  <div className="mt-1 text-[11px] font-bold" style={{ color: "var(--text-muted)" }}>تم اختيار الرقم التالي تلقائيا، ويمكنك تغييره قبل الحفظ.</div>
-                ) : null}
-              </div>
-              <div className="flex items-start gap-4">
+      {/* ── Category Form Dialog (Add / Edit) ── */}
+      <AnimatePresence>
+        {catModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setCatModal(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-white overflow-hidden flex flex-col"
+            >
+              <h3 className="text-lg font-black text-zinc-950 mb-5">
+                {catModal.mode === "edit" ? "تعديل القسم" : isFirstCategory ? "إضافة القسم الأول (الفئة 1)" : `إضافة قسم جديد — الفئة ${String(Number(catDraft.sku_prefix) || categories.length + 1)}`}
+              </h3>
+              
+              <form onSubmit={submitCategory} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}>صورة القسم</label>
-                  <ImageUpload size="md"
-                    url={catDraft.image_url || null}
-                    onUpload={(url) => setCatDraft((p) => ({ ...p, image_url: url }))}
-                    onRemove={() => setCatDraft((p) => ({ ...p, image_url: "" }))}
-                  />
+                  <label className="mb-2 block text-[10px] font-black text-slate-400 uppercase tracking-widest">كود SKU للفئة</label>
+                  <div className="relative">
+                    <input
+                      ref={skuPrefixRef}
+                      readOnly={catModal.mode === "edit"}
+                      value={catDraft.sku_prefix}
+                      onChange={(e) => setCatDraft((p) => ({ ...p, sku_prefix: e.target.value.replace(/[^\d]/g, "") }))}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: nameRef })}
+                      className={`w-full h-11 rounded-xl border px-4 font-mono text-sm font-bold outline-none transition-all ${
+                        catModal.mode === "edit" 
+                          ? "bg-slate-50 text-slate-400 border-slate-205 cursor-not-allowed" 
+                          : "bg-slate-50/50 border-slate-200/60 focus:bg-white focus:border-emerald-450 focus:ring-4 focus:ring-emerald-500/10"
+                      }`}
+                    />
+                    {catModal.mode === "edit" && <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-350" />}
+                  </div>
+                  {catModal.mode === "add" && (
+                    <div className="mt-1 text-[9px] font-black text-slate-400">تم اختيار الرقم التالي تلقائياً، ويمكنك تعديله قبل الحفظ.</div>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <label className="mb-1.5 block text-[11px] font-black uppercase" style={{ color: "var(--text-secondary)" }}>اسم القسم</label>
-                  <input
-                    ref={nameRef}
-                    autoFocus
-                    value={catDraft.name}
-                    onChange={(e) => setCatDraft((p) => ({ ...p, name: e.target.value }))}
-                    onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: skuPrefixRef })}
-                    required
-                    placeholder="مثال: زيوت، بويات، أدوات صحية..."
-                    className="w-full rounded-xl border px-4 py-2.5 text-sm font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-                    style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}
-                  />
+
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0">
+                    <label className="mb-2 block text-[10px] font-black text-slate-455 uppercase tracking-widest">صورة القسم</label>
+                    <ImageUpload 
+                      size="md"
+                      url={catDraft.image_url || null}
+                      onUpload={(url) => setCatDraft((p) => ({ ...p, image_url: url }))}
+                      onRemove={() => setCatDraft((p) => ({ ...p, image_url: "" }))}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-2 block text-[10px] font-black text-slate-455 uppercase tracking-widest">اسم القسم <span className="text-rose-500">*</span></label>
+                    <input
+                      ref={nameRef}
+                      autoFocus
+                      value={catDraft.name}
+                      onChange={(e) => setCatDraft((p) => ({ ...p, name: e.target.value }))}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: skuPrefixRef })}
+                      required
+                      placeholder="زيوت، بويات، أدوات صحية..."
+                      className="w-full h-11 rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 text-sm font-bold outline-none focus:bg-white focus:border-emerald-450 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setCatModal(null)}
-                  className="rounded-xl border px-5 py-2.5 text-sm font-bold transition-colors hover:bg-slate-50" style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
-                >
-                  إلغاء
-                </button>
-                <button
-                  ref={submitBtnRef}
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
-                >
-                  {saving ? "جاري الحفظ…" : catModal.mode === "edit" ? "حفظ التعديلات" : isFirstCategory ? "إنشاء القسم الأول" : "إنشاء القسم"}
-                </button>
-              </div>
-            </form>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCatModal(null)}
+                    className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    ref={submitBtnRef}
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-xl bg-primary text-white font-black text-sm px-6 py-2.5 hover:bg-primary-600 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10"
+                  >
+                    {saving ? "جاري الحفظ…" : catModal.mode === "edit" ? "حفظ التعديلات" : isFirstCategory ? "إنشاء القسم الأول" : "إنشاء القسم"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

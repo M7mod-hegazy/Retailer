@@ -1,8 +1,8 @@
 import React from "react";
-import { g, computeTotals, HEAVY_NUM } from "./blockUtils";
+import { g, computeTotals } from "./blockUtils";
 
 export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
-  const { subtotal, grandTotal } = computeTotals(invoice, s);
+  const { grandTotal } = computeTotals(invoice, s);
   const currency = g(s, "currency_symbol");
   const accent = g(s, "accent_color");
   if (family === "page") {
@@ -13,13 +13,18 @@ export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
       </div>
     );
   }
-  // Roll: the net amount due. Only meaningful when a discount, surcharge or tax
-  // makes it differ from the items subtotal ("الإجمالي"); otherwise it would just
-  // duplicate that line, so we hide it.
-  if (Math.abs(subtotal - grandTotal) < 0.01) return null;
+  // Roll: always the most prominent element — full-width black bar, white text.
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, borderTop: `1px solid ${accent}`, paddingTop: "3px", marginTop: "4px" }}>
-      <span style={HEAVY_NUM}>المستحق:</span><span style={HEAVY_NUM}>{currency} {grandTotal.toFixed(2)}</span>
+    <div style={{
+      display: "flex", justifyContent: "space-between",
+      background: "#000", color: "#fff",
+      padding: "5px 6px",
+      marginTop: "4px",
+      fontWeight: 900,
+      fontSize: `${Math.max(13, Number(g(s, "body_font_size")) + 1)}px`,
+    }}>
+      <span>الإجمالي</span>
+      <span>{currency} {grandTotal.toFixed(2)}</span>
     </div>
   );
 }

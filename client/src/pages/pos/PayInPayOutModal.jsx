@@ -5,8 +5,12 @@ import Input from "../../components/ui/Input";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 
 export default function PayInPayOutModal({ open, type, onClose }) {
+  const { handleDetach } = useDetach("pay-in-pay-out", {
+    onClose, getState: () => ({ type }), actions: {},
+  });
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,13 +40,14 @@ export default function PayInPayOutModal({ open, type, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal open={open} onClose={onClose} title={title} onDetach={handleDetach}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-[20px] border border-border-subtle bg-[var(--bg-overlay)] p-4 text-sm text-text-secondary">
           سجل حركة الخزنة مع سبب واضح حتى تظهر في سجل المناوبة والتقارير المالية لاحقاً.
         </div>
         <Input
           ref={amountRef}
+          className="bg-white"
           label="المبلغ"
           type="number"
           step="0.01"
@@ -54,6 +59,7 @@ export default function PayInPayOutModal({ open, type, onClose }) {
         />
         <Input
           ref={reasonRef}
+          className="bg-white"
           label="السبب / التفاصيل"
           type="text"
           required
@@ -62,7 +68,7 @@ export default function PayInPayOutModal({ open, type, onClose }) {
           onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: amountRef })}
         />
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" type="button" onClick={onClose}>إلغاء</Button>
+          <Button variant="danger" type="button" onClick={onClose}>إلغاء</Button>
           <Button ref={submitBtnRef} type="submit" disabled={loading}>{btnLabel}</Button>
         </div>
       </form>

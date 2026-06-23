@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 import DataGrid from "../ui/DataGrid";
 import Highlight from "../ui/Highlight";
 import { formatNumber } from "../../utils/currency";
@@ -73,8 +74,7 @@ const PAYMENT_METHOD_STYLES = {
   multi:         { label: "متعدد",           cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
 };
 
-function PurchaseDetailView({ purchase, onClose, onConfirm }) {
-  const navigate = useNavigate();
+function PurchaseDetailView({ purchase, onClose, onConfirm, onNavigate: propNavigate }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -185,7 +185,7 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
         <div className="flex gap-2">
-          <button onClick={() => navigate(`/purchases/${purchase.purchase_id || purchase.id}`)} className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-5 py-2 text-sm font-black text-amber-700 hover:bg-amber-50 transition-colors">
+          <button onClick={() => propNavigate?.(`/purchases/${purchase.purchase_id || purchase.id}`)} className="flex items-center gap-2 rounded-sm border border-amber-200 bg-white px-5 py-2 text-sm font-black text-amber-700 hover:bg-amber-50 transition-colors">
             <Pencil className="h-4 w-4" /> عرض
           </button>
           <button onClick={() => onConfirm(d)} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-sm font-black text-white hover:bg-amber-800 transition-colors">
@@ -197,25 +197,52 @@ function PurchaseDetailView({ purchase, onClose, onConfirm }) {
   );
 }
 
-export default function PurchasePickerTodayModal({ open, onClose, onSelectPurchase, suppliers: propSuppliers }) {
+export default function PurchasePickerTodayModal({ open, onClose, onSelectPurchase, suppliers: propSuppliers, initialFilters }) {
+  const navigate = useNavigate();
+  const gotoTarget = (path) => {
+    if (window.location.search.includes("detachedModal=1") && window.electronAPI?.navigateParent) {
+      window.electronAPI.navigateParent(path);
+      window.electronAPI?.closeModalWindow?.();
+    } else {
+      navigate(path);
+    }
+  };
+  const { handleDetach } = useDetach("purchase-picker-today", {
+    onClose,
+    getState: () => ({
+      dateFrom, dateTo, sort, dir, userId, docSearch, itemSearch, supplierQuery, supplierId,
+    }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
+    actions: { selectPurchase: (p) => onSelectPurchase?.(p) },
+  });
   const [data, setData] = useState([]);
   const [summary, setSummary] = useState({ count: 0, total: 0 });
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(toDateInput());
-  const [dateTo, setDateTo] = useState(toDateInput());
-  const [sort, setSort] = useState("created_at");
-  const [dir, setDir] = useState("desc");
-  const [userId, setUserId] = useState("");
+  const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
+  const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
+  const [sort, setSort] = useState(initialFilters?.sort ?? "created_at");
+  const [dir, setDir] = useState(initialFilters?.dir ?? "desc");
+  const [userId, setUserId] = useState(initialFilters?.userId ?? "");
   const [usersList, setUsersList] = useState([]);
-  const [docSearch, setDocSearch] = useState("");
-  const [itemSearch, setItemSearch] = useState("");
+  const [docSearch, setDocSearch] = useState(initialFilters?.docSearch ?? "");
+  const [itemSearch, setItemSearch] = useState(initialFilters?.itemSearch ?? "");
   const [filteredItems, setFilteredItems] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
-  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierQuery, setSupplierQuery] = useState(initialFilters?.supplierQuery ?? "");
   const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
   const [activeSupplierIndex, setActiveSupplierIndex] = useState(0);
-  const [supplierId, setSupplierId] = useState("");
+  const [supplierId, setSupplierId] = useState(initialFilters?.supplierId ?? "");
   const [detailItem, setDetailItem] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const handleKeyDown = useFieldNavigation();
@@ -361,7 +388,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="طلبات التوريد — اختيار للمرتجع" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="طلبات التوريد — اختيار للمرتجع" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="purchase-picker-today">
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
@@ -496,7 +523,7 @@ export default function PurchasePickerTodayModal({ open, onClose, onSelectPurcha
         </div>
       </Modal>
       <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="معاينة أمر الشراء">
-        {detailItem ? <PurchaseDetailView purchase={detailItem} onClose={() => setDetailOpen(false)} onConfirm={(p) => { setDetailOpen(false); onSelectPurchase(p); }} /> : null}
+        {detailItem ? <PurchaseDetailView purchase={detailItem} onClose={() => setDetailOpen(false)} onConfirm={(p) => { setDetailOpen(false); onSelectPurchase(p); }} onNavigate={gotoTarget} /> : null}
       </Modal>
     </>
   );

@@ -69,7 +69,7 @@ router.get("/", requirePagePermission("branch_transfer", "view"), (req, res, nex
     const params = [];
 
     let sql = `
-      SELECT bt.*, u.username AS created_by_username,
+      SELECT bt.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
              COUNT(DISTINCT btl.id) AS line_count,
              SUM(btl.quantity) AS total_qty
       FROM branch_transfers bt
@@ -161,7 +161,7 @@ router.get("/:id", requirePagePermission("branch_transfer", "view"), (req, res, 
     const id = Number(req.params.id);
     const transfer = db.prepare(`
       SELECT bt.*,
-             u.username AS created_by_username,
+             COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
              u.full_name AS created_by_name,
              w_main.name AS warehouse_name,
              w_from.name AS from_warehouse_name,

@@ -6,18 +6,21 @@ import { Tabs } from "../../components/ui/Tabs";
 import ChequesPage from "../operations/ChequesPage";
 import InstallmentsPage from "../operations/InstallmentsPage";
 import TreasuryTransferPage from "../operations/TreasuryTransfer";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 
-const tabs = [
-  { value: "cheques", label: "الشيكات", icon: Receipt },
+const CHEQUES_TAB = { value: "cheques", label: "الشيكات", icon: Receipt };
+const BASE_TABS = [
   { value: "installments", label: "الأقساط", icon: CalendarRange },
   { value: "transfers", label: "تحويل بين الخزائن", icon: ArrowRightLeft },
 ];
 
 export default function OperationsWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const chequesEnabled = useFeatureEnabled("feature_cheques");
+  const tabs = chequesEnabled ? [CHEQUES_TAB, ...BASE_TABS] : BASE_TABS;
   const activeTab = tabs.some((tab) => tab.value === searchParams.get("tab"))
     ? searchParams.get("tab")
-    : "cheques";
+    : tabs[0].value;
 
   const handleTabChange = (value) => {
     setSearchParams({ tab: value }, { replace: true });

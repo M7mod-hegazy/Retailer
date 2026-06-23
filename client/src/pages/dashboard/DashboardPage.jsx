@@ -10,6 +10,8 @@ import { motion, AnimatePresence, LayoutGroup, useMotionValue, useSpring } from 
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useElectron } from "../../hooks/useElectron";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
@@ -55,7 +57,7 @@ const TOOLTIPS = {
   history: "سجل حركات النظام للمراقبة",
 };
 
-const SHORTCUTS = { pos: "F2", analytics: "F3", daily_treasury: "F4" };
+const PAGE_SHORTCUT_MAP = { pos: "dashboard.gotoPos", analytics: "dashboard.gotoAnalytics", daily_treasury: "dashboard.gotoTreasury" };
 
 // ─── Quick actions map ────────────────────────────────────────────────────────
 // path   → navigate to create form
@@ -354,13 +356,20 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
 
         <div className="relative z-10 flex flex-col h-full justify-between gap-8">
           <div className="flex justify-between items-start">
-            <div className={`flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${
+            <div className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${
               active ? "bg-white/10 text-accent" : "bg-zinc-50 text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:scale-110"
             }`}>
               <item.icon className="w-6 h-6" strokeWidth={1.5} />
             </div>
 
             <div className="flex items-start gap-2">
+              {item.pageKey === "updates" && updateAvailable && (
+                <span className="flex items-center gap-1 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-1.5 rounded-full shadow-lg shadow-emerald-500/20 animate-pulse whitespace-nowrap self-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  تحديث
+                </span>
+              )}
+
               {/* Branch-transfer: two stacked action buttons */}
               {isBranchTransfer ? (
                 <div className="flex flex-col gap-1">
@@ -409,12 +418,6 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
           </div>
         </div>
 
-        {item.pageKey === "updates" && updateAvailable && (
-          <div className="absolute top-5 left-5 flex items-center gap-1.5 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-primary/30 animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-white" />
-            تحديث
-          </div>
-        )}
       </Link>
     </motion.div>
   );
@@ -513,17 +516,14 @@ export default function DashboardPage() {
     }
   }, [visibleModules, activeTabId]);
 
+  useShortcut("dashboard.gotoPos", () => navigate("/pos"));
+  useShortcut("dashboard.gotoAnalytics", () => navigate("/analytics"));
+  useShortcut("dashboard.gotoTreasury", () => navigate("/daily-treasury"));
   useEffect(() => {
-    function handleKeyDown(e) {
-      if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
-      if (e.key === "F2") { e.preventDefault(); navigate("/pos"); }
-      if (e.key === "F3") { e.preventDefault(); navigate("/analytics"); }
-      if (e.key === "F4") { e.preventDefault(); navigate("/daily-treasury"); }
-      if (e.key === "Escape") setQuickModal(null);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate]);
+    function handleEsc(e) { if (e.key === "Escape") setQuickModal(null); }
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
 
   function isActive(path) {
     return location.pathname === path || (location.pathname.startsWith(path) && path !== "/");
@@ -602,7 +602,8 @@ export default function DashboardPage() {
         <motion.div data-help="stats-cards" variants={STAGGER} initial="hidden" animate="visible" className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 relative z-10">
           {primaryItems.map((item) => {
             const isPOS = item.highlight;
-            const shortcut = SHORTCUTS[item.pageKey];
+            const shortcutId = PAGE_SHORTCUT_MAP[item.pageKey];
+            const shortcut = shortcutId ? shortcutLabel(shortcutId) : null;
             return (
               <motion.div key={item.path} variants={FADE_UP}>
                 {isPOS ? (

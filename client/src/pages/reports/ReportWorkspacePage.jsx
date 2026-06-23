@@ -12,10 +12,7 @@ import {
   TrendingUp, Package, Wallet, Receipt, Shield, ClipboardList,
   SlidersHorizontal, X, ChevronLeft, ChevronRight, Settings2, Eye, EyeOff, PieChart, LineChart, Download
 } from "lucide-react";
-import {
-  LineChart as RechartsLine, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  BarChart as RechartsBar, Bar, PieChart as RechartsPie, Pie, Cell
-} from "recharts";
+import ChartWorkspace from "../../components/reports/ChartWorkspace";
 import DataGrid from "../../components/ui/DataGrid";
 import { reportsApi } from "../../services/reports";
 import { useReportsStore } from "../../stores/reportsStore";
@@ -78,6 +75,25 @@ function prettifyLabel(rawKey) {
     supplier_id: "المورد", customer_id: "العميل", cashier_id: "الكاشير",
     category_id: "التصنيف", item_category: "تصنيف الصنف",
     ref_no: "رقم المستند", debit: "مدين", credit: "دائن", running_balance: "الرصيد الجاري",
+  buys: "مشتريات",
+  datetime: "التاريخ والوقت",
+  doc_discount: "خصم المستند",
+  doc_id: "رقم المستند",
+  doc_increase: "إضافة المستند",
+  doc_total: "إجمالي المستند",
+  employee_id: "الموظف",
+  line_sum: "مجموع البنود",
+  net_total: "صافي الإجمالي",
+  occurred_at: "تاريخ الحدوث",
+  orig_ref: "المرجع الأصلي",
+  ref_id: "رقم المرجع",
+  source_id: "المصدر",
+  source_line_id: "رقم سطر المصدر",
+  tax_amount: "مبلغ الضريبة",
+  tax_type: "نوع الضريبة",
+  total_tax: "إجمالي الضريبة",
+  updated_at: "آخر تحديث",
+  v: "القيمة",
   };
   return labels[key] || rawKey;
 }
@@ -306,50 +322,6 @@ function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
     );
   }
   return null;
-}
-
-function suggestChartType(columns) {
-  const keys = columns.map((c) => c.id || c.key || c);
-  const hasDate = keys.some((k) => k.toLowerCase().includes("date") || k === "created_at");
-  const hasCategory = keys.some((k) =>
-    ["category_name", "payment_type", "movement_type", "status", "type", "hour_slot", "weekday", "reason", "stock_status", "source"].includes(k.toLowerCase())
-  );
-  if (hasDate) return "line";
-  if (hasCategory) return "bar";
-  return "bar";
-}
-
-function prepareChartData(rows, columns, chartType) {
-  if (!rows.length || !columns.length) return { data: [], xKey: null, yKey: null };
-
-  const keys = columns.map((c) => c.id || c.key || c);
-  const dateKey = keys.find((k) => k.toLowerCase().includes("date") || k === "created_at");
-  const catKey = keys.find((k) =>
-    ["category_name", "payment_type", "movement_type", "status", "type", "hour_slot", "weekday", "reason", "stock_status", "source", "name", "item_name", "customer_name", "supplier_name"].includes(k.toLowerCase())
-  );
-  const numericKeys = keys.filter((k) => {
-    if (["id", "shift_id", "user_id", "reference_id", "item_id", "resource", "action"].includes(k.toLowerCase())) return false;
-    const sample = rows[0]?.[k];
-    return sample != null && !isNaN(Number(sample)) && String(sample).trim() !== "";
-  });
-  const totalKey = numericKeys.find((k) =>
-    ["total", "total_sales", "total_purchases", "revenue", "total_value", "total_amount", "net_sales", "gross_sales", "total_cost", "quantity", "quantity_sold", "balance", "vat_amount"].includes(k.toLowerCase())
-  );
-  const yKey = totalKey || numericKeys[0];
-  const xKey = chartType === "line" ? dateKey : catKey || keys[0];
-
-  if (!xKey || !yKey) return { data: [], xKey: null, yKey: null };
-
-  let chartData = rows.map((r) => ({ ...r }));
-  if (chartType === "line" && dateKey) {
-    chartData = [...chartData].sort((a, b) => {
-      const da = new Date(a[dateKey]);
-      const db = new Date(b[dateKey]);
-      return da - db;
-    });
-  }
-
-  return { data: chartData, xKey, yKey };
 }
 
 export default function ReportWorkspacePage() {
@@ -664,9 +636,6 @@ export default function ReportWorkspacePage() {
       return { ...prev, page: 1, pageSize: printPageSize };
     });
   }, [visibleColumns, measuredPrintRowsPerPage]);
-
-  const chartType = useMemo(() => suggestChartType(allColumns), [allColumns]);
-  const { data: chartData, xKey, yKey } = useMemo(() => prepareChartData(rows, allColumns, chartType), [rows, allColumns, chartType]);
 
   const columnTotals = useMemo(() => {
     if (!rows.length) return {};
@@ -1221,53 +1190,7 @@ export default function ReportWorkspacePage() {
             )}
           </>
         ) : (
-          <div className="flex-1 p-8 overflow-auto">
-            {isLoading ? (
-              <TableSkeleton colCount={3} />
-            ) : !chartData.length || !xKey || !yKey ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="h-20 w-20 rounded-3xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300 mb-6 shadow-inner"><BarChart3 size={32} /></div>
-                <h3 className="text-[18px] font-black text-zinc-900 mb-2">لا يمكن رسم بياني لهذه البيانات</h3>
-                <p className="text-sm font-medium text-zinc-500 max-w-sm">جرب اختيار أعمدة تحتوي على قيم رقمية وتصنيفات (أو تواريخ).</p>
-              </div>
-            ) : (
-              <div className="space-y-8 max-w-5xl mx-auto">
-                <div className="flex items-center gap-4 text-sm font-bold text-zinc-500 bg-zinc-50 px-6 py-4 rounded-2xl border border-zinc-100">
-                  <div className="flex items-center gap-2"><LineChart size={16} className="text-emerald-500" /> <span>المحور السيني: <span className="text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200">{prettifyLabel(xKey)}</span></span></div>
-                  <span className="w-px h-4 bg-zinc-300" />
-                  <div className="flex items-center gap-2"><PieChart size={16} className="text-emerald-500" /> <span>المحور الصادي: <span className="text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200">{prettifyLabel(yKey)}</span></span></div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
-                  <ResponsiveContainer width="100%" height={480}>
-                    {chartType === "line" ? (
-                      <RechartsLine data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="4 4" stroke="#f4f4f5" vertical={false} />
-                        <XAxis dataKey={xKey} tick={{ fontSize: 12, fill: "#71717a", fontWeight: "bold" }} axisLine={false} tickLine={false} dy={10} />
-                        <YAxis tick={{ fontSize: 12, fill: "#71717a", fontWeight: "bold" }} axisLine={false} tickLine={false} dx={-10} />
-                        <Tooltip contentStyle={{ background: "#18181b", border: "none", borderRadius: "12px", color: "#fff", fontWeight: "bold", fontSize: "13px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }} itemStyle={{ color: "#fff" }} />
-                        <Line type="monotone" dataKey={yKey} stroke="#10b981" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 7, strokeWidth: 0 }} name={prettifyLabel(yKey)} animationDuration={1500} animationEasing="ease-out" />
-                      </RechartsLine>
-                    ) : chartType === "bar" ? (
-                      <RechartsBar data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="4 4" stroke="#f4f4f5" vertical={false} />
-                        <XAxis dataKey={xKey} tick={{ fontSize: 12, fill: "#71717a", fontWeight: "bold" }} axisLine={false} tickLine={false} dy={10} />
-                        <YAxis tick={{ fontSize: 12, fill: "#71717a", fontWeight: "bold" }} axisLine={false} tickLine={false} dx={-10} />
-                        <Tooltip cursor={{ fill: "#f4f4f5" }} contentStyle={{ background: "#18181b", border: "none", borderRadius: "12px", color: "#fff", fontWeight: "bold", fontSize: "13px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }} itemStyle={{ color: "#fff" }} />
-                        <Bar dataKey={yKey} fill="#10b981" radius={[6, 6, 0, 0]} name={prettifyLabel(yKey)} animationDuration={1500} />
-                      </RechartsBar>
-                    ) : (
-                      <RechartsPie>
-                        <Pie data={chartData} dataKey={yKey} nameKey={xKey} cx="50%" cy="50%" innerRadius={120} outerRadius={180} paddingAngle={4} label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} animationDuration={1500}>
-                          {chartData.map((_, i) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: "#18181b", border: "none", borderRadius: "12px", color: "#fff", fontWeight: "bold", fontSize: "13px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }} itemStyle={{ color: "#fff" }} />
-                      </RechartsPie>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </div>
+          <ChartWorkspace rows={rows} columns={allColumns} isLoading={isLoading} title={definition?.title || reportSlug} />
         )}
       </div>
 

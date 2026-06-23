@@ -9,10 +9,7 @@ import {
   LayoutTemplate, LayoutList, Loader2, Printer, RefreshCw, Search, SlidersHorizontal, X,
   ChevronLeft, ChevronRight, Settings2, Eye, EyeOff, ArrowUp, ArrowDown
 } from "lucide-react";
-import {
-  LineChart as RechartsLine, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  BarChart as RechartsBar, Bar, PieChart as RechartsPie, Pie, Cell
-} from "recharts";
+import ChartWorkspace from "../../components/reports/ChartWorkspace";
 import A4PageView from "../../components/ui/A4PageView";
 import DataGrid from "../../components/ui/DataGrid";
 import PDFExportDialog from "../../components/print/PDFExportDialog";
@@ -191,6 +188,25 @@ const ARABIC_COL_LABELS = {
   weekday_name: "اليوم", hour_slot: "الساعة",
   stock_status: "حالة المخزون", reorder_level: "حد إعادة الطلب", current_stock: "المخزون الحالي",
   avg_daily_sales: "متوسط المبيعات اليومية", days_of_stock: "أيام المخزون",
+  buys: "مشتريات",
+  datetime: "التاريخ والوقت",
+  doc_discount: "خصم المستند",
+  doc_id: "رقم المستند",
+  doc_increase: "إضافة المستند",
+  doc_total: "إجمالي المستند",
+  employee_id: "الموظف",
+  line_sum: "مجموع البنود",
+  net_total: "صافي الإجمالي",
+  occurred_at: "تاريخ الحدوث",
+  orig_ref: "المرجع الأصلي",
+  ref_id: "رقم المرجع",
+  source_id: "المصدر",
+  source_line_id: "رقم سطر المصدر",
+  tax_amount: "مبلغ الضريبة",
+  tax_type: "نوع الضريبة",
+  total_tax: "إجمالي الضريبة",
+  updated_at: "آخر تحديث",
+  v: "القيمة",
 };
 const NOTE_KEYS = new Set(["notes", "note", "description", "cancel_reason", "reason"]);
 function arColLabel(key) { return ARABIC_COL_LABELS[key] || key; }
@@ -368,32 +384,7 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
   return null;
 }
 
-function suggestChartType(columns) {
-  const keys = columns.map((c) => c.id || c.key || c);
-  if (keys.some((k) => k.toLowerCase().includes("date") || k === "created_at")) return "line";
-  return "bar";
-}
 
-function prepareChartData(rows, columns, chartType) {
-  if (!rows.length || !columns.length) return { data: [], xKey: null, yKey: null };
-  const keys = columns.map((c) => c.id || c.key || c);
-  const dateKey = keys.find((k) => k.toLowerCase().includes("date") || k === "created_at");
-  const catKey = keys.find((k) => ["category_name", "payment_type", "movement_type", "status", "type", "hour_slot", "weekday", "reason", "stock_status", "source", "name", "item_name", "customer_name", "supplier_name"].includes(k.toLowerCase()));
-  const numericKeys = keys.filter((k) => {
-    if (["id", "shift_id", "user_id", "reference_id", "item_id", "resource", "action"].includes(k.toLowerCase())) return false;
-    const sample = rows[0]?.[k];
-    return sample != null && !isNaN(Number(sample));
-  });
-  const totalKey = numericKeys.find((k) => ["total", "total_sales", "total_purchases", "revenue", "total_value", "total_amount", "net_sales", "gross_sales", "total_cost", "quantity", "quantity_sold", "balance", "vat_amount"].includes(k.toLowerCase()));
-  const yKey = totalKey || numericKeys[0];
-  const xKey = chartType === "line" ? dateKey : catKey || keys[0];
-  if (!xKey || !yKey) return { data: [], xKey: null, yKey: null };
-  let chartData = rows.map((r) => ({ ...r }));
-  if (chartType === "line" && dateKey) {
-    chartData = [...chartData].sort((a, b) => new Date(a[dateKey]) - new Date(b[dateKey]));
-  }
-  return { data: chartData, xKey, yKey };
-}
 
 export default function SourceWorkspacePage() {
   const { sourceKey, classificationId, dataMode } = useParams();
@@ -727,9 +718,6 @@ export default function SourceWorkspacePage() {
     });
     return totals;
   }, [rows, allColumns, serverTotals]);
-
-  const chartType = useMemo(() => suggestChartType(allColumns), [allColumns]);
-  const { data: chartData, xKey, yKey } = useMemo(() => prepareChartData(rows, allColumns, chartType), [rows, allColumns, chartType]);
 
   const hasItemsRows = useMemo(() => rows.some(r => r._items?.length > 0), [rows]);
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -1255,35 +1243,7 @@ export default function SourceWorkspacePage() {
             )}
           </div>
         ) : (
-          <div className="flex-1 p-6">
-            {chartData.length > 0 && xKey && yKey ? (
-              <ResponsiveContainer width="100%" height="100%">
-                {chartType === "line" ? (
-                  <RechartsLine data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-                    <XAxis dataKey={xKey} tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey={yKey} stroke="#059669" strokeWidth={2.5} dot={{ r: 3 }} />
-                  </RechartsLine>
-                ) : (
-                  <RechartsBar data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-                    <XAxis dataKey={xKey} tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey={yKey} fill="#059669" radius={[4, 4, 0, 0]} />
-                  </RechartsBar>
-                )}
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-zinc-400 text-sm font-bold">
-                لا توجد بيانات كافية للرسم البياني
-              </div>
-            )}
-          </div>
+          <ChartWorkspace rows={rows} columns={allColumns} isLoading={isLoading} title={sourceDef?.label || sourceKey} />
         )}
       </div>
 

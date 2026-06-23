@@ -3,11 +3,12 @@
 // host machine's timezone.
 process.env.TZ = "Africa/Cairo";
 
-const { app, BrowserWindow, dialog, powerMonitor } = require("electron");
+const { app, BrowserWindow, dialog, powerMonitor, protocol } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { createTray, destroyTray } = require("./tray");
 const { buildMenu } = require("./menuBuilder");
+const { closeChildWindows } = require("./modalWindowManager");
 const { setupIpc } = require("./ipcHandlers");
 const { startEmbeddedServer, stopEmbeddedServer } = require("./serverManager");
 const { ensurePackagedEnv } = require("./ensurePackagedEnv");
@@ -15,6 +16,28 @@ const { logError, getLogPath, resolveLogDir } = require("./crashLogger");
 const { showErrorScreen } = require("./errorScreen");
 
 const isDev = !app.isPackaged;
+
+// Register the custom `retailer://` scheme as privileged BEFORE app `ready`.
+// This lets the packaged renderer (file://) reach the embedded server over a
+// custom protocol instead of a TCP loopback socket — immune to antivirus/firewall
+// software that blocks 127.0.0.1. See electron/protocolBridge.js for the rationale.
+try {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: "retailer",
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true,
+        stream: true,
+        bypassCSP: true,
+      },
+    },
+  ]);
+} catch (_e) {
+  /* already registered / not available — non-fatal */
+}
 
 // ── Win7 / legacy-GPU stability + NATIVE crash capture ─────────────────────
 // The Windows "has stopped working" (WER) dialog comes from a *native* crash
@@ -276,11 +299,11 @@ function createMainWindow() {
   mainWindow.on("maximize", persistState);
   mainWindow.on("unmaximize", persistState);
 
-  // Minimize to tray instead of closing
+  // Show quit/logout dialog instead of closing directly
   mainWindow.on("close", (e) => {
     if (!app.isQuitting) {
       e.preventDefault();
-      mainWindow.hide();
+      mainWindow.webContents.send("app:show-quit-dialog");
     }
   });
 
@@ -329,11 +352,11 @@ if (!gotTheLock) {
             const isDowngrade = ca < pa || (ca === pa && cb < pb) || (ca === pa && cb === pb && cc < pc);
             if (isDowngrade) {
               const choice = dialog.showMessageBoxSync(null, {
-                type: "warning",
-                title: "تحذير: تراجع في الإصدار",
-                message: "أنت تشغّل إصداراً أقدم مما كان مُثبّتاً",
-                detail: `الإصدار السابق: ${prev}\nالإصدار الحالي: ${current}\n\nالتراجع قد يُتلف قاعدة البيانات. يُنصح بالنسخ الاحتياطي أولاً.`,
-                buttons: ["متابعة على مسؤوليتي", "إغلاق البرنامج"],
+                type: "question",
+                title: "اختلاف في الإصدار",
+                message: "الإصدار الذي يعمل الآن أقدم من الإصدار السابق",
+                detail: `الإصدار السابق: ${prev}\nالإصدار الحالي: ${current}\n\nننصح بإنشاء نسخة احتياطية قبل المتابعة. هل تريد المتابعة؟`,
+                buttons: ["متابعة", "إغلاق البرنامج"],
                 defaultId: 1,
                 cancelId: 1,
               });
@@ -399,6 +422,17 @@ if (!gotTheLock) {
       return;
     }
 
+    // Install the retailer:// → embedded-server bridge now that the server (and its
+    // named pipe) is up. Handler reads the live pipe lazily, so it survives restarts.
+    if (!isDev) {
+      try {
+        const { registerApiProtocol } = require("./protocolBridge");
+        registerApiProtocol(protocol);
+      } catch (e) {
+        logError("Failed to register retailer:// protocol", e);
+      }
+    }
+
     // Server is ready — now open the main window
     createMainWindow();
 
@@ -424,11 +458,17 @@ if (!gotTheLock) {
     // server (and its open DB) are still alive. performBackup is synchronous and
     // fast (~tens of ms for a few-MB DB copy), so this completes before the
     // process tears down. Never allowed to block or fail the quit.
-    try {
-      const { runCloseBackup } = require("../server/src/jobs/autoBackup");
-      runCloseBackup();
-    } catch (_) {}
+    // Skipped when quitting for an in-app update: the synchronous copy can add a
+    // multi-second freeze right as the installer launches, and the update flow
+    // already prompts the user to back up (one click) before downloading.
+    if (!app.isQuittingForUpdate) {
+      try {
+        const { runCloseBackup } = require("../server/src/jobs/autoBackup");
+        runCloseBackup();
+      } catch (_) {}
+    }
 
+    closeChildWindows();
     destroyTray();
     stopEmbeddedServer().catch(() => {});
   });

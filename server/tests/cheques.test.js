@@ -4,7 +4,7 @@ const os = require("os");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 const { createApp } = require("../src/app");
-const { initDb, setDb } = require("../src/config/database");
+const { initDb, setDb, getDb } = require("../src/config/database");
 
 let app;
 let token;
@@ -13,6 +13,8 @@ beforeAll(() => {
   setDb(null);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "retailer-cheques-"));
   initDb(path.join(dir, "cheques.db"));
+  // Cheque management is a toggleable module (OFF by default) — enable it for these tests.
+  getDb().prepare("UPDATE settings SET feature_cheques = 1 WHERE id = 1").run();
   app = createApp();
   token = jwt.sign({ sub: "__dev__" }, process.env.JWT_SECRET || "test-secret");
 });

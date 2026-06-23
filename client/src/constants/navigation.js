@@ -39,7 +39,7 @@ export const NAV_MODULES = [
       { path: "/withdrawals", label: "تسجيل المسحوبات", icon: Banknote, pageKey: "withdrawals" },
       { path: "/operations/payment-methods", label: "وسائل الدفع", icon: CreditCard, pageKey: "payment_methods" },
       { path: "/operations/bank-operations", label: "البنوك والفيزا", icon: Landmark, pageKey: "bank_operations" },
-      { path: "/operations/cheques", label: "إدارة الشيكات", icon: Banknote, pageKey: "cheques" },
+      { path: "/operations/cheques", label: "إدارة الشيكات", icon: Banknote, pageKey: "cheques", featureKey: "feature_cheques" },
     ],
   },
   {

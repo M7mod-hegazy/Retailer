@@ -3,18 +3,21 @@ import { useParams, Link } from "react-router-dom";
 import { Truck, Phone, Mail, ChevronLeft, Plus } from "lucide-react";
 import api from "../../services/api";
 import { formatNumber } from "../../utils/currency";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
 
-const TABS = [
+const BASE_TABS = [
   { id: "purchases", label: "فواتير المشتريات" },
   { id: "payments", label: "المدفوعات" },
-  { id: "cheques", label: "الشيكات" },
 ];
+const CHEQUES_TAB = { id: "cheques", label: "الشيكات" };
 
 export default function SupplierProfilePage() {
   const { id } = useParams();
+  const chequesEnabled = useFeatureEnabled("feature_cheques");
+  const TABS = chequesEnabled ? [...BASE_TABS, CHEQUES_TAB] : BASE_TABS;
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("purchases");

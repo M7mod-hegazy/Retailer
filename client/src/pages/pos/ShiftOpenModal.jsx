@@ -5,19 +5,26 @@ import Button from "../../components/ui/Button";
 import api from "../../services/api";
 import { Clock3, Wallet } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import { useDetach } from "../../hooks/useDetach";
 
-export default function ShiftOpenModal({ open, onClose, onSuccess }) {
-  const [openingCash, setOpeningCash] = useState("0");
+export default function ShiftOpenModal({ open, onClose, onSuccess, userId: propUserId, openingCash: initialOpeningCash }) {
+  const [openingCash, setOpeningCash] = useState(initialOpeningCash ?? "0");
   const user = useAuthStore((state) => state.user);
+  const userId = propUserId ?? user?.id;
+  const { handleDetach } = useDetach("shift-open", {
+    onClose,
+    getState: () => ({ openingCash, userId }),
+    actions: { success: () => onSuccess?.() },
+  });
 
   async function submit() {
-    const response = await api.post("/api/shifts/open", { opening_cash: Number(openingCash), user_id: user?.id });
+    const response = await api.post("/api/shifts/open", { opening_cash: Number(openingCash), user_id: userId });
     onSuccess?.(response.data.data);
     onClose?.();
   }
 
   return (
-    <Modal open={open} title="فتح وردية" onClose={onClose}>
+    <Modal open={open} title="فتح وردية" onClose={onClose} onDetach={handleDetach} modalType="shift-open" showDetach={true}>
       <div className="space-y-6">
         <div className="rounded-[20px] border border-primary/20 bg-primary/10 p-5 text-center">
           <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-primary shadow-glow">

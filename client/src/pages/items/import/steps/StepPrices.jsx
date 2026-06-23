@@ -291,6 +291,7 @@ function UnmappedBulkPanel({ field, policy, onSkip, onZero }) {
 
 export default function StepPrices({ wizard }) {
   const [page, setPage] = useState(1);
+  const [filterField, setFilterField] = useState("all");
 
   const { pricedRows, changedPriceFields, affectedCountByField, pricePolicies, setPricePolicies } = wizard;
 
@@ -299,16 +300,28 @@ export default function StepPrices({ wizard }) {
     [changedPriceFields]
   );
 
+  // Narrow the comparison table to rows that changed for one price type.
+  const fieldChanged = (row, field) => {
+    const ex = row.__existing;
+    if (!ex) return false;
+    const fileVal = String(row[field] ?? "").trim();
+    return fileVal && fileVal !== String(ex[field] ?? "").trim();
+  };
+  const filteredRows = useMemo(
+    () => (filterField === "all" ? pricedRows : pricedRows.filter((r) => fieldChanged(r, filterField))),
+    [pricedRows, filterField]
+  );
+
   const unmappedFields = useMemo(() => {
     const mapped = new Set(Object.values(wizard.mapping || {}).filter(Boolean));
     return ["sale_price", "purchase_price", "wholesale_price"].filter((f) => !mapped.has(f));
   }, [wizard.mapping]);
 
-  const totalPages = Math.max(1, Math.ceil(pricedRows.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginatedRows = useMemo(
-    () => pricedRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [pricedRows, safePage]
+    () => filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filteredRows, safePage]
   );
 
   const updateCount = activeFields.filter((f) => pricePolicies[f] === "update").length;
@@ -422,14 +435,40 @@ export default function StepPrices({ wizard }) {
         style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-surface)" }}
       >
         <div className="px-4.5 py-3 border-b" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-overlay)" }}>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm font-black" style={{ color: "var(--text-primary)" }}>
-              مقارنة الأسعار ({pricedRows.length} منتج)
+              مقارنة الأسعار ({filteredRows.length} منتج)
             </span>
             <span className="text-[11px] font-bold" style={{ color: "var(--text-muted)" }}>
               القديم ← الجديد · انقر الخلية لتعديل يدوي
             </span>
           </div>
+          {activeFields.length > 1 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-black" style={{ color: "var(--text-muted)" }}>تصفية حسب نوع السعر:</span>
+              {[{ key: "all", label: "الكل", count: pricedRows.length }, ...activeFields.map((f) => ({ key: f, label: PRICE_META[f].label, count: affectedCountByField[f] || 0 }))].map((tab) => {
+                const active = filterField === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => { setFilterField(tab.key); setPage(1); }}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-black transition active:scale-[0.97]"
+                    style={{
+                      backgroundColor: active ? "var(--text-primary)" : "var(--bg-surface)",
+                      color: active ? "var(--bg-surface)" : "var(--text-secondary)",
+                      border: `1px solid ${active ? "var(--border-strong)" : "var(--border-normal)"}`,
+                    }}
+                  >
+                    {tab.label}
+                    <span className="rounded px-1.5 py-0.5 text-[9px] font-black tabular-nums" style={{ backgroundColor: active ? "rgba(255,255,255,0.15)" : "var(--bg-overlay)", color: active ? "inherit" : "var(--text-muted)" }}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">

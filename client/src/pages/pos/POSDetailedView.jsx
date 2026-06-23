@@ -34,6 +34,9 @@ import { cartLineKey } from "../../stores/posStore";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 
 export default function POSDetailedView({ vm }) {
   const {
@@ -138,6 +141,8 @@ export default function POSDetailedView({ vm }) {
     warehouses, getFilteredWarehouses,
   } = vm;
 
+  const gridNavRef = useRef(null);
+
   const [gridDisplayMode, setGridDisplayMode] = useState(() => {
     try { return localStorage.getItem("retailer.pos.gridDisplayMode") || "cards"; } catch { return "cards"; }
   });
@@ -176,6 +181,8 @@ export default function POSDetailedView({ vm }) {
   const multiCreditRef = useRef(null);
 
   const detailedSearchRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "quantity", entryRef: detailedSearchRef });
+  useShortcut("grid.editLast", () => focusLastRowQty());
   useEffect(() => { setTimeout(() => detailedSearchRef.current?.focus(), 300); }, []);
   const [flashAdd, setFlashAdd] = useState(false);
   useEffect(() => {
@@ -840,7 +847,7 @@ export default function POSDetailedView({ vm }) {
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
                 <ShoppingCart className="h-3.5 w-3.5 text-indigo-600" />
               </div>
-              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest truncate">الأصناف المضافة</h3>
+              <div className="flex items-center gap-1"><h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest truncate">الأصناف المضافة</h3><ShortcutKbd id="grid.editLast" /></div>
               {lines.length > 0 && (
                 <span className="mr-auto flex items-center justify-center h-5 min-w-[20px] rounded-full bg-indigo-100 px-1.5 text-[10px] font-black text-indigo-700">{lines.length}</span>
               )}
@@ -856,7 +863,7 @@ export default function POSDetailedView({ vm }) {
                 <span className="mt-1 text-2sm font-bold text-slate-400">اضغط على الأصناف لإضافتها</span>
               </div>
             ) : (
-              <div className="flex flex-col gap-1.5 max-h-[35vh] overflow-y-auto custom-scrollbar">
+              <div ref={gridNavRef} className="flex flex-col gap-1.5 max-h-[35vh] overflow-y-auto custom-scrollbar">
                 {lines.map((line, idx) => {
                   const isExceedingStock = Number(line.quantity || 0) > Number(line.stock_quantity || 0);
                   const lineTotal = Math.max(0, Number(line.quantity || 0) * Number(line.unit_price || 0) - Number(line.line_discount || 0));
@@ -920,6 +927,7 @@ export default function POSDetailedView({ vm }) {
                           <button onClick={() => updateLine(line.item_id, { quantity: Math.max(1, Number(line.quantity) - 1) })}
                             className="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors"><Minus className="w-3 h-3" /></button>
                           <input type="number" min="1" max={maxStock === Infinity ? undefined : maxStock} value={line.quantity}
+                            data-grid-cell data-row={idx} data-col="quantity"
                             onChange={(e) => { const v = Number(e.target.value || 1); updateLine(line.item_id, { quantity: maxStock === Infinity ? v : Math.min(v, maxStock) }); }}
                             className="w-9 h-6 text-center text-2sm font-black bg-transparent outline-none ring-0 border-x border-slate-100 text-slate-800" />
                           <button
@@ -939,6 +947,7 @@ export default function POSDetailedView({ vm }) {
                         {/* Discount */}
                         <div className="flex items-center gap-1">
                           <input type="number" min="0" step="any"
+                            data-grid-cell data-row={idx} data-col="discount"
                             value={discountModes[line.item_id] === "pct"
                               ? parseFloat(((Number(line.line_discount || 0) / (Number(line.unit_price || 1) * Number(line.quantity || 1))) * 100).toFixed(2))
                               : Number(line.line_discount || 0)}
@@ -1299,7 +1308,7 @@ export default function POSDetailedView({ vm }) {
       <POSTodayModal open={receiptsOpen} onClose={() => setReceiptsOpen(false)} />
 
       {/* ── Detailed item search ── */}
-      <Modal open={detailedSearchOpen} onClose={() => setDetailedSearchOpen(false)} title="بحث تفصيلي عن الأصناف">
+      <Modal open={detailedSearchOpen} onClose={() => setDetailedSearchOpen(false)} title="بحث تفصيلي عن الأصناف" showDetach={false}>
         <div className="flex flex-col gap-3 animate-modal-enter">
           <input type="text" value={detailedSearchQuery} onChange={(e) => setDetailedSearchQuery(e.target.value)}
             placeholder="ابحث بالاسم أو الكود أو الباركود أو الفئة..."
@@ -1379,7 +1388,7 @@ export default function POSDetailedView({ vm }) {
       />
 
       {/* ── Supervisor override ── */}
-      <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم">
+      <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم" showDetach={false}>
         <div className="space-y-4 text-center animate-modal-enter">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto">
             <ShieldCheck className="h-7 w-7 text-amber-600" />
@@ -1398,7 +1407,7 @@ export default function POSDetailedView({ vm }) {
       </Modal>
 
       {/* ── Multi-payment modal ── */}
-      <Modal open={multiModalOpen} onClose={() => setMultiModalOpen(false)} title="توزيع مبالغ الدفع المتعدد">
+      <Modal open={multiModalOpen} onClose={() => setMultiModalOpen(false)} title="توزيع مبالغ الدفع المتعدد" showDetach={false}>
         <div className="space-y-4 animate-modal-enter">
           <div className="rounded-sm bg-slate-950 p-5 text-center">
             <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">المبلغ المطلوب توزيعه</p>
@@ -1485,7 +1494,7 @@ export default function POSDetailedView({ vm }) {
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ] : paymentType === "installments"
             ? (Number(amountPaid) > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: Number(amountPaid) }] : [])
-            : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: totals.total }],
+            : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: (paymentType === "cash" && Number(amountReceived) > totals.total) ? Number(amountReceived) : totals.total }],
           installment_plan: paymentType === "installments" ? installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) : [],
           notes: invoiceNotes || null,
           discount: Number(discount || 0) + Number(promotionDiscount || 0),
@@ -1506,7 +1515,7 @@ export default function POSDetailedView({ vm }) {
       />
 
       {/* Set Default View Modal */}
-      <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
+      <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <p className="text-sm font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
           <div className="flex gap-2">
@@ -1534,7 +1543,7 @@ export default function POSDetailedView({ vm }) {
       </Modal>
 
       {/* New Invoice Warning Modal */}
-      <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة">
+      <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
@@ -1634,7 +1643,7 @@ export default function POSDetailedView({ vm }) {
       </Modal>
 
       {/* Save Confirm Modal */}
-      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة">
+      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
             <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
@@ -1662,7 +1671,7 @@ export default function POSDetailedView({ vm }) {
       </Modal>
 
       {/* Cancel Invoice Modal */}
-      <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة">
+      <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
             <Trash2 className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
@@ -1682,7 +1691,7 @@ export default function POSDetailedView({ vm }) {
                 setPaymentType("cash");
                 setInvoiceSeq((s) => s + 1);
               }}
-              className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-sm font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 rounded-lg btn-danger px-4 py-3 text-sm font-black transition-all active:scale-[0.98]"
             >
               <Trash2 className="h-4 w-4" />
               نعم، إلغاء الفاتورة

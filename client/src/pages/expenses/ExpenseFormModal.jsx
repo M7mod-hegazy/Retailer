@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../../services/api";
 import { 
-  X, 
   DollarSign, 
   Tag, 
   FileText, 
@@ -13,7 +12,9 @@ import {
   Layers
 } from "lucide-react";
 import toast from "react-hot-toast";
+import TitleBar from "../../components/ui/TitleBar";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 
 export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   const [categories, setCategories] = useState([]);
@@ -42,6 +43,9 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   const notesRef = useRef(null);
   const formRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
+  const { handleDetach } = useDetach("expense-form", {
+    onClose, getState: () => ({}), actions: { success: () => onSuccess?.() },
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -105,22 +109,9 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl overflow-hidden rounded-md bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4">
-          <div className="flex items-center gap-3">
-             <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-rose-900 text-white shadow-lg">
-                <DollarSign className="h-6 w-6" />
-             </div>
-             <div className="flex flex-col">
-                <h2 className="text-[16px] font-black text-slate-800">تسجيل مصروف جديد</h2>
-                <p className="text-[11px] font-bold text-slate-400">إضافة حركة مالية تابعة للمصروفات العمومية أو الإدارية</p>
-             </div>
-          </div>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-800 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        <TitleBar title="تسجيل مصروف جديد" subtitle="إضافة حركة مالية تابعة للمصروفات العمومية أو الإدارية" onClose={onClose} onDetach={handleDetach} />
 
-         <form ref={formRef} onSubmit={handleSubmit} className="p-8">
+         <form data-modal-content ref={formRef} onSubmit={handleSubmit} className="p-8">
            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
               {/* Amount */}
               <div className="col-span-1 space-y-1.5">
@@ -135,7 +126,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                         onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
                         onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
                         placeholder="0.00"
-                        className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600"
+                         className="w-full rounded-sm border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600"
                      />
                  </div>
               </div>
@@ -171,7 +162,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                         onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
                         onKeyDown={e => handleKeyDown(e, { nextRef: sourceRef, prevRef: categoryRef })}
                         placeholder="مثلاً: فاتورة الكهرباء لشهر مارس..."
-                        className="w-full rounded-sm border border-slate-200 py-2.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
+                         className="w-full rounded-sm border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
                      />
                  </div>
               </div>
@@ -241,7 +232,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                         value={form.created_at}
                         onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
                         onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: employeeRef })}
-                        className="w-full rounded-sm border border-slate-200 py-2 pl-4 pr-10 text-2sm font-black text-slate-800 outline-none"
+                        className="w-full rounded-sm border border-slate-200 bg-white py-2 pl-4 pr-10 text-2sm font-black text-slate-800 outline-none"
                      />
                  </div>
               </div>
@@ -254,8 +245,8 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                      value={form.notes}
                      onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
                      onKeyDown={e => handleKeyDown(e, { prevRef: dateRef, onEnter: () => formRef.current?.requestSubmit() })}
-                     placeholder="اكتب أي تفاصيل أخرى هنا..."
-                     className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-2sm font-bold text-slate-700 outline-none focus:bg-white resize-none"
+                      placeholder="اكتب أي تفاصيل أخرى هنا..."
+                      className="w-full rounded-sm border border-slate-200 bg-white p-3 text-2sm font-bold text-slate-700 outline-none focus:bg-white resize-none"
                      rows="2"
                   />
               </div>
@@ -265,7 +256,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
               <button 
                  type="button"
                  onClick={onClose}
-                 className="rounded-sm border border-slate-200 px-6 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                 className="btn-danger rounded-sm px-6 py-2.5 text-sm font-black transition-colors"
               >
                  إلغاء التغييرات
               </button>

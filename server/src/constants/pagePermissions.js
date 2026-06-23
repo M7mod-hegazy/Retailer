@@ -1,7 +1,7 @@
 const PAGE_PERMISSIONS = {
   pos: { label: 'نقطة البيع', actions: ['view','add','edit','delete','void','hold','discount','print','override_price'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view','add','edit','delete','print'] },
-  analytics: { label: 'التحليلات والمبيعات', actions: ['view','export'] },
+  analytics: { label: 'التحليلات والمبيعات', actions: ['view','export','view_sensitive'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view','add','edit','delete','print'] },
   purchase_orders: { label: 'طلبات التوريد', actions: ['view','add','edit','delete','print'] },
   purchase_returns: { label: 'مرتجع المشتريات', actions: ['view','add','edit','delete','print'] },

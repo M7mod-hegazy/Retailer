@@ -234,18 +234,8 @@ export default function PromotionsPage() {
         </div>
       </div>
 
-      <Modal open={openModal} onClose={() => setOpenModal(false)} title={null} size="md">
+      <Modal open={openModal} onClose={() => setOpenModal(false)} title={formData.id ? "تعديل عرض ترويجي" : "عرض ترويجي جديد"} size="md" showDetach={false}>
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <Tag className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black" style={{ color: "var(--text-primary)" }}>{formData.id ? "تعديل عرض ترويجي" : "عرض ترويجي جديد"}</h2>
-              <p className="text-2sm font-bold mt-0.5" style={{ color: "var(--text-secondary)" }}>قم بضبط إعدادات الخصم وفترة الصلاحية</p>
-            </div>
-          </div>
-          
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <label className="text-2sm font-black uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>اسم العرض</label>
@@ -348,7 +338,7 @@ export default function PromotionsPage() {
               <button 
                 type="button" 
                 onClick={() => setOpenModal(false)}
-                className="flex-1 rounded-xl border px-4 py-3.5 text-sm font-black transition-all hover:bg-slate-50 active:scale-[0.98]" style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-surface)", color: "var(--text-secondary)" }}
+                className="flex-1 rounded-xl btn-danger px-4 py-3.5 text-sm font-black transition-all active:scale-[0.98]"
               >
                 إلغاء
               </button>
@@ -364,12 +354,11 @@ export default function PromotionsPage() {
         </div>
       </Modal>
 
-      <Modal open={Boolean(promotionToDelete)} onClose={() => setPromotionToDelete(null)} title={null} size="sm">
-        <div className="p-6 text-center">
+      <Modal open={Boolean(promotionToDelete)} onClose={() => setPromotionToDelete(null)} title="حذف العرض" size="sm" showDetach={false}>
+        <div className="p-6">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 mb-4">
             <Trash2 className="h-6 w-6 text-rose-600" />
           </div>
-          <h3 className="text-[18px] font-black mb-2" style={{ color: "var(--text-primary)" }}>حذف العرض</h3>
           <p className="text-sm font-bold mb-6" style={{ color: "var(--text-secondary)" }}>
             سيتم حذف العرض "{promotionToDelete?.name || ""}" نهائياً. هل تريد المتابعة؟
           </p>
@@ -377,7 +366,7 @@ export default function PromotionsPage() {
             <button 
               type="button" 
               onClick={() => setPromotionToDelete(null)}
-              className="flex-1 rounded-xl border px-4 py-3 text-sm font-black transition-all hover:bg-slate-50 active:scale-[0.98]" style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-surface)", color: "var(--text-secondary)" }}
+              className="flex-1 rounded-xl btn-danger px-4 py-3 text-sm font-black transition-all active:scale-[0.98]"
             >
               تراجع
             </button>

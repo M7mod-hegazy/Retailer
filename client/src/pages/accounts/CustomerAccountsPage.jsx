@@ -1463,7 +1463,7 @@ export default function CustomerAccountsPage() {
       {/* ── Invoice Detail Modal ══════════════════════════════ */}
       <AnimatePresence>
         {detailInvoice && (
-          <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }}>
+          <Modal onClose={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} title={detailInvoiceIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة المبيعات"} showDetach={false}>
             <div className="p-6">
               {detailInvoiceIsOriginal && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
@@ -1471,17 +1471,7 @@ export default function CustomerAccountsPage() {
                   <span className="text-[11px] font-black text-amber-800">الفاتورة الأصلية للمرتجع — هذه الفاتورة مرتبطة بمرتجع مبيعات</span>
                 </div>
               )}
-              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                <div>
-                  <h2 className={`text-[16px] font-black ${detailInvoiceIsOriginal ? "text-amber-800" : "text-slate-800"}`}>
-                    {detailInvoiceIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة المبيعات"}
-                  </h2>
-                  <p className="text-[11px] text-slate-400 font-bold font-mono mt-0.5">{detailInvoice.invoice_no || `#${detailInvoice.id}`}</p>
-                </div>
-                <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-zinc-900 transition-colors">
-                  <X className="h-4.5 w-4.5" />
-                </button>
-              </div>
+              <p className="text-[11px] text-slate-400 font-bold font-mono mb-4">{detailInvoice.invoice_no || `#${detailInvoice.id}`}</p>
 
               {detailLoading ? (
                 <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
@@ -1561,7 +1551,7 @@ export default function CustomerAccountsPage() {
                       className={`flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 text-2sm font-bold text-white shadow-sm transition-all duration-200 active:scale-[0.98] ${detailInvoiceIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-600 hover:bg-blue-700"}`}>
                       <ExternalLink className="h-4 w-4" /> فتح الفاتورة بالكامل
                     </button>
-                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="px-6 rounded-2xl border border-slate-250 text-2sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">إغلاق</button>
+                    <button onClick={() => { setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); }} className="px-6 rounded-2xl btn-danger text-2sm font-bold">إغلاق</button>
                   </div>
                 </>
               ) : (
@@ -1579,15 +1569,9 @@ export default function CustomerAccountsPage() {
       {/* ── Return Detail Modal ══════════════════════════════ */}
       <AnimatePresence>
         {detailReturn && (
-          <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }}>
+          <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} title="تفاصيل مرتجع المبيعات" showDetach={false}>
             <div className="p-6">
-              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                <div>
-                  <h2 className="text-[16px] font-black text-slate-800">تفاصيل مرتجع المبيعات</h2>
-                  <p className="text-[11px] text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
-                </div>
-                <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors"><X className="h-4.5 w-4.5" /></button>
-              </div>
+              <p className="text-[11px] text-slate-400 font-bold font-mono mb-4">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
 
               {detailReturnLoading ? (
                 <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
@@ -1697,7 +1681,7 @@ export default function CustomerAccountsPage() {
                           className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-2sm font-black text-white hover:bg-rose-700">
                           <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                         </button>
-                        <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                        <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl btn-danger text-2sm font-black">إغلاق</button>
                       </div>
                     </>
                   );
@@ -1717,6 +1701,7 @@ export default function CustomerAccountsPage() {
 
       <AddCustomerModal
         open={showCreate}
+        onClose={() => setShowCreate(false)}
         onCreated={handleCustomerCreated}
       />
 
@@ -1732,12 +1717,8 @@ export default function CustomerAccountsPage() {
       {/* Payment Modal */}
       <AnimatePresence>
       {showPayment && selected && (
-        <Modal onClose={() => setShowPayment(false)}>
+        <Modal onClose={() => setShowPayment(false)} title={bal < 0 ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"} showDetach={false}>
           <div className="p-6">
-              <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-                <h2 className="text-[16px] font-black text-slate-850">{bal < 0 ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"}</h2>
-                <button onClick={() => setShowPayment(false)} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"><X className="h-4 w-4" /></button>
-              </div>
               <p className="text-2sm text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-slate-800 font-bold">{selected.name}</span></p>
               {bal > 0 && (
                 <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 mb-4 text-2sm font-bold text-rose-800 flex justify-between items-center">
@@ -1770,7 +1751,7 @@ export default function CustomerAccountsPage() {
                   className="flex-1 h-11 rounded-2xl bg-blue-600 text-white text-2sm font-bold hover:bg-blue-700 disabled:opacity-50 shadow-sm transition-all duration-200 active:scale-[0.98]">
                   {saving ? "جاري قيد المعاملة المالية..." : "تأكيد وقيد الحركة الآن"}
                 </button>
-                <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-2sm font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
+                <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-2xl btn-danger text-2sm font-bold">إلغاء</button>
               </div>
             </div>
           </Modal>
@@ -1780,12 +1761,8 @@ export default function CustomerAccountsPage() {
       {/* Adjust Modal */}
       <AnimatePresence>
       {showAdjust && selected && (
-        <Modal onClose={() => setShowAdjust(false)}>
+        <Modal onClose={() => setShowAdjust(false)} title="تسوية رصيد حساب العميل يدوياً" showDetach={false}>
           <div className="p-6">
-              <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-                <h2 className="text-[16px] font-black text-slate-850">تسوية رصيد حساب العميل يدوياً</h2>
-                <button onClick={() => setShowAdjust(false)} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"><X className="h-4 w-4" /></button>
-              </div>
               <p className="text-2sm text-slate-450 font-bold mb-4">
                 العميل: <span className="text-slate-800 font-bold">{selected.name}</span>
                 {" — "}قبل التسوية:
@@ -1838,7 +1815,7 @@ export default function CustomerAccountsPage() {
                   className="flex-1 h-11 rounded-2xl bg-primary text-white text-2sm font-bold hover:bg-primary-600 disabled:opacity-50 transition-colors">
                   {saving ? "جاري تنفيذ وحفظ التسوية..." : "تأكيد وقيد التسوية الآن"}
                 </button>
-                <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-2sm font-bold hover:bg-slate-200 transition-colors">إلغاء</button>
+                <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-2xl btn-danger text-2sm font-bold">إلغاء</button>
               </div>
             </div>
           </Modal>

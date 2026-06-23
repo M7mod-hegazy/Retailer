@@ -3,6 +3,7 @@ import { X, RefreshCw, ArrowUpDown, Package, CheckCircle2 } from "lucide-react";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 import DataGrid from "../ui/DataGrid";
 import Highlight from "../ui/Highlight";
 import { formatNumber } from "../../utils/currency";
@@ -205,25 +206,43 @@ function InvoiceDetailView({ invoice, onClose, onConfirm }) {
   );
 }
 
-export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice, customers: propCustomers }) {
+export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice, customers: propCustomers, initialFilters }) {
+  const { handleDetach } = useDetach("invoice-picker-today", {
+    onClose,
+    getState: () => ({
+      dateFrom, dateTo, sort, dir, userId, docSearch, itemSearch, customerQuery, customerId,
+    }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
+    actions: { selectInvoice: (inv) => onSelectInvoice?.(inv) },
+  });
   const [data, setData] = useState([]);
   const [summary, setSummary] = useState({ count: 0, total: 0 });
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(toDateInput());
-  const [dateTo, setDateTo] = useState(toDateInput());
-  const [sort, setSort] = useState("created_at");
-  const [dir, setDir] = useState("desc");
-  const [userId, setUserId] = useState("");
+  const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
+  const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
+  const [sort, setSort] = useState(initialFilters?.sort ?? "created_at");
+  const [dir, setDir] = useState(initialFilters?.dir ?? "desc");
+  const [userId, setUserId] = useState(initialFilters?.userId ?? "");
   const [usersList, setUsersList] = useState([]);
-  const [docSearch, setDocSearch] = useState("");
-  const [itemSearch, setItemSearch] = useState("");
+  const [docSearch, setDocSearch] = useState(initialFilters?.docSearch ?? "");
+  const [itemSearch, setItemSearch] = useState(initialFilters?.itemSearch ?? "");
   const [filteredItems, setFilteredItems] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
-  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerQuery, setCustomerQuery] = useState(initialFilters?.customerQuery ?? "");
   const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = useState(0);
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(initialFilters?.customerId ?? "");
   const [detailItem, setDetailItem] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const handleKeyDown = useFieldNavigation();
@@ -369,7 +388,7 @@ export default function InvoicePickerTodayModal({ open, onClose, onSelectInvoice
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="فواتير المبيعات — اختيار للمرتجع" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="فواتير المبيعات — اختيار للمرتجع" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="invoice-picker-today">
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2">

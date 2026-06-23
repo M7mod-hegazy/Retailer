@@ -43,7 +43,7 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
   }, [lines, items]);
 
   return (
-    <Modal open={open} onClose={onClose} title="تحليل ربح الفاتورة الحالية" maxWidth="max-w-3xl">
+    <Modal open={open} onClose={onClose} title="تحليل ربح الفاتورة الحالية" maxWidth="max-w-3xl" showDetach={false}>
       <div className="flex flex-col gap-4" dir="rtl">
         {!analysis ? (
           <div className="py-10 text-center text-sm font-bold text-slate-400">

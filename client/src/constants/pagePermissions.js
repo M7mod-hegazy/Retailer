@@ -20,6 +20,8 @@ export const ACTION_LABELS = {
   restore: "استعادة",
   import_undo: "التراجع عن الاستيراد",
   edit_tax_rate: "تعديل نسبة الضريبة",
+  view_sensitive: "رؤية البيانات المالية الحساسة",
+  backdate_records: "تعديل التواريخ السابقة",
 };
 
 export const ACTION_DESCRIPTIONS = {
@@ -44,13 +46,15 @@ export const ACTION_DESCRIPTIONS = {
   restore: "استعادة النظام من نسخة احتياطية",
   import_undo: "التراجع عن عملية استيراد الأصناف خلال 24 ساعة",
   edit_tax_rate: "تعديل نسبة الضريبة على الفواتير",
+  view_sensitive: "مشاهدة البيانات المالية الحساسة (الأرباح، الهوامش، التكاليف)",
+  backdate_records: "إضافة أو تعديل أو حذف سجلات بتواريخ أيام سابقة",
 };
 
 export const PAGE_PERMISSIONS = {
   owner_statement: { label: 'تقرير صاحب المحل', actions: ['view', 'save', 'lock', 'print'] },
   pos: { label: 'نقطة البيع', actions: ['view', 'add', 'edit', 'delete', 'void', 'hold', 'discount', 'print', 'profit', 'edit_tax_rate'] },
   daily_treasury: { label: 'الخزينة اليومية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export'] },
+  analytics: { label: 'التحليلات والمبيعات', actions: ['view', 'export', 'view_sensitive'] },
   purchases: { label: 'فواتير المشتريات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   purchase_orders: { label: 'طلبات التوريد', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   purchase_returns: { label: 'مرتجع المشتريات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -59,9 +63,9 @@ export const PAGE_PERMISSIONS = {
   quotations: { label: 'عرض سعر', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   customer_accounts: { label: 'حسابات العملاء', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   supplier_accounts: { label: 'حسابات الموردين', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  revenues: { label: 'تسجيل الإيرادات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  expenses: { label: 'تسجيل المصروفات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  withdrawals: { label: 'تسجيل المسحوبات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
+  revenues: { label: 'تسجيل الإيرادات', actions: ['view', 'add', 'edit', 'delete', 'print', 'backdate_records'] },
+  expenses: { label: 'تسجيل المصروفات', actions: ['view', 'add', 'edit', 'delete', 'print', 'backdate_records'] },
+  withdrawals: { label: 'تسجيل المسحوبات', actions: ['view', 'add', 'edit', 'delete', 'print', 'backdate_records'] },
   payment_methods: { label: 'وسائل الدفع', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   bank_operations: { label: 'البنوك والفيزا', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   cheques: { label: 'إدارة الشيكات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -105,5 +109,5 @@ export const ROLE_PRESETS = {
 
 // Ordered list of all unique actions across all pages (for matrix column headers)
 const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
-const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records'];
 export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

@@ -15,10 +15,11 @@ import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
 
+// Bank/visa is a separate isolated channel managed on the Bank Operations page
+// ("البنوك والفيزا"), not a configurable payment method here. Hence no "bank" category.
 const CATEGORIES = [
   { value: "cash", label: "نقدي", icon: "💵" },
   { value: "credit", label: "أجل", icon: "📋" },
-  { value: "bank", label: "تحويل بنكي", icon: "🏦" },
   { value: "digital_wallet", label: "محفظة رقمية", icon: "📱" },
   { value: "other", label: "أخرى", icon: "🔄" },
 ];
@@ -36,7 +37,6 @@ const DEFAULT_EXTRAS = [
   { name: "Vodafone Cash", category: "digital_wallet", icon: "📱", description: "فودافون كاش", excludes_from_treasury: 1 },
   { name: "Etisalat Cash", category: "digital_wallet", icon: "📱", description: "اتصالات كاش", excludes_from_treasury: 1 },
   { name: "WE Pay", category: "digital_wallet", icon: "📱", description: "اتصالات WE", excludes_from_treasury: 1 },
-  { name: "تحويل بنكي", category: "bank", icon: "🏦", description: "حوالة بنكية", excludes_from_treasury: 1 },
 ];
 
 function MethodsTab() {

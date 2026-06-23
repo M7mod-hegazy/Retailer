@@ -11,6 +11,14 @@ const api = axios.create({
   timeout: 60000,
 });
 
+// In the packaged app (file://) the base URL is the custom retailer:// protocol,
+// which the Electron privileged scheme exposes via the Fetch API (supportFetchAPI).
+// Force axios onto its fetch adapter there so requests are guaranteed to go through
+// — XHR support for non-http schemes is not reliable. Dev/web keep the default.
+if (typeof window !== "undefined" && window.location?.protocol === "file:") {
+  api.defaults.adapter = "fetch";
+}
+
 let isRedirectingToLogin = false;
 
 // Resolve the live base URL on every request. getApiBaseUrl() returns the cached value

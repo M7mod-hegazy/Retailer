@@ -41,7 +41,7 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="تصدير الأصناف إلى Excel" maxWidth="max-w-5xl">
+    <Modal open={open} onClose={onClose} title="تصدير الأصناف إلى Excel" maxWidth="max-w-5xl" showDetach={false}>
       <div className="space-y-6" dir="rtl">
         <div className="grid gap-3 md:grid-cols-3">
           {[

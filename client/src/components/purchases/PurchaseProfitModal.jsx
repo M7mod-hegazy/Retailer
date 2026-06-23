@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { X, TrendingUp, AlertTriangle, XCircle } from "lucide-react";
+﻿import React, { useEffect, useState } from "react";
+import { TrendingUp, AlertTriangle, XCircle } from "lucide-react";
 import api from "../../services/api";
+import TitleBar from "../ui/TitleBar";
+import { useDetach } from "../../hooks/useDetach";
 
 function fmt(n) {
   return Number(n ?? 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -12,6 +14,9 @@ function pct(n) {
 }
 
 export default function PurchaseProfitModal({ lines, onClose }) {
+  const { handleDetach } = useDetach("purchase-profit", {
+    onClose, getState: () => ({ lines }), actions: {},
+  });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,15 +49,7 @@ export default function PurchaseProfitModal({ lines, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={18} className="text-emerald-600" />
-            <span className="font-black text-slate-800">تحليل الربح المتوقع</span>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
-            <X size={16} />
-          </button>
-        </div>
+        <TitleBar title="تحليل الربح المتوقع" onClose={onClose} onDetach={handleDetach} />
 
         {/* Body */}
         <div className="flex-1 overflow-auto p-5">

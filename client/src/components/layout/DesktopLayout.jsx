@@ -168,23 +168,22 @@ export default function DesktopLayout({ children, branding }) {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 h-screen relative overflow-hidden bg-base">
-        {/* Themed ambient aura — accent-tinted glows that give every theme (esp.
-            dark ones) atmospheric depth instead of a flat fill. Driven by the
-            active theme's translucent tokens so it recolours per theme. */}
-        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-          <div
-            className="pointer-events-none absolute top-[-10%] right-[-5%] w-[800px] h-[600px] rounded-full blur-[130px]"
-            style={{ background: "radial-gradient(circle, var(--primary-glow), transparent 70%)" }}
-          />
-          <div
-            className="pointer-events-none absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full blur-[130px]"
-            style={{ background: "radial-gradient(circle, var(--info-light), transparent 70%)" }}
-          />
-        </div>
-
         <Topbar />
 
         <main className="relative flex-1 h-0 overflow-y-auto flex flex-col pointer-events-auto">
+          {/* Themed ambient aura — accent-tinted glows that give every theme (esp.
+              dark ones) atmospheric depth instead of a flat fill. Driven by the
+              active theme's translucent tokens so it recolours per theme. */}
+          <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+            <div
+              className="pointer-events-none absolute top-[-10%] right-[-5%] w-[800px] h-[600px] rounded-full blur-[130px]"
+              style={{ background: "radial-gradient(circle, var(--primary-glow), transparent 70%)" }}
+            />
+            <div
+              className="pointer-events-none absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full blur-[130px]"
+              style={{ background: "radial-gradient(circle, var(--info-light), transparent 70%)" }}
+            />
+          </div>
           {children}
         </main>
       </div>

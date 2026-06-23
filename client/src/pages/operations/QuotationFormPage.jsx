@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus, Trash2, User, Package, Search,
   ShoppingCart, Printer, Save, ChevronLeft, Info,
   Calendar, X, ImageIcon, ZoomIn, AlertTriangle,
   Grid, Clock, Banknote, CreditCard, Wallet, Layers, Minus, Plus as PlusIcon, Settings2,
-  Loader2
+  Loader2, Wand2
 } from "lucide-react";
 import api from "../../services/api";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -22,8 +22,15 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import toast from "react-hot-toast";
 import { buildQuotationPrintDoc, formatQuotationNo } from "./quotationUtils";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { sortByProximity } from "../../utils/itemSort";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd, { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useAuthStore } from "../../stores/authStore";
+import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
+import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
+import QuotationFormBottomBar from "./QuotationFormBottomBar";
 import { formatNumber } from "../../utils/currency";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
@@ -79,6 +86,7 @@ export default function QuotationFormPage() {
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const ITEM_PAGE = 20;
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -101,6 +109,9 @@ export default function QuotationFormPage() {
   const [multiCash, setMultiCash] = useState(0);
   const [multiCredit, setMultiCredit] = useState(0);
   const [banks, setBanks] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [customPayMethods, setCustomPayMethods] = useState([]);
+  const [multiCustomAmounts, setMultiCustomAmounts] = useState({});
 
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -148,6 +159,14 @@ export default function QuotationFormPage() {
   const [warehouses, setWarehouses] = useState([]);
   const [priceType, setPriceType] = useState('retail');
 
+  // Collapsible sidebar
+  const sidebar = useCollapsibleSidebar({
+    storageKeyPrefix: "retailer.quotation",
+    defaultWidth: 360,
+    minWidth: 300,
+  });
+  const { panelWidth, panelEffectiveCollapsed, togglePanel, startPanelResize } = sidebar;
+
    const searchRef = useRef(null);
    const qtyRef = useRef(null);
    const priceRef = useRef(null);
@@ -156,6 +175,9 @@ export default function QuotationFormPage() {
    const addBtnRef = useRef(null);
 
   const handleKeyDown = useFieldNavigation();
+  const gridNavRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "quantity" });
+  useShortcut("grid.editLast", () => focusLastRowQty());
 
   const customerRef = useRef(null);
   const priceTypeRef = useRef(null);
@@ -242,15 +264,8 @@ export default function QuotationFormPage() {
   // Keyboard shortcuts
   const handleSaveRef = useRef(null);
   handleSaveRef.current = handleSave;
-  useEffect(() => {
-    function handler(e) {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSaveRef.current?.(); }
-      if (e.ctrlKey && e.key === 'p') { e.preventDefault(); window.print(); }
-    }
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  useShortcut("quotation.save", () => handleSaveRef.current?.());
+  useShortcut("quotation.print", () => window.print());
 
   // Barcode scanner listener
   const barcodeBuffer = useRef("");
@@ -289,12 +304,16 @@ export default function QuotationFormPage() {
       api.get("/api/settings"),
       api.get("/api/warehouses"),
       api.get("/api/banks"),
-    ]).then(([cust, itm, edit, settingsRes, whRes, banksRes]) => {
+      api.get("/api/payment-methods"),
+    ]).then(([cust, itm, edit, settingsRes, whRes, banksRes, methodsRes]) => {
       setCustomers(cust.data.data || []);
       setItems(itm.data.data || []);
       setAppSettings(settingsRes.data.data || null);
       setWarehouses(whRes.data?.data || []);
       setBanks(banksRes.data?.data || []);
+      const allMethods = methodsRes.data?.data || [];
+      setPaymentMethods(allMethods);
+      setCustomPayMethods(allMethods.filter(m => !m.is_system && m.category !== 'bank' && m.type !== 'bank'));
       if (edit) {
         const q = edit.data.data;
         setEditActivation({ docNo: q.doc_no || null, createdAt: q.created_at || null });
@@ -342,15 +361,47 @@ export default function QuotationFormPage() {
   }, [searchItem]);
 
   function loadMoreItems() {
+    if (!itemHasMore || isLoadingMoreItems) return;
     const q = searchItem.trim();
-    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = r.data.data || [];
         setFilteredItems(prev => [...prev, ...rows]);
         setItemOffset(prev => prev + rows.length);
         setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    const SHOW_ALL_LIMIT = 200;
+    const fmt = (i) => ({ ...i, price_label: formatMoney(i.sale_price || 0) });
+    const anchor = selectedItem;
+    setAllItemsMode(true);
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = anchor?.category_id
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data || []).map(fmt);
+        const allRows  = (allRes.data.data || []).map(fmt);
+        const pinnedId = anchor?.id ?? null;
+        const sortedCat = sortByProximity(catRows, anchor).filter(r => r.id !== pinnedId);
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = allRows.filter(r => !catIds.has(r.id))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        const merged = [...(pinnedId ? [fmt({ ...anchor })] : []), ...sortedCat, ...others];
+        setFilteredItems(merged);
+        setItemOffset(allRows.length);
+        setItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
@@ -576,15 +627,12 @@ export default function QuotationFormPage() {
         }
       />
 
-      <div className="flex flex-1 min-h-0">
-             <div className="flex flex-1 flex-col p-4 gap-4 overflow-hidden min-w-0">
+      <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
+             <div className="flex flex-1 flex-col p-4 gap-4 min-w-0">
              {/* Entry Bar — Quotation */}
-              <section className="rounded-md border border-amber-200 bg-white shadow-sm shrink-0 overflow-hidden">
-                <div className="bg-amber-50 border-b border-amber-200 px-3 py-1.5 flex items-center gap-2">
-                  <span className="flex items-center gap-1.5 text-[11px] number-fmt-primary text-amber-800">
-                    <span className="bg-amber-600 text-white text-[10px] rounded-sm px-1.5 py-0.5">عرض سعر</span>
-                    <span className="hidden sm:inline">إضافة أصناف إلى عرض السعر</span>
-                  </span>
+              <section className="rounded-md border border-amber-200 bg-white shadow-sm shrink-0">
+                <div className="bg-amber-50 border-b border-amber-200 px-2 py-[1px]">
+                  <span className="bg-amber-600 text-white text-[9px] rounded-sm px-1 py-[1px] font-bold">عرض سعر</span>
                 </div>
                 <div className="p-2.5">
                 <div className="entry-bar">
@@ -595,6 +643,7 @@ export default function QuotationFormPage() {
                    <label className="entry-label">الصنف</label>
                    <ProductSearchField
                      ref={searchRef}
+                     onNavigateNext={() => { qtyRef.current?.focus(); qtyRef.current?.select?.(); }}
                      query={searchItem}
                      onQueryChange={(val) => { setSearchItem(val); setSelectedItem(null); }}
                      results={filteredItems}
@@ -604,6 +653,8 @@ export default function QuotationFormPage() {
                      onLoadMore={loadMoreItems}
                      hasMore={itemHasMore}
                      isLoadingMore={isLoadingMoreItems}
+                     onShowAll={showAllItems}
+                     hideZeroStock={false}
                      onPick={(item) => {
                        let suggestedPrice = item.sale_price;
                        if (selectedCustomer) {
@@ -704,11 +755,36 @@ export default function QuotationFormPage() {
                    </div>
                  </div>
                  {/* 8. Add button */}
-                  <button ref={addBtnRef} onClick={addStagedToCart} disabled={!selectedItem}
-                    onKeyDown={(e) => handleKeyDown(e, { nextRef: customerRef, onEnter: addStagedToCart })}
-                   className="entry-add-btn"
-                 ><Plus className="h-4 w-4" /> إضافة</button>
-               </div>
+                 <button ref={addBtnRef} onClick={addStagedToCart} disabled={!selectedItem}
+                     onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, prevRef: whRef, onEnter: addStagedToCart })}
+                    className="entry-add-btn"
+                  ><Plus className="h-4 w-4" /> إضافة</button>
+                  <div ref={colSettingsRef} className="relative flex items-center">
+                    <button onClick={() => setColSettingsOpen(p => !p)}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-amber-100 transition-all"
+                      title="تخصيص الأعمدة"
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </button>
+                    {colSettingsOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
+                        <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                        {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
+                          const labels = { code: "الكود", name: "البيان", unit: "الوحدة", warehouse: "المخزن", quantity: "الكمية", unit_price: "سعر الوحدة", discount: "الخصم", total: "الإجمالي" };
+                          return (
+                            <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                              <input type="checkbox" checked={visibleColumns.includes(cid)}
+                                onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                              />
+                              {labels[cid] || cid}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
                {selectedItem && (() => {
                  const purchasePrice = Number(selectedItem.purchase_price || 0);
                  const isBelowCost = staging.price > 0 && purchasePrice > 0 && staging.price < purchasePrice;
@@ -734,40 +810,8 @@ export default function QuotationFormPage() {
                 </div>
               </section>
 
-             {/* Cart Table */}
-              <div className="flex flex-1 flex-col overflow-x-auto rounded-md border border-amber-200/60 bg-white shadow-sm">
-                <div className="flex items-center gap-2 border-b border-amber-200/60 bg-amber-50/80 px-3 py-1">
-                  <span className="rounded-sm bg-amber-600 px-1.5 py-[1px] text-[9px] font-black text-white">عرض سعر</span>
-                  <span className="text-[10px] font-bold text-amber-700">أصـناف عرض السعر</span>
-                </div>
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-amber-200/60 bg-amber-50/40">
-                  <span className="text-xs font-bold text-slate-500">الأصناف ({cart.length})</span>
-                  <div ref={colSettingsRef} className="relative">
-                    <button onClick={() => setColSettingsOpen(p => !p)}
-                      className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
-                      title="تخصيص الأعمدة"
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </button>
-                    {colSettingsOpen && (
-                      <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
-                        <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
-                        {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
-                          const labels = { code: "الكود", name: "البيان", unit: "الوحدة", warehouse: "المخزن", quantity: "الكمية", unit_price: "سعر الوحدة", discount: "الخصم", total: "الإجمالي" };
-                          return (
-                            <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
-                              <input type="checkbox" checked={visibleColumns.includes(cid)}
-                                onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
-                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
-                              />
-                              {labels[cid] || cid}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {/* Cart Table */}
+               <div className="flex flex-1 flex-col overflow-x-auto rounded-md border border-amber-200/60 bg-white shadow-sm">
                 <div style={{ gridTemplateColumns: gridTemplate }} className="grid items-center border-b border-slate-300 bg-slate-50 text-[11px] font-black uppercase text-slate-500">
                     {effectiveVisible.includes("index") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">#</div>}
                     {effectiveVisible.includes("code") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكود</div>}
@@ -781,7 +825,7 @@ export default function QuotationFormPage() {
                     {effectiveVisible.includes("actions") && <div></div>}
                  </div>
 
-                <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
+                <div ref={gridNavRef} className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
                    {cart.length === 0 ? (
                      <div className="flex h-full flex-col items-center justify-center text-slate-400">
                         <div className="mb-3 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[11px] font-black text-amber-700">عرض سعر</div>
@@ -840,6 +884,7 @@ export default function QuotationFormPage() {
                          {effectiveVisible.includes("unit_price") && (
                            <div className="px-1 py-2.5 border-l border-slate-50">
                               <input type="number" min="0" step="0.01" value={item.price}
+                                data-grid-cell data-row={idx} data-col="unit_price"
                                 onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, price: Math.max(0, Number(e.target.value)) } : i))}
                                 className={`w-full bg-transparent text-center font-black text-slate-700 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px] ${origPrice !== null && origPrice !== item.price ? 'text-amber-700' : ''}`}
                               />
@@ -851,6 +896,7 @@ export default function QuotationFormPage() {
                          {effectiveVisible.includes("quantity") && (
                            <div className="px-1 py-2.5 border-l border-slate-50">
                               <input type="number" min="1" step="1" value={item.qty}
+                                data-grid-cell data-row={idx} data-col="quantity"
                                 onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, qty: Math.max(1, Number(e.target.value)) } : i))}
                                 className="w-full bg-transparent text-center font-black text-slate-700 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px]"
                               />
@@ -859,6 +905,7 @@ export default function QuotationFormPage() {
                          {effectiveVisible.includes("discount") && (
                            <div className="px-1 py-2.5 border-l border-slate-50 relative">
                               <input type="number" min="0" step="0.01" value={item.discount}
+                                data-grid-cell data-row={idx} data-col="discount"
                                 onChange={(e) => handleDiscountChange(item.id, e.target.value)}
                                 className="w-full bg-transparent text-center font-black text-slate-400 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[13px]"
                               />
@@ -869,7 +916,7 @@ export default function QuotationFormPage() {
                          )}
                          {effectiveVisible.includes("warehouse") && (
                            <div className="px-1 py-2.5 border-l border-slate-50">
-                             <select value={item.warehouse_id || ''} onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, warehouse_id: e.target.value ? Number(e.target.value) : null } : i))}
+                             <select value={item.warehouse_id || ''} data-grid-cell data-row={idx} data-col="warehouse_id" onChange={(e) => setCart(prev => prev.map(i => i.id === item.id ? { ...i, warehouse_id: e.target.value ? Number(e.target.value) : null } : i))}
                                className="w-full bg-transparent text-center font-bold text-slate-600 outline-none hover:bg-slate-100 focus:bg-white focus:ring-1 focus:ring-slate-300 text-[11px]"
                              >
                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -896,8 +943,11 @@ export default function QuotationFormPage() {
             </div>
          </div>
 
+         {/* PanelEdgeRail */}
+         <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "right")} panelSide="right" />
+
          {/* Sidebar */}
-         <aside className="w-[360px] flex flex-col border-r border-slate-300 bg-white p-5 gap-4 overflow-y-auto">
+         <aside className={`shrink-0 flex flex-col border-r border-slate-300 bg-white p-5 gap-4 overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
             {/* Customer Section — Optional */}
             <div className="flex flex-col gap-1.5">
                <label className="text-[11px] number-fmt-primary uppercase text-slate-400 tracking-wider">العميل المستهدف <span className="text-slate-300 font-normal normal-case">(اختياري)</span></label>
@@ -1050,29 +1100,47 @@ export default function QuotationFormPage() {
                   <div className="text-xs font-black text-slate-600 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-600">💰 نقدي</span>
-                    <input ref={multiCashRef} type="number" min="0" step="0.01" value={multiCash}
-                       onChange={e => setMultiCash(e.target.value)}
-                       onKeyDown={(e) => handleKeyDown(e, { nextRef: multiCreditRef, prevRef: customerRef })}
-                       className="w-28 rounded border border-slate-300 bg-white px-3 py-1.5 text-center font-mono text-sm font-black text-slate-800 outline-none focus:border-slate-500"
-                     />
-                   </div>
-                   <div className="flex items-center justify-between">
-                     <span className={`text-xs font-bold ${selectedCustomer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
-                     <input ref={multiCreditRef} type="number" min="0" step="0.01" value={multiCredit}
-                       onChange={e => setMultiCredit(e.target.value)}
-                      disabled={!selectedCustomer?.id}
-                      placeholder={selectedCustomer?.id ? "0.00" : "اختر عميل..."}
-                      className={`w-28 rounded border px-3 py-1.5 text-center font-mono text-sm font-black outline-none focus:border-slate-500 ${selectedCustomer?.id ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`}
-                    />
+                  <div className="flex flex-col divide-y divide-slate-100">
+                    <div className="flex items-center gap-2 py-2 first:pt-0">
+                      <span className="flex-1 min-w-0 text-xs font-bold text-slate-600">💵 نقدي</span>
+                      <input ref={multiCashRef} type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: multiCreditRef, prevRef: customerRef })}
+                        className="w-28 shrink-0 rounded border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400" />
+                      <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); setMultiCash(String(Math.max(0, totals.total - c - cr))); }}
+                        className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 active:scale-90">
+                        <Wand2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
+                      <div key={m.id} className="flex items-center gap-2 py-2">
+                        <span className="flex-1 min-w-0 text-xs font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
+                        <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
+                          className="w-28 shrink-0 rounded border border-violet-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400" />
+                        <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => !mm.name?.includes('بنك') && !mm.name?.includes('تحويل') && mm.icon !== '🏦' && mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); setMultiCustomAmounts(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr))})); }}
+                          className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 active:scale-90">
+                          <Wand2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2 py-2 last:pb-0">
+                      <span className={`flex-1 min-w-0 text-xs font-bold leading-snug ${selectedCustomer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                      <input ref={multiCreditRef} type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
+                        placeholder={selectedCustomer?.id ? "0.00" : "اختر عميل..."} disabled={!selectedCustomer?.id}
+                        className={`w-28 shrink-0 rounded px-3 py-1.5 text-2sm font-black text-left outline-none ${selectedCustomer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                      <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiCredit(String(Math.max(0, totals.total - ca - c))); }}
+                        className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 active:scale-90">
+                        <Wand2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
                   {(() => {
-                    const entered = (Number(multiCash) || 0) + (Number(multiCredit) || 0);
+                    const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0);
+                    const entered = (Number(multiCash)||0) + c + (Number(multiCredit)||0);
+                    const balanced = Math.abs(entered - totals.total) < 0.01;
                     return (
-                      <div className="flex items-center justify-between rounded bg-slate-100 px-3 py-1.5 text-xs font-black">
-                        <span>المجموع المُدخل</span>
-                        <span className="number-fmt">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
+                      <div className={`flex items-center justify-between rounded px-3 py-1.5 text-xs font-black border ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                        <span>المُدخل</span>
+                        <span className="number-fmt-primary">{formatMoney(entered)} / {formatMoney(totals.total)}</span>
                       </div>
                     );
                   })()}
@@ -1185,9 +1253,9 @@ export default function QuotationFormPage() {
 
                <div className="grid grid-cols-2 gap-3">
                    <PermissionGate page="quotations" action="print">
-                     <button onClick={handlePrint} className="flex h-11 items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white text-sm font-black text-slate-700 hover:bg-slate-50">
-                        <Printer className="h-4 w-4 text-slate-400" /> معاينة
-                     </button>
+                      <button onClick={handlePrint} className="flex h-11 items-center justify-center gap-2 rounded-sm border border-slate-300 bg-white text-sm font-black text-slate-700 hover:bg-slate-50">
+                         <Printer className="h-4 w-4 text-slate-400" /> معاينة <ShortcutKbd id="quotation.print" className="rounded bg-slate-100 px-1 text-[9px] font-mono text-slate-500" />
+                      </button>
                    </PermissionGate>
                    <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
                       <button ref={saveBtnRef} onClick={handleSave} disabled={isSaving}
@@ -1205,14 +1273,61 @@ export default function QuotationFormPage() {
                </div>
                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
                  <Clock className="h-3 w-3" />
-                 <span>اختصارات: Ctrl+S حفظ | Ctrl+P طباعة | الماسح الضوئي يعمل تلقائياً</span>
+                 <span>اختصارات: {shortcutLabel("quotation.save")} حفظ | {shortcutLabel("quotation.print")} طباعة | الماسح الضوئي يعمل تلقائياً</span>
                </div>
             </div>
          </aside>
       </div>
 
+      {/* Sticky Bottom Bar (shown when sidebar collapsed) */}
+      <QuotationFormBottomBar
+        forceShow={panelEffectiveCollapsed}
+        totals={totals}
+        cart={cart}
+        selectedCustomer={selectedCustomer}
+        customerQuery={customerQuery}
+        onCustomerQueryChange={setCustomerQuery}
+        onCustomerPick={(c) => { setSelectedCustomer(c); setShowCustomerList(false); }}
+        showCustomerList={showCustomerList}
+        onShowCustomerListChange={setShowCustomerList}
+        filteredCustomers={filteredCustomers}
+        onCustomerCreate={() => setCustomerCreateOpen(true)}
+        onCustomerClear={() => { setSelectedCustomer(null); setCustomerQuery(""); }}
+        paymentType={paymentType}
+        onPaymentChange={setPaymentType}
+        increase={increase}
+        onIncreaseChange={setIncrease}
+        increaseMode={increaseMode}
+        onIncreaseModeChange={setIncreaseMode}
+        decrease={decrease}
+        onDecreaseChange={setDecrease}
+        decreaseMode={decreaseMode}
+        onDecreaseModeChange={setDecreaseMode}
+        taxEnabled={taxEnabled}
+        onTaxEnabledChange={setTaxEnabled}
+        taxRate={taxRate !== null ? taxRate : Number(appSettings?.tax_rate || 0)}
+        taxFeatureOn={totals.taxFeatureOn}
+        onSave={handleSave}
+        onPrint={handlePrint}
+        isSaving={isSaving}
+        banks={banks}
+        selectedBankId={selectedBankId}
+        onBankChange={setSelectedBankId}
+        multiCash={multiCash}
+        onMultiCashChange={setMultiCash}
+        multiCredit={multiCredit}
+        onMultiCreditChange={setMultiCredit}
+        customPayMethods={customPayMethods}
+        multiCustomAmounts={multiCustomAmounts}
+        onMultiCustomAmountsChange={setMultiCustomAmounts}
+        amountPaid={amountPaid}
+        onAmountPaidChange={setAmountPaid}
+        installmentDueDate={installmentDueDate}
+        onInstallmentDueDateChange={setInstallmentDueDate}
+      />
+
       {/* Image Preview Modal */}
-      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" size="md">
+      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" size="md" showDetach={false}>
         <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-lg border border-slate-100">
           {imagePreviewUrl ? (
             <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[60vh] object-contain rounded-md shadow-sm border border-slate-200 bg-white" />
@@ -1226,7 +1341,7 @@ export default function QuotationFormPage() {
       </Modal>
 
       {/* Browse Items Modal */}
-      <Modal open={browseItemsOpen} onClose={() => setBrowseItemsOpen(false)} title="تصفح الأصناف" size="lg">
+      <Modal open={browseItemsOpen} onClose={() => setBrowseItemsOpen(false)} title="تصفح الأصناف" size="lg" showDetach={false}>
         <div className="p-2">
           {browseLoading ? (
             <div className="flex items-center justify-center h-64">

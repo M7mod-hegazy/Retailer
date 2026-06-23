@@ -955,33 +955,69 @@ export default function DailyTreasuryPage() {
               {/* Quick Actions (If open and today) */}
               {isToday && !isClosed && (
                 <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <motion.button
+                  <motion.div
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setQuickModal("expense")}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-rose-600 py-4 text-sm font-black text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-600/20 border border-rose-500"
+                    className="flex rounded-3xl bg-rose-600 border border-rose-500 shadow-lg shadow-rose-600/20 overflow-hidden"
                   >
-                    <div className="bg-white/20 p-1.5 rounded-xl"><TrendingDown className="h-4 w-4" /></div>
-                    تسجيل مصروف سريع
-                  </motion.button>
-                  <motion.button
+                    <button
+                      onClick={() => setQuickModal("expense")}
+                      className="flex flex-1 items-center justify-center gap-3 py-4 text-sm font-black text-white hover:bg-rose-700 transition-colors"
+                    >
+                      <div className="bg-white/20 p-1.5 rounded-xl"><TrendingDown className="h-4 w-4" /></div>
+                      تسجيل مصروف سريع
+                    </button>
+                    <div className="w-px bg-rose-500/50 self-stretch" />
+                    <button
+                      onClick={() => navigate('/expenses')}
+                      title="عرض قائمة المصروفات"
+                      className="shrink-0 flex items-center justify-center w-11 hover:bg-rose-700 transition-colors text-white/70 hover:text-white"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </motion.div>
+                  <motion.div
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setQuickModal("revenue")}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-emerald-600 py-4 text-sm font-black text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 border border-emerald-500"
+                    className="flex rounded-3xl bg-emerald-600 border border-emerald-500 shadow-lg shadow-emerald-600/20 overflow-hidden"
                   >
-                    <div className="bg-white/20 p-1.5 rounded-xl"><TrendingUp className="h-4 w-4" /></div>
-                    تسجيل إيراد سريع
-                  </motion.button>
-                  <motion.button
+                    <button
+                      onClick={() => setQuickModal("revenue")}
+                      className="flex flex-1 items-center justify-center gap-3 py-4 text-sm font-black text-white hover:bg-emerald-700 transition-colors"
+                    >
+                      <div className="bg-white/20 p-1.5 rounded-xl"><TrendingUp className="h-4 w-4" /></div>
+                      تسجيل إيراد سريع
+                    </button>
+                    <div className="w-px bg-emerald-500/50 self-stretch" />
+                    <button
+                      onClick={() => navigate('/revenues')}
+                      title="عرض قائمة الإيرادات"
+                      className="shrink-0 flex items-center justify-center w-11 hover:bg-emerald-700 transition-colors text-white/70 hover:text-white"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </motion.div>
+                  <motion.div
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setWithdrawalOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-primary py-4 text-sm font-black text-white hover:bg-primary-600 transition-colors shadow-lg shadow-slate-900/20 border border-slate-800"
+                    className="flex rounded-3xl bg-primary border border-slate-800 shadow-lg shadow-slate-900/20 overflow-hidden"
                   >
-                    <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
-                    تسجيل مسحوبات سريع
-                  </motion.button>
+                    <button
+                      onClick={() => setWithdrawalOpen(true)}
+                      className="flex flex-1 items-center justify-center gap-3 py-4 text-sm font-black text-white hover:bg-primary-600 transition-colors"
+                    >
+                      <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
+                      تسجيل مسحوبات سريع
+                    </button>
+                    <div className="w-px bg-slate-700/50 self-stretch" />
+                    <button
+                      onClick={() => navigate('/withdrawals')}
+                      title="عرض قائمة المسحوبات"
+                      className="shrink-0 flex items-center justify-center w-11 hover:bg-primary-600 transition-colors text-white/70 hover:text-white"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </motion.div>
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}

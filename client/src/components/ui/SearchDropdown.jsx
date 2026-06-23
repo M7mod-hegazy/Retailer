@@ -16,6 +16,7 @@ export default function SearchDropdown({
   pageSize = PAGE_SIZE,
   rawText = "",
   onPickRawText,
+  dropUp = false,
   // Server-side infinite scroll props
   onLoadMore,
   hasMoreFromServer = false,
@@ -28,6 +29,12 @@ export default function SearchDropdown({
   const isLoadingMoreRef = useRef(isLoadingMore);
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
   useEffect(() => { isLoadingMoreRef.current = isLoadingMore; }, [isLoadingMore]);
+
+  // Track whether the sentinel is currently visible in the scroll container.
+  // Needed to re-trigger loading when a batch is fetched but all items are
+  // filtered client-side (e.g. zero-stock filter), leaving the sentinel still
+  // in view — the IntersectionObserver won't re-fire in that case.
+  const [sentinelVisible, setSentinelVisible] = useState(false);
 
   // Client-side pagination — only used when onLoadMore is NOT provided
   const [visibleCount, setVisibleCount] = useState(pageSize);
@@ -50,6 +57,7 @@ export default function SearchDropdown({
 
   const handleIntersect = useCallback(
     ([entry]) => {
+      setSentinelVisible(entry.isIntersecting);
       if (!entry.isIntersecting) return;
       if (hasMoreLocal) {
         setVisibleCount(prev => Math.min(prev + pageSize, items.length));
@@ -74,16 +82,34 @@ export default function SearchDropdown({
     return () => observer.disconnect();
   }, [showSentinel, handleIntersect]);
 
+  // Re-trigger load when a batch finishes but the sentinel is still visible.
+  // This handles the case where all fetched items were filtered client-side
+  // (zero-stock), so the list height didn't grow and the observer won't re-fire.
+  useEffect(() => {
+    if (!isLoadingMore && sentinelVisible && serverMode && hasMoreFromServer) {
+      onLoadMoreRef.current?.();
+    }
+  }, [isLoadingMore, sentinelVisible, serverMode, hasMoreFromServer]);
+
+  const posClass = dropUp ? "bottom-[calc(100%+4px)]" : "top-[calc(100%+4px)]";
+
   if (!items.length && !showRaw) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-        {emptyLabel}
+      <div className={`absolute left-0 right-0 ${posClass} z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]`}>
+        {isLoadingMore ? (
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+            <span className="text-2sm font-bold text-slate-400">جاري التحميل...</span>
+          </div>
+        ) : (
+          <span className="text-2sm font-bold text-slate-400">{emptyLabel}</span>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+    <div className={`absolute left-0 right-0 ${posClass} z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]`}>
       <div
         ref={listRef}
         className="overflow-y-auto p-1 custom-scrollbar"

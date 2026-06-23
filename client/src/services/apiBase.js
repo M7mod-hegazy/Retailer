@@ -7,15 +7,27 @@
 // unreachable so a restart on a different port is picked up instead of staying pinned
 // to a dead port.
 
-function staticFallback() {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  // In packaged mode the renderer runs under file:// where window.location.origin is
-  // not a usable HTTP origin — fall back to the loopback default in that case.
-  if (
+// Packaged Electron loads the UI from file://. There we talk to the embedded
+// server over the custom `retailer://` protocol instead of a TCP loopback socket,
+// so traffic never touches 127.0.0.1 and cannot be blocked by antivirus/firewall
+// software (the persistent "connection error" some hardened PCs hit). The Electron
+// main process bridges retailer:// to the server over a local named pipe.
+const CUSTOM_PROTOCOL_BASE = "retailer://local";
+
+function isPackagedElectron() {
+  return (
     typeof window !== "undefined" &&
     window.location &&
-    window.location.protocol !== "file:"
-  ) {
+    window.location.protocol === "file:"
+  );
+}
+
+function staticFallback() {
+  if (isPackagedElectron()) return CUSTOM_PROTOCOL_BASE;
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  // Dev / web mode runs over http(s) — use the page origin so the Vite proxy /
+  // same-origin server is reached.
+  if (typeof window !== "undefined" && window.location) {
     return window.location.origin;
   }
   return "http://127.0.0.1:5000";
@@ -27,6 +39,11 @@ let inflight = null;
 // Async resolver — preferred for any code path that can await (API calls, image URLs).
 export async function getApiBaseUrl() {
   if (resolvedBaseUrl) return resolvedBaseUrl;
+  // Packaged Electron → custom protocol, no IPC round-trip / no TCP loopback.
+  if (isPackagedElectron()) {
+    resolvedBaseUrl = CUSTOM_PROTOCOL_BASE;
+    return resolvedBaseUrl;
+  }
   if (inflight) return inflight;
   inflight = (async () => {
     if (typeof window !== "undefined" && window.electronAPI?.getApiUrl) {

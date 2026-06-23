@@ -1,9 +1,38 @@
-import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import TitleBar from "./TitleBar";
 
-export default function Modal({ open, title, onClose, children, maxWidth = "max-w-xl" }) {
+export default function Modal({ open, title, onClose, onDetach: userOnDetach, children, maxWidth = "max-w-xl", modalType, modalState, showDetach = true }) {
   const [chromeInset, setChromeInset] = useState({ right: 0, top: 0 });
+  const modalRef = useRef(null);
+  const isDetached = typeof window !== 'undefined' && window.location.search.includes("detachedModal=1");
+
+  function handleDetach() {
+    if (userOnDetach) { userOnDetach(); return; }
+    if (!window.electronAPI) return;
+    const el = modalRef.current;
+    const rect = el?.getBoundingClientRect();
+
+    if (!modalType && el) {
+      const contentArea = el.querySelector("[data-modal-content]");
+      const contentHtml = contentArea?.innerHTML || null;
+      console.log('[Modal] generic detach', { title, htmlLen: contentHtml?.length });
+      window.electronAPI.createModalWindow({
+        modalType: "generic",
+        state: { title, contentHtml },
+        bounds: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) } : undefined,
+      });
+      onClose?.();
+      return;
+    }
+
+    window.electronAPI.createModalWindow({
+      modalType: modalType || "generic",
+      state: modalState || { title, contentHtml: null },
+      bounds: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) } : undefined,
+    });
+    onClose?.();
+  }
 
   useEffect(() => {
     function onKey(e) { if (e.key === "Escape") onClose?.(); }
@@ -43,7 +72,7 @@ export default function Modal({ open, title, onClose, children, maxWidth = "max-
 
   return (
     <AnimatePresence>
-      {open && (
+      {open && !isDetached && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -54,6 +83,7 @@ export default function Modal({ open, title, onClose, children, maxWidth = "max-
           onClick={onClose}
         >
           <motion.div
+            ref={modalRef}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -62,20 +92,23 @@ export default function Modal({ open, title, onClose, children, maxWidth = "max-
             onClick={(e) => e.stopPropagation()}
           >
             {title && (
-              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-                {onClose && (
-                  <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700">
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <TitleBar title={title} onClose={onClose} onDetach={handleDetach} showDetach={showDetach} />
             )}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div data-modal-content className="flex-1 overflow-y-auto p-5">
               {children}
             </div>
           </motion.div>
         </motion.div>
+      )}
+      {open && isDetached && (
+        <div className="flex h-dvh flex-col overflow-hidden bg-white">
+          {title && (
+            <TitleBar title={title} onClose={onClose} showDetach={false} />
+          )}
+          <div data-modal-content className="flex-1 overflow-y-auto p-5">
+            {children}
+          </div>
+        </div>
       )}
     </AnimatePresence>
   );

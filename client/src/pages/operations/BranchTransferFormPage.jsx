@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine, ArrowUpFromLine, ArrowLeft, Package, ImageIcon,
   Trash2, Warehouse, FileText, Settings, Printer, CheckCircle, ShoppingCart, Plus, CalendarClock,
@@ -21,10 +21,14 @@ import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { sortByProximity } from "../../utils/itemSort";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
+import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
+import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
+import BranchTransferFormBottomBar from "./BranchTransferFormBottomBar";
 import { formatNumber } from "../../utils/currency";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
@@ -53,6 +57,14 @@ export default function BranchTransferFormPage() {
     ? { primary: "emerald", gradient: "from-emerald-500 to-teal-700", shadow: "shadow-emerald-500/20" }
     : { primary: "indigo", gradient: "from-indigo-600 to-blue-700", shadow: "shadow-indigo-500/20" };
 
+  // Collapsible sidebar
+  const sidebar = useCollapsibleSidebar({
+    storageKeyPrefix: "retailer.branch-transfer",
+    defaultWidth: 340,
+    minWidth: 280,
+  });
+  const { panelWidth, panelEffectiveCollapsed, togglePanel, startPanelResize } = sidebar;
+
   const [storeSettings, setStoreSettings] = useState({});
   const [warehouses, setWarehouses] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -78,6 +90,7 @@ export default function BranchTransferFormPage() {
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: "" });
   const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
@@ -232,16 +245,52 @@ export default function BranchTransferFormPage() {
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery]);
 
+  useEffect(() => {
+    if (itemQuery) setAllItemsMode(false);
+  }, [itemQuery]);
+
   function loadMoreItems() {
+    if (!itemHasMore || isLoadingMoreItems) return;
     const q = itemQuery.trim();
-    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = r.data.data || [];
         setFilteredItems(prev => [...prev, ...rows]);
         setItemOffset(prev => prev + rows.length);
         setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    const SHOW_ALL_LIMIT = 200;
+    const fmt = (i) => ({ ...i });
+    const anchor = selectedItem;
+    setAllItemsMode(true);
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = anchor?.category_id
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data || []).map(fmt);
+        const allRows  = (allRes.data.data || []).map(fmt);
+        const pinnedId = anchor?.id ?? null;
+        const sortedCat = sortByProximity(catRows, anchor).filter(r => r.id !== pinnedId);
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = allRows.filter(r => !catIds.has(r.id))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        const merged = [...(pinnedId ? [fmt({ ...anchor })] : []), ...sortedCat, ...others];
+        setFilteredItems(merged);
+        setItemOffset(allRows.length);
+        setItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
@@ -295,32 +344,51 @@ export default function BranchTransferFormPage() {
 
     const wholesale = Math.max(0, Number(staging.wholesalePrice) || 0);
 
+    const existingQty = lines
+      .filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(whId))
+      .reduce((s, l) => s + Number(l.quantity), 0);
+    const totalRequested = existingQty + qty;
     const stockAtWh = getStockQty(selectedItem.id, whId);
-    if (!isReceive && stockAtWh < qty) {
+    if (!isReceive && stockAtWh < totalRequested) {
       return toast.error(`المخزون غير كافٍ في ${selectedWarehouse?.name || "المخزن"} (متاح: ${stockAtWh})`);
     }
 
-    setLines(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      item_id: selectedItem.id,
-      item_name: selectedItem.name,
-      code: selectedItem.item_code || selectedItem.code || "-",
-      unit_id: uId,
-      unit_name: selectedItem.unit_name || "",
-      warehouse_id: whId,
-      warehouse_name: selectedWarehouse ? selectedWarehouse.name : "",
-      quantity: qty,
-      unit_cost: cost,
-      selling_price: sell,
-      wholesale_price: wholesale,
-      original_purchase_price: Number(selectedItem.purchase_price || 0),
-      original_sale_price: Number(selectedItem.sale_price || 0),
-      original_wholesale_price: Number(selectedItem.wholesale_price || 0),
-      update_master_purchase_price:  isReceive ? stagingLocks.purchase : false,
-      update_master_sale_price:      isReceive ? stagingLocks.sale     : false,
-      update_master_wholesale_price: isReceive ? stagingLocks.wholesale: false,
-      primary_image_url: selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image || null,
-    }]);
+    setLines(prev => {
+      const existingIdx = prev.findIndex(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(whId));
+      if (existingIdx !== -1) {
+        return prev.map((l, i) => i !== existingIdx ? l : {
+          ...l,
+          quantity: l.quantity + qty,
+          unit_cost: cost,
+          selling_price: sell,
+          wholesale_price: wholesale,
+          update_master_purchase_price:  isReceive ? stagingLocks.purchase : false,
+          update_master_sale_price:      isReceive ? stagingLocks.sale     : false,
+          update_master_wholesale_price: isReceive ? stagingLocks.wholesale: false,
+        });
+      }
+      return [...prev, {
+        id: Math.random().toString(36).substr(2, 9),
+        item_id: selectedItem.id,
+        item_name: selectedItem.name,
+        code: selectedItem.item_code || selectedItem.code || "-",
+        unit_id: uId,
+        unit_name: selectedItem.unit_name || "",
+        warehouse_id: whId,
+        warehouse_name: selectedWarehouse ? selectedWarehouse.name : "",
+        quantity: qty,
+        unit_cost: cost,
+        selling_price: sell,
+        wholesale_price: wholesale,
+        original_purchase_price: Number(selectedItem.purchase_price || 0),
+        original_sale_price: Number(selectedItem.sale_price || 0),
+        original_wholesale_price: Number(selectedItem.wholesale_price || 0),
+        update_master_purchase_price:  isReceive ? stagingLocks.purchase : false,
+        update_master_sale_price:      isReceive ? stagingLocks.sale     : false,
+        update_master_wholesale_price: isReceive ? stagingLocks.wholesale: false,
+        primary_image_url: selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image || null,
+      }];
+    });
 
     setSelectedItem(null);
     setItemQuery("");
@@ -339,6 +407,7 @@ export default function BranchTransferFormPage() {
 
   const totalQty = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
   const totalCost = useMemo(() => lines.reduce((s, l) => s + l.quantity * l.unit_cost, 0), [lines]);
+  const totalSell = useMemo(() => lines.reduce((s, l) => s + l.quantity * l.selling_price, 0), [lines]);
 
   const priceChangedLines = useMemo(() => {
     if (!isReceive) return [];
@@ -697,7 +766,7 @@ export default function BranchTransferFormPage() {
         />
       )}
       {/* Image zoom modal */}
-      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="صورة المنتج" maxWidth="max-w-2xl">
+      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="صورة المنتج" maxWidth="max-w-2xl" showDetach={false}>
         <div
           className="flex items-center justify-center p-4 bg-slate-100/50 rounded-xl overflow-hidden min-h-[400px] relative"
           onWheel={(e) => setImageZoom(z => Math.max(0.5, Math.min(5, z + (e.deltaY > 0 ? -0.1 : 0.1))))}
@@ -815,10 +884,10 @@ export default function BranchTransferFormPage() {
         }
       />
 
-      <div className="print:hidden grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr] items-start">
+      <div className="print:hidden flex gap-6 items-start" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
 
         {/* Sidebar */}
-        <div className="flex flex-col gap-5 sticky top-4">
+        <div className={`flex flex-col gap-5 ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
 
           {/* Partner branch */}
           <div className="rounded-[20px] border border-white bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
@@ -890,13 +959,22 @@ export default function BranchTransferFormPage() {
                   {formatNumber(totalCost)}
                 </span>
               </div>
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <span className="text-2sm font-black uppercase tracking-widest text-slate-400">إجمالي سعر البيع</span>
+                <span className="text-2xl number-fmt-primary text-amber-600">
+                  {formatNumber(totalSell)}
+                </span>
+              </div>
             </div>
 
           </div>
         </div>
 
+        {/* PanelEdgeRail */}
+        <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "left")} panelSide="left" />
+
         {/* Right: item entry + lines */}
-        <div className="flex flex-col gap-5 min-w-0">
+        <div className="flex flex-col gap-5 min-w-0 flex-1">
 
           {/* Item entry bar */}
           <section className="bg-white border border-slate-200 rounded-[16px] p-5 shadow-[0_5px_20px_rgba(0,0,0,0.03)] relative z-40">
@@ -931,6 +1009,7 @@ export default function BranchTransferFormPage() {
                   <label className="text-[11px] font-bold text-slate-500 mb-1.5 block">المادة / الصنف (بحث)</label>
                   <ProductSearchField
                     ref={itemInputRef}
+                    onNavigateNext={() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select?.(); }}
                     query={itemQuery}
                     onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
                     results={filteredItems}
@@ -939,6 +1018,8 @@ export default function BranchTransferFormPage() {
                     onLoadMore={loadMoreItems}
                     hasMore={itemHasMore}
                     isLoadingMore={isLoadingMoreItems}
+                    onShowAll={showAllItems}
+                    hideZeroStock={false}
                     placeholder="ابحث بالاسم أو كود SKU..."
                   />
                 </div>
@@ -1177,7 +1258,7 @@ export default function BranchTransferFormPage() {
                 <button
                   ref={addBtnRef}
                   onClick={addLine}
-                  onKeyDown={(e) => handleFieldKeyDown(e, { prevRef: qtyInputRef, onEnter: addLine })}
+                  onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: itemInputRef, prevRef: qtyInputRef, onEnter: addLine })}
                   disabled={!selectedItem}
                   className="flex h-11 w-[100px] shrink-0 items-center justify-center gap-2 rounded-[10px] bg-primary text-sm font-black text-white shadow-md hover:bg-primary-600 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 transition-all focus:ring-4 focus:ring-slate-800/20"
                 >
@@ -1252,6 +1333,24 @@ export default function BranchTransferFormPage() {
         </div>
       </div>
 
+      {/* Sticky Bottom Bar (shown when sidebar collapsed) */}
+      <BranchTransferFormBottomBar
+        forceShow={panelEffectiveCollapsed}
+        totalQty={totalQty}
+        totalCost={totalCost}
+        totalSell={totalSell}
+        isReceive={isReceive}
+        onSave={handleSaveClick}
+        onPrint={() => setPreviewOpen(true)}
+        isSaving={isSaving}
+        linesLength={lines.length}
+        hasErrors={hasStockErrors}
+        partnerBranch={partnerBranch}
+        branches={branches}
+        onPartnerBranchChange={setPartnerBranch}
+        onManageBranches={handleManageBranches}
+      />
+
       <PrintPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
@@ -1321,7 +1420,7 @@ export default function BranchTransferFormPage() {
       )}
 
       {/* Price Update Report Modal */}
-      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار">
+      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار" showDetach={false}>
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -1385,7 +1484,7 @@ export default function BranchTransferFormPage() {
       </Modal>
 
       {/* Save Confirmation Modal */}
-      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل المستند" : "تأكيد حفظ المستند"}>
+      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل المستند" : "تأكيد حفظ المستند"} showDetach={false}>
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">

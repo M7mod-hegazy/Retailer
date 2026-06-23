@@ -366,7 +366,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       {get(s,"receipt_header") && <div onClick={() => onElementClick("receipt_header")} style={{ textAlign: "center", fontSize: "10px", marginBottom: "4px", fontStyle: "italic", ...hl("receipt_header") }}>{get(s,"receipt_header")}</div>}
       <BlockRenderer blocks={customBlocks} position="after_header" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
 
-      <div style={{ borderTop: dashed, margin: "5px 0" }} />
+      <div style={{ borderTop: solid, margin: "5px 0" }} />
 
       <div style={{ fontSize: `${get(s,"item_font_size")}px`, marginBottom: "5px" }}>
         <BlockRenderer blocks={customBlocks} position="before_meta" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
@@ -377,48 +377,45 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       </div>
       <BlockRenderer blocks={customBlocks} position="after_meta" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
 
-      <div style={{ borderTop: dashed, margin: "5px 0" }} />
+      <div style={{ borderTop: solid, margin: "5px 0" }} />
       <BlockRenderer blocks={customBlocks} position="before_items" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
 
       <table style={{ width: "100%", fontSize: `${get(s,"item_font_size")}px`, borderCollapse: "collapse", fontWeight: 700 }}>
-        <thead><tr style={{ borderBottom: solid }}>
-          {get(s,"show_item_code") !== false && <th style={{ textAlign: "center", padding: "0 5px 3px", color: "inherit", fontWeight: 700, fontSize: "10px" }}>كود</th>}
-          <th style={{ textAlign: "center", padding: "0 5px 3px", fontWeight: 700 }}>الصنف</th>
-          <th style={{ textAlign: "center", padding: "0 5px 3px", fontWeight: 700 }}>كمية</th>
-          <th style={{ textAlign: "center", padding: "0 5px 3px", fontWeight: 700 }}>إجمالي</th>
+        <thead><tr style={{ background: "#000" }}>
+          <th style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700, color: "#fff", width: "60%" }}>الصنف</th>
+          <th style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, color: "#fff" }}>كمية</th>
+          <th style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, color: "#fff" }}>إجمالي</th>
         </tr></thead>
         <tbody>
           <tr>
-            {get(s,"show_item_code") !== false && <td style={{ textAlign: "center", padding: "3px 5px", fontSize: "10px", fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>SKU-001</td>}
-            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700 }}>قميص قطني L</td>
+            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700, width: "60%", wordBreak: "break-word" }}>{get(s,"show_item_code") !== false ? "SKU-001 - قميص قطني L" : "قميص قطني L"}</td>
             <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>2</td>
             <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>120.00</td>
           </tr>
           <tr>
-            {get(s,"show_item_code") !== false && <td style={{ textAlign: "center", padding: "3px 5px", fontSize: "10px", fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>SKU-002</td>}
-            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700 }}>بنطلون جينز</td>
+            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700, width: "60%", wordBreak: "break-word" }}>{get(s,"show_item_code") !== false ? "SKU-002 - بنطلون جينز" : "بنطلون جينز"}</td>
             <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>1</td>
             <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>110.00</td>
           </tr>
         </tbody>
       </table>
 
-      <div style={{ borderTop: dashed, margin: "5px 0" }} />
+      <div style={{ borderTop: solid, margin: "5px 0" }} />
 
       <div style={{ fontSize: `${get(s,"item_font_size")}px` }}>
-        {get(s,"show_subtotal")      !== false && <div onClick={() => onElementClick("show_subtotal")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_subtotal") }}><span>الإجمالي:</span><span>{currency} {mockSub.toFixed(2)}</span></div>}
+        {get(s,"show_subtotal")      !== false && <div onClick={() => onElementClick("show_subtotal")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_subtotal") }}><span>الإجمالي الفرعي:</span><span>{currency} {mockSub.toFixed(2)}</span></div>}
         {get(s,"show_discount_line") !== false && <div onClick={() => onElementClick("show_discount_line")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_discount_line") }}><span>الخصم:</span><span>- {currency} {mockDisc.toFixed(2)}</span></div>}
         {get(s,"show_tax")           !== false && <div onClick={() => onElementClick("show_tax")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_tax") }}><span>ضريبة ({taxRate}%):</span><span>{currency} {mockTax.toFixed(2)}</span></div>}
-        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "900", fontSize: `${get(s,"header_font_size") - 2}px`, marginTop: "4px", paddingTop: "3px", borderTop: solid }}><span>المستحق:</span><span>{currency} {mockTotal.toFixed(2)}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: `${Math.max(13, Number(get(s,"body_font_size")) + 1)}px`, background: "#000", color: "#fff", padding: "5px 6px", marginTop: "4px" }}><span>الإجمالي</span><span>{currency} {mockTotal.toFixed(2)}</span></div>
         <BlockRenderer blocks={customBlocks} position="after_totals" accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
       </div>
 
       {get(s,"show_payment_details") !== false && (
-        <><div style={{ borderTop: dashed, margin: "5px 0" }} /><div onClick={() => onElementClick("show_payment_details")} style={{ fontSize: `${get(s,"item_font_size")}px`, ...hl("show_payment_details") }}><div style={{ display: "flex", justifyContent: "space-between" }}><span>نقداً:</span><span>{currency} 250.00</span></div><div style={{ display: "flex", justifyContent: "space-between" }}><span>الباقي:</span><span>{currency} {(250 - mockTotal).toFixed(2)}</span></div></div></>
+        <><div style={{ borderTop: solid, margin: "5px 0" }} /><div onClick={() => onElementClick("show_payment_details")} style={{ fontSize: `${get(s,"item_font_size")}px`, ...hl("show_payment_details") }}><div style={{ display: "flex", justifyContent: "space-between" }}><span>نقداً:</span><span>{currency} 250.00</span></div><div style={{ display: "flex", justifyContent: "space-between" }}><span>الباقي:</span><span>{currency} {(250 - mockTotal).toFixed(2)}</span></div></div></>
       )}
 
       {get(s,"show_footer") !== false && (
-        <><div style={{ borderTop: dashed, margin: "6px 0" }} />
+        <><div style={{ borderTop: solid, margin: "6px 0" }} />
         <BlockRenderer blocks={customBlocks} position="before_footer" accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
         <div onClick={() => onElementClick("receipt_footer")} style={{ textAlign: "center", fontSize: `${get(s,"footer_font_size")}px`, fontStyle: "italic", ...hl("receipt_footer") }}>{get(s,"receipt_footer")}</div></>
       )}

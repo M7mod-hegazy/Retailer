@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { formatNumber } from "../../utils/currency";
+import { useFeatureEnabled } from "../../hooks/useFeature";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -13,15 +14,17 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "
 const STATUS_AR = { open: "مفتوح", partial: "جزئي", overdue: "متأخر", paid: "مسدد" };
 const STATUS_CLS = { open: "bg-blue-50 text-blue-700", partial: "bg-amber-50 text-amber-700", overdue: "bg-rose-50 text-rose-700", paid: "bg-emerald-50 text-emerald-700" };
 
-const TABS = [
+const BASE_TABS = [
   { id: "invoices", label: "فواتير المبيعات" },
   { id: "debts", label: "الديون (أجل)" },
   { id: "payments", label: "المدفوعات" },
-  { id: "cheques", label: "الشيكات" },
 ];
+const CHEQUES_TAB = { id: "cheques", label: "الشيكات" };
 
 export default function CustomerProfilePage() {
   const { id } = useParams();
+  const chequesEnabled = useFeatureEnabled("feature_cheques");
+  const TABS = chequesEnabled ? [...BASE_TABS, CHEQUES_TAB] : BASE_TABS;
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("invoices");

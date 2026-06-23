@@ -62,7 +62,7 @@ export async function listPrinters() {
 export function buildPrintDocument(contentHtml, pageSizeStr, title = "طباعة") {
   const cleaned = String(contentHtml || "").replace(/@page\s*\{[^}]*\}/g, "");
   return `<!DOCTYPE html>
-<html dir="rtl">
+<html lang="ar">
 <head>
   <meta charset="utf-8">
   <title>${title || "طباعة"}</title>

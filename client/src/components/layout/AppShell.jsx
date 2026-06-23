@@ -8,6 +8,9 @@ import { syncOfflineData } from "../../services/offlineSync";
 import { PageTour } from "../help/PageTour";
 import { useHelpStore } from "../../stores/helpStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { useShortcutStore } from "../../shortcuts/shortcutStore";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutCheatsheetModal from "../../shortcuts/ShortcutCheatsheetModal";
 import { usePerformanceStore, applyToDOM } from "../../stores/performanceStore";
 import { usePageTour } from "../../hooks/usePageTour";
 import { getHelpPageKey } from "../../help/routeHelp";
@@ -35,6 +38,8 @@ function RouteHelpTrigger() {
 
 export default function AppShell({ children }) {
   const isMobile = useIsMobile();
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
+  useShortcut("global.help", () => setCheatsheetOpen((v) => !v));
   const loadHelpState = useHelpStore((state) => state.loadHelpState);
   const applySettings = useAppSettingsStore((state) => state.applySettings);
   const perfSettings = usePerformanceStore((s) => s.settings);
@@ -60,6 +65,7 @@ export default function AppShell({ children }) {
 
   useEffect(() => {
     loadHelpState();
+    useShortcutStore.getState().load();
   }, [loadHelpState]);
 
   useEffect(() => {
@@ -127,6 +133,7 @@ export default function AppShell({ children }) {
       <RouteHelpTrigger />
       <PageTour />
       <FpsOverlay />
+      <ShortcutCheatsheetModal open={cheatsheetOpen} onClose={() => setCheatsheetOpen(false)} />
     </>
   );
 }

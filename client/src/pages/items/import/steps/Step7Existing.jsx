@@ -323,6 +323,23 @@ export default function Step7Existing({ wizard }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
 
+  // Count existing products whose file prices differ from the system — drives the
+  // price-update banner. Independent of the updateExistingPrices toggle so the
+  // banner can decide whether it's worth showing at all.
+  const PRICE_FIELDS = ["sale_price", "purchase_price", "wholesale_price"];
+  const priceChangeCount = useMemo(
+    () =>
+      wizard.exactExistingRows.filter((row) => {
+        const ex = row.__existing;
+        if (!ex) return false;
+        return PRICE_FIELDS.some((f) => {
+          const fileVal = String(row[f] ?? "").trim();
+          return fileVal && fileVal !== String(ex[f] ?? "").trim();
+        });
+      }).length,
+    [wizard.exactExistingRows]
+  );
+
   const existingRowNumbers = useMemo(
     () => new Set(wizard.exactExistingRows.map((r) => r.__rowNumber)),
     [wizard.exactExistingRows]
@@ -371,9 +388,9 @@ export default function Step7Existing({ wizard }) {
   );
 
   const bulkActions = [
-    { action: "update", label: "تحديث كل الموجود (تمرير)", icon: BarChart3, iconColor: "text-[var(--info-text)]", bg: "bg-[var(--info-bg)]", activeBg: "bg-[var(--primary-600)]", border: "border-[var(--info-border)]" },
-    { action: "warehouse_stock", label: "مخزون فقط للكل", icon: Package, iconColor: "text-[var(--success-text)]", bg: "bg-[var(--success-bg)]", activeBg: "bg-[var(--primary-600)]", border: "border-[var(--success-border)]" },
-    { action: "skip", label: "تخطي كل الموجود", icon: Eye, iconColor: "text-[var(--text-muted)]", bg: "bg-[var(--bg-overlay)]", activeBg: "bg-[var(--text-primary)]", border: "border-[var(--border-normal)]" },
+    { action: "update", label: "تحديث الموجود", desc: "يحدّث بيانات المنتجات الموجودة (الاسم، الباركود، الوحدة، المخزون) ويمرّرها لمراجعة الأسعار. الأصناف الجديدة تُضاف.", icon: BarChart3, iconColor: "text-[var(--info-text)]", bg: "bg-[var(--info-bg)]", activeBg: "bg-[var(--primary-600)]", border: "border-[var(--info-border)]" },
+    { action: "warehouse_stock", label: "مخزون فقط", desc: "لا يغيّر أي بيانات — فقط يضيف كمية الملف لمخزون المخزن المختار. الأصناف الجديدة تُضاف.", icon: Package, iconColor: "text-[var(--success-text)]", bg: "bg-[var(--success-bg)]", activeBg: "bg-[var(--primary-600)]", border: "border-[var(--success-border)]" },
+    { action: "skip", label: "تخطي الموجود", desc: "يتجاهل المنتجات الموجودة تماماً دون أي تغيير. الأصناف الجديدة فقط هي التي تُضاف.", icon: Eye, iconColor: "text-[var(--text-muted)]", bg: "bg-[var(--bg-overlay)]", activeBg: "bg-[var(--text-primary)]", border: "border-[var(--border-normal)]" },
   ];
 
   function handleBulkAction(action) {
@@ -414,13 +431,19 @@ export default function Step7Existing({ wizard }) {
         </div>
       </div>
 
+      {priceChangeCount > 0 && (
       <div className="rounded-2xl border border-[var(--border-normal)] bg-[var(--bg-surface)] p-5 shadow-sm mt-5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary-100)]">
             <ArrowLeftRight className="h-6 w-6 text-[var(--primary)]" />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-black text-[var(--text-primary)]">هل ترغب بتحديث الأسعار للمنتجات الموجودة؟</h3>
+            <h3 className="text-base font-black text-[var(--text-primary)]">
+              هل ترغب بتحديث الأسعار للمنتجات الموجودة؟
+              <span className="mr-2 inline-flex items-center rounded-lg bg-[var(--warning-bg)] px-2.5 py-0.5 text-xs font-black text-[var(--warning-text)] tabular-nums align-middle">
+                {numberText(priceChangeCount)} منتج بفروق أسعار
+              </span>
+            </h3>
             <p className="mt-1 text-xs font-semibold text-[var(--text-secondary)] leading-relaxed">
               إذا اخترت نعم، سيتم تمرير المنتجات الموجودة إلى خطوة "مراجعة الأسعار" القادمة لتحديد قواعد التحديث بدقة.
             </p>
@@ -443,6 +466,7 @@ export default function Step7Existing({ wizard }) {
           </div>
         </div>
       </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
         <div className="rounded-2xl border border-[var(--border-normal)] bg-[var(--bg-surface)] p-4.5 shadow-sm">
@@ -508,6 +532,9 @@ export default function Step7Existing({ wizard }) {
                     {count}
                   </span>
                 </button>
+                <p className="px-2 mt-1.5 text-[10px] font-semibold leading-relaxed text-[var(--text-secondary)]">
+                  {item.desc}
+                </p>
                 <div className={`px-2 mt-1 flex gap-2 text-[9px] font-bold ${
                   isSelected || allActive ? "text-[var(--text-secondary)]" : "text-[var(--text-muted)]"
                 }`}>

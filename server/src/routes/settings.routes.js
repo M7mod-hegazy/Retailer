@@ -128,6 +128,7 @@ const FEATURE_KEYS = [
   "feature_multi_unit", "feature_variants", "feature_serials",
   "feature_scale_barcodes", "feature_repair_orders", "feature_restaurant",
   "feature_gold", "feature_promotions", "feature_expiry",
+  "feature_cheques",
 ];
 
 // Apply feature-flag rules to an updates object in place.
@@ -293,6 +294,39 @@ router.put("/default-user-permissions", authRequired, (req, res, next) => {
 
     req.audit("edit", "default_user_permissions", {}, `⚙️ تم تحديث الصلاحيات الافتراضية للمستخدمين`);
     res.json({ success: true, data: permissions });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Keyboard shortcut overrides ───────────────────────────────────────────────
+// Stored as a JSON map { "<shortcutId>": ["Ctrl","K"], ... } of user overrides only
+// (absent id = factory default). Mirrors the default_user_permissions kv pattern.
+router.get("/shortcuts-config", authRequired, (req, res, next) => {
+  try {
+    const row = getDb()
+      .prepare("SELECT value FROM settings_kv WHERE key = 'shortcuts_config'")
+      .get();
+    const config = row?.value ? JSON.parse(row.value) : {};
+    res.json({ success: true, data: config });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/shortcuts-config", authRequired, (req, res, next) => {
+  try {
+    const config = (req.body && req.body.config) || {};
+    if (typeof config !== "object" || Array.isArray(config)) {
+      const err = new Error("Shortcuts config must be a valid object");
+      err.status = 400;
+      throw err;
+    }
+    getDb()
+      .prepare("INSERT INTO settings_kv (key, value) VALUES ('shortcuts_config', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run(JSON.stringify(config));
+    req.audit("edit", "shortcuts_config", {}, `⌨️ تم تحديث اختصارات لوحة المفاتيح`);
+    res.json({ success: true, data: config });
   } catch (error) {
     next(error);
   }

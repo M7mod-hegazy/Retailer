@@ -13,6 +13,10 @@ import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { sortByProximity } from "../../utils/itemSort";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
@@ -29,6 +33,9 @@ import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { usePermission } from "../../hooks/usePermission";
 import { formatNumber } from "../../utils/currency";
+import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
+import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
+import SalesReturnFormBottomBar from "./SalesReturnFormBottomBar";
 
 function formatMoney(v) {
   return formatNumber(v);
@@ -190,6 +197,11 @@ export default function SalesReturnFormPage() {
   const [mode, setMode] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
 
+  const gridNavRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "unit_price" });
+  useShortcut("grid.editLast", () => focusLastRowQty());
+  useShortcut("form.save", () => { if (total) setShowSaveConfirmModal(true); });
+
   const [cart, setCart] = useState([]);
 
   const [invoiceLines, setInvoiceLines] = useState([]);
@@ -225,6 +237,7 @@ export default function SalesReturnFormPage() {
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const [stagingItem, setStagingItem] = useState(null);
   const [stagingQty, setStagingQty] = useState("1");
   const [stagingPrice, setStagingPrice] = useState("");
@@ -283,6 +296,14 @@ export default function SalesReturnFormPage() {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  // Collapsible sidebar
+  const sidebar = useCollapsibleSidebar({
+    storageKeyPrefix: "retailer.sales_return",
+    defaultWidth: 340,
+    minWidth: 300,
+  });
+  const { panelWidth, panelEffectiveCollapsed, togglePanel, startPanelResize } = sidebar;
 
   const itemInputRef = useRef(null);
   const stagingWHRef = useRef(null);
@@ -538,10 +559,17 @@ export default function SalesReturnFormPage() {
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery, stagingItem]);
 
+  useEffect(() => {
+    if (itemQuery) setAllItemsMode(false);
+  }, [itemQuery]);
+
   function loadMoreItems() {
-    if (!itemHasMore || !itemQuery.trim() || isLoadingMoreItems) return;
+    if (!itemHasMore || isLoadingMoreItems) return;
+    const q = itemQuery.trim();
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = r.data.data || [];
         setItemResults(prev => [...prev, ...rows]);
@@ -550,6 +578,36 @@ export default function SalesReturnFormPage() {
       })
       .catch(() => {})
       .finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    const SHOW_ALL_LIMIT = 200;
+    const fmt = (item) => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.sale_price || 0)} ج.م` });
+    const anchor = stagingItem;
+    setAllItemsMode(true);
+    setItemResults([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = anchor?.category_id
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data || []).map(fmt);
+        const allRows  = (allRes.data.data || []).map(fmt);
+        const pinnedId = anchor?.id ?? null;
+        const sortedCat = sortByProximity(catRows, anchor).filter(r => r.id !== pinnedId);
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = allRows.filter(r => !catIds.has(r.id))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        const merged = [...(pinnedId ? [fmt({ ...anchor })] : []), ...sortedCat, ...others];
+        setItemResults(merged);
+        setItemOffset(allRows.length);
+        setItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
   useEffect(() => {
@@ -562,6 +620,12 @@ export default function SalesReturnFormPage() {
       if (isEnterSubmit) addStagingToCart();
       else nextRef?.current?.focus();
     } else if (e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      prevRef?.current?.focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      nextRef?.current?.focus();
+    } else if (e.key === "ArrowRight") {
       e.preventDefault();
       prevRef?.current?.focus();
     }
@@ -948,9 +1012,8 @@ export default function SalesReturnFormPage() {
         }
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel */}
-        <aside className="flex w-[340px] lg:w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
+      <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
+        <aside className={`shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
           <div className="flex flex-col gap-5 p-5">
             <button onClick={handleTodayInvoicesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-600 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> فواتير المبيعات
@@ -1289,6 +1352,7 @@ export default function SalesReturnFormPage() {
                   <button onClick={() => setShowSaveConfirmModal(true)} disabled={isSaving || !total}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                    {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-white/20 px-1 text-[9px] font-mono text-white" />}
                   </button>
                 </PermissionGate>
               )}
@@ -1357,8 +1421,7 @@ export default function SalesReturnFormPage() {
             </div>
           </div>
         </aside>
-
-        {/* Right Panel */}
+        <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "right")} panelSide="right" />
         <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 p-4 min-w-0">
 
           {mode === "direct" && (
@@ -1372,6 +1435,7 @@ export default function SalesReturnFormPage() {
                       <label className="entry-label">الصنف</label>
                       <ProductSearchField
                         ref={itemInputRef}
+                              onNavigateNext={() => { stagingQtyRef.current?.focus(); stagingQtyRef.current?.select?.(); }}
                         query={itemQuery}
                         onQueryChange={(val) => { setItemQuery(val); if (stagingItem) { setStagingItem(null); setStagingPrice(""); setStagingPurchasePrice(""); } }}
                         results={itemResults.map(item => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.sale_price || 0)} ج.م` }))}
@@ -1383,6 +1447,8 @@ export default function SalesReturnFormPage() {
                         onLoadMore={loadMoreItems}
                         hasMore={itemHasMore}
                         isLoadingMore={isLoadingMoreItems}
+                        onShowAll={showAllItems}
+                        hideZeroStock={false}
                         trailing={(
                           <button onClick={() => setAdvancedSearchOpen(true)}
                             className="entry-control flex w-[38px] shrink-0 items-center justify-center !p-0"
@@ -1450,21 +1516,18 @@ export default function SalesReturnFormPage() {
 
                     {/* Add button */}
                     <button ref={addBtnRef} onClick={addStagingToCart} disabled={!stagingItem}
+                      onKeyDown={e => handleFieldKeyDown(e, itemInputRef, stagingWHRef, true)}
                       className="entry-add-btn">
                       <Plus className="h-4 w-4" /> إضافة
                     </button>
-                  </div>
-                </div>
-              )}
-              {cart.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-end">
-                    <div className="relative" ref={colSettingsRef}>
-                      <button onClick={() => setColSettingsOpen(o => !o)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-2sm font-bold text-slate-500 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
-                        <Settings2 className="h-3.5 w-3.5" /> إعدادات الأعمدة
+                    <div ref={colSettingsRef} className="relative">
+                      <button onClick={() => setColSettingsOpen(o => !o)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all active:scale-90"
+                        title="إعدادات الأعمدة">
+                        <Settings2 className="h-4 w-4" />
                       </button>
                       {colSettingsOpen && (
-                        <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-lg border border-slate-200 bg-white shadow-xl p-2">
+                        <div className="absolute left-0 top-full mt-1 z-[70] w-48 rounded-lg border border-slate-200 bg-white shadow-xl p-2">
                           {ALL_COLUMNS_DIRECT.filter(c => c.id !== "actions").map(c => (
                             <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded cursor-pointer">
                               <input type="checkbox" checked={visibleColumns.includes(c.id)}
@@ -1477,7 +1540,15 @@ export default function SalesReturnFormPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                </div>
+              )}
+              {cart.length > 0 ? (
+                <div className="flex flex-1 flex-col gap-2 min-h-0">
+                  <div className="flex items-center gap-1 px-1 py-1.5 shrink-0">
+                    <span className="text-2sm font-bold text-slate-500">الأصناف ({cart.length})</span>
+                    <ShortcutKbd id="grid.editLast" />
+                  </div>
+                  <div ref={gridNavRef} className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                   <table className="w-full text-right">
                     <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
                       <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
@@ -1523,7 +1594,7 @@ export default function SalesReturnFormPage() {
                           {visibleColumns.includes("warehouse") && (function(){
                             const whEl = !isLocked ? (
                               <div className="flex flex-col items-center gap-1">
-                                <select value={l.warehouse_id} onChange={e => updateCartWarehouse(l.key, e.target.value)} className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-100 transition-colors cursor-pointer">
+                                <select value={l.warehouse_id} data-grid-cell data-row={idx} data-col="warehouse_id" onChange={e => updateCartWarehouse(l.key, e.target.value)} className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-100 transition-colors cursor-pointer">
                                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                                 {(() => {
@@ -1566,6 +1637,7 @@ export default function SalesReturnFormPage() {
                             {!isLocked ? (
                               <div className="flex flex-col items-center gap-0.5">
                                 <input type="number" step="any" min="0" value={l.unit_price}
+                                  data-grid-cell data-row={idx} data-col="unit_price"
                                   onChange={e => updateCartPrice(l.key, e.target.value)}
                                   onFocus={e => e.target.select()}
                                   className={`w-24 rounded border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 transition-colors
@@ -1723,7 +1795,50 @@ export default function SalesReturnFormPage() {
         </main>
       </div>
 
-      <Modal open={showSaveConfirmModal} onClose={() => setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع">
+      <SalesReturnFormBottomBar
+        forceShow={panelEffectiveCollapsed}
+        cart={cart}
+        subtotal={subtotal}
+        headerDiscount={headerDiscount}
+        headerIncrease={headerIncrease}
+        onHeaderDiscountChange={(val) => { setAdjustmentTouched(true); setHeaderDiscount(val); }}
+        onHeaderIncreaseChange={(val) => { setAdjustmentTouched(true); setHeaderIncrease(val); }}
+        taxInfo={taxInfo}
+        taxFeatureOn={taxFeatureOn}
+        taxEnabled={taxEnabled}
+        onTaxEnabledChange={setTaxEnabled}
+        taxRate={taxRate}
+        onTaxRateChange={setTaxRate}
+        refundTotal={refundTotal}
+        refundMethod={refundMethod}
+        onRefundMethodChange={setRefundMethod}
+        splitCashAmount={splitCashAmount}
+        onSplitCashAmountChange={setSplitCashAmount}
+        customer={customer}
+        customerBalance={customerBalance}
+        netCreditAdjustment={netCreditAdjustment}
+        predictedBalance={predictedBalance}
+        returnCreditEffect={returnCreditEffect}
+        isLocked={isLocked}
+        customerLockedFromInvoice={customerLockedFromInvoice}
+        isSaving={isSaving}
+        onPrint={() => setPrintPreview(true)}
+        onSave={handleSave}
+        onCustomerInfo={() => setCustomerInfoOpen(true)}
+        customerQuery={customerQuery}
+        onCustomerQueryChange={setCustomerQuery}
+        customerResults={customerResults}
+        onCustomerPick={(c) => { setCustomer({ id: c.id, name: c.name }); setCustomerQuery(c.name); setCustomerLookupOpen(false); }}
+        customerLookupOpen={customerLookupOpen}
+        onCustomerLookupOpenChange={setCustomerLookupOpen}
+        onCustomerClear={() => { setCustomer(null); setCustomerQuery(""); }}
+        onCustomerCreate={() => setCustomerCreateOpen(true)}
+        mode={mode}
+        isEditMode={isEditMode}
+        total={total}
+      />
+
+      <Modal open={showSaveConfirmModal} onClose={() => setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1742,17 +1857,17 @@ export default function SalesReturnFormPage() {
         </div>
       </Modal>
 
-      <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء">
+      <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
-            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">نعم، إلغاء</button>
+            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md btn-danger px-5 py-2 text-sm font-bold transition-all active:scale-[0.98]">نعم، إلغاء</button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع">
+      <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">هل تريد تعديل هذا المرتجع؟ سيتم فتح المرتجع للتعديل.</p>
           <div className="flex gap-3 justify-end">
@@ -1762,12 +1877,12 @@ export default function SalesReturnFormPage() {
         </div>
       </Modal>
 
-      <Modal open={showSwitchInvoiceWarning} onClose={() => setShowSwitchInvoiceWarning(false)} title="تغيير الفاتورة">
+      <Modal open={showSwitchInvoiceWarning} onClose={() => setShowSwitchInvoiceWarning(false)} title="تغيير الفاتورة" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">يوجد مرتجع قيد التحرير. هل تريد حفظه أولاً قبل اختيار فاتورة أخرى؟</p>
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowSwitchInvoiceWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-            <button onClick={() => { setShowSwitchInvoiceWarning(false); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">تجاهل وتغيير</button>
+            <button onClick={() => { setShowSwitchInvoiceWarning(false); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md btn-danger px-5 py-2 text-sm font-bold transition-all active:scale-[0.98]">تجاهل وتغيير</button>
             <button onClick={async () => { setShowSwitchInvoiceWarning(false); await handleSave(); setLoadedInvoice(null); setInvoiceLines([]); setInvoicePickerOpen(true); }} className="rounded-md bg-emerald-700 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-800 transition-all active:scale-[0.98]">حفظ ثم تغيير</button>
           </div>
         </div>
@@ -1840,7 +1955,7 @@ export default function SalesReturnFormPage() {
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                  className="flex-1 h-11 rounded-2xl btn-danger text-sm font-black disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
                   {isDeleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
                 </button>

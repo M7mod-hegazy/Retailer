@@ -293,7 +293,7 @@ router.get("/import/batches", requirePagePermission("customers", "view"), (req, 
   try {
     const batches = getDb().prepare(`
       SELECT b.id, b.file_name, b.inserted, b.updated, b.skipped, b.status, b.created_at, b.undone_at,
-             u.username AS user_name
+             COALESCE(NULLIF(u.full_name, ''), u.username) AS user_name
       FROM account_import_batches b
       LEFT JOIN users u ON u.id = b.created_by
       WHERE b.entity_type = 'customers'

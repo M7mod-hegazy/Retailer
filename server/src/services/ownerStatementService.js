@@ -418,8 +418,8 @@ function saveOwnerStatement({ id, period_start, period_end, cost_method, notes, 
 function listOwnerStatements() {
   const db = getDb();
   return db.prepare(`
-    SELECT os.*, COALESCE(u.username, u.full_name, '') AS created_by_name,
-      COALESCE(locker.username, locker.full_name, '') AS locked_by_name,
+    SELECT os.*, COALESCE(NULLIF(u.full_name, ''), u.username, '') AS created_by_name,
+      COALESCE(NULLIF(locker.full_name, ''), locker.username, '') AS locked_by_name,
       (SELECT value FROM owner_statement_values WHERE statement_id = os.id AND metric_key = 'net_profit') AS net_profit
     FROM owner_statements os
     LEFT JOIN users u ON u.id = os.created_by
@@ -431,8 +431,8 @@ function listOwnerStatements() {
 function getOwnerStatement(id) {
   const db = getDb();
   const statement = db.prepare(`
-    SELECT os.*, COALESCE(u.username, u.full_name, '') AS created_by_name,
-      COALESCE(locker.username, locker.full_name, '') AS locked_by_name
+    SELECT os.*, COALESCE(NULLIF(u.full_name, ''), u.username, '') AS created_by_name,
+      COALESCE(NULLIF(locker.full_name, ''), locker.username, '') AS locked_by_name
     FROM owner_statements os
     LEFT JOIN users u ON u.id = os.created_by
     LEFT JOIN users locker ON locker.id = os.locked_by

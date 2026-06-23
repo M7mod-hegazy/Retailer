@@ -3,6 +3,8 @@
  * Spec Part C: Dark backdrop, pulsing danger icon, type "حذف" to unlock
  */
 import React, { useState } from 'react';
+import TitleBar from './TitleBar';
+import { useDetach } from "../../hooks/useDetach";
 
 /**
  * @param {object}   props
@@ -12,6 +14,9 @@ import React, { useState } from 'react';
  * @param {'ar'|'en'} [props.lang]    - Language
  */
 export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'ar' }) {
+  const { handleDetach } = useDetach("dramatic-delete-confirm", {
+    onClose: onCancel, getState: () => ({ itemName }), actions: { confirm: () => onConfirm?.() },
+  });
   const [typed, setTyped]   = useState('');
   const [shaking, setShaking] = useState(false);
 
@@ -59,6 +64,8 @@ export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'a
         }}
         dir={lang === 'ar' ? 'rtl' : 'ltr'}
       >
+        <TitleBar title={lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete'} onClose={onCancel} onDetach={handleDetach} />
+        <div data-modal-content style={{ paddingTop: 4 }}>
         {/* Pulsing danger icon */}
         <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 24px' }}>
           <div style={{
@@ -97,6 +104,7 @@ export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'a
         </p>
 
         <input
+          className="bg-white"
           type="text"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
@@ -160,6 +168,7 @@ export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'a
             {lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete'}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ const { ipcMain, app, dialog, BrowserWindow, nativeImage, shell } = require("ele
 const { execFileSync, execSync } = require("child_process");
 const { closeDb, getDbPath, initDb, getDb } = require("../server/src/config/database");
 const { performBackup, isLikelySqliteFile } = require("../server/src/services/backupService");
+const { createModalWindow, getModalState, closeChildWindows } = require("./modalWindowManager");
 const { firstWritableDir } = require("../server/src/config/paths");
 const { resolveLogDir, getLogPath } = require("./crashLogger");
 const { runStartupDiagnostics, readReport } = require("./startupDiagnostics");
@@ -64,6 +65,10 @@ function setupIpc(window) {
   });
 
   ipcMain.handle("get:api-url", () => {
+    // Packaged app reaches the embedded server over the custom retailer:// protocol
+    // (no TCP loopback → immune to antivirus/firewall blocking 127.0.0.1). Dev still
+    // uses TCP since it loads the UI over http from the Vite dev server.
+    if (app.isPackaged) return "retailer://local";
     const port = process.env.ACTUAL_PORT || "5000";
     return `http://127.0.0.1:${port}`;
   });
@@ -125,6 +130,11 @@ function setupIpc(window) {
   });
 
   ipcMain.on("window:minimize", () => window.minimize());
+  ipcMain.on("window:hide", () => {
+    window.hide();
+    // On Windows, hide() removes the window from the taskbar but the tray
+    // icon remains active so the user can restore via double-click or menu.
+  });
   ipcMain.on("window:maximize", () => {
     if (window.isMaximized()) window.unmaximize();
     else window.maximize();
@@ -410,6 +420,11 @@ function setupIpc(window) {
     }
   });
 
+  // ─── Quit app (triggered from renderer's QuitOrLogoutModal) ────────────
+  ipcMain.handle("app:quit", () => {
+    app.quit();
+  });
+
   // ─── Update IPC ──────────────────────────────────────────────────────────
   const updater = require("./updater");
 
@@ -420,6 +435,11 @@ function setupIpc(window) {
 
   ipcMain.handle("update:download", () => {
     updater.downloadUpdate();
+    return { success: true };
+  });
+
+  ipcMain.handle("update:cancel-download", () => {
+    updater.cancelDownload();
     return { success: true };
   });
 
@@ -445,6 +465,79 @@ function setupIpc(window) {
 
   ipcMain.handle("update:open-installer", () => {
     updater.openInstaller();
+    return { success: true };
+  });
+
+  // ─── Version rollback / install a specific release ───────────────────────
+  ipcMain.handle("update:list-releases", () => {
+    return updater.listReleases();
+  });
+
+  ipcMain.handle("update:download-version", (_event, payload = {}) => {
+    const version = String(payload.version || "").trim();
+    if (!version) return { success: false, error: "no_version" };
+    updater.downloadVersion(version);
+    return { success: true };
+  });
+
+  // ─── Modal detach ────────────────────────────────────────────────────────
+  ipcMain.handle("modal:create-child", (event, payload) => {
+    const { modalType, state, bounds } = payload || {};
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return { success: false, error: "no_parent_window" };
+    const childId = createModalWindow(win, { modalType, state, bounds });
+    return { success: true, childId };
+  });
+
+  ipcMain.handle("modal:get-initial-state", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return { success: false, error: "no_window", state: null };
+    const data = getModalState(win.id);
+    if (!data) return { success: false, error: "no_state", state: null };
+    return { success: true, ...data };
+  });
+
+  ipcMain.handle("window:navigate-parent", (event, path) => {
+    let win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return { success: false };
+    let parent = win.getParentWindow();
+    while (parent && !parent.isDestroyed()) {
+      win = parent;
+      parent = win.getParentWindow();
+    }
+    if (win && !win.isDestroyed()) {
+      const safe = JSON.stringify(path);
+      if (win.webContents.getURL().startsWith("file:")) {
+        win.webContents.executeJavaScript(`window.location.hash = ${safe}`);
+      } else {
+        win.webContents.executeJavaScript(`window.history.pushState(null, '', ${safe}); window.dispatchEvent(new PopStateEvent('popstate'))`);
+      }
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle("modal:child-action", (event, payload) => {
+    const { action, data } = payload || {};
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return { success: false, error: "no_window" };
+    let target = win.getParentWindow();
+    while (target && !target.isDestroyed()) {
+      const parent = target.getParentWindow();
+      if (parent && !parent.isDestroyed()) {
+        target = parent;
+      } else {
+        break;
+      }
+    }
+    if (target && !target.isDestroyed()) {
+      target.webContents.send("modal:action-from-child", { childId: win.id, action, data });
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle("modal:close-self", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) win.close();
     return { success: true };
   });
 }

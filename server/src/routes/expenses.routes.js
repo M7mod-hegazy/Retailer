@@ -2,9 +2,10 @@
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
-const { requirePagePermission } = require("../middleware/permission");
+const { requirePagePermission, userHasPagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { countSafe, buildImpact } = require("../utils/relatedRecords");
+const { recordBankMovement } = require("../services/bankService");
 const NotificationModel = require("../models/notification.model");
 const { toSql } = require("../utils/datetime");
 
@@ -78,6 +79,11 @@ router.get("/", requirePagePermission("expenses", "view"), (req, res) => {
 
 router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
   const payload = req.body || {};
+  const createdDate = normalizeDate(payload.created_at);
+  const todayDate = toSql(new Date()).slice(0, 10);
+  if (createdDate < todayDate && !userHasPagePermission(req.user, "expenses", "backdate_records")) {
+    return res.status(403).json({ error: "permission_denied", page: "expenses", action: "backdate_records" });
+  }
   const db = getDb();
   const result = db
     .transaction(() => {
@@ -110,7 +116,16 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
         db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = 1").run(amount);
       }
       if ((payload.payment_method || "cash") === "bank_transfer" && payload.bank_id) {
-        db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, payload.bank_id);
+        recordBankMovement(db, {
+          bankId: payload.bank_id,
+          type: "withdrawal",
+          amount,
+          notes: payload.description || payload.notes || "مصروف",
+          userId: req.user?.id || 1,
+          source: "manual",
+          refType: "expense",
+          refId: created.lastInsertRowid,
+        });
       }
       return created;
     })();
@@ -138,6 +153,13 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
   try {
     const db = getDb();
     const payload = req.body || {};
+    const existing = db.prepare("SELECT created_at FROM expenses WHERE id = ?").get(req.params.id);
+    if (existing) {
+      const recordDate = (existing.created_at || "").slice(0, 10);
+      if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "expenses", "backdate_records")) {
+        return res.status(403).json({ error: "permission_denied", page: "expenses", action: "backdate_records" });
+      }
+    }
     db.prepare(`UPDATE expenses SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now', 'localtime') WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
     req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`, `/expenses`);
@@ -147,9 +169,17 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
 
 router.delete("/:id", requirePagePermission("expenses", "delete"), (req, res) => {
   try {
-    getDb().prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
+    const db = getDb();
+    const existing = db.prepare("SELECT created_at FROM expenses WHERE id = ?").get(req.params.id);
+    if (existing) {
+      const recordDate = (existing.created_at || "").slice(0, 10);
+      if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "expenses", "backdate_records")) {
+        return res.status(403).json({ error: "permission_denied", page: "expenses", action: "backdate_records" });
+      }
+    }
+    db.prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
     req.audit("delete", "expenses", { id: req.params.id }, `💰 تم حذف مصروف`, `/expenses`);
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

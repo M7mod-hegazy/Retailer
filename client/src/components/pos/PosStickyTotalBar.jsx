@@ -8,6 +8,7 @@ import {
 import HeldDropdown from "../../pages/pos/parts/HeldDropdown";
 import SearchDropdown from "../ui/SearchDropdown";
 import { useIsNarrowViewport } from "../../hooks/useIsNarrowViewport";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import { formatNumber } from "../../utils/currency";
 
 function formatMoney(value, digits = 2) {
@@ -379,9 +380,9 @@ export default function PosStickyTotalBar({
           )}
         </div>
 
-        {/* ═══════════════ Row 2: Payment method buttons + balance ═══════════════ */}
-        <div className="flex flex-wrap items-center gap-x-0.5 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
-          <div className="flex items-center gap-0.5">
+        {/* ═══════════════ Rows 2+3: Payment buttons + inputs (single wrapping row) ═══════════════ */}
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
+          <div className="flex items-center gap-0.5 shrink-0">
             {paymentTypes.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon: _Icon }) => {
               const isDisabled = isPaymentDisabled(type);
               const isActive = paymentType === type;
@@ -404,41 +405,12 @@ export default function PosStickyTotalBar({
             })}
           </div>
 
-          {hasCustomer && (
-            <div className="mr-auto flex items-center gap-1.5 shrink-0">
-              <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1">
-                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">
-                  الرصيد الحالي
-                </span>
-                <span className={`text-sm font-black font-mono ${bal > 0 ? "text-rose-600" : "text-slate-800"}`}>
-                  {formatBalance(bal)}
-                </span>
-              </div>
-              {creditEffect > 0 && (
-                <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1">
-                  <span className="text-[10px] font-bold text-amber-600">
-                    {paymentType === "installments" ? "الإضافة للأقساط" : paymentType === "multi" ? "الإضافة للآجل" : "الإضافة للرصيد"}
-                  </span>
-                  <span className="text-sm font-black font-mono text-amber-700">+{formatBalance(creditEffect)}</span>
-                  <span className="h-4 w-px bg-amber-300/60" />
-                  <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">
-                    {paymentType === "installments" ? "الرصيد بعد الأقساط" : paymentType === "multi" ? "الرصيد بعد الآجل" : "الرصيد بعد الفاتورة"}
-                  </span>
-                  <span className={`text-sm font-black font-mono ${projected > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                    {formatBalance(projected)}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ═══════════════ Row 3: Payment inputs ═══════════════ */}
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
+          <span className="h-4 w-px bg-zinc-200 shrink-0" />
 
           {paymentType === "cash" && onAmountReceivedChange && (
             <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
               <span className="text-[11px] font-bold text-zinc-700">المبلغ:</span>
+              <ShortcutKbd id="pos.cashCheckout" className="rounded bg-zinc-100 px-1 text-[9px] text-zinc-400 font-mono" />
               <input type="number" min="0" value={amountReceived || ""}
                 onChange={(e) => onAmountReceivedChange(e.target.value)} placeholder="0"
                 className="min-w-[35px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
@@ -530,9 +502,27 @@ export default function PosStickyTotalBar({
                 className="min-w-[35px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-[11px] font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
             </div>
           )}
+
+          {hasCustomer && (
+            <div className="mr-auto flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1">
+                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">الرصيد الحالي</span>
+                <span className={`text-sm font-black font-mono ${bal > 0 ? "text-rose-600" : "text-slate-800"}`}>{formatBalance(bal)}</span>
+              </div>
+              {creditEffect > 0 && (
+                <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1">
+                  <span className="text-[10px] font-bold text-amber-600">{balanceLabel}</span>
+                  <span className="text-sm font-black font-mono text-amber-700">+{formatBalance(creditEffect)}</span>
+                  <span className="h-4 w-px bg-amber-300/60" />
+                  <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">{afterLabel}</span>
+                  <span className={`text-sm font-black font-mono ${projected > 0 ? "text-rose-600" : "text-emerald-600"}`}>{formatBalance(projected)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ═══════════════ Row 4: Actions ═══════════════ */}
+        {/* ═══════════════ Row 3: Actions ═══════════════ */}
         <div className="flex flex-wrap items-center gap-2 px-3 py-1 bg-white">
           {heldInvoices.length > 0 && onHeldToggle && (
             <div className="relative shrink-0">
@@ -575,7 +565,7 @@ export default function PosStickyTotalBar({
             <button type="button" onClick={onSaveOnly} disabled={!canDoPayment}
               className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
               {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              حفظ <kbd className="rounded bg-zinc-100 px-1 text-[9px] text-zinc-400 font-mono">F9</kbd>
+              حفظ <ShortcutKbd id="pos.save" className="rounded bg-zinc-100 px-1 text-[9px] text-zinc-400 font-mono" />
             </button>
           )}
 
@@ -590,7 +580,7 @@ export default function PosStickyTotalBar({
                 : <Printer className="h-3 w-3" />
             }
             {primaryLabel}
-            <kbd className="rounded bg-white/20 px-1 text-[9px] font-mono">F12</kbd>
+            <ShortcutKbd id="pos.savePrint" className="rounded bg-white/20 px-1 text-[9px] font-mono" />
             {hasErrors && errorCount > 0 && (
               <span className="rounded-full bg-rose-400/90 px-1.5 py-[2px] text-[8px] font-black">{errorCount}</span>
             )}

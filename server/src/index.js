@@ -96,6 +96,31 @@ async function startServer() {
       process.env.ACTUAL_PORT = String(port);
       logger.info({ message: "Server started", host, port });
 
+      // Also listen on a local named pipe (Windows) / unix socket so the Electron
+      // renderer can reach the API over the retailer:// protocol WITHOUT any TCP
+      // loopback socket — making it immune to antivirus/firewall software that
+      // blocks 127.0.0.1 (the persistent "connection error" some hardened PCs hit).
+      // Best-effort: a failure here never blocks startup; TCP remains the fallback.
+      // A fresh, unique pipe name per start avoids EADDRINUSE on auto-restart.
+      try {
+        const os = require("os");
+        const nodePath = require("path");
+        const stamp = `${process.pid}-${Date.now()}`;
+        const pipePath =
+          process.platform === "win32"
+            ? `\\\\.\\pipe\\elhegazi-retailer-${stamp}`
+            : nodePath.join(os.tmpdir(), `elhegazi-retailer-${stamp}.sock`);
+        const pipeServer = app.listen(pipePath, () => {
+          process.env.RETAILER_PIPE = pipePath;
+          logger.info({ message: "Server pipe listening", pipe: pipePath });
+        });
+        pipeServer.on("error", (e) =>
+          logger.error({ message: "Server pipe listen failed", error: e.message }),
+        );
+      } catch (e) {
+        logger.error({ message: "Server pipe setup failed", error: e.message });
+      }
+
       startAutoBackupJob();
       startNotificationJobs();
       startAuditLogCleanupJob();

@@ -3,8 +3,8 @@ import {
   Plus, ShoppingCart, Trash2, User, Package, Calendar, FileText,
   Warehouse, ChevronDown, ArrowLeft, X, CreditCard, Wallet, Banknote,
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
-  ImageIcon, Printer, CheckCircle2, Layers, Lock, Pencil,
-  FilePlus, Sparkles, Receipt, RefreshCw, ArrowUpDown, Save,
+  MapPin, ImageIcon, Printer, CheckCircle2, Layers, Lock, Pencil,
+  FilePlus, Sparkles, Receipt, Save,
   Loader2, Filter, ClipboardList, Settings2,
 } from "lucide-react";
 import api from "../../services/api";
@@ -22,7 +22,7 @@ import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
-import { scoredFilterRows } from "../../utils/search";
+import { sortByProximity } from "../../utils/itemSort";
 import { useAuthStore } from "../../stores/authStore";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
@@ -32,23 +32,28 @@ import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import PurchaseProfitModal from "../../components/purchases/PurchaseProfitModal";
+import TodayPurchasesModal from "../../components/purchases/TodayPurchasesModal";
 import { formatNumber } from "../../utils/currency";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
+import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
+import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
+import PurchaseFormBottomBar from "./PurchaseFormBottomBar";
 
 function formatMoney(value) {
   return formatNumber(value, { decimals: 3 });
 }
 
-function formatArabicDateTime(date) {
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  }).format(date);
+function parseJsonArr(val) {
+  try { const v = JSON.parse(val || "[]"); return Array.isArray(v) ? v : []; }
+  catch { return []; }
 }
 
 function toDateInput(date = new Date()) {
@@ -73,123 +78,6 @@ const PURCHASE_STATUS_STYLES = {
   voided: { label: "ملغي", cls: "bg-rose-50 text-rose-700 border-rose-200" },
   cancelled: { label: "ملغي", cls: "bg-slate-100 text-slate-500 border-slate-200" },
 };
-
-function PurchasePreviewModal({ purchase, onClose }) {
-  const navigate = useNavigate();
-  const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (!purchase) return;
-    setLoading(true);
-    const id = purchase.purchase_id || purchase.id;
-    api.get(`/api/purchases/${id}`)
-      .then(r => setDetail(r.data.data))
-      .catch(() => setDetail(purchase))
-      .finally(() => setLoading(false));
-  }, [purchase?.purchase_id, purchase?.id]);
-  if (!purchase) return null;
-  return (
-    <div className="flex flex-col gap-4">
-      {loading ? (
-        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
-      ) : (
-        <>
-          <div className="rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
-            <span className="font-black text-emerald-800">فاتورة #{detail?.doc_no || purchase.doc_no}</span>
-            <span className="text-slate-600">المورد: <strong>{(detail || purchase).supplier_name || "—"}</strong></span>
-            <span className="text-slate-500">{(detail || purchase).created_at ? formatArabicDateTime(new Date((detail || purchase).created_at)) : "—"}</span>
-            {(detail || purchase).created_by_username && (
-              <span className="text-slate-500">بواسطة: <strong>{(detail || purchase).created_by_username}</strong></span>
-            )}
-            <span className="font-bold text-emerald-700">الإجمالي: {formatMoney((detail || purchase).total)} ج.م</span>
-          </div>
-          <div className="max-h-[260px] overflow-auto rounded-sm border border-slate-200">
-            <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
-                  <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">التكلفة</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">مُرتجع</th>
-                </tr>
-              </thead>
-              <tbody>
-                {((detail || purchase).lines || []).map((l, i) => {
-                  const returned = Number(l.returned_quantity || 0);
-                  return (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || l.code || l.barcode || "—"}</td>
-                      <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
-                      <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
-                      <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
-                      <td className="px-3 py-2.5 text-center number-fmt-primary text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
-                      <td className="px-3 py-2.5 text-center">
-                        {returned > 0 ? <span className="text-amber-600 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {/* Totals + Payments */}
-          <div className="flex gap-3 flex-wrap">
-            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-              {Number((detail || purchase).discount) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">خصم</span>
-                  <span className="number-fmt-primary text-rose-600">- {formatMoney((detail || purchase).discount)}</span>
-                </div>
-              )}
-              {Number((detail || purchase).increase) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">إضافة</span>
-                  <span className="number-fmt-primary text-emerald-600">+ {formatMoney((detail || purchase).increase)}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t border-slate-200 pt-1.5">
-                <span className="font-black text-slate-800">الإجمالي</span>
-                <span className="number-fmt-primary text-slate-900">{formatMoney((detail || purchase).total)} ج.م</span>
-              </div>
-            </div>
-            {detail?.payments?.length > 0 && (
-              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل الدفع</p>
-                {detail.payments.map((p, i) => {
-                  const PSTYLE = { cash: "text-emerald-700", bank_transfer: "text-sky-700", credit: "text-amber-700", future_due: "text-orange-700" };
-                  return (
-                    <div key={i} className="flex justify-between items-center">
-                      <span className="text-slate-600">{p.method_name || p.method_type || "—"}</span>
-                      <span className={`number-fmt-primary ${PSTYLE[p.method_type] || "text-slate-800"}`}>{formatMoney(p.amount)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {(detail || purchase).notes && (
-            <div className="rounded-sm border border-slate-200 bg-amber-50/40 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500 mb-1">ملاحظات</p>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{(detail || purchase).notes}</p>
-            </div>
-          )}
-        </>
-      )}
-      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose}
-          className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">
-          رجوع
-        </button>
-        <button onClick={() => navigate(`/purchases/${purchase.purchase_id || purchase.id}`)}
-          className="flex items-center gap-2 rounded-sm bg-emerald-700 px-6 py-2 text-sm font-black text-white hover:bg-emerald-800 transition-colors">
-          <Pencil className="h-4 w-4" /> فتح الفاتورة
-        </button>
-      </div>
-    </div>
-  );
-}
 
 const SUPPLIER_METHODS = [
   { id: "credit",       label: "آجل",              sub: "يُضاف لرصيد المورد",          icon: Wallet,   color: "amber",  requiresSupplier: true },
@@ -247,11 +135,13 @@ export default function PurchaseFormPage() {
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "", expiryDate: "", batchNo: "" });
   // Lock toggles: true = update master price on save (🔒), false = this invoice only (🔓)
   const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
   const [profitModalOpen, setProfitModalOpen] = useState(false);
+  const [todayPurchOpen, setTodayPurchOpen] = useState(false);
   const [profitDisplayMode, setProfitDisplayMode] = useState("pct");
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -311,32 +201,18 @@ export default function PurchaseFormPage() {
   const itemSearchActiveRef = useRef(false);
 
   const handleKeyDown = useFieldNavigation();
+  const gridNavRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "quantity", entryRef: itemInputRef });
+  useShortcut("grid.editLast", () => focusLastRowQty());
+  useShortcut("form.save", () => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } });
 
-  // Today's Purchases modal states
-  const [todayPurchOpen, setTodayPurchOpen] = useState(false);
-  const [todayPurchases, setTodayPurchases] = useState([]);
-  const [todayPurchSummary, setTodayPurchSummary] = useState({ count: 0, total: 0 });
-  const [todayPurchLoading, setTodayPurchLoading] = useState(false);
-  const [todayPurchDateFrom, setTodayPurchDateFrom] = useState(toDateInput());
-  const [todayPurchDateTo, setTodayPurchDateTo] = useState(toDateInput());
-  const [todayPurchSort, setTodayPurchSort] = useState("created_at");
-  const [todayPurchDir, setTodayPurchDir] = useState("desc");
-  const [todayPurchUserId, setTodayPurchUserId] = useState("");
-  const [todayPurchUsersList, setTodayPurchUsersList] = useState([]);
-  const [todayPurchDocSearch, setTodayPurchDocSearch] = useState("");
-  const [todayPurchItemSearch, setTodayPurchItemSearch] = useState("");
-  const [todayPurchRawItems, setTodayPurchRawItems] = useState([]);
-  const [todayPurchAllItems, setTodayPurchAllItems] = useState([]);
-  const [todayPurchItemLookupOpen, setTodayPurchItemLookupOpen] = useState(false);
-  const [todayPurchActiveItemIndex, setTodayPurchActiveItemIndex] = useState(0);
-  const [todayPurchSupplierQuery, setTodayPurchSupplierQuery] = useState("");
-  const [todayPurchSupplierLookupOpen, setTodayPurchSupplierLookupOpen] = useState(false);
-  const [todayPurchActiveSupplierIndex, setTodayPurchActiveSupplierIndex] = useState(0);
-  const [todayPurchSupplierId, setTodayPurchSupplierId] = useState("");
-  const [todayPurchPreviewInvoice, setTodayPurchPreviewInvoice] = useState(null);
-  const [todayPurchPreviewOpen, setTodayPurchPreviewOpen] = useState(false);
-  const [todayPurchVoidOpen, setTodayPurchVoidOpen] = useState(false);
-  const [todayPurchVoidTarget, setTodayPurchVoidTarget] = useState(null);
+  // Collapsible sidebar
+  const sidebar = useCollapsibleSidebar({
+    storageKeyPrefix: "retailer.purchase_form",
+    defaultWidth: 290,
+    minWidth: 260,
+  });
+  const { panelWidth, panelEffectiveCollapsed, togglePanel, startPanelResize } = sidebar;
 
   // Column visibility
   const ALL_COLUMNS = ["index","code","name","quantity","unit_id","unit_cost","selling_price","profit_pct","wholesale_price","locks","warehouse_id","expiry_date","total","actions"];
@@ -354,90 +230,6 @@ export default function PurchaseFormPage() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  const todayPurchFilteredItems = useMemo(() => {
-    const q = todayPurchItemSearch.trim();
-    if (!q || !todayPurchAllItems.length) return [];
-    return scoredFilterRows(todayPurchAllItems, q, ["name", "code", "barcode"]);
-  }, [todayPurchItemSearch, todayPurchAllItems]);
-
-  const todayPurchFilteredSuppliers = useMemo(() => {
-    if (!todayPurchSupplierLookupOpen) return [];
-    const q = todayPurchSupplierQuery.trim().toLowerCase();
-    if (!q) return suppliers.slice(0, 8);
-    return suppliers.filter(s => String(s.name).toLowerCase().includes(q) || String(s.phone || "").includes(q)).slice(0, 8);
-  }, [todayPurchSupplierLookupOpen, todayPurchSupplierQuery, suppliers]);
-
-  function aggregatePurchaseResults(data) {
-    const map = {};
-    (data || []).forEach(line => {
-      const id = line.purchase_id;
-      if (!map[id]) {
-        map[id] = {
-          id, doc_no: line.doc_no, supplier_name: line.supplier_name,
-          supplier_id: line.supplier_id, created_at: line.created_at,
-          total: 0, items_count: 0, status: line.status,
-        };
-      }
-      map[id].total += Number(line.unit_cost || 0) * Number(line.quantity || 0);
-      map[id].items_count += 1;
-    });
-    return Object.values(map);
-  }
-
-  async function loadTodayPurchases() {
-    setTodayPurchLoading(true);
-    try {
-      if (todayPurchItemSearch.trim()) {
-        const params = new URLSearchParams({ q: todayPurchItemSearch.trim() });
-        if (todayPurchDocSearch.trim()) params.set("doc_search", todayPurchDocSearch.trim());
-        if (todayPurchSupplierQuery.trim()) params.set("supplier_search", todayPurchSupplierQuery.trim());
-        if (todayPurchSupplierId) params.set("supplier_id", todayPurchSupplierId);
-        if (todayPurchUserId) params.set("user_id", todayPurchUserId);
-        params.set("date_from", todayPurchDateFrom);
-        params.set("date_to", todayPurchDateTo);
-        const r = await api.get(`/api/purchases/items-search?${params}`);
-        const raw = r.data.data || [];
-        setTodayPurchRawItems(raw);
-        setTodayPurchases([]);
-        const aggregated = aggregatePurchaseResults(raw);
-        setTodayPurchSummary({ count: aggregated.length, total: aggregated.reduce((s, x) => s + x.total, 0) });
-      } else {
-        const params = new URLSearchParams({ date_from: todayPurchDateFrom, date_to: todayPurchDateTo, sort: todayPurchSort, dir: todayPurchDir });
-        if (todayPurchUserId) params.set("user_id", todayPurchUserId);
-        if (todayPurchSupplierId) params.set("supplier_id", todayPurchSupplierId);
-        if (todayPurchSupplierQuery.trim() && !todayPurchSupplierId) {
-          params.set("supplier_search", todayPurchSupplierQuery.trim());
-        }
-        if (todayPurchDocSearch.trim()) params.set("search", todayPurchDocSearch.trim());
-        const r = await api.get(`/api/purchases?${params}`);
-        let data = r.data.data || [];
-        if (todayPurchSupplierQuery.trim() && !todayPurchSupplierId) {
-          const q = todayPurchSupplierQuery.trim().toLowerCase();
-          data = data.filter((inv) => String(inv.supplier_name || "").toLowerCase().includes(q));
-        }
-        setTodayPurchases(data);
-        setTodayPurchRawItems([]);
-        setTodayPurchSummary(r.data.summary || { count: 0, total: 0 });
-      }
-    } catch (e) { console.error("loadTodayPurchases error:", e); }
-    finally { setTodayPurchLoading(false); }
-  }
-
-  useEffect(() => {
-    if (!todayPurchOpen) return;
-    api.get("/api/items").then(r => setTodayPurchAllItems(r.data.data || [])).catch(() => {});
-    if (!todayPurchUsersList.length) {
-      api.get("/api/users").then(r => setTodayPurchUsersList(r.data.data || [])).catch(() => {});
-    }
-  }, [todayPurchOpen]);
-
-  useEffect(() => {
-    if (!todayPurchOpen) return;
-    const timer = setTimeout(() => { loadTodayPurchases(); }, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayPurchOpen, todayPurchDateFrom, todayPurchDateTo, todayPurchSort, todayPurchDir, todayPurchUserId, todayPurchItemSearch, todayPurchDocSearch, todayPurchSupplierQuery, todayPurchSupplierId]);
 
   useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
@@ -593,11 +385,17 @@ export default function PurchaseFormPage() {
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery]);
 
+  useEffect(() => {
+    if (itemQuery) setAllItemsMode(false);
+  }, [itemQuery]);
+
   function loadMoreItems() {
+    if (!itemHasMore || isLoadingMoreItems) return;
     const q = itemQuery.trim();
-    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = (r.data.data || []).map(i => ({
           ...i,
@@ -606,6 +404,36 @@ export default function PurchaseFormPage() {
         setFilteredItems(prev => [...prev, ...rows]);
         setItemOffset(prev => prev + rows.length);
         setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    const SHOW_ALL_LIMIT = 200;
+    const fmt = (i) => ({ ...i, price_label: formatMoney(i.purchase_price || 0) });
+    const anchor = selectedItem;
+    setAllItemsMode(true);
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = anchor?.category_id
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data || []).map(fmt);
+        const allRows  = (allRes.data.data || []).map(fmt);
+        const pinnedId = anchor?.id ?? null;
+        const sortedCat = sortByProximity(catRows, anchor).filter(r => r.id !== pinnedId);
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = allRows.filter(r => !catIds.has(r.id))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        const merged = [...(pinnedId ? [fmt({ ...anchor })] : []), ...sortedCat, ...others];
+        setFilteredItems(merged);
+        setItemOffset(allRows.length);
+        setItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
@@ -637,6 +465,10 @@ export default function PurchaseFormPage() {
     setSupplier(s);
     setSupplierQuery(s.name);
     setSupplierLookupOpen(false);
+    // Pull full supplier record (phones, addresses, code) for the inline info card
+    api.get(`/api/suppliers/${s.id}`)
+      .then(r => { const full = r.data?.data; if (full) setSupplier(prev => (prev && prev.id === full.id ? { ...prev, ...full } : prev)); })
+      .catch(() => {});
   }
 
   function addLine() {
@@ -1004,13 +836,13 @@ export default function PurchaseFormPage() {
               </Link>
             )}
             {invoiceIsActive && (
-              <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                {isLocked ? <Lock className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-[var(--primary-50)] text-[var(--primary-600)] border-[var(--primary-100)]"}`}>
+                {isLocked ? <Lock className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />}
                 {isLocked ? "مقفلة" : "نشطة"}
               </div>
             )}
             {!isLocked && isEditMode && user?.name && (
-              <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+              <div className="flex items-center gap-1.5 rounded-sm bg-[var(--primary-50)] border border-[var(--primary-100)] px-2.5 py-1 text-[11px] font-bold text-[var(--primary-600)]">
                 المحرر: {user.name}
               </div>
             )}
@@ -1072,70 +904,9 @@ export default function PurchaseFormPage() {
         }
       />
 
-      <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
-        {/* Left: Main Content */}
-        <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
-          {/* Header Info Grid */}
-          <section className={`rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0 ${isLocked ? "opacity-70 pointer-events-none select-none" : ""}`}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Supplier */}
-              <div data-help="supplier-select" className="relative flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-600">
-                  المورد <span className="text-slate-400 font-medium">(اختياري للنقدي)</span>
-                </label>
-                <div className="flex items-center gap-1">
-                  <div className="relative flex-1">
-                    <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                    <input
-                      ref={supplierInputRef}
-                      type="text"
-                      value={supplierQuery}
-                      onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); setSupplier(null); }}
-                      onFocus={() => setSupplierLookupOpen(true)}
-                      onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
-                      placeholder="ابحث عن مورد..."
-                      disabled={isLocked}
-                      className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 disabled:bg-slate-50 disabled:cursor-not-allowed"
-                    />
-                    {supplierLookupOpen && !isLocked && (
-                      <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
-                    )}
-                  </div>
-                  {!isLocked && (
-                    <button onClick={() => setSupplierModalOpen(true)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200">
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Notes — moved next to the supplier */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-600 flex items-center justify-between">
-                  <span>ملاحظات <span className="text-slate-400 font-medium">(اختياري)</span></span>
-                  {Boolean(purchaseNotes && purchaseNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
-                </label>
-                {isLocked ? (
-                  <p className="text-2sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed min-h-[37px] py-2">{purchaseNotes || "—"}</p>
-                ) : (
-                  <div className="relative">
-                    <FileText className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                    <input
-                      ref={notesRef}
-                      type="text"
-                      value={purchaseNotes}
-                      onChange={(e) => setPurchaseNotes(e.target.value)}
-                      placeholder="ملاحظة اختيارية تُحفظ مع الفاتورة…"
-                      className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
-                      onKeyDown={e => handleKeyDown(e, { nextRef: itemInputRef })}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
+      <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
+        {/* Main Content */}
+        <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden p-4">
           {/* Quick Entry Bar — hidden in locked mode */}
           {!isLocked && (
             <section data-help="items-section" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
@@ -1146,6 +917,7 @@ export default function PurchaseFormPage() {
                   <label className="entry-label">الصنف</label>
                   <ProductSearchField
                     ref={itemInputRef}
+                    onNavigateNext={() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select?.(); }}
                     query={itemQuery}
                     onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
                     results={filteredItems}
@@ -1156,6 +928,8 @@ export default function PurchaseFormPage() {
                     onLoadMore={loadMoreItems}
                     hasMore={itemHasMore}
                     isLoadingMore={isLoadingMoreItems}
+                    onShowAll={showAllItems}
+                    hideZeroStock={false}
                     trailing={(
                       <button
                         type="button"
@@ -1340,6 +1114,8 @@ export default function PurchaseFormPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
                       else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); addBtnRef.current?.focus(); }
+                      else if (e.key === "ArrowLeft") { e.preventDefault(); addBtnRef.current?.focus(); }
+                      else if (e.key === "ArrowRight") { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
                     }}
                     options={(selectedItem ? getFilteredWarehouses(selectedItem.id, staging.warehouseId) : warehouses).map(w => {
                       const dbQty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
@@ -1374,7 +1150,7 @@ export default function PurchaseFormPage() {
 
                 {/* Add button */}
                 <button ref={addBtnRef} onClick={addLine}
-                  onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
+                  onKeyDown={(e) => handleKeyDown(e, { nextRef: itemInputRef, prevRef: warehouseTableRef, onEnter: addLine })}
                   disabled={!selectedItem}
                   className="entry-add-btn">
                   <Plus className="h-4 w-4" /> إضافة
@@ -1385,7 +1161,7 @@ export default function PurchaseFormPage() {
 
           {/* Column visibility settings */}
           <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
-            <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
+            <div className="flex items-center gap-1"><div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div><ShortcutKbd id="grid.editLast" /></div>
             <div ref={colSettingsRef} className="relative">
               <button onClick={() => setColSettingsOpen(p => !p)}
                 className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
@@ -1414,6 +1190,7 @@ export default function PurchaseFormPage() {
           </div>
 
           {/* Lines DataGrid */}
+          <div ref={gridNavRef} className="contents">
           <DataGrid
             data-help="main-table"
             data={lines}
@@ -1454,6 +1231,7 @@ export default function PurchaseFormPage() {
                     <input
                       type="number" min="1" step={isInt ? "1" : "any"}
                       value={l.quantity} disabled={isLocked}
+                      data-grid-cell data-row={i} data-col="quantity"
                       onChange={(e) => {
                         const v = isInt ? Math.max(1, Math.round(Number(e.target.value) || 1)) : Math.max(0.001, Number(e.target.value) || 0.001);
                         updateLineField(i, "quantity", v);
@@ -1472,7 +1250,7 @@ export default function PurchaseFormPage() {
                   const costChanged = Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0 && Number(l.original_unit_cost) > 0;
                   return (
                     <div className="relative w-full h-full flex flex-col">
-                      <input type="number" step="any" value={l.unit_cost} disabled={isLocked} onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
+                      <input type="number" step="any" value={l.unit_cost} disabled={isLocked} data-grid-cell data-row={i} data-col="unit_cost" onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
                         className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
                       {costChanged && (
                         <span className="text-[9px] text-center leading-none pb-0.5">
@@ -1497,7 +1275,7 @@ export default function PurchaseFormPage() {
                   const belowMargin = marginPct != null && marginPct < minMargin;
                   return (
                     <div className="relative w-full h-full flex flex-col">
-                      <input type="number" step="any" value={l.selling_price} disabled={isLocked} onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
+                      <input type="number" step="any" value={l.selling_price} disabled={isLocked} data-grid-cell data-row={i} data-col="selling_price" onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
                         className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${belowMargin ? "bg-rose-50 text-rose-800" : changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50"}`} />
                       {changed && !belowMargin && <span title={`السعر الحالي: ${l.original_sale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
                       {belowMargin && <span className="text-[9px] font-black text-rose-500 text-center leading-none pb-0.5">هامش {marginPct.toFixed(0)}%</span>}
@@ -1619,6 +1397,7 @@ export default function PurchaseFormPage() {
                 render: (_, i) => !isLocked && <button onClick={() => removeLine(i)} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors focus:outline-none"><X className="h-4 w-4" /></button> },
             ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
           />
+          </div>
 
           {priceChangedLines.length > 0 && !isLocked && (
             <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 text-[11px] text-amber-700 font-bold shrink-0 mt-2 border border-amber-200 rounded-md">
@@ -1632,70 +1411,173 @@ export default function PurchaseFormPage() {
         </div>
 
         {/* Right Sidebar */}
-        <aside className="w-[290px] shrink-0 flex flex-col gap-3 overflow-y-auto">
-          {/* Supplier card */}
-          {supplier ? (
-            <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المورد</h3>
+        <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "right")} panelSide="right" />
+        <aside className={`shrink-0 flex flex-col gap-3 overflow-y-auto p-3 ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth, background: "var(--bg-sidebar)" }}>
+          {/* Supplier section — search + details + balance all in one card */}
+          <div className="relative z-20 rounded-md border border-slate-300 bg-white shadow-sm shrink-0">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100 rounded-t-md">
+              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                <Building2 className="h-3 w-3" /> المورد
+              </h3>
+              {supplier && (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setSupplierInfoOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-orange-500 hover:text-orange-700 transition-colors"><ExternalLink className="h-3 w-3" /> بيانات المورد</button>
-                  <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700"><ExternalLink className="h-3 w-3" /> السجل</Link>
+                  <button onClick={() => setSupplierInfoOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-orange-500 hover:text-orange-700 transition-colors">
+                    <ExternalLink className="h-3 w-3" /> بيانات
+                  </button>
+                  <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700">
+                    <ExternalLink className="h-3 w-3" /> السجل
+                  </Link>
                 </div>
+              )}
+            </div>
+
+            {/* Search input — always visible */}
+            <div className="p-3 border-b border-slate-100" data-help="supplier-select">
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    ref={supplierInputRef}
+                    type="text"
+                    value={supplierQuery}
+                    onChange={(e) => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); setSupplier(null); }}
+                    onFocus={() => !isLocked && setSupplierLookupOpen(true)}
+                    onBlur={() => setTimeout(() => setSupplierLookupOpen(false), 200)}
+                    placeholder={supplier ? supplier.name : "ابحث عن مورد..."}
+                    disabled={isLocked}
+                    style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
+                    className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold outline-none focus:border-[var(--primary)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                  {supplierLookupOpen && !isLocked && (
+                    <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
+                  )}
+                </div>
+                <button onClick={() => setSupplierModalOpen(true)}
+                  disabled={isLocked}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-black">{supplier.name[0]}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-slate-800 truncate">{supplier.name}</p>
-                  {supplier.phone && <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5"><Phone className="h-3 w-3" /> {supplier.phone}</p>}
-                  {(() => {
-                    const isSameEditSupplier = isEditMode && supplier?.id === editOriginalSupplierId;
-                    const dispBal = Number(supplier.opening_balance || 0) - (isSameEditSupplier ? editDebtRemaining : 0);
-                    const isCreditMode = paymentMode === "credit" || paymentMode === "future_due";
-                    const isMultiMode = paymentMode === "multi";
-                    const balanceDelta = isCreditMode ? totals.total : (isMultiMode ? multiCreditAmount : 0);
-                    const newBal = dispBal + balanceDelta;
-                    const hasLines = lines.length > 0;
-                    const balChange = balanceDelta;
-                    return (
-                      <>
-                        <div className="mt-2 flex items-center justify-between rounded-sm bg-slate-50 border border-slate-200 px-3 py-1.5">
-                          <span className="text-[11px] font-bold text-slate-500">{isEditMode ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
-                          <span className={`text-sm number-fmt-primary ${dispBal > 0 ? "text-rose-600" : "text-slate-800"}`}>{dispBal.toFixed(2)}</span>
+              {(paymentMode === "credit" || paymentMode === "future_due") && !supplier && !isLocked && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600">
+                  <AlertTriangle className="h-3 w-3" /> مطلوب لطريقة الدفع المختارة
+                </p>
+              )}
+            </div>
+
+            {/* Supplier info + balance (when supplier selected) */}
+            {supplier ? (
+              <div className="p-3 space-y-2.5">
+                {/* Identity: avatar + name + code */}
+                <div className="flex items-start gap-2.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white text-base font-black">{supplier.name?.[0]}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-slate-800 truncate">{supplier.name}</p>
+                    {supplier.code && (
+                      <span className="inline-block mt-0.5 text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{supplier.code}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact info: phones + addresses */}
+                {(() => {
+                  const phones = [supplier.phone, ...parseJsonArr(supplier.additional_phones)].filter(Boolean);
+                  const addresses = parseJsonArr(supplier.addresses);
+                  if (phones.length === 0 && addresses.length === 0) return null;
+                  return (
+                    <div className="space-y-1 rounded-md bg-slate-50/70 border border-slate-100 px-3 py-2">
+                      {phones.map((p, i) => (
+                        <div key={`ph${i}`} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+                          <Phone className={`h-3 w-3 shrink-0 ${i === 0 ? "text-orange-400" : "text-slate-300"}`} />
+                          <span dir="ltr" className="font-mono">{p}</span>
                         </div>
-                        {hasLines && balChange !== 0 && (
-                          <div className="mt-1 flex items-center justify-between rounded-sm bg-indigo-50 border border-indigo-200 px-3 py-1.5">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[11px] font-bold text-indigo-600">التغير</span>
-                              <span className={`text-[9px] number-fmt px-1 py-0.5 rounded-sm ${balChange > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                {balChange > 0 ? `↑` : `↓`}
-                              </span>
-                            </div>
-                            <span className={`text-2sm number-fmt ${balChange > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                              {balChange > 0 ? "+" : ""}{balChange.toFixed(2)}
+                      ))}
+                      {addresses.map((a, i) => (
+                        <div key={`ad${i}`} className="flex items-start gap-1.5 text-[11px] font-medium text-slate-600">
+                          <MapPin className="h-3 w-3 shrink-0 mt-0.5 text-slate-400" />
+                          <span className="leading-snug">{a}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Balance: standing status + invoice impact */}
+                {(() => {
+                  const isSameEditSupplier = isEditMode && supplier?.id === editOriginalSupplierId;
+                  const dispBal = Number(supplier.opening_balance || 0) - (isSameEditSupplier ? editDebtRemaining : 0);
+                  const isCreditMode = paymentMode === "credit" || paymentMode === "future_due";
+                  const isMultiMode = paymentMode === "multi";
+                  const balanceDelta = isCreditMode ? totals.total : (isMultiMode ? multiCreditAmount : 0);
+                  const newBal = dispBal + balanceDelta;
+                  const hasLines = lines.length > 0;
+                  const balChange = balanceDelta;
+                  return (
+                    <>
+                      <div className={`flex items-center justify-between rounded-md px-3 py-2 border ${dispBal > 0 ? "bg-rose-50 border-rose-200" : dispBal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-wide ${dispBal > 0 ? "text-rose-500" : dispBal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                          {isEditMode ? "الرصيد قبل التعديل" : dispBal > 0 ? "عليه رصيد" : dispBal < 0 ? "له رصيد" : "مسوّى"}
+                        </span>
+                        <span className={`text-sm number-fmt-primary ${dispBal > 0 ? "text-rose-600" : dispBal < 0 ? "text-emerald-600" : "text-slate-400"}`}>{Math.abs(dispBal).toFixed(2)}</span>
+                      </div>
+                      {hasLines && balChange !== 0 && (
+                        <div className="flex items-center justify-between rounded-sm bg-indigo-50 border border-indigo-200 px-3 py-1.5">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] font-bold text-indigo-600">التغير</span>
+                            <span className={`text-[9px] number-fmt px-1 py-0.5 rounded-sm ${balChange > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                              {balChange > 0 ? "↑" : "↓"}
                             </span>
                           </div>
-                        )}
-                        {hasLines && (
-                          <div className="mt-1.5 flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5">
-                            <span className="text-[11px] font-bold text-amber-600">الرصيد بعد الفاتورة</span>
-                            <span className={`text-sm number-fmt-primary ${newBal > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                              {newBal.toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
+                          <span className={`text-2sm number-fmt ${balChange > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                            {balChange > 0 ? "+" : ""}{balChange.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {hasLines && (
+                        <div className="flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-3 py-1.5">
+                          <span className="text-[11px] font-bold text-amber-600">الرصيد بعد الفاتورة</span>
+                          <span className={`text-sm number-fmt-primary ${newBal > 0 ? "text-rose-600" : "text-emerald-600"}`}>{newBal.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
+            ) : (
+              <div className="px-4 py-5 text-center">
+                <Building2 className="h-7 w-7 mx-auto text-slate-200 mb-1.5" />
+                <p className="text-[11px] font-medium text-slate-400">
+                  {(paymentMode === "credit" || paymentMode === "future_due")
+                    ? "الرجاء اختيار مورد"
+                    : "اختياري للدفع النقدي"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Notes section */}
+          <div className="rounded-md border border-slate-300 bg-white shadow-sm overflow-hidden shrink-0">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                <FileText className="h-3 w-3" /> ملاحظات
+              </h3>
+              {Boolean(purchaseNotes && purchaseNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
             </div>
-          ) : (
-            <div className="rounded-md border border-dashed border-slate-300 bg-white p-4 text-center">
-              <Building2 className="h-8 w-8 mx-auto text-slate-200 mb-2" />
-              <p className="text-[11px] font-bold text-slate-400">المورد اختياري للدفع النقدي<br />مطلوب للدفع الآجل والبنكي</p>
+            <div className="p-3">
+              <textarea
+                ref={notesRef}
+                value={purchaseNotes}
+                onChange={(e) => setPurchaseNotes(e.target.value)}
+                placeholder="ملاحظة اختيارية تُحفظ مع الفاتورة…"
+                rows={3}
+                disabled={isLocked}
+                style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
+                className="w-full resize-none border border-slate-300 rounded-sm py-2 px-3 text-2sm font-medium outline-none focus:border-[var(--primary)] leading-relaxed placeholder:text-slate-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); itemInputRef.current?.focus(); } }}
+              />
             </div>
-          )}
+          </div>
 
           {/* Invoice Summary */}
           <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
@@ -1726,7 +1608,7 @@ export default function PurchaseFormPage() {
                 <span className="text-2sm number-fmt text-blue-600">{increase > 0 ? `+${increase.toFixed(2)}` : "0"}</span>
               </div>
               <div className="h-px bg-slate-100" />
-              <div className="mt-3 rounded-sm bg-emerald-800 p-4 text-center text-white">
+              <div className="mt-3 rounded-sm bg-[var(--primary-700)] p-4 text-center text-white">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                 <div className="text-[26px] number-fmt-primary tracking-tighter">
                   {formatNumber(totals.total)}
@@ -1814,9 +1696,9 @@ export default function PurchaseFormPage() {
               )}
               {paymentMode === "multi" && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3 rounded-sm border border-emerald-200 bg-emerald-50 p-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-emerald-600 text-white"><Layers className="h-4 w-4" /></div>
-                    <span className="text-2sm font-black text-emerald-700">متعدد</span>
+                  <div className="flex items-center gap-3 rounded-sm border border-[var(--primary-100)] bg-[var(--primary-50)] p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[var(--primary)] text-white"><Layers className="h-4 w-4" /></div>
+                    <span className="text-2sm font-black text-[var(--primary-600)]">متعدد</span>
                   </div>
                   {paymentMethods.filter(m => Number(multiAmounts[m.id] || 0) > 0).map(m => (
                     <div key={m.id} className="flex items-center justify-between rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
@@ -1863,13 +1745,13 @@ export default function PurchaseFormPage() {
             </button>
 
             <button onClick={() => handleSelectPayment("multi")}
-              className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "multi" ? "border-emerald-600 bg-emerald-50 shadow-sm" : "border-slate-200 hover:bg-slate-50"}`}>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${paymentMode === "multi" ? "bg-emerald-600" : "bg-slate-200"}`}><Layers className="h-4 w-4" /></div>
+              className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "multi" ? "border-[var(--primary)] bg-[var(--primary-50)] shadow-sm" : "border-slate-200 hover:bg-slate-50"}`}>
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${paymentMode === "multi" ? "bg-[var(--primary)]" : "bg-slate-200"}`}><Layers className="h-4 w-4" /></div>
               <div className="flex-1 flex flex-col text-right">
-                <span className={`text-2sm font-black ${paymentMode === "multi" ? "text-emerald-700" : "text-slate-700"}`}>متعدد (100% مطلوب)</span>
+                <span className={`text-2sm font-black ${paymentMode === "multi" ? "text-[var(--primary-600)]" : "text-slate-700"}`}>متعدد (100% مطلوب)</span>
                 <span className="text-[11px] text-slate-400">توزيع على عدة وسائل دفع</span>
               </div>
-              {paymentMode === "multi" && <div className="h-2 w-2 rounded-full bg-emerald-600 shrink-0" />}
+              {paymentMode === "multi" && <div className="h-2 w-2 rounded-full bg-[var(--primary)] shrink-0" />}
             </button>
 
             {SUPPLIER_METHODS.map(m => {
@@ -1918,7 +1800,7 @@ export default function PurchaseFormPage() {
                     لا توجد وسائل دفع — <Link to="/operations/payment-methods" className="text-slate-600 underline">أضف وسائل دفع</Link>
                   </p>
                 )}
-                <div className={`flex items-center justify-between rounded-sm px-3 py-2 text-2sm font-black ${multiBalanced ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-600 border border-rose-200"}`}>
+                <div className={`flex items-center justify-between rounded-sm px-3 py-2 text-2sm font-black ${multiBalanced ? "bg-[var(--primary-50)] text-[var(--primary-600)] border border-[var(--primary-100)]" : "bg-rose-50 text-rose-600 border border-rose-200"}`}>
                   <span>الموزع:</span>
                   <span className="number-fmt">{formatNumber(multiTotal)}</span>
                 </div>
@@ -1942,7 +1824,7 @@ export default function PurchaseFormPage() {
                 </div>
                 <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
                   <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
-                  <span className={`number-fmt-primary ${supplierBalanceAfter > 0.005 ? "text-rose-600" : "text-emerald-600"}`}>
+                  <span className={`number-fmt-primary ${supplierBalanceAfter > 0.005 ? "text-rose-600" : "text-[var(--primary)]"}`}>
                     {formatMoney(supplierBalanceAfter)}
                   </span>
                 </div>
@@ -1956,14 +1838,15 @@ export default function PurchaseFormPage() {
             <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm flex flex-col gap-2">
               <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
                 <button onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
-                  className="w-full flex items-center justify-center gap-2 rounded-sm bg-emerald-600 px-3 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
+                  className="w-full flex items-center justify-center gap-2 rounded-sm bg-[var(--primary)] px-3 py-3 text-sm font-black text-white hover:bg-[var(--primary-600)] transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
                   {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isAmendMode ? <><Save className="h-4 w-4" /> إصدار تعديل</> : isEditMode ? <><Save className="h-4 w-4" /> حفظ التعديلات</> : <><Save className="h-4 w-4" /> حفظ الفاتورة</>}
+                  {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-white/20 px-1 text-[9px] font-mono text-white" />}
                 </button>
               </PermissionGate>
               <div className="grid grid-cols-3 gap-2">
                 <PermissionGate page="purchases" action="print">
                   <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
-                    className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-slate-50 transition-all disabled:opacity-40">
+                    className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-[var(--primary-100)] hover:bg-slate-50 transition-all disabled:opacity-40">
                     <Printer className="h-3.5 w-3.5" /> طباعة
                   </button>
                 </PermissionGate>
@@ -1974,14 +1857,52 @@ export default function PurchaseFormPage() {
                   </button>
                 </PermissionGate>
                 <button onClick={() => setNewInvoiceModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
+                  className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-[var(--primary-100)] hover:bg-[var(--primary-50)] transition-all">
                   <FilePlus className="h-3.5 w-3.5" /> جديدة
                 </button>
               </div>
             </div>
           )}
         </aside>
-      </main>
+      </div>
+
+      <PurchaseFormBottomBar
+        forceShow={panelEffectiveCollapsed}
+        lines={lines}
+        totals={totals}
+        discount={discount}
+        increase={increase}
+        onDiscountChange={setDiscount}
+        onIncreaseChange={setIncrease}
+        paymentMode={paymentMode}
+        onPaymentModeChange={handleSelectPayment}
+        bankRef={bankRef}
+        onBankRefChange={setBankRef}
+        paymentMethods={paymentMethods}
+        multiAmounts={multiAmounts}
+        onMultiAmountsChange={setMultiAmounts}
+        isLocked={locked}
+        isSaving={isSaving}
+        onPrint={() => setPrintPreview(true)}
+        onSave={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }}
+        isEditMode={isEditMode}
+        isAmendMode={isAmendMode}
+        isEditDirty={isEditDirty}
+        canSave={lines.length > 0 && !(isEditMode && !isAmendMode && !isEditDirty)}
+        supplier={supplier}
+        supplierQuery={supplierQuery}
+        onSupplierQueryChange={(val) => { setSupplierQuery(val); setSupplierLookupOpen(true); setSupplier(null); }}
+        filteredSuppliers={filteredSuppliers}
+        supplierLookupOpen={supplierLookupOpen}
+        onSupplierLookupToggle={setSupplierLookupOpen}
+        activeSupplierIndex={activeSupplierIndex}
+        onPickSupplier={handlePickSupplier}
+        onAddSupplier={() => setSupplierModalOpen(true)}
+        multiTotal={multiTotal}
+        multiBalanced={multiBalanced}
+        creditEffect={creditEffect}
+        supplierBalanceAfter={supplierBalanceAfter}
+      />
 
       <AddSupplierModal
         open={supplierModalOpen}
@@ -2002,7 +1923,7 @@ export default function PurchaseFormPage() {
       />
 
       {/* Image Preview Modal */}
-      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف">
+      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" showDetach={false}>
         <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-lg border border-slate-100">
           {imagePreviewUrl ? (
             <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[60vh] object-contain rounded-md shadow-sm border border-slate-200 bg-white" />
@@ -2016,7 +1937,7 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* Price Update Report Modal */}
-      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار" maxWidth={priceReportWholesaleUsed ? "max-w-4xl" : "max-w-3xl"}>
+      <Modal open={priceReportOpen} onClose={() => setPriceReportOpen(false)} title="تقرير تحديث الأسعار" maxWidth={priceReportWholesaleUsed ? "max-w-4xl" : "max-w-3xl"} showDetach={false}>
         <div className="p-4 space-y-4 animate-modal-enter">
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -2088,7 +2009,7 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* Save Confirmation Modal */}
-      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل الفاتورة" : "تأكيد حفظ الفاتورة"}>
+      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل الفاتورة" : "تأكيد حفظ الفاتورة"} showDetach={false}>
         <div className="p-4 space-y-4 animate-modal-enter">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
@@ -2115,7 +2036,7 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* Edit Unlock Warning Modal */}
-      <Modal open={editWarnOpen} onClose={() => setEditWarnOpen(false)} title="تحذير: تعديل فاتورة محفوظة">
+      <Modal open={editWarnOpen} onClose={() => setEditWarnOpen(false)} title="تحذير: تعديل فاتورة محفوظة" showDetach={false}>
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
@@ -2138,7 +2059,7 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} title={isEditMode ? "حذف الفاتورة" : "مسح الفاتورة"}>
+      <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} title={isEditMode ? "حذف الفاتورة" : "مسح الفاتورة"} showDetach={false}>
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
@@ -2157,7 +2078,7 @@ export default function PurchaseFormPage() {
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <button onClick={() => setDeleteConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">تراجع</button>
-            <button onClick={doDelete} className="rounded-sm bg-rose-600 px-5 py-2 text-sm font-black text-white hover:bg-rose-700">
+            <button onClick={doDelete} className="rounded-sm btn-danger px-5 py-2 text-sm font-black">
               {isEditMode ? "نعم، احذف الفاتورة" : "نعم، امسح"}
             </button>
           </div>
@@ -2165,7 +2086,7 @@ export default function PurchaseFormPage() {
       </Modal>
 
       {/* New Invoice Warning Modal */}
-      <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة">
+      <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
@@ -2239,231 +2160,7 @@ export default function PurchaseFormPage() {
 
 
 
-      {/* Today's Purchases Modal */}
-      <Modal open={todayPurchOpen} onClose={() => setTodayPurchOpen(false)} title="مشتريات اليوم" maxWidth="max-w-5xl">
-        <div className="flex flex-col gap-4">
-          {/* Search bars row */}
-          <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-sm border border-emerald-200">
-            <span className="text-[11px] font-black text-emerald-700 shrink-0">بحث برقم المستند:</span>
-            <input
-              value={todayPurchDocSearch}
-              onChange={e => setTodayPurchDocSearch(e.target.value)}
-              placeholder="PUR-0001..."
-              className="flex-1 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-            />
-            <span className="text-[11px] font-black text-emerald-700 shrink-0">بحث صنف:</span>
-            <div className="relative flex-1">
-              <input
-                value={todayPurchItemSearch}
-                onChange={e => { setTodayPurchItemSearch(e.target.value); setTodayPurchItemLookupOpen(true); }}
-                onFocus={() => setTodayPurchItemLookupOpen(true)}
-                onBlur={() => setTimeout(() => setTodayPurchItemLookupOpen(false), 150)}
-                onKeyDown={e => {
-                  if (e.key === "ArrowDown") { e.preventDefault(); setTodayPurchActiveItemIndex(i => Math.min(i + 1, todayPurchFilteredItems.length - 1)); setTodayPurchItemLookupOpen(true); }
-                  else if (e.key === "ArrowUp") { e.preventDefault(); setTodayPurchActiveItemIndex(i => Math.max(i - 1, 0)); }
-                  else if (e.key === "Enter") { e.preventDefault(); if (todayPurchFilteredItems.length > 0 && todayPurchActiveItemIndex >= 0) { const picked = todayPurchFilteredItems[todayPurchActiveItemIndex]; setTodayPurchItemSearch(picked.code || picked.barcode || picked.name); setTodayPurchItemLookupOpen(false); } }
-                  else if (e.key === "Escape") { setTodayPurchItemLookupOpen(false); }
-                }}
-                placeholder="اسم الصنف أو الكود..."
-                className="w-full rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-              />
-              {todayPurchItemLookupOpen && (
-                <SearchDropdown items={todayPurchFilteredItems} onPick={(item) => { setTodayPurchItemSearch(item.code || item.barcode || item.name); setTodayPurchItemLookupOpen(false); }}
-                  activeIndex={todayPurchActiveItemIndex} query={todayPurchItemSearch} />
-              )}
-            </div>
-            <button onClick={() => { setTodayPurchDocSearch(""); setTodayPurchItemSearch(""); setTodayPurchItemLookupOpen(false); }} className="flex items-center gap-1.5 rounded-sm bg-emerald-200 px-3 py-1.5 text-[11px] font-black text-emerald-800 hover:bg-emerald-300">
-              مسح
-            </button>
-          </div>
-          {/* Filters */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">من</label>
-              <input type="date" value={todayPurchDateFrom} onChange={(e) => setTodayPurchDateFrom(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">إلى</label>
-              <input type="date" value={todayPurchDateTo} onChange={(e) => setTodayPurchDateTo(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">ترتيب</label>
-              <select value={todayPurchSort} onChange={(e) => setTodayPurchSort(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500">
-                <option value="created_at">الوقت</option>
-                <option value="total">الإجمالي</option>
-                <option value="doc_no">رقم المستند</option>
-                <option value="payment_method">طريقة الدفع</option>
-              </select>
-              <button onClick={() => setTodayPurchDir((d) => d === "asc" ? "desc" : "asc")}
-                className="flex h-8 w-8 items-center justify-center rounded-sm border border-emerald-200 bg-white hover:bg-emerald-100 transition-colors">
-                <ArrowUpDown className="h-3.5 w-3.5 text-emerald-600" />
-              </button>
-            </div>
-            {todayPurchUsersList.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">المستخدم</label>
-                <select value={todayPurchUserId} onChange={(e) => setTodayPurchUserId(e.target.value)}
-                  className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500">
-                  <option value="">الكل</option>
-                  {todayPurchUsersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
-                </select>
-              </div>
-            )}
-            {/* Supplier filter */}
-            <div className="relative flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">المورد</label>
-              <input
-                type="text"
-                value={todayPurchSupplierQuery}
-                onChange={(e) => { setTodayPurchSupplierQuery(e.target.value); setTodayPurchSupplierLookupOpen(true); setTodayPurchActiveSupplierIndex(0); if (!e.target.value) { setTodayPurchSupplierId(""); } }}
-                onFocus={() => setTodayPurchSupplierLookupOpen(true)}
-                onBlur={() => setTimeout(() => setTodayPurchSupplierLookupOpen(false), 200)}
-                onKeyDown={(e) => {
-                  if (!todayPurchSupplierLookupOpen && e.key === "ArrowDown") { setTodayPurchSupplierLookupOpen(true); return; }
-                  if (todayPurchSupplierLookupOpen && todayPurchFilteredSuppliers.length && e.key === "ArrowDown") { e.preventDefault(); setTodayPurchActiveSupplierIndex((v) => Math.min(v + 1, todayPurchFilteredSuppliers.length - 1)); return; }
-                  if (todayPurchSupplierLookupOpen && todayPurchFilteredSuppliers.length && e.key === "ArrowUp") { e.preventDefault(); setTodayPurchActiveSupplierIndex((v) => Math.max(v - 1, 0)); return; }
-                  if (todayPurchSupplierLookupOpen && todayPurchFilteredSuppliers.length && e.key === "Enter") {
-                    e.preventDefault();
-                    const next = todayPurchFilteredSuppliers[todayPurchActiveSupplierIndex] || todayPurchFilteredSuppliers[0];
-                    setTodayPurchSupplierQuery(next.name);
-                    setTodayPurchSupplierId(next.id);
-                    setTodayPurchSupplierLookupOpen(false);
-                    return;
-                  }
-                  if (e.key === "Escape") { setTodayPurchSupplierLookupOpen(false); }
-                }}
-                placeholder="كل الموردين..."
-                className="w-[140px] rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-              />
-              {todayPurchSupplierQuery && (
-                <button onClick={() => { setTodayPurchSupplierQuery(""); setTodayPurchSupplierId(""); }} className="text-slate-400 hover:text-slate-600">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-              {todayPurchSupplierLookupOpen && (
-                <SearchDropdown
-                  items={todayPurchFilteredSuppliers}
-                  onPick={(s) => { setTodayPurchSupplierQuery(s.name); setTodayPurchSupplierId(s.id); setTodayPurchSupplierLookupOpen(false); }}
-                  activeIndex={todayPurchActiveSupplierIndex}
-                  query={todayPurchSupplierQuery}
-                  emptyLabel="لا توجد نتائج"
-                />
-              )}
-            </div>
-            <button onClick={loadTodayPurchases}
-              className="flex items-center gap-1.5 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
-              <RefreshCw className={`h-3.5 w-3.5 ${todayPurchLoading ? "animate-spin" : ""}`} /> تحديث
-            </button>
-          </div>
-
-          {/* Summary strip */}
-          <div className="flex items-center gap-4 rounded-sm bg-emerald-800 px-4 py-3">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">عدد الفواتير</span>
-              <span className="number-fmt-primary text-[20px] text-white leading-none">{todayPurchSummary.count}</span>
-            </div>
-            <div className="h-8 w-px bg-emerald-700" />
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">إجمالي المشتريات</span>
-              <span className="number-fmt-primary text-[20px] text-emerald-300 leading-none">{formatMoney(todayPurchSummary.total)}</span>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="max-h-[420px] overflow-auto rounded-sm border border-emerald-200">
-            <DataGrid
-              data={todayPurchLoading ? [] : (todayPurchItemSearch.trim() ? todayPurchRawItems : todayPurchases)}
-              rowKey={todayPurchItemSearch.trim() ? (r, i) => `${r.id || r.item_id}-${i}` : "id"}
-              emptyMessage={todayPurchLoading ? "جاري التحميل..." : "لا توجد نتائج في هذه الفترة"}
-              className="border-0"
-              onRowClick={r => {
-                if (todayPurchItemSearch.trim()) {
-                  if (r.purchase_id) { setTodayPurchPreviewInvoice({ id: r.purchase_id, purchase_id: r.purchase_id, doc_no: r.doc_no, supplier_name: r.supplier_name, total: Number(r.unit_cost) * Number(r.quantity), created_at: r.created_at }); setTodayPurchPreviewOpen(true); }
-                } else {
-                  setTodayPurchPreviewInvoice(r); setTodayPurchPreviewOpen(true);
-                }
-              }}
-              columns={todayPurchItemSearch.trim() ? [
-                { id: "item_code", header: "كود الصنف", width: 110, cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.item_code || "—" },
-                { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
-                { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
-                { id: "supplier_name", header: "المورد", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.supplier_name || "—" },
-                { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
-                { id: "unit_cost", header: "التكلفة", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_cost) },
-                { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_cost) * Number(r.quantity))) },
-                { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
-                { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
-                  <div className="flex gap-1">
-                    <button onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${r.purchase_id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح الفاتورة"><Pencil className="h-3.5 w-3.5" /></button>
-                  </div>
-                )}
-              ] : [
-                { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.doc_no },
-                { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
-                { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
-                { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (inv) => formatMoney(inv.total) },
-                { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
-                  const PSTYLE = { cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" }, bank_transfer: { label: "حوالة بنكية", cls: "bg-sky-50 text-sky-700 border-sky-200" }, credit: { label: "آجل", cls: "bg-amber-50 text-amber-700 border-amber-200" }, future_due: { label: "استحقاق لاحق", cls: "bg-orange-50 text-orange-700 border-orange-200" }, multi: { label: "متعدد", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" } };
-                  if (inv.payment_splits) {
-                    const splits = inv.payment_splits.split("|||").filter(Boolean).map(s => { const [m, a] = s.split(":"); return { method: (m || "").trim(), amount: Number(a || 0) }; }).filter(s => s.amount > 0);
-                    if (splits.length) return (
-                      <div className="flex flex-col gap-0.5">
-                        {splits.map((s, i) => { const info = PSTYLE[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
-                          <div key={i} className="flex items-center gap-1">
-                            <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                            <span className="text-[11px] number-fmt text-slate-500">{formatMoney(s.amount)}</span>
-                          </div>
-                        ); })}
-                      </div>
-                    );
-                  }
-                  const info = PSTYLE[inv.payment_method] || { label: inv.payment_method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" };
-                  return (
-                    <div className="flex flex-col gap-0.5">
-                      <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                      <span className="text-[11px] number-fmt text-slate-500">{formatMoney(inv.total)}</span>
-                    </div>
-                  );
-                }},
-                { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
-                { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
-                { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (inv) => (
-                  <div className="flex gap-1">
-                    <button onClick={() => navigate(`/purchases/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح الفاتورة"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => { setTodayPurchVoidTarget(inv); setTodayPurchVoidOpen(true); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                )}
-              ]}
-            />
-          </div>
-        </div>
-      </Modal>
-
-      {/* Purchase Preview Modal */}
-      <Modal open={todayPurchPreviewOpen} onClose={() => setTodayPurchPreviewOpen(false)} title="معاينة الفاتورة" maxWidth="max-w-4xl">
-        {todayPurchPreviewInvoice ? <PurchasePreviewModal purchase={todayPurchPreviewInvoice} onClose={() => setTodayPurchPreviewOpen(false)} /> : null}
-      </Modal>
-
-      {/* Void Confirmation */}
-      <ConfirmDialog
-        open={todayPurchVoidOpen}
-        title={`إلغاء الفاتورة ${todayPurchVoidTarget?.doc_no || ""}`}
-        message={`إلغاء الفاتورة ${todayPurchVoidTarget?.doc_no || ""}؟ سيتم عكس التأثير على المخزون والأرصدة.`}
-        onConfirm={async () => {
-          if (!todayPurchVoidTarget) return;
-          try {
-            await api.post(`/api/purchases/${todayPurchVoidTarget.id}/void`);
-            toast.success("تم إلغاء الفاتورة");
-            setTodayPurchVoidOpen(false);
-            setTodayPurchVoidTarget(null);
-            loadTodayPurchases();
-          } catch (e) { toast.error(e.response?.data?.message || "خطأ"); setTodayPurchVoidOpen(false); }
-        }}
-        onCancel={() => { setTodayPurchVoidOpen(false); setTodayPurchVoidTarget(null); }}
-      />
+      <TodayPurchasesModal open={todayPurchOpen} onClose={() => setTodayPurchOpen(false)} />
 
       <PrintPreviewModal
         open={printPreview}

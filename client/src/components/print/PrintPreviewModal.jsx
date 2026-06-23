@@ -11,6 +11,7 @@ import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/Prin
 import PrintDesigner from "./designer/PrintDesigner";
 import { familyForSize } from "./layout/layoutModel";
 import { formatNumber } from "../../utils/currency";
+import { useDetach } from "../../hooks/useDetach";
 
 const ALL_TEMPLATES = [
   { id: "58mm", label: "58mm", sub: "رول صغير",   icon: Receipt       },
@@ -18,6 +19,18 @@ const ALL_TEMPLATES = [
   { id: "A5",   label: "A5",   sub: "نصف صفحة",   icon: FileText      },
   { id: "A4",   label: "A4",   sub: "ورقة كاملة", icon: FileBarChart2 },
 ];
+
+const INVOICE_COLUMNS = [
+  { key: "code",  label: "الكود",       type: "code",  printPriority: "useful"   },
+  { key: "name",  label: "المنتج",      type: "text",  printPriority: "essential"},
+  { key: "unit",  label: "الوحدة",      type: "text",  printPriority: "optional" },
+  { key: "qty",   label: "الكمية",      type: "qty",   printPriority: "essential"},
+  { key: "price", label: "السعر",       type: "money", printPriority: "essential"},
+  { key: "discount", label: "الخصم",    type: "money", printPriority: "optional" },
+  { key: "total", label: "الإجمالي",    type: "money", printPriority: "essential"},
+];
+
+const MAX_COLUMNS = { "58mm": 3, "80mm": 4, "A5": 5, "A4": 7 };
 
 export default function PrintPreviewModal({
   open,
@@ -37,6 +50,9 @@ export default function PrintPreviewModal({
   onExportAllColumns,
   children,
 }) {
+  const { handleDetach } = useDetach("print-preview", {
+    onClose, getState: () => ({ invoice, settings: globalSettings, operationLabel, docType, reportColumns, totalRows }), actions: { confirmPrint: () => onConfirmPrint?.(), saveOnly: () => onSaveOnly?.(), exportAllColumns: () => onExportAllColumns?.() },
+  });
   const [template, setTemplate] = useState(null);
   const [viewZoom, setViewZoom] = useState(0.55);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -46,6 +62,8 @@ export default function PrintPreviewModal({
   const [printPage, setPrintPage] = useState(1);
   const [totalPrintPages, setTotalPrintPages] = useState(1);
   const [columnWeights, setColumnWeights] = useState({});
+  const [invoicePrintKeys, setInvoicePrintKeys] = useState([]);
+  const [editingColIdx, setEditingColIdx] = useState(null);
   const [designerOpen, setDesignerOpen] = useState(false);
 
   const saveDesigner = async (next) => {
@@ -58,6 +76,27 @@ export default function PrintPreviewModal({
   const viewportRef = useRef(null);
   const printContentRef = useRef(null);
   const printAllRef = useRef(null);
+  const printBtnRef = useRef(null);
+  const saveOnlyBtnRef = useRef(null);
+
+  // When the modal opens in creation mode (two-choice), focus the primary "save & print"
+  // button so the user can confirm with Enter or move to "save without print" with arrows.
+  useEffect(() => {
+    if (open && onSaveOnly) {
+      const t = setTimeout(() => printBtnRef.current?.focus(), 120);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [open, onSaveOnly]);
+
+  // Up/Down (and Left/Right) move focus between the two action buttons.
+  const handleActionKeyDown = (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+      e.preventDefault(); saveOnlyBtnRef.current?.focus();
+    } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+      e.preventDefault(); printBtnRef.current?.focus();
+    }
+  };
 
   const cfg = docType ? (DOC_PAPER_CONFIG[docType] || null) : null;
   const validTemplates = cfg ? ALL_TEMPLATES.filter(t => cfg.sizes.includes(t.id)) : ALL_TEMPLATES;
@@ -138,6 +177,38 @@ export default function PrintPreviewModal({
     });
   }, [open, isReportDoc, reportColumns, smartKeys]);
 
+  const invoiceMax = MAX_COLUMNS[activeTemplate] || 5;
+  const smartInvoiceKeys = useCallback(() => {
+    const priority = ["essential", "useful", "optional"];
+    const selected = [];
+    for (const p of priority) {
+      for (const col of INVOICE_COLUMNS) {
+        if (col.printPriority === p && !selected.includes(col.key)) {
+          if (selected.length < invoiceMax) selected.push(col.key);
+        }
+      }
+    }
+    return selected.length ? selected : INVOICE_COLUMNS.slice(0, invoiceMax).map(c => c.key);
+  }, [invoiceMax]);
+
+  useEffect(() => {
+    if (!open || isReportDoc || !docType) return;
+    setInvoicePrintKeys((current) => {
+      const valid = new Set(INVOICE_COLUMNS.map(c => c.key));
+      const next = current.filter(k => valid.has(k));
+      return next.length ? next : smartInvoiceKeys();
+    });
+  }, [open, isReportDoc, docType, smartInvoiceKeys]);
+
+  const moveToIdx = useCallback((key, target, keys, setter) => {
+    const currentIdx = keys.indexOf(key);
+    if (currentIdx === -1 || target < 0 || target >= keys.length || target === currentIdx) return;
+    const next = [...keys];
+    next.splice(currentIdx, 1);
+    next.splice(target, 0, key);
+    setter(next);
+  }, []);
+
   const hiddenReportColumns = isReportDoc
     ? reportColumns.filter((c) => !reportPrintKeys.includes(c.key || c.id))
     : [];
@@ -161,6 +232,9 @@ export default function PrintPreviewModal({
       report_total_rows: totalRows,
       template: activeTemplate,
       columnWeights: Object.keys(columnWeights).length > 0 ? columnWeights : undefined,
+    } : {}),
+    ...(!isReportDoc && invoicePrintKeys.length > 0 ? {
+      invoice_print_column_keys: invoicePrintKeys,
     } : {}),
   };
 
@@ -282,7 +356,7 @@ export default function PrintPreviewModal({
         <div className="w-full">{renderDoc()}</div>
       </div>
 
-      <Modal open={open} onClose={onClose} title="إعدادات ومعاينة الطباعة" maxWidth="max-w-6xl">
+      <Modal open={open} onClose={onClose} onDetach={handleDetach} title="إعدادات ومعاينة الطباعة" maxWidth="max-w-6xl">
         <div
           className="flex flex-col gap-4 mt-2"
           style={{ height: "calc(100vh - 140px)", minHeight: "450px" }}
@@ -368,18 +442,20 @@ export default function PrintPreviewModal({
             <div className="w-[240px] flex flex-col gap-3 shrink-0">
               {/* Action buttons: 2-choice in creation mode, single in view-only mode */}
               {onSaveOnly ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2" onKeyDown={handleActionKeyDown}>
                   <button
+                    ref={printBtnRef}
                     onClick={handlePrint}
                     disabled={isSaving}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-[12px] text-sm font-black transition-all shadow-[0_4px_12px_rgba(5,150,105,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-[12px] text-sm font-black transition-all shadow-[0_4px_12px_rgba(5,150,105,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:ring-4 focus:ring-emerald-400/50 focus:ring-offset-2"
                   >
                     <Printer size={16} /> حفظ وطباعة
                   </button>
                   <button
+                    ref={saveOnlyBtnRef}
                     onClick={() => { onSaveOnly(); onClose(); }}
                     disabled={isSaving}
-                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-[12px] text-sm font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-[12px] text-sm font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:ring-4 focus:ring-slate-400/50 focus:ring-offset-2"
                   >
                     {isSaving ? "جاري الحفظ..." : "حفظ بدون طباعة"}
                   </button>
@@ -424,6 +500,96 @@ export default function PrintPreviewModal({
                   })}
                 </div>
               </div>
+
+              {/* Column controls for invoice docs */}
+              {!isReportDoc && docType && (
+                <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأعمدة</h4>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] font-bold text-slate-400">{invoicePrintKeys.length}/{invoiceMax}</span>
+                      <button type="button" onClick={() => setInvoicePrintKeys(smartInvoiceKeys())}
+                        className="px-2 py-1 rounded-[6px] bg-slate-900 text-[9px] font-bold text-white flex items-center gap-1">
+                        <Wand2 size={10} /> تلقائي
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 max-h-[180px] overflow-y-auto scrollbar-thin">
+                    {/* Active columns in order */}
+                    {invoicePrintKeys.map((key, idx) => {
+                      const col = INVOICE_COLUMNS.find(c => c.key === key);
+                      if (!col) return null;
+                      return (
+                        <div key={key}
+                          className="flex items-center gap-0.5 px-2 py-1 rounded-[6px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold transition-all"
+                        >
+                          <button type="button" onClick={() => {
+                            const next = [...invoicePrintKeys];
+                            if (idx > 0) { [next[idx-1], next[idx]] = [next[idx], next[idx-1]]; setInvoicePrintKeys(next); }
+                          }} disabled={idx === 0}
+                            className="p-0.5 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-default"
+                          ><svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7"/></svg></button>
+                          <button type="button" onClick={() => {
+                            const next = [...invoicePrintKeys];
+                            if (idx < next.length - 1) { [next[idx], next[idx+1]] = [next[idx+1], next[idx]]; setInvoicePrintKeys(next); }
+                          }} disabled={idx >= invoicePrintKeys.length - 1}
+                            className="p-0.5 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-default"
+                          ><svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7"/></svg></button>
+                          {editingColIdx === idx ? (
+                            <input type="number" min={1} max={invoicePrintKeys.length} autoFocus
+                              defaultValue={idx + 1}
+                              onBlur={(e) => { setEditingColIdx(null); moveToIdx(key, Number(e.target.value) - 1, invoicePrintKeys, setInvoicePrintKeys); }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") { e.target.blur(); }
+                                if (e.key === "Escape") { setEditingColIdx(null); }
+                              }}
+                              className="w-9 h-5 rounded border border-emerald-400 bg-white text-[10px] font-black text-emerald-800 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                          ) : (
+                            <button type="button" onClick={() => setEditingColIdx(idx)}
+                              className="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-200 text-[10px] font-black text-emerald-800 shrink-0 hover:bg-emerald-300 hover:ring-2 hover:ring-emerald-400/40 cursor-pointer"
+                              title="اضغط لتغيير الترتيب"
+                            >{idx + 1}</button>
+                          )}
+                          <button type="button" onClick={() => setInvoicePrintKeys(keys => keys.filter(k => k !== key))}
+                            className="flex items-center gap-1 flex-1 min-w-0 text-right"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500" />
+                            <span className="truncate">{col.label}</span>
+                          </button>
+                          <span className="text-[8px] font-bold text-indigo-400">
+                            {col.printPriority === "essential" ? "أساسي" : col.printPriority === "useful" ? "مفيد" : "اختياري"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {/* Inactive columns */}
+                    {INVOICE_COLUMNS.filter(c => !invoicePrintKeys.includes(c.key)).map(col => {
+                      const atMax = invoicePrintKeys.length >= invoiceMax;
+                      return (
+                        <div key={col.key}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-bold transition-all ${
+                            atMax ? "text-slate-300 border border-transparent" : "text-slate-500 border border-transparent hover:border-slate-200"
+                          }`}
+                        >
+                          <button type="button" onClick={() => { if (!atMax) setInvoicePrintKeys(keys => [...keys, col.key]); }}
+                            disabled={atMax}
+                            className={`flex items-center gap-1.5 flex-1 min-w-0 text-right ${atMax ? "cursor-not-allowed" : "cursor-pointer"}`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-slate-300" />
+                            <span className="truncate">{col.label}</span>
+                          </button>
+                          <span className={`text-[8px] font-bold px-1 ${
+                            col.printPriority === "essential" ? "text-indigo-300" : col.printPriority === "useful" ? "text-slate-300" : "text-slate-200"
+                          }`}>
+                            {col.printPriority === "essential" ? "أساسي" : col.printPriority === "useful" ? "مفيد" : "اختياري"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Advanced designer launcher (invoice-style docs only) */}
               {docType && !isReportDoc && (
@@ -549,7 +715,7 @@ export default function PrintPreviewModal({
                 </button>
               )}
               <button onClick={onClose}
-                className="w-full flex justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-[10px] text-2sm font-bold transition-all active:scale-95">
+                className="btn-danger w-full flex justify-center gap-2 py-2.5 rounded-[10px] text-2sm font-bold transition-all active:scale-95">
                 إغلاق
               </button>
             </div>
@@ -576,7 +742,7 @@ export default function PrintPreviewModal({
                       const v = parseInt(e.target.value, 10);
                       if (v >= 1 && v <= totalPrintPages) goToPage(v);
                     }}
-                    className="w-10 h-8 text-center rounded-lg border border-slate-200 text-2sm font-bold"
+                    className="w-10 h-8 text-center rounded-lg border border-slate-200 bg-white text-2sm font-bold"
                     min={1}
                     max={totalPrintPages}
                   />

@@ -27,7 +27,14 @@ import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import { ReturnSaveSuccess } from "../../components/returns/ReturnSaveSuccess";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { sortByProximity } from "../../utils/itemSort";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import { formatNumber } from "../../utils/currency";
+import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
+import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
+import PurchaseReturnFormBottomBar from "./PurchaseReturnFormBottomBar";
 
 function formatMoney(v) {
   return formatNumber(v);
@@ -167,6 +174,10 @@ function OriginalPurchasePreview({ purchase }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function PurchaseReturnFormPage() {
   const handleKeyDown = useFieldNavigation();
+  const gridNavRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "unit_cost" });
+  useShortcut("grid.editLast", () => focusLastRowQty());
+  useShortcut("form.save", () => { if (total) setShowSaveConfirmModal(true); });
   const navigate = useNavigate();
   const location = useLocation();
   const editReturnId = location.state?.edit_return_id || null;
@@ -210,6 +221,7 @@ export default function PurchaseReturnFormPage() {
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const [stagingItem, setStagingItem] = useState(null);
   const [stagingQty, setStagingQty] = useState("1");
   const [stagingCost, setStagingCost] = useState("");
@@ -277,6 +289,14 @@ export default function PurchaseReturnFormPage() {
   const notesRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
+
+  // Collapsible sidebar
+  const sidebar = useCollapsibleSidebar({
+    storageKeyPrefix: "retailer.purchase_return",
+    defaultWidth: 340,
+    minWidth: 300,
+  });
+  const { panelWidth, panelEffectiveCollapsed, togglePanel, startPanelResize } = sidebar;
 
   // isDirty must be after all state declarations to avoid TDZ on `supplier`
   const isDirty = isEditMode ? !isLocked : (cart.length > 0 || !!supplier);
@@ -479,10 +499,17 @@ export default function PurchaseReturnFormPage() {
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery, stagingItem]);
 
+  useEffect(() => {
+    if (itemQuery) setAllItemsMode(false);
+  }, [itemQuery]);
+
   function loadMoreItems() {
-    if (!itemHasMore || !itemQuery.trim() || isLoadingMoreItems) return;
+    if (!itemHasMore || isLoadingMoreItems) return;
+    const q = itemQuery.trim();
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = r.data.data || [];
         setItemResults(prev => [...prev, ...rows]);
@@ -491,6 +518,36 @@ export default function PurchaseReturnFormPage() {
       })
       .catch(() => {})
       .finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    const SHOW_ALL_LIMIT = 200;
+    const fmt = (item) => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.purchase_price || item.unit_cost || 0)} ج.م` });
+    const anchor = stagingItem;
+    setAllItemsMode(true);
+    setItemResults([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = anchor?.category_id
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data || []).map(fmt);
+        const allRows  = (allRes.data.data || []).map(fmt);
+        const pinnedId = anchor?.id ?? null;
+        const sortedCat = sortByProximity(catRows, anchor).filter(r => r.id !== pinnedId);
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = allRows.filter(r => !catIds.has(r.id))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        const merged = [...(pinnedId ? [fmt({ ...anchor })] : []), ...sortedCat, ...others];
+        setItemResults(merged);
+        setItemOffset(allRows.length);
+        setItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
   function selectItemForStaging(item) {
@@ -879,9 +936,9 @@ export default function PurchaseReturnFormPage() {
         }
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
         {/* Left Panel */}
-        <aside className="flex w-[340px] lg:w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
+        <aside className={`shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
           <div className="flex flex-col gap-5 p-5">
             <button onClick={handlePurchasesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-sm font-bold text-white hover:bg-amber-800 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> طلبات التوريد
@@ -1182,6 +1239,7 @@ export default function PurchaseReturnFormPage() {
                   <button onClick={() => setShowSaveConfirmModal(true)} disabled={isSaving || !total}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-sm font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                    {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-white/20 px-1 text-[9px] font-mono text-white" />}
                   </button>
                 </PermissionGate>
               )}
@@ -1250,6 +1308,7 @@ export default function PurchaseReturnFormPage() {
             </div>
           </div>
         </aside>
+        <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "right")} panelSide="right" />
 
         {/* Right Panel */}
         <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 p-4 min-w-0">
@@ -1265,6 +1324,7 @@ export default function PurchaseReturnFormPage() {
                       <label className="entry-label">الصنف</label>
                       <ProductSearchField
                         ref={itemInputRef}
+                              onNavigateNext={() => { stagingQtyRef.current?.focus(); stagingQtyRef.current?.select?.(); }}
                         query={itemQuery}
                         onQueryChange={(val) => { setItemQuery(val); if (stagingItem) { setStagingItem(null); setStagingCost(""); } }}
                         results={itemResults.map(item => ({ ...item, name: item.name_ar || item.name, price_label: `${formatMoney(item.purchase_price || item.unit_cost || 0)} ج.م` }))}
@@ -1276,6 +1336,8 @@ export default function PurchaseReturnFormPage() {
                         onLoadMore={loadMoreItems}
                         hasMore={itemHasMore}
                         isLoadingMore={isLoadingMoreItems}
+                        onShowAll={showAllItems}
+                        hideZeroStock={false}
                         trailing={(
                           <button onClick={() => setAdvancedSearchOpen(true)}
                             className="entry-control flex w-[38px] shrink-0 items-center justify-center !p-0"
@@ -1343,21 +1405,18 @@ export default function PurchaseReturnFormPage() {
 
                     {/* Add button */}
                     <button ref={addBtnRef} onClick={addStagingToCart} disabled={!stagingItem}
+                      onKeyDown={e => handleKeyDown(e, { nextRef: itemInputRef, prevRef: stagingWHRef, onEnter: addStagingToCart })}
                       className="entry-add-btn">
                       <Plus className="h-4 w-4" /> إضافة
                     </button>
-                  </div>
-                </div>
-              )}
-              {cart.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-end">
-                    <div className="relative" ref={colSettingsRef}>
-                      <button onClick={() => setColSettingsOpen(o => !o)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-2sm font-bold text-slate-500 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
-                        <Settings2 className="h-3.5 w-3.5" /> إعدادات الأعمدة
+                    <div ref={colSettingsRef} className="relative">
+                      <button onClick={() => setColSettingsOpen(o => !o)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all active:scale-90"
+                        title="إعدادات الأعمدة">
+                        <Settings2 className="h-4 w-4" />
                       </button>
                       {colSettingsOpen && (
-                        <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-lg border border-slate-200 bg-white shadow-xl p-2">
+                        <div className="absolute left-0 top-full mt-1 z-[70] w-48 rounded-lg border border-slate-200 bg-white shadow-xl p-2">
                           {ALL_COLUMNS_DIRECT.filter(c => c.id !== "actions").map(c => (
                             <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded cursor-pointer">
                               <input type="checkbox" checked={visibleColumns.includes(c.id)}
@@ -1370,7 +1429,15 @@ export default function PurchaseReturnFormPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                </div>
+              )}
+              {cart.length > 0 ? (
+                <div className="flex flex-1 flex-col gap-2 min-h-0">
+                  <div className="flex items-center gap-1 px-1 py-1.5 shrink-0">
+                    <span className="text-2sm font-bold text-slate-500">الأصناف ({cart.length})</span>
+                    <ShortcutKbd id="grid.editLast" />
+                  </div>
+                  <div ref={gridNavRef} className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                   <table className="w-full text-right">
                     <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
                       <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
@@ -1416,7 +1483,7 @@ export default function PurchaseReturnFormPage() {
                           {visibleColumns.includes("warehouse") && (function(){
                             const whEl = !isLocked ? (
                               <div className="flex flex-col items-center gap-1">
-                                <select value={l.warehouse_id} onChange={e => updateCartWarehouse(l.key, e.target.value)} className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-amber-400 focus:bg-white focus:ring-1 focus:ring-amber-100 transition-colors cursor-pointer">
+                                <select value={l.warehouse_id} data-grid-cell data-row={idx} data-col="warehouse_id" onChange={e => updateCartWarehouse(l.key, e.target.value)} className="h-7 w-full rounded border border-slate-200 bg-slate-50 px-1.5 text-2sm font-bold text-slate-700 outline-none focus:border-amber-400 focus:bg-white focus:ring-1 focus:ring-amber-100 transition-colors cursor-pointer">
                                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                                 {(() => {
@@ -1459,6 +1526,7 @@ export default function PurchaseReturnFormPage() {
                             {!isLocked ? (
                               <div className="flex flex-col items-center gap-0.5">
                               <input type="number" step="any" min="0" value={l.unit_cost}
+                                data-grid-cell data-row={idx} data-col="unit_cost"
                                 onChange={e => updateCartPrice(l.key, e.target.value)}
                                 onFocus={e => e.target.select()}
                                 className={`w-24 rounded border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 transition-colors
@@ -1616,7 +1684,43 @@ export default function PurchaseReturnFormPage() {
         </main>
       </div>
 
-      <Modal open={showSaveConfirmModal} onClose={() => setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع">
+      <PurchaseReturnFormBottomBar
+        forceShow={panelEffectiveCollapsed}
+        cart={cart}
+        subtotal={subtotal}
+        headerDiscount={headerDiscount}
+        headerIncrease={headerIncrease}
+        onHeaderDiscountChange={(val) => { setAdjustmentTouched(true); setHeaderDiscount(val); }}
+        onHeaderIncreaseChange={(val) => { setAdjustmentTouched(true); setHeaderIncrease(val); }}
+        total={total}
+        settlementType={settlementType}
+        onSettlementTypeChange={setSettlementType}
+        splitCashAmount={splitCashAmount}
+        onSplitCashAmountChange={setSplitCashAmount}
+        supplier={supplier}
+        supplierBalance={supplierBalance}
+        netCreditAdjustment={netCreditAdjustment}
+        predictedBalance={predictedBalance}
+        returnCreditEffect={returnCreditEffect}
+        isLocked={isLocked}
+        supplierLockedFromPurchase={supplierLockedFromPurchase}
+        isSaving={isSaving}
+        onPrint={() => setPrintPreview(true)}
+        onSave={handleSave}
+        onSupplierInfo={() => setSupplierInfoOpen(true)}
+        supplierQuery={supplierQuery}
+        onSupplierQueryChange={setSupplierQuery}
+        supplierResults={supplierResults}
+        onSupplierPick={(s) => { setSupplier({ id: s.id, name: s.name }); setSupplierQuery(s.name); setSupplierLookupOpen(false); }}
+        supplierLookupOpen={supplierLookupOpen}
+        onSupplierLookupOpenChange={setSupplierLookupOpen}
+        onSupplierClear={() => { setSupplier(null); setSupplierQuery(""); }}
+        onSupplierCreate={() => setSupplierCreateOpen(true)}
+        mode={mode}
+        isEditMode={isEditMode}
+      />
+
+      <Modal open={showSaveConfirmModal} onClose={() => setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1635,17 +1739,17 @@ export default function PurchaseReturnFormPage() {
         </div>
       </Modal>
 
-      <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء">
+      <Modal open={showWarningModal} onClose={() => setShowWarningModal(false)} title="تأكيد الإلغاء" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
-            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">نعم، إلغاء</button>
+            <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md btn-danger px-5 py-2 text-sm font-bold transition-all active:scale-[0.98]">نعم، إلغاء</button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع">
+      <Modal open={showEditWarnModal} onClose={() => setShowEditWarnModal(false)} title="تعديل المرتجع" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">هل تريد تعديل هذا المرتجع؟ سيتم فتح المرتجع للتعديل.</p>
           <div className="flex gap-3 justify-end">
@@ -1655,12 +1759,12 @@ export default function PurchaseReturnFormPage() {
         </div>
       </Modal>
 
-      <Modal open={showSwitchPurchaseWarning} onClose={() => setShowSwitchPurchaseWarning(false)} title="تغيير أمر الشراء">
+      <Modal open={showSwitchPurchaseWarning} onClose={() => setShowSwitchPurchaseWarning(false)} title="تغيير أمر الشراء" showDetach={false}>
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">يوجد مرتجع قيد التحرير. هل تريد حفظه أولاً قبل اختيار أمر شراء آخر؟</p>
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowSwitchPurchaseWarning(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-            <button onClick={() => { setShowSwitchPurchaseWarning(false); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-all active:scale-[0.98]">تجاهل وتغيير</button>
+            <button onClick={() => { setShowSwitchPurchaseWarning(false); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md btn-danger px-5 py-2 text-sm font-bold transition-all active:scale-[0.98]">تجاهل وتغيير</button>
             <button onClick={async () => { setShowSwitchPurchaseWarning(false); await handleSave(); setLoadedPurchase(null); setPurchaseLines([]); setPurchasePickerOpen(true); }} className="rounded-md bg-amber-700 px-5 py-2 text-sm font-bold text-white hover:bg-amber-800 transition-all active:scale-[0.98]">حفظ ثم تغيير</button>
           </div>
         </div>
@@ -1733,7 +1837,7 @@ export default function PurchaseReturnFormPage() {
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                  className="flex-1 h-11 rounded-2xl btn-danger text-sm font-black disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
                   {isDeleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
                 </button>

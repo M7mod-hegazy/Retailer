@@ -6,6 +6,8 @@ import {
   Download, Share2, ArrowUpDown, Filter, Pencil, ShoppingCart, Info, Eye
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { DramaticDeleteConfirm } from "../../components/ui/DramaticDeleteConfirm";
@@ -125,10 +127,12 @@ export default function QuotationsPage() {
   const [convertTarget, setConvertTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [trashMenuId, setTrashMenuId] = useState(null);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
 
   const menuRef = useRef(null);
+  const trashMenuRef = useRef(null);
   const searchRef = useRef(null);
   const dateFromRef = useRef(null);
   const dateToRef = useRef(null);
@@ -140,20 +144,16 @@ export default function QuotationsPage() {
   }, []);
 
   useEffect(() => {
-    function handler(e) { if (!menuRef.current?.contains(e.target)) setOpenMenu(null); }
+    function handler(e) {
+      if (!menuRef.current?.contains(e.target)) setOpenMenu(null);
+      if (!trashMenuRef.current?.contains(e.target)) setTrashMenuId(null);
+    }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   // Keyboard shortcut: Ctrl+N → new quotation
-  useEffect(() => {
-    function handler(e) {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-      if (e.ctrlKey && e.key === 'n') { e.preventDefault(); navigate('/operations/quotations/new'); }
-    }
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [navigate]);
+  useShortcut("quotation.new", () => navigate('/operations/quotations/new'));
 
   useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, sortBy, sortOrder, dateFrom, dateTo]);
 
@@ -227,6 +227,7 @@ export default function QuotationsPage() {
       await api.delete(`/api/quotations/${deleteTarget.id}`);
       toast.success("تم حذف عرض السعر");
       setDeleteTarget(null);
+      setActiveQuotation(null);
       loadData();
     } catch (err) {
       toast.error(err?.response?.data?.message || "فشل الحذف");
@@ -341,6 +342,7 @@ export default function QuotationsPage() {
                 <Link data-help="add-button" to="/operations/quotations/new" className="group flex items-center justify-center gap-3 rounded-[1.2rem] bg-violet-600 px-7 py-4 text-[15px] font-black text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20 active:scale-95">
                   <Plus className="h-5 w-5" />
                   <span>إصدار عرض جديد</span>
+                  <ShortcutKbd id="quotation.new" className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-mono text-white/80" />
                 </Link>
               </PermissionGate>
             </div>
@@ -479,6 +481,25 @@ export default function QuotationsPage() {
                             </PermissionGate>
                           )}
 
+                          {canDelete(row) && (
+                            <PermissionGate page="quotations" action="delete">
+                              <div className="relative" ref={trashMenuId === row.id ? trashMenuRef : null}>
+                                <button onClick={(e) => { e.stopPropagation(); setTrashMenuId(trashMenuId === row.id ? null : row.id); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all" title="حذف العرض">
+                                  <Trash2 className="h-5 w-5" />
+                                </button>
+                                <AnimatePresence>
+                                  {trashMenuId === row.id && (
+                                    <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-48 rounded-2xl border border-rose-200/60 bg-white p-2 shadow-2xl origin-bottom-left">
+                                      <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); setTrashMenuId(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
+                                        <Trash2 className="h-4 w-4" /> حذف العرض
+                                      </button>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </PermissionGate>
+                          )}
+
                           <div className="relative" ref={openMenu === row.id ? menuRef : null}>
                             <button onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === row.id ? null : row.id); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 hover:bg-primary-600 hover:text-white transition-all">
                               <Plus className="h-5 w-5" />
@@ -496,11 +517,6 @@ export default function QuotationsPage() {
                                       </button>
                                     </PermissionGate>
                                   )}
-                                  <PermissionGate page="quotations" action="add">
-                                    <button onClick={(e) => { e.stopPropagation(); handleDuplicate(row.id); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
-                                      نسخ العرض
-                                    </button>
-                                  </PermissionGate>
                                   <PermissionGate page="quotations" action="print">
                                     <button onClick={(e) => { e.stopPropagation(); handlePrintFromList(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
                                       <Printer className="h-4 w-4" /> طباعة
@@ -570,7 +586,7 @@ export default function QuotationsPage() {
           )}
         </div>
 
-      <Modal open={!!activeQuotation} onClose={() => setActiveQuotation(null)} title={activeQuotation ? `عرض سعر ${activeQuotation.doc_no || formatQuotationNo(activeQuotation.id)}` : "عرض سعر"} maxWidth="max-w-5xl">
+      <Modal open={!!activeQuotation} onClose={() => setActiveQuotation(null)} title={activeQuotation ? `عرض سعر ${activeQuotation.doc_no || formatQuotationNo(activeQuotation.id)}` : "عرض سعر"} maxWidth="max-w-5xl" showDetach={false}>
         {activeQuotation && (
           <div className="space-y-6 p-2">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -685,6 +701,14 @@ export default function QuotationsPage() {
                     <Eye className="h-4 w-4" /> معاينة وطباعة
                   </button>
                 </PermissionGate>
+                {canDelete(activeQuotation) && (
+                  <PermissionGate page="quotations" action="delete">
+                    <button onClick={() => setDeleteTarget(activeQuotation)}
+                      className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-black text-rose-600 hover:bg-rose-600 hover:text-white transition-all">
+                      <Trash2 className="h-4 w-4" /> حذف العرض
+                    </button>
+                  </PermissionGate>
+                )}
               </div>
               <button onClick={() => setActiveQuotation(null)}
                 className="flex items-center gap-2 rounded-xl bg-slate-100 px-6 py-3 text-sm font-black text-slate-900 hover:bg-slate-200">

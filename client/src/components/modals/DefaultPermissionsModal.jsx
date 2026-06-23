@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, X, AlertCircle } from "lucide-react";
+import { Save, AlertCircle } from "lucide-react";
 import api from "../../services/api";
+import TitleBar from "../ui/TitleBar";
+import { useDetach } from "../../hooks/useDetach";
 import toast from "react-hot-toast";
 import {
   PAGE_PERMISSIONS,
@@ -41,6 +43,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
   const [saving, setSaving] = useState(false);
   const applyingRef = useRef(false);
   const prevStatesRef = useRef({});
+  const { handleDetach } = useDetach("default-permissions", { onClose, getState: () => ({}), actions: {} });
 
   // Sync dropdown label when permissions change from manual edits
   useEffect(() => {
@@ -136,26 +139,10 @@ export default function DefaultPermissionsModal({ open, onClose }) {
           >
             <div className="bg-white rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col w-full max-w-5xl" dir="rtl">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-2xl font-black text-zinc-900">
-                    إعدادات الصلاحيات الافتراضية
-                  </h2>
-                  <p className="text-[11px] font-bold text-slate-500">
-                    تطبق على جميع المستخدمين الجدد فقط
-                  </p>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={onClose}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </motion.button>
-              </div>
+              <TitleBar title="إعدادات الصلاحيات الافتراضية" subtitle="تطبق على جميع المستخدمين الجدد فقط" onClose={onClose} onDetach={handleDetach} />
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto">
+              <div data-modal-content className="flex-1 overflow-y-auto">
                 <div className="p-6 flex flex-col gap-5">
                   {/* Warning note */}
                   <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 p-4">

@@ -8,6 +8,7 @@ const { hasTable, recordMovement } = require("../services/costLedger");
 const { applyPurchaseLinePriceUpdates, revertPurchaseLinePriceUpdates } = require("../services/priceLockService");
 const { capturePurchaseReturnLineOverrides } = require("../services/overrideTrackingService");
 const { applyReturnAdjustment } = require("../services/returnService");
+const { recordBankMovement } = require("../services/bankService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { isFeatureEnabled } = require("../utils/features");
@@ -34,7 +35,7 @@ function ensureAjalDebtPurchaseSchema(db) {
 function getPurchaseWithLines(db, purchaseId) {
   const purchase = db.prepare(`
     SELECT p.*, s.name AS supplier_name, s.phone AS supplier_phone,
-           u.username AS created_by_username, u.full_name AS created_by_name
+           COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username, u.full_name AS created_by_name
     FROM purchases p
     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by
@@ -105,7 +106,7 @@ function reversePurchaseFinancials(db, purchase) {
     const tid = purchase.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1;
     db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(purchase.total, tid);
   } else if (paymentMethod === "bank_transfer") {
-    if (purchase.bank_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(purchase.total, purchase.bank_id);
+    if (purchase.bank_id) recordBankMovement(db, { bankId: purchase.bank_id, type: "deposit", amount: purchase.total, reference: purchase.purchase_no || null, notes: `عكس مشتريات ${purchase.purchase_no || ""}`.trim(), source: "purchase", refType: "purchase", refId: purchase.id });
   } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && purchase.supplier_id) {
     const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
     if (debt) {
@@ -121,7 +122,7 @@ function reversePurchaseFinancials(db, purchase) {
       const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(pmt.method_id);
       if (!pm || isCreditMethod(pm)) continue; // credit portion reversed via ajal below
       if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
-      else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
+      else if (pm.type === "bank" && pm.target_id) recordBankMovement(db, { bankId: pm.target_id, type: "deposit", amount: pmt.amount, reference: purchase.purchase_no || null, notes: `عكس مشتريات ${purchase.purchase_no || ""}`.trim(), source: "purchase", refType: "purchase", refId: purchase.id });
     }
     if (purchase.supplier_id) {
       const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
@@ -152,7 +153,7 @@ function applyPurchaseFinancials(db, opts) {
     try { db.prepare("UPDATE purchases SET treasury_id = ? WHERE id = ?").run(tid, purchaseId); } catch (_) {}
   } else if (paymentMethod === "bank_transfer") {
     if (bankId) {
-      db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(total, Number(bankId));
+      recordBankMovement(db, { bankId: Number(bankId), type: "withdrawal", amount: total, notes: notes || "دفع مشتريات", userId: opts.userId || 1, source: "purchase", refType: "purchase", refId: purchaseId });
       try { db.prepare("UPDATE purchases SET bank_id = ? WHERE id = ?").run(Number(bankId), purchaseId); } catch (_) {}
     }
   } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && supplierId) {
@@ -169,7 +170,7 @@ function applyPurchaseFinancials(db, opts) {
       if (!pm) continue;
       if (isCreditMethod(pm)) { /* credit portion handled below — no cash/bank movement */ }
       else if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
-      else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+      else if (pm.type === "bank" && pm.target_id) recordBankMovement(db, { bankId: pm.target_id, type: "withdrawal", amount, notes: notes || "دفع مشتريات", userId: opts.userId || 1, source: "purchase", refType: "purchase", refId: purchaseId });
       try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(purchaseId, Number(pmt.method_id), amount); } catch (_) {}
     }
     let creditSum = 0;
@@ -219,7 +220,7 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
     WHERE ${conditions.join(" AND ")}
   `).get(...params);
   const purchases = db.prepare(`
-    SELECT p.*, s.name AS supplier_name, u.username AS created_by_username,
+    SELECT p.*, s.name AS supplier_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
            (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count,
            CASE
              WHEN p.payment_method = 'multi' THEN (
@@ -321,7 +322,7 @@ router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, 
   const safeSort = allowedSort.includes(sort) ? sort : "created_at";
   const safeDir = dir === "asc" ? "ASC" : "DESC";
   const returns = db.prepare(`
-    SELECT pr.*, s.name AS supplier_name, u.username AS created_by_username,
+    SELECT pr.*, s.name AS supplier_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
            p.doc_no AS original_purchase_no
     FROM purchase_returns pr
     LEFT JOIN suppliers s ON s.id = pr.supplier_id
@@ -344,7 +345,7 @@ router.get("/returns/:id", requirePagePermission("purchase_returns", "view"), (r
                s.phone AS supplier_phone,
                p.doc_no AS original_purchase_no,
                t.name AS treasury_name,
-               u.username AS created_by_username,
+               COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
                u.full_name AS created_by_name
         FROM purchase_returns pr
         LEFT JOIN suppliers s ON s.id = pr.supplier_id
@@ -404,7 +405,7 @@ router.get("/items-search", requirePagePermission("purchases", "view"), (req, re
       SELECT pl.id AS line_id, pl.purchase_id, p.doc_no, p.created_at, p.status,
              p.supplier_id, s.name AS supplier_name,
              p.payment_method, p.created_by,
-             u.username AS created_by_username,
+             COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
              pl.item_id, i.name AS item_name, i.code AS item_code, i.barcode,
              pl.quantity, pl.unit_cost, pl.line_total, i.sale_price AS selling_price
       FROM purchase_lines pl
@@ -597,7 +598,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           } else if (pm.type === "cash" && pm.target_id) {
             db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
           } else if (pm.type === "bank" && pm.target_id) {
-            db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+            recordBankMovement(db, { bankId: pm.target_id, type: "withdrawal", amount, notes: "دفع مشتريات", userId: req.user?.id || 1, source: "purchase", refType: "purchase", refId: purchaseId });
           }
           try {
             db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(purchaseId, Number(pmt.method_id), amount);
@@ -636,7 +637,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
 
       } else if (paymentMethod === "bank_transfer") {
         if (payload.bank_id) {
-          db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(total, Number(payload.bank_id));
+          recordBankMovement(db, { bankId: Number(payload.bank_id), type: "withdrawal", amount: total, notes: "دفع مشتريات", userId: req.user?.id || 1, source: "purchase", refType: "purchase", refId: purchaseId });
           try { db.prepare("UPDATE purchases SET bank_id = ? WHERE id = ?").run(Number(payload.bank_id), purchaseId); } catch (_) {}
         }
       }
@@ -966,7 +967,7 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
     const tid = purchase.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id || 1;
     db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(purchase.total, tid);
   } else if (paymentMethod === "bank_transfer") {
-    if (purchase.bank_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(purchase.total, purchase.bank_id);
+    if (purchase.bank_id) recordBankMovement(db, { bankId: purchase.bank_id, type: "deposit", amount: purchase.total, reference: purchase.purchase_no || null, notes: `عكس مشتريات ${purchase.purchase_no || ""}`.trim(), source: "purchase", refType: "purchase", refId: purchase.id });
   } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && purchase.supplier_id) {
     const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
     if (debt) {
@@ -983,7 +984,7 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
       const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(pmt.method_id);
       if (!pm) continue;
       if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
-      else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
+      else if (pm.type === "bank" && pm.target_id) recordBankMovement(db, { bankId: pm.target_id, type: "deposit", amount: pmt.amount, reference: purchase.purchase_no || null, notes: `عكس مشتريات ${purchase.purchase_no || ""}`.trim(), source: "purchase", refType: "purchase", refId: purchase.id });
     }
     if (purchase.supplier_id) {
       const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'purchase' AND status != 'voided'").get(purchase.id);
@@ -1113,7 +1114,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
         db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(newTotal, tid);
         try { db.prepare("UPDATE purchases SET treasury_id = ? WHERE id = ?").run(tid, newPurchaseId); } catch (_) {}
       } else if (paymentMethod === "bank_transfer" && payload.bank_id) {
-        db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(newTotal, Number(payload.bank_id));
+        recordBankMovement(db, { bankId: Number(payload.bank_id), type: "withdrawal", amount: newTotal, notes: "دفع مشتريات (تعديل)", userId: payload.user_id || 1, source: "purchase", refType: "purchase", refId: newPurchaseId });
         try { db.prepare("UPDATE purchases SET bank_id = ? WHERE id = ?").run(Number(payload.bank_id), newPurchaseId); } catch (_) {}
       } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && (payload.supplier_id || original.supplier_id)) {
         const suppId = payload.supplier_id || original.supplier_id;
@@ -1127,7 +1128,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
           const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
           if (!pm) continue;
           if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
-          else if (pm.type === "bank" && pm.target_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+          else if (pm.type === "bank" && pm.target_id) recordBankMovement(db, { bankId: pm.target_id, type: "withdrawal", amount, notes: "دفع مشتريات (تعديل)", userId: payload.user_id || 1, source: "purchase", refType: "purchase", refId: newPurchaseId });
           try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(newPurchaseId, Number(pmt.method_id), amount); } catch (_) {}
         }
       }
@@ -1180,7 +1181,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
         db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(purchase.total, tid);
       } else if (paymentMethod === "bank_transfer") {
         if (purchase.bank_id) {
-          db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(purchase.total, purchase.bank_id);
+          recordBankMovement(db, { bankId: purchase.bank_id, type: "deposit", amount: purchase.total, reference: purchase.purchase_no || null, notes: `إلغاء مشتريات ${purchase.purchase_no || ""}`.trim(), source: "purchase", refType: "purchase", refId: purchase.id });
         }
       } else if ((paymentMethod === "credit" || paymentMethod === "future_due") && purchase.supplier_id) {
         db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?")
@@ -1194,7 +1195,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
           if (pm.type === "cash" && pm.target_id) {
             db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
           } else if (pm.type === "bank" && pm.target_id) {
-            db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(pmt.amount, pm.target_id);
+            recordBankMovement(db, { bankId: pm.target_id, type: "deposit", amount: pmt.amount, reference: purchase.purchase_no || null, notes: `إلغاء مشتريات ${purchase.purchase_no || ""}`.trim(), source: "purchase", refType: "purchase", refId: purchase.id });
           }
         }
         if (purchase.supplier_id) {

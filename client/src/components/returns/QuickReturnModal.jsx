@@ -2,14 +2,16 @@
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import {
   Search, ArrowRight, ArrowLeft, CheckCircle2, Package, RotateCcw,
-  User, Calendar, X, AlertCircle, ChevronLeft, Filter, SlidersHorizontal,
+  User, Calendar, AlertCircle, ChevronLeft, Filter, SlidersHorizontal,
   Eye, Hash, Tag, ArrowUpDown, ChevronDown, ChevronUp, Clock,
   Banknote, FileText,
 } from "lucide-react";
 import api from "../../services/api";
+import TitleBar from "../ui/TitleBar";
 import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { formatNumber } from "../../utils/currency";
+import { useDetach } from "../../hooks/useDetach";
 
 const REASONS_SALES = [
   { value: "changed_mind", label: "غيّر رأيه" },
@@ -130,6 +132,9 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function QuickReturnModal({ mode = "sales", open, onClose, onSuccess, initialDocId }) {
+  const { handleDetach } = useDetach("quick-return", {
+    onClose, getState: () => ({ mode, initialDocId }), actions: { success: () => onSuccess?.() },
+  });
   const isSales = mode === "sales";
   const reasons = isSales ? REASONS_SALES : REASONS_PURCHASE;
 
@@ -338,20 +343,10 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
       <div className="relative w-full max-w-2xl mx-4 bg-white rounded-xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <RotateCcw className={`h-4 w-4 ${isSales ? "text-blue-600" : "text-amber-600"}`} />
-            <h2 className="text-[15px] font-black text-slate-800">
-              {isSales ? "إنشاء مرتجع مبيعات" : "إنشاء مرتجع مشتريات"}
-            </h2>
-          </div>
-          <button onClick={onClose} className="h-7 w-7 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <TitleBar title={isSales ? "إنشاء مرتجع مبيعات" : "إنشاء مرتجع مشتريات"} onClose={onClose} onDetach={handleDetach} />
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div data-modal-content className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="px-6 pt-4 pb-2">
             <StepDots step={step} />
           </div>
@@ -379,7 +374,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     placeholder={isSales ? "رقم الفاتورة، اسم العميل..." : "رقم الفاتورة، اسم المورد..."}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 pr-9 pl-3 py-2.5 text-sm font-bold text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-slate-200 bg-white bg-slate-50 pr-9 pl-3 py-2.5 text-sm font-bold text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none transition-colors"
                   />
                 </div>
                 <button
@@ -671,7 +666,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                             value={selected[line.id]?.quantity || 1}
                             onClick={e => e.stopPropagation()}
                             onChange={e => setQty(line.id, Math.min(maxQty, Math.max(1, Number(e.target.value))))}
-                            className="w-16 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-center text-sm font-black text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+                            className="w-16 rounded-md border border-white/20 bg-white bg-white/10 px-2 py-1 text-center text-sm font-black text-white focus:outline-none focus:ring-1 focus:ring-white/40"
                           />
                         )}
                       </div>
@@ -792,7 +787,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                     onChange={e => setReturnNotes(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: reasonRef })}
                     placeholder="ملاحظة على المرتجع…"
-                    className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 focus:border-slate-400 focus:outline-none"
+                    className="w-full resize-none rounded-lg border border-slate-200 bg-white bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 focus:border-slate-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -803,7 +798,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
         {/* Footer */}
         <div className="border-t border-slate-100 px-6 py-4 bg-slate-50/50">
           {step === 1 && (
-            <button onClick={onClose} className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-100 transition-colors">
+            <button onClick={onClose} className="btn-danger w-full rounded-lg py-2.5 text-sm font-black transition-colors">
               إلغاء
             </button>
           )}

@@ -544,16 +544,25 @@ textarea {
     transform: translateY(-1px);
   }
   
-  /* Danger */
+  /* Danger — solid red background + white text (theme-aware via --danger) */
   .btn-danger {
-    background: var(--danger-bg);
-    color: var(--danger-text);
-    border-color: var(--danger-border);
+    background: var(--danger);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: var(--btn-top-highlight), 0 4px 14px var(--shadow-glow-red);
   }
   
   .btn-danger:hover {
-    background: var(--danger-light);
+    background: color-mix(in srgb, var(--danger) 85%, #000);
     transform: translateY(-1px);
+    box-shadow: var(--btn-top-highlight), 0 8px 22px var(--shadow-glow-red);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
   
   /* Icon Button */

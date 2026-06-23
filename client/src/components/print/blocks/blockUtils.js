@@ -59,13 +59,8 @@ export function rollPrintWidthMm(s) {
     : rollDefaultPrintWidthMm(paper);
 }
 
-// Faux extra-bold for the thermal roll. Tahoma and most Windows-installed fonts
-// only ship regular + bold, so font-weight ≥700 stops getting any heavier. A
-// text stroke paints an outline around each glyph, physically thickening the
-// digits so prices/quantities/totals stay punchy on the roll. currentColor keeps
-// the stroke the same shade as the text (solid black on thermal).
-export const HEAVY_NUM = { fontWeight: 900, WebkitTextStroke: "0.5px currentColor" };
-export const HEAVY_VAL = { fontWeight: 900, WebkitTextStroke: "0.4px currentColor" };
+export const HEAVY_NUM = { fontWeight: 900 };
+export const HEAVY_VAL = { fontWeight: 900 };
 
 export function parseJsonArray(v) {
   try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }

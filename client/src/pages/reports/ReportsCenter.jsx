@@ -27,9 +27,10 @@ const SOURCE_CAT_MAP = {
   treasury: "treasury",
   "owner-statement": "accounts",
   cheques: "treasury",
-  "profit-loader": "sales",
-  "net-profit": "accounts",
+  "profit-loader": "profitability",
+  "net-profit": "profitability",
   expiry: "inventory",
+  tax: "tax",
 };
 
 const CLS_ARABIC = {

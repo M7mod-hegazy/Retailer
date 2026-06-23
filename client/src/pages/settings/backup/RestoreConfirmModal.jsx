@@ -78,7 +78,7 @@ export default function RestoreConfirmModal({ open, snapshot, onClose, onConfirm
                 setSubmitting(false);
               }
             }}
-            className="flex h-9 items-center gap-2 rounded-sm bg-rose-600 px-6 text-2sm font-black uppercase tracking-widest text-white shadow-md transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-9 items-center gap-2 rounded-sm btn-danger px-6 text-2sm font-black uppercase tracking-widest shadow-md transition-all disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
             استعادة الآن

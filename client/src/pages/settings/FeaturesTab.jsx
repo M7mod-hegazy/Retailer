@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, BadgePercent, CalendarClock, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, BadgePercent, CalendarClock, ScrollText, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
@@ -151,23 +151,28 @@ const FEATURES = [
       "لوحة العمل ← بطاقة العروض والتخفيضات",
     ],
   },
+  {
+    key: "feature_cheques",
+    icon: ScrollText,
+    color: "bg-blue-600",
+    ringColor: "ring-blue-200",
+    name: "إدارة الشيكات",
+    desc: "نظام متكامل لتسجيل الشيكات الواردة والصادرة، متابعة تواريخ الاستحقاق وحالات التحصيل والارتداد، واستبدال الشيكات المرتدة. مناسب لمن يتعامل بالشيكات الآجلة.",
+    recommendedFor: ["جملة", "شركات", "تجارة بالآجل"],
+    affectedPages: [
+      "الشريط الجانبي ← صفحة «إدارة الشيكات» (تظهر فور التفعيل)",
+      "ملف العميل / المورد ← تبويب «الشيكات»",
+      "التقارير ← تقرير سجل الشيكات",
+    ],
+    disableWarning: "البيانات تُحفظ — الشيكات المسجّلة تبقى مخزّنة وتعود فور التفعيل.",
+  },
 ];
 
 function ConfirmEnableModal({ feature, onConfirm, onCancel, saving }) {
   const Icon = feature.icon;
   return (
-    <Modal open title="" onClose={onCancel} maxWidth="max-w-lg">
+    <Modal open title={`تفعيل ${feature.name}`} onClose={onCancel} maxWidth="max-w-lg" showDetach={false}>
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${feature.color} text-white`}>
-            <Icon className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">تفعيل ميزة</p>
-            <h3 className="text-lg font-black text-slate-900">{feature.name}</h3>
-          </div>
-        </div>
 
         <p className="text-[13px] text-slate-600 leading-relaxed border-b border-slate-100 pb-4">{feature.desc}</p>
 
@@ -207,7 +212,7 @@ function ConfirmEnableModal({ feature, onConfirm, onCancel, saving }) {
 
         {/* Actions */}
         <div className="flex gap-3 pt-1 border-t border-slate-100">
-          <Button type="button" variant="ghost" onClick={onCancel} disabled={saving} className="flex-1">إلغاء</Button>
+          <Button type="button" variant="danger" onClick={onCancel} disabled={saving} className="flex-1">إلغاء</Button>
           <Button
             type="button"
             disabled={saving}

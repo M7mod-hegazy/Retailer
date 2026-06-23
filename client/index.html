@@ -363,6 +363,16 @@
 
     <script>
       (function() {
+        // ── Detached modal: hide splash immediately, no animation needed ──
+        if (new URLSearchParams(window.location.search).has("detachedModal")) {
+          (function hideSplash() {
+            var s = document.getElementById('splash-screen');
+            if (s) { s.style.display = 'none'; return; }
+            requestAnimationFrame(hideSplash);
+          })();
+          return; // skip all splash logic
+        }
+
         const percentTxt   = document.getElementById('splash-percentage');
         const statusTxt    = document.getElementById('splash-status');
         const progressFill = document.getElementById('splash-progress-fill');

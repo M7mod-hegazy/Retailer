@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   ChevronDown, Search, LogOut, Settings, Radar, PanelRightClose, PanelRightOpen, ChevronsRight, ShoppingBag,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import { useQuitOrLogoutStore } from "../../stores/quitOrLogoutStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import { getApiBaseUrlSync } from "../../services/apiBase";
 
 function usePermissionFilter() {
@@ -73,10 +75,9 @@ function SidebarItem({ item, location, updateAvailable, categoryCount }) {
 
 export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouseDown, branding }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const updateAvailable = useUpdateStore((state) => state.available);
-  const logout = useAuthStore((state) => state.logout);
+  const _logout = useAuthStore((state) => state.logout);
   const [activeAccordion, setActiveAccordion] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const categoryCount = useCategoryCount();
@@ -275,7 +276,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
                     <item.icon strokeWidth={isActive ? 2 : 1.5} className={`h-[17px] w-[17px] shrink-0 ${isActive ? "text-white" : ""}`} />
                     <div className="flex flex-col min-w-0">
                       <span className={`text-2sm truncate ${isActive ? "font-black" : "font-bold"}`}>{item.label}</span>
-                      {!isActive && <span className="text-[9px] text-emerald-500 font-bold">اختصار لوحة المفاتيح <kbd className="rounded px-0.5 bg-emerald-100 text-emerald-600 font-mono text-[8px]">F2</kbd></span>}
+                      {!isActive && <span className="text-[9px] text-emerald-500 font-bold">اختصار لوحة المفاتيح <ShortcutKbd id="dashboard.gotoPos" className="rounded px-0.5 bg-emerald-100 text-emerald-600 font-mono text-[8px]" /></span>}
                     </div>
                   </Link>
                   <Link
@@ -385,7 +386,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
             </div>
           </Link>
           <button
-            onClick={() => { logout(); navigate("/login"); }}
+            onClick={() => useQuitOrLogoutStore.getState().showModal('sidebar')}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 transition-colors"
           >
             <LogOut strokeWidth={1.5} className="h-3.5 w-3.5" />

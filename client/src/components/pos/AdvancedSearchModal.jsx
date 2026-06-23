@@ -2,6 +2,7 @@
 import { Search, X, RefreshCw, Package, Loader2, Filter, ChevronDown } from "lucide-react";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
+import { useDetach } from "../../hooks/useDetach";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
 
@@ -58,19 +59,19 @@ function RangeInput({ label, min, max, onMinChange, onMaxChange, minRef, maxRef,
   );
 }
 
-export default function AdvancedSearchModal({ open, onClose }) {
+export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [warehouseFilter, setWarehouseFilter] = useState("");
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [qtyMin, setQtyMin] = useState("");
-  const [qtyMax, setQtyMax] = useState("");
-  const [hideZero, setHideZero] = useState(false);
+  const [search, setSearch] = useState(initialFilters?.search ?? "");
+  const [categoryFilter, setCategoryFilter] = useState(initialFilters?.categoryFilter ?? "");
+  const [warehouseFilter, setWarehouseFilter] = useState(initialFilters?.warehouseFilter ?? "");
+  const [priceMin, setPriceMin] = useState(initialFilters?.priceMin ?? "");
+  const [priceMax, setPriceMax] = useState(initialFilters?.priceMax ?? "");
+  const [qtyMin, setQtyMin] = useState(initialFilters?.qtyMin ?? "");
+  const [qtyMax, setQtyMax] = useState(initialFilters?.qtyMax ?? "");
+  const [hideZero, setHideZero] = useState(initialFilters?.hideZero ?? false);
   const handleKeyDown = useFieldNavigation();
   const searchRef = useRef(null);
   const categoryRef = useRef(null);
@@ -82,8 +83,17 @@ export default function AdvancedSearchModal({ open, onClose }) {
   const hideZeroRef = useRef(null);
   const submitBtnRef = useRef(null);
 
+  const { handleDetach } = useDetach("advanced-search", {
+    onClose,
+    getState: () => ({ search, categoryFilter, warehouseFilter, priceMin, priceMax, qtyMin, qtyMax, hideZero }),
+    actions: {},
+  });
+
   useEffect(() => {
     if (!open) return;
+    // In a detached window the filters were carried over from the originating
+    // modal — don't clear them on the initial (always-open) mount.
+    if (window.location.search.includes("detachedModal=1")) return;
     setSearch("");
     setCategoryFilter("");
     setWarehouseFilter("");
@@ -156,7 +166,7 @@ export default function AdvancedSearchModal({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="البحث المتقدم في الأصناف" maxWidth="max-w-5xl">
+    <Modal open={open} onClose={onClose} onDetach={handleDetach} modalType="advanced-search" showDetach={true} title="البحث المتقدم في الأصناف" maxWidth="max-w-5xl">
       <div className="flex flex-col gap-3" dir="rtl">
 
         {/* Search & Filters Cockpit */}

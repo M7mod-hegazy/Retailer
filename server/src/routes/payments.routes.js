@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { recalculateInvoiceStatus } = require("../services/invoiceService");
+const { recordBankMovement } = require("../services/bankService");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
@@ -145,8 +146,18 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
 
       if (method === "bank_transfer" || method === "cheque" || method === "card") {
         if (payload.bank_id) {
-          const sign = partyType === "supplier" ? -1 : 1;
-          db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(sign * amount, payload.bank_id);
+          // customer payment = money in (deposit); supplier payment = money out (withdrawal)
+          recordBankMovement(db, {
+            bankId: payload.bank_id,
+            type: partyType === "supplier" ? "withdrawal" : "deposit",
+            amount,
+            reference: payload.reference_number || payload.reference || null,
+            notes: payload.notes || `تحصيل ${partyType === "supplier" ? "مورد" : "عميل"}`,
+            userId: req.user?.id || 1,
+            source: "ajal",
+            refType: "payment",
+            refId: paymentResult.lastInsertRowid,
+          });
         }
       }
 

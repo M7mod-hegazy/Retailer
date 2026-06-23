@@ -27,7 +27,7 @@ export default function AccountExportModal({ open, onClose, entityType, accounts
   const title = entityType === "customers" ? "تصدير العملاء إلى Excel" : "تصدير الموردين إلى Excel";
 
   return (
-    <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-3xl">
+    <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-3xl" showDetach={false}>
       <div className="space-y-6" dir="rtl">
         <div className="rounded-sm border border-slate-200">
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">

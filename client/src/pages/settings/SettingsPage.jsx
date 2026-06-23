@@ -21,6 +21,7 @@ import { useUiStore } from "../../stores/uiStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useAuthStore } from "../../stores/authStore";
 import FeaturesTab from "./FeaturesTab";
+import ShortcutsTab from "./ShortcutsTab";
 import { getMeta, getHint, getPlaceholder, getDefault, findMissingCritical, fieldKeyToTab } from "../../utils/fieldMeta";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 
@@ -32,6 +33,7 @@ const tabs = [
   { id: "appearance", label: "المظهر", hint: "الخطوط والألوان ونمط الأرقام — نظام ألوان متكامل للواجهة" },
   { id: "performance", label: "الرسوميات والأداء", hint: "إعدادات الرسوميات والأداء لأنظمة التشغيل البطيئة" },
   { id: "features", label: "الميزات", hint: "تفعيل أو تعطيل وحدات متخصصة حسب نوع متجرك" },
+  { id: "shortcuts", label: "اختصارات لوحة المفاتيح", hint: "تخصيص اختصارات لوحة المفاتيح لكل شاشة" },
   { id: "whatsapp", label: "واتساب", hint: "ربط حساب واتساب وإرسال الرسائل للعملاء" },
   { id: "maintenance", label: "النسخ الاحتياطي والبيانات", hint: "إنشاء واستعادة وتصدير النسخ وتفريغ قاعدة البيانات" },
   { id: "help", label: "المساعدة", hint: "الدليل السريع ومراجع الدعم" },
@@ -931,6 +933,10 @@ export default function SettingsPage() {
 
             {activeTab === "features" && isDev && (
               <FeaturesTab settings={settings} onChange={handleChange} onSilentSave={silentSave} />
+            )}
+
+            {activeTab === "shortcuts" && (
+              <ShortcutsTab />
             )}
 
             {activeTab === "whatsapp" && (

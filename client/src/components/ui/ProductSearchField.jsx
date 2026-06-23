@@ -1,4 +1,5 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useState, useRef, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import SearchInput from "./SearchInput";
 import SearchDropdown from "./SearchDropdown";
 
@@ -46,16 +47,41 @@ const ProductSearchField = forwardRef(function ProductSearchField({
   rawText,
   onPickRawText,
   size = "md",
+  hideZeroStock = true,
+  onShowAll,
+  onNavigateNext,
 }, ref) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [forceOpen, setForceOpen] = useState(false);
+  const wrapperRef = useRef(null);
 
-  const pick = (item) => { setOpen(false); setActiveIndex(-1); onPick?.(item); };
-  const pickRaw = (txt) => { setOpen(false); setActiveIndex(-1); onPickRawText?.(txt); };
+  const hasActiveQuery = Boolean(query && query.trim());
+  // Browse mode (forceOpen): always filter zero-stock.
+  // Search mode (typed query): bypass filter so partial matches still show.
+  const displayResults = hideZeroStock && (!hasActiveQuery || forceOpen)
+    ? results.filter(item => Number(item.stock_quantity || item.stock || 0) > 0)
+    : results;
+
+  const closeDropdown = () => { setOpen(false); setActiveIndex(-1); setForceOpen(false); };
+
+  const pick = (item) => { closeDropdown(); onPick?.(item); };
+  const pickRaw = (txt) => { closeDropdown(); onPickRawText?.(txt); };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        closeDropdown();
+      }
+    };
+    document.addEventListener("mousedown", handler, true);
+    return () => document.removeEventListener("mousedown", handler, true);
+  }, [open]);
 
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div ref={wrapperRef} className="flex items-center gap-1">
         <div className="relative flex-1 min-w-0">
           <SearchInput
             ref={ref}
@@ -65,22 +91,53 @@ const ProductSearchField = forwardRef(function ProductSearchField({
             placeholder={placeholder}
             onChange={(val) => { onQueryChange(val); setOpen(true); setActiveIndex(-1); }}
             onFocus={(e) => { setOpen(true); e.target.select?.(); }}
-            onBlur={() => setTimeout(() => setOpen(false), 200)}
             onClear={onClear}
             onKeyDown={(e) => {
-              if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
+              if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, displayResults.length - 1)); }
               else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
               else if (e.key === "Enter") {
                 e.preventDefault();
-                if (results.length > 0) pick(results[activeIndex >= 0 ? activeIndex : 0]);
+                if (displayResults.length > 0) {
+                  pick(displayResults[activeIndex >= 0 ? activeIndex : 0]);
+                }
                 else if (onPickRawText && (query || "").trim()) pickRaw((query || "").trim());
                 else onEnterNoResults?.();
-              } else if (e.key === "Escape") { setOpen(false); setActiveIndex(-1); }
+              } else if (e.key === "Escape") { closeDropdown(); }
+              else if (e.key === "ArrowLeft" && !open && onNavigateNext) {
+                // RTL: left = forward — navigate to next field when dropdown is closed
+                e.preventDefault();
+                onNavigateNext();
+              }
             }}
+            suffix={(
+              <button
+                type="button"
+                tabIndex={-1}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (open) {
+                    closeDropdown();
+                  } else {
+                    setOpen(true);
+                    setActiveIndex(-1);
+                    setForceOpen(true);
+                    onShowAll?.();
+                  }
+                }}
+                className={`search-input-suffix shrink-0 flex items-center justify-center rounded-full w-5 h-5 transition-colors ${
+                  open
+                    ? 'bg-indigo-100 text-indigo-600'
+                    : 'text-indigo-500 hover:bg-indigo-100 active:scale-95'
+                }`}
+                title="عرض القائمة"
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} strokeWidth={2.5} />
+              </button>
+            )}
           />
-          {open && (results.length > 0 || onPickRawText) && (query || "").length > 0 && (
+          {open && (displayResults.length > 0 || isLoadingMore || loading || onPickRawText || forceOpen) && (
             <SearchDropdown
-              items={results}
+              items={displayResults}
               onPick={pick}
               activeIndex={activeIndex}
               query={query}
@@ -89,7 +146,7 @@ const ProductSearchField = forwardRef(function ProductSearchField({
               onPickRawText={onPickRawText ? pickRaw : undefined}
               onLoadMore={onLoadMore}
               hasMoreFromServer={hasMore}
-              isLoadingMore={isLoadingMore}
+              isLoadingMore={isLoadingMore || (loading && displayResults.length === 0)}
             />
           )}
         </div>

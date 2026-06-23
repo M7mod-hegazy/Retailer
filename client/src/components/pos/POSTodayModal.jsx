@@ -4,7 +4,10 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach, openDetachedModal } from "../../hooks/useDetach";
+import { useAuthStore } from "../../stores/authStore";
 import DataGrid from "../ui/DataGrid";
+import InvoicePreviewModal from "./InvoicePreviewModal";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
 import toast from "react-hot-toast";
@@ -76,163 +79,72 @@ const STATUS_STYLES = {
   voided:  { label: "ملغي",    cls: "bg-slate-100 text-slate-500 border-slate-200" },
 };
 
-const PAYMENT_LABELS_PREVIEW = {
-  cash: "نقدي", bank_transfer: "حوالة بنكية", credit: "آجل",
-  installments: "أقساط", multi: "متعدد",
-};
 
-const STATUS_PREVIEW = {
-  paid:      { label: "مدفوع",  cls: "bg-emerald-100 text-emerald-700" },
-  partial:   { label: "جزئي",   cls: "bg-amber-100 text-amber-700" },
-  cancelled: { label: "ملغي",   cls: "bg-slate-100 text-slate-500" },
-  unpaid:    { label: "آجل",    cls: "bg-rose-100 text-rose-700" },
-};
 
-function InvoicePreviewModal({ inv, onClose }) {
+export default function POSTodayModal({ open, onClose, onNavigate: propNavigate, initialFilters }) {
   const navigate = useNavigate();
-  const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (!inv) return;
-    setLoading(true);
-    api.get(`/api/invoices/${inv.id}`)
-      .then(r => setDetail(r.data.data))
-      .catch(() => setDetail(inv))
-      .finally(() => setLoading(false));
-  }, [inv?.id]);
-  if (!inv) return null;
-  const d = detail || inv;
-  const statusInfo = STATUS_PREVIEW[d.status] || STATUS_PREVIEW.unpaid;
-  return (
-    <div className="flex flex-col gap-4">
-      {loading ? (
-        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
-      ) : (
-        <>
-          {/* Header info */}
-          <div className="rounded-sm bg-slate-100 border border-slate-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
-            <span className="font-black text-slate-800">فاتورة #{d.invoice_no}</span>
-            <span className={`px-2 py-0.5 rounded text-[11px] font-black ${statusInfo.cls}`}>{statusInfo.label}</span>
-            <span className="text-slate-600">العميل: <strong>{d.customer_name || "زبون نقدي"}</strong></span>
-            <span className="text-slate-500">{d.created_at ? formatArabicDateTime(new Date(d.created_at)) : "—"}</span>
-            {d.created_by_username && <span className="text-slate-500">بواسطة: <strong>{d.created_by_username}</strong></span>}
-            <span className="font-bold text-slate-700">طريقة الدفع: {PAYMENT_LABELS_PREVIEW[d.payment_type] || d.payment_type || "—"}</span>
-          </div>
-
-          {/* Lines table */}
-          <div className="max-h-[260px] overflow-auto rounded-sm border border-slate-200">
-            <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
-                  <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">السعر</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">خصم</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d.lines || []).map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || "—"}</td>
-                    <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_price)}</td>
-                    <td className="px-3 py-2.5 text-center text-amber-600">{l.discount > 0 ? formatMoney(l.discount) : "—"}</td>
-                    <td className="px-3 py-2.5 text-center number-fmt text-slate-700">{formatMoney(l.line_total || (l.quantity * l.unit_price))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totals + Payments row */}
-          <div className="flex gap-3 flex-wrap">
-            {/* Summary */}
-            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-              <div className="flex justify-between">
-                <span className="text-slate-500">المجموع الفرعي</span>
-                <span className="number-fmt-primary text-slate-700">{formatMoney(d.subtotal)}</span>
-              </div>
-              {Number(d.discount) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">خصم</span>
-                  <span className="number-fmt-primary text-rose-600">- {formatMoney(d.discount)}</span>
-                </div>
-              )}
-              {Number(d.increase) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">إضافة</span>
-                  <span className="number-fmt-primary text-emerald-600">+ {formatMoney(d.increase)}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1">
-                <span className="font-black text-slate-800">الإجمالي</span>
-                <span className="number-fmt-primary text-slate-900">{formatMoney(d.total)} ج.م</span>
-              </div>
-            </div>
-
-            {/* Payments breakdown */}
-            {d.payments?.length > 0 && (
-              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">المدفوعات</p>
-                {d.payments.map((p, i) => (
-                  <div key={i} className="flex justify-between">
-                    <span className="text-slate-600">{p.method_name || PAYMENT_LABELS_PREVIEW[p.method] || p.method}</span>
-                    <span className="number-fmt-primary text-slate-800">{formatMoney(p.amount)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Notes */}
-          {d.notes && (
-            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
-              <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
-            </div>
-          )}
-
-          {/* Cancel reason */}
-          {d.status === "cancelled" && d.cancel_reason && (
-            <div className="rounded-sm border border-rose-200 bg-rose-50 px-4 py-2.5 text-2sm text-rose-700">
-              <span className="font-black text-[11px] uppercase tracking-widest">سبب الإلغاء: </span>{d.cancel_reason}
-            </div>
-          )}
-        </>
-      )}
-      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
-        <button onClick={() => navigate(`/invoices/${inv.id}`)} className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2 text-sm font-black text-white hover:bg-primary-600 transition-colors">
-          <Pencil className="h-4 w-4" /> فتح الفاتورة
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export default function POSTodayModal({ open, onClose }) {
-  const navigate = useNavigate();
+  const gotoTarget = (path) => {
+    if (window.location.search.includes("detachedModal=1") && window.electronAPI?.navigateParent) {
+      window.electronAPI.navigateParent(path);
+      window.electronAPI?.closeModalWindow?.();
+    } else if (propNavigate) {
+      propNavigate(path);
+    } else {
+      navigate(path);
+    }
+  };
+  const { handleDetach } = useDetach("post-today", {
+    onClose,
+    getState: () => ({
+      dateFrom, dateTo, sort, dir, userId, docSearch, itemSearch, customerQuery, customerId,
+    }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
+    actions: { navigate: (path) => navigate(path) },
+  });
+  const { handleDetach: handlePreviewDetach } = useDetach("invoice-preview", {
+    onClose: () => setPreviewOpen(false),
+    getState: () => ({ invoiceId: previewItem?.id }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
+  });
   const [data, setData] = useState([]);
   const [summary, setSummary] = useState({ count: 0, total: 0 });
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(toDateInput());
-  const [dateTo, setDateTo] = useState(toDateInput());
-  const [sort, setSort] = useState("created_at");
-  const [dir, setDir] = useState("desc");
-  const [userId, setUserId] = useState("");
+  const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
+  const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
+  const [sort, setSort] = useState(initialFilters?.sort ?? "created_at");
+  const [dir, setDir] = useState(initialFilters?.dir ?? "desc");
+  const [userId, setUserId] = useState(initialFilters?.userId ?? "");
   const [usersList, setUsersList] = useState([]);
-  const [docSearch, setDocSearch] = useState("");
-  const [itemSearch, setItemSearch] = useState("");
+  const [docSearch, setDocSearch] = useState(initialFilters?.docSearch ?? "");
+  const [itemSearch, setItemSearch] = useState(initialFilters?.itemSearch ?? "");
   const [rawItems, setRawItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
-  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerQuery, setCustomerQuery] = useState(initialFilters?.customerQuery ?? "");
   const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = useState(0);
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(initialFilters?.customerId ?? "");
   const [customers, setCustomers] = useState([]);
   const [previewItem, setPreviewItem] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -387,7 +299,7 @@ export default function POSTodayModal({ open, onClose }) {
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (inv) => (
       <div className="flex gap-1">
         <PermissionGate page="pos" action="view">
-          <button onClick={() => navigate(`/invoices/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+          <button onClick={() => gotoTarget(`/invoices/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
         </PermissionGate>
         <PermissionGate page="pos" action="void">
           <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -407,14 +319,14 @@ export default function POSTodayModal({ open, onClose }) {
     { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
-        <button onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${r.invoice_id || r.id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.stopPropagation(); gotoTarget(`/invoices/${r.invoice_id || r.id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
       </div>
     )},
   ];
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="فواتير اليوم" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="فواتير اليوم" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="post-today">
         <div className="flex flex-col gap-4">
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-sm border border-slate-700">
@@ -453,19 +365,19 @@ export default function POSTodayModal({ open, onClose }) {
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">من</label>
               <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: itemSearchRef })}
-                className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
+                className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">إلى</label>
               <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: sortRef, prevRef: dateFromRef })}
-                className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
+                className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ترتيب</label>
               <select ref={sortRef} value={sort} onChange={(e) => setSort(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: userSelectRef, prevRef: dateToRef })}
-                className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
+                className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
                 <option value="invoice_no">رقم الفاتورة</option>
@@ -481,7 +393,7 @@ export default function POSTodayModal({ open, onClose }) {
                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المستخدم</label>
                 <select ref={userSelectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
                   onKeyDown={e => handleKeyDown(e, { nextRef: customerQueryRef, prevRef: sortRef })}
-                  className="rounded-sm border border-slate-200 px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
+                  className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
@@ -542,8 +454,13 @@ export default function POSTodayModal({ open, onClose }) {
               emptyMessage={loading ? "جاري التحميل..." : "لا توجد فواتير في هذه الفترة"}
               className="border-0"
               onRowClick={r => {
+                const invId = r.invoice_id || r.id;
+                if (propNavigate && invId) {
+                  openDetachedModal("invoice-preview", { invoiceId: invId });
+                  return;
+                }
                 if (itemSearch.trim()) {
-                  if (r.invoice_id || r.id) { setPreviewItem({ id: r.invoice_id || r.id, invoice_no: r.invoice_no, customer_name: r.customer_name, total: Number(r.unit_price) * Number(r.quantity), created_at: r.created_at }); setPreviewOpen(true); }
+                  if (invId) { setPreviewItem({ id: invId, invoice_no: r.invoice_no, customer_name: r.customer_name, total: Number(r.unit_price) * Number(r.quantity), created_at: r.created_at }); setPreviewOpen(true); }
                 } else {
                   setPreviewItem(r); setPreviewOpen(true);
                 }
@@ -553,11 +470,11 @@ export default function POSTodayModal({ open, onClose }) {
           </div>
         </div>
       </Modal>
-      {/* Preview Modal */}
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة الفاتورة">
-        {previewItem ? <InvoicePreviewModal inv={previewItem} onClose={() => setPreviewOpen(false)} /> : null}
-      </Modal>
-      {/* Void Confirmation */}
+      {!propNavigate && (
+        <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة الفاتورة" onDetach={handlePreviewDetach}>
+          {previewItem ? <InvoicePreviewModal inv={previewItem} onClose={() => setPreviewOpen(false)} onNavigate={gotoTarget} /> : null}
+        </Modal>
+      )}
       <ConfirmDialog
         open={voidOpen}
         title={`إلغاء الفاتورة ${voidTarget?.invoice_no || ""}`}

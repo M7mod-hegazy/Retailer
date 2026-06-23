@@ -3,6 +3,7 @@ import { PauseCircle, PlayCircle, Trash2 } from "lucide-react";
 import PermissionGate from "../../../components/ui/PermissionGate";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import Modal from "../../../components/ui/Modal";
+import { useDetach } from "../../../hooks/useDetach";
 import { formatNumber } from "../../../utils/currency";
 
 function formatMoney(value) {
@@ -17,12 +18,15 @@ function formatArabicDateTime(date) {
 
 // Modal listing held (paused) invoices with resume / discard actions.
 export default function HeldDropdown({ heldInvoices, onResume, onDiscard, onClose }) {
+  const { handleDetach } = useDetach("held-dropdown", {
+    onClose, getState: () => ({ heldInvoices }), actions: { resume: (id) => onResume?.(id), discard: (id) => onDiscard?.(id) },
+  });
   const [discardTarget, setDiscardTarget] = useState(null);
 
   if (!heldInvoices.length) return null;
   return (
     <>
-      <Modal open={true} title="الفواتير المعلقة" onClose={onClose} maxWidth="max-w-lg">
+      <Modal open={true} title="الفواتير المعلقة" onClose={onClose} onDetach={handleDetach} maxWidth="max-w-lg">
         <div className="max-h-[420px] overflow-y-auto -mx-2 px-2 custom-scrollbar">
           {heldInvoices.length === 0 ? (
             <div className="py-8 text-center text-sm text-zinc-400">لا توجد فواتير معلقة</div>

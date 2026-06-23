@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useHelpStore } from "../../stores/helpStore";
+import { SHORTCUTS as SHORTCUT_DEFS } from "../../shortcuts/registry";
+import { useShortcutStore } from "../../shortcuts/shortcutStore";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import {
@@ -49,21 +51,6 @@ const PAGE_TOURS = [
   { key: "updates", label: "التحديثات" },
 ];
 
-const SHORTCUTS = [
-  { keys: ["F1"], label: "فتح شاشة البيع" },
-  { keys: ["F2"], label: "البحث عن صنف" },
-  { keys: ["F3"], label: "البحث عن عميل/مورد" },
-  { keys: ["Ctrl", "S"], label: "حفظ" },
-  { keys: ["Ctrl", "F"], label: "بحث/فلترة" },
-  { keys: ["Esc"], label: "إغلاق / رجوع" },
-  { keys: ["Ctrl", "P"], label: "طباعة" },
-  { keys: ["Ctrl", "Shift", "P"], label: "معاينة الطباعة" },
-  { keys: ["Ctrl", "N"], label: "إضافة جديد" },
-  { keys: ["Ctrl", "D"], label: "حذف" },
-  { keys: ["F5"], label: "تحديث" },
-  { keys: ["Ctrl", "H"], label: "فتح المساعدة" },
-];
-
 function Kbd({ children }) {
   return (
     <kbd className="inline-flex items-center justify-center min-w-[28px] rounded-sm border border-slate-300 bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-700 shadow-sm font-mono">
@@ -82,6 +69,11 @@ export function HelpSettingsTab() {
   } = useHelpStore();
   const [systemInfo, setSystemInfo] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Real shortcuts with their current bindings — single source of truth, so nothing
+  // dead is ever advertised here.
+  const shortcutKeysFor = useShortcutStore((s) => s.keysFor);
+  const SHORTCUTS = SHORTCUT_DEFS.map((s) => ({ label: s.label, keys: shortcutKeysFor(s.id) }));
 
   useEffect(() => {
     api.get("/api/help/info").then((res) => {

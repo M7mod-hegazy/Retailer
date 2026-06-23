@@ -1,5 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd, { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import {
   ArrowUpDown, 
   Check,
@@ -116,11 +118,11 @@ const ALL_CATEGORIES = "all";
 
 // ─── Cell input ───────────────────────────────────────────────────────────────
 const Cell = React.forwardRef(function Cell(
-  { value, onChange, onBlur, onKeyDown, type = "text", placeholder = "", disabled = false, className = "", dirty = false },
+  { value, onChange, onBlur, onFocus, onKeyDown, type = "text", placeholder = "", disabled = false, className = "", dirty = false },
   ref,
 ) {
   return (
-    <input ref={ref} type={type} value={value} onChange={onChange} onBlur={onBlur} onKeyDown={onKeyDown}
+    <input ref={ref} type={type} value={value} onChange={onChange} onBlur={onBlur} onFocus={onFocus} onKeyDown={onKeyDown}
       placeholder={placeholder} disabled={disabled}
       min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined}
       className={`w-full bg-transparent px-2 py-1.5 text-sm font-bold outline-none border border-transparent transition-all
@@ -412,6 +414,7 @@ export default function ItemsListPage() {
   const [density, setDensity]         = useState(() => localStorage.getItem("items_density") || "normal");
   // calc popover: { itemId, field } | null
   const [calcAnchor, setCalcAnchor]   = useState(null);
+  const focusedPriceCellRef = useRef(null);
   // drag
   const [dragOverId, setDragOverId]   = useState(null);
   const dragItemId                    = useRef(null);
@@ -578,6 +581,15 @@ export default function ItemsListPage() {
     if (!loading) { setSearch(""); setPage(1); pageRef.current = 1; loadItems(selectedCatId, "", showDeleted, { offset: 0 }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCatId, showDeleted]);
+
+  useShortcut("items.new", () => { if (selectedCatId) setQuickAddOpen(true); });
+  useShortcut("items.search", () => { searchRef.current?.focus(); searchRef.current?.select(); });
+  useShortcut("items.refresh", () => loadItems(selectedCatId, search, showDeleted));
+  useShortcut("items.calculator", () => {
+    const target = focusedPriceCellRef.current;
+    if (target) setCalcAnchor(target);
+    else toast("ضع المؤشر في خانة سعر البيع ثم اضغط الاختصار");
+  });
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === selectedCatId) ?? null,
@@ -1023,7 +1035,7 @@ export default function ItemsListPage() {
              <Upload className="h-4 w-4" /> استيراد من Excel
           </button>
         </div>
-        <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md">
+        <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md" showDetach={false}>
           <form onSubmit={createCategory} className="space-y-4 p-4">
             <div className="space-y-2">
               <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">اسم الفئة الرئيسية</label>
@@ -1117,6 +1129,7 @@ export default function ItemsListPage() {
                     <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[11px] font-medium text-slate-400">
                       Enter
                     </kbd>
+                    <ShortcutKbd id="items.search" className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[11px] font-medium text-slate-400" />
                   </div>
                </div>
                <div data-help="category-filter" className="relative w-72 group">
@@ -1149,10 +1162,10 @@ export default function ItemsListPage() {
                   }`}>
                   <Eye className="h-3.5 w-3.5" /> {showDeleted ? "إخفاء المحذوفة" : "عرض المحذوفة"}
                </button>
-               <button data-help="add-button" onClick={() => loadItems(selectedCatId, search, showDeleted)}
-                  className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95">
-                  <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث القائمة
-               </button>
+                <button data-help="add-button" onClick={() => loadItems(selectedCatId, search, showDeleted)}
+                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95">
+                   <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث القائمة <ShortcutKbd id="items.refresh" className="rounded bg-white/20 px-1.5 text-[9px] font-mono text-white/80" />
+                </button>
             </div>
          </div>
 
@@ -1338,9 +1351,10 @@ export default function ItemsListPage() {
                        <td className="px-3 py-1 relative border-l border-slate-100 xl:overflow-visible">
                           <div className="relative flex items-center">
                             <Cell type="number" value={d.sale_price} onChange={(e) => updateDraft(item.id, "sale_price", e.target.value)} dirty={isDirty} className="text-left font-black text-emerald-800 pr-8 w-full"
-                              onKeyDown={(e) => e.key === "F2" && setCalcAnchor({ itemId: item.id, field: "sale_price" })} />
+                              onFocus={() => { focusedPriceCellRef.current = { itemId: item.id, field: "sale_price" }; }}
+                              onBlur={() => { setTimeout(() => { if (focusedPriceCellRef.current?.itemId === item.id) focusedPriceCellRef.current = null; }, 50); }} />
                             <button onClick={() => setCalcAnchor(calcAnchor?.itemId === item.id ? null : { itemId: item.id, field: "sale_price" })}
-                              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md hover:bg-emerald-100 text-emerald-600 opacity-60 hover:opacity-100 transition-all font-black text-2sm bg-white shadow-sm border border-emerald-100" title=" F2 لفتح الحاسبة ">
+                              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md hover:bg-emerald-100 text-emerald-600 opacity-60 hover:opacity-100 transition-all font-black text-2sm bg-white shadow-sm border border-emerald-100" title={` ${shortcutLabel("items.calculator")} لفتح الحاسبة `}>
                                %
                             </button>
                           </div>
@@ -1471,7 +1485,7 @@ export default function ItemsListPage() {
                   </tr>
                   ) : (
                   <tr className="bg-white">
-                     <td colSpan="3" className="px-2 text-[11px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد</td>
+                      <td colSpan="3" className="px-2 text-[11px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد <ShortcutKbd id="items.new" className="inline-flex items-center justify-center rounded bg-slate-200 px-1 py-0.5 text-[9px] font-mono text-slate-500" /></td>
                      {expiryEnabled && (
                      <td className="px-1 py-1 text-center border-l border-slate-100">
                        <button type="button"
@@ -1592,7 +1606,7 @@ export default function ItemsListPage() {
       <SaveAllBar count={dirtyRows.size} onSaveAll={saveAll} onDiscard={discardAll} />
       <BulkBar count={selectedIds.size} categories={categories} units={units} onDelete={bulkDelete} onMove={bulkMove} onPriceChange={bulkPriceChange} onUnitChange={bulkUnitChange} onClear={() => setSelectedIds(new Set())} />
 
-      <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md">
+      <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md" showDetach={false}>
         <form onSubmit={createCategory} className="space-y-4 p-6">
            <div className="flex flex-col gap-1 mb-4">
               <h3 className="text-[16px] font-black text-slate-900">إنشاء تصنيف رئيسي</h3>
@@ -1636,7 +1650,7 @@ export default function ItemsListPage() {
       )}
 
       {unitsItem && (
-        <Modal open title={`وحدات إضافية — ${unitsItem.name}`} onClose={() => setUnitsItem(null)} maxWidth="max-w-lg">
+        <Modal open title={`وحدات إضافية — ${unitsItem.name}`} onClose={() => setUnitsItem(null)} maxWidth="max-w-lg" showDetach={false}>
           <div className="p-4">
             <ItemUnitsSection itemId={unitsItem.id} />
           </div>
@@ -1644,7 +1658,7 @@ export default function ItemsListPage() {
       )}
 
       {variantsItem && (
-        <Modal open title={`المتغيرات — ${variantsItem.name}`} onClose={() => setVariantsItem(null)} maxWidth="max-w-2xl">
+        <Modal open title={`المتغيرات — ${variantsItem.name}`} onClose={() => setVariantsItem(null)} maxWidth="max-w-2xl" showDetach={false}>
           <div className="p-4">
             <VariantsSection item={variantsItem} onRefresh={() => loadItems(selectedCatId, search, showDeleted)} />
           </div>
@@ -1652,7 +1666,7 @@ export default function ItemsListPage() {
       )}
 
       {editFullItem && (
-        <Modal open title={`تعديل صنف — ${editFullItem.name}`} onClose={() => setEditFullItem(null)} maxWidth="max-w-4xl">
+        <Modal open title={`تعديل صنف — ${editFullItem.name}`} onClose={() => setEditFullItem(null)} maxWidth="max-w-4xl" showDetach={false}>
           <div className="p-4 max-h-[80vh] overflow-y-auto">
             <React.Suspense fallback={null}>
               <ItemQuickAddModal

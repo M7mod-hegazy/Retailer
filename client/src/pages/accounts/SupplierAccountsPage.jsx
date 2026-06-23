@@ -1298,7 +1298,7 @@ export default function SupplierAccountsPage() {
 
       {/* ══ Purchase Detail Modal ══════════════════════════════ */}
       {detailPurchase && (
-        <Modal onClose={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} width="640px">
+        <Modal onClose={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} title={detailPurchaseIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة الشراء"} width="640px" showDetach={false}>
           <div className="p-5">
             {detailPurchaseIsOriginal && (
               <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
@@ -1306,15 +1306,7 @@ export default function SupplierAccountsPage() {
                 <span className="text-[11px] font-black text-amber-800">الفاتورة الأصلية للمرتجع — هذه الفاتورة مرتبطة بمرتجع مشتريات</span>
               </div>
             )}
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className={`text-[17px] font-black ${detailPurchaseIsOriginal ? "text-amber-800" : "text-slate-900"}`}>
-                  {detailPurchaseIsOriginal ? "الفاتورة الأصلية للمرتجع" : "تفاصيل فاتورة الشراء"}
-                </h2>
-                <p className="text-2sm text-slate-400 font-bold font-mono mt-0.5">{detailPurchase.doc_no || `#${detailPurchase.id}`}</p>
-              </div>
-              <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
-            </div>
+            <p className="text-2sm text-slate-400 font-bold font-mono mb-4">{detailPurchase.doc_no || `#${detailPurchase.id}`}</p>
             {detailLoading ? (
               <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
                 <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
@@ -1373,7 +1365,7 @@ export default function SupplierAccountsPage() {
                     className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-2sm font-black text-white ${detailPurchaseIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-orange-600 hover:bg-orange-700"}`}>
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
                   </button>
-                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="px-5 rounded-xl border border-slate-200 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); }} className="px-5 rounded-xl btn-danger text-2sm font-black">إغلاق</button>
                 </div>
               </>
                 );
@@ -1390,15 +1382,9 @@ export default function SupplierAccountsPage() {
 
       {/* ══ Return Detail Modal ══════════════════════════════ */}
       {detailReturn && (
-        <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} width="640px">
+        <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} title="تفاصيل مرتجع المشتريات" width="640px" showDetach={false}>
           <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-[17px] font-black text-slate-900">تفاصيل مرتجع المشتريات</h2>
-                <p className="text-2sm text-slate-400 font-bold font-mono mt-0.5">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
-              </div>
-              <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-400"><X className="h-4 w-4" /></button>
-            </div>
+            <p className="text-2sm text-slate-400 font-bold font-mono mb-4">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
             {detailReturnLoading ? (
               <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
                 <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
@@ -1507,7 +1493,7 @@ export default function SupplierAccountsPage() {
                         className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-2sm font-black text-white hover:bg-rose-700">
                         <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل المرتجع
                       </button>
-                      <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl border border-slate-200 text-2sm font-black text-slate-600 hover:bg-slate-50">إغلاق</button>
+                      <button onClick={() => { setDetailReturn(null); setDetailReturnData(null); }} className="px-5 rounded-xl btn-danger text-2sm font-black">إغلاق</button>
                     </div>
                   </>
                 );
@@ -1540,12 +1526,8 @@ export default function SupplierAccountsPage() {
 
       {/* Payment Modal */}
       {showPayment && selected && (
-        <Modal onClose={() => setShowPayment(false)}>
+        <Modal onClose={() => setShowPayment(false)} title="سداد دفعة للمورد" showDetach={false}>
           <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[17px] font-black text-slate-900">سداد دفعة للمورد</h2>
-              <button onClick={() => setShowPayment(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
             <p className="text-2sm text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
             {bal > 0 && (
               <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 text-2sm font-bold text-rose-800">
@@ -1577,7 +1559,7 @@ export default function SupplierAccountsPage() {
                 className="flex-1 h-11 rounded-xl bg-orange-600 text-white text-sm font-black hover:bg-orange-700 disabled:opacity-50 shadow-md shadow-orange-200">
                 {saving ? "جاري التسجيل..." : "تأكيد السداد"}
               </button>
-              <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200">إلغاء</button>
+              <button onClick={() => setShowPayment(false)} className="h-11 px-6 rounded-xl btn-danger text-sm font-black">إلغاء</button>
             </div>
           </div>
         </Modal>
@@ -1585,12 +1567,8 @@ export default function SupplierAccountsPage() {
 
       {/* Adjust Modal */}
       {showAdjust && selected && (
-        <Modal onClose={() => setShowAdjust(false)}>
+        <Modal onClose={() => setShowAdjust(false)} title="تسوية رصيد يدوية" showDetach={false}>
           <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[17px] font-black text-slate-900">تسوية رصيد يدوية</h2>
-              <button onClick={() => setShowAdjust(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
             <p className="text-2sm text-slate-500 font-bold mb-5">
               المورد: <span className="text-slate-800">{selected.name}</span>
               {" — "}الرصيد الحالي:
@@ -1629,7 +1607,7 @@ export default function SupplierAccountsPage() {
                 className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary-600 disabled:opacity-50">
                 {saving ? "جاري التسوية..." : "تأكيد التسوية وتسجيلها"}
               </button>
-              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200">إلغاء</button>
+              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl btn-danger text-sm font-black">إلغاء</button>
             </div>
           </div>
         </Modal>

@@ -11,6 +11,7 @@ const { assertNotVariantParent } = require("../routes/variants.routes");
 const { validateAndSellSerials } = require("../utils/serialValidation");
 const { isFeatureEnabled } = require("../utils/features");
 const { nowSql, toSql } = require("../utils/datetime");
+const { recordBankMovement } = require("./bankService");
 
 function generateInvoiceNumber(db) {
   const settings = db.prepare("SELECT branch_code, invoice_prefix FROM settings WHERE id = 1").get() || {};
@@ -53,7 +54,7 @@ function getInvoiceWithLines(invoiceId) {
   const db = getDb();
   const invoice = db.prepare(`
     SELECT i.*, c.name AS customer_name, c.phone AS customer_phone,
-           u.username AS created_by_username, u.full_name AS created_by_name,
+           COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username, u.full_name AS created_by_name,
            seller.username AS seller_username, seller.full_name AS seller_name,
            sh.id AS shift_number
     FROM invoices i
@@ -415,7 +416,17 @@ function createInvoice(payload) {
     // 2) Actual cash-in / bank handlers (separate from debt so installments can do both)
     if (paymentType === "bank_transfer") {
       if (payload.bank_id && amountReceived > 0) {
-        db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amountReceived, payload.bank_id);
+        recordBankMovement(db, {
+          bankId: payload.bank_id,
+          type: "deposit",
+          amount: amountReceived,
+          reference: invoiceNo,
+          notes: `فاتورة ${invoiceNo}`,
+          userId: payload.user_id || 1,
+          source: "pos_sale",
+          refType: "invoice",
+          refId: inv.lastInsertRowid,
+        });
       }
     } else if (paymentType === "multi") {
       if (payload.payments && Array.isArray(payload.payments)) {
@@ -437,7 +448,17 @@ function createInvoice(payload) {
           if (method.type === 'cash' && method.target_id) {
             db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amount, method.target_id);
           } else if (method.type === 'bank' && method.target_id) {
-            db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amount, method.target_id);
+            recordBankMovement(db, {
+              bankId: method.target_id,
+              type: "deposit",
+              amount,
+              reference: invoiceNo,
+              notes: `فاتورة ${invoiceNo}`,
+              userId: payload.user_id || 1,
+              source: "pos_sale",
+              refType: "invoice",
+              refId: inv.lastInsertRowid,
+            });
           }
 
           const payment = db.prepare(`
@@ -488,7 +509,17 @@ function createInvoice(payload) {
           if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(splitCash, tId);
         }
         if (splitBank > 0 && bankId) {
-          db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(splitBank, bankId);
+          recordBankMovement(db, {
+            bankId,
+            type: "deposit",
+            amount: splitBank,
+            reference: invoiceNo,
+            notes: `فاتورة ${invoiceNo}`,
+            userId: payload.user_id || 1,
+            source: "pos_sale",
+            refType: "invoice",
+            refId: inv.lastInsertRowid,
+          });
         }
       }
     } else if (paymentType === "installments") {
@@ -633,7 +664,7 @@ function voidInvoice(invoiceId, reason, userId) {
     if (invoice.payment_type === "bank_transfer") {
       if (invoice.bank_id) {
         const amtToReverse = Number(invoice.amount_received ?? invoice.total);
-        if (amtToReverse > 0) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
+        if (amtToReverse > 0) recordBankMovement(db, { bankId: invoice.bank_id, type: "withdrawal", amount: amtToReverse, reference: invoice.invoice_no, notes: `عكس فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
       }
     } else if (invoice.payment_type === "multi") {
       const allocations = db.prepare(`
@@ -646,7 +677,7 @@ function voidInvoice(invoiceId, reason, userId) {
         if (alloc.method === "cash" && alloc.treasury_id) {
           db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(alloc.amount, alloc.treasury_id);
         } else if (alloc.method === "bank" && alloc.bank_id) {
-          db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(alloc.amount, alloc.bank_id);
+          recordBankMovement(db, { bankId: alloc.bank_id, type: "withdrawal", amount: alloc.amount, reference: invoice.invoice_no, notes: `عكس فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
         }
         // credit allocations: ajal_debt already voided in step 1
       }
@@ -735,7 +766,7 @@ function cancelInvoice(invoiceId, reason, userId) {
       if (tId && amtToReverse > 0) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amtToReverse, tId);
     } else if (invoice.payment_type === "bank_transfer") {
       const amtToReverse = Number(invoice.amount_received ?? invoice.total);
-      if (invoice.bank_id && amtToReverse > 0) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amtToReverse, invoice.bank_id);
+      if (invoice.bank_id && amtToReverse > 0) recordBankMovement(db, { bankId: invoice.bank_id, type: "withdrawal", amount: amtToReverse, reference: invoice.invoice_no, notes: `عكس فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
     } else if (invoice.payment_type === "installments") {
       // Only the upfront cash portion is in payment_allocations — ajal_debt already voided in step 1
       const allocs = db.prepare(`
@@ -759,7 +790,7 @@ function cancelInvoice(invoiceId, reason, userId) {
         if (a.method === "cash" && a.treasury_id)
           db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
         else if (a.method === "bank" && a.bank_id)
-          db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(a.amount, a.bank_id);
+          recordBankMovement(db, { bankId: a.bank_id, type: "withdrawal", amount: a.amount, reference: invoice.invoice_no, notes: `عكس فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
         // credit-method allocations: already handled by ajal_debt void in step 1
       }
     }
@@ -875,7 +906,7 @@ function editInvoice(invoiceId, payload, userId) {
       try { db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE invoice_id = ? AND source_type = 'invoice'").run(invoiceId); } catch (_) {}
     } else if (oldPaymentType === 'bank_transfer') {
       const amt = invoice.amount_received ?? invoice.total;
-      if (invoice.bank_id && amt > 0) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(amt, invoice.bank_id);
+      if (invoice.bank_id && amt > 0) recordBankMovement(db, { bankId: invoice.bank_id, type: "withdrawal", amount: amt, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no} (عكس)`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
     } else if (oldPaymentType === 'installments') {
       const allocs = db.prepare(`
         SELECT pa.amount, p.treasury_id FROM payment_allocations pa
@@ -897,7 +928,7 @@ function editInvoice(invoiceId, payload, userId) {
       `).all(invoiceId);
       for (const a of allocs) {
         if (a.method === 'cash' && a.treasury_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(a.amount, a.treasury_id);
-        else if (a.method === 'bank' && a.bank_id) db.prepare("UPDATE banks SET balance = balance - ? WHERE id = ?").run(a.amount, a.bank_id);
+        else if (a.method === 'bank' && a.bank_id) recordBankMovement(db, { bankId: a.bank_id, type: "withdrawal", amount: a.amount, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no} (عكس)`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
       }
     }
     // Clean up old payment_allocations + payments for any old type
@@ -933,7 +964,7 @@ function editInvoice(invoiceId, payload, userId) {
     // ── 5. Apply NEW financial effects ───────────────────────────────────
     if (newPaymentType === 'bank_transfer') {
       const bankId = payload.bank_id || invoice.bank_id;
-      if (bankId && amountReceived > 0) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amountReceived, bankId);
+      if (bankId && amountReceived > 0) recordBankMovement(db, { bankId, type: "deposit", amount: amountReceived, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
     } else if (newPaymentType === 'multi') {
       if (payload.payments && Array.isArray(payload.payments)) {
         for (const p of payload.payments) {
@@ -943,7 +974,7 @@ function editInvoice(invoiceId, payload, userId) {
           else if (!method && p.method === 'credit') method = { type: 'credit', target_id: null };
           if (!method) continue;
           if (method.type === 'cash' && method.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
-          else if (method.type === 'bank' && method.target_id) db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
+          else if (method.type === 'bank' && method.target_id) recordBankMovement(db, { bankId: method.target_id, type: "deposit", amount: amt, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
           const payment = db.prepare(`
             INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id)
             VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)

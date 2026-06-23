@@ -38,8 +38,15 @@ import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { sortByProximity } from "../../utils/itemSort";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useAuthStore } from "../../stores/authStore";
+import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
+import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
+import PurchaseOrderFormBottomBar from "./PurchaseOrderFormBottomBar";
 import { formatNumber } from "../../utils/currency";
 
 
@@ -99,6 +106,7 @@ export default function PurchaseOrderFormPage() {
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -141,6 +149,18 @@ export default function PurchaseOrderFormPage() {
 
   // --- Keyboard Navigation Hook ---
   const handleKeyDown = useFieldNavigation();
+  const gridNavRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "warehouse_id", entryRef: itemInputRef });
+  useShortcut("grid.editLast", () => focusLastRowQty());
+  useShortcut("form.save", () => handleSave());
+
+  // --- Collapsible sidebar ---
+  const sidebar = useCollapsibleSidebar({
+    storageKeyPrefix: "retailer.purchase-order",
+    defaultWidth: 320,
+    minWidth: 280,
+  });
+  const { panelWidth, panelEffectiveCollapsed, togglePanel, startPanelResize } = sidebar;
 
   // --- Init ---
   useEffect(() => {
@@ -261,11 +281,17 @@ export default function PurchaseOrderFormPage() {
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
   }, [itemQuery, stockLevels]);
 
+  useEffect(() => {
+    if (itemQuery) setAllItemsMode(false);
+  }, [itemQuery]);
+
   function loadMoreItems() {
+    if (!itemHasMore || isLoadingMoreItems) return;
     const q = itemQuery.trim();
-    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = (r.data.data || []).map(i => ({
           ...i,
@@ -275,6 +301,36 @@ export default function PurchaseOrderFormPage() {
         setFilteredItems(prev => [...prev, ...rows]);
         setItemOffset(prev => prev + rows.length);
         setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    const SHOW_ALL_LIMIT = 200;
+    const fmt = (i) => ({ ...i, sub_label: `مخزون: ${stockLevels[i.id] || 0}`, price_label: `${i.purchase_price || 0}` });
+    const anchor = selectedItem;
+    setAllItemsMode(true);
+    setFilteredItems([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = anchor?.category_id
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data || []).map(fmt);
+        const allRows  = (allRes.data.data || []).map(fmt);
+        const pinnedId = anchor?.id ?? null;
+        const sortedCat = sortByProximity(catRows, anchor).filter(r => r.id !== pinnedId);
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = allRows.filter(r => !catIds.has(r.id))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        const merged = [...(pinnedId ? [fmt({ ...anchor })] : []), ...sortedCat, ...others];
+        setFilteredItems(merged);
+        setItemOffset(allRows.length);
+        setItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
@@ -454,7 +510,7 @@ export default function PurchaseOrderFormPage() {
         }
       />
 
-      <main className="flex min-h-0 flex-1 flex-col p-4">
+      <main className="flex min-h-0 flex-1 flex-col p-4" style={{ paddingBottom: panelEffectiveCollapsed ? "calc(1rem + var(--bottom-bar-h, 90px))" : "1rem" }}>
         <div className="mb-3 flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2.5">
           <ClipboardList className="h-4 w-4 text-indigo-600 shrink-0" />
           <p className="text-2sm font-black text-indigo-800">طلب توريد — ليس فاتورة. المخزون لن يتأثر حتى الاستلام في صفحة المشتريات.</p>
@@ -515,6 +571,7 @@ export default function PurchaseOrderFormPage() {
                   <label className="entry-label">البحث عن صنف</label>
                   <ProductSearchField
                     ref={itemInputRef}
+                    onNavigateNext={() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select?.(); }}
                     query={itemQuery}
                     onQueryChange={(val) => { setItemQuery(val); setSelectedItem(null); }}
                     results={filteredItems}
@@ -526,6 +583,8 @@ export default function PurchaseOrderFormPage() {
                     onLoadMore={loadMoreItems}
                     hasMore={itemHasMore}
                     isLoadingMore={isLoadingMoreItems}
+                    onShowAll={showAllItems}
+                    hideZeroStock={false}
                   />
                 </div>
                 <div className="entry-field entry-field--qty">
@@ -607,6 +666,8 @@ export default function PurchaseOrderFormPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
                       else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); addBtnRef.current?.focus(); }
+                      else if (e.key === "ArrowLeft") { e.preventDefault(); addBtnRef.current?.focus(); }
+                      else if (e.key === "ArrowRight") { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
                     }}
                     options={warehouses.map(w => {
                       const qty = selectedItem ? (perWhStockMap[selectedItem.id]?.[w.id] || 0) : 0;
@@ -618,7 +679,7 @@ export default function PurchaseOrderFormPage() {
                 <button
                   ref={addBtnRef}
                   onClick={addLine}
-                  onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addLine(); } }}
+                  onKeyDown={(e) => handleKeyDown(e, { nextRef: itemInputRef, prevRef: warehouseTableRef, onEnter: addLine })}
                   disabled={!selectedItem}
                   className="entry-add-btn"
                 >
@@ -630,7 +691,7 @@ export default function PurchaseOrderFormPage() {
             {/* Grid */}
             <section className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-300 bg-white min-h-[500px]">
               <div className="flex items-center justify-between px-3 py-2 shrink-0 border-b border-slate-100">
-                <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
+                <div className="flex items-center gap-1"><div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div><ShortcutKbd id="grid.editLast" /></div>
                 <div ref={colSettingsRef} className="relative">
                   <button onClick={() => setColSettingsOpen(p => !p)}
                     className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
@@ -657,6 +718,7 @@ export default function PurchaseOrderFormPage() {
                   )}
                 </div>
               </div>
+              <div ref={gridNavRef} className="contents">
               <DataGrid
                 data={lines}
                 rowKey={(row, i) => i}
@@ -733,7 +795,7 @@ export default function PurchaseOrderFormPage() {
                   {
                     id: "warehouse_id", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
                     render: (l, i) => (
-                      <select value={l.warehouse_id || ""} onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
+                      <select value={l.warehouse_id || ""} data-grid-cell data-row={i} data-col="warehouse_id" onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
                         className="w-full h-[40px] text-[11px] font-bold outline-none border-0 ring-0 text-center truncate cursor-pointer bg-transparent text-slate-700 focus:bg-indigo-50">
                         {warehouses.map(w => {
                           const sqty = perWhStockMap[l.item_id]?.[w.id] || 0;
@@ -757,6 +819,7 @@ export default function PurchaseOrderFormPage() {
                   }
                 ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
               />
+              </div>
                <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3">
                   <div className="flex items-center gap-6">
                      <div className="flex items-center gap-2">
@@ -789,8 +852,11 @@ export default function PurchaseOrderFormPage() {
             </section>
           </div>
 
+           {/* PanelEdgeRail */}
+           <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "right")} panelSide="right" />
+
            {/* Right Sidebar */}
-           <aside className="w-[320px] shrink-0 flex flex-col gap-4">
+           <aside className={`shrink-0 flex flex-col gap-4 ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
               {/* Pricing + Discount/Increase */}
               <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
                   <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 border-slate-100 flex items-center gap-2">
@@ -858,6 +924,7 @@ export default function PurchaseOrderFormPage() {
                    disabled={isSaving || !lines.length}
                   >
                     {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> جاري الحفظ...</> : <><Save className="h-4 w-4" /> {isEditMode ? "حفظ التعديلات" : "اعتماد وإرسال الطلب"}</>}
+                    {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-white/20 px-1 text-[9px] font-mono text-white" />}
                  </button>
                  </PermissionGate>
                  <PermissionGate page="purchase_orders" action="print">
@@ -867,10 +934,27 @@ export default function PurchaseOrderFormPage() {
                    </button>
                  </PermissionGate>
              </div>
-          </aside>
-        </div>
-      </main>
-      {/* Print Preview Modal */}
+           </aside>
+         </div>
+
+         {/* Sticky Bottom Bar (shown when sidebar collapsed) */}
+         <PurchaseOrderFormBottomBar
+           forceShow={panelEffectiveCollapsed}
+           totals={totals}
+           discount={discount}
+           increase={increase}
+           onDiscountChange={setDiscount}
+           onIncreaseChange={setIncrease}
+           itemCount={lines.length}
+           quantityCount={lines.reduce((acc, l) => acc + l.quantity, 0)}
+           onSave={handleSave}
+           onPrint={() => setPrintPreview(true)}
+           isSaving={isSaving}
+           isEditMode={isEditMode}
+           linesLength={lines.length}
+         />
+       </main>
+       {/* Print Preview Modal */}
       <PrintPreviewModal
         open={printPreview}
         onClose={() => setPrintPreview(false)}
@@ -900,7 +984,7 @@ export default function PurchaseOrderFormPage() {
       />
 
       {/* Image Preview Modal */}
-      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" size="md">
+      <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" size="md" showDetach={false}>
         <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-lg border border-slate-100">
           {imagePreviewUrl ? (
             <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[60vh] object-contain rounded-md shadow-sm border border-slate-200 bg-white" />
@@ -914,7 +998,7 @@ export default function PurchaseOrderFormPage() {
       </Modal>
 
       {/* Confirm Leave Warning Modal */}
-      <Modal open={warnModalOpen} onClose={() => setWarnModalOpen(false)} title="تحذير: مغادرة الصفحة" size="md">
+      <Modal open={warnModalOpen} onClose={() => setWarnModalOpen(false)} title="تحذير: مغادرة الصفحة" size="md" showDetach={false}>
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
@@ -931,7 +1015,7 @@ export default function PurchaseOrderFormPage() {
             <button onClick={() => setWarnModalOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
               تراجع وإكمال الطلب
             </button>
-            <button onClick={() => navigate("/purchases/orders")} className="rounded-sm bg-rose-600 px-5 py-2 text-sm font-black text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20">
+            <button onClick={() => navigate("/purchases/orders")} className="rounded-sm btn-danger px-5 py-2 text-sm font-black shadow-sm">
               نعم، تجاهل ومغادرة
             </button>
           </div>

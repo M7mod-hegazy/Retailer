@@ -6,6 +6,7 @@ import Modal from "../ui/Modal";
 import DataGrid from "../ui/DataGrid";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 import { formatNumber } from "../../utils/currency";
 
 function toDateInput(d = new Date()) {
@@ -109,21 +110,47 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
   );
 }
 
-export default function BranchTransferTodayModal({ open, onClose }) {
+export default function BranchTransferTodayModal({ open, onClose, initialFilters }) {
   const navigate = useNavigate();
+  const gotoTarget = (path) => {
+    if (window.location.search.includes("detachedModal=1") && window.electronAPI?.navigateParent) {
+      window.electronAPI.navigateParent(path);
+      window.electronAPI?.closeModalWindow?.();
+    } else {
+      navigate(path);
+    }
+  };
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(toDateInput());
-  const [dateTo, setDateTo] = useState(toDateInput());
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [docSearch, setDocSearch] = useState("");
-  const [itemSearch, setItemSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
+  const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
+  const [typeFilter, setTypeFilter] = useState(initialFilters?.typeFilter ?? "all");
+  const [docSearch, setDocSearch] = useState(initialFilters?.docSearch ?? "");
+  const [itemSearch, setItemSearch] = useState(initialFilters?.itemSearch ?? "");
   const [filteredItemSuggestions, setFilteredItemSuggestions] = useState([]);
   const [itemLookupOpen, setItemLookupOpen] = useState(false);
   const [activeItemIdx, setActiveItemIdx] = useState(0);
   const [previewTransfer, setPreviewTransfer] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const handleKeyDown = useFieldNavigation();
+  const { handleDetach } = useDetach("branch-transfer-today", {
+    onClose,
+    getState: () => ({
+      dateFrom, dateTo, typeFilter, docSearch, itemSearch,
+    }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
+    actions: { navigate: (path) => navigate(path) },
+  });
   const docSearchRef = useRef(null);
   const itemSearchRef = useRef(null);
   const dateFromRef = useRef(null);
@@ -169,8 +196,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
   }
 
   function handleEdit(id) {
-    onClose();
-    navigate(`/operations/branch-transfer/edit/${id}`);
+    gotoTarget(`/operations/branch-transfer/edit/${id}`);
   }
 
   const columns = [
@@ -229,7 +255,7 @@ export default function BranchTransferTodayModal({ open, onClose }) {
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="مستندات النقل الداخلي" maxWidth="max-w-5xl">
+      <Modal open={open} onClose={onClose} title="مستندات النقل الداخلي" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="branch-transfer-today">
         <div className="flex flex-col gap-4">
           {/* Search bar */}
           <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-xl border border-slate-700 flex-wrap">

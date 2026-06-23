@@ -1,5 +1,9 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Landmark, Plus, Minus, ArrowUpCircle, ArrowDownCircle, RefreshCw, X, List, ArrowLeftRight, AlertCircle, Printer } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { 
+  Landmark, Plus, Minus, RefreshCw, X, List, ArrowLeftRight, AlertCircle, Printer, 
+  ArrowUpRight, ArrowDownLeft, Coins, Check, Sparkles, Activity, ArrowRight, ArrowLeft 
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
@@ -11,6 +15,26 @@ import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
 
+// Dynamic credit card aesthetic gradient selector based on code/index
+const getCardGradient = (index) => {
+  const gradients = [
+    "linear-gradient(135deg, var(--primary-glow) 0%, transparent 80%)",
+    "linear-gradient(135deg, var(--info-light) 0%, transparent 80%)",
+    "linear-gradient(135deg, var(--accent-soft) 0%, transparent 80%)"
+  ];
+  return gradients[index % gradients.length];
+};
+
+const getDistributionColor = (index) => {
+  const colors = [
+    "var(--primary)",
+    "var(--info-text)",
+    "var(--primary-600)",
+    "var(--text-accent)"
+  ];
+  return colors[index % colors.length];
+};
+
 function BankModal({ bank, mode, onClose, onDone }) {
   const handleKeyDown = useFieldNavigation();
   const amountRef = useRef(null);
@@ -19,76 +43,119 @@ function BankModal({ bank, mode, onClose, onDone }) {
   const submitBtnRef = useRef(null);
   const [form, setForm] = useState({ amount: "", reference: "", notes: "" });
   const [saving, setSaving] = useState(false);
-  const [printOpen, setPrintOpen] = useState(false);
 
   async function submit() {
     if (!form.amount) return;
     setSaving(true);
     try {
-      await api.post(`/api/banks/${bank.id}/${mode}`, { amount: Number(form.amount), reference: form.reference, notes: form.notes });
-      toast.success(mode === "deposit" ? "تم الإيداع" : "تم السحب");
+      await api.post(`/api/banks/${bank.id}/${mode}`, { 
+        amount: Number(form.amount), 
+        reference: form.reference, 
+        notes: form.notes 
+      });
+      toast.success(mode === "deposit" ? "تم تسجيل الإيداع بنجاح" : "تم تسجيل السحب بنجاح");
       onDone();
-    } catch (e) { toast.error(e.response?.data?.message || "خطأ"); }
-    finally { setSaving(false); }
+    } catch (e) { 
+      toast.error(e.response?.data?.message || "حدث خطأ غير متوقع"); 
+    } finally { 
+      setSaving(false); 
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-[380px] rounded-2xl bg-white shadow-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-[15px] font-black text-slate-900">{mode === "deposit" ? "إيداع" : "سحب"}</h2>
-            <p className="text-[11px] text-slate-400 font-bold">{bank.name}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setPrintOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600">
-              <Printer className="h-4 w-4" /> طباعة الكشف
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 10 }}
+        transition={{ duration: 0.15 }}
+        className="w-full max-w-[400px] rounded-[24px] p-1.5 bg-slate-200 border border-slate-350 shadow-modal overflow-hidden"
+      >
+        <div className="rounded-[calc(24px-0.375rem)] p-6 bg-white flex flex-col gap-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-sm font-black text-slate-900">
+                {mode === "deposit" ? "إيداع نقدي مباشر" : "سحب نقدي مباشر"}
+              </h2>
+              <p className="text-[10px] text-slate-450 font-bold mt-0.5">حساب: {bank.name}</p>
+            </div>
+            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+              <X className="h-4 w-4" />
             </button>
-            <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>
           </div>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ (ج.م) *</label>
-            <input ref={amountRef} type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-              autoFocus onKeyDown={(e) => handleKeyDown(e, { nextRef: referenceRef })} className="w-full h-11 rounded-xl border border-slate-300 px-4 text-sm font-black text-center outline-none focus:border-indigo-500" />
-          </div>
-          <div>
-            <label className="text-[11px] font-black text-slate-600 block mb-1.5">رقم المرجع</label>
-            <input ref={referenceRef} value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))}
-              onKeyDown={(e) => handleKeyDown(e, { nextRef: notesRef, prevRef: amountRef })} className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none" placeholder="رقم تحويل / مرجع..." />
-          </div>
-          <div>
-            <label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-            <input ref={notesRef} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              onKeyDown={(e) => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: referenceRef })} className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none" />
-          </div>
-          <button ref={submitBtnRef} onClick={submit} disabled={!form.amount || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: amountRef, onEnter: submit })}
-            className={`w-full rounded-xl py-3 text-sm font-black text-white transition-colors disabled:opacity-40 ${mode === "deposit" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"}`}>
-            {saving ? "جاري..." : mode === "deposit" ? "تأكيد الإيداع" : "تأكيد السحب"}
-          </button>
-        </div>
-        {printOpen && (
-          <PrintPreviewModal
-            open={printOpen}
-            onClose={() => setPrintOpen(false)}
-            docType="bank_statement"
-            renderContent={(settings) => (
-              <BankStatementTemplate
-                bank={bank}
-                transactions={txs}
-                from={from}
-                to={to}
-                settings={settings}
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-455 block mb-1">المبلغ المطلوب (ج.م) *</label>
+              <input 
+                ref={amountRef} 
+                type="number" 
+                value={form.amount} 
+                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                autoFocus 
+                onKeyDown={(e) => handleKeyDown(e, { nextRef: referenceRef })} 
+                className="w-full h-11 rounded-xl border border-slate-250 bg-slate-100 px-4 text-center font-mono text-base font-black text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                placeholder="0.00"
               />
-            )}
-          />
-        )}
-      </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-slate-455 block mb-1">رقم الإشعار / المستند</label>
+              <input 
+                ref={referenceRef} 
+                value={form.reference} 
+                onChange={e => setForm(f => ({ ...f, reference: e.target.value }))}
+                onKeyDown={(e) => handleKeyDown(e, { nextRef: notesRef, prevRef: amountRef })} 
+                className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                placeholder="تحويل بنكي / شيك / إشعار..." 
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-slate-455 block mb-1">ملاحظات توضيحية</label>
+              <input 
+                ref={notesRef} 
+                value={form.notes} 
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                onKeyDown={(e) => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: referenceRef })} 
+                className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                placeholder="بيان تفصيلي للحركة..."
+              />
+            </div>
+
+            <button 
+              ref={submitBtnRef} 
+              onClick={submit} 
+              disabled={!form.amount || saving} 
+              onKeyDown={(e) => handleKeyDown(e, { nextRef: amountRef, onEnter: submit })}
+              className={`w-full rounded-xl py-3 mt-2 text-2sm font-black text-white transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-40 shadow-sm ${
+                mode === "deposit" 
+                  ? "bg-teal-600 hover:bg-teal-700" 
+                  : "bg-rose-600 hover:bg-rose-700"
+              }`}
+            >
+              <span>{saving ? "جاري الحفظ..." : "تأكيد وتسجيل الحركة"}</span>
+              <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+                <Check className="h-3 text-white" />
+              </div>
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
+
+const SOURCE_LABELS = {
+  pos_sale: "مبيعات",
+  ajal: "تحصيل",
+  purchase: "مشتريات",
+  transfer: "تحويل",
+  opening: "افتتاحي",
+  revenue: "إيراد",
+  expense: "مصروف",
+  manual: "يدوي",
+};
 
 function StatementPanel({ bank, onClose }) {
   const [txs, setTxs] = useState([]);
@@ -109,8 +176,11 @@ function StatementPanel({ bank, onClose }) {
       if (to) params.set("to", to);
       const r = await api.get(`/api/banks/${bank.id}/transactions?${params}`);
       setTxs(r.data.data || []);
-    } catch { setTxs([]); }
-    finally { setLoading(false); }
+    } catch { 
+      setTxs([]); 
+    } finally { 
+      setLoading(false); 
+    }
   }, [bank.id, from, to]);
 
   useEffect(() => { load(); }, [load]);
@@ -125,65 +195,151 @@ function StatementPanel({ bank, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-start bg-black/30">
-      <div className="w-[500px] h-full bg-white shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-indigo-50">
+    <div className="fixed inset-0 z-50 flex justify-start">
+      {/* Backdrop */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-955/40 backdrop-blur-xs" 
+      />
+      
+      {/* Drawer */}
+      <motion.div 
+        initial={{ x: "-100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "-100%" }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="relative w-full max-w-[500px] h-full bg-slate-100 border-r border-slate-205 shadow-modal flex flex-col z-10"
+        dir="rtl"
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-150 shrink-0">
           <div>
-            <h2 className="text-sm font-black text-slate-900">كشف حساب — {bank.name}</h2>
-            <p className="text-[11px] text-indigo-700 font-bold">الرصيد الحالي: {fmt(bank.balance)} ج.م</p>
+            <h2 className="text-sm font-black text-slate-900">كشف حركات الحساب</h2>
+            <p className="text-[10px] text-slate-450 mt-0.5">{bank.name}</p>
           </div>
-          <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setPrintOpen(true)} 
+              disabled={!txs.length}
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-[10px] font-black text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors shadow-sm"
+            >
+              <Printer className="h-3.5 w-3.5" /> طباعة
+            </button>
+            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">
+              <X className="h-4.5 w-4.5" />
+            </button>
+          </div>
         </div>
-        <div className="flex gap-3 p-4 border-b border-slate-100 shrink-0">
-          <input ref={fromRef} type="date" value={from} onChange={e => setFrom(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: toRef })} className="h-9 flex-1 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
-          <span className="text-slate-400 self-center text-2sm">إلى</span>
-          <input ref={toRef} type="date" value={to} onChange={e => setTo(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: searchBtnRef, prevRef: fromRef })} className="h-9 flex-1 rounded-xl border border-slate-200 px-3 text-2sm outline-none" />
-          <button ref={searchBtnRef} onClick={load} onKeyDown={(e) => handleKeyDown(e, { nextRef: fromRef, onEnter: load })} className="h-9 rounded-xl bg-indigo-600 px-4 text-2sm font-black text-white hover:bg-indigo-700">بحث</button>
+
+        {/* Date Filter Bar */}
+        <div className="flex items-end gap-3 p-4 border-b border-slate-200 bg-slate-100 shrink-0">
+          <div className="flex-1">
+            <label className="text-[9px] font-black text-slate-400 block mb-1">من تاريخ</label>
+            <input 
+              ref={fromRef} 
+              type="date" 
+              value={from} 
+              onChange={e => setFrom(e.target.value)} 
+              onKeyDown={(e) => handleKeyDown(e, { nextRef: toRef })} 
+              className="h-9 w-full rounded-lg border border-slate-300 bg-slate-200 px-3 text-2sm text-slate-900 outline-none focus:border-slate-450 transition-colors" 
+            />
+          </div>
+          <div className="flex-1">
+            <label className="text-[9px] font-black text-slate-400 block mb-1">إلى تاريخ</label>
+            <input 
+              ref={toRef} 
+              type="date" 
+              value={to} 
+              onChange={e => setTo(e.target.value)} 
+              onKeyDown={(e) => handleKeyDown(e, { nextRef: searchBtnRef, prevRef: fromRef })} 
+              className="h-9 w-full rounded-lg border border-slate-300 bg-slate-200 px-3 text-2sm text-slate-900 outline-none focus:border-slate-450 transition-colors" 
+            />
+          </div>
+          <button 
+            ref={searchBtnRef} 
+            onClick={load} 
+            onKeyDown={(e) => handleKeyDown(e, { nextRef: fromRef, onEnter: load })} 
+            className="h-9 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-350 px-4 text-2sm font-black border border-slate-350 transition-colors shrink-0"
+          >
+            بحث
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto">
+
+        {/* Live Balance Summary */}
+        <div className="px-5 py-3 border-b border-slate-200 bg-slate-100/50 flex justify-between items-center shrink-0">
+          <span className="text-[11px] font-black text-slate-400">الرصيد الدفتري الحالي</span>
+          <span className="text-sm font-mono font-black text-indigo-650">{fmt(bank.balance)} ج.م</span>
+        </div>
+
+        {/* Activity Stream */}
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-200 bg-slate-100">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+            <div className="flex items-center justify-center h-40 text-slate-400 font-black animate-pulse">جاري تحميل الحركات...</div>
           ) : txs.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-slate-300 font-black">لا توجد حركات</div>
+            <div className="flex flex-col items-center justify-center h-40 text-slate-350 gap-2 p-6">
+              <Activity className="h-8 w-8" />
+              <span className="text-xs font-black">لا توجد حركات في هذا الحساب</span>
+            </div>
           ) : (
-            <table className="w-full text-2sm">
-              <thead className="bg-slate-50 sticky top-0">
-                <tr>
-                  {["التاريخ", "النوع", "المبلغ", "المرجع", "التسوية"].map(h => (
-                    <th key={h} className="px-4 py-2 text-right font-black text-slate-500 text-[11px] border-b border-slate-100">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {txs.map(tx => (
-                  <tr key={tx.id} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="px-4 py-2.5 text-slate-500">{tx.created_at?.slice(0, 10)}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`flex items-center gap-1 w-fit rounded-full px-2 py-0.5 text-[11px] font-black ${tx.type === "deposit" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                        {tx.type === "deposit" ? <ArrowUpCircle className="h-3 w-3" /> : <ArrowDownCircle className="h-3 w-3" />}
+            txs.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between p-4 hover:bg-slate-150/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${
+                    tx.type === "deposit" ? "bg-teal-50 text-teal-600" : "bg-rose-50 text-rose-600"
+                  }`}>
+                    {tx.type === "deposit" ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-800">
                         {tx.type === "deposit" ? "إيداع" : "سحب"}
                       </span>
-                    </td>
-                    <td className={`px-4 py-2.5 number-fmt-primary ${tx.type === "deposit" ? "text-emerald-700" : "text-rose-700"}`}>
+                      <span className="rounded bg-slate-200 px-1 py-0.2 text-[9px] font-bold text-slate-500">
+                        {SOURCE_LABELS[tx.source] || "يدوي"}
+                      </span>
+                    </div>
+                    {tx.reference && <div className="text-[10px] text-slate-450 font-mono mt-0.5">مرجع: {tx.reference}</div>}
+                    {tx.notes && <div className="text-[10px] text-slate-500 mt-0.5">{tx.notes}</div>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-left">
+                    <div className={`text-xs font-mono font-black ${
+                      tx.type === "deposit" ? "text-teal-600" : "text-rose-600"
+                    }`}>
                       {tx.type === "deposit" ? "+" : "-"}{fmt(tx.amount)}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-400 text-[11px]">{tx.reference || "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <button
-                        onClick={() => toggleReconcile(tx.id, tx.reconciled)}
-                        className={`h-6 w-6 rounded-lg flex items-center justify-center text-[11px] font-black ${tx.reconciled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}
-                        title={tx.reconciled ? "مسوّى" : "غير مسوّى"}
-                      >
-                        {tx.reconciled ? "✓" : "○"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">{tx.created_at?.slice(0, 10)}</div>
+                  </div>
+
+                  <button
+                    onClick={() => toggleReconcile(tx.id, tx.reconciled)}
+                    className={`h-6 w-6 rounded flex items-center justify-center text-xs transition-colors shrink-0 ${
+                      tx.reconciled ? "bg-teal-100 text-teal-600 font-black" : "bg-slate-200 text-slate-400 hover:bg-slate-250"
+                    }`}
+                    title={tx.reconciled ? "تم التسوية" : "بانتظار التسوية"}
+                  >
+                    {tx.reconciled ? <Check className="h-3.5 w-3.5" /> : "○"}
+                  </button>
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </div>
+      </motion.div>
+      {printOpen && (
+        <PrintPreviewModal
+          open={printOpen}
+          onClose={() => setPrintOpen(false)}
+          docType="bank_statement"
+          renderContent={(settings) => (
+            <BankStatementTemplate bank={bank} transactions={txs} from={from} to={to} settings={settings} />
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -193,8 +349,10 @@ export default function BankOperationsPage() {
   const handleKeyDown = useFieldNavigation();
   const [banks, setBanks] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [modal, setModal] = useState(null); // { bank, mode: 'deposit'|'withdraw' }
   const [statement, setStatement] = useState(null);
+
   const [newBankOpen, setNewBankOpen] = useState(false);
   const [newBank, setNewBank] = useState({ name: "", code: "", balance: "", alert_threshold: "" });
   const [transferOpen, setTransferOpen] = useState(false);
@@ -217,8 +375,11 @@ export default function BankOperationsPage() {
     try {
       const r = await api.get("/api/banks");
       setBanks(r.data.data || []);
-    } catch { setBanks([]); }
-    finally { setLoading(false); }
+    } catch { 
+      setBanks([]); 
+    } finally { 
+      setLoading(false); 
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -227,18 +388,28 @@ export default function BankOperationsPage() {
     if (!newBank.name) return;
     setSaving(true);
     try {
-      await api.post("/api/banks", { name: newBank.name, code: newBank.code, balance: Number(newBank.balance || 0), alert_threshold: Number(newBank.alert_threshold || 0) });
-      toast.success("تم إضافة البنك");
-      setNewBankOpen(false); setNewBank({ name: "", code: "", balance: "", alert_threshold: "" }); load();
-    } catch (e) { toast.error(e.response?.data?.message || "خطأ"); }
-    finally { setSaving(false); }
+      await api.post("/api/banks", { 
+        name: newBank.name, 
+        code: newBank.code, 
+        balance: Number(newBank.balance || 0), 
+        alert_threshold: Number(newBank.alert_threshold || 0) 
+      });
+      toast.success("تم إضافة الحساب البنكي بنجاح");
+      setNewBankOpen(false); 
+      setNewBank({ name: "", code: "", balance: "", alert_threshold: "" }); 
+      load();
+    } catch (e) { 
+      toast.error(e.response?.data?.message || "خطأ أثناء الحفظ"); 
+    } finally { 
+      setSaving(false); 
+    }
   }
 
   async function handleTransfer() {
     if (Number(transferForm.amount) <= 0) return toast.error("المبلغ غير صحيح");
     const fromBank = banks.find((bank) => bank.id === Number(transferForm.from_id));
     if (fromBank && Number(transferForm.amount) > Number(fromBank.balance || 0)) {
-      return toast.error("رصيد الحساب غير كافٍ");
+      return toast.error("رصيد الحساب المصدر غير كافٍ");
     }
     setSaving(true);
     try {
@@ -252,164 +423,555 @@ export default function BankOperationsPage() {
       setTransferOpen(false);
       setTransferForm({ from_id: "", to_id: "", amount: "", notes: "" });
       load();
-    } catch (e) { toast.error(e.response?.data?.message || "خطأ في التحويل"); }
-    finally { setSaving(false); }
+    } catch (e) { 
+      toast.error(e.response?.data?.message || "خطأ في عملية التحويل البيني"); 
+    } finally { 
+      setSaving(false); 
+    }
   }
 
+  async function recompute(bank) {
+    try {
+      await api.post(`/api/banks/${bank.id}/recompute`);
+      toast.success("تمت إعادة احتساب الرصيد وتحديث حركات الدفاتر");
+      load();
+    } catch (e) { 
+      toast.error(e.response?.data?.message || "خطأ في إعادة التدقيق"); 
+    }
+  }
+
+  // General Liquidity Statistics
+  const totalBalance = banks.reduce((sum, b) => sum + Number(b.balance || 0), 0);
+  const lowBalanceCount = banks.filter(
+    (b) => Number(b.alert_threshold || 0) > 0 && Number(b.balance || 0) < Number(b.alert_threshold || 0)
+  ).length;
+
   return (
-    <div className="flex flex-col h-full bg-slate-50" dir="rtl">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-200">
-            <Landmark className="h-5 w-5 text-white" />
+    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden" dir="rtl">
+      
+      {/* Decorative Top Ambient Aura */}
+      <div className="absolute top-0 right-0 left-0 h-48 bg-gradient-to-b from-indigo-50/10 to-transparent pointer-events-none z-0" />
+
+      {/* Top Header Section */}
+      <header className="bg-white border-b border-slate-200 px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-6 shrink-0 relative z-10">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100/50 shadow-sm">
+            <Landmark className="h-5.5 w-5.5" />
           </div>
           <div>
-            <h1 className="text-[18px] font-black text-slate-900">إدارة الحسابات البنكية</h1>
-            <p className="text-[11px] font-bold text-slate-400">إيداع وسحب وكشف حساب</p>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">إدارة الحسابات البنكية</h1>
+            <p className="text-[10px] font-bold text-slate-400 mt-0.5 font-sans">مراقبة الأرصدة المصرفية، السحب والإيداع والتسويات للدفاتر</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={load} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /></button>
+
+        {/* Header command buttons */}
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <button 
+            onClick={load} 
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 active:scale-95 transition-all shadow-sm shrink-0"
+            title="تحديث البيانات"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          
           <PermissionGate page="bank_operations" action="edit">
-          <button data-help="transfer-btn" onClick={() => setTransferOpen(true)}
-            className="flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-2sm font-black text-white hover:bg-blue-700">
-            <ArrowLeftRight className="h-4 w-4" /> تحويل بين حسابات
-          </button>
+            <button 
+              data-help="transfer-btn" 
+              onClick={() => setTransferOpen(true)}
+              className="flex h-9 items-center gap-2 rounded-xl bg-slate-200 border border-slate-350 px-4 text-2sm font-black text-slate-850 hover:bg-slate-300 transition-colors shadow-sm active:scale-98"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5 text-slate-650" /> تحويل بين حسابات
+            </button>
           </PermissionGate>
+
           <PermissionGate page="bank_operations" action="add">
-          <button data-help="add-button" onClick={() => setNewBankOpen(!newBankOpen)} className="flex h-9 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-2sm font-black text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200">
-            <Plus className="h-4 w-4" /> إضافة حساب
-          </button>
+            <button 
+              data-help="add-button" 
+              onClick={() => setNewBankOpen(true)} 
+              className="flex h-9 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-2sm font-black text-white hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-600/5 active:scale-98"
+            >
+              <Plus className="h-4 w-4" /> إضافة حساب جديد
+            </button>
           </PermissionGate>
         </div>
       </header>
 
-      {newBankOpen && (
-        <div className="mx-4 mt-4 rounded-2xl bg-white border border-indigo-200 p-5 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-black text-slate-800">إضافة حساب بنكي جديد</h3>
-            <button onClick={() => setNewBankOpen(false)}><X className="h-4 w-4 text-slate-400" /></button>
+      {/* Main Split Bento Layout Panel (Fills the blank spaces completely) */}
+      <div className="flex-1 overflow-auto p-6 md:p-8 relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        
+        {/* RIGHT AREA (xl:col-span-8): Active Accounts Deck (Grid of double-bezel cards) */}
+        <div className="xl:col-span-8 flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider font-sans">بطاقات الحسابات المصرفية المتاحة</span>
+            <span className="text-[9px] font-black font-mono bg-slate-200 text-slate-500 rounded px-2 py-0.5">
+              COUNT: {banks.length}
+            </span>
           </div>
-          <div className="grid grid-cols-5 gap-3">
-            <div><label className="text-[11px] font-black text-slate-500 block mb-1">اسم البنك *</label>
-              <input ref={bankNameRef} value={newBank.name} onChange={e => setNewBank(f => ({ ...f, name: e.target.value }))} autoFocus onKeyDown={(e) => handleKeyDown(e, { nextRef: bankCodeRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-indigo-500" /></div>
-            <div><label className="text-[11px] font-black text-slate-500 block mb-1">الكود</label>
-              <input ref={bankCodeRef} value={newBank.code} onChange={e => setNewBank(f => ({ ...f, code: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankBalanceRef, prevRef: bankNameRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" /></div>
-            <div><label className="text-[11px] font-black text-slate-500 block mb-1">الرصيد الافتتاحي</label>
-              <input ref={bankBalanceRef} type="number" value={newBank.balance} onChange={e => setNewBank(f => ({ ...f, balance: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankAlertRef, prevRef: bankCodeRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm text-center outline-none" /></div>
-            <div><label className="text-[11px] font-black text-slate-500 block mb-1">حد التنبيه</label>
-              <input ref={bankAlertRef} type="number" value={newBank.alert_threshold} onChange={e => setNewBank(f => ({ ...f, alert_threshold: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankSaveRef, prevRef: bankBalanceRef })} className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm text-center outline-none" /></div>
-            <div className="flex items-end">
-              <PermissionGate page="bank_operations" action="add">
-              <button ref={bankSaveRef} onClick={createBank} disabled={!newBank.name || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: bankNameRef, onEnter: createBank })} className="w-full h-10 rounded-xl bg-indigo-600 text-2sm font-black text-white hover:bg-indigo-700 disabled:opacity-40">حفظ</button>
-              </PermissionGate>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <div className="flex-1 overflow-auto p-4">
-        {loading ? (
-          <div className="flex items-center justify-center h-40 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
-        ) : banks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-slate-300 gap-2">
-            <Landmark className="h-10 w-10" />
-            <span className="font-black">لا توجد حسابات بنكية</span>
-          </div>
-        ) : (
-          <div data-help="main-table" className="grid grid-cols-3 gap-4">
-            {banks.map(bank => (
-              <div key={bank.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="text-[15px] font-black text-slate-900">{bank.name}</div>
-                    {bank.code && <div className="text-[11px] text-slate-400 font-bold mt-0.5">{bank.code}</div>}
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
-                    <Landmark className="h-5 w-5 text-indigo-600" />
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الرصيد الحالي</div>
-                  <div className={`text-[26px] number-fmt-primary ${Number(bank.balance) >= 0 ? "text-slate-900" : "text-rose-600"}`}>
-                    {fmt(bank.balance)} <span className="text-2sm text-slate-400">ج.م</span>
-                  </div>
-                  {Number(bank.alert_threshold || 0) > 0 && Number(bank.balance || 0) < Number(bank.alert_threshold || 0) && (
-                    <div className="flex items-center gap-1 text-[11px] font-black text-amber-600 bg-amber-50 rounded-lg px-2 py-1 mt-2 w-fit">
-                      <AlertCircle className="h-3 w-3" /> رصيد منخفض
+          {loading && banks.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-slate-400 font-black animate-pulse">جاري تحميل الحسابات البنكية...</div>
+          ) : banks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-60 text-slate-350 gap-2 border border-dashed border-slate-300 rounded-3xl bg-white/50">
+              <Landmark className="h-8 w-8" />
+              <span className="text-xs font-black">لا توجد حسابات بنكية مضافة بعد</span>
+            </div>
+          ) : (
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 gap-6" 
+              data-help="main-table"
+            >
+              {banks.map((bank, index) => {
+                const hasAlert = Number(bank.alert_threshold || 0) > 0 && Number(bank.balance || 0) < Number(bank.alert_threshold || 0);
+                return (
+                  <div 
+                    key={bank.id}
+                    className="rounded-[28px] p-1.5 bg-slate-100 border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
+                  >
+                    {/* Inner Card (Double Bezel Concentric structure) */}
+                    <div className={`rounded-[calc(28px-0.375rem)] p-5 flex flex-col justify-between h-[215px] relative overflow-hidden group ${
+                      hasAlert ? "bg-amber-50/15" : "bg-white"
+                    }`}>
+                      {/* Visual Card Accent Gradient Overlay */}
+                      <div 
+                        className="absolute inset-0 opacity-10 pointer-events-none" 
+                        style={{
+                          background: getCardGradient(index)
+                        }}
+                      />
+
+                      <div className="relative z-10 flex flex-col gap-3">
+                        {/* Card Header */}
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-800 tracking-tight leading-tight">
+                              {bank.name}
+                            </h3>
+                            {bank.code && (
+                              <span className="inline-block text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.2 rounded bg-slate-200 text-slate-500 mt-1">
+                                كود: {bank.code}
+                              </span>
+                            )}
+                          </div>
+                          <div className={`h-8 w-8 rounded-xl flex items-center justify-center border shrink-0 ${
+                            hasAlert ? "bg-amber-100 border-amber-250 text-amber-700" : "bg-slate-100 border-slate-200 text-slate-500"
+                          }`}>
+                            <Landmark className="h-4 w-4" />
+                          </div>
+                        </div>
+
+                        {/* Card Balance */}
+                        <div className="mt-1">
+                          <span className="text-[9px] font-black text-slate-400 block mb-0.5">الرصيد الدفتري الجاري</span>
+                          <div className={`text-2xl font-mono font-black tracking-tight leading-none ${
+                            Number(bank.balance) >= 0 ? "text-slate-900" : "text-rose-600"
+                          }`}>
+                            {fmt(bank.balance)} <span className="text-2sm font-sans font-bold text-slate-450 mr-0.5">ج.م</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom actions */}
+                      <div className="mt-auto pt-4 border-t border-slate-150 flex items-center justify-between gap-3 relative z-10">
+                        <div className="flex items-center gap-1.5 flex-1">
+                          <PermissionGate page="bank_operations" action="edit">
+                            <button 
+                              data-help="deposit-btn" 
+                              onClick={() => setModal({ bank, mode: "deposit" })}
+                              className="flex-1 flex items-center justify-center gap-1 h-8.5 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-650 border border-teal-200/30 text-[10px] font-black transition-colors active:scale-95"
+                            >
+                              <Plus className="h-3 w-3" /> إيداع
+                            </button>
+                          </PermissionGate>
+                          
+                          <PermissionGate page="bank_operations" action="edit">
+                            <button 
+                              data-help="withdraw-btn" 
+                              onClick={() => setModal({ bank, mode: "withdraw" })}
+                              className="flex-1 flex items-center justify-center gap-1 h-8.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-650 border border-rose-200/30 text-[10px] font-black transition-colors active:scale-95"
+                            >
+                              <Minus className="h-3 w-3" /> سحب
+                            </button>
+                          </PermissionGate>
+                        </div>
+
+                        <div className="flex gap-1.5 shrink-0">
+                          <button 
+                            onClick={() => setStatement(bank)} 
+                            title="كشف حركة الحساب"
+                            className="h-8.5 w-8.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-650 border border-indigo-100/30 flex items-center justify-center transition-colors active:scale-90"
+                          >
+                            <List className="h-4 w-4" />
+                          </button>
+                          
+                          <PermissionGate page="bank_operations" action="edit">
+                            <button 
+                              onClick={() => recompute(bank)} 
+                              title="إعادة تدقيق وتحديث الرصيد"
+                              className="h-8.5 w-8.5 rounded-full bg-slate-200 hover:bg-slate-350 text-slate-500 flex items-center justify-center transition-colors active:scale-90"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </button>
+                          </PermissionGate>
+                        </div>
+                      </div>
+
+                      {/* Low balance text banner inside card */}
+                      {hasAlert && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1 text-[8.5px] font-black text-amber-700 bg-amber-100 border border-amber-250/50 rounded-full px-2 py-0.5">
+                          <AlertCircle className="h-3 w-3 text-amber-600" /> رصيد منخفض
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* LEFT AREA (xl:col-span-4): General Wealth, Insights & Distribution (Resolves empty screen space) */}
+        <div className="xl:col-span-4 flex flex-col gap-6">
+          <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider font-sans">توزيع السيولة والتحليل المالي</span>
+          
+          {/* Liquidity Distribution Panel */}
+          <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">إجمالي الأرصدة البنكية المتاحة</span>
+              <div className="text-3xl font-mono font-black text-slate-900 tracking-tighter leading-none">
+                {fmt(totalBalance)} <span className="text-xs font-sans font-bold text-slate-450 mr-0.5">ج.م</span>
+              </div>
+            </div>
+
+            {/* Distribution chart bar */}
+            {banks.length > 0 && totalBalance > 0 && (
+              <div className="space-y-4">
+                <div className="flex h-3 rounded-full overflow-hidden bg-slate-200">
+                  {banks.map((b, i) => {
+                    const pct = (Number(b.balance || 0) / totalBalance) * 100;
+                    if (pct <= 0) return null;
+                    return (
+                      <div 
+                        key={b.id} 
+                        style={{ 
+                          width: `${pct}%`, 
+                          backgroundColor: getDistributionColor(i)
+                        }}
+                        className="h-full transition-all first:rounded-r-full last:rounded-l-full"
+                        title={`${b.name}: ${pct.toFixed(1)}%`}
+                      />
+                    );
+                  })}
                 </div>
-                <div className="flex gap-2">
-                  <PermissionGate page="bank_operations" action="edit">
-                  <button data-help="deposit-btn" onClick={() => setModal({ bank, mode: "deposit" })}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2 text-2sm font-black text-white hover:bg-emerald-700 transition-colors">
-                    <Plus className="h-4 w-4" /> إيداع
-                  </button>
-                  </PermissionGate>
-                  <PermissionGate page="bank_operations" action="edit">
-                  <button data-help="withdraw-btn" onClick={() => setModal({ bank, mode: "withdraw" })}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-600 py-2 text-2sm font-black text-white hover:bg-rose-700 transition-colors">
-                    <Minus className="h-4 w-4" /> سحب
-                  </button>
-                  </PermissionGate>
-                  <button onClick={() => setStatement(bank)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors">
-                    <List className="h-4 w-4" />
-                  </button>
+
+                <div className="flex flex-col gap-2.5">
+                  {banks.map((b, i) => {
+                    const pct = totalBalance > 0 ? (Number(b.balance || 0) / totalBalance) * 100 : 0;
+                    return (
+                      <div key={b.id} className="flex items-center justify-between text-2sm">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
+                            style={{ backgroundColor: getDistributionColor(i) }}
+                          />
+                          <span className="font-bold text-slate-700 truncate max-w-[150px]">{b.name}</span>
+                        </div>
+                        <div className="text-left font-mono font-bold text-slate-600">
+                          {pct.toFixed(1)}% <span className="text-[10px] text-slate-400">({fmt(b.balance)} ج.م)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
+            )}
+
+            {banks.length > 0 && totalBalance === 0 && (
+              <div className="text-center py-4 text-xs font-bold text-slate-400">
+                لا توجد سيولة نقدية موزعة حالياً
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Quick Info Box */}
+          <div className="bg-slate-100 border border-slate-200 rounded-[28px] p-6 text-2sm text-slate-500 flex flex-col gap-3">
+            <h3 className="font-black text-slate-700 text-xs flex items-center gap-1.5">
+              <Activity className="h-4 w-4 text-slate-500" /> ملخص حالة الرصيد
+            </h3>
+            {lowBalanceCount > 0 ? (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-250/50 p-3 rounded-xl text-amber-800 font-bold text-[11px] leading-relaxed">
+                <AlertCircle className="h-4.5 w-4.5 shrink-0 text-amber-600 mt-0.5" />
+                <span>تنبيه: هناك {lowBalanceCount} حسابات مصرفية تعاني من عجز مالي وتجاوزت الحد الأدنى للرصيد المقبول.</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 bg-teal-50 border border-teal-150 text-teal-800 p-3 rounded-xl font-bold text-[11px]">
+                <Check className="h-4.5 w-4.5 shrink-0 text-teal-650 mt-0.5" />
+                <span>جميع الأرصدة المصرفية مغطاة وتعمل بشكل سليم دون أي مؤشرات عجز.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
 
-      {transferOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-[420px] rounded-2xl bg-white shadow-2xl p-6" dir="rtl">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[15px] font-black text-slate-900">تحويل بين حسابات بنكية</h2>
-              <button onClick={() => setTransferOpen(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[11px] font-black text-slate-600 block mb-1.5">من حساب</label>
-                <select ref={transferFromRef} value={transferForm.from_id} onChange={e => setTransferForm(f => ({ ...f, from_id: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferToRef })}
-                  className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm font-bold bg-white outline-none focus:border-blue-500">
-                  <option value="">اختر حساب المصدر</option>
-                  {banks.map(b => <option key={b.id} value={b.id}>{b.name} — {fmt(b.balance)} ج.م</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[11px] font-black text-slate-600 block mb-1.5">إلى حساب</label>
-                <select ref={transferToRef} value={transferForm.to_id} onChange={e => setTransferForm(f => ({ ...f, to_id: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferAmountRef, prevRef: transferFromRef })}
-                  className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm font-bold bg-white outline-none focus:border-blue-500">
-                  <option value="">اختر الحساب الوجهة</option>
-                  {banks.filter(b => b.id !== Number(transferForm.from_id)).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[11px] font-black text-slate-600 block mb-1.5">المبلغ</label>
-                <input ref={transferAmountRef} type="number" min="0" step="0.01" value={transferForm.amount}
-                  onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferNotesRef, prevRef: transferToRef })}
-                  className="w-full h-10 rounded-xl border border-slate-300 px-3 text-sm font-black outline-none focus:border-blue-500" dir="ltr" />
-              </div>
-              <div>
-                <label className="text-[11px] font-black text-slate-600 block mb-1.5">ملاحظات</label>
-                <input ref={transferNotesRef} value={transferForm.notes} onChange={e => setTransferForm(f => ({ ...f, notes: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferSubmitRef, prevRef: transferAmountRef })}
-                  className="w-full h-10 rounded-xl border border-slate-300 px-3 text-2sm outline-none" />
-              </div>
-              <button ref={transferSubmitRef} onClick={handleTransfer} disabled={!transferForm.from_id || !transferForm.to_id || !transferForm.amount || saving} onKeyDown={(e) => handleKeyDown(e, { nextRef: transferFromRef, onEnter: handleTransfer })}
-                className="w-full rounded-xl bg-blue-600 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-40">
-                {saving ? "جاري التحويل..." : "تأكيد التحويل"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add Bank Account Modal */}
+      <AnimatePresence>
+        {newBankOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-[440px] rounded-[24px] p-1.5 bg-slate-200 border border-slate-350 shadow-modal overflow-hidden animate-fade-in"
+              dir="rtl"
+            >
+              <div className="rounded-[calc(24px-0.375rem)] p-6 bg-white flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-1.5 text-indigo-650 font-black">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm">إضافة حساب بنكي جديد</span>
+                  </div>
+                  <button onClick={() => setNewBankOpen(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                    <X className="h-4.5 w-4.5" />
+                  </button>
+                </div>
 
-      {modal && <BankModal bank={modal.bank} mode={modal.mode} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />}
-      {statement && <StatementPanel bank={statement} onClose={() => setStatement(null)} />}
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-450 block mb-1">اسم الحساب البنكي *</label>
+                    <input 
+                      ref={bankNameRef} 
+                      value={newBank.name} 
+                      onChange={e => setNewBank(f => ({ ...f, name: e.target.value }))} 
+                      autoFocus 
+                      onKeyDown={(e) => handleKeyDown(e, { nextRef: bankCodeRef })} 
+                      className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                      placeholder="مثال: البنك الأهلي - جاري"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black text-slate-450 block mb-1">كود التعريف البنكي (اختياري)</label>
+                    <input 
+                      ref={bankCodeRef} 
+                      value={newBank.code} 
+                      onChange={e => setNewBank(f => ({ ...f, code: e.target.value }))} 
+                      onKeyDown={(e) => handleKeyDown(e, { nextRef: bankBalanceRef, prevRef: bankNameRef })} 
+                      className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                      placeholder="مثال: NBE-JARI"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-455 block mb-1">الرصيد الافتتاحي</label>
+                      <input 
+                        ref={bankBalanceRef} 
+                        type="number" 
+                        value={newBank.balance} 
+                        onChange={e => setNewBank(f => ({ ...f, balance: e.target.value }))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: bankAlertRef, prevRef: bankCodeRef })} 
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-center font-mono text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-455 block mb-1">حد تنبيه الرصيد</label>
+                      <input 
+                        ref={bankAlertRef} 
+                        type="number" 
+                        value={newBank.alert_threshold} 
+                        onChange={e => setNewBank(f => ({ ...f, alert_threshold: e.target.value }))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: bankSaveRef, prevRef: bankBalanceRef })} 
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-center font-mono text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                        placeholder="1000"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-3 border-t border-slate-100">
+                    <PermissionGate page="bank_operations" action="add">
+                      <button 
+                        ref={bankSaveRef} 
+                        onClick={createBank} 
+                        disabled={!newBank.name || saving} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: bankNameRef, onEnter: createBank })} 
+                        className="h-10 rounded-xl bg-indigo-600 text-2sm font-black text-white hover:bg-indigo-700 disabled:opacity-40 transition-all px-6 flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+                      >
+                        <span>حفظ الحساب وتنشيطه</span>
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                    </PermissionGate>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Transfer Between Accounts Modal */}
+      <AnimatePresence>
+        {transferOpen && (() => {
+          const fromBank = banks.find(b => b.id === Number(transferForm.from_id));
+          const toBank = banks.find(b => b.id === Number(transferForm.to_id));
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-955/45 backdrop-blur-xs">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.97, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: 10 }}
+                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                className="w-full max-w-[480px] rounded-[24px] p-1.5 bg-slate-200 border border-slate-350 shadow-modal overflow-hidden"
+                dir="rtl"
+              >
+                <div className="rounded-[calc(24px-0.375rem)] p-6 bg-white flex flex-col gap-5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100/50 shadow-sm">
+                        <ArrowLeftRight className="h-4.5 w-4.5" />
+                      </div>
+                      <h2 className="text-sm font-black text-slate-800">تحويل مالي بين الحسابات</h2>
+                    </div>
+                    <button onClick={() => setTransferOpen(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                      <X className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+
+                  {/* Visual Connection Diagram of money flow */}
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-250/70 rounded-2xl p-4 gap-2">
+                    <div className="flex-1 flex flex-col justify-between h-20 bg-slate-100 border border-slate-200 p-3 rounded-xl min-w-0">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">من حساب (المصدر)</span>
+                      <span className="text-[11px] font-black text-slate-700 truncate">
+                        {fromBank ? fromBank.name : "لم يتم الاختيار"}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-slate-500">
+                        {fromBank ? `${fmt(fromBank.balance)} ج.م` : "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center shrink-0 px-2 text-indigo-650">
+                      <ArrowLeft className="h-5 w-5 animate-pulse shrink-0" />
+                      {transferForm.amount && (
+                        <span className="text-[9px] font-mono font-black text-indigo-650 mt-1 block">
+                          {fmt(transferForm.amount)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex flex-col justify-between h-20 bg-slate-100 border border-slate-200 p-3 rounded-xl min-w-0">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block text-left">إلى حساب (الوجهة)</span>
+                      <span className="text-[11px] font-black text-slate-700 truncate text-left">
+                        {toBank ? toBank.name : "لم يتم الاختيار"}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-slate-500 text-left">
+                        {toBank ? `${fmt(toBank.balance)} ج.م` : "—"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-455 block mb-1">الحساب المصدر (تحويل منه)</label>
+                      <select 
+                        ref={transferFromRef} 
+                        value={transferForm.from_id} 
+                        onChange={e => setTransferForm(f => ({ ...f, from_id: e.target.value }))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: transferToRef })}
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm font-bold text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                      >
+                        <option value="">اختر حساب المصدر</option>
+                        {banks.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.name} — ({fmt(b.balance)} ج.م)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-455 block mb-1">الحساب الوجهة (تحويل إليه)</label>
+                      <select 
+                        ref={transferToRef} 
+                        value={transferForm.to_id} 
+                        onChange={e => setTransferForm(f => ({ ...f, to_id: e.target.value }))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: transferAmountRef, prevRef: transferFromRef })}
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm font-bold text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                      >
+                        <option value="">اختر حساب الوجهة</option>
+                        {banks.filter(b => b.id !== Number(transferForm.from_id)).map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-455 block mb-1">المبلغ المراد تحويله (ج.م) *</label>
+                      <input 
+                        ref={transferAmountRef} 
+                        type="number" 
+                        min="0" 
+                        step="0.01" 
+                        value={transferForm.amount}
+                        onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: transferNotesRef, prevRef: transferToRef })}
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-center font-mono text-sm font-black text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-455 block mb-1">ملاحظات التحويل</label>
+                      <input 
+                        ref={transferNotesRef} 
+                        value={transferForm.notes} 
+                        onChange={e => setTransferForm(f => ({ ...f, notes: e.target.value }))} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: transferSubmitRef, prevRef: transferAmountRef })}
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                        placeholder="بيان حركة التحويل..."
+                      />
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-slate-100">
+                      <button 
+                        ref={transferSubmitRef} 
+                        onClick={handleTransfer} 
+                        disabled={!transferForm.from_id || !transferForm.to_id || !transferForm.amount || saving} 
+                        onKeyDown={(e) => handleKeyDown(e, { nextRef: transferFromRef, onEnter: handleTransfer })}
+                        className="h-10 rounded-xl bg-indigo-600 text-2sm font-black text-white hover:bg-indigo-700 disabled:opacity-40 transition-all px-6 flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+                      >
+                        <span>تأكيد عملية التحويل</span>
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {modal && (
+          <BankModal 
+            bank={modal.bank} 
+            mode={modal.mode} 
+            onClose={() => setModal(null)} 
+            onDone={() => { setModal(null); load(); }} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {statement && (
+          <StatementPanel 
+            bank={statement} 
+            onClose={() => setStatement(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

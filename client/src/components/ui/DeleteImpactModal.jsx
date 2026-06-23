@@ -12,6 +12,7 @@
  * Colours come from theme CSS vars (no hardcoded palette).
  */
 import React from "react";
+import TitleBar from "./TitleBar";
 
 export default function DeleteImpactModal({
   open,
@@ -21,6 +22,7 @@ export default function DeleteImpactModal({
   confirming = false,
   onConfirm,
   onCancel,
+  onDetach,
 }) {
   if (!open) return null;
 
@@ -64,6 +66,13 @@ export default function DeleteImpactModal({
           animation: "modalEnter 280ms cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
+        <TitleBar
+          title={isArchive ? "تأكيد الأرشفة" : "تأكيد الحذف"}
+          onClose={onCancel}
+          onDetach={onDetach}
+        />
+
+        <div data-modal-content>
         {/* Icon */}
         <div style={{
           width: 64, height: 64, margin: "0 auto 18px", borderRadius: "50%",
@@ -72,10 +81,6 @@ export default function DeleteImpactModal({
         }}>
           {isBlocked ? "🚫" : "⚠️"}
         </div>
-
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", textAlign: "center", marginBottom: 6 }}>
-          {isArchive ? "تأكيد الأرشفة" : "تأكيد الحذف"}
-        </h2>
         {itemName && (
           <p style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center", marginBottom: 16 }}>
             {isArchive ? "أرشفة: " : "حذف: "}<strong style={{ color: "var(--text-primary)" }}>{itemName}</strong>
@@ -123,10 +128,9 @@ export default function DeleteImpactModal({
           <button
             onClick={onCancel}
             disabled={confirming}
+            className="btn-danger"
             style={{
               flex: 1, padding: 12, borderRadius: 10,
-              border: "1px solid var(--border-normal)", background: "transparent",
-              color: "var(--text-secondary)", fontSize: 14, fontWeight: 700,
               cursor: confirming ? "not-allowed" : "pointer",
             }}
           >
@@ -149,6 +153,7 @@ export default function DeleteImpactModal({
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

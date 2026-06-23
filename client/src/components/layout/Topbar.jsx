@@ -1,12 +1,15 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle, TrendingUp } from "lucide-react";
+import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle, TrendingUp, ArrowRight } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import { useQuitOrLogoutStore } from "../../stores/quitOrLogoutStore";
 import { useNotificationStore } from "../../stores/notificationStore";
 import { usePerformanceStore } from "../../stores/performanceStore";
 import { useUiStore } from "../../stores/uiStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { useHelpStore } from "../../stores/helpStore";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import { ROUTES } from "../../constants/routes";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import helpContent from "../../help/helpContent";
@@ -24,7 +27,12 @@ const EXTRA_BREADCRUMB_PARENTS = [
   { match: /^\/purchases\/orders\/\d+\/edit$/, parents: [{ label: "طلبات التوريد", path: "/purchases/orders" }], current: "تعديل أمر التوريد" },
   { match: /^\/purchases\/orders$/, current: "طلبات التوريد" },
   { match: /^\/operations\/quotations\/new$/, parents: [{ label: "عرض سعر", path: "/operations/quotations" }], current: "عرض سعر جديد" },
+  { match: /^\/operations\/branch-transfer\/new$/, parents: [{ label: "نقل المخزون بين الفروع", path: "/operations/branch-transfer" }], current: "تحويل جديد" },
   { match: /^\/operations\/quotations$/, current: "عرض سعر" },
+  { match: /^\/sales\/returns\/new$/, parent: { label: "المبيعات", path: "/sales" }, current: "جديد" },
+  { match: /^\/sales\/returns\/amend$/, parent: { label: "المبيعات", path: "/sales" }, current: "تعديل" },
+  { match: /^\/purchases\/returns\/new$/, parent: { label: "المشتريات", path: "/purchases" }, current: "جديد" },
+  { match: /^\/purchases\/returns\/amend$/, parent: { label: "المشتريات", path: "/purchases" }, current: "تعديل" },
 ];
 
 function useBreadcrumbs(pathname, dynamicBreadcrumb) {
@@ -88,8 +96,25 @@ const routeLabelMatchers = [
   { match: ROUTES.SETTINGS, label: "النظام" },
 ];
 
+// ─── Resolve a readable label for any pathname ───────────────────────────────
+function resolvePathLabel(pathname) {
+  if (!pathname || pathname === "/" || pathname === "/dashboard") return "الرئيسية";
+  // Check EXTRA_BREADCRUMB_PARENTS first for specific labels
+  for (const entry of EXTRA_BREADCRUMB_PARENTS) {
+    if (entry.match.test(pathname)) {
+      const current = entry.current;
+      if (current) return current;
+      const parents = entry.parents || (entry.parent ? [entry.parent] : []);
+      if (parents.length) return parents[parents.length - 1].label;
+    }
+  }
+  // Fall back to routeLabelMatchers
+  const match = routeLabelMatchers.find((e) => pathname.startsWith(e.match));
+  return match?.label || null;
+}
+
 export default function Topbar() {
-  const logout = useAuthStore((state) => state.logout);
+  const _logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const items = useNotificationStore((state) => state.items);
@@ -105,6 +130,29 @@ export default function Topbar() {
   const [openBell, setOpenBell] = useState(false);
   const [hoveredCrumb, setHoveredCrumb] = useState(null);
   const bellRef = useRef(null);
+
+  // ── Back-navigation history tracking ──
+  // Keep a stack of distinct visited paths to resolve the previous page label.
+  const historyStack = useRef([]);
+
+  useEffect(() => {
+    const current = location.pathname;
+    const stack = historyStack.current;
+    if (stack.length === 0 || stack[stack.length - 1] !== current) {
+      historyStack.current = [...stack.slice(-9), current];
+    }
+  }, [location.pathname]);
+
+  const prevPath = historyStack.current.length >= 2
+    ? historyStack.current[historyStack.current.length - 2] : null;
+  const prevLabel = prevPath ? resolvePathLabel(prevPath) : null;
+  const canGoBack = Boolean(prevLabel);
+
+  const handleBack = useCallback(() => {
+    if (!canGoBack) return;
+    historyStack.current = historyStack.current.slice(0, -1);
+    navigate(-1);
+  }, [canGoBack, navigate]);
 
   const currentPageKey = useMemo(() => getHelpPageKey(location.pathname), [location.pathname]);
 
@@ -145,21 +193,13 @@ export default function Topbar() {
   }, [openBell]);
 
 
-  useEffect(() => {
-    const handler = (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault(); openGlobalSearch();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [openGlobalSearch]);
+  useShortcut("global.search", () => openGlobalSearch());
 
   return (
     <header className="shrink-0 sticky top-0 z-50 px-6 py-4" dir="rtl">
       
       {/* Floating Glass Pill */}
-      <div className="flex h-16 items-center justify-between px-4 sm:px-5 backdrop-blur-2xl border border-white rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]" style={{ backgroundColor: 'var(--bg-topbar)' }}>
+      <div className="flex h-16 items-center justify-between px-4 sm:px-5 backdrop-blur-2xl border border-white/80 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]" style={{ backgroundColor: 'var(--bg-topbar)' }}>
         
         {/* Left: Logo & Breadcrumbs */}
         <div className="flex items-center gap-3 sm:gap-6">
@@ -186,6 +226,51 @@ export default function Topbar() {
           </div>
 
           <div className="hidden lg:block w-px h-8 bg-zinc-200/60" />
+
+          {/* Back Navigation Button — always visible; expands to show prev page label when active */}
+          <button
+            onClick={handleBack}
+            disabled={!canGoBack}
+            aria-label="رجوع للصفحة السابقة"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: canGoBack ? 7 : 0,
+              height: 32,
+              minWidth: 32,
+              maxWidth: canGoBack ? 220 : 32,
+              paddingInline: canGoBack ? 10 : 0,
+              overflow: "hidden",
+              flexShrink: 0,
+              marginInlineEnd: 4,
+              border: "1px solid var(--border-normal)",
+              borderRadius: 12,
+              background: "var(--bg-surface)",
+              color: canGoBack ? "var(--text-secondary)" : "var(--text-muted)",
+              opacity: canGoBack ? 1 : 0.4,
+              cursor: canGoBack ? "pointer" : "default",
+              transition: "max-width 260ms cubic-bezier(0.4,0,0.2,1), padding 260ms cubic-bezier(0.4,0,0.2,1), gap 260ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease, color 150ms ease",
+            }}
+          >
+            {/* Icon — always centered when pill is collapsed */}
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, flexShrink: 0 }}>
+              <ArrowRight strokeWidth={2.2} style={{ width: 15, height: 15 }} />
+            </span>
+            {/* Label — fades in after width opens */}
+            <span style={{
+              fontSize: 11,
+              fontWeight: 800,
+              color: "var(--text-primary)",
+              whiteSpace: "nowrap",
+              opacity: canGoBack ? 1 : 0,
+              transition: "opacity 180ms ease 80ms",
+              lineHeight: 1,
+              letterSpacing: "-0.01em",
+              paddingInlineEnd: 2,
+            }}>
+              {prevLabel || ""}
+            </span>
+          </button>
 
           <div className="flex items-center gap-1.5" onMouseLeave={() => setHoveredCrumb(null)}>
             {breadcrumbs.map((crumb, i) => {
@@ -244,7 +329,7 @@ export default function Topbar() {
           >
             <Search strokeWidth={2} className="h-4 w-4 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
             <span className="hidden md:block text-xs font-bold text-zinc-400 group-hover:text-zinc-600 transition-colors">بحث</span>
-            <kbd className="hidden md:inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-mono font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded">Ctrl+K</kbd>
+            <ShortcutKbd id="global.search" className="hidden md:inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-mono font-black text-zinc-400 bg-zinc-100 border border-zinc-200 rounded" />
           </button>
 
           {/* Profit Toggle — only on POS page */}
@@ -374,7 +459,7 @@ export default function Topbar() {
               {user?.name?.split(" ")[0] || "User"}
             </span>
             <button
-              onClick={logout}
+              onClick={() => useQuitOrLogoutStore.getState().showModal('topbar')}
               title="تسجيل الخروج"
               className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-primary hover:text-white hover:shadow-sm transition-all group"
             >

@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, createHashRouter, RouterProvider } from "react-router-dom";
 import App from "./App.jsx";
 import "./index.css";
+import "./components/detached/registerDetachedModals";
 // colorThemeOverrides.css is no longer imported globally — applyColorTheme
 // injects it only for non-default themes so the default theme renders natively.
 import { applyColorTheme } from "./utils/applyColorTheme";

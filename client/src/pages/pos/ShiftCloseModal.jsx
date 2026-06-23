@@ -4,9 +4,15 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import api from "../../services/api";
 import CurrencyDisplay from "../../components/ui/CurrencyDisplay";
+import { useDetach } from "../../hooks/useDetach";
 
-export default function ShiftCloseModal({ open, shift, onClose, onSuccess }) {
-  const [closingCash, setClosingCash] = useState(String(shift?.opening_cash || 0));
+export default function ShiftCloseModal({ open, shift, onClose, onSuccess, closingCash: initialClosingCash }) {
+  const [closingCash, setClosingCash] = useState(initialClosingCash ?? String(shift?.opening_cash || 0));
+  const { handleDetach } = useDetach("shift-close", {
+    onClose,
+    getState: () => ({ closingCash, shiftId: shift?.id, openingCash: shift?.opening_cash, currentTotal: shift?.current_total }),
+    actions: { success: () => onSuccess?.() },
+  });
   const expected = Number(shift?.current_total || shift?.opening_cash || 0);
   const variance = Number(closingCash || 0) - expected;
 
@@ -17,7 +23,7 @@ export default function ShiftCloseModal({ open, shift, onClose, onSuccess }) {
   }
 
   return (
-    <Modal open={open} title="إغلاق وردية" onClose={onClose}>
+    <Modal open={open} title="إغلاق وردية" onClose={onClose} onDetach={handleDetach} modalType="shift-close" showDetach={true}>
       <div className="space-y-5">
         <div className="rounded-[20px] border border-border-subtle bg-[var(--bg-overlay)] p-4 text-sm text-text-secondary">
           <div className="flex justify-between py-1">

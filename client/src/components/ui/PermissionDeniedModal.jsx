@@ -3,14 +3,18 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { ShieldAlert } from "lucide-react";
 import { PAGE_PERMISSIONS, ACTION_LABELS } from "../../constants/pagePermissions";
+import { useDetach } from "../../hooks/useDetach";
 
 export default function PermissionDeniedModal({ open, onClose, page, action }) {
+  const { handleDetach } = useDetach("permission-denied", {
+    onClose, getState: () => ({ page, action }), actions: {},
+  });
   const pageMeta = PAGE_PERMISSIONS?.[page];
   const pageLabel = pageMeta?.label || page;
   const actionLabel = ACTION_LABELS?.[action] || action;
 
   return (
-    <Modal open={open} title="غير مصرح" onClose={onClose} maxWidth="max-w-sm">
+    <Modal open={open} title="غير مصرح" onClose={onClose} onDetach={handleDetach} maxWidth="max-w-sm">
       <div className="flex flex-col items-center gap-4 py-4">
         <div className="h-14 w-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center">
           <ShieldAlert className="h-7 w-7 text-rose-500" />
@@ -24,7 +28,7 @@ export default function PermissionDeniedModal({ open, onClose, page, action }) {
         </p>
       </div>
       <div className="flex justify-end">
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="danger" onClick={onClose}>
           إغلاق
         </Button>
       </div>

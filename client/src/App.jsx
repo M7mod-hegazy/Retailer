@@ -14,7 +14,11 @@ import ScreenLock from "./components/auth/ScreenLock";
 import GlobalSearchPage from "./pages/search/GlobalSearchPage";
 import FullPageLoader from "./components/ui/FullPageLoader";
 import { useCanView } from "./hooks/usePermission";
+import { useShortcut } from "./shortcuts/useShortcut";
 import { useUpdateStore } from "./stores/updateStore";
+import { useQuitOrLogoutStore } from "./stores/quitOrLogoutStore";
+import QuitOrLogoutModal from "./components/ui/QuitOrLogoutModal";
+import DetachedModalHost from "./components/detached/DetachedModalHost";
 import api from "./services/api";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallbackPage from "./pages/error/ErrorFallbackPage";
@@ -204,7 +208,15 @@ function SetupGate({ children }) {
 }
 
 export default function App() {
-  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setManualProgress, setManualComplete, setManualError } = useUpdateStore();
+  // ── Detached modal mode ────────────────────────────────────────────────
+  // When Electron opens a child BrowserWindow for a detached modal, it loads the
+  // app URL with ?detachedModal=1. Skip the entire app shell (auth, routing,
+  // layout) and render only the modal host so the modal content is isolated.
+  if (new URLSearchParams(window.location.search).has("detachedModal")) {
+    return <DetachedModalHost />;
+  }
+
+  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setCanceled, setManualProgress, setManualComplete, setManualError, resetManual } = useUpdateStore();
   const token = useAuthStore((s) => s.token);
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -224,8 +236,15 @@ export default function App() {
   const reduceMotion = !perfAnimations || perfReduceMotion;
 
   useEffect(() => {
+    // Resilient subscribe: the preload whitelist isn't hot-reloaded in dev, so a
+    // freshly added channel can be missing from a still-running Electron preload.
+    // Swallow that mismatch instead of letting one bad channel crash the whole UI.
+    const safeOn = (channel, handler) => {
+      try { return window.electronAPI?.on(channel, handler); }
+      catch (e) { console.warn('update listener skipped:', channel, e?.message); return undefined; }
+    };
     const cleanups = [
-      window.electronAPI?.on('update:available', (info) => {
+      safeOn('update:available', (info) => {
         setAvailable(info);
         toast.success("يتوفر تحديث جديد للنظام!", {
           icon: "⬇️",
@@ -233,9 +252,9 @@ export default function App() {
           duration: 6000,
         });
       }),
-      window.electronAPI?.on('update:not-available', () => setNotAvailable()),
-      window.electronAPI?.on('update:progress', (p) => setProgress(p)),
-      window.electronAPI?.on('update:downloaded', (info) => {
+      safeOn('update:not-available', () => setNotAvailable()),
+      safeOn('update:progress', (p) => setProgress(p)),
+      safeOn('update:downloaded', (info) => {
         setDownloaded(info);
         toast.success("تم تحميل التحديث! أعد التشغيل للتثبيت.", {
           icon: "✅",
@@ -243,9 +262,10 @@ export default function App() {
           duration: 8000,
         });
       }),
-      window.electronAPI?.on('update:error', (e) => setError(e)),
-      window.electronAPI?.on('update:manual-progress', (p) => setManualProgress(p)),
-      window.electronAPI?.on('update:manual-complete', (d) => {
+      safeOn('update:error', (e) => setError(e)),
+      safeOn('update:canceled', () => setCanceled()),
+      safeOn('update:manual-progress', (p) => setManualProgress(p)),
+      safeOn('update:manual-complete', (d) => {
         setManualComplete(d.filePath);
         toast.success("تم تحميل ملف التثبيت!", {
           icon: "📦",
@@ -253,12 +273,24 @@ export default function App() {
           duration: 10000,
         });
       }),
-      window.electronAPI?.on('update:manual-error', (e) => setManualError(e.message || e)),
+      safeOn('update:manual-error', (e) => setManualError(e.message || e)),
+      safeOn('update:manual-canceled', () => resetManual()),
+      safeOn('app:show-quit-dialog', () => {
+        useQuitOrLogoutStore.getState().showModal('window_close');
+      }),
     ];
     return () => {
       cleanups.forEach((cleanup) => cleanup?.());
     };
-  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setManualProgress, setManualComplete, setManualError]);
+  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setCanceled, setManualProgress, setManualComplete, setManualError, resetManual]);
+
+  useShortcut('global.minimize', () => {
+    window.electronAPI?.minimize?.();
+  });
+
+  useShortcut('global.quit', () => {
+    window.electronAPI?.invoke?.('app:quit');
+  });
 
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
@@ -273,6 +305,8 @@ export default function App() {
       <Toaster position="top-center" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} containerStyle={{ marginTop: "64px" }} />
       <ScreenLock />
       <GlobalSearchPage />
+      <QuitOrLogoutModal />
+      <DetachedModalHost />
       {showWelcome && <WelcomeWizard onClose={() => setShowWelcome(false)} />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -342,7 +376,7 @@ export default function App() {
                     <Route path="accounts/customers/import" element={<PermissionRoute page="customer_accounts"><AccountImportPage entityType="customers" /></PermissionRoute>} />
                     <Route path="accounts/suppliers/import" element={<PermissionRoute page="supplier_accounts"><AccountImportPage entityType="suppliers" /></PermissionRoute>} />
                     <Route path="operations/ajal-tracker" element={<Navigate to="/accounts/customers" replace />} />
-                    <Route path="operations/cheques" element={<PermissionRoute page="cheques"><ChequesPage /></PermissionRoute>} />
+                    <Route path="operations/cheques" element={<PermissionRoute page="cheques"><FeatureRoute featureKey="feature_cheques"><ChequesPage /></FeatureRoute></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<Navigate to="/operations/payment-methods" replace />} />
                     <Route path="operations/treasury-transfer" element={<Navigate to="/expenses" replace />} />
                     <Route path="operations/installments" element={<Navigate to="/accounts/customers" replace />} />

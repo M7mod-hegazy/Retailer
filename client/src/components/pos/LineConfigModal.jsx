@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { X, Package, Smartphone, Gem, Loader2, Check } from "lucide-react";
+import { Loader2, Package } from "lucide-react";
 import Modal from "../ui/Modal";
+import TitleBar from "../ui/TitleBar";
 import api from "../../services/api";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import { formatNumber } from "../../utils/currency";
+import { useDetach } from "../../hooks/useDetach";
 
 function money(v) {
   return formatNumber(v, { decimals: 2 });
@@ -28,6 +30,9 @@ function money(v) {
  *   onApply  – (patch) => void   applies a partial update to the line
  */
 export default function LineConfigModal({ line, item, onClose, onApply }) {
+  const { handleDetach } = useDetach("line-config", {
+    onClose, getState: () => ({ line, item }), actions: { apply: (data) => onApply?.(data) },
+  });
   const multiUnitEnabled = useFeatureEnabled("feature_multi_unit");
   const serialsEnabled = useFeatureEnabled("feature_serials");
   const goldEnabled = useFeatureEnabled("feature_gold");
@@ -76,19 +81,11 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
   const nothing = !showMultiUnit && !showGold && !showSerials;
 
   return (
-    <Modal open title="" onClose={onClose} maxWidth="max-w-md">
+    <Modal open title={null} onClose={onClose} maxWidth="max-w-md">
       <div dir="rtl" className="space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">تفاصيل السطر</p>
-            <h3 className="truncate text-base font-black text-slate-900">{line.item_name}</h3>
-          </div>
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <TitleBar title="تفاصيل السطر" subtitle={line.item_name} onClose={onClose} onDetach={handleDetach} />
 
+        <div data-modal-content>
         {/* Multi-unit section */}
         {showMultiUnit && (
           <section className="space-y-2">
@@ -170,6 +167,7 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
           <button type="button" onClick={onClose}
             className="rounded-lg bg-primary px-4 py-2 text-[13px] font-black text-white hover:bg-primary-600">تم</button>
         </div>
+      </div>
       </div>
     </Modal>
   );

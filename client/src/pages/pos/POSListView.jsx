@@ -1,5 +1,8 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+﻿import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useGridNavigation } from "../../hooks/useGridNavigation";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd, { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import {
   AlertTriangle, Banknote, Building2, Calendar, ChevronDown, CreditCard, GripHorizontal,
   FilePlus, Filter, Image as ImageIcon, Layers, List, LayoutGrid,
@@ -111,11 +114,11 @@ export default function POSListView({ vm }) {
     expandPanel, togglePanel, startPanelResize,
     handleHold,
     selectedItem, setSelectedItem, staging, setStaging,
-    itemNameQuery, setItemNameQuery,
+    itemNameQuery, setItemNameQuery, setItemCodeQuery,
     itemLookupOpen, setItemLookupOpen,
     activeLookupIndex, setActiveLookupIndex,
     itemResults,
-    searchedItemHasMore, isLoadingMoreItems, loadMorePOSItems,
+    searchedItemHasMore, isLoadingMoreItems, isSearchingItems, loadMorePOSItems, showAllPOSItems,
     listItemInputRef, listQtyRef, listPriceRef, listDiscRef, listWhRef, listAddBtnRef,
     customerInputRef,
     handleListFieldKeyDown, handleSelectItem,
@@ -146,6 +149,9 @@ export default function POSListView({ vm }) {
   const multiCashRef = useRef(null);
   const multiCreditRef = useRef(null);
   const handleFieldEnter = useFieldNavigation();
+  const gridNavRef = useRef(null);
+  const { focusLastRowQty } = useGridNavigation(gridNavRef, { qtyCol: "quantity", entryRef: listItemInputRef });
+  useShortcut("grid.editLast", () => focusLastRowQty());
   const [entryBarNarrow, setEntryBarNarrow] = useState(false);
   useEffect(() => {
     const el = entryBarRef.current;
@@ -485,7 +491,7 @@ export default function POSListView({ vm }) {
             </div>
             <div className="relative">
               <input ref={customerInputRef} type="text" value={customerQuery}
-                placeholder={customer?.id ? customer.name : "ابحث عن عميل..."}
+                placeholder={customer?.id ? customer.name : `ابحث عن عميل... ${shortcutLabel("pos.focusCustomer")}`}
                 onChange={(e) => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); if (!e.target.value) { setCustomer(null); setPaymentType("cash"); } }}
                 onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
                 onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
@@ -1009,17 +1015,20 @@ export default function POSListView({ vm }) {
 
               {/* الصنف */}
               <div data-help="search-bar" className="entry-field entry-field--item">
-                <label className="entry-label">الصنف</label>
+                <label className="entry-label">الصنف <span className="text-[9px] font-mono text-slate-400">({shortcutLabel("pos.focusItem")})</span></label>
                 <ProductSearchField
                   ref={listItemInputRef}
+                  onNavigateNext={() => { listQtyRef.current?.focus(); listQtyRef.current?.select?.(); }}
                   query={itemNameQuery}
-                  onQueryChange={(val) => { setItemNameQuery(val); setSelectedItem(null); }}
+                  onQueryChange={(val) => { setItemNameQuery(val); setItemCodeQuery(""); setSelectedItem(null); }}
                   results={itemResults}
                   onPick={(item) => { handleSelectItem(item); setTimeout(() => listQtyRef.current?.focus(), 50); }}
                   selectedItem={selectedItem}
+                  loading={isSearchingItems}
                   onLoadMore={loadMorePOSItems}
                   hasMore={searchedItemHasMore}
                   isLoadingMore={isLoadingMoreItems}
+                  onShowAll={showAllPOSItems}
                 />
               </div>
 
@@ -1117,7 +1126,10 @@ export default function POSListView({ vm }) {
 
               {/* إضافة */}
               <button ref={listAddBtnRef} onClick={addCurrentLine} disabled={!selectedItem}
-                onKeyDown={(e) => { if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && selectedItem) { e.preventDefault(); addCurrentLine(); }
+                  else handleListFieldKeyDown(e, listItemInputRef, listWhRef);
+                }}
                 className="entry-add-btn"
               ><Plus className="h-4 w-4" /> إضافة</button>
 
@@ -1146,7 +1158,7 @@ export default function POSListView({ vm }) {
           {/* Lines DataGrid */}
           <div className="flex flex-col flex-1 min-h-0">
             <div ref={colSettingsRef} className="flex items-center justify-between px-1 py-1.5 shrink-0">
-              <span className="text-[11px] font-bold text-slate-400">أصناف الفاتورة ({lines.length})</span>
+              <span className="flex items-center gap-1"><span className="text-[11px] font-bold text-slate-400">أصناف الفاتورة ({lines.length})</span><ShortcutKbd id="grid.editLast" /></span>
               {flashAdd && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />}
               <div className="flex items-center gap-1">
                 <button onClick={cycleDensity}
@@ -1163,7 +1175,7 @@ export default function POSListView({ vm }) {
                     <Settings2 className="h-4 w-4" />
                   </button>
                   {colSettingsOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1 animate-[fade-in_0.1s_ease-out]">
+                    <div className="absolute left-0 top-full mt-1 z-[70] w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1 animate-[fade-in_0.1s_ease-out]">
                       <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
                       {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
                         const labels = { sku: "الكود", name: "البيان", quantity: "الكمية", unitPrice: "السعر", lineDiscount: "الخصم", warehouseId: "المخزن", unit: "الوحدة", profit_pct: "الربح", barcode: "الباركود", cost_price: "سعر الشراء", category: "التصنيف", wholesale_price: "سعر الجملة", total: "الإجمالي" };
@@ -1182,6 +1194,7 @@ export default function POSListView({ vm }) {
                 </div>
               </div>
             </div>
+            <div ref={gridNavRef} className="contents">
             <DataGrid data-help="cart" data={lines}
               rowKey={(row, i) => row.line_key || `${cartLineKey(row)}-${i}`}
               emptyMessage=""
@@ -1244,6 +1257,7 @@ export default function POSListView({ vm }) {
                     <div className={`w-full h-[34px] flex items-center justify-center gap-1 transition-colors ${atLimit ? 'bg-rose-50' : ''}`}
                       title={hasLimit ? `المتاح: ${maxStock}` : undefined}>
                       <input type="number" min="1" step="1" value={l.quantity} max={hasLimit ? maxStock : undefined}
+                        data-grid-cell data-row={i} data-col="quantity"
                         onKeyDown={(e) => {
                           if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) { e.preventDefault(); return; }
                           if (hasLimit && e.key >= '0' && e.key <= '9') { const next = Number(String(l.quantity) + e.key); if (next > maxStock) e.preventDefault(); }
@@ -1256,11 +1270,12 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l) => {
+              ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
                   const isOverride = l.item_id !== -1 && l.master_sale_price > 0 && Math.abs(Number(l.unit_price) - Number(l.master_sale_price)) > 0.001;
                   return (
                     <div className="relative w-full" title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}>
                       <input type="number" step="any" value={l.unit_price}
+                        data-grid-cell data-row={i} data-col="unit_price"
                         onChange={(e) => canOverridePrice && updateLine(cartLineKey(l), { unit_price: Number(e.target.value) || 0 })}
                         readOnly={!canOverridePrice}
                         className={`w-full h-[34px] text-center number-fmt-primary text-xs outline-none border-0 ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" : isOverride ? "bg-amber-50 text-amber-800 focus:bg-amber-100" : "bg-transparent focus:bg-indigo-50/50"}`} />
@@ -1269,7 +1284,7 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("lineDiscount") ? [{ id: "lineDiscount", header: "خصم", width: 90, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l) => {
+              ...(visibleColumns.includes("lineDiscount") ? [{ id: "lineDiscount", header: "خصم", width: 90, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
                   const lineKey = cartLineKey(l);
                   const mode = discountModes[lineKey] || "flat";
                   const lineMax = Number(l.unit_price) * Number(l.quantity);
@@ -1279,6 +1294,7 @@ export default function POSListView({ vm }) {
                   return (
                     <div className="flex items-center h-[34px] px-1 gap-0.5">
                       <input type="number" min="0" step="any"
+                        data-grid-cell data-row={i} data-col="discount"
                         value={mode === "pct" ? parseFloat(pctVal.toFixed(2)) : flatDisc}
                         onChange={(e) => {
                           const v = Math.max(0, Number(e.target.value || 0));
@@ -1294,7 +1310,7 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("warehouseId") ? [{ id: "warehouseId", header: "المخزن", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100 relative", render: (l) => {
+              ...(visibleColumns.includes("warehouseId") ? [{ id: "warehouseId", header: "المخزن", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100 relative", render: (l, i) => {
                   const whStock = stockLevels[l.item_id] || stockLevels[Number(l.item_id)] || stockLevels[String(l.item_id)] || {};
                   const lineQty = Number(l.quantity) || 1;
                   const currentWhId = l.warehouse_id || staging.warehouseId;
@@ -1303,6 +1319,7 @@ export default function POSListView({ vm }) {
                   return (
                     <div className="relative w-full">
                       <select value={currentWhId}
+                        data-grid-cell data-row={i} data-col="warehouse_id"
                         onChange={(e) => updateLine(cartLineKey(l), { warehouse_id: e.target.value })}
                         className={`w-full h-[34px] text-[10px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${hasShortage ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"}`}>
                         {getFilteredWarehouses(l.item_id, l.warehouse_id).map(w => {
@@ -1379,6 +1396,7 @@ export default function POSListView({ vm }) {
               },
             ]}
           />
+          </div>
         </div>
         </div>
       </main>
@@ -1395,7 +1413,7 @@ export default function POSListView({ vm }) {
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ] : paymentType === "installments"
             ? (Number(amountPaid) > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: Number(amountPaid) }] : [])
-            : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: totals.total }],
+            : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: (paymentType === "cash" && Number(amountReceived) > totals.total) ? Number(amountReceived) : totals.total }],
           ...(paymentType === "installments" ? { installment_plan: installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) } : {}),
           notes: invoiceNotes || null,
           discount: Number(discount || 0) + Number(promotionDiscount || 0),
@@ -1416,7 +1434,7 @@ export default function POSListView({ vm }) {
       <POSTodayModal open={receiptsOpen} onClose={() => setReceiptsOpen(false)} />
 
       {/* Supervisor override modal */}
-      <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم">
+      <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم" showDetach={false}>
         <div className="space-y-4 text-center animate-modal-enter">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto"><ShieldCheck className="h-7 w-7 text-amber-600" /></div>
           <p className="text-sm font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح ({Number(storeSettings?.max_discount_percent ?? 15)}% من الإجمالي).</p>
@@ -1433,7 +1451,7 @@ export default function POSListView({ vm }) {
       </Modal>
 
       {/* Set Default View Modal */}
-      <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض">
+      <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <p className="text-sm font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
           <div className="flex gap-2">
@@ -1451,7 +1469,7 @@ export default function POSListView({ vm }) {
       </Modal>
 
       {/* New Invoice Warning Modal */}
-      <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة">
+      <Modal open={newInvoiceModalOpen} onClose={() => setNewInvoiceModalOpen(false)} title="فاتورة جديدة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
@@ -1492,7 +1510,7 @@ export default function POSListView({ vm }) {
       </Modal>
 
       {/* Save Confirm Modal */}
-      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة">
+      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
             <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
@@ -1509,7 +1527,7 @@ export default function POSListView({ vm }) {
       </Modal>
 
       {/* Cancel Invoice Modal */}
-      <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة">
+      <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="إلغاء الفاتورة" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
             <Trash2 className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
@@ -1517,7 +1535,7 @@ export default function POSListView({ vm }) {
           </div>
           <div className="flex flex-col gap-2">
             <button onClick={() => { setCancelModalOpen(false); clear(); resetPaymentFields(); resetStaging(); resetCustomer(); setPaymentType("cash"); setInvoiceSeq((s) => s + 1); }}
-              className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-sm font-black text-white hover:bg-rose-700 transition-all active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 rounded-lg btn-danger px-4 py-3 text-sm font-black transition-all active:scale-[0.98]"
             ><Trash2 className="h-4 w-4" /> نعم، إلغاء الفاتورة</button>
             <button onClick={() => setCancelModalOpen(false)}
               className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>

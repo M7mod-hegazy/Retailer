@@ -2,7 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { normalizeDate } = require("../services/dailySessionService");
-const { requirePagePermission } = require("../middleware/permission");
+const { requirePagePermission, userHasPagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { toSql } = require("../utils/datetime");
 
@@ -61,7 +61,7 @@ router.get("/", requirePagePermission("withdrawals", "view"), (req, res) => {
   res.json({
     success: true,
     data: db.prepare(`
-      SELECT w.*, wc.name AS category_name, u.username AS created_by_name
+      SELECT w.*, wc.name AS category_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_name
       FROM withdrawals w
       LEFT JOIN withdrawal_categories wc ON wc.id = w.category_id
       LEFT JOIN users u ON u.id = w.created_by
@@ -78,6 +78,9 @@ router.post("/", requirePagePermission("withdrawals", "add"), (req, res) => {
     return res.status(400).json({ success: false, message: "المبلغ مطلوب" });
   try {
     const createdDate = normalizeDate(payload.created_at);
+    if (createdDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "withdrawals", "backdate_records")) {
+      return res.status(403).json({ error: "permission_denied", page: "withdrawals", action: "backdate_records" });
+    }
     const docNo = generateDocNumber("withdrawal", "WD");
     const result = db.prepare(
       `INSERT INTO withdrawals (doc_no, amount, category_id, note, payment_method, created_at, created_by)
@@ -100,6 +103,13 @@ router.put("/:id", requirePagePermission("withdrawals", "edit"), (req, res) => {
   const payload = req.body || {};
   const db = getDb();
   try {
+    const existing = db.prepare("SELECT created_at FROM withdrawals WHERE id = ?").get(req.params.id);
+    if (existing) {
+      const recordDate = (existing.created_at || "").slice(0, 10);
+      if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "withdrawals", "backdate_records")) {
+        return res.status(403).json({ error: "permission_denied", page: "withdrawals", action: "backdate_records" });
+      }
+    }
     db.prepare(`UPDATE withdrawals SET amount = ?, category_id = ?, note = ?, payment_method = ? WHERE id = ?`)
       .run(Number(payload.amount), payload.category_id || null, payload.note || null, payload.payment_method || "cash", req.params.id);
     req.audit("update", "withdrawals", { id: req.params.id }, `💰 تم تعديل سحب`);
@@ -109,9 +119,17 @@ router.put("/:id", requirePagePermission("withdrawals", "edit"), (req, res) => {
 
 router.delete("/:id", requirePagePermission("withdrawals", "delete"), (req, res) => {
   try {
-    getDb().prepare("DELETE FROM withdrawals WHERE id = ?").run(req.params.id);
+    const db = getDb();
+    const existing = db.prepare("SELECT created_at FROM withdrawals WHERE id = ?").get(req.params.id);
+    if (existing) {
+      const recordDate = (existing.created_at || "").slice(0, 10);
+      if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "withdrawals", "backdate_records")) {
+        return res.status(403).json({ error: "permission_denied", page: "withdrawals", action: "backdate_records" });
+      }
+    }
+    db.prepare("DELETE FROM withdrawals WHERE id = ?").run(req.params.id);
     req.audit("delete", "withdrawals", { id: req.params.id }, `💰 تم حذف سحب`);
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

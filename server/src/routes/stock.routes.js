@@ -162,7 +162,7 @@ router.get("/movements", requirePagePermission("stock_transfer", "view"), (req, 
   const sortDir = String(sort_dir).toLowerCase() === "asc" ? "ASC" : "DESC";
   let sql = `
     SELECT sm.*, i.name AS item_name, i.barcode, i.code AS item_code, w.name AS warehouse_name,
-           u.username AS created_by_name
+           COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_name
     FROM stock_movements sm
     LEFT JOIN items i ON i.id = sm.item_id
     LEFT JOIN warehouses w ON w.id = sm.warehouse_id

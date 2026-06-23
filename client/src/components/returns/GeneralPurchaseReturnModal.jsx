@@ -1,11 +1,13 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
-import { X, Search, Trash2 } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import api from "../../services/api";
+import TitleBar from "../ui/TitleBar";
 import toast from "react-hot-toast";
 import SearchDropdown from "../ui/SearchDropdown";
 import ProductSearchField from "../ui/ProductSearchField";
 import { formatNumber } from "../../utils/currency";
+import { useDetach } from "../../hooks/useDetach";
 
 const REASONS = [
   { value: "defective", label: "تلف / عيب" },
@@ -20,6 +22,9 @@ function fmt(n) {
 }
 
 export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess }) {
+  const { handleDetach } = useDetach("general-purchase-return", {
+    onClose, getState: () => ({}), actions: { success: () => onSuccess?.() },
+  });
   const handleKeyDown = useFieldNavigation();
   const reasonRef = useRef(null);
   const notesRef = useRef(null);
@@ -38,34 +43,35 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
   const [itemOffset, setItemOffset] = useState(0);
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
   const [stockLevels, setStockLevels] = useState({});
 
   const ITEM_PAGE = 20;
 
   useEffect(() => {
-    if (!open) {
-      setLines([]);
-      setSupplier(null);
-      setSupplierQuery("");
-      setRefundMethod("cash_back");
-      setNotes("");
-      setReason("other");
-      setItemQuery("");
-      setItemResults([]);
-      setItemOffset(0);
-      setItemHasMore(false);
-      setStockLevels({});
-    } else {
-      api.get("/api/stock/levels").then(r => {
-        const grouped = {};
-        (r.data.data || []).forEach(row => {
-          if (!grouped[row.item_id]) grouped[row.item_id] = {};
-          grouped[row.item_id][row.warehouse_id || 1] = row.quantity;
-        });
-        setStockLevels(grouped);
-      }).catch(() => {});
-    }
+    if (!open) return;
+    api.get("/api/stock/levels").then(r => {
+      const grouped = {};
+      (r.data.data || []).forEach(row => {
+        if (!grouped[row.item_id]) grouped[row.item_id] = {};
+        grouped[row.item_id][row.warehouse_id || 1] = row.quantity;
+      });
+      setStockLevels(grouped);
+    }).catch(() => {});
   }, [open]);
+
+  function resetAll() {
+    setLines([]);
+    setSupplier(null);
+    setSupplierQuery("");
+    setRefundMethod("cash_back");
+    setNotes("");
+    setReason("other");
+    setItemQuery("");
+    setItemResults([]);
+    setItemOffset(0);
+    setItemHasMore(false);
+  }
 
   useEffect(() => {
     if (supplierQuery.length < 2) { setSupplierResults([]); return; }
@@ -94,14 +100,31 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
   }, [itemQuery]);
 
   function loadMoreItems() {
+    if (!itemHasMore || isLoadingMoreItems) return;
     const q = itemQuery.trim();
-    if (!itemHasMore || !q || isLoadingMoreItems) return;
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const searchParam = allItemsMode ? "" : q;
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
       .then(r => {
         const rows = r.data.data || [];
         setItemResults(prev => [...prev, ...rows]);
         setItemOffset(prev => prev + rows.length);
+        setItemHasMore(rows.length === ITEM_PAGE);
+      }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllItems() {
+    setAllItemsMode(true);
+    setItemResults([]);
+    setItemOffset(0);
+    setItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    api.get(`/api/items?limit=${ITEM_PAGE}&offset=0`)
+      .then(r => {
+        const rows = r.data.data || [];
+        setItemResults(rows);
+        setItemOffset(rows.length);
         setItemHasMore(rows.length === ITEM_PAGE);
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
@@ -157,6 +180,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
         notes,
       });
       toast.success("تم حفظ مرتجع الشراء بنجاح");
+      resetAll();
       onSuccess?.();
       onClose();
     } catch (e) {
@@ -172,17 +196,9 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm" dir="rtl">
       <div className="w-[720px] max-h-[88vh] rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-amber-50 shrink-0">
-          <div>
-            <h2 className="text-[16px] font-black text-amber-900">مرتجع مشتريات عام</h2>
-            <p className="text-[11px] font-bold text-amber-400 mt-0.5">إرجاع أصناف للمورد بدون ربطها بفاتورة شراء محددة</p>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-amber-100 hover:text-amber-700 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        <TitleBar title="مرتجع مشتريات عام" subtitle="إرجاع أصناف للمورد بدون ربطها بفاتورة شراء محددة" onClose={onClose} onDetach={handleDetach} />
 
-        <div className="flex-1 overflow-auto p-5 flex flex-col gap-4">
+        <div data-modal-content className="flex-1 overflow-auto p-5 flex flex-col gap-4">
           {/* Supplier search (optional) */}
           <div>
             <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
@@ -204,7 +220,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
                   value={supplierQuery}
                   onChange={e => setSupplierQuery(e.target.value)}
                   placeholder="ابحث عن مورد..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold bg-white outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
                 />
                 {supplierResults.length > 0 && (
                   <div className="absolute top-full right-0 left-0 z-20 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-44 overflow-auto">
@@ -281,6 +297,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
               onLoadMore={loadMoreItems}
               hasMore={itemHasMore}
               isLoadingMore={isLoadingMoreItems}
+              onShowAll={showAllItems}
               showChip={false}
               placeholder="ابحث عن صنف بالاسم أو الباركود..."
             />
@@ -313,7 +330,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
                             const maxStock = l.item_id ? (stockLevels[l.item_id]?.[1] ?? Infinity) : Infinity;
                             return { ...l, quantity: Math.max(0, Math.min(qty, maxStock)) };
                           }))}
-                          className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-amber-400"
+                          className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black bg-white outline-none focus:border-amber-400"
                         />
                       </td>
                       <td className="px-4 py-2.5">
@@ -323,7 +340,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
                           step="0.01"
                           value={line.unit_price}
                           onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, unit_price: Number(e.target.value) } : l))}
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-amber-400"
+                          className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black bg-white outline-none focus:border-amber-400"
                         />
                       </td>
                       <td className="px-4 py-2.5 number-fmt text-amber-700">
@@ -364,7 +381,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
               onChange={e => setNotes(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: reasonRef })}
               placeholder="ملاحظات اختيارية..."
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-amber-400"
+              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm bg-white outline-none focus:border-amber-400"
             />
           </div>
         </div>
@@ -373,7 +390,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
         <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-slate-300 py-3 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors"
+            className="btn-danger flex-1 rounded-xl py-3 text-sm font-black transition-colors"
           >
             إلغاء
           </button>

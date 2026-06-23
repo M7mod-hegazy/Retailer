@@ -20,6 +20,7 @@ const SearchInput = forwardRef(function SearchInput({
   onFocus,
   onBlur,
   onKeyDown,
+  suffix,
 }, ref) {
 
   const sz = {
@@ -64,6 +65,7 @@ const SearchInput = forwardRef(function SearchInput({
           <X className={sz.clearIcon} strokeWidth={2.5} />
         </button>
       )}
+      {suffix}
     </div>
   );
 });

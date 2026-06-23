@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Banknote, CreditCard, Wallet, Calendar, Layers } from "lucide-react";
 import api from "../../services/api";
-import { scoredFilterRows } from "../../utils/search";
+import { scoredFilterRows, scoreItem } from "../../utils/search";
+import { sortByProximity } from "../../utils/itemSort";
 import { usePageTour } from "../../hooks/usePageTour";
 import { usePosStore, computeTax, cartLineKey } from "../../stores/posStore";
 import { useAuthStore } from "../../stores/authStore";
@@ -15,8 +16,11 @@ import toast from "react-hot-toast";
 import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { useShortcut } from "../../shortcuts/useShortcut";
+import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import POSListView from "./POSListView";
 import POSDetailedView from "./POSDetailedView";
+import PosCashCheckoutModal from "../../components/pos/PosCashCheckoutModal";
 import { generateInstallments } from "../../components/pos/InstallmentPlanner";
 import {
   resolveImageUrl,
@@ -145,6 +149,9 @@ export default function POSPage() {
   const [searchedItemOffset, setSearchedItemOffset]   = useState(0);
   const [searchedItemHasMore, setSearchedItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems]   = useState(false);
+  const [isSearchingItems, setIsSearchingItems]       = useState(false);
+  const [allItemsMode, setAllItemsMode] = useState(false);
+  const [allItemsTargetCategory, setAllItemsTargetCategory] = useState(null);
   const ITEM_PAGE = 20;
 
   // Detailed search
@@ -168,6 +175,9 @@ export default function POSPage() {
   // Payment
   const [amountPaid, setAmountPaid]         = useState("");
   const [amountReceived, setAmountReceived] = useState("");
+  // Fast cash checkout (F7): records the tendered cash then opens the normal print preview
+  // (which is where the actual save + print/no-print choice happens).
+  const [cashCheckoutOpen, setCashCheckoutOpen] = useState(false);
   // Installment plan (POS multi-installment): generator inputs + the editable rows.
   const [installmentStartDate, setInstallmentStartDate] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1);
@@ -415,7 +425,9 @@ export default function POSPage() {
       if (s.default_pos_view) setViewMode(s.default_pos_view);
       const all = data.payment_methods || [];
       setPaymentMethods(all);
-      setCustomPayMethods(all.filter(m => !m.is_system));
+      // Bank/visa is its own isolated channel (the top-level "بنك / فيزا" payment type),
+      // never a configurable method — keep bank-category methods out of the multi-pay list.
+      setCustomPayMethods(all.filter(m => !m.is_system && m.category !== 'bank' && m.type !== 'bank'));
     }).catch(() => { setStockLoaded(true); });
   }, [mergeStockRows]);
 
@@ -615,16 +627,23 @@ export default function POSPage() {
   }, [goldEnabled]);
 
 
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === "F2") { e.preventDefault(); codeInputRef.current?.focus(); codeInputRef.current?.select(); }
-      if (e.key === "F1") { e.preventDefault(); customerInputRef.current?.focus(); setCustomerLookupOpen(true); }
-      if (e.key === "F9")  { e.preventDefault(); saveInvoiceRef.current?.(false); }
-      if (e.key === "F12") { e.preventDefault(); saveInvoiceRef.current?.(true); }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  useShortcut("pos.focusItem", () => { codeInputRef.current?.focus(); codeInputRef.current?.select(); });
+  useShortcut("pos.focusCustomer", () => { customerInputRef.current?.focus(); setCustomerLookupOpen(true); });
+  useShortcut("pos.save", () => saveInvoiceRef.current?.(false));
+  useShortcut("pos.savePrint", () => saveInvoiceRef.current?.(true));
+  useShortcut("pos.cashCheckout", () => {
+    if (paymentType !== "cash") { toast("متاح فقط عند الدفع النقدي الكامل"); return; }
+    if (!lines.length) { toast("لا توجد أصناف في الفاتورة"); return; }
+    setCashCheckoutOpen(true);
+  });
+
+  // Confirm from the cash modal: record the tendered amount, then open the print preview so
+  // the user still makes the save / print choice there (nothing is persisted yet).
+  function handleCashCheckoutConfirm(tenderedAmount) {
+    setAmountReceived(String(tenderedAmount));
+    setCashCheckoutOpen(false);
+    setPrintPreview(true);
+  }
 
   // Column resize handlers
   const onDetailedResizeStart = (e, key) => {
@@ -803,7 +822,15 @@ export default function POSPage() {
 
   useEffect(() => {
     const q = (itemNameQuery || itemCodeQuery).trim();
-    if (!q) { setSearchedItemResults([]); setSearchedItemOffset(0); setSearchedItemHasMore(false); return; }
+    if (allItemsMode) return;
+    if (!q) {
+      setSearchedItemResults([]);
+      setSearchedItemOffset(0);
+      setSearchedItemHasMore(false);
+      setIsSearchingItems(false);
+      return;
+    }
+    setIsSearchingItems(true);
     const controller = new AbortController();
     const t = setTimeout(() => {
       api.get("/api/items", { params: { search: q, limit: ITEM_PAGE, offset: 0 }, signal: controller.signal })
@@ -813,15 +840,27 @@ export default function POSPage() {
             sub_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
             price_label: formatMoney(item.sale_price || item.price || 0),
           }));
+          rows.sort((a, b) =>
+            scoreItem(b, q, ["name", "item_code", "code", "barcode"]) -
+            scoreItem(a, q, ["name", "item_code", "code", "barcode"])
+          );
           setSearchedItemResults(rows);
           setSearchedItemOffset(rows.length);
           setSearchedItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === ITEM_PAGE));
-        }).catch(() => {});
+        }).catch(() => {})
+        .finally(() => setIsSearchingItems(false));
     }, 250);
     return () => {
       clearTimeout(t);
       controller.abort();
     };
+  }, [itemNameQuery, itemCodeQuery, allItemsMode]);
+
+  // When user types a new query, exit "show all" mode so loadMore uses the typed query
+  useEffect(() => {
+    if (itemNameQuery) {
+      setAllItemsMode(false);
+    }
   }, [itemNameQuery, itemCodeQuery]);
 
   useEffect(() => {
@@ -861,21 +900,83 @@ export default function POSPage() {
     return () => controller.abort();
   }, [detailedCategoryFilter, detailedSearchQuery, fetchStockForItems, itemCategories]);
 
+  const SHOW_ALL_LIMIT = 200;
+
   function loadMorePOSItems() {
+    if (!searchedItemHasMore || isLoadingMoreItems) return;
     const q = (itemNameQuery || itemCodeQuery).trim();
-    if (!searchedItemHasMore || !q || isLoadingMoreItems) return;
+    if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
-    api.get("/api/items", { params: { search: q, limit: ITEM_PAGE, offset: searchedItemOffset } })
+    const limit = allItemsMode ? SHOW_ALL_LIMIT : ITEM_PAGE;
+    const params = { limit, offset: searchedItemOffset };
+    if (!allItemsMode && q) params.search = q;
+    api.get("/api/items", { params })
       .then(r => {
-        const rows = (r.data.data || []).map(item => ({
+        let rows = (r.data.data || []).map(item => ({
           ...item,
           sub_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
           price_label: formatMoney(item.sale_price || item.price || 0),
         }));
+        if (allItemsMode) {
+          rows = sortByProximity(rows, selectedItem);
+        } else if (q) {
+          rows.sort((a, b) =>
+            scoreItem(b, q, ["name", "item_code", "code", "barcode"]) -
+            scoreItem(a, q, ["name", "item_code", "code", "barcode"])
+          );
+        }
         setSearchedItemResults(prev => [...prev, ...rows]);
         setSearchedItemOffset(prev => prev + rows.length);
-        setSearchedItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === ITEM_PAGE));
+        const more = Boolean(r.data?.meta?.has_more ?? rows.length === limit);
+        setSearchedItemHasMore(more);
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+  }
+
+  function showAllPOSItems() {
+    setAllItemsMode(true);
+    setSearchedItemOffset(0);
+    setSearchedItemHasMore(true);
+    setIsLoadingMoreItems(true);
+    setAllItemsTargetCategory(selectedItem?.category_name ?? null);
+
+    const fmt = (item) => ({
+      ...item,
+      sub_label: `مخزون: ${Number(item.stock_quantity || item.stock || 0)}`,
+      price_label: formatMoney(item.sale_price || item.price || 0),
+    });
+
+    const catId = selectedItem?.category_id ?? null;
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const catCall = catId
+      ? api.get("/api/items", { params: { category_id: catId, limit: 200 } })
+      : Promise.resolve({ data: { data: [] } });
+
+    Promise.all([catCall, allCall])
+      .then(([catRes, allRes]) => {
+        const catRows  = (catRes.data.data  || []).map(fmt);
+        const allRows  = (allRes.data.data  || []).map(fmt);
+        const pinnedId = selectedItem?.id ?? null;
+
+        // Same-category items sorted by code-sequence distance from anchor
+        const sortedCat = sortByProximity(catRows, selectedItem).filter(r => r.id !== pinnedId);
+
+        // Remaining items (other categories) alphabetical, deduped
+        const catIds = new Set(catRows.map(r => r.id));
+        if (pinnedId) catIds.add(pinnedId);
+        const others = [...allRows.filter(r => !catIds.has(r.id))]
+          .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+
+        const merged = [
+          ...(pinnedId ? [fmt({ ...selectedItem })] : []),
+          ...sortedCat,
+          ...others,
+        ];
+        setSearchedItemResults(merged);
+        setSearchedItemOffset(allRows.length);
+        setSearchedItemHasMore(Boolean(allRes.data?.meta?.has_more ?? allRows.length === SHOW_ALL_LIMIT));
+      })
+      .catch(() => { toast.error("تعذر تحميل قائمة الأصناف"); })
+      .finally(() => setIsLoadingMoreItems(false));
   }
 
   const itemResults = searchedItemResults;
@@ -1172,7 +1273,6 @@ export default function POSPage() {
     }
     if (paymentType === "multi") {
       const filteredCustomTotal = customPayMethods
-        .filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦')
         .reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0);
       const multiTotal = (Number(multiCash)||0) + filteredCustomTotal + (Number(multiCredit)||0);
       if (Math.abs(totals.total - multiTotal) > 0.005) {
@@ -1225,7 +1325,7 @@ export default function POSPage() {
         treasury_id:  selectedTreasuryId ? Number(selectedTreasuryId) : null,
         payments:     paymentType === "multi" ? [
           ...(Number(multiCash) > 0 ? [{ method_id: null, method: "cash", amount: Number(multiCash) }] : []),
-          ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, amount: Number(multiCustomAmounts[m.id]) })),
+          ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, amount: Number(multiCustomAmounts[m.id]) })),
           ...(Number(multiCredit) > 0 && customer?.id ? [{ method_id: null, method: "credit", amount: Number(multiCredit) }] : []),
         ] : [],
         allow_loss_sale:    hasBelowCost || Boolean(opts.allowLoss),
@@ -1283,7 +1383,7 @@ export default function POSPage() {
         if (paymentType === "multi") {
           return [
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
-            ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
+            ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ];
         }
@@ -1294,7 +1394,11 @@ export default function POSPage() {
           return dp > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: dp }] : [];
         }
         const nameMap = { cash: "نقدي", credit: "آجل", bank: "بنك" };
-        return [{ method: paymentType, method_name: nameMap[paymentType] || paymentType, amount: totals.total }];
+        // For cash, print the amount the customer actually handed over so the receipt shows
+        // the change to give back; the recorded sale amount stays totals.total.
+        const cashPaid = (paymentType === "cash" && Number(amountReceived) > totals.total)
+          ? Number(amountReceived) : totals.total;
+        return [{ method: paymentType, method_name: nameMap[paymentType] || paymentType, amount: cashPaid }];
       };
       const _savedInvoiceData = response.data?.data;
       const convertedQuotationNo = quotationContext?.prefill?.quotation_no;
@@ -1457,6 +1561,14 @@ export default function POSPage() {
       e.preventDefault();
       if (e.shiftKey) { prevRef?.current?.focus(); prevRef?.current?.select?.(); }
       else { nextRef?.current?.focus(); nextRef?.current?.select?.(); }
+    } else if (e.key === "ArrowLeft") {
+      // RTL: left = forward (toward إضافة)
+      e.preventDefault();
+      nextRef?.current?.focus(); nextRef?.current?.select?.();
+    } else if (e.key === "ArrowRight") {
+      // RTL: right = backward (toward product name)
+      e.preventDefault();
+      prevRef?.current?.focus(); prevRef?.current?.select?.();
     }
   }
 
@@ -1533,11 +1645,11 @@ export default function POSPage() {
     expandPanel, togglePanel, startPanelResize,
     handleHold,
     selectedItem, setSelectedItem, staging, setStaging,
-    itemNameQuery, setItemNameQuery,
+    itemNameQuery, setItemNameQuery, setItemCodeQuery,
     itemLookupOpen, setItemLookupOpen,
     activeLookupIndex, setActiveLookupIndex,
     itemResults,
-    searchedItemHasMore, isLoadingMoreItems, loadMorePOSItems,
+    searchedItemHasMore, isLoadingMoreItems, isSearchingItems, loadMorePOSItems, showAllPOSItems,
     listItemInputRef, listQtyRef, listPriceRef, listDiscRef, listWhRef, listAddBtnRef,
     customerInputRef,
     handleListFieldKeyDown, handleSelectItem, addCurrentLine, openGallery,
@@ -1572,8 +1684,15 @@ export default function POSPage() {
     onDetailedResizeStart, toggleDetailedSort,
   };
 
-  if (viewMode === "list") {
-    return <POSListView vm={vm} />;
-  }
-  return <POSDetailedView vm={vm} />;
+  return (
+    <>
+      {viewMode === "list" ? <POSListView vm={vm} /> : <POSDetailedView vm={vm} />}
+      <PosCashCheckoutModal
+        open={cashCheckoutOpen}
+        total={totals.total}
+        onConfirm={handleCashCheckoutConfirm}
+        onClose={() => setCashCheckoutOpen(false)}
+      />
+    </>
+  );
 }

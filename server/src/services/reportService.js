@@ -1,31 +1,60 @@
 const { getDb } = require("../config/database");
+const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsCostJoin } = require("../reports/helpers");
 
+// Daily sales summary for the analytics chart.
+// Fixes vs the old version:
+//  - Dates are wrapped in DATE() so an end_date of e.g. 2026-06-21 is inclusive
+//    (raw `created_at <= '2026-06-21'` silently dropped that whole day).
+//  - Returns cost-of-goods, gross_profit and margin_percent per day so the chart's
+//    margin / profit lines plot real numbers instead of a flat zero.
 function getSalesSummary(startDate, endDate) {
   const db = getDb();
-  let baseQuery = `
-    SELECT 
-      DATE(created_at) as date,
-      COUNT(id) as invoice_count,
-      SUM(total) as revenue,
-      SUM(subtotal) as subtotal,
-      SUM(discount) as total_discount
-    FROM invoices
-    WHERE status != 'cancelled'
-  `;
   const params = [];
+  const costCol = getCostColumn("wacc");
+  const returnCostCol = getReturnCostColumn("wacc");
+  const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
 
-  if (startDate) {
-    baseQuery += " AND created_at >= ?";
-    params.push(startDate);
-  }
-  if (endDate) {
-    baseQuery += " AND created_at <= ?";
-    params.push(endDate);
-  }
-
-  baseQuery += " GROUP BY DATE(created_at) ORDER BY date DESC";
-
-  return db.prepare(baseQuery).all(...params);
+  return db.prepare(`
+    SELECT
+      DATE(i.created_at) AS date,
+      COUNT(i.id) AS invoice_count,
+      COUNT(i.id) AS orders_count,
+      SUM(i.total) AS revenue,
+      SUM(i.subtotal) AS subtotal,
+      SUM(i.discount) AS total_discount,
+      COALESCE(SUM(il_agg.total_cost), 0) AS cost,
+      COALESCE(SUM(ret.return_total), 0) AS returns_amount,
+      SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
+        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(retc.return_cost), 0) AS gross_profit,
+      CASE WHEN (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) > 0
+        THEN ROUND((SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
+          - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(retc.return_cost), 0))
+          / (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) * 100, 1)
+        ELSE 0 END AS margin_percent
+    FROM invoices i
+    LEFT JOIN (
+      SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS total_cost
+      FROM invoice_lines il
+      ${itemsCostJoin("il")}
+      ${stockCostJoin("il")}
+      GROUP BY il.invoice_id
+    ) il_agg ON il_agg.invoice_id = i.id
+    LEFT JOIN (
+      SELECT invoice_id, SUM(total) AS return_total
+      FROM sales_returns WHERE status = 'active' GROUP BY invoice_id
+    ) ret ON ret.invoice_id = i.id
+    LEFT JOIN (
+      SELECT sr.invoice_id, COALESCE(SUM(srl.quantity * ${returnCostCol}), 0) AS return_cost
+      FROM sales_returns sr
+      JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
+      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+      LEFT JOIN items it ON it.id = srl.item_id
+      WHERE sr.status = 'active' GROUP BY sr.invoice_id
+    ) retc ON retc.invoice_id = i.id
+    WHERE i.status != 'cancelled' ${dateFilter}
+    GROUP BY DATE(i.created_at)
+    ORDER BY date DESC
+  `).all(...params);
 }
 
 function getInventoryValuation() {

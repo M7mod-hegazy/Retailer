@@ -10,7 +10,9 @@ function buildMenu(mainWindow) {
           click: () => mainWindow?.webContents.send("menu:backup"),
         },
         { type: "separator" },
-        { label: "خروج", accelerator: "CmdOrCtrl+Q", click: () => app.quit() },
+        { label: "تصغير", click: () => mainWindow?.minimize() },
+        { type: "separator" },
+        { label: "خروج", click: () => app.quit() },
       ],
     },
     {

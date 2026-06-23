@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, FileImage, Loader2, Eye, EyeOff, ArrowUp, ArrowDown, Check } from "lucide-react";
 import Modal from "../ui/Modal";
+import { useDetach } from "../../hooks/useDetach";
 
 const PAPER_SIZES = [
   { id: "A4", label: "A4 (210×297mm)" },
@@ -22,6 +23,9 @@ export default function PDFExportDialog({
   title = "",
   onExport,
 }) {
+  const { handleDetach } = useDetach("pdf-export", {
+    onClose, getState: () => ({ columns, title }), actions: { export: (data) => onExport?.(data) },
+  });
   const [orientation, setOrientation] = useState("portrait");
   const [paperSize, setPaperSize] = useState("A4");
   const [fontSize, setFontSize] = useState("medium");
@@ -86,7 +90,7 @@ export default function PDFExportDialog({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="إعدادات تصدير PDF" maxWidth="max-w-3xl">
+    <Modal open={open} onClose={onClose} onDetach={handleDetach} title="إعدادات تصدير PDF" maxWidth="max-w-3xl">
       <div className="flex flex-col md:flex-row gap-6 mt-4" style={{ minHeight: 400 }}>
         {/* Left: Column Selection */}
         <div className="w-full md:w-1/2 border-l border-zinc-200 pl-4">
@@ -266,7 +270,7 @@ export default function PDFExportDialog({
       <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-zinc-100">
         <button
           onClick={onClose}
-          className="px-5 py-2.5 rounded-xl text-sm font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
+          className="btn-danger px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
         >
           إلغاء
         </button>

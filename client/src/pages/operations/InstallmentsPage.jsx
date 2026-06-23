@@ -244,7 +244,7 @@ export default function InstallmentsPage() {
       </div>
 
       {/* Payment Modal */}
-      <Modal open={!!selectedDebt} onClose={() => setSelectedDebt(null)} title="تسجيل سداد">
+      <Modal open={!!selectedDebt} onClose={() => setSelectedDebt(null)} title="تسجيل سداد" showDetach={false}>
         {selectedDebt && (
           <form onSubmit={handlePay} className="flex flex-col gap-4 mt-2">
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 flex flex-col gap-1">

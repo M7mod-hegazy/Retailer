@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { shortcutLabel } from "../../../shortcuts/ShortcutKbd";
 import { createPortal } from "react-dom";
 import {
   X, RotateCcw, Printer, Save, GripVertical, Eye, EyeOff, Trash2,
@@ -415,8 +416,8 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
-            <button type="button" title="تراجع (Ctrl+Z)" disabled={!past.length} onClick={undo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Undo2 size={14} /></button>
-            <button type="button" title="إعادة (Ctrl+Shift+Z)" disabled={!future.length} onClick={redo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Redo2 size={14} /></button>
+            <button type="button" title={`تراجع (${shortcutLabel("designer.undo")})`} disabled={!past.length} onClick={undo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Undo2 size={14} /></button>
+            <button type="button" title={`إعادة (${shortcutLabel("designer.redo")})`} disabled={!future.length} onClick={redo} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"><Redo2 size={14} /></button>
           </div>
           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
             <select value="" onChange={(e) => { if (e.target.value) applyPreset(e.target.value); }} title="تطبيق قالب"
@@ -476,7 +477,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             </button>
           ))}
           <div className="mt-2 rounded-lg bg-slate-50 p-2 text-[9px] font-bold leading-relaxed text-slate-400">
-            انقر عنصراً لتحديده • نقرة مزدوجة لتحرير النص • اسحب مقابض ⬤ لتغيير الحجم/العرض • اسحب لإعادة الترتيب • الأسهم للنقل و Ctrl+الأسهم للحجم • Ctrl+D تكرار • Delete إخفاء • Ctrl+Z تراجع
+            انقر عنصراً لتحديده • نقرة مزدوجة لتحرير النص • اسحب مقابض ⬤ لتغيير الحجم/العرض • اسحب لإعادة الترتيب • الأسهم للنقل و Ctrl+الأسهم للحجم • {shortcutLabel("designer.duplicate")} تكرار • Delete إخفاء • {shortcutLabel("designer.undo")} تراجع
           </div>
         </div>
 

@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import api from "../../services/api";
+import { openDetachedModal } from "../../hooks/useDetach";
 import Button from "../ui/Button";
+import TitleBar from "../ui/TitleBar";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const EMPTY_FORM = { name: "", phones: [""], addresses: [""], opening_balance: "", notes: "" };
@@ -16,6 +18,28 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
   const balanceRef = useRef(null);
   const notesRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
+
+  const onCreatedRef = useRef(onCreated);
+  const onCloseRef = useRef(onClose);
+  onCreatedRef.current = onCreated;
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!window.electronAPI?.onModalAction) return;
+    const cleanup = window.electronAPI.onModalAction(({ action, data }) => {
+      if (action === "created" && data) {
+        reset();
+        onCreatedRef.current(data);
+        onCloseRef.current();
+      }
+    });
+    return () => cleanup?.();
+  }, []);
+
+  function handleDetach() {
+    openDetachedModal("add-supplier", { initialState: form });
+    onClose();
+  }
 
   function reset() { setForm(EMPTY_FORM); setError(""); }
 
@@ -60,19 +84,13 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" dir="rtl">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40" dir="rtl">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-[480px] mx-4 flex flex-col max-h-[90vh]">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-          <h2 className="text-base font-bold text-slate-800">إضافة مورد جديد</h2>
-          <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+        <TitleBar title="إضافة مورد جديد" onClose={handleClose} onDetach={handleDetach} />
 
         {/* Body */}
-        <div className="px-5 py-4 space-y-4 overflow-y-auto">
+        <div data-modal-content className="px-5 py-4 space-y-4 overflow-y-auto">
           {error && (
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
           )}
@@ -84,7 +102,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
             </label>
             <input
               ref={nameRef}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               placeholder="أدخل اسم المورد"
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -101,7 +119,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
                 <div key={i} className="flex items-center gap-2">
                   <input
                     ref={i === 0 ? phoneRef : undefined}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                     placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                     value={phone}
                     onChange={e => setPhone(i, e.target.value)}
@@ -140,7 +158,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
                 <div key={i} className="flex items-start gap-2">
                   <input
                     ref={i === 0 ? addressRef : undefined}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                     placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                     value={addr}
                     onChange={e => setAddress(i, e.target.value)}
@@ -176,7 +194,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
             <input
               ref={balanceRef}
               type="number"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               placeholder="0"
               value={form.opening_balance}
               onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
@@ -189,7 +207,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
             <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
             <textarea
               ref={notesRef}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
               placeholder="اختياري"
               rows={2}
               value={form.notes}
@@ -201,7 +219,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 shrink-0">
-          <Button variant="ghost" size="sm" onClick={handleClose}>إلغاء</Button>
+          <Button variant="danger" size="sm" onClick={handleClose}>إلغاء</Button>
           <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
             {saving ? "جاري الحفظ..." : "حفظ"}
           </Button>

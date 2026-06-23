@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useBlocker } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import {
   CheckCircle2,
@@ -10,14 +9,12 @@ import {
   ArrowUpRight,
   Server,
   Zap,
-  X,
-  ShieldAlert,
-  Save,
-  Wifi,
-  Monitor,
-  RotateCw,
-  HardDrive,
   Download,
+  Database,
+  ChevronDown,
+  FolderOpen,
+  X,
+  History,
 } from "lucide-react";
 import { useUpdateStore } from "../../stores/updateStore";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -31,11 +28,16 @@ const STAGGER = {
   visible: { transition: { staggerChildren: 0.15 } },
 };
 
+// ── Byte/speed formatters (Image #2: "MB 11.2 / 1.8", "KB/s 227") ──────────
+const fmtMB = (b = 0) => (b / 1048576).toFixed(1);
+const fmtSpeed = (bps = 0) =>
+  bps >= 1048576 ? `${(bps / 1048576).toFixed(1)} MB/s` : `${Math.round(bps / 1024)} KB/s`;
+
 function MagneticButton({ children, onClick, className, disabled }) {
   const ref = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  
+
   const mouseXSpring = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
   const mouseYSpring = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
 
@@ -82,47 +84,98 @@ const Shimmer = () => (
   />
 );
 
+// ── Phase stepper (فحص → تحميل → تثبيت) ────────────────────────────────────
+function PhaseStepper({ checkStatus, downloadStatus, installStatus }) {
+  const steps = [
+    { key: "check", label: "فحص", Icon: CheckCircle2, status: checkStatus },
+    { key: "download", label: "تحميل", Icon: Download, status: downloadStatus },
+    { key: "install", label: "تثبيت", Icon: Zap, status: installStatus },
+  ];
+
+  const circleClass = (status) =>
+    status === "done"
+      ? "bg-emerald-500 text-white border-emerald-500"
+      : status === "active"
+      ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
+      : "bg-zinc-100 text-zinc-300 border-zinc-200";
+
+  return (
+    <div className="flex items-center justify-center gap-2 sm:gap-4 select-none">
+      {steps.map((step, i) => (
+        <React.Fragment key={step.key}>
+          <div className="flex flex-col items-center gap-2 shrink-0">
+            <div
+              className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-colors duration-300 ${circleClass(
+                step.status
+              )}`}
+            >
+              {step.status === "done" ? (
+                <CheckCircle2 className="h-5 w-5" />
+              ) : step.status === "active" && step.key === "check" ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <step.Icon className="h-5 w-5" />
+              )}
+            </div>
+            <span
+              className={`text-xs font-black ${
+                step.status === "pending" ? "text-zinc-400" : "text-zinc-700"
+              }`}
+            >
+              {step.label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className="h-0.5 flex-1 min-w-[24px] max-w-[80px] rounded-full bg-zinc-200 overflow-hidden mb-6">
+              <div
+                className="h-full bg-emerald-500 transition-all duration-500"
+                style={{ width: steps[i].status === "done" ? "100%" : "0%" }}
+              />
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 export default function UpdatesPage() {
   usePageTour('updates');
-  const { available, downloaded, info, progress, error, checking, setChecking } = useUpdateStore();
+  const {
+    available, downloaded, info, progress, error, checking, phase,
+    setChecking,
+    manualAvailable, manualDownloading, manualProgress, manualFilePath, manualError, downloadUrl, fileSize,
+    setManualInfo,
+  } = useUpdateStore();
 
   const [currentVersion, setCurrentVersion] = useState("1.0.0");
   const [lastCheckedAt, setLastCheckedAt] = useState(Date.now() - 86400000);
-  const [confirmAction, setConfirmAction] = useState(null); // 'download' | 'install'
-  const [confirmed, setConfirmed] = useState(false);
+  const [backupState, setBackupState] = useState("idle"); // idle | running | done | error
+  const [manualExpanded, setManualExpanded] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
-  const isUpdating = (checking && progress !== null) || downloaded;
-
-  // Block navigation during update process
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isUpdating && nextLocation.pathname !== currentLocation.pathname
-  );
-
-  // When navigation is blocked during update, force-reset it (user cannot leave)
-  useEffect(() => {
-    if (blocker.state === "blocked" && isUpdating) {
-      blocker.reset();
-    }
-  }, [blocker.state, isUpdating, blocker]);
-
-  // Block browser close during update
-  useEffect(() => {
-    const handler = (e) => {
-      if (isUpdating) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isUpdating]);
+  // ── Version rollback / install-specific-version state ──
+  const [rollbackOpen, setRollbackOpen] = useState(false);
+  const [releases, setReleases] = useState(null); // null = not loaded yet
+  const [releasesLoading, setReleasesLoading] = useState(false);
+  const [rbVersion, setRbVersion] = useState(null); // version currently being installed
+  const [rbStage, setRbStage] = useState("idle"); // idle | backup | download
+  const [rbError, setRbError] = useState(null);
 
   useEffect(() => {
     window.electronAPI?.getVersion?.().then((v) => {
       if (v) setCurrentVersion(v);
     });
   }, []);
+
+  // Fetch manual-download metadata (url + size + sha512) once an update exists.
+  useEffect(() => {
+    if (available && !downloadUrl && window.electronAPI) {
+      window.electronAPI.invoke("update:get-manual-info").then((d) => {
+        if (d?.available) setManualInfo(d);
+      });
+    }
+  }, [available, downloadUrl, setManualInfo]);
 
   const safetyTimer = useRef(null);
 
@@ -148,18 +201,7 @@ export default function UpdatesPage() {
     }
   };
 
-  const handleDownload = () => {
-    setConfirmAction('download');
-    setConfirmed(false);
-  };
-
-  const handleInstallNow = () => {
-    setConfirmAction('install');
-    setConfirmed(false);
-  };
-
-  const executeDownload = useCallback(async () => {
-    setConfirmAction(null);
+  const handleDownload = async () => {
     setChecking(true);
     if (window.electronAPI) {
       armSafetyTimeout();
@@ -167,12 +209,93 @@ export default function UpdatesPage() {
     } else {
       setTimeout(() => setChecking(false), 2000);
     }
-  }, [setChecking, armSafetyTimeout]);
+  };
 
-  const executeInstall = useCallback(async () => {
-    setConfirmAction(null);
+  const handleCancelAuto = () => {
+    window.electronAPI?.invoke("update:cancel-download");
+  };
+
+  const handleInstallNow = () => {
+    setInstalling(true);
     window.electronAPI?.invoke("update:install-now");
-  }, []);
+  };
+
+  const handleBackup = async () => {
+    if (backupState === "running") return;
+    setBackupState("running");
+    try {
+      const res = await window.electronAPI?.invoke("backup:create");
+      setBackupState(res?.success ? "done" : "error");
+    } catch {
+      setBackupState("error");
+    }
+  };
+
+  const handleManualDownload = () => {
+    window.electronAPI?.invoke("update:start-manual-download");
+  };
+
+  const handleCancelManual = () => {
+    window.electronAPI?.invoke("update:cancel-manual-download");
+  };
+
+  const handleOpenInstaller = () => {
+    setInstalling(true);
+    window.electronAPI?.invoke("update:open-installer");
+  };
+
+  // ── Version rollback handlers ──
+  const loadReleases = async () => {
+    setReleasesLoading(true);
+    try {
+      const list = await window.electronAPI?.invoke("update:list-releases");
+      setReleases(Array.isArray(list) ? list : []);
+    } catch {
+      setReleases([]);
+    } finally {
+      setReleasesLoading(false);
+    }
+  };
+
+  const toggleRollback = () => {
+    const next = !rollbackOpen;
+    setRollbackOpen(next);
+    if (next && releases === null) loadReleases();
+  };
+
+  // Best practice: always snapshot the DB before installing another version,
+  // then download + install that version (reusing the robust manual pipeline).
+  const handleInstallVersion = async (version) => {
+    setRbError(null);
+    setRbVersion(version);
+    setRbStage("backup");
+    try {
+      const res = await window.electronAPI?.invoke("backup:create");
+      if (!res?.success) throw new Error("backup_failed");
+    } catch {
+      setRbError("تعذّر إنشاء النسخة الاحتياطية. أُلغيت العملية حفاظاً على بياناتك.");
+      setRbStage("idle");
+      setRbVersion(null);
+      return;
+    }
+    setRbStage("download");
+    window.electronAPI?.invoke("update:download-version", { version });
+  };
+
+  const handleCancelRollback = () => {
+    window.electronAPI?.invoke("update:cancel-manual-download");
+    setRbStage("idle");
+    setRbVersion(null);
+  };
+
+  // ── Derived stepper states ───────────────────────────────────────────────
+  const isReady = phase === "ready-to-install" || phase === "installing" || downloaded;
+  const isDownloading = phase === "downloading" || (!!progress && !downloaded);
+  const showStepper = available || downloaded || checking;
+
+  const checkStatus = available || downloaded ? "done" : checking ? "active" : "pending";
+  const downloadStatus = isReady ? "done" : isDownloading ? "active" : "pending";
+  const installStatus = isReady ? "active" : "pending";
 
   // Ultra-premium mesh background
   const BackgroundMesh = () => (
@@ -207,7 +330,7 @@ export default function UpdatesPage() {
         {/* Cinematic Header with Splitting Text Effect */}
         <motion.header variants={FADE_UP} className="mb-14">
           <div className="flex items-center gap-4 mb-6">
-            <motion.div 
+            <motion.div
               animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               className="flex items-center justify-center w-12 h-12 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100" style={{ backgroundColor: "var(--bg-surface)" }}
@@ -218,7 +341,7 @@ export default function UpdatesPage() {
               مركز التحكم
             </span>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-[1.1] max-w-5xl" style={{ color: "var(--text-primary)" }}>
             تحديثات <span className="text-transparent bg-clip-text bg-gradient-to-br from-zinc-900 to-zinc-500">النظام</span>
           </h1>
@@ -229,7 +352,7 @@ export default function UpdatesPage() {
 
         {/* Bento Grid with Liquid Glass & Precision Spacing */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 grid-flow-dense">
-          
+
           {/* Main Status Panel (Col-span-8) */}
           <motion.div
             data-help="version-section"
@@ -238,26 +361,34 @@ export default function UpdatesPage() {
           >
             {/* Interactive Ambient Light */}
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 to-emerald-100/0 group-hover:from-emerald-50/60 group-hover:to-transparent transition-colors duration-1000 pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col h-full justify-between gap-12">
+
+            <div className="relative z-10 flex flex-col h-full justify-between gap-10">
               <div>
                 <div className="flex items-center gap-4 mb-8">
                   <div className="relative flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-primary text-white shadow-xl overflow-hidden">
-                    {checking ? (
+                    {isReady ? (
+                      <CheckCircle2 className="h-7 w-7 text-emerald-400" />
+                    ) : isDownloading ? (
                       <Loader2 className="h-7 w-7 animate-spin" />
                     ) : available ? (
                       <ArrowDownCircle className="h-7 w-7 text-emerald-400" />
+                    ) : checking ? (
+                      <Loader2 className="h-7 w-7 animate-spin" />
                     ) : (
                       <CheckCircle2 className="h-7 w-7" />
                     )}
-                    {available && !checking && <Shimmer />}
+                    {available && !isDownloading && !isReady && <Shimmer />}
                   </div>
                   <div>
                     <h2 className="text-3xl font-black tracking-tight text-zinc-950">
-                      {checking
-                        ? "جاري فحص الخوادم..."
+                      {isReady
+                        ? "التحديث جاهز للتثبيت"
+                        : isDownloading
+                        ? "جاري تحميل التحديث..."
                         : available
                         ? "تحديث جديد متاح!"
+                        : checking
+                        ? "جاري فحص الخوادم..."
                         : "النظام محدث بالكامل"}
                     </h2>
                     <p className="text-zinc-500 font-bold text-sm mt-1.5 flex items-center gap-2">
@@ -273,43 +404,103 @@ export default function UpdatesPage() {
                       <AlertCircle className="w-5 h-5" />
                       {typeof error === "string" ? error : "فشل التحقق من التحديثات. يرجى مراجعة اتصال الإنترنت."}
                     </span>
-                  ) : available && !downloaded ? (
-                    <span>
-                      الإصدار <strong className="text-zinc-900">{info?.version}</strong> جاهز للتحميل.{" "}
-                      راجع سجل التغييرات أدناه لمعرفة كل ما هو جديد، ثم ثبّت التحديث لضمان أفضل أداء واستقرار لمنشأتك.
-                    </span>
-                  ) : downloaded ? (
+                  ) : isReady ? (
                     <span className="text-emerald-700 bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100 inline-block">
-                      تم تحميل التحديث بنجاح ومستعد للتثبيت. يرجى تأكيد العملية.
+                      تم تحميل التحديث بنجاح ومستعد للتثبيت. اضغط «تثبيت وإعادة التشغيل» عندما تكون جاهزاً.
+                    </span>
+                  ) : available ? (
+                    <span>
+                      الإصدار <strong className="text-zinc-900">{info?.version}</strong>
+                      {fileSize ? <span className="text-zinc-400"> ({fmtMB(fileSize)} MB)</span> : null} جاهز للتحميل.{" "}
+                      راجع سجل التغييرات أدناه لمعرفة كل ما هو جديد.
                     </span>
                   ) : (
                     "أنت تستخدم أحدث نسخة من النظام. جميع الميزات تعمل بأعلى كفاءة واستقرار تام."
                   )}
                 </div>
 
+                {/* Phase stepper */}
+                {showStepper && (
+                  <div className="mt-8 max-w-md">
+                    <PhaseStepper
+                      checkStatus={checkStatus}
+                      downloadStatus={downloadStatus}
+                      installStatus={installStatus}
+                    />
+                  </div>
+                )}
+
+                {/* Inline download progress (%, size, speed) — replaces the old overlay */}
                 <AnimatePresence>
-                  {progress && (
+                  {progress && !isReady && (
                     <motion.div
                       initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                      animate={{ opacity: 1, height: "auto", marginTop: 32 }}
+                      animate={{ opacity: 1, height: "auto", marginTop: 28 }}
                       exit={{ opacity: 0, height: 0, marginTop: 0 }}
                       className="overflow-hidden"
                     >
                       <div className="flex justify-between items-end mb-3">
                         <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري التحميل</span>
-                        <span className="text-2xl number-fmt text-zinc-950">{progress.percent.toFixed(0)}%</span>
+                        <span className="text-2xl number-fmt text-zinc-950">{(progress.percent || 0).toFixed(0)}%</span>
                       </div>
                       <div className="h-3 w-full bg-zinc-100 rounded-full overflow-hidden p-0.5">
                         <div
-                          className="h-full bg-zinc-950 rounded-full shadow-sm transition-all duration-300 ease-linear"
-                          style={{ width: `${progress.percent}%` }}
+                          className="h-full bg-primary rounded-full shadow-sm transition-all duration-300 ease-linear"
+                          style={{ width: `${progress.percent || 0}%` }}
                         />
                       </div>
+                      <div className="flex justify-between items-center mt-2 text-xs font-bold text-zinc-400 font-mono">
+                        <span>{progress.transferred != null ? `MB ${fmtMB(progress.transferred)} / ${fmtMB(progress.total)}` : ""}</span>
+                        <span>{progress.bytesPerSecond ? fmtSpeed(progress.bytesPerSecond) : ""}</span>
+                      </div>
+                      {isDownloading && (
+                        <button
+                          onClick={handleCancelAuto}
+                          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                        >
+                          <X className="h-4 w-4" /> إيقاف التحميل
+                        </button>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Calm backup notice + one-click backup (NOT a warning) */}
+                {available && !isReady && (
+                  <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-zinc-100 text-zinc-500">
+                        <Database className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-bold text-zinc-600 leading-relaxed">
+                        ننصح بإنشاء نسخة احتياطية قبل التحديث للاطمئنان على بياناتك.
+                      </p>
+                    </div>
+                    {backupState === "done" ? (
+                      <span className="flex items-center gap-2 text-sm font-black shrink-0" style={{ color: "var(--success, #10b981)" }}>
+                        <CheckCircle2 className="h-4 w-4" /> تم إنشاء النسخة الاحتياطية
+                      </span>
+                    ) : (
+                      <button
+                        onClick={handleBackup}
+                        disabled={backupState === "running"}
+                        className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-60"
+                      >
+                        {backupState === "running" ? (
+                          <><Loader2 className="h-4 w-4 animate-spin" /> جاري الإنشاء...</>
+                        ) : (
+                          <><Database className="h-4 w-4" /> إنشاء نسخة احتياطية الآن</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {backupState === "error" && (
+                  <p className="mt-2 text-xs font-bold text-red-500">تعذّر إنشاء النسخة الاحتياطية. يمكنك المتابعة أو المحاولة من الإعدادات.</p>
+                )}
               </div>
 
+              {/* Primary action */}
               <div className="flex items-center gap-4">
                 {error ? (
                   <MagneticButton
@@ -319,22 +510,27 @@ export default function UpdatesPage() {
                   >
                     <RefreshCw className="w-4 h-4" /> إعادة الفحص
                   </MagneticButton>
-                ) : downloaded ? (
+                ) : isReady ? (
                   <MagneticButton
                     data-help="install-button"
                     onClick={handleInstallNow}
-                    className="px-8 py-4 bg-amber-500 text-white rounded-2xl font-black hover:bg-amber-600 transition-colors hover:shadow-xl shadow-amber-500/20 text-sm"
+                    disabled={installing}
+                    className="px-8 py-4 bg-primary text-white rounded-2xl font-black hover:shadow-xl transition-shadow disabled:opacity-70 text-sm"
                   >
-                    <ShieldAlert className="w-4 h-4" /> تأكيد التثبيت وإعادة التشغيل
+                    {installing ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> جاري التثبيت وإعادة التشغيل...</>
+                    ) : (
+                      <><Zap className="w-4 h-4" /> تثبيت وإعادة التشغيل</>
+                    )}
                   </MagneticButton>
                 ) : available ? (
                   <MagneticButton
                     data-help="download-button"
                     onClick={handleDownload}
-                    disabled={checking}
+                    disabled={checking || isDownloading}
                     className="px-8 py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl transition-shadow disabled:opacity-50 text-sm"
                   >
-                    تحميل التحديث الان
+                    <Download className="w-4 h-4" /> {isDownloading ? "جاري التحميل..." : "تحميل التحديث"}
                   </MagneticButton>
                 ) : (
                   <MagneticButton
@@ -348,6 +544,94 @@ export default function UpdatesPage() {
                   </MagneticButton>
                 )}
               </div>
+
+              {/* Manual download fallback (collapsible) */}
+              {(available || manualAvailable) && !isReady && !rbVersion && (
+                <div className="border-t border-zinc-100 pt-5">
+                  <button
+                    onClick={() => setManualExpanded((v) => !v)}
+                    className="w-full flex items-center justify-between text-sm font-black text-zinc-500 hover:text-zinc-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Download className="w-4 h-4" /> تنزيل يدوي <span className="text-zinc-400 font-bold">(بديل)</span>
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${manualExpanded ? "rotate-180" : ""}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {manualExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-4">
+                          <p className="text-sm font-medium text-zinc-500 leading-relaxed mb-4">
+                            قم بتنزيل ملف التثبيت مباشرة. يمكنك تشغيله بعد اكتمال التحميل لتثبيت التحديث يدوياً.
+                            {fileSize ? <span className="inline-block mr-2 px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-500 text-xs font-bold font-mono">{fmtMB(fileSize)} MB</span> : null}
+                          </p>
+
+                          {manualDownloading && manualProgress ? (
+                            <div className="mb-4">
+                              <div className="flex justify-between items-end mb-2">
+                                <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري التنزيل اليدوي</span>
+                                <span className="text-lg number-fmt text-zinc-900">{(manualProgress.percent || 0).toFixed(0)}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-zinc-900 rounded-full transition-all duration-300 ease-linear"
+                                  style={{ width: `${manualProgress.percent || 0}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between items-center mt-2 text-xs font-bold text-zinc-400 font-mono">
+                                <span>{manualProgress.transferred != null ? `MB ${fmtMB(manualProgress.transferred)} / ${fmtMB(manualProgress.total)}` : ""}</span>
+                                <span>{manualProgress.bytesPerSecond ? fmtSpeed(manualProgress.bytesPerSecond) : ""}</span>
+                              </div>
+                              <button
+                                onClick={handleCancelManual}
+                                className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                              >
+                                <X className="h-4 w-4" /> إيقاف التنزيل
+                              </button>
+                            </div>
+                          ) : manualFilePath ? (
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                              <span className="flex items-center gap-2 text-sm font-black text-emerald-600">
+                                <CheckCircle2 className="h-4 w-4" /> تم تنزيل ملف التثبيت
+                              </span>
+                              <button
+                                onClick={handleOpenInstaller}
+                                disabled={installing}
+                                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black bg-zinc-900 text-white hover:bg-zinc-800 transition-colors disabled:opacity-70"
+                              >
+                                {installing ? (
+                                  <><Loader2 className="h-4 w-4 animate-spin" /> جاري بدء التثبيت...</>
+                                ) : (
+                                  <><FolderOpen className="h-4 w-4" /> فتح ملف التثبيت</>
+                                )}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleManualDownload}
+                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black border border-dashed border-zinc-300 text-zinc-600 hover:bg-zinc-50 hover:border-zinc-400 transition-colors"
+                            >
+                              <Download className="h-4 w-4" /> بدء التنزيل اليدوي
+                            </button>
+                          )}
+
+                          {manualError && (
+                            <p className="mt-3 text-xs font-bold text-red-500">
+                              {typeof manualError === "string" ? manualError : "تعذّر التنزيل اليدوي. حاول مرة أخرى."}
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -359,7 +643,7 @@ export default function UpdatesPage() {
           >
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMiIvPjwvc3ZnPg==')] pointer-events-none" />
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[60px] rounded-full pointer-events-none" />
-            
+
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-3">
@@ -371,7 +655,7 @@ export default function UpdatesPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </div>
               </div>
-              
+
               <div className="space-y-8">
                 <div>
                   <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
@@ -405,7 +689,7 @@ export default function UpdatesPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="relative z-10 mt-12 pt-6 border-t border-white/10 flex items-center justify-between">
               <span className="text-xs font-bold text-zinc-500">حالة النظام</span>
               <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">ممتازة</span>
@@ -427,7 +711,7 @@ export default function UpdatesPage() {
                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Release Notes</p>
               </div>
             </div>
-            
+
             <div className="prose prose-zinc prose-lg max-w-none text-zinc-600 font-medium leading-[2] prose-h3:text-zinc-950 prose-h3:font-black prose-h3:tracking-tight prose-a:text-emerald-600 hover:prose-a:text-emerald-700 [&_ul]:list-disc [&_ul]:pr-6 [&_li]:my-1 [&_p]:my-2">
               {info?.releaseNotes ? (
                 <div
@@ -442,7 +726,7 @@ export default function UpdatesPage() {
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <motion.div 
+                  <motion.div
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     className="h-20 w-20 bg-zinc-50 rounded-3xl flex items-center justify-center mb-6 border border-zinc-100 shadow-sm"
@@ -455,172 +739,164 @@ export default function UpdatesPage() {
               )}
             </div>
           </motion.div>
+
+          {/* Version rollback / install a specific release (Col-span-12) */}
+          <motion.div
+            variants={FADE_UP}
+            className="md:col-span-12 bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-8 lg:p-10 border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)]"
+          >
+            <button
+              onClick={toggleRollback}
+              className="w-full flex items-center justify-between"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
+                  <History className="w-6 h-6 text-zinc-700" />
+                </div>
+                <div className="text-right">
+                  <h3 className="text-2xl font-black tracking-tight text-zinc-950">تثبيت إصدار محدد</h3>
+                  <p className="text-xs font-bold text-zinc-400 mt-1">الرجوع لإصدار أقدم أو إعادة تثبيت إصدار معيّن</p>
+                </div>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-zinc-400 transition-transform ${rollbackOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            <AnimatePresence>
+              {rollbackOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-8">
+                    {/* Calm data-safety note */}
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-zinc-50 border border-zinc-100 mb-6">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white border border-zinc-100 text-zinc-500">
+                        <Database className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-bold text-zinc-600 leading-relaxed">
+                        يتم إنشاء نسخة احتياطية تلقائياً قبل التثبيت. ملاحظة: البيانات التي أُضيفت في الإصدار الأحدث قد لا تظهر بالكامل بعد الرجوع لإصدار أقدم.
+                      </p>
+                    </div>
+
+                    {/* Active rollback in progress */}
+                    {rbVersion ? (
+                      <div className="p-5 rounded-2xl border border-zinc-200 bg-white">
+                        <p className="text-sm font-black text-zinc-800 mb-4">
+                          {rbStage === "backup"
+                            ? `جاري إنشاء نسخة احتياطية قبل تثبيت الإصدار ${rbVersion}...`
+                            : manualFilePath
+                            ? `تم تنزيل الإصدار ${rbVersion} وهو جاهز للتثبيت.`
+                            : `جاري تنزيل الإصدار ${rbVersion}...`}
+                        </p>
+
+                        {rbStage === "backup" && (
+                          <span className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500">
+                            <Loader2 className="h-4 w-4 animate-spin" /> يرجى الانتظار...
+                          </span>
+                        )}
+
+                        {rbStage === "download" && !manualFilePath && (
+                          <>
+                            {manualProgress && (
+                              <>
+                                <div className="flex justify-between items-end mb-2">
+                                  <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">جاري التنزيل</span>
+                                  <span className="text-lg number-fmt text-zinc-900">{(manualProgress.percent || 0).toFixed(0)}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-zinc-900 rounded-full transition-all duration-300 ease-linear" style={{ width: `${manualProgress.percent || 0}%` }} />
+                                </div>
+                                <div className="flex justify-between items-center mt-2 text-xs font-bold text-zinc-400 font-mono">
+                                  <span>{manualProgress.transferred != null ? `MB ${fmtMB(manualProgress.transferred)} / ${fmtMB(manualProgress.total)}` : ""}</span>
+                                  <span>{manualProgress.bytesPerSecond ? fmtSpeed(manualProgress.bytesPerSecond) : ""}</span>
+                                </div>
+                              </>
+                            )}
+                            <button
+                              onClick={handleCancelRollback}
+                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                            >
+                              <X className="h-4 w-4" /> إيقاف
+                            </button>
+                          </>
+                        )}
+
+                        {manualFilePath && (
+                          <button
+                            onClick={handleOpenInstaller}
+                            disabled={installing}
+                            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-black bg-primary text-white hover:shadow-xl transition-shadow disabled:opacity-70"
+                          >
+                            {installing ? (
+                              <><Loader2 className="h-4 w-4 animate-spin" /> جاري بدء التثبيت...</>
+                            ) : (
+                              <><FolderOpen className="h-4 w-4" /> تثبيت الإصدار {rbVersion}</>
+                            )}
+                          </button>
+                        )}
+
+                        {manualError && (
+                          <p className="mt-3 text-xs font-bold text-red-500">
+                            {typeof manualError === "string" ? manualError : "تعذّر التنزيل. حاول مرة أخرى."}
+                          </p>
+                        )}
+                      </div>
+                    ) : releasesLoading ? (
+                      <div className="flex items-center justify-center py-12 text-zinc-400 gap-3">
+                        <Loader2 className="h-5 w-5 animate-spin" /> <span className="font-bold">جاري جلب قائمة الإصدارات...</span>
+                      </div>
+                    ) : releases && releases.length > 0 ? (
+                      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                        {releases.map((r) => {
+                          const isCurrent = r.version === currentVersion;
+                          return (
+                            <div key={r.version} className="flex items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-100 hover:bg-zinc-50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono text-lg font-black text-zinc-900">{r.version}</span>
+                                {isCurrent && (
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">الحالي</span>
+                                )}
+                                {r.prerelease && (
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">تجريبي</span>
+                                )}
+                                {r.publishedAt && (
+                                  <span className="text-xs font-bold text-zinc-400 font-mono">
+                                    {new Intl.DateTimeFormat("en-CA").format(new Date(r.publishedAt))}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleInstallVersion(r.version)}
+                                disabled={isCurrent}
+                                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Download className="h-4 w-4" /> {isCurrent ? "مُثبّت" : "تثبيت"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <p className="font-bold text-zinc-500">تعذّر جلب قائمة الإصدارات.</p>
+                        <button onClick={loadReleases} className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors">
+                          <RefreshCw className="h-4 w-4" /> إعادة المحاولة
+                        </button>
+                      </div>
+                    )}
+
+                    {rbError && (
+                      <p className="mt-4 text-xs font-bold text-red-500">{rbError}</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </motion.div>
-
-      {/* ─── Confirmation Modal ─── */}
-      <AnimatePresence>
-        {confirmAction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
-            onClick={() => { if (!confirmed) setConfirmAction(null); }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              className="w-full max-w-lg bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-zinc-100 relative overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => { setConfirmAction(null); setConfirmed(false); }}
-                className="absolute top-5 left-5 w-8 h-8 flex items-center justify-center rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-zinc-400"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              {/* Header */}
-              <div className="flex flex-col items-center text-center mb-7">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-                  {confirmAction === 'download' ? (
-                    <Download className="h-7 w-7 text-primary" />
-                  ) : (
-                    <Zap className="h-7 w-7 text-primary" />
-                  )}
-                </div>
-                <h3 className="text-2xl font-black tracking-tight text-zinc-950">
-                  {confirmAction === 'download' ? 'تأكيد تحميل التحديث' : 'تأكيد تثبيت التحديث'}
-                </h3>
-                <p className="text-sm font-medium text-zinc-500 mt-2 max-w-sm leading-relaxed">
-                  {confirmAction === 'download'
-                    ? 'سيتم تحميل وتثبيت إصدار جديد. ننصح بأخذ نسخة احتياطية قبل المتابعة.'
-                    : 'سيتم تثبيت التحديث وإعادة التشغيل فوراً. تأكد من حفظ جميع أعمالك.'}
-                </p>
-              </div>
-
-              {/* Info cards */}
-              <div className="space-y-3 mb-7">
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                    <HardDrive className="h-4 w-4" />
-                  </div>
-                  <p className="text-sm font-bold text-zinc-700 leading-relaxed">
-                    يُنصح بشدة بإنشاء نسخة احتياطية قبل التحديث لضمان سلامة بياناتك
-                  </p>
-                </div>
-                {confirmAction === 'download' ? (
-                  <>
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                        <Save className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm font-bold text-zinc-700 leading-relaxed">احفظ أعمالك المفتوحة — بعد التحميل سيُطلب منك تأكيد التثبيت</p>
-                    </div>
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                        <Wifi className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm font-bold text-zinc-700 leading-relaxed">تأكد من اتصال الإنترنت لتحميل التحديث</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                        <Monitor className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm font-bold text-zinc-700 leading-relaxed">سيتم إغلاق البرنامج بالكامل وإعادة تشغيله بعد التثبيت</p>
-                    </div>
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                        <RotateCw className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm font-bold text-zinc-700 leading-relaxed">لا تقم بإطفاء الجهاز أثناء التثبيت — قد يستغرق بضع دقائق</p>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Checkbox */}
-              <label className="flex items-start gap-3 mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/10 cursor-pointer transition-colors hover:bg-primary/10">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={() => setConfirmed((c) => !c)}
-                  className="mt-0.5 h-5 w-5 shrink-0 rounded-lg border-zinc-300 text-primary focus:ring-primary/30 accent-primary"
-                />
-                <span className="text-sm font-bold text-zinc-800 leading-relaxed">
-                  {confirmAction === 'download'
-                    ? 'أقر بأنني حفظت أعمالي وأريد المتابعة'
-                    : 'أقر بأنني مستعد لإعادة تشغيل النظام'}
-                </span>
-              </label>
-
-              {/* Actions */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => { setConfirmAction(null); setConfirmed(false); }}
-                  className="flex-1 rounded-2xl border border-zinc-200 px-6 py-3.5 text-sm font-black text-zinc-600 hover:bg-zinc-50 transition-colors"
-                >
-                  إلغاء
-                </button>
-                <button
-                  onClick={confirmAction === 'download' ? executeDownload : executeInstall}
-                  disabled={!confirmed}
-                  className="flex-1 rounded-2xl px-6 py-3.5 text-sm font-black text-white shadow-lg transition-all disabled:opacity-40 bg-primary hover:bg-primary-700 shadow-primary-700/20"
-                >
-                  {confirmAction === 'download' ? 'بدء التحميل' : 'تثبيت وإعادة التشغيل'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ─── In-Progress Overlay (non-dismissable) ─── */}
-      <AnimatePresence>
-        {isUpdating && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-black/70 backdrop-blur-xl p-6"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              className="flex flex-col items-center text-center max-w-md"
-            >
-              <div className="relative flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/20 mb-8">
-                <Loader2 className="h-10 w-10 text-white animate-spin" />
-                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-emerald-400/20 to-transparent" />
-              </div>
-              <h2 className="text-2xl font-black text-white mb-3">جاري تحديث النظام</h2>
-              <p className="text-white/60 font-medium text-lg leading-relaxed">
-                عملية التحديث قيد التنفيذ. يرجى الانتظار حتى اكتمالها — لا تغلق البرنامج أو الجهاز.
-              </p>
-              {progress && (
-                <div className="w-full max-w-xs mt-8">
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-xs font-black tracking-widest text-white/40 uppercase">جاري التحميل</span>
-                    <span className="text-xl font-black text-white">{progress.percent.toFixed(0)}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-white rounded-full transition-all duration-300 ease-linear"
-                      style={{ width: `${progress.percent}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

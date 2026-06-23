@@ -422,7 +422,7 @@ function getReturnDetails(id) {
            c.phone AS customer_phone,
            i.invoice_no AS original_invoice_no,
            t.name AS treasury_name,
-           u.username AS created_by_username,
+           COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
            u.full_name AS created_by_name,
            (SELECT doc_no FROM sales_returns WHERE id = sr.amendment_of) AS amendment_of_no,
            (SELECT doc_no FROM sales_returns WHERE id = sr.amended_by)   AS amended_by_no

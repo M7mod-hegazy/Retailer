@@ -742,6 +742,7 @@ export default function BranchTransferPage() {
         onClose={() => setDetailOpen(false)}
         title={`تفاصيل حركة النقل — ${activeTransfer?.reference_no || ""}`}
         maxWidth="max-w-4xl"
+        showDetach={false}
       >
         <TransferDetailModal
           transfer={activeTransfer}

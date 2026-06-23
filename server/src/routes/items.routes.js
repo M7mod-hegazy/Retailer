@@ -483,7 +483,7 @@ router.get("/:id/operations", requirePagePermission("items", "view"), (req, res,
         SELECT 'price_changes' AS type, ph.id AS source_id, ph.id AS source_line_id,
           ph.operation_id, ph.source AS raw_source, ph.field AS raw_field,
           ph.changed_at AS date,
-          COALESCE(u.username, u.full_name, ph.changed_by, '') AS party_name,
+          COALESCE(NULLIF(u.full_name, ''), u.username, ph.changed_by, '') AS party_name,
           ph.new_value AS unit_price, ph.new_value - ph.old_value AS line_total,
           ph.old_value AS context_before, ph.new_value AS context_after
         FROM price_history ph
@@ -1404,7 +1404,7 @@ router.get("/import/batches", requirePagePermission("items", "view"), (req, res,
   try {
     const db = getDb();
     const batches = db.prepare(`
-      SELECT b.id, b.user_id, u.username AS user_name, b.file_name, b.file_size,
+      SELECT b.id, b.user_id, COALESCE(NULLIF(u.full_name, ''), u.username) AS user_name, b.file_name, b.file_size,
              b.row_count, b.inserted, b.updated, b.skipped, b.failed,
              b.status, b.created_at, b.undone_at, b.undone_by
       FROM import_batches b

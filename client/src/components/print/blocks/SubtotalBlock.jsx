@@ -3,7 +3,7 @@ import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
 
 export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
   if (g(s, "show_subtotal") === false) return null;
-  const { subtotal } = computeTotals(invoice, s);
+  const { subtotal, grandTotal } = computeTotals(invoice, s);
   const currency = g(s, "currency_symbol");
   if (family === "page") {
     return (
@@ -13,6 +13,9 @@ export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
       </div>
     );
   }
+  // Roll: GrandTotalBlock always shows the final total with prominent styling.
+  // Only show subtotal here when it differs (i.e. there is a discount/surcharge/tax).
+  if (Math.abs(subtotal - grandTotal) < 0.01) return null;
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
       <span>الإجمالي:</span><span style={HEAVY_VAL}>{currency} {subtotal.toFixed(2)}</span>

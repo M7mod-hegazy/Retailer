@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Phone, MapPin, Edit2, Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { Phone, MapPin, Edit2, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import api from "../../services/api";
 import Button from "../ui/Button";
+import TitleBar from "../ui/TitleBar";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useDetach } from "../../hooks/useDetach";
 import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
@@ -18,6 +20,11 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
   const address0Ref = useRef(null);
   const notesRef = useRef(null);
   const saveBtnRef = useRef(null);
+  const onUpdatedRef = useRef(onUpdated);
+  onUpdatedRef.current = onUpdated;
+  const { handleDetach } = useDetach("customer-info", {
+    onClose, getState: () => ({ customerId }), actions: { updated: (data) => onUpdatedRef.current?.(data) },
+  });
 
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -101,18 +108,10 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" dir="rtl">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-[460px] mx-4 flex flex-col max-h-[90vh]">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-          <h2 className="text-sm font-bold text-slate-700">
-            {editMode ? "تعديل بيانات العميل" : "بيانات العميل"}
-          </h2>
-          <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+        <TitleBar title={editMode ? "تعديل بيانات العميل" : "بيانات العميل"} onClose={handleClose} onDetach={handleDetach} />
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div data-modal-content className="flex-1 overflow-y-auto">
           {loading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
@@ -207,7 +206,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                 </label>
                 <input
                   ref={nameRef}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   onKeyDown={e => handleKeyDown(e, { nextRef: phone0Ref })}
@@ -222,7 +221,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                     <div key={i} className="flex items-center gap-2">
                       <input
                         ref={i === 0 ? phone0Ref : undefined}
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                         placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                         value={phone}
                         onChange={e => setPhone(i, e.target.value)}
@@ -253,7 +252,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                     <div key={i} className="flex items-start gap-2">
                       <input
                         ref={i === 0 ? address0Ref : undefined}
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                         placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                         value={addr}
                         onChange={e => setAddress(i, e.target.value)}
@@ -280,7 +279,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                 <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
                 <textarea
                   ref={notesRef}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
                   placeholder="اختياري"
                   rows={2}
                   value={form.notes}
@@ -297,7 +296,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
           <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 shrink-0">
             {editMode ? (
               <>
-                <Button variant="ghost" size="sm" onClick={() => { setEditMode(false); setError(""); }}>
+                <Button variant="danger" size="sm" onClick={() => { setEditMode(false); setError(""); }}>
                   إلغاء
                 </Button>
                 <Button ref={saveBtnRef} variant="primary" size="sm" onClick={handleSave} disabled={saving}>
@@ -307,7 +306,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={handleClose}>
+                <Button variant="danger" size="sm" onClick={handleClose}>
                   إغلاق
                 </Button>
                 <Button variant="primary" size="sm" onClick={openEdit}>

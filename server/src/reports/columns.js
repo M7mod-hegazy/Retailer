@@ -606,6 +606,26 @@ const AR_LABELS = {
   returns_total: "إجمالي المرتجعات",
   invoice_count: "عدد الفواتير",
   purchase_count: "عدد المشتريات",
+  // ── SQL aliases & columns missing from original AR_LABELS ──
+  buys: "مشتريات",
+  datetime: "التاريخ والوقت",
+  doc_discount: "خصم المستند",
+  doc_id: "رقم المستند",
+  doc_increase: "إضافة المستند",
+  doc_total: "إجمالي المستند",
+  employee_id: "الموظف",
+  line_sum: "مجموع البنود",
+  net_total: "صافي الإجمالي",
+  occurred_at: "تاريخ الحدوث",
+  orig_ref: "المرجع الأصلي",
+  ref_id: "رقم المرجع",
+  source_id: "المصدر",
+  source_line_id: "رقم سطر المصدر",
+  tax_amount: "مبلغ الضريبة",
+  tax_type: "نوع الضريبة",
+  total_tax: "إجمالي الضريبة",
+  updated_at: "آخر تحديث",
+  v: "القيمة",
 };
 
 // Column order per report. Re-synced to the actual SQL output keys of each query

@@ -392,7 +392,7 @@ export default function PurchaseOrdersPage() {
         </div>
 
       {/* Detail Modal — full breakdown */}
-      <Modal open={!!detailOrder} onClose={() => setDetailOrder(null)} title={`طلب التوريد ${detailOrder?.doc_no || ""}`} maxWidth="max-w-4xl">
+      <Modal open={!!detailOrder} onClose={() => setDetailOrder(null)} title={`طلب التوريد ${detailOrder?.doc_no || ""}`} maxWidth="max-w-4xl" showDetach={false}>
         {detailOrder && (
           <div className="space-y-6 p-2">
             <div className="flex items-center gap-3">

@@ -219,18 +219,25 @@ function UnitFixPanel({ wizard, rowsCount }) {
   const resolvedCount = resolvedKeys.size + (appliedQuickFix ? 1 : 0);
   const totalCount = fileUnits.length;
 
+  // When the file actually carries a unit column we let the user resolve each
+  // distinct file unit directly (create / use / link). The "apply one unit to
+  // all rows" general rule only makes sense when the file has NO unit column.
+  const hasFileUnits = fileUnits.length > 0;
+
   return (
     <div className="space-y-4">
-      <UnitGeneralRule wizard={wizard} rowsCount={rowsCount} fileUnits={fileUnits} missingUnits={missingUnits} />
+      {!hasFileUnits && (
+        <UnitGeneralRule wizard={wizard} rowsCount={rowsCount} fileUnits={fileUnits} missingUnits={missingUnits} />
+      )}
 
-      {fileUnits.length > 0 && (
+      {hasFileUnits && (
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
             className="flex w-full items-center justify-between gap-3 px-5 py-4 text-sm font-black text-slate-700 hover:bg-slate-50 transition"
           >
-            <span>{expanded ? "إخفاء التفاصيل" : "إظهار التفاصيل"} — تعديل قرارات الوحدات الفردية</span>
+            <span>وحدات الملف ({totalCount}) — أنشئ كل وحدة أو اربطها بوحدة موجودة</span>
             <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
           </button>
 

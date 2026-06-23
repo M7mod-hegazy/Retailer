@@ -8,7 +8,7 @@ const { getReportColumns, getReportTitle, getReportDescription, normalizeStructu
 const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("../services/exportService");
 const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
-const { requirePagePermission } = require("../middleware/permission");
+const { requirePagePermission, userHasPagePermission } = require("../middleware/permission");
 const { featureGate } = require("../utils/features");
 
 const router = express.Router();
@@ -450,7 +450,7 @@ router.get("/margin-alerts", requirePagePermission("reports", "view"), (_req, re
              COALESCE(sl.wacc, i.purchase_price, 0) AS cost
       FROM items i
       LEFT JOIN (
-        SELECT item_id, AVG(wacc) AS wacc FROM stock_levels GROUP BY item_id
+        SELECT item_id, MAX(wacc) AS wacc FROM stock_levels GROUP BY item_id
       ) sl ON sl.item_id = i.id
       WHERE i.is_active = 1 AND i.sale_price > 0
         AND COALESCE(sl.wacc, i.purchase_price, 0) >= i.sale_price
@@ -568,6 +568,18 @@ router.get("/sales-summary", requirePagePermission("reports", "view"), (req, res
   try {
     const { start_date, end_date } = req.query;
     const data = getSalesSummary(start_date || null, end_date || null);
+    const canView = userHasPagePermission(req.user, "analytics", "view_sensitive");
+    if (!canView) {
+      for (const row of data) {
+        row.revenue = null;
+        row.subtotal = null;
+        row.total_discount = null;
+        row.cost = null;
+        row.gross_profit = null;
+        row.margin_percent = null;
+        row.returns_amount = null;
+      }
+    }
     res.json({ success: true, data });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });

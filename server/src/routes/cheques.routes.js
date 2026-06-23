@@ -2,10 +2,14 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { featureGate } = require("../utils/features");
+const { recordBankMovement } = require("../services/bankService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
 router.use(authRequired);
+// Cheque management is a toggleable module — when disabled the whole API is off.
+router.use(featureGate("feature_cheques"));
 router.use(auditMutation);
 
 function ensureChequeColumns(db) {
@@ -93,8 +97,16 @@ router.patch("/:id/status", requirePagePermission("cheques", "edit"), (req, res,
     db.prepare("UPDATE cheques SET status = ? WHERE id = ?").run(nextStatus, req.params.id);
 
     if (payment && nextStatus === "cleared" && payment.bank_id) {
-      const sign = payment.party_type === "supplier" ? -1 : 1;
-      db.prepare("UPDATE banks SET balance = balance + ? WHERE id = ?").run(sign * payment.amount, payment.bank_id);
+      recordBankMovement(db, {
+        bankId: payment.bank_id,
+        type: payment.party_type === "supplier" ? "withdrawal" : "deposit",
+        amount: payment.amount,
+        notes: `تحصيل شيك ${cheque.cheque_no || ""}`.trim(),
+        userId: req.user?.id || 1,
+        source: "ajal",
+        refType: "cheque",
+        refId: cheque.id,
+      });
     }
 
     if (payment && nextStatus === "bounced") {
