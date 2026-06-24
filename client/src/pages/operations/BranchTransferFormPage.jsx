@@ -806,6 +806,7 @@ export default function BranchTransferFormPage() {
       </Modal>
 
       {/* Header */}
+      <div data-help="bt-form-header">
       <DocumentHeaderBar
         className="print:hidden mb-6"
         accent={isReceive ? "emerald" : "indigo"}
@@ -848,14 +849,15 @@ export default function BranchTransferFormPage() {
               المستندات
             </DocumentActionButton>
             <PermissionGate page="branch_transfer" action={isEditMode ? "edit" : "add"}>
-              <DocumentActionButton
-                variant="ghost"
-                icon={CheckCircle}
-                onClick={() => handleSaveClick()}
-                disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
-              >
-                {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
-              </DocumentActionButton>
+                <DocumentActionButton
+                  data-help="bt-form-submit"
+                  variant="ghost"
+                  icon={CheckCircle}
+                  onClick={() => handleSaveClick()}
+                  disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
+                >
+                  {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
+                </DocumentActionButton>
             </PermissionGate>
             {isEditMode && (
               <PermissionGate page="branch_transfer" action="delete">
@@ -882,7 +884,7 @@ export default function BranchTransferFormPage() {
             </PermissionGate>
           </>
         }
-      />
+      /></div>
 
       <div className="print:hidden flex gap-6 items-start" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
 
@@ -904,6 +906,7 @@ export default function BranchTransferFormPage() {
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <select
+                    data-help="bt-form-source"
                     ref={partnerBranchRef}
                     value={partnerBranch}
                     onChange={e => setPartnerBranch(e.target.value)}
@@ -935,11 +938,12 @@ export default function BranchTransferFormPage() {
               </div>
               <h3 className="text-[15px] font-black text-slate-800 tracking-tight">ملاحظات وسبب الحركة</h3>
             </div>
-            <textarea
-              ref={notesRef}
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              onKeyDown={e => handleFieldKeyDown(e, { nextRef: itemInputRef, prevRef: partnerBranchRef })}
+              <textarea
+                data-help="bt-form-notes"
+                ref={notesRef}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                onKeyDown={e => handleFieldKeyDown(e, { nextRef: itemInputRef, prevRef: partnerBranchRef })}
               placeholder="اكتب الملاحظات واسم المندوب..."
               rows={3}
               className={`w-full resize-none rounded-[10px] border border-slate-200/80 px-4 py-3 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20 custom-scrollbar`}
@@ -1025,7 +1029,7 @@ export default function BranchTransferFormPage() {
                 </div>
 
                 {/* Warehouse table */}
-                <div className="flex flex-col gap-1.5 w-full md:w-[220px] shrink-0 text-right">
+                <div data-help="bt-form-destination" className="flex flex-col gap-1.5 w-full md:w-[220px] shrink-0 text-right">
                   <div className="flex items-center justify-between px-1">
                     <label className="text-[11px] font-bold text-slate-500">المخزن</label>
                     {selectedItem && !isReceive && (
@@ -1257,6 +1261,7 @@ export default function BranchTransferFormPage() {
                 {/* Add button */}
                 <button
                   ref={addBtnRef}
+                  data-help="bt-form-add-item"
                   onClick={addLine}
                   onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: itemInputRef, prevRef: qtyInputRef, onEnter: addLine })}
                   disabled={!selectedItem}
@@ -1286,6 +1291,7 @@ export default function BranchTransferFormPage() {
             </div>
           )}
 
+          <div data-help="bt-form-items">
           <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
             <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
             <div ref={colSettingsRef} className="relative">
@@ -1330,6 +1336,7 @@ export default function BranchTransferFormPage() {
             } : undefined}
             columns={columns}
           />
+          </div>
         </div>
       </div>
 

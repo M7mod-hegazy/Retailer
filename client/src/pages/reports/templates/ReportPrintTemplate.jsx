@@ -31,12 +31,6 @@ function getPageSizeMM(template) {
 
 const HEADER_MM = 22;
 const FOOTER_MM = 14;
-const DEFAULT_MARGIN = 8;
-
-function parseMargin(val, fallback) {
-  const n = parseInt(val, 10);
-  return isNaN(n) ? fallback : n;
-}
 
 function parseFontSize(val, fallback) {
   const n = parseInt(val, 10);
@@ -162,8 +156,8 @@ export default function ReportPrintTemplate({
 
   const pageSizeMM = getPageSizeMM(template);
   const pageWidthMM = pageSizeMM.width;
-  const marginMM = parseMargin(settings.margin_side, DEFAULT_MARGIN);
-  const marginTopMM = parseMargin(settings.margin_top, DEFAULT_MARGIN);
+  const marginMM = 2;
+  const marginTopMM = 2;
 
   const printFont = settings.print_font || "sans-serif";
   const headerFontSize = parseFontSize(settings.header_font_size, 18) + "px";

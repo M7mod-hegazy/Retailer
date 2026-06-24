@@ -24,8 +24,8 @@ export default function DocNumberBlock({ invoice = {}, family }) {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>رقم الفاتورة:</span>
-      <span style={{ fontWeight: "bold" }}>{no}</span>
+      <span style={{ fontWeight: 700, fontSize: "10px", color: "#475569" }}>رقم الفاتورة:</span>
+      <span style={{ fontFamily: "monospace", fontWeight: 800 }}>{no}</span>
     </div>
   );
 }

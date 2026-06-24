@@ -1,5 +1,20 @@
 const { today: cairoToday } = require("../utils/datetime");
 
+// Cairo wall-clock timestamp. Uses Date methods directly (not Intl) so it
+// works reliably even when the Intl timeZone option is not available.
+// process.env.TZ = "Africa/Cairo" is set before this module loads, so
+// Date getHours/getMinutes etc. return Cairo local time on all platforms.
+function cairoTimestamp() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+}
+
 // Egypt-local (Cairo) calendar date "YYYY-MM-DD" — the single source of truth
 // for which business day a session/transaction belongs to.
 function localDate(value = new Date()) {
@@ -26,6 +41,7 @@ function ensureDailySessionSchema(db) {
   try { db.exec("ALTER TABLE daily_sessions ADD COLUMN opening_adjusted_at TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE daily_sessions ADD COLUMN opening_adjusted_by INTEGER REFERENCES users(id)"); } catch (_) {}
   try { db.exec("ALTER TABLE daily_sessions ADD COLUMN opening_adjust_reason TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE daily_sessions ADD COLUMN day_notes TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE purchase_returns ADD COLUMN settlement_type TEXT NOT NULL DEFAULT 'account'"); } catch (_) {}
   try { db.exec("ALTER TABLE purchase_returns ADD COLUMN treasury_id INTEGER REFERENCES treasuries(id)"); } catch (_) {}
   try { db.exec("ALTER TABLE payments ADD COLUMN invoice_id INTEGER REFERENCES invoices(id)"); } catch (_) {}
@@ -556,9 +572,9 @@ function closeDailySession(db, dateText, actualCash, notes, userId) {
   db.prepare(`
     UPDATE daily_sessions
     SET actual_cash = ?, closing_balance = ?, discrepancy = ?,
-        status = 'closed', notes = ?, closed_at = datetime('now', 'localtime'), closed_by = ?
+        status = 'closed', notes = ?, closed_at = ?, closed_by = ?
     WHERE id = ?
-  `).run(actual, actual, discrepancy, notes || null, userId || 1, session.id);
+  `).run(actual, actual, discrepancy, notes || null, cairoTimestamp(), userId || 1, session.id);
 
   const next = db.prepare("SELECT * FROM daily_sessions WHERE date > ? ORDER BY date ASC LIMIT 1").get(date);
   if (next && next.status === "open") {
@@ -568,13 +584,127 @@ function closeDailySession(db, dateText, actualCash, notes, userId) {
   return db.prepare("SELECT * FROM daily_sessions WHERE id = ?").get(session.id);
 }
 
+function ensureCashCountSchema(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS daily_cash_counts (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      date          TEXT NOT NULL,
+      amount        REAL NOT NULL,
+      expected_cash REAL NOT NULL,
+      discrepancy   REAL NOT NULL,
+      note          TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      updated_at    TEXT,
+      created_by    INTEGER REFERENCES users(id)
+    )
+  `);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_daily_cash_counts_date ON daily_cash_counts(date)");
+  try { db.exec("ALTER TABLE daily_sessions ADD COLUMN day_notes TEXT"); } catch (_) {}
+}
+
+function listCashCounts(db, dateText) {
+  ensureCashCountSchema(db);
+  const date = normalizeDate(dateText);
+  return db.prepare(`
+    SELECT c.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_name
+    FROM daily_cash_counts c
+    LEFT JOIN users u ON u.id = c.created_by
+    WHERE c.date = ?
+    ORDER BY c.created_at ASC, c.id ASC
+  `).all(date);
+}
+
+function addCashCount(db, dateText, amount, note, userId) {
+  ensureCashCountSchema(db);
+  const date = normalizeDate(dateText);
+  const value = Number(amount);
+  if (!Number.isFinite(value)) {
+    const err = new Error("أدخل الرصيد الفعلي");
+    err.status = 400;
+    throw err;
+  }
+  ensureSessionForDate(db, date);
+  const summary = calculateDailySummary(db, date, { createIfMissing: true });
+  const expected = Number(summary?.expected_cash || 0);
+  const discrepancy = value - expected;
+  const result = db.prepare(`
+    INSERT INTO daily_cash_counts (date, amount, expected_cash, discrepancy, note, created_at, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(date, value, expected, discrepancy, note || null, cairoTimestamp(), userId || 1);
+  return db.prepare(`
+    SELECT c.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_name
+    FROM daily_cash_counts c
+    LEFT JOIN users u ON u.id = c.created_by
+    WHERE c.id = ?
+  `).get(result.lastInsertRowid);
+}
+
+function updateCashCount(db, id, amount, note, _userId) {
+  ensureCashCountSchema(db);
+  const row = db.prepare("SELECT * FROM daily_cash_counts WHERE id = ?").get(id);
+  if (!row) {
+    const err = new Error("العد غير موجود");
+    err.status = 404;
+    throw err;
+  }
+  const value = amount == null || amount === "" ? row.amount : Number(amount);
+  if (!Number.isFinite(value)) {
+    const err = new Error("قيمة غير صحيحة");
+    err.status = 400;
+    throw err;
+  }
+  // Keep the original expected_cash snapshot; editing only fixes the counted amount / note.
+  const discrepancy = value - Number(row.expected_cash || 0);
+  db.prepare(`
+    UPDATE daily_cash_counts
+    SET amount = ?, discrepancy = ?, note = ?, updated_at = ?
+    WHERE id = ?
+  `).run(value, discrepancy, note === undefined ? row.note : (note || null), cairoTimestamp(), id);
+  return db.prepare(`
+    SELECT c.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_name
+    FROM daily_cash_counts c
+    LEFT JOIN users u ON u.id = c.created_by
+    WHERE c.id = ?
+  `).get(id);
+}
+
+function deleteCashCount(db, id) {
+  ensureCashCountSchema(db);
+  const row = db.prepare("SELECT id FROM daily_cash_counts WHERE id = ?").get(id);
+  if (!row) {
+    const err = new Error("العد غير موجود");
+    err.status = 404;
+    throw err;
+  }
+  db.prepare("DELETE FROM daily_cash_counts WHERE id = ?").run(id);
+  return { id };
+}
+
+function setDayNote(db, dateText, note, userId) {
+  const date = normalizeDate(dateText);
+  const session = ensureSessionForDate(db, date);
+  const now = cairoTimestamp();
+  const hh = now.slice(11, 16);
+  const entry = `[${hh}] ${note}`;
+  const existing = session.day_notes || '';
+  const updated = existing ? existing + '\n' + entry : entry;
+  db.prepare("UPDATE daily_sessions SET day_notes = ? WHERE id = ?").run(updated, session.id);
+  return db.prepare("SELECT * FROM daily_sessions WHERE id = ?").get(session.id);
+}
+
 module.exports = {
   assertCanWriteForDate,
   calculateDailySummary,
   closeDailySession,
   ensureDailySessionSchema,
+  ensureCashCountSchema,
   ensureSessionForDate,
   getSession,
   localDate,
   normalizeDate,
+  listCashCounts,
+  addCashCount,
+  updateCashCount,
+  deleteCashCount,
+  setDayNote,
 };

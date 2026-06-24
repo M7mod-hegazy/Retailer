@@ -28,6 +28,9 @@ asar: true
 asarUnpack:
   - "**/*.node"
 
+# Fail the build if the packed better_sqlite3.node is not 64-bit (x64).
+afterPack: electron/scripts/afterpack-verify.js
+
 win:
   icon: electron/assets/icon.ico
   target:

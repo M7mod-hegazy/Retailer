@@ -122,6 +122,7 @@ export default function AnalyticsPage() {
   const [heatmapMetric, setHeatmapMetric] = useState("total_sales");
   const [heatmapGranularity, setHeatmapGranularity] = useState(2); // 1 | 2 | 4 hours per bucket
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  const [hoveredCell, setHoveredCell] = useState(null);
 
   // Items Controls
   const [itemsSort, setItemsSort] = useState("top");
@@ -900,6 +901,11 @@ export default function AnalyticsPage() {
             const bucketLabels = Array.from({ length: numBuckets }, (_, i) =>
               `${String(i * bucketSize).padStart(2, "0")}:00`
             );
+            const bucketDisplay = Array.from({ length: numBuckets }, (_, i) => {
+              const s = i * bucketSize;
+              const e = Math.min(s + bucketSize, 24);
+              return `${String(s).padStart(2, "0")}:00-${String(e).padStart(2, "0")}:00`;
+            });
             const bucketed = {};
             heatmap.forEach(row => {
               const hour = parseInt((row.hour_slot || "0").split(":")[0] || "0");
@@ -926,11 +932,12 @@ export default function AnalyticsPage() {
                   gridTemplateColumns: `auto repeat(${numBuckets}, minmax(56px, 1fr))`,
                   minWidth: `${200 + numBuckets * 64}px`,
                 }}>
-                  {/* Column headers */}
+                  {/* Column headers — show start-end range */}
                   <div className="sticky top-0 z-20 bg-[var(--bg-surface)]" />
-                  {bucketLabels.map(label => (
-                    <div key={label} className="sticky top-0 z-20 bg-[var(--bg-surface)] text-[11px] font-bold text-slate-400 text-center mb-1 leading-8">
-                      {label}
+                  {bucketLabels.map((label, bi) => (
+                    <div key={label} className="sticky top-0 z-20 bg-[var(--bg-surface)] flex flex-col items-center justify-center mb-1 h-10 leading-tight">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{bucketDisplay[bi]}</span>
+                      <span className="text-[7px] font-bold text-slate-300 mt-0.5">{bucketSize === 1 ? 'ساعة' : `${bucketSize} ساعات`}</span>
                     </div>
                   ))}
 
@@ -940,7 +947,6 @@ export default function AnalyticsPage() {
                     const [, mm, dd] = dayStr.split("-");
                     const rowLabel = `${DAY_NAMES[dow]} ${dd}/${mm}`;
                     const rowData = bucketedArr.filter(b => b.day === dayStr);
-                    const tooltipAbove = di >= heatmapDayList.length - 2;
                     return (
                       <React.Fragment key={dayStr}>
                         <div className="sticky right-0 z-10 bg-[var(--bg-surface)] text-[12px] font-bold text-slate-500 flex items-center h-10 pl-2 whitespace-nowrap">
@@ -952,17 +958,19 @@ export default function AnalyticsPage() {
                           const intensity = val > 0 ? Math.min(1, val / maxVal) : 0;
                           const displayVal = val >= 1000 ? `${(val / 1000).toFixed(1)}k` : Math.round(val).toLocaleString();
 
-                          const alignRight = bi <= 1;
-                          const alignLeft = bi >= bucketLabels.length - 2;
-
                           return (
                             <div key={`${di}-${bi}`}
-                              className="h-10 rounded-[8px] flex items-center justify-center cursor-default transition-all hover:scale-105 hover:shadow-md relative group"
+                              className="h-10 rounded-[8px] flex items-center justify-center cursor-pointer transition-all hover:scale-105 hover:shadow-md relative"
                               style={{
                                 backgroundColor: val > 0
                                   ? `color-mix(in srgb, var(--bg-surface) ${100 - intensity * 55}%, var(--primary) ${intensity * 55}%)`
                                   : "var(--bg-base)",
                               }}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setHoveredCell({ rowLabel, bLabel: bucketDisplay[bi], cell, dayStr, rect });
+                              }}
+                              onMouseLeave={() => setHoveredCell(null)}
                             >
                               {val > 0 && (
                                 <span className="text-[10px] font-black leading-none px-1 truncate max-w-full"
@@ -971,21 +979,6 @@ export default function AnalyticsPage() {
                                   {displayVal}{heatmapMetric === "total_sales" && "ج"}
                                 </span>
                               )}
-                              {/* Tooltip */}
-                              <div className={`absolute z-30 hidden group-hover:block pointer-events-none ${tooltipAbove ? "bottom-full mb-2" : "top-full mt-2"} ${alignRight ? "right-0" : alignLeft ? "left-0" : "left-1/2 -translate-x-1/2"}`}>
-                                <div className="rounded-[12px] bg-white px-4 py-2.5 text-xs shadow-xl border border-slate-200 whitespace-nowrap">
-                                  <div className="font-black text-slate-900 mb-1">{rowLabel} — {bLabel}</div>
-                                  <div className="text-slate-500 flex gap-4">
-                                    <span>الفواتير: <strong className="text-slate-800">{Number(cell?.invoice_count || 0).toLocaleString()}</strong></span>
-                                    <span>المبيعات: <strong className="text-slate-800">{Number(cell?.total_sales || 0).toLocaleString()} ج.م</strong></span>
-                                  </div>
-                                  {Number(cell?.avg_sale || 0) > 0 && (
-                                    <div className="text-slate-500 mt-0.5">
-                                      متوسط الفاتورة: <strong className="text-slate-800">{Number(cell?.avg_sale).toLocaleString()} ج.م</strong>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
                             </div>
                           );
                         })}
@@ -994,6 +987,26 @@ export default function AnalyticsPage() {
                   })}
                 </div>
 
+                {/* Floating tooltip */}
+                {hoveredCell && (
+                  <div className="fixed z-50 pointer-events-none" style={{
+                    right: Math.min(hoveredCell.rect.right + 12, window.innerWidth - 280),
+                    top: Math.max(hoveredCell.rect.top - 10, 8),
+                  }}>
+                    <div className="rounded-[14px] bg-white px-5 py-3 text-xs shadow-[0_12px_40px_rgba(0,0,0,0.15)] border border-slate-200 whitespace-nowrap">
+                      <div className="font-black text-slate-900 mb-1.5">{hoveredCell.rowLabel} — {hoveredCell.bLabel}</div>
+                      <div className="text-slate-500 flex gap-5">
+                        <span>الفواتير: <strong className="text-slate-800">{Number(hoveredCell.cell?.invoice_count || 0).toLocaleString()}</strong></span>
+                        <span>المبيعات: <strong className="text-slate-800">{Number(hoveredCell.cell?.total_sales || 0).toLocaleString()} ج.م</strong></span>
+                      </div>
+                      {Number(hoveredCell.cell?.avg_sale || 0) > 0 && (
+                        <div className="text-slate-500 mt-1">
+                          متوسط الفاتورة: <strong className="text-slate-800">{Number(hoveredCell.cell?.avg_sale).toLocaleString()} ج.م</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {/* Legend */}
                 <div className="flex items-center justify-center gap-3 mt-5 pt-4 border-t border-slate-100">
                   <span className="text-[11px] font-bold text-slate-400">منخفض</span>

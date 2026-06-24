@@ -14,7 +14,7 @@ export default function NotesBlock({ invoice = {}, settings: s, family }) {
     );
   }
   return (
-    <div style={{ marginTop: 3, paddingTop: 3, borderTop: "1px dashed #ccc", fontSize: "10px" }}>
+    <div style={{ marginTop: 5, fontSize: "10px" }}>
       <div style={{ fontWeight: 700 }}>ملاحظات:</div>
       <div style={{ whiteSpace: "pre-wrap" }}>{notes}</div>
     </div>

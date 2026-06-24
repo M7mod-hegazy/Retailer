@@ -19,6 +19,7 @@ import { Maximize2, Printer as PrinterIcon } from "lucide-react";
 import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap } from "../../services/printService";
 import { getHint as fmHint } from "../../utils/fieldMeta";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
+import { smartFormat } from "../../components/print/blocks/blockUtils";
 
 // Mock invoice for the live preview of invoice-style docs — rendered through the
 // shared block library so the preview matches print AND the Designer layout.
@@ -108,11 +109,11 @@ const DOC_TYPES = [
 export const DOC_PAPER_CONFIG = {
   pos_receipt:            { sizes: ["58mm","80mm","A5"],          defaultSize: "80mm" },
   sales_invoice:          { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "A4"   },
-  purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
+  purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
   sales_return:           { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   purchase_return:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   quotation:              { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
-  branch_transfer:        { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
+  branch_transfer:        { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
   bank_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   ajal_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   ajal_schedule:          { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
@@ -317,11 +318,8 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
     outlineOffset: "2px", borderRadius: "1px", cursor: "pointer", transition: "outline 0.1s",
   });
 
-  // Mirror the print path's effective width so «عرض الطباعة» is visible here too
-  // (the on-screen preview ignores the physical horizontal shift). Defaults to the
-  // standard printable band (72mm/48mm) so the preview matches what actually prints.
   const paperW = get(s, "receipt_width") === "58mm" ? 58 : 80;
-  const w = `${Number(get(s, "print_area_width")) > 0 ? Math.min(Number(get(s, "print_area_width")), paperW) : (paperW === 58 ? 48 : 72)}mm`;
+  const w = `${paperW - 2}mm`;
   const addressAtBottom = get(s, "address_position") === "bottom";
 
   const extraAddresses = (() => { try { return JSON.parse(s.additional_addresses || '[]'); } catch { return []; } })();
@@ -354,7 +352,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
   };
 
   return (
-    <div dir="rtl" style={{ fontFamily, fontSize: `${get(s,"body_font_size")}px`, width: w, margin: "0 auto", padding: `${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color: accent, background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
+    <div dir="rtl" style={{ fontFamily, fontSize: `${get(s,"body_font_size")}px`, width: w, margin: "0 auto", padding: "2mm 2mm", color: accent, background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
       {/* Header */}
       <div onClick={() => onElementClick("header_section")} style={{ textAlign: get(s,"logo_alignment"), marginBottom: "8px", ...hl("header_section") }}>
         {get(s,"show_logo") !== false && s.logo_url && <img src={resolveImageUrl(s.logo_url)} alt="" style={{ maxHeight: `${get(s,"logo_max_height")}px`, objectFit: "contain", margin: "0 auto 4px" }} />}
@@ -403,15 +401,15 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       <div style={{ borderTop: solid, margin: "5px 0" }} />
 
       <div style={{ fontSize: `${get(s,"item_font_size")}px` }}>
-        {get(s,"show_subtotal")      !== false && <div onClick={() => onElementClick("show_subtotal")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_subtotal") }}><span>الإجمالي الفرعي:</span><span>{currency} {mockSub.toFixed(2)}</span></div>}
-        {get(s,"show_discount_line") !== false && <div onClick={() => onElementClick("show_discount_line")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_discount_line") }}><span>الخصم:</span><span>- {currency} {mockDisc.toFixed(2)}</span></div>}
-        {get(s,"show_tax")           !== false && <div onClick={() => onElementClick("show_tax")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_tax") }}><span>ضريبة ({taxRate}%):</span><span>{currency} {mockTax.toFixed(2)}</span></div>}
-        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: `${Math.max(13, Number(get(s,"body_font_size")) + 1)}px`, background: "#000", color: "#fff", padding: "5px 6px", marginTop: "4px" }}><span>الإجمالي</span><span>{currency} {mockTotal.toFixed(2)}</span></div>
+        {get(s,"show_subtotal")      !== false && <div onClick={() => onElementClick("show_subtotal")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_subtotal") }}><span>الإجمالي الفرعي:</span><span>{currency} {smartFormat(mockSub)}</span></div>}
+        {get(s,"show_discount_line") !== false && <div onClick={() => onElementClick("show_discount_line")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_discount_line") }}><span>الخصم:</span><span>- {currency} {smartFormat(mockDisc)}</span></div>}
+        {get(s,"show_tax")           !== false && <div onClick={() => onElementClick("show_tax")} style={{ display: "flex", justifyContent: "space-between", ...hl("show_tax") }}><span>ضريبة ({taxRate}%):</span><span>{currency} {smartFormat(mockTax)}</span></div>}
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: `${Math.max(13, Number(get(s,"body_font_size")) + 1)}px`, background: "#000", color: "#fff", padding: "5px 6px", marginTop: "4px" }}><span>الإجمالي</span><span>{currency} {smartFormat(mockTotal)}</span></div>
         <BlockRenderer blocks={customBlocks} position="after_totals" accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
       </div>
 
       {get(s,"show_payment_details") !== false && (
-        <><div style={{ borderTop: solid, margin: "5px 0" }} /><div onClick={() => onElementClick("show_payment_details")} style={{ fontSize: `${get(s,"item_font_size")}px`, ...hl("show_payment_details") }}><div style={{ display: "flex", justifyContent: "space-between" }}><span>نقداً:</span><span>{currency} 250.00</span></div><div style={{ display: "flex", justifyContent: "space-between" }}><span>الباقي:</span><span>{currency} {(250 - mockTotal).toFixed(2)}</span></div></div></>
+        <><div style={{ borderTop: solid, margin: "5px 0" }} /><div onClick={() => onElementClick("show_payment_details")} style={{ fontSize: `${get(s,"item_font_size")}px`, ...hl("show_payment_details") }}><div style={{ display: "flex", justifyContent: "space-between" }}><span>نقداً:</span><span>{currency} 250.00</span></div><div style={{ display: "flex", justifyContent: "space-between" }}><span>الباقي:</span><span>{currency} {smartFormat(250 - mockTotal)}</span></div></div></>
       )}
 
       {get(s,"show_footer") !== false && (
@@ -487,7 +485,7 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
   const showCode = get(s, "show_item_code") === true;
 
   return (
-    <div dir="rtl" style={{ width: w, padding: `${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, fontFamily: get(s,"print_font"), fontSize: `${get(s,"body_font_size")}px`, color: "#1e293b", background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
+    <div dir="rtl" style={{ width: w, padding: "2mm 2mm", fontFamily: get(s,"print_font"), fontSize: `${get(s,"body_font_size")}px`, color: "#1e293b", background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
       {/* Header */}
       <div onClick={() => onElementClick("header_section")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `3px solid ${accent}`, paddingBottom: "8px", marginBottom: "10px", ...hl("header_section") }}>
         <div>
@@ -531,8 +529,8 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
             {showCode && <td style={{ textAlign: "center", padding: "3px 6px", fontSize: "9px", color: "#94a3b8", fontFamily: "monospace" }}>{item.code}</td>}
             <td style={{ padding: "3px 6px", fontWeight: "600" }}>{item.name}</td>
             <td style={{ textAlign: "center", padding: "3px 6px" }}>{item.qty}</td>
-            <td style={{ textAlign: "center", padding: "3px 6px" }}>{item.price.toFixed(2)}</td>
-            <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: "700" }}>{(item.qty * item.price).toFixed(2)}</td>
+            <td style={{ textAlign: "center", padding: "3px 6px" }}>{smartFormat(item.price)}</td>
+            <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: "700" }}>{smartFormat(item.qty * item.price)}</td>
           </tr>
         ))}</tbody>
       </table>
@@ -542,15 +540,15 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
       <BlockRenderer blocks={customBlocks} position="before_totals" paperSize={size} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <div style={{ width: "45%", fontSize: `${get(s,"item_font_size")}px` }}>
-          {get(s,"show_subtotal")      !== false && <div onClick={() => onElementClick("show_subtotal")} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", ...hl("show_subtotal") }}><span style={{ color: "#64748b" }}>الإجمالي الفرعي</span><span style={{ fontWeight: "700" }}>{currency} {mockSub.toFixed(2)}</span></div>}
+          {get(s,"show_subtotal")      !== false && <div onClick={() => onElementClick("show_subtotal")} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", ...hl("show_subtotal") }}><span style={{ color: "#64748b" }}>الإجمالي الفرعي</span><span style={{ fontWeight: "700" }}>{currency} {smartFormat(mockSub)}</span></div>}
           {get(s,"show_discount_line") !== false && <div onClick={() => onElementClick("show_discount_line")} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", ...hl("show_discount_line") }}><span style={{ color: "#64748b" }}>الخصم</span><span style={{ fontWeight: "700", color: "#dc2626" }}>- 0.00</span></div>}
-          {get(s,"show_tax")           !== false && <div onClick={() => onElementClick("show_tax")} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", ...hl("show_tax") }}><span style={{ color: "#64748b" }}>الضريبة ({taxRate}%)</span><span style={{ fontWeight: "700" }}>{currency} {mockTax.toFixed(2)}</span></div>}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 6px", background: accent, color: "#fff", borderRadius: "2px", marginTop: "3px" }}><span style={{ fontWeight: "900" }}>الإجمالي</span><span style={{ fontWeight: "900" }}>{currency} {mockTotal.toFixed(2)}</span></div>
+          {get(s,"show_tax")           !== false && <div onClick={() => onElementClick("show_tax")} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", ...hl("show_tax") }}><span style={{ color: "#64748b" }}>الضريبة ({taxRate}%)</span><span style={{ fontWeight: "700" }}>{currency} {smartFormat(mockTax)}</span></div>}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 6px", background: accent, color: "#fff", borderRadius: "2px", marginTop: "3px" }}><span style={{ fontWeight: "900" }}>الإجمالي</span><span style={{ fontWeight: "900" }}>{currency} {smartFormat(mockTotal)}</span></div>
         </div>
       </div>
       <BlockRenderer blocks={customBlocks} position="after_totals" paperSize={size} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
 
-      {get(s,"show_payment_details") !== false && <div onClick={() => onElementClick("show_payment_details")} style={{ marginTop: "8px", fontSize: `${get(s,"item_font_size")}px`, ...hl("show_payment_details") }}><div style={{ fontWeight: "700", marginBottom: "3px", color: accent }}>طريقة الدفع</div><div style={{ display: "flex", gap: "16px" }}><span>نقداً: {currency} 1500.00</span><span>الباقي: {currency} {(1500 - mockTotal).toFixed(2)}</span></div></div>}
+      {get(s,"show_payment_details") !== false && <div onClick={() => onElementClick("show_payment_details")} style={{ marginTop: "8px", fontSize: `${get(s,"item_font_size")}px`, ...hl("show_payment_details") }}><div style={{ fontWeight: "700", marginBottom: "3px", color: accent }}>طريقة الدفع</div><div style={{ display: "flex", gap: "16px" }}><span>نقداً: {currency} 1500.00</span><span>الباقي: {currency} {smartFormat(1500 - mockTotal)}</span></div></div>}
 
       {get(s,"show_footer") !== false && (
         <><div style={{ marginTop: "12px", paddingTop: "6px", borderTop: `1px solid ${accent}44` }} />
@@ -678,7 +676,7 @@ function DocA4Base({ s, title, docNo, metaStrip, itemsTable, totalsBlock, extraF
   };
 
   return (
-    <div dir="rtl" style={{ fontFamily: font, fontSize: `${get(s,"body_font_size")}px`, width: w, padding: `${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color: "#1e293b", background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
+    <div dir="rtl" style={{ fontFamily: font, fontSize: `${get(s,"body_font_size")}px`, width: w, padding: "2mm 2mm", color: "#1e293b", background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
       {/* ── Company header ── */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`3px solid ${accent}`, paddingBottom:"10px", marginBottom:"12px" }}>
         <div>
@@ -759,8 +757,8 @@ function A4ItemsTable({ s, items, extraHeaders = [], extraCells = () => [] }) {
             <td style={{ padding:"5px 8px", fontWeight:600 }}>{name}</td>
             {extraCells(items[i]).map((v,j) => <td key={j} style={{ padding:"5px 8px", textAlign:"center", color:"#64748b" }}>{v}</td>)}
             <td style={{ padding:"5px 8px", textAlign:"center" }}>{qty}</td>
-            <td style={{ padding:"5px 8px", textAlign:"center" }}>{price.toFixed(2)}</td>
-            <td style={{ padding:"5px 8px", fontWeight:700, textAlign:"left" }}>{(qty*price).toFixed(2)}</td>
+            <td style={{ padding:"5px 8px", textAlign:"center" }}>{smartFormat(price)}</td>
+            <td style={{ padding:"5px 8px", fontWeight:700, textAlign:"left" }}>{smartFormat(qty*price)}</td>
           </tr>
         ))}
       </tbody>
@@ -785,15 +783,15 @@ function A4Totals({ s }) {
   return (
     <div style={{ display:"flex", justifyContent:"flex-end" }}>
       <div style={{ width:"42%", fontSize:`${get(s,"item_font_size")}px` }}>
-        {get(s,"show_subtotal")      !== false && <div style={{ display:"flex", justifyContent:"space-between", padding:"2px 0" }}><span style={{color:"#64748b"}}>الإجمالي الفرعي</span><span>{currency} {sub.toFixed(2)}</span></div>}
+        {get(s,"show_subtotal")      !== false && <div style={{ display:"flex", justifyContent:"space-between", padding:"2px 0" }}><span style={{color:"#64748b"}}>الإجمالي الفرعي</span><span>{currency} {smartFormat(sub)}</span></div>}
         {get(s,"show_discount_line") !== false && <div style={{ display:"flex", justifyContent:"space-between", padding:"2px 0" }}><span style={{color:"#64748b"}}>الخصم</span><span style={{color:"#dc2626"}}>- 0.00</span></div>}
-        {get(s,"show_tax")           !== false && <div style={{ display:"flex", justifyContent:"space-between", padding:"2px 0" }}><span style={{color:"#64748b"}}>الضريبة ({taxRate}%)</span><span>{currency} {tax.toFixed(2)}</span></div>}
+        {get(s,"show_tax")           !== false && <div style={{ display:"flex", justifyContent:"space-between", padding:"2px 0" }}><span style={{color:"#64748b"}}>الضريبة ({taxRate}%)</span><span>{currency} {smartFormat(tax)}</span></div>}
         <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 8px", background:accent, color:"#fff", borderRadius:"4px", marginTop:"4px", fontWeight:900 }}>
-          <span>المستحق</span><span>{currency} {total.toFixed(2)}</span>
+          <span>المستحق</span><span>{currency} {smartFormat(total)}</span>
         </div>
         {get(s,"show_payment_details") !== false && (
           <div style={{ marginTop:"6px", fontSize:"10px", color:"#64748b" }}>
-            <div style={{ display:"flex", justifyContent:"space-between" }}><span>نقداً:</span><span>{currency} {(total+50).toFixed(2)}</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between" }}><span>نقداً:</span><span>{currency} {smartFormat(total+50)}</span></div>
             <div style={{ display:"flex", justifyContent:"space-between", color:"#16a34a", fontWeight:700 }}><span>الباقي للعميل:</span><span>{currency} 50.00</span></div>
           </div>
         )}
@@ -843,8 +841,8 @@ function PurchaseOrderPreview({ s }) {
               {showCode && <td style={{ padding:"5px 8px", fontFamily:"monospace", fontSize:"9px", color:"#94a3b8" }}>{code}</td>}
               <td style={{ padding:"5px 8px", fontWeight:600 }}>{name}</td>
               <td style={{ padding:"5px 8px", textAlign:"center" }}>{qty}</td>
-              <td style={{ padding:"5px 8px", textAlign:"center" }}>{price.toFixed(2)}</td>
-              <td style={{ padding:"5px 8px", fontWeight:700, textAlign:"left" }}>{(qty*price).toFixed(2)}</td>
+              <td style={{ padding:"5px 8px", textAlign:"center" }}>{smartFormat(price)}</td>
+              <td style={{ padding:"5px 8px", fontWeight:700, textAlign:"left" }}>{smartFormat(qty*price)}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -990,7 +988,7 @@ function DailyTreasuryPreview({ s }) {
   };
 
   return (
-    <div dir="rtl" style={{ fontFamily:font, fontSize:`${get(s,"body_font_size")}px`, width:w, padding:`${get(s,"margin_top")}mm ${get(s,"margin_side")}mm`, color:"#1e293b", background:"#fff", boxShadow:"0 8px 40px rgba(0,0,0,0.15)" }}>
+    <div dir="rtl" style={{ fontFamily:font, fontSize:`${get(s,"body_font_size")}px`, width:w, padding:"2mm 2mm", color:"#1e293b", background:"#fff", boxShadow:"0 8px 40px rgba(0,0,0,0.15)" }}>
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderBottom:`3px solid ${accent}`, paddingBottom:"10px", marginBottom:"14px" }}>
         <div>
@@ -1151,6 +1149,20 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
 
   // Which size tab is being previewed right now
   const [previewSize, setPreviewSize] = useState(effectiveDefault);
+
+  // Silent auto-save per-doc settings after a debounce (like global settings)
+  const autoSaveTimer = useRef(null);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  useEffect(() => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        await api.put(`/api/print-settings-per-doc/${docType}`, settingsRef.current || {});
+      } catch { /* silent */ }
+    }, 800);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [docType, settings]);
 
   useEffect(() => {
     setPreviewSize(savedDefault || cfg.defaultSize);
@@ -1520,47 +1532,13 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         <section>
           <SectionLabel icon={Ruler} title="مقاس ورق الطباعة" hint="يؤثر على تخطيط القالب فوراً" />
           <PaperPicker value={width} onChange={(v) => { onChange("receipt_width", v); setPreviewTab(v); }} />
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            {cf("margin_top",   "هامش علوي", "يرفع نقطة البداية من الأعلى", <Stepper value={get(s,"margin_top")}  onChange={v => onChange("margin_top", v)}  min={0} max={30} unit="mm" />)}
-            {cf("margin_side",  "هامش جانبي", "المسافة من اليمين واليسار",    <Stepper value={get(s,"margin_side")} onChange={v => onChange("margin_side", v)} min={0} max={20} unit="mm" />)}
+          <div className="mt-4">
             {cf("accent_color", "لون النظام (A4/A5)", "رأس الجدول، الفواجز، العناوين",
               <div className="flex items-center gap-2">
                 <input type="color" value={get(s,"accent_color")} onChange={e => onChange("accent_color", e.target.value)} className="h-9 w-14 rounded-sm border border-slate-200 cursor-pointer" />
                 <StyledInput value={get(s,"accent_color")} onChange={e => onChange("accent_color", e.target.value)} />
               </div>
             )}
-          </div>
-
-          {(width === "58mm" || width === "80mm") && (() => {
-            const paperNum = width === "58mm" ? 58 : 80;
-            const autoW = paperNum === 58 ? 48 : 72;
-            const effW = Number(get(s,"print_area_width")) > 0 ? Number(get(s,"print_area_width")) : autoW;
-            return (
-              <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/60 p-3">
-                <div className="text-[11px] font-black uppercase tracking-widest text-amber-700">معايرة الطابعة الحرارية</div>
-                <div className="mt-0.5 text-[11px] font-bold text-amber-600/80">
-                  مضبوطة افتراضياً على عرض الطباعة القياسي ({autoW}مم) لمنع قص المحتوى. إن بقي القص في طابعتك، صغّر «عرض الطباعة» أكثر، ثم حرّكه بـ«الإزاحة الأفقية» ليتمركز.
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-4">
-                  {cf("print_area_width", "عرض الطباعة الفعلي", `أقصى عرض يطبعه رأس الطابعة (الورق ${paperNum}مم)`,
-                    <Stepper value={effW} onChange={v => onChange("print_area_width", v)} min={30} max={paperNum} unit="mm" />)}
-                  {cf("print_shift_x", "الإزاحة الأفقية", "حرّك المحتوى يميناً (+) أو يساراً (−) ليتمركز",
-                    <Stepper value={get(s,"print_shift_x")} onChange={v => onChange("print_shift_x", v)} min={-15} max={15} unit="mm" />)}
-                </div>
-              </div>
-            );
-          })()}
-        </section>
-
-        {/* Prefixes */}
-        <section>
-          <SectionLabel icon={Hash} title="بادئات أرقام المستندات" hint="مستقلة لكل نوع مستند" />
-          <div className="grid grid-cols-2 gap-4">
-            {cf("invoice_prefix",    "فاتورة المبيعات",    null, <StyledInput value={s.invoice_prefix ?? ""}    onChange={e => onChange("invoice_prefix", e.target.value)}    placeholder={DEFAULTS.invoice_prefix} />)}
-            {cf("purchase_prefix",   "أمر الشراء",         null, <StyledInput value={s.purchase_prefix ?? ""}   onChange={e => onChange("purchase_prefix", e.target.value)}   placeholder={DEFAULTS.purchase_prefix} />)}
-            {cf("return_prefix",     "مذكرة الإرجاع",     null, <StyledInput value={s.return_prefix ?? ""}     onChange={e => onChange("return_prefix", e.target.value)}     placeholder={DEFAULTS.return_prefix} />)}
-            {cf("work_order_prefix", "أمر العمل",          null, <StyledInput value={s.work_order_prefix ?? ""} onChange={e => onChange("work_order_prefix", e.target.value)} placeholder={DEFAULTS.work_order_prefix} />)}
-            {cf("receipt_prefix",    "إيصال الاستلام",     null, <StyledInput value={s.receipt_prefix ?? ""}    onChange={e => onChange("receipt_prefix", e.target.value)}    placeholder={DEFAULTS.receipt_prefix} />)}
           </div>
         </section>
 

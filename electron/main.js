@@ -12,8 +12,10 @@ const { closeChildWindows } = require("./modalWindowManager");
 const { setupIpc } = require("./ipcHandlers");
 const { startEmbeddedServer, stopEmbeddedServer } = require("./serverManager");
 const { ensurePackagedEnv } = require("./ensurePackagedEnv");
+const { closeDb } = require("../server/src/config/database");
 const { logError, getLogPath, resolveLogDir } = require("./crashLogger");
 const { showErrorScreen } = require("./errorScreen");
+const { getInstallStatus, clearInstallStatus, onStatusChange } = require("./installProgress");
 
 const isDev = !app.isPackaged;
 
@@ -311,6 +313,13 @@ function createMainWindow() {
   createTray(mainWindow);
   setupIpc(mainWindow);
 
+  // Forward install status changes to the renderer in real time
+  onStatusChange((status, extra) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("install:status", { status, ...extra });
+    }
+  });
+
   // Auto-updater (production only)
   if (!isDev) {
     try {
@@ -371,6 +380,26 @@ if (!gotTheLock) {
 
     // Show splash immediately so the user sees feedback
     createSplashWindow();
+
+    // ── Post-update install progress check ────────────────────────────────
+    // If the app was just updated, the install-progress.json flag was written
+    // by updater.js / openInstaller before quitting. Show "استكمال التثبيت..."
+    // on the splash instead of the normal startup sequence.
+    const installStatus = getInstallStatus();
+    if (installStatus && installStatus.status === "installing") {
+      // First launch after an update — switch the splash to "post-update" mode
+      // (version badge + DB-update animation). Migration progress text below then
+      // streams into the same splash via setMigrationProgress → updateStatus.
+      const showInstallMode = () => {
+        if (!splashWindow || splashWindow.isDestroyed()) return;
+        const v = (installStatus.version || "").replace(/'/g, "");
+        splashWindow.webContents
+          .executeJavaScript(`typeof setInstallMode==='function'&&setInstallMode('${v}')`)
+          .catch(() => {});
+      };
+      if (splashWindow && !splashWindow.webContents.isLoading()) showInstallMode();
+      else if (splashWindow) splashWindow.webContents.once("did-finish-load", showInstallMode);
+    }
 
     // ── Migration progress → splash ───────────────────────────────────────
     const { setMigrationProgress } = require("./migrationEvents");
@@ -454,6 +483,13 @@ if (!gotTheLock) {
   app.on("before-quit", async () => {
     app.isQuitting = true;
 
+    // ALWAYS close the DB connection cleanly, even during updates.
+    // In the update path, the NSIS installer does taskkill /F — if the DB
+    // isn't checkpointed first, the WAL can get corrupted and the next
+    // integrity_check will fail with "تلف في قاعدة البيانات".
+    // closeDb() is synchronous and fast (WAL checkpoint + close handle).
+    try { closeDb(); } catch (_) {}
+
     // Throttled safety backup on graceful quit — runs FIRST, while the embedded
     // server (and its open DB) are still alive. performBackup is synchronous and
     // fast (~tens of ms for a few-MB DB copy), so this completes before the
@@ -468,6 +504,12 @@ if (!gotTheLock) {
       } catch (_) {}
     }
 
+    // Only clear the install flag on a NORMAL quit (cleans up a stale flag from a
+    // previous session). During an update quit the flag MUST survive so the next
+    // launch — the freshly installed version — can show "تم التثبيت بنجاح".
+    if (!app.isQuittingForUpdate) {
+      clearInstallStatus();
+    }
     closeChildWindows();
     destroyTray();
     stopEmbeddedServer().catch(() => {});

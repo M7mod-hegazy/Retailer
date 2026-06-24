@@ -8,7 +8,7 @@ export default function CustomerBlock({ invoice = {}, settings: s, family }) {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>العميل:</span><span>{invoice.customer_name}</span>
+      <span style={{ fontWeight: 700 }}>العميل:</span><span>{invoice.customer_name}</span>
     </div>
   );
 }

@@ -19,6 +19,9 @@ import { useUpdateStore } from "./stores/updateStore";
 import { useQuitOrLogoutStore } from "./stores/quitOrLogoutStore";
 import QuitOrLogoutModal from "./components/ui/QuitOrLogoutModal";
 import DetachedModalHost from "./components/detached/DetachedModalHost";
+import AssistantDrawer from "./components/assistant/AssistantDrawer";
+import AssistantLauncher from "./components/assistant/AssistantLauncher";
+import AnnouncementBanner from "./components/assistant/AnnouncementBanner";
 import api from "./services/api";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallbackPage from "./pages/error/ErrorFallbackPage";
@@ -216,7 +219,7 @@ export default function App() {
     return <DetachedModalHost />;
   }
 
-  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setCanceled, setManualProgress, setManualComplete, setManualError, resetManual } = useUpdateStore();
+  const { setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setCanceled, setManualProgress, setManualComplete, setManualError, resetManual, setInstallPhase, setInstallError, clearInstallState } = useUpdateStore();
   const token = useAuthStore((s) => s.token);
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -278,11 +281,47 @@ export default function App() {
       safeOn('app:show-quit-dialog', () => {
         useQuitOrLogoutStore.getState().showModal('window_close');
       }),
+      safeOn('install:status', (data) => {
+        if (data?.status && data.status !== 'idle') {
+          setInstallPhase(data.status, { version: data.version });
+          if (data.status === 'error' && data.error) {
+            setInstallError(data.error);
+          }
+        }
+      }),
     ];
     return () => {
       cleanups.forEach((cleanup) => cleanup?.());
     };
-  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setCanceled, setManualProgress, setManualComplete, setManualError, resetManual]);
+  }, [setAvailable, setNotAvailable, setProgress, setDownloaded, setError, setCanceled, setManualProgress, setManualComplete, setManualError, resetManual, setInstallPhase, setInstallError, clearInstallState]);
+
+  // On startup, check if the app was just updated (install-progress flag exists).
+  // If found, show a post-update success banner.
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const status = await window.electronAPI?.invoke('install:status');
+        if (status && (status.status === 'installing' || status.status === 'done')) {
+          setInstallPhase('done', { version: status.version });
+          toast.success(
+            status.version
+              ? `تم تحديث النظام إلى الإصدار ${status.version} بنجاح!`
+              : 'تم تحديث النظام بنجاح!',
+            {
+              icon: '🎉',
+              style: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', fontWeight: 700 },
+              duration: 10000,
+            }
+          );
+          // Clear the flag after showing the message
+          window.electronAPI?.invoke('install:clear').catch(() => {});
+        }
+      } catch (_) { /* preload may not be ready */ }
+    };
+    // Small delay to let the UI mount first
+    const id = setTimeout(check, 1500);
+    return () => clearTimeout(id);
+  }, [setInstallPhase]);
 
   useShortcut('global.minimize', () => {
     window.electronAPI?.minimize?.();
@@ -307,6 +346,9 @@ export default function App() {
       <GlobalSearchPage />
       <QuitOrLogoutModal />
       <DetachedModalHost />
+      <AssistantDrawer />
+      <AssistantLauncher />
+      <AnnouncementBanner />
       {showWelcome && <WelcomeWizard onClose={() => setShowWelcome(false)} />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />

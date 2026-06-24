@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
+const { closeDb } = require("../server/src/config/database");
+const { setInstallStatus } = require("./installProgress");
 
 let autoUpdater = null;
 let CancellationToken = null;
@@ -157,11 +159,17 @@ function spawnRelaunchHelper() {
 
 function quitAndInstall() {
   if (!autoUpdater) return;
-  // Signal the before-quit handler to skip the synchronous close-backup, which
-  // would otherwise freeze the install for several seconds on a large DB. The
-  // user is prompted to back up (one click) before the download starts instead.
+  const version = _lastUpdateInfo?.version || app.getVersion();
+
+  // Close DB cleanly FIRST so the WAL is checkpointed before the process exits.
+  // Even though app.quit() triggers before-quit, the async stopEmbeddedServer
+  // there is fire-and-forget — this guarantees a clean DB close.
+  try { closeDb(); } catch (_) {}
+
+  setInstallStatus("closing-db", { version });
   app.isQuittingForUpdate = true;
   spawnRelaunchHelper();
+  setInstallStatus("installing", { version });
   autoUpdater.quitAndInstall(true, true);
 }
 
@@ -460,22 +468,32 @@ function openInstaller() {
   // latest" and a rollback to a specific older version). Fall back to deriving
   // the latest installer's path if nothing was tracked this session.
   let filePath = _lastDownloadedFilePath;
+  let version = "latest";
   if (!filePath) {
     const info = getManualDownloadInfo();
     if (!info.available) return;
+    version = info.version;
     filePath = path.join(app.getPath("downloads"), info.fileName || `ElHegazi-Retailer-${info.version}.exe`);
   }
   if (fs.existsSync(filePath)) {
+    // CRITICAL: Close the DB BEFORE launching the installer. The NSIS
+    // customInit macro runs `taskkill /F` immediately — it force-kills the
+    // Electron process without giving better-sqlite3 a chance to checkpoint
+    // the WAL. If we close the DB first, the WAL is clean even when the
+    // process is later terminated abruptly. This is the #1 cause of the
+    // "تلف في قاعدة البيانات" error on manual install.
+    setInstallStatus("closing-db", { version });
+    try { closeDb(); } catch (_) {}
+
     // The manual installer runs with NSIS runAfterFinish:false on Win7 (VxKex
     // shim constraint), so it won't relaunch the app on its own. Arm the same
     // detached relaunch helper the auto path uses: it polls update-complete.flag
     // (written by customInstall) and reopens the exe once install finishes.
     spawnRelaunchHelper();
-    // Launch the installer, then quit THIS app gracefully. The NSIS customInit
-    // does `taskkill /F` after a 600ms sleep; quitting first lets better-sqlite3
-    // checkpoint/close the DB cleanly instead of being force-killed mid-write
-    // (which can corrupt the database). Skip the on-quit safety backup — the
-    // user is prompted to back up before downloading.
+    setInstallStatus("installing", { version });
+
+    // Launch the installer. The NSIS customInit will still force-kill this
+    // process, but that's safe now — the DB was already closed cleanly above.
     shell.openPath(filePath).then(() => {
       app.isQuittingForUpdate = true;
       setTimeout(() => { try { app.quit(); } catch (_) {} }, 800);

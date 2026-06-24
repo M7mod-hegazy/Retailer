@@ -1708,6 +1708,7 @@ export default function CustomerAccountsPage() {
       <CustomerInfoModal
         open={showEdit}
         customerId={selected?.id}
+        onClose={() => setShowEdit(false)}
         onUpdated={(updated) => {
           setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
           setSelected(updated);

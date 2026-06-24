@@ -71,6 +71,14 @@ export default function DetachedModalHost() {
 
   const handleChildAction = useCallback((action, data) => {
     window.electronAPI?.sendModalAction?.({ action, data });
+    // In a detached window, "close"/"cancel" mean dismiss — the only thing that
+    // actually closes a child window is closeModalWindow(). Many registrations'
+    // deserialized onClose only sendAction("close") (which just notifies the
+    // parent), so close them centrally here. Registrations that already call
+    // closeModalWindow() too are unaffected (the IPC handler guards isDestroyed).
+    if (action === "close" || action === "cancel") {
+      window.electronAPI?.closeModalWindow?.();
+    }
   }, []);
 
   if (loading) return <LoadingSpinner />;

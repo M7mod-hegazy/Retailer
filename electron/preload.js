@@ -7,6 +7,7 @@ const allowedChannels = {
   maintenance: ["maintenance:status", "maintenance:request-uninstall"],
   diag: ["diag:get-report", "diag:open-logs", "diag:run-and-fix"],
   updates: ["update:available", "update:not-available", "update:progress", "update:downloaded", "update:error", "update:canceled", "update:check", "update:download", "update:cancel-download", "update:install-now", "update:manual-progress", "update:manual-complete", "update:manual-error", "update:manual-canceled", "update:get-manual-info", "update:start-manual-download", "update:cancel-manual-download", "update:open-installer", "update:list-releases", "update:download-version"],
+  install: ["install:status", "install:clear"],
   app: ["app:set-icon", "app:show-quit-dialog", "app:quit", "get:api-url"],
   server: ["server:status"],
   wa: ["wa:status", "wa:link", "wa:unlink", "wa:send", "wa:status-update"],

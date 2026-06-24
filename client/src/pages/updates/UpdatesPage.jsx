@@ -15,6 +15,8 @@ import {
   FolderOpen,
   X,
   History,
+  HardDrive,
+  Terminal,
 } from "lucide-react";
 import { useUpdateStore } from "../../stores/updateStore";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -139,6 +141,168 @@ function PhaseStepper({ checkStatus, downloadStatus, installStatus }) {
   );
 }
 
+// ── Install Progress Overlay (ظهر التثبيت) ─────────────────────────────────
+function InstallProgressOverlay({ phase, error, version, onRetry, onDismiss }) {
+  const steps = [
+    { key: "closing-db", label: "إغلاق قاعدة البيانات", Icon: Database },
+    { key: "installing", label: "تثبيت التحديث", Icon: Zap },
+    { key: "done", label: "اكتمل التثبيت", Icon: CheckCircle2 },
+  ];
+
+  const currentIdx = phase === "error"
+    ? steps.findIndex((s) => s.key === "installing")
+    : phase === "idle"
+    ? -1
+    : steps.findIndex((s) => s.key === phase);
+  const isError = phase === "error";
+
+  const stepStatus = (key) => {
+    const idx = steps.findIndex((s) => s.key === key);
+    if (isError && key === steps[currentIdx]?.key) return "error";
+    if (idx < currentIdx) return "done";
+    if (idx === currentIdx) return "active";
+    return "pending";
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-md bg-white/95 backdrop-blur-2xl rounded-[2.5rem] p-8 border border-white/50 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.3)] relative overflow-hidden"
+      >
+        {/* Ambient glow */}
+        <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] pointer-events-none transition-colors duration-700 ${isError ? "bg-red-500/10" : "bg-emerald-500/10"}`} />
+
+        <div className="relative z-10">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${isError ? "bg-red-50 text-red-600" : "bg-primary text-white"}`}>
+              {isError ? (
+                <AlertCircle className="h-6 w-6" />
+              ) : phase === "done" ? (
+                <CheckCircle2 className="h-6 w-6" />
+              ) : (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-zinc-950">
+                {isError ? "تعذّر التثبيت" : phase === "done" ? "تم التثبيت بنجاح" : "جاري تثبيت التحديث"}
+              </h3>
+              {version && (
+                <p className="text-sm font-bold text-zinc-400 mt-0.5 font-mono">
+                  الإصدار {version}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Steps timeline */}
+          <div className="space-y-0">
+            {steps.map(({ key, label, Icon }, i) => {
+              const st = stepStatus(key);
+              return (
+                <div key={key} className="flex items-start gap-4 py-3">
+                  <div className="flex flex-col items-center">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 transition-all duration-500 ${
+                      st === "done"
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : st === "active"
+                        ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                        : st === "error"
+                        ? "bg-red-500 border-red-500 text-white"
+                        : "bg-zinc-50 border-zinc-200 text-zinc-300"
+                    }`}>
+                      {st === "done" ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : st === "active" ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : st === "error" ? (
+                        <X className="h-5 w-5" />
+                      ) : (
+                        <Icon className="h-5 w-5" />
+                      )}
+                    </div>
+                    {i < steps.length - 1 && (
+                      <div className="w-0.5 flex-1 min-h-[16px] rounded-full bg-zinc-100 overflow-hidden mt-1">
+                        <div
+                          className="w-full bg-emerald-500 transition-all duration-700"
+                          style={{ height: st === "done" ? "100%" : st === "active" || st === "error" ? "50%" : "0%" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 pt-1.5">
+                    <p className={`text-sm font-black transition-colors duration-300 ${
+                      st === "done" ? "text-emerald-700"
+                        : st === "active" ? "text-zinc-900"
+                        : st === "error" ? "text-red-700"
+                        : "text-zinc-400"
+                    }`}>
+                      {label}
+                      {st === "active" && key === "closing-db" && (
+                        <span className="block text-xs font-bold text-zinc-400 mt-0.5">جارٍ إنهاء اتصال قاعدة البيانات...</span>
+                      )}
+                      {st === "active" && key === "installing" && (
+                        <span className="block text-xs font-bold text-zinc-400 mt-0.5">سيتم إعادة تشغيل البرنامج تلقائياً...</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Error details */}
+          {isError && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="overflow-hidden mt-6"
+            >
+              <div className="p-4 rounded-2xl bg-red-50 border border-red-100">
+                <p className="text-sm font-bold text-red-700 mb-2">
+                  {error || "حدث خطأ غير متوقع أثناء التثبيت."}
+                </p>
+                <p className="text-xs font-medium text-red-600 leading-relaxed">
+                  يمكنك استعادة النسخة الاحتياطية من شاشة الإعدادات، أو تنزيل التحديث يدوياً من صفحة التحديثات وإعادة المحاولة.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 mt-4">
+                <button
+                  onClick={onDismiss}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Done state */}
+          {phase === "done" && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-6 text-center"
+            >
+              <p className="text-sm font-bold text-emerald-600">سيتم إعادة تشغيل البرنامج تلقائياً...</p>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function UpdatesPage() {
   usePageTour('updates');
   const {
@@ -146,6 +310,8 @@ export default function UpdatesPage() {
     setChecking,
     manualAvailable, manualDownloading, manualProgress, manualFilePath, manualError, downloadUrl, fileSize,
     setManualInfo,
+    installPhase, installError, installVersion,
+    setInstallPhase, setInstallError, clearInstallState,
   } = useUpdateStore();
 
   const [currentVersion, setCurrentVersion] = useState("1.0.0");
@@ -189,6 +355,19 @@ export default function UpdatesPage() {
   useEffect(() => () => {
     if (safetyTimer.current) clearTimeout(safetyTimer.current);
   }, []);
+
+  // Subscribe to real-time install:status events pushed from main process
+  useEffect(() => {
+    const cleanup = window.electronAPI?.on("install:status", (data) => {
+      if (data?.status && data.status !== "idle") {
+        setInstallPhase(data.status, { version: data.version });
+        if (data.status === "error" && data.error) {
+          setInstallError(data.error);
+        }
+      }
+    });
+    return () => cleanup?.();
+  }, [setInstallPhase, setInstallError]);
 
   const handleCheckNow = async () => {
     setChecking(true);
@@ -897,6 +1076,18 @@ export default function UpdatesPage() {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* Install progress overlay */}
+      <AnimatePresence>
+        {installPhase !== "idle" && (
+          <InstallProgressOverlay
+            phase={installPhase}
+            error={installError}
+            version={installVersion}
+            onDismiss={clearInstallState}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

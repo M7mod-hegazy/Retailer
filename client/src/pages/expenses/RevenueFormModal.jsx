@@ -63,6 +63,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (loading) return;
     if (!form.amount || !form.category_id) {
       toast.error("يرجى إدخال المبلغ والتصنيف");
       return;

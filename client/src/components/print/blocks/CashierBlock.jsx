@@ -9,7 +9,7 @@ export default function CashierBlock({ invoice = {}, settings: s, family }) {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>الكاشير:</span><span>{name}</span>
+      <span style={{ fontWeight: 700 }}>الكاشير:</span><span>{name}</span>
     </div>
   );
 }

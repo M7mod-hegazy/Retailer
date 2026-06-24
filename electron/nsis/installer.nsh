@@ -1,7 +1,16 @@
 ; ── customInit ─────────────────────────────────────────────────────────────
 ; Kills any running instance BEFORE NSIS checks — prevents "close app" dialog.
+; TWO-STEP kill: try graceful (taskkill without /F) first, then force-kill.
+; On modern Windows + Electron, taskkill sends WM_CLOSE which triggers the
+; before-quit handler (DB close, server stop). On slow/old PCs the 1s sleep
+; gives the process time to clean up. The force-kill only runs if needed.
 ; On silent (auto-update) mode also hides the installer window.
 !macro customInit
+  ; Step 1 — graceful close (lets before-quit → closeDb() checkpoint WAL)
+  ExecWait 'taskkill /IM "ElHegazi-Retailer.exe" /T'
+  Sleep 1000
+  ; Step 2 — force-kill any remaining zombie process (shouldn't happen if
+  ; the app closed cleanly, but handles edge cases on very slow PCs)
   ExecWait 'taskkill /F /IM "ElHegazi-Retailer.exe" /T'
   Sleep 600
   IfSilent +1 +2

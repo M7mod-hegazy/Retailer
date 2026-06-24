@@ -408,6 +408,7 @@ export default function SettingsPage() {
       await api.post("/api/settings/bulk", { settings: payload });
       // Sync the global settings store so all hooks (useFeatureEnabled, etc.) see the new values immediately
       useAppSettingsStore.getState().applySettings(snap);
+      originalRef.current = JSON.parse(JSON.stringify(snap));
     } catch (err) {
       console.error("Silent save failed:", err);
       throw err;

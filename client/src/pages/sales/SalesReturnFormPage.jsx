@@ -935,7 +935,7 @@ export default function SalesReturnFormPage() {
   // ══ ACTIVE SCREEN ══
   return (
     <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in relative">
-      <DocumentHeaderBar
+      <DocumentHeaderBar data-help="sr-form-header"
         accent="emerald"
         className="shadow-sm"
         onBack={handleBack}
@@ -1003,6 +1003,7 @@ export default function SalesReturnFormPage() {
                   onClick={() => setShowSaveConfirmModal(true)}
                   disabled={isSaving || !total}
                   loading={isSaving}
+                  data-help="sr-form-submit"
                 >
                   {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
                 </DocumentActionButton>
@@ -1020,7 +1021,7 @@ export default function SalesReturnFormPage() {
             </button>
 
             {/* Customer */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5" data-help="sr-form-customer">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">العميل</label>
                 {!isLocked && !customerLockedFromInvoice && (
@@ -1252,7 +1253,7 @@ export default function SalesReturnFormPage() {
             )}
 
             {/* Refund method */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5" data-help="sr-form-refund">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">طريقة الاسترداد</label>
               <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60 shadow-inner">
                 {[
@@ -1293,7 +1294,7 @@ export default function SalesReturnFormPage() {
             </div>
 
             {/* Reason — collapsible */}
-            <div className="flex flex-col">
+            <div className="flex flex-col" data-help="sr-form-reason">
               <button onClick={() => setReasonOpen(o => !o)}
                 className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors uppercase tracking-widest">
                 <span>سبب الاسترداد {reason !== "other" ? <span className="text-emerald-600 normal-case tracking-normal text-[11px] ml-1">({REASONS.find(r => r.value === reason)?.label})</span> : reasonOther ? <span className="text-emerald-600 normal-case tracking-normal text-[11px] ml-1">({reasonOther})</span> : ""}</span>
@@ -1463,7 +1464,7 @@ export default function SalesReturnFormPage() {
                     {/* Qty input */}
                     <div className="entry-field entry-field--qty">
                       <label className="entry-label">الكمية</label>
-                      <input ref={stagingQtyRef} type="number"
+                      <input ref={stagingQtyRef} type="number" data-help="sr-form-qty"
                         min={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "0.001"}
                         step={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "any"}
                         value={stagingQty}
@@ -1543,13 +1544,13 @@ export default function SalesReturnFormPage() {
                 </div>
               )}
               {cart.length > 0 ? (
-                <div className="flex flex-1 flex-col gap-2 min-h-0">
+                <div className="flex flex-1 flex-col gap-2 min-h-0" data-help="sr-form-items">
                   <div className="flex items-center gap-1 px-1 py-1.5 shrink-0">
                     <span className="text-2sm font-bold text-slate-500">الأصناف ({cart.length})</span>
                     <ShortcutKbd id="grid.editLast" />
                   </div>
                   <div ref={gridNavRef} className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <table className="w-full text-right">
+                    <table className="w-full text-right">
                     <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
                       <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
                         {visibleColumns.includes("code") && <th className="px-3 py-2.5 text-[11px] font-bold text-slate-400 text-center w-14">الكود</th>}
@@ -1702,7 +1703,7 @@ export default function SalesReturnFormPage() {
                         </button>
                       )}
                     </div>
-                    <div className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm" data-help="sr-form-items">
                       <table className="w-full text-right">
                         <thead className="border-b border-slate-200 bg-slate-50 sticky top-0">
                           <tr>
@@ -1752,7 +1753,7 @@ export default function SalesReturnFormPage() {
                                 <td className="px-3 py-3 text-center text-2sm font-bold text-slate-700">{formatMoney(originalTotal)}</td>
                                 <td className="px-3 py-3 text-center text-sm text-slate-500">{l.already_returned || "—"}</td>
                                 <td className="px-3 py-3 text-center">
-                                  <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return}
+                                  <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return} data-help="sr-form-qty"
                                     onChange={e => setInvoiceLineQty(l.invoice_line_id, e.target.value)}
                                     disabled={!l.checked || isLocked}
                                     className="w-16 rounded-sm border border-slate-200 px-2 py-1 text-center text-sm font-black text-slate-800 outline-none focus:border-emerald-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />

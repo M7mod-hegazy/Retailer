@@ -95,7 +95,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
   function handleClose() {
     setEditMode(false);
     setError("");
-    onClose();
+    onClose?.();
   }
 
   if (!open) return null;

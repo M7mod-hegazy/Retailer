@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
+import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
 
 export default function DiscountBlock({ invoice = {}, settings: s, family }) {
   if (g(s, "show_discount_line") === false) return null;
@@ -10,13 +10,13 @@ export default function DiscountBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>الخصم</span>
-        <span style={{ fontWeight: 700, color: "#dc2626" }}>- {currency} {totalDiscount.toFixed(2)}</span>
+        <span style={{ fontWeight: 700, color: "#dc2626" }}>- {currency} {smartFormat(totalDiscount)}</span>
       </div>
     );
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>الخصم:</span><span style={HEAVY_VAL}>- {currency} {totalDiscount.toFixed(2)}</span>
+      <span style={{ fontWeight: 700 }}>الخصم:</span><span style={HEAVY_VAL}>- {currency} {smartFormat(totalDiscount)}</span>
     </div>
   );
 }

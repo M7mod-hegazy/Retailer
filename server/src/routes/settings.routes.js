@@ -51,6 +51,7 @@ function ensurePrintColumns() {
   add("print_font",         "TEXT DEFAULT 'monospace'");
   add("logo_alignment",     "TEXT DEFAULT 'center'");
   add("accent_color",       "TEXT DEFAULT '#0f172a'");
+  add("receipt_width",      "TEXT DEFAULT '80mm'");
   add("receipt_header",     "TEXT DEFAULT ''");
   add("return_prefix",      "TEXT DEFAULT 'RET-'");
   add("work_order_prefix",  "TEXT DEFAULT 'WO-'");

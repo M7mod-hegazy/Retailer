@@ -25,12 +25,22 @@ const CAUSE = {
   PORT_EXHAUSTED: "port-exhausted",
   LOOPBACK_BLOCKED: "loopback-blocked",
   NATIVE_MODULE: "native-module",
+  ARCH_MISMATCH: "arch-mismatch",
   SERVER_NEVER_STARTED: "server-never-started",
   UNKNOWN: "unknown",
 };
 
 const PORT_RANGE_START = Number(process.env.PORT || 5000);
 const PORT_RANGE_COUNT = 20; // 5000..5019, matches server/src/index.js
+
+// A loaded .node of the wrong CPU architecture (e.g. a 64-bit better_sqlite3
+// inside a 32-bit installer) fails with these Windows/Node signatures. This is
+// NOT data corruption — the DB file is fine; the wrong installer was used.
+const ARCH_MISMATCH_RE = /not a valid win32 application|invalid win32|ERR_DLOPEN_FAILED|wrong ELF class|%1 is not a valid/i;
+
+function isArchMismatch(str) {
+  return ARCH_MISMATCH_RE.test(String(str || ""));
+}
 
 function safe(fn, fallback) {
   try {
@@ -170,7 +180,17 @@ function classify({ writable, ports, loopback, database }, startError) {
 
   // 1. Native module missing/broken — nothing can work.
   if (database && database.nativeModule && !database.nativeModule.loaded) {
+    // Wrong-arch binary (32/64-bit mismatch) is a distinct, very actionable case:
+    // the data is intact, the customer just installed the wrong build.
+    if (isArchMismatch(database.nativeModule.error) || isArchMismatch(errStr)) {
+      return CAUSE.ARCH_MISMATCH;
+    }
     return CAUSE.NATIVE_MODULE;
+  }
+  // Even if the diagnostic process itself could load the driver, the server's
+  // start error may carry the arch signature (it ran in the same arch process).
+  if (isArchMismatch(errStr)) {
+    return CAUSE.ARCH_MISMATCH;
   }
 
   // 2. Cannot write where the DB / data must live → EPERM (install dir / locked-down PC).
@@ -268,7 +288,10 @@ function classifyStartError(err) {
   const s = `${(err && (err.code || err.message)) || ""}`;
   if (/EPERM|EACCES/i.test(s)) return CAUSE.DB_EPERM;
   if (/EADDRINUSE/i.test(s)) return CAUSE.PORT_EXHAUSTED;
-  if (/better-sqlite3|native|MODULE_NOT_FOUND/i.test(s)) return CAUSE.NATIVE_MODULE;
+  // Wrong-arch native binary (32/64-bit mismatch) — check BEFORE the generic
+  // native-module and corrupt branches so it isn't mislabeled "database corrupt".
+  if (isArchMismatch(s)) return CAUSE.ARCH_MISMATCH;
+  if (/better.?sqlite3|\.node\b|native|MODULE_NOT_FOUND|dlopen/i.test(s)) return CAUSE.NATIVE_MODULE;
   if (/SQLITE_BUSY|locked/i.test(s)) return CAUSE.DB_LOCKED;
   if (/تلف في قاعدة البيانات|integrity|corrupt|malformed/i.test(s)) return CAUSE.DB_CORRUPT;
   if (s) return CAUSE.SERVER_NEVER_STARTED;
@@ -306,6 +329,13 @@ const CAUSE_TEXT = {
     title: "مكوّن داخلي مفقود",
     friendly:
       "تعذّر تحميل مكوّن قاعدة البيانات. قد تحتاج لتثبيت حزمة Microsoft Visual C++ Redistributable، أو إعادة تثبيت البرنامج.",
+  },
+  [CAUSE.ARCH_MISMATCH]: {
+    title: "نسخة غير متوافقة مع نظامك",
+    friendly:
+      "بياناتك سليمة ولم يحدث أي تلف. المشكلة أن النسخة المثبَّتة لا تناسب نظامك " +
+      "(تم تثبيت نسخة 64-بت على نظام 32-بت أو العكس). أزل هذه النسخة وأعد تثبيت " +
+      "النسخة الصحيحة لنظامك (32-بت للأجهزة القديمة). لا حاجة لاستعادة نسخة احتياطية.",
   },
   [CAUSE.SERVER_NEVER_STARTED]: {
     title: "فشل تشغيل الخادم الداخلي",

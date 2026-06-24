@@ -113,6 +113,7 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
   const amountRef = useRef(null);
   const categoryRef = useRef(null);
   const descRef = useRef(null);
+  const dateRef = useRef(null);
   const isToday = form.created_at === today();
 
   useEffect(() => {
@@ -209,11 +210,12 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
               التاريخ
               {!canBackdate && <Lock className="h-2.5 w-2.5 opacity-50" />}
             </label>
-            <div className="relative flex items-center">
+            <div className="relative flex items-center cursor-pointer" onClick={() => dateRef.current?.showPicker?.() ?? dateRef.current?.focus()}>
               <Calendar className="absolute right-3 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
               <input
+                ref={dateRef}
                 type="date" value={form.created_at} max={today()} onChange={handleDateChange}
-                className={`${fieldCls} ${!isToday ? "border-rose-400 text-rose-600" : ""} pr-10 pl-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                className={`${fieldCls} ${!isToday ? "border-rose-400 text-rose-600" : ""} pr-10 pl-10 [&::-webkit-calendar-picker-indicator]:hidden`}
               />
               {isToday && (
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-zinc-805 rounded px-1.5 py-0.5 pointer-events-none leading-tight">اليوم</span>
@@ -459,6 +461,7 @@ export default function ExpensesListPage() {
   }, [rows]);
 
   async function handleSave(formData, onSuccess) {
+    if (saving) return;
     setSaving(true);
     try {
       if (formData.id) {

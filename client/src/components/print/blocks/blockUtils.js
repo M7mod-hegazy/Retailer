@@ -53,10 +53,7 @@ export function rollDefaultPrintWidthMm(paperMm) {
  */
 export function rollPrintWidthMm(s) {
   const paper = rollPaperWidthMm(s);
-  const eff = Number(g(s, "print_area_width"));
-  return Number.isFinite(eff) && eff > 0
-    ? Math.min(eff, paper)
-    : rollDefaultPrintWidthMm(paper);
+  return paper - 2;
 }
 
 export const HEAVY_NUM = { fontWeight: 900 };
@@ -64,6 +61,12 @@ export const HEAVY_VAL = { fontWeight: 900 };
 
 export function parseJsonArray(v) {
   try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+
+export function smartFormat(n) {
+  const num = Number(n || 0);
+  const rounded = Math.round(num * 100) / 100;
+  return rounded.toString();
 }
 
 export function computeTotals(invoice = {}, s = {}) {

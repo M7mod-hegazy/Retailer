@@ -68,13 +68,14 @@ export function buildPrintDocument(contentHtml, pageSizeStr, title = "طباعة
   <title>${title || "طباعة"}</title>
   <style>
     @page { size: ${pageSizeStr}; margin: 0; }
+    html { margin: 0; padding: 0; display: flex; justify-content: center; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       /* Tahoma/Segoe UI/Arial are always present on Windows and render Arabic
          crisply on thermal printers; the web fonts are a best-effort upgrade
          that the silent-print window usually can't load. */
       font-family: "Tajawal", "Noto Sans Arabic", "Tahoma", "Segoe UI", Arial, sans-serif;
-      direction: rtl; text-align: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
       color: #000; background: #fff;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }

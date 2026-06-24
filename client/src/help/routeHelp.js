@@ -34,6 +34,15 @@ const ROUTE_HELP_MATCHERS = [
   { match: /^\/reports(?:\/|$)/, pageKey: "reports" },
   { match: /^\/notifications(?:\/|$)/, pageKey: "notifications" },
   { match: /^\/stock\/levels(?:\/|$)|^\/stock\/movements(?:\/|$)/, pageKey: "stock" },
+  { match: /^\/purchases\/new(?:\/|$)|^\/purchases\/\d+\/edit(?:\/|$)/, pageKey: "purchase_form" },
+  { match: /^\/purchases\/orders\/new(?:\/|$)|^\/purchases\/orders\/\d+\/edit(?:\/|$)/, pageKey: "purchase_order_form" },
+  { match: /^\/purchases\/orders\/\d+\/details(?:\/|$)/, pageKey: "purchase_order_detail" },
+  { match: /^\/purchases\/returns\/new(?:\/|$)|^\/purchases\/returns\/\d+\/edit(?:\/|$)/, pageKey: "purchase_return_form" },
+  { match: /^\/purchases\/returns\/\d+\/details(?:\/|$)/, pageKey: "purchase_return_detail" },
+  { match: /^\/branch-transfers\/new(?:\/|$)|^\/branch-transfers\/\d+\/edit(?:\/|$)/, pageKey: "branch_transfer_form" },
+  { match: /^\/quotations\/new(?:\/|$)|^\/quotations\/\d+\/edit(?:\/|$)/, pageKey: "quotation_form" },
+  { match: /^\/stock\/transfer\/new(?:\/|$)|^\/stock\/transfer\/\d+\/edit(?:\/|$)/, pageKey: "stock_transfer_form" },
+  { match: /^\/sales\/returns\/new(?:\/|$)|^\/sales\/returns\/\d+\/edit(?:\/|$)/, pageKey: "sales_return_form" },
 ];
 
 export function getHelpPageKey(pathname) {

@@ -230,8 +230,6 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   };
   const famPresets = presets.filter((p) => p.family === family);
 
-  const MARGIN_KEY = { top: "margin_top", side: "margin_side" };
-  const setMargin = (k, v) => setTopLevel(MARGIN_KEY[k], v);
 
   // ── direct mouse resize (8 handles, PowerPoint-style) ────────────────────
   // `dir` = { w, s } growth signs for width / size. One undo step per gesture.
@@ -297,23 +295,6 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
     onSelect: setSelected, onHover: setHovered,
     onMoveStart, onResizeStart,
     editableOf, onStartEditText: startEditText, onCommitText: commitText,
-  };
-
-  // ── draggable document-margin markers (ruler) ───────────────────────────
-  const startMarginDrag = (which, e) => {
-    e.preventDefault(); e.stopPropagation();
-    const start = which === "top" ? e.clientY : e.clientX;
-    const key = which === "top" ? "margin_top" : "margin_side";
-    const baseMm = Number(merged[key]) || 4;
-    const draftBase = draft, z = zoom;
-    setPast((p) => [...p, draftBase]); setFuture([]); setResizing(true);
-    const move = (ev) => {
-      const dPx = (which === "top" ? ev.clientY - start : start - ev.clientX) / z; // inline-start edge grows when dragged toward center
-      const v = clamp(Math.round(baseMm + dPx / PX_PER_MM), 0, which === "top" ? 60 : 30);
-      setDraft({ ...draftBase, [key]: v }); onChange && onChange({ ...draftBase, [key]: v });
-    };
-    const up = () => { setResizing(false); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
   // ── fit / overflow meter (page family) ───────────────────────────────────
@@ -496,7 +477,7 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             </div>
           ) : (
             <div ref={sheetRef} className="mx-auto" style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
-              {showRuler && renderRuler({ size, contentMm, pageH, merged, startMarginDrag })}
+              {showRuler && renderRuler({ size, contentMm, pageH, merged })}
               <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={merged} layout={draftForRender.layout} editing designer={designer} />
             </div>
           )}
@@ -660,19 +641,9 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
             </div>
           )}
 
-          {/* Margins */}
+          {/* Margins — hardcoded to 4mm */}
           <div>
-            <div className="mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">الهوامش (mm)</div>
-            <div className="flex gap-2">
-              {[["top", "علوي"], ["side", "جانبي"]].map(([k, lbl]) => (
-                <label key={k} className="flex flex-1 flex-col gap-1 text-[11px] font-bold text-slate-500">{lbl}
-                  <input type="number" value={merged[MARGIN_KEY[k]] ?? 4}
-                    onChange={(e) => setMargin(k, Number(e.target.value))}
-                    className="h-9 w-full rounded-lg border border-slate-300 px-2 text-2sm outline-none focus:border-violet-500" />
-                </label>
-              ))}
-            </div>
-            <div className="mt-1 text-[9px] font-bold text-slate-400">يُطبَّق على الهوامش العامة لهذا المستند.</div>
+            <div className="text-[11px] font-bold text-slate-400">الهوامش مثبتة على 2مم (غير قابلة للتعديل).</div>
             {family === "page" && (
               <label className="mt-3 flex items-center justify-between text-[11px] font-bold text-slate-500">محاذاة بيانات الرأس
                 <select value={fam.headerMetaAlign || "left"} onChange={(e) => setFamLayout(() => ({ headerMetaAlign: e.target.value }))} className="rounded border border-slate-200 px-1 py-0.5 text-[11px]">
@@ -687,13 +658,13 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   ), document.body);
 }
 
-// Rulers (mm) on the top/inline-start edges + draggable document-margin guides.
-function renderRuler({ size, contentMm, pageH, merged, startMarginDrag }) {
+// Rulers (mm) on the top/inline-start edges — fixed 4mm margins, no drag handles.
+function renderRuler({ size, contentMm, pageH, merged }) {
   const widthMm = parseFloat(SHEET_W[size]) || 80;
   const heightMm = pageH || Math.max(contentMm || 0, 80);
   const wpx = widthMm * PX_PER_MM, hpx = heightMm * PX_PER_MM;
-  const mt = (Number(merged.margin_top) || 4) * PX_PER_MM;
-  const ms = (Number(merged.margin_side) || 4) * PX_PER_MM;
+  const mt = 2 * PX_PER_MM;
+  const ms = 2 * PX_PER_MM;
   const ticks = (lenMm, axis) => {
     const out = [];
     for (let mm = 0; mm <= lenMm; mm += 5) {
@@ -704,20 +675,16 @@ function renderRuler({ size, contentMm, pageH, merged, startMarginDrag }) {
     }
     return out;
   };
-  const grab = { position: "absolute", background: "#7c3aed", zIndex: 31 };
   return (
     <>
       {/* top ruler */}
       <div style={{ position: "absolute", top: -18, insetInlineStart: 0, width: wpx, height: 16, background: "#fff", border: "1px solid #e2e8f0", zIndex: 30, pointerEvents: "none" }}>{ticks(widthMm, "x")}</div>
       {/* side ruler */}
       <div style={{ position: "absolute", top: 0, insetInlineStart: -18, width: 16, height: hpx, background: "#fff", border: "1px solid #e2e8f0", zIndex: 30, pointerEvents: "none" }}>{ticks(heightMm, "y")}</div>
-      {/* margin guides */}
+      {/* fixed margin guides (4mm) */}
       <div style={{ position: "absolute", top: mt, insetInlineStart: 0, insetInlineEnd: 0, height: 1, background: "#7c3aed66", zIndex: 28, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: 0, bottom: 0, insetInlineStart: ms, width: 1, background: "#7c3aed66", zIndex: 28, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: 0, bottom: 0, insetInlineEnd: ms, width: 1, background: "#7c3aed66", zIndex: 28, pointerEvents: "none" }} />
-      {/* draggable handles */}
-      <div title="هامش علوي" onPointerDown={(e) => startMarginDrag("top", e)} style={{ ...grab, top: mt - 4, insetInlineStart: -4, width: 9, height: 9, borderRadius: "50%", border: "2px solid #fff", cursor: "ns-resize" }} />
-      <div title="هامش جانبي" onPointerDown={(e) => startMarginDrag("side", e)} style={{ ...grab, top: -4, insetInlineStart: ms - 4, width: 9, height: 9, borderRadius: "50%", border: "2px solid #fff", cursor: "ew-resize" }} />
     </>
   );
 }

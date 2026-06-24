@@ -12,7 +12,7 @@ export default function AddressBlock({ settings: s, family }) {
   const spanStyle = isPage ? { fontSize, color: "#475569", fontWeight: 600 } : { fontSize };
   const sepStyle = isPage
     ? { marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }
-    : { marginTop: "4px", borderTop: "1px dotted rgba(0,0,0,0.1)", paddingTop: "4px" };
+    : { marginTop: "4px", paddingTop: "4px" };
 
   const rows = addrs.map((addr, i) => {
     const phone = phones[i];

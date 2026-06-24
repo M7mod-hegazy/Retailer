@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
   AlertCircle, CheckCircle2, X, ArrowDownRight, Calculator,
-  Calendar, ChevronRight, Flag, ExternalLink, TrendingUp,
+  Calendar, ChevronRight, ChevronDown, ChevronUp, Flag, ExternalLink, TrendingUp,
   TrendingDown, Search, Clock, ArrowUpDown, Filter,
   FileText, Coins, Banknote, History, Info,
   Edit3, RotateCcw, Eye, Sparkles, CreditCard,
+  Save, Trash2, Check, StickyNote,
 } from "lucide-react";
 
 import api from "../../services/api";
@@ -368,6 +369,16 @@ export default function DailyTreasuryPage() {
   const [reopenReason, setReopenReason] = useState("");
   const [reopening, setReopening] = useState(false);
 
+  // Cash-count check-ins + day note
+  const [cashCounts, setCashCounts] = useState([]);
+  const [savingCount, setSavingCount] = useState(false);
+  const [editingCountId, setEditingCountId] = useState(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [newNoteText, setNewNoteText] = useState("");
+  const [dayNoteSaving, setDayNoteSaving] = useState(false);
+  const [showAllNotes, setShowAllNotes] = useState(false);
+
   // Calculator
   const [calcOpen, setCalcOpen] = useState(false);
   const [calcDisplay, setCalcDisplay] = useState("0");
@@ -452,6 +463,15 @@ export default function DailyTreasuryPage() {
     }
   }, [date, isToday]);
 
+  const loadCashCounts = useCallback(async () => {
+    try {
+      const r = await api.get(`/api/daily-sessions/${date}/cash-counts`);
+      setCashCounts(r.data.data || []);
+    } catch {
+      setCashCounts([]);
+    }
+  }, [date]);
+
   async function loadYesterdayAlert() {
     try {
       const r = await api.get("/api/daily-sessions/yesterday/alert");
@@ -476,6 +496,7 @@ export default function DailyTreasuryPage() {
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
   useEffect(() => { loadMethodTotals(); }, [loadMethodTotals]);
+  useEffect(() => { loadCashCounts(); }, [loadCashCounts]);
   useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
   useEffect(() => { setCurrentPage(1); }, [activeTab, globalAmountSearch, txSearch, txSort, showCancelled]);
@@ -521,6 +542,29 @@ export default function DailyTreasuryPage() {
     api.get("/api/revenues/categories").then(r => setRevenueCategories(r.data.data || [])).catch(() => { });
     api.get("/api/withdrawals/categories").then(r => setWithdrawalCategories(r.data.data || [])).catch(() => { });
   }, []);
+
+  const allNotes = useMemo(() => {
+    const notes = [];
+    const dayRaw = summary?.session?.day_notes || '';
+    if (dayRaw) {
+      dayRaw.split('\n').filter(Boolean).forEach((line, i) => {
+        const m = line.match(/^\[(\d{2}:\d{2})\]\s*(.*)/);
+        if (m) {
+          notes.push({ id: `d-${i}`, time: m[1], text: m[2], type: 'day', source: 'ملاحظة', sortKey: m[1] });
+        } else {
+          notes.push({ id: `d-${i}`, time: '', text: line, type: 'day', source: 'ملاحظة', sortKey: '' });
+        }
+      });
+    }
+    cashCounts.forEach(c => {
+      notes.push({ id: `c-${c.id}`, time: (c.created_at || '').slice(11, 16), text: c.note, type: 'count', source: 'عد', sortKey: (c.created_at || '').slice(11, 16), amount: c.amount, discrepancy: c.discrepancy, expected_cash: c.expected_cash });
+    });
+    if (summary?.session?.notes) {
+      notes.push({ id: 'close', time: (summary.session.closed_at || '').slice(11, 16), text: summary.session.notes, type: 'close', source: 'إغلاق', sortKey: (summary.session.closed_at || '99:99').slice(11, 16) });
+    }
+    notes.sort((a, b) => b.sortKey.localeCompare(a.sortKey) || (a.id > b.id ? -1 : 1));
+    return notes;
+  }, [summary, cashCounts]);
 
   const moneyTotal = DENOMS.reduce((s, d) => s + Number(counts[d] || 0) * d, 0);
   const sess = summary?.session;
@@ -578,6 +622,84 @@ export default function DailyTreasuryPage() {
       loadTransactions();
     } catch (e) {
       toast.error(e.response?.data?.message || "خطأ");
+    }
+  }
+
+  async function handleSaveCount() {
+    if (actualCash === "" || !Number.isFinite(Number(actualCash))) {
+      toast.error("أدخل الرصيد الفعلي أولاً");
+      return;
+    }
+    setSavingCount(true);
+    try {
+      await api.post(`/api/daily-sessions/${date}/cash-counts`, {
+        amount: Number(actualCash),
+        note: closeNotes,
+      });
+      toast.success("تم حفظ العد");
+      setActualCash("");
+      setCloseNotes("");
+      loadCashCounts();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "خطأ");
+    } finally {
+      setSavingCount(false);
+    }
+  }
+
+  function startEditCount(c) {
+    setEditingCountId(c.id);
+    setEditAmount(String(c.amount));
+    setEditNote(c.note || "");
+  }
+
+  function cancelEditCount() {
+    setEditingCountId(null);
+    setEditAmount("");
+    setEditNote("");
+  }
+
+  async function handleSaveEditCount(id) {
+    if (editAmount === "" || !Number.isFinite(Number(editAmount))) {
+      toast.error("قيمة غير صحيحة");
+      return;
+    }
+    try {
+      await api.put(`/api/daily-sessions/cash-counts/${id}`, {
+        amount: Number(editAmount),
+        note: editNote,
+      });
+      toast.success("تم تعديل العد");
+      cancelEditCount();
+      loadCashCounts();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "خطأ");
+    }
+  }
+
+  async function handleDeleteCount(id) {
+    if (!window.confirm("حذف هذا العد؟")) return;
+    try {
+      await api.delete(`/api/daily-sessions/cash-counts/${id}`);
+      toast.success("تم حذف العد");
+      loadCashCounts();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "خطأ");
+    }
+  }
+
+  async function handleSaveDayNote() {
+    if (!newNoteText.trim()) return;
+    setDayNoteSaving(true);
+    try {
+      await api.put(`/api/daily-sessions/${date}/day-note`, { note: newNoteText.trim() });
+      toast.success("تم حفظ الملاحظة");
+      setNewNoteText("");
+      loadSummary();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "خطأ");
+    } finally {
+      setDayNoteSaving(false);
     }
   }
 
@@ -1313,11 +1435,12 @@ export default function DailyTreasuryPage() {
                               )}
                             </div>
 
-                            {/* الرصيد الفعلي — always visible, no close action */}
+                            {/* الرصيد الفعلي — عد الخزنة في أي وقت خلال اليوم */}
                             <div className="rounded-2xl border-2 border-[var(--border-normal)] bg-[var(--bg-surface)] p-6 shadow-sm">
-                              <h4 className="text-[16px] font-black text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                                <Lock className="h-5 w-5 text-[var(--text-secondary)]" /> إدخال الرصيد الفعلي
+                              <h4 className="text-[16px] font-black text-[var(--text-primary)] mb-1 flex items-center gap-2">
+                                <Lock className="h-5 w-5 text-[var(--text-secondary)]" /> عدّ الخزنة
                               </h4>
+                              <p className="text-[11px] font-bold text-[var(--text-muted)] mb-4">احسب الدرج في أي وقت واحفظه لمتابعة العجز أو الزيادة خلال اليوم.</p>
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-2">
                                   <label className="text-sm font-black text-[var(--text-secondary)]">الرصيد الفعلي (ج.م)</label>
@@ -1362,20 +1485,117 @@ export default function DailyTreasuryPage() {
                                     </div>
                                   </div>
                                 )}
-                                <div className="flex flex-col gap-1.5">
-                                  <label className="text-2sm font-black uppercase tracking-widest text-[var(--text-secondary)]">ملاحظات</label>
-                                  <textarea
-                                    value={closeNotes}
-                                    onChange={(e) => setCloseNotes(e.target.value)}
-                                    className="w-full h-16 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-4 py-3 text-sm font-bold text-[var(--text-primary)] outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-[var(--text-muted)] transition-all"
-                                    placeholder="ملاحظات حول الرصيد..."
-                                  />
+                                {(isToday && !isClosed) && (
+                                  <>
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className="text-2sm font-black uppercase tracking-widest text-[var(--text-secondary)]">ملاحظة على العد (اختياري)</label>
+                                      <textarea
+                                        value={closeNotes}
+                                        onChange={(e) => setCloseNotes(e.target.value)}
+                                        className="w-full h-16 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-4 py-3 text-sm font-bold text-[var(--text-primary)] outline-none resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/5 placeholder:text-[var(--text-muted)] transition-all"
+                                        placeholder="مثال: نقص 100 ج.م — راجع آخر فاتورة"
+                                      />
+                                    </div>
+                                    <motion.button
+                                      whileTap={{ scale: 0.98 }}
+                                      onClick={handleSaveCount}
+                                      disabled={savingCount || actualCash === ""}
+                                      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-40"
+                                    >
+                                      <Save className="h-4 w-4" /> {savingCount ? "جارٍ الحفظ..." : "حفظ العد"}
+                                    </motion.button>
+                                  </>
+                                )}
+
+                                {/* ملاحظات اليوم — سجل موحد من ملاحظات اليوم وملاحظات العد */}
+                                <div className="flex flex-col gap-2">
+                                  {(isToday && !isClosed) && (
+                                    <div className="flex flex-col gap-1.5">
+                                      <textarea
+                                        value={newNoteText}
+                                        onChange={(e) => setNewNoteText(e.target.value)}
+                                        className="w-full h-16 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-normal)] px-4 py-3 text-sm font-bold text-[var(--text-primary)] outline-none resize-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/10 placeholder:text-[var(--text-muted)] transition-all"
+                                        placeholder="إضافة ملاحظة جديدة..."
+                                      />
+                                      <button
+                                        onClick={handleSaveDayNote}
+                                        disabled={dayNoteSaving || !newNoteText.trim()}
+                                        className="flex h-9 items-center justify-center gap-2 self-start rounded-xl bg-amber-500 px-4 text-2sm font-black text-white hover:bg-amber-600 disabled:opacity-40 transition-all"
+                                      >
+                                        <Save className="h-3.5 w-3.5" /> {dayNoteSaving ? "جارٍ الحفظ..." : "إضافة ملاحظة"}
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center gap-2 text-2sm font-black text-[var(--text-secondary)]">
+                                    <History className="h-4 w-4 text-[var(--text-muted)]" /> سجل النشاط
+                                    {allNotes.length > 0 && (
+                                      <span className="rounded-full bg-[var(--bg-overlay)] px-2 py-0.5 text-[10px] font-black text-[var(--text-muted)]">{allNotes.length}</span>
+                                    )}
+                                  </div>
+
+                                  {allNotes.length === 0 ? (
+                                    <div className="rounded-xl border border-dashed border-[var(--border-normal)] bg-[var(--bg-overlay)] px-4 py-4 text-center text-2sm font-bold text-[var(--text-muted)]">
+                                      لا توجد أية أحداث بعد
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col gap-1.5">
+                                      {(showAllNotes ? allNotes : allNotes.slice(0, 2)).map((note) => {
+                                        const isCount = note.type === 'count';
+                                        const isClose = note.type === 'close';
+                                        const ok = isCount && Number(note.discrepancy) >= 0;
+                                        return (
+                                          <div key={note.id} className={"rounded-xl border px-3.5 py-3 " + (isCount ? (ok ? "border-emerald-200 bg-emerald-50/60" : "border-rose-200 bg-rose-50/60") : isClose ? "border-rose-200 bg-rose-50/60" : "border-[var(--border-subtle)] bg-[var(--bg-surface)]")}>
+                                            {isCount ? (
+                                              <>
+                                                <div className="flex items-center justify-between gap-3">
+                                                  <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--bg-surface)] px-2 py-0.5 text-[10px] font-black text-[var(--text-muted)]">
+                                                      <Clock className="h-3 w-3" /> {note.time || '—'}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black" style={{ background: '#eff6ff', color: '#2563eb' }}>عد</span>
+                                                  </div>
+                                                  <span className={"number-fmt-primary text-[17px] font-black " + (ok ? "text-emerald-700" : "text-rose-700")}>{fmt(note.amount)} ج.م</span>
+                                                </div>
+                                                <div className="mt-1.5 flex items-center justify-between gap-2">
+                                                  <div className="text-[10px] font-bold text-[var(--text-muted)]">متوقع: <span className="number-fmt-primary">{fmt(note.expected_cash)}</span></div>
+                                                  <div className={"text-2sm font-black " + (ok ? "text-emerald-700" : "text-rose-700")}>
+                                                    {ok ? '+' : ''}{fmt(note.discrepancy)} ج.م
+                                                  </div>
+                                                </div>
+                                                {note.text && (
+                                                  <div className="mt-1.5 rounded-lg bg-[var(--bg-surface)] px-2.5 py-1.5 text-2sm font-bold text-[var(--text-secondary)]">{note.text}</div>
+                                                )}
+                                              </>
+                                            ) : (
+                                              <>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--bg-overlay)] px-2 py-0.5 text-[10px] font-black text-[var(--text-muted)]">
+                                                    <Clock className="h-3 w-3" /> {note.time || '—'}
+                                                  </span>
+                                                  <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black" style={isClose ? { background: '#fef2f2', color: '#dc2626' } : { background: '#fffbeb', color: '#d97706' }}>
+                                                    {note.source}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm font-bold text-[var(--text-primary)] whitespace-pre-wrap leading-snug">{note.text}</p>
+                                              </>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  {allNotes.length > 2 && (
+                                    <button onClick={() => setShowAllNotes(!showAllNotes)} className="flex items-center justify-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-2 text-2sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-all">
+                                      {showAllNotes ? <>إخفاء <ChevronUp className="h-4 w-4" /></> : <>عرض الكل ({allNotes.length - 2} أخرى) <ChevronDown className="h-4 w-4" /></>}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Bottom Half: Payment Methods (The Rest) */}
+                        {/* Bottom Half: Payment Methods (The Rest) */}
                           <div className="flex flex-col gap-5">
                             {/* Daily movement per payment method (wallets / bank) */}
                             <div className="rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-normal)] shadow-sm overflow-hidden flex flex-col">

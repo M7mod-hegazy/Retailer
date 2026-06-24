@@ -7,27 +7,20 @@ export default function Modal({ open, title, onClose, onDetach: userOnDetach, ch
   const modalRef = useRef(null);
   const isDetached = typeof window !== 'undefined' && window.location.search.includes("detachedModal=1");
 
+  // A modal can be detached only when the caller wires it up: either a custom
+  // onDetach handler, or a registered modalType the detached window can rebuild
+  // as real React. Without one of those, detaching would produce a dead HTML
+  // snapshot, so we don't offer it at all (see TitleBar.canDetach).
+  const canDetach = Boolean(userOnDetach || modalType);
+
   function handleDetach() {
     if (userOnDetach) { userOnDetach(); return; }
-    if (!window.electronAPI) return;
+    if (!window.electronAPI || !modalType) return;
     const el = modalRef.current;
     const rect = el?.getBoundingClientRect();
 
-    if (!modalType && el) {
-      const contentArea = el.querySelector("[data-modal-content]");
-      const contentHtml = contentArea?.innerHTML || null;
-      console.log('[Modal] generic detach', { title, htmlLen: contentHtml?.length });
-      window.electronAPI.createModalWindow({
-        modalType: "generic",
-        state: { title, contentHtml },
-        bounds: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) } : undefined,
-      });
-      onClose?.();
-      return;
-    }
-
     window.electronAPI.createModalWindow({
-      modalType: modalType || "generic",
+      modalType,
       state: modalState || { title, contentHtml: null },
       bounds: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) } : undefined,
     });
@@ -92,7 +85,7 @@ export default function Modal({ open, title, onClose, onDetach: userOnDetach, ch
             onClick={(e) => e.stopPropagation()}
           >
             {title && (
-              <TitleBar title={title} onClose={onClose} onDetach={handleDetach} showDetach={showDetach} />
+              <TitleBar title={title} onClose={onClose} onDetach={canDetach ? handleDetach : undefined} showDetach={showDetach} />
             )}
             <div data-modal-content className="flex-1 overflow-y-auto p-5">
               {children}

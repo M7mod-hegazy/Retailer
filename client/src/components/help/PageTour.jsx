@@ -208,248 +208,23 @@ function targetStepCopy(pageKey, target) {
     },
   };
 
-  return commonTargets[target] || {
-    title_ar: targetText || pageTitle,
-    body_ar: `الجزء ده من صفحة ${pageTitle}. راجعه لأنه مرتبط بالبيانات الظاهرة في مكانه، ولو فيه زر أو اختيار جواه استخدمه حسب عنوانه الظاهر.`,
-  };
+  return commonTargets[target] || null;
 }
 
 function controlStepCopy(pageKey, kind, label) {
   const specific = specificAutoStepCopy(pageKey, label);
   if (specific) return specific;
 
-  const pageTitle = getPageTitle(pageKey);
   const text = String(label || '').trim();
 
-  if (kind === 'field') {
-    if (/بحث|search/i.test(text)) {
-      return {
-        title_ar: text || `بحث ${pageTitle}`,
-        body_ar: `اكتب هنا كلمة البحث الخاصة بصفحة ${pageTitle}: اسم، رقم، كود، أو وصف حسب الجدول الحالي.`,
-      };
-    }
+  if (kind === 'field' && /بحث|search/i.test(text)) {
     return {
-      title_ar: text || `حقل في ${pageTitle}`,
-      body_ar: `الحقل ده بيأثر على بيانات ${pageTitle}. اكتب القيمة المطلوبة بوضوح وراجعها قبل الحفظ أو التطبيق.`,
+      title_ar: text || `بحث`,
+      body_ar: `اكتب كلمة البحث. النتائج بتتصفى وأنت بتكتب—اختار اللي يناسبك من القائمة.`,
     };
   }
 
-  if (kind === 'tab') {
-    return {
-      title_ar: text || `تبويب ${pageTitle}`,
-      body_ar: `التبويب ده يغير الجزء المعروض داخل ${pageTitle} عشان تراجع نوع بيانات مختلف من نفس الشاشة.`,
-    };
-  }
-
-  if (/بحث متقدم في المخزون/i.test(text)) {
-    return {
-      title_ar: 'بحث متقدم في المخزون',
-      body_ar: 'يفتح نافذة بحث أوسع عن الأصناف داخل المخزون. استخدمه لما البحث السريع مش كفاية: تقدر تدور بالصنف وتشوف المتاح قبل إضافة السطر للفاتورة أو الحركة.',
-    };
-  }
-  if (/بحث متقدم|البحث التفصيلي بالأصناف/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: 'يفتح نافذة بحث تفصيلي بدل البحث السريع. مفيد لما تحتاج توصل لمستند أو صنف من بيانات أكتر زي رقم المستند، اسم الصنف، العميل، المورد، أو الفترة.',
-    };
-  }
-  if (/بحث برقم المستند/i.test(text)) {
-    return {
-      title_ar: 'بحث برقم المستند',
-      body_ar: 'يصفّي القائمة على مستند محدد برقم الفاتورة أو المرتجع أو أمر الشراء. استخدمه لما معاك رقم المستند وعايز تفتحه بسرعة.',
-    };
-  }
-  if (/بحث صنف/i.test(text)) {
-    return {
-      title_ar: 'بحث داخل الأصناف',
-      body_ar: 'يبحث داخل بنود المستندات عن صنف معين. استخدمه لما عايز تعرف الصنف ظهر في أي فاتورة أو مرتجع أو حركة.',
-    };
-  }
-  if (/معاينة سريعة|معاينة الفاتورة|معاينة المرتجع|معاينة أمر الشراء|معاينة صورة الصنف/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: 'يفتح معاينة للبيانات من غير تعديل مباشر. استخدمه للمراجعة السريعة قبل ما تفتح المستند للتعديل أو تعمل طباعة أو تأكيد.',
-    };
-  }
-  if (/فتح الفاتورة|فتح المستند وتعديله/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: 'يفتح المستند المحفوظ في شاشة التحرير أو التفاصيل. استخدمه لما تحتاج تراجع البنود، المدفوعات، أو تعدل بيانات المستند حسب الصلاحيات.',
-    };
-  }
-  if (/إنشاء مرتجع/i.test(text)) {
-    return {
-      title_ar: 'إنشاء مرتجع',
-      body_ar: 'يبدأ مرتجع من الفاتورة أو المستند المحدد. بعد الضغط هتختار الكميات الراجعة، وبعد الحفظ المخزون والحسابات يتعدلوا.',
-    };
-  }
-  if (/تأكيد التحديث/i.test(text)) {
-    return {
-      title_ar: 'تأكيد التحديث',
-      body_ar: 'يطبّق التحديثات اللي اتراجعت في شاشة التحديث الذكي. بعد الضغط هتتغير بيانات الأصناف المطابقة للملف، فراجع المعاينة قبلها.',
-    };
-  }
-  if (/تأكيد وحفظ|نعم، احفظ|نعم، حفظ المرتجع|حفظ المرتجع|حفظ التعديلات/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: 'يحفظ المستند أو التعديلات الحالية نهائيًا. بعد الحفظ بتتحدث الأرصدة والحسابات والمخزون حسب نوع العملية.',
-    };
-  }
-  if (/حفظ الحالية وإنشاء جديدة/i.test(text)) {
-    return {
-      title_ar: 'حفظ الحالية وإنشاء جديدة',
-      body_ar: 'يحفظ الفاتورة أو المستند المفتوح حاليًا، وبعد نجاح الحفظ يفتح نموذج جديد فارغ عشان تبدأ عملية تانية بسرعة.',
-    };
-  }
-  if (/حفظ ثم تغيير/i.test(text)) {
-    return {
-      title_ar: 'حفظ ثم تغيير',
-      body_ar: 'يحفظ البيانات الحالية الأول، وبعدها يسمح بتغيير المستند أو أمر الشراء المرتبط من غير فقد الشغل اللي اتكتب.',
-    };
-  }
-  if (/نعم، إلغاء/i.test(text)) {
-    return {
-      title_ar: 'تأكيد الإلغاء',
-      body_ar: 'يلغي العملية الحالية بعد رسالة التأكيد. أي بيانات غير محفوظة في النموذج الحالي ممكن تضيع.',
-    };
-  }
-  if (/نعم، تعديل/i.test(text)) {
-    return {
-      title_ar: 'فتح التعديل',
-      body_ar: 'يفتح المستند المحفوظ للتعديل. استخدمه فقط لما تكون محتاج تغير بيانات عملية مسجلة قبل كده.',
-    };
-  }
-  if (/رجوع/i.test(text)) {
-    return {
-      title_ar: 'رجوع',
-      body_ar: 'يرجعك للشاشة السابقة أو يقفل نافذة الاختيار الحالية من غير تسجيل اختيار جديد.',
-    };
-  }
-  if (/إلغاء/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: 'يقفل النافذة أو يلغي خطوة التأكيد الحالية. لو فيه بيانات غير محفوظة، راجع هل الشاشة هتحتفظ بها قبل الخروج.',
-    };
-  }
-  if (/اختيار|اختر/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: 'يحدد السجل أو المستند المعروض ويستخدمه في الشاشة الحالية. بعد الاختيار غالبًا هترجع للنموذج الأصلي بالبيانات المرتبطة.',
-    };
-  }
-  if (/تحديد الكمية المتاحة كاملة/i.test(text)) {
-    return {
-      title_ar: 'تحديد الكمية المتاحة كاملة',
-      body_ar: 'يملأ كمية السطر بأقصى كمية متاحة في المخزن الحالي. مفيد في التحويل أو التسوية لما عايز تنقل كل المتاح.',
-    };
-  }
-  if (/اعتماد التسوية/i.test(text)) {
-    return {
-      title_ar: 'اعتماد التسوية',
-      body_ar: 'يسجل فرق المخزون كحركة تسوية. بعد الاعتماد الكمية المسجلة للصنف هتتغير حسب الرقم اللي أدخلته.',
-    };
-  }
-  if (/تأكيد النقل/i.test(text)) {
-    return {
-      title_ar: 'تأكيد النقل',
-      body_ar: 'يثبت حركة نقل المخزون بين المخازن. بعد التأكيد الكمية تقل من المخزن المصدر وتزيد في المخزن المستلم.',
-    };
-  }
-  if (/وسائل دفع|أضف وسائل دفع/i.test(text)) {
-    return {
-      title_ar: 'وسائل الدفع',
-      body_ar: 'يفتح إعداد وسائل الدفع عشان تضيف نقدي أو فيزا أو تحويل قبل تسجيل المدفوعات داخل الفواتير.',
-    };
-  }
-  if (/طباعة|PDF|Print/i.test(text)) {
-    return {
-      title_ar: text || 'طباعة',
-      body_ar: `يطبع البيانات المعروضة حاليًا في ${pageTitle}. راجع البحث والفلاتر الأول لأن الطباعة بتطلع حسب المعروض.`,
-    };
-  }
-  if (/Excel|تصدير|تحميل|Export|Download/i.test(text)) {
-    return {
-      title_ar: text || 'تصدير',
-      body_ar: `يصدر بيانات ${pageTitle} للملف المطلوب. التصدير يعتمد على النتائج والفترة الظاهرة حاليًا.`,
-    };
-  }
-  if (/السابق|التالي|Previous|Next/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: `ينقلك بين صفحات نتائج ${pageTitle}. استخدمه لما الجدول فيه سجلات أكتر من الصفحة الحالية.`,
-    };
-  }
-  if (/ترتيب|Sort/i.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: `يغير ترتيب عرض بيانات ${pageTitle} حسب الاختيار المتاح، زي الأحدث أو الاسم أو الحالة.`,
-    };
-  }
-  if (/عرض\s*\d+|\b\d+\b/.test(text)) {
-    return {
-      title_ar: text,
-      body_ar: `يحدد عدد السجلات الظاهرة في الصفحة الواحدة داخل ${pageTitle}. زوده لو محتاج تراجع بيانات أكتر مرة واحدة.`,
-    };
-  }
-  if (/حفظ|Save/i.test(text)) {
-    return {
-      title_ar: text || 'حفظ',
-      body_ar: `يسجل تعديلات ${pageTitle}. قبل الحفظ راجع القيم لأن بعدها البيانات هتتطبق على النظام.`,
-    };
-  }
-  if (/تعديل|Edit/i.test(text)) {
-    return {
-      title_ar: text || 'تعديل',
-      body_ar: `يفتح تعديل السجل المحدد في ${pageTitle}. استخدمه لما تكون متأكد إن السطر ده هو المطلوب.`,
-    };
-  }
-  if (/حذف|مسح|Delete/i.test(text)) {
-    return {
-      title_ar: text || 'حذف',
-      body_ar: `يحذف أو يلغي سجل من ${pageTitle}. راجع السطر كويس لأن الحذف ممكن يأثر على التقارير أو الحسابات.`,
-    };
-  }
-  if (/عرض|تفاصيل|View|Details/i.test(text)) {
-    return {
-      title_ar: text || 'عرض التفاصيل',
-      body_ar: `يفتح تفاصيل السجل المحدد في ${pageTitle} من غير ما تبدأ إدخال جديد.`,
-    };
-  }
-  if (/إضافة|جديد|New|Add/i.test(text)) {
-    return {
-      title_ar: text || `إضافة ${pageTitle}`,
-      body_ar: `يبدأ إنشاء سجل جديد في ${pageTitle}. كمل البيانات الأساسية ثم احفظ بعد المراجعة.`,
-    };
-  }
-  if (/تأكيد|اعتماد|تطبيق|Confirm|Apply/i.test(text)) {
-    return {
-      title_ar: text || 'تأكيد',
-      body_ar: `ينفذ التغيير في ${pageTitle}. راجع الأرقام والاختيارات الظاهرة قبل التأكيد.`,
-    };
-  }
-  if (/تحويل|Convert|Transfer/i.test(text)) {
-    return {
-      title_ar: text || 'تحويل',
-      body_ar: `يحوّل السجل أو الكمية في ${pageTitle} للخطوة التالية. راجع المصدر والوجهة أو المستند قبل التنفيذ.`,
-    };
-  }
-  if (/دفع|سداد|تحصيل|Pay|Collect/i.test(text)) {
-    return {
-      title_ar: text || 'دفع أو تحصيل',
-      body_ar: `يسجل حركة فلوس مرتبطة بصفحة ${pageTitle}. اختار الطرف وطريقة الدفع والمبلغ بدقة قبل الحفظ.`,
-    };
-  }
-  if (/إغلاق|خروج|Close|Cancel|×|X/i.test(text)) {
-    return {
-      title_ar: text || 'إغلاق',
-      body_ar: `يقفل النافذة أو يرجعك من غير ما تكمل الإجراء الحالي في ${pageTitle}.`,
-    };
-  }
-
-  return {
-    title_ar: text || `إجراء في ${pageTitle}`,
-    body_ar: `ينفذ إجراء "${text || 'بدون اسم'}" في ${pageTitle}. لو فتح نافذة، راجع البيانات اللي فيها؛ ولو طلب تأكيد، متأكدش غير بعد مراجعة الأرقام والاختيارات.`,
-  };
+  return null;
 }
 
 function getElementLabel(el) {
@@ -514,6 +289,7 @@ function collectHelpSteps(pageKey) {
     const target = el.getAttribute('data-help');
     if (!target || explicitTargets.has(target)) return;
     const copy = targetStepCopy(pageKey, target);
+    if (!copy) return;
     autoSteps.push({
       id: `auto-target-${pageKey}-${target}`,
       target,
@@ -552,6 +328,7 @@ function collectHelpSteps(pageKey) {
 
     const kind = classifyElement(el);
     const copy = controlStepCopy(pageKey, kind, label);
+    if (!copy) return;
 
     const dedupeKey = `${kind}:${label}`;
     if (seenAutoLabels.has(dedupeKey)) return;

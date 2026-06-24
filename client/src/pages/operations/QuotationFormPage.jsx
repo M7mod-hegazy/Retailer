@@ -596,36 +596,38 @@ export default function QuotationFormPage() {
 
   return (
     <div className="flex h-full min-h-[600px] flex-col bg-[var(--bg-base)] font-sans overflow-hidden px-4 lg:px-8 pb-6">
-      <DocumentHeaderBar
-        onBack={() => {
-          if (isDirty) setPendingNav("/operations/quotations");
-          else navigate("/operations/quotations");
-        }}
-        title={editId ? `تعديل عرض سعر ${docNo || formatQuotationNo(editId)}` : "عرض سعر جديد"}
-        subtitle="إعداد عرض سعر احترافي للعميل قبل اعتماد الفاتورة"
-        extras={
-          <div className="flex gap-1.5 items-center">
-            {currentUser?.name && (
-              <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                المحرر: {currentUser.name}
-              </div>
-            )}
-            <input disabled
-              value={invoiceIsActive ? (docNo || "") : "—"}
-              className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
-            <input disabled
-              value={invoiceIsActive && invoiceCreatedAt ? formatArabicDateTime(new Date(invoiceCreatedAt)) : "—"}
-              className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
-          </div>
-        }
-        actions={
-          <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
-            <DocumentActionButton variant="primary" identity="slate" icon={Save} onClick={handleSave} loading={isSaving}>
-              {isSaving ? "جاري الحفظ..." : "حفظ العرض"}
-            </DocumentActionButton>
-          </PermissionGate>
-        }
-      />
+      <div data-help="quote-form-header">
+        <DocumentHeaderBar
+          onBack={() => {
+            if (isDirty) setPendingNav("/operations/quotations");
+            else navigate("/operations/quotations");
+          }}
+          title={editId ? `تعديل عرض سعر ${docNo || formatQuotationNo(editId)}` : "عرض سعر جديد"}
+          subtitle="إعداد عرض سعر احترافي للعميل قبل اعتماد الفاتورة"
+          extras={
+            <div className="flex gap-1.5 items-center">
+              {currentUser?.name && (
+                <div className="flex items-center gap-1.5 rounded-sm bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                  المحرر: {currentUser.name}
+                </div>
+              )}
+              <input disabled
+                value={invoiceIsActive ? (docNo || "") : "—"}
+                className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
+              <input disabled
+                value={invoiceIsActive && invoiceCreatedAt ? formatArabicDateTime(new Date(invoiceCreatedAt)) : "—"}
+                className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
+            </div>
+          }
+          actions={
+            <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
+              <DocumentActionButton variant="primary" identity="slate" icon={Save} onClick={handleSave} loading={isSaving}>
+                {isSaving ? "جاري الحفظ..." : "حفظ العرض"}
+              </DocumentActionButton>
+            </PermissionGate>
+          }
+        />
+      </div>
 
       <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
              <div className="flex flex-1 flex-col p-4 gap-4 min-w-0">
@@ -755,10 +757,11 @@ export default function QuotationFormPage() {
                    </div>
                  </div>
                  {/* 8. Add button */}
-                 <button ref={addBtnRef} onClick={addStagedToCart} disabled={!selectedItem}
-                     onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, prevRef: whRef, onEnter: addStagedToCart })}
-                    className="entry-add-btn"
-                  ><Plus className="h-4 w-4" /> إضافة</button>
+                  <button ref={addBtnRef} onClick={addStagedToCart} disabled={!selectedItem}
+                      onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, prevRef: whRef, onEnter: addStagedToCart })}
+                     data-help="quote-form-add-item"
+                     className="entry-add-btn"
+                   ><Plus className="h-4 w-4" /> إضافة</button>
                   <div ref={colSettingsRef} className="relative flex items-center">
                     <button onClick={() => setColSettingsOpen(p => !p)}
                       className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-amber-100 transition-all"
@@ -811,7 +814,7 @@ export default function QuotationFormPage() {
               </section>
 
               {/* Cart Table */}
-               <div className="flex flex-1 flex-col overflow-x-auto rounded-md border border-amber-200/60 bg-white shadow-sm">
+               <div data-help="quote-form-items" className="flex flex-1 flex-col overflow-x-auto rounded-md border border-amber-200/60 bg-white shadow-sm">
                 <div style={{ gridTemplateColumns: gridTemplate }} className="grid items-center border-b border-slate-300 bg-slate-50 text-[11px] font-black uppercase text-slate-500">
                     {effectiveVisible.includes("index") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">#</div>}
                     {effectiveVisible.includes("code") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكود</div>}
@@ -949,7 +952,7 @@ export default function QuotationFormPage() {
          {/* Sidebar */}
          <aside className={`shrink-0 flex flex-col border-r border-slate-300 bg-white p-5 gap-4 overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
             {/* Customer Section — Optional */}
-            <div className="flex flex-col gap-1.5">
+            <div data-help="quote-form-customer" className="flex flex-col gap-1.5">
                <label className="text-[11px] number-fmt-primary uppercase text-slate-400 tracking-wider">العميل المستهدف <span className="text-slate-300 font-normal normal-case">(اختياري)</span></label>
                {selectedCustomer ? (
                   <div className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-900 p-3 text-white">
@@ -1159,8 +1162,8 @@ export default function QuotationFormPage() {
                         className="w-full rounded-sm border border-slate-200 bg-slate-50 py-2.5 pr-10 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800" />
                   </div>
                </div>
-               <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">ملاحظات العرض</label>
+                <div data-help="quote-form-notes" className="flex flex-col gap-1.5">
+                   <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">ملاحظات العرض</label>
                    <textarea ref={notesRef} rows="2" placeholder="ملاحظات إضافية..." value={notes} onChange={(e) => setNotes(e.target.value)}
                      onKeyDown={(e) => handleKeyDown(e, { nextRef: increaseRef, prevRef: expiresAtRef })}
                      className="w-full rounded-sm border border-slate-200 bg-slate-50 p-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 resize-none" />
@@ -1175,7 +1178,7 @@ export default function QuotationFormPage() {
                      <span>{formatMoney(totals.subtotal)}</span>
                   </div>
                    {/* Increase input with mode toggle */}
-                  <div className="flex items-center justify-between gap-2">
+                  <div data-help="quote-form-discount" className="flex items-center justify-between gap-2">
                     <span className="text-2sm font-bold text-slate-500">زيادة</span>
                     <div className="flex items-center gap-1">
                       <button onClick={() => {
@@ -1260,6 +1263,7 @@ export default function QuotationFormPage() {
                    <PermissionGate page="quotations" action={editId ? "edit" : "add"}>
                       <button ref={saveBtnRef} onClick={handleSave} disabled={isSaving}
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, onEnter: handleSave })}
+                        data-help="quote-form-submit"
                         className="flex h-11 items-center justify-center gap-2 rounded-sm bg-primary text-sm font-black text-white hover:bg-primary-600 shadow-md transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
                          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                          {isSaving ? "جاري الحفظ..." : "حفظ العرض"}

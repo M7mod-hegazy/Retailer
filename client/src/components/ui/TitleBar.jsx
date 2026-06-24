@@ -1,20 +1,6 @@
 import React, { useCallback } from "react";
 import { X, ExternalLink } from "lucide-react";
 
-function defaultDetach(title) {
-  if (!window.electronAPI?.createModalWindow) return;
-  const contentArea = document.querySelector("[data-modal-content]");
-  const footerArea = document.querySelector("[data-modal-footer]");
-  const bodyHtml = contentArea?.innerHTML || "";
-  const footerHtml = footerArea?.innerHTML || "";
-  const contentHtml = bodyHtml + (footerHtml ? `<div class="detach-footer-sep"></div>${footerHtml}` : "");
-  console.log('[TitleBar] defaultDetach', { title, bodyLen: bodyHtml.length, footerLen: footerHtml.length });
-  window.electronAPI.createModalWindow({
-    modalType: "generic",
-    state: { title, contentHtml },
-  });
-}
-
 export default function TitleBar({
   title,
   subtitle,
@@ -24,10 +10,14 @@ export default function TitleBar({
   showDetach = true,
 }) {
   const handleDetach = useCallback(() => {
-    if (onDetach) { onDetach(); return; }
-    defaultDetach(title);
-    onClose?.();
-  }, [onDetach, title, onClose]);
+    onDetach?.();
+  }, [onDetach]);
+
+  // Only offer detach when the modal can actually be reconstructed as React
+  // (i.e. an onDetach handler was supplied). The old fallback cloned innerHTML
+  // into a "generic" window, which produced a dead snapshot whose buttons and
+  // form state didn't work — show nothing rather than a broken affordance.
+  const canDetach = Boolean(onDetach);
 
   return (
     <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -45,7 +35,7 @@ export default function TitleBar({
         </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        {window.electronAPI && showDetach && !window.location.search.includes("detachedModal=1") && (
+        {window.electronAPI && showDetach && canDetach && !window.location.search.includes("detachedModal=1") && (
           <button
             type="button"
             onClick={handleDetach}

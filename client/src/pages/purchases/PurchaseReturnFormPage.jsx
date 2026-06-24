@@ -812,7 +812,7 @@ export default function PurchaseReturnFormPage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-amber-100 text-amber-700 shadow-xl shadow-amber-600/10">
               <RotateCcw className="h-10 w-10" />
             </div>
-            <h1 className="text-[32px] font-black text-slate-900 tracking-tight">إنشاء مرتجع مشتريات</h1>
+            <h1 data-help="pr-form-header" className="text-[32px] font-black text-slate-900 tracking-tight">إنشاء مرتجع مشتريات</h1>
             <p className="text-[15px] font-bold text-slate-500 max-w-[40ch] leading-relaxed">
               قم بتحديد الطريقة المناسبة لإرجاع البضائع إلى المورد للحفاظ على دقة المخزون وحسابات الموردين.
             </p>
@@ -831,7 +831,7 @@ export default function PurchaseReturnFormPage() {
               </div>
             </button>
 
-            <button onClick={() => selectMode("purchase")}
+            <button data-help="pr-form-invoice" onClick={() => selectMode("purchase")}
               className="group relative flex-1 flex flex-col justify-between rounded-[2.5rem] bg-amber-600 border-b-4 border-amber-800 p-8 overflow-hidden transition-all duration-300 hover:-translate-y-2 shadow-xl shadow-amber-600/20 hover:bg-amber-500 hover:shadow-amber-600/40 text-right">
               <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent pointer-events-none" />
               <div className="bg-white/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center group-hover:scale-110 transition-all duration-500 mb-8 backdrop-blur-sm">
@@ -858,7 +858,7 @@ export default function PurchaseReturnFormPage() {
 
   // ══ ACTIVE SCREEN ══
   return (
-    <div dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in relative">
+    <div data-help="pr-form-header" dir="rtl" className="flex h-full flex-col bg-slate-50 overflow-hidden animate-fade-in relative">
       <DocumentHeaderBar
         accent="amber"
         className="shadow-sm"
@@ -940,7 +940,7 @@ export default function PurchaseReturnFormPage() {
         {/* Left Panel */}
         <aside className={`shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
           <div className="flex flex-col gap-5 p-5">
-            <button onClick={handlePurchasesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-sm font-bold text-white hover:bg-amber-800 transition-all shadow-sm active:scale-[0.98]">
+            <button data-help="pr-form-invoice" onClick={handlePurchasesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-sm font-bold text-white hover:bg-amber-800 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> طلبات التوريد
             </button>
 
@@ -959,6 +959,7 @@ export default function PurchaseReturnFormPage() {
                   ref={supplierInputRef}
                   type="text"
                   value={supplierQuery}
+                  data-help="pr-form-supplier"
                   placeholder={supplier?.id ? supplier.name : "ابحث عن مورد..."}
                   onChange={e => { setSupplierQuery(e.target.value); setSupplierLookupOpen(true); if (!e.target.value) setSupplier(null); }}
                   onFocus={() => { if (!supplier?.id) setSupplierQuery(""); setSupplierLookupOpen(true); }}
@@ -1137,7 +1138,7 @@ export default function PurchaseReturnFormPage() {
             )}
 
             {/* Settlement method */}
-            <div className="flex flex-col gap-1.5">
+            <div data-help="pr-form-refund" className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">طريقة التسوية</label>
               <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60 shadow-inner">
                 {[
@@ -1178,7 +1179,7 @@ export default function PurchaseReturnFormPage() {
             </div>
 
             {/* Reason — collapsible */}
-            <div className="flex flex-col">
+            <div data-help="pr-form-reason" className="flex flex-col">
               <button onClick={() => setReasonOpen(o => !o)}
                 className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors uppercase tracking-widest">
                 <span>سبب الاسترداد {reason !== "other" ? <span className="text-amber-600 normal-case tracking-normal text-[11px] ml-1">({REASONS.find(r => r.value === reason)?.label})</span> : reasonOther ? <span className="text-amber-600 normal-case tracking-normal text-[11px] ml-1">({reasonOther})</span> : ""}</span>
@@ -1209,6 +1210,7 @@ export default function PurchaseReturnFormPage() {
               ) : (
                 <textarea
                   ref={notesRef}
+                  data-help="pr-form-reason"
                   rows={2}
                   value={returnNotes}
                   onChange={e => setReturnNotes(e.target.value)}
@@ -1236,7 +1238,7 @@ export default function PurchaseReturnFormPage() {
               </div>
               {mode && !isLocked && (
                 <PermissionGate page="purchase_returns" action={isEditMode ? "edit" : "add"}>
-                  <button onClick={() => setShowSaveConfirmModal(true)} disabled={isSaving || !total}
+                  <button data-help="pr-form-submit" onClick={() => setShowSaveConfirmModal(true)} disabled={isSaving || !total}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 py-3 text-sm font-black text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
                     {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-white/20 px-1 text-[9px] font-mono text-white" />}
@@ -1352,7 +1354,7 @@ export default function PurchaseReturnFormPage() {
                     {/* Qty input */}
                     <div className="entry-field entry-field--qty">
                       <label className="entry-label">الكمية</label>
-                      <input ref={stagingQtyRef} type="number"
+                      <input ref={stagingQtyRef} type="number" data-help="pr-form-qty"
                         min={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "0.001"}
                         step={units.find(u => String(u.id) === String(stagingUnitId))?.allow_decimal === 0 ? "1" : "any"}
                         value={stagingQty}
@@ -1432,7 +1434,7 @@ export default function PurchaseReturnFormPage() {
                 </div>
               )}
               {cart.length > 0 ? (
-                <div className="flex flex-1 flex-col gap-2 min-h-0">
+                <div data-help="pr-form-items" className="flex flex-1 flex-col gap-2 min-h-0">
                   <div className="flex items-center gap-1 px-1 py-1.5 shrink-0">
                     <span className="text-2sm font-bold text-slate-500">الأصناف ({cart.length})</span>
                     <ShortcutKbd id="grid.editLast" />
@@ -1577,7 +1579,7 @@ export default function PurchaseReturnFormPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+                  <div data-help="pr-form-items" className="flex flex-1 flex-col gap-4 overflow-hidden">
                     <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shrink-0">
                       <div className="flex items-center gap-4 text-sm">
                         <span className="font-black text-amber-800">أمر شراء #{loadedPurchase.doc_no}</span>
@@ -1641,7 +1643,7 @@ export default function PurchaseReturnFormPage() {
                                 <td className="px-3 py-3 text-center text-2sm font-bold text-slate-700">{formatMoney(originalTotal)}</td>
                                 <td className="px-3 py-3 text-center text-sm text-slate-500">{l.already_returned || "—"}</td>
                                 <td className="px-3 py-3 text-center">
-                                  <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return}
+                                  <input type="number" min="0" max={l.original_qty - l.already_returned} value={l.qty_to_return} data-help="pr-form-qty"
                                     onChange={e => setPurchaseLineQty(l.purchase_line_id, e.target.value)}
                                     disabled={!l.checked || isLocked}
                                     className="w-16 rounded-sm border border-slate-200 px-2 py-1 text-center text-sm font-black text-slate-800 outline-none focus:border-amber-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
@@ -1731,7 +1733,7 @@ export default function PurchaseReturnFormPage() {
           </div>
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowSaveConfirmModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-            <button onClick={() => { setShowSaveConfirmModal(false); handleSave(); }} disabled={isSaving}
+            <button data-help="pr-form-submit" onClick={() => { setShowSaveConfirmModal(false); handleSave(); }} disabled={isSaving}
               className="flex items-center gap-2 rounded-md bg-amber-700 px-5 py-2 text-sm font-bold text-white hover:bg-amber-800 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><CheckCircle2 className="w-4 h-4" /> نعم، حفظ المرتجع</>}
             </button>

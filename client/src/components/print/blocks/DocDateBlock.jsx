@@ -14,7 +14,7 @@ export default function DocDateBlock({ invoice = {}, settings: s, family }) {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>التاريخ:</span><span>{dateTime}</span>
+      <span style={{ fontWeight: 700 }}>التاريخ:</span><span>{dateTime}</span>
     </div>
   );
 }

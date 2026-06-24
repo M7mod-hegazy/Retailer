@@ -8,7 +8,7 @@ export default function PageWrapper({ settings: s, size = "A4", children }) {
   return (
     <div dir="rtl" style={{
       width: w,
-      padding: `${g(s, "margin_top")}mm ${g(s, "margin_side")}mm`,
+      padding: "2mm 2mm",
       fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
       fontSize: `${g(s, "body_font_size")}px`,
       // Bolder, near-black base for the whole A4/A5 sheet so text and numbers

@@ -5,10 +5,16 @@ const {
   calculateDailySummary,
   closeDailySession,
   ensureDailySessionSchema,
+  ensureCashCountSchema,
   ensureSessionForDate,
   getSession,
   localDate,
   normalizeDate,
+  listCashCounts,
+  addCashCount,
+  updateCashCount,
+  deleteCashCount,
+  setDayNote,
 } = require("../services/dailySessionService");
 
 const router = express.Router();
@@ -17,7 +23,9 @@ router.use(authRequired);
 
 router.use((_req, _res, next) => {
   try {
-    ensureDailySessionSchema(getDb());
+    const db = getDb();
+    ensureDailySessionSchema(db);
+    ensureCashCountSchema(db);
     next();
   } catch (err) {
     next(err);
@@ -662,6 +670,64 @@ router.post("/today/withdrawals", requirePagePermission("daily_treasury", "add")
     res.status(201).json({ success: true, data: { message: "تم تسجيل المسحوبات" } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** Cash-count check-ins: list for a date */
+router.get("/:date/cash-counts", requirePagePermission("daily_treasury", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const rows = listCashCounts(db, req.params.date);
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message });
+  }
+});
+
+/** Cash-count check-ins: add one for a date */
+router.post("/:date/cash-counts", requirePagePermission("daily_treasury", "add"), (req, res) => {
+  try {
+    const db = getDb();
+    const { amount, note } = req.body || {};
+    const row = addCashCount(db, req.params.date, amount, note, req.user?.id || 1);
+    res.status(201).json({ success: true, data: row });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message });
+  }
+});
+
+/** Cash-count check-ins: edit one */
+router.put("/cash-counts/:id", requirePagePermission("daily_treasury", "edit"), (req, res) => {
+  try {
+    const db = getDb();
+    const { amount, note } = req.body || {};
+    const row = updateCashCount(db, Number(req.params.id), amount, note, req.user?.id || 1);
+    res.json({ success: true, data: row });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message });
+  }
+});
+
+/** Cash-count check-ins: delete one */
+router.delete("/cash-counts/:id", requirePagePermission("daily_treasury", "delete"), (req, res) => {
+  try {
+    const db = getDb();
+    const out = deleteCashCount(db, Number(req.params.id));
+    res.json({ success: true, data: out });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message });
+  }
+});
+
+/** Free-form day note */
+router.put("/:date/day-note", requirePagePermission("daily_treasury", "edit"), (req, res) => {
+  try {
+    const db = getDb();
+    const { note } = req.body || {};
+    const session = setDayNote(db, req.params.date, note, req.user?.id || 1);
+    res.json({ success: true, data: session });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message });
   }
 });
 

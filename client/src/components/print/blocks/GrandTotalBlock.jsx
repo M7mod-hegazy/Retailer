@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals } from "./blockUtils";
+import { g, computeTotals, smartFormat } from "./blockUtils";
 
 export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
   const { grandTotal } = computeTotals(invoice, s);
@@ -9,22 +9,28 @@ export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 6px", background: accent, color: "#fff", borderRadius: "2px", marginTop: "3px" }}>
         <span style={{ fontWeight: 900 }}>الإجمالي</span>
-        <span style={{ fontWeight: 900 }}>{currency} {grandTotal.toFixed(2)}</span>
+        <span style={{ fontWeight: 900 }}>{currency} {smartFormat(grandTotal)}</span>
       </div>
     );
   }
-  // Roll: always the most prominent element — full-width black bar, white text.
+  const size = `${Math.max(13, Number(g(s, "body_font_size")) + 1)}px`;
   return (
     <div style={{
-      display: "flex", justifyContent: "space-between",
       background: "#000", color: "#fff",
-      padding: "5px 6px",
-      marginTop: "4px",
-      fontWeight: 900,
-      fontSize: `${Math.max(13, Number(g(s, "body_font_size")) + 1)}px`,
+      padding: "7px 5px",
+      marginTop: "6px",
     }}>
-      <span>الإجمالي</span>
-      <span>{currency} {grandTotal.toFixed(2)}</span>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        fontSize: size, fontWeight: 900,
+      }}>
+        <span>
+          <span style={{ marginLeft: "5px", fontSize: "11px" }}>✦</span>
+          الإجمالي
+          <span style={{ marginRight: "5px", fontSize: "11px" }}>✦</span>
+        </span>
+        <span style={{ fontFamily: "monospace" }}>{currency} {smartFormat(grandTotal)}</span>
+      </div>
     </div>
   );
 }

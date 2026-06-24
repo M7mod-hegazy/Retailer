@@ -137,6 +137,7 @@ export default function PrintPreviewModal({
   }, [docType, open]);
 
   const activeTemplate = template || (cfg ? cfg.defaultSize : "A4");
+  const isThermal = activeTemplate === "58mm" || activeTemplate === "80mm";
 
   // Column fitting logic
   const scoreColumn = (col) => {
@@ -233,7 +234,7 @@ export default function PrintPreviewModal({
       template: activeTemplate,
       columnWeights: Object.keys(columnWeights).length > 0 ? columnWeights : undefined,
     } : {}),
-    ...(!isReportDoc && invoicePrintKeys.length > 0 ? {
+    ...(!isReportDoc && !isThermal && invoicePrintKeys.length > 0 ? {
       invoice_print_column_keys: invoicePrintKeys,
     } : {}),
   };
@@ -254,6 +255,7 @@ export default function PrintPreviewModal({
     setViewZoom(t === "A4" ? 0.55 : t === "A5" ? 0.72 : 1);
     setPan({ x: 0, y: 0 });
     setPrintPage(1);
+    if (t === "58mm" || t === "80mm") setInvoicePrintKeys([]);
   };
 
   const handleWheel = useCallback((e) => {
@@ -501,8 +503,8 @@ export default function PrintPreviewModal({
                 </div>
               </div>
 
-              {/* Column controls for invoice docs */}
-              {!isReportDoc && docType && (
+              {/* Column controls for invoice docs (A4/A5 only — thermal has no meaningful columns) */}
+              {!isReportDoc && docType && !isThermal && (
                 <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
                   <div className="flex items-center justify-between">
                     <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأعمدة</h4>

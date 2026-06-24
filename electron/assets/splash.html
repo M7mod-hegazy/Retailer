@@ -42,6 +42,11 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
+  @keyframes pulse-error {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.6; }
+  }
+
   body {
     display: flex;
     align-items: center;
@@ -54,7 +59,6 @@
     padding: 16px;
   }
 
-  /* ── Aurora card background ── */
   .splash-container {
     position: relative;
     width: 100%;
@@ -72,12 +76,11 @@
     justify-content: center;
     overflow: hidden;
     direction: rtl;
-    box-shadow: 
+    box-shadow:
       0 20px 50px rgba(15, 23, 42, 0.12),
       0 4px 12px rgba(15, 23, 42, 0.04);
   }
 
-  /* Subtle dot-grid overlay */
   .splash-container::before {
     content: '';
     position: absolute;
@@ -89,14 +92,22 @@
     animation: blob-drift 12s ease-in-out infinite;
   }
 
+  .splash-container.error-mode {
+    background:
+      radial-gradient(ellipse 90% 70% at 5%  10%,  rgba(239, 68, 68, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 80% at 95% 95%,  rgba(239, 68, 68, 0.08) 0%, transparent 55%),
+      #fef2f2;
+  }
+
   .splash-center {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    padding: 0 24px;
   }
 
-  /* Logo and Orbit Path */
   .logo-orbit-container {
     position: relative;
     width: 120px;
@@ -104,10 +115,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
 
-  /* Soft emerald glow halo behind the icon */
   .logo-orbit-container::before {
     content: '';
     position: absolute;
@@ -144,7 +154,6 @@
     color: var(--splash-primary);
   }
 
-  /* Symmetrical Morphing Blueprint Groups */
   .blueprint-group {
     opacity: 0;
     transform: scale(0.85);
@@ -170,7 +179,6 @@
     stroke: var(--splash-primary);
   }
 
-  /* ── Typography ── */
   .splash-title {
     font-size: 20px;
     font-weight: 700;
@@ -186,7 +194,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
 
   .splash-subtitle {
@@ -211,14 +219,13 @@
     letter-spacing: 0.06em;
   }
 
-  /* ── Thin progress bar ── */
   .splash-progress-track {
     width: 150px;
     height: 2.5px;
     background: rgba(15, 23, 42, 0.07);
     border-radius: 99px;
     overflow: hidden;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .splash-progress-fill {
@@ -240,26 +247,79 @@
     font-family: 'Tajawal', sans-serif;
     letter-spacing: 0.01em;
   }
+
+  .splash-version-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    min-height: 16px;
+  }
+
+  .splash-version-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--splash-primary);
+    padding: 2px 8px;
+    border-radius: 99px;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    font-family: 'Outfit', monospace;
+  }
+
+  .splash-version-badge.visible {
+    opacity: 1;
+  }
+
+  .splash-error-box {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 14px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 10px;
+    max-width: 280px;
+    text-align: center;
+  }
+
+  .splash-error-box.visible {
+    display: block;
+    animation: fade-up 0.3s ease;
+  }
+
+  .splash-error-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #dc2626;
+    margin-bottom: 4px;
+  }
+
+  .splash-error-detail {
+    font-size: 9px;
+    font-weight: 500;
+    color: #ef4444;
+    line-height: 1.5;
+  }
 </style>
 </head>
 <body>
-  <div class="splash-container">
+  <div class="splash-container" id="splash-container">
     <div class="splash-center">
       <div class="logo-orbit-container">
         <div class="orbit-path"></div>
         <div class="orbit-dot" id="orbit-dot"></div>
-        
-        <!-- Symmetrical Central Schematic HUD -->
+
         <svg class="splash-svg-logo" viewBox="0 0 32 32" fill="none" stroke="currentColor">
-          <!-- Group 0: Files (Folder/Document) -->
           <g id="g-files" class="blueprint-group active">
             <path class="draw-path" d="M6,4 L18,4 L26,12 L26,28 L6,28 Z" stroke-width="1.2" stroke-linejoin="round"/>
             <path class="draw-path" d="M18,4 L18,12 L26,12" stroke-width="1.2" stroke-linejoin="round"/>
             <line class="draw-path" x1="11" y1="17" x2="21" y2="17" stroke-width="1.2"/>
             <line class="draw-path" x1="11" y1="22" x2="21" y2="22" stroke-width="1.2"/>
           </g>
-          
-          <!-- Group 1: Database Cylinder -->
+
           <g id="g-db" class="blueprint-group">
             <ellipse class="draw-path" cx="16" cy="8" rx="8" ry="3" stroke-width="1.2"/>
             <path class="draw-path" d="M8,8 L8,17 A8,3 0 0,0 24,17 L24,8" stroke-width="1.2"/>
@@ -267,16 +327,14 @@
             <line class="draw-path" x1="11" y1="13" x2="21" y2="13" stroke-dasharray="2 2" stroke-width="0.8"/>
             <line class="draw-path" x1="11" y1="21" x2="21" y2="21" stroke-dasharray="2 2" stroke-width="0.8"/>
           </g>
-          
-          <!-- Group 2: Security Key -->
+
           <g id="g-sec" class="blueprint-group">
             <circle class="draw-path" cx="16" cy="10" r="5" stroke-width="1.2"/>
             <line class="draw-path" x1="16" y1="15" x2="16" y2="27" stroke-width="1.2"/>
             <line class="draw-path" x1="16" y1="19" x2="21" y2="19" stroke-width="1.2"/>
             <line class="draw-path" x1="16" y1="23" x2="21" y2="23" stroke-width="1.2"/>
           </g>
-          
-          <!-- Group 3: App Grid Logo -->
+
           <g id="g-logo" class="blueprint-group">
             <rect class="draw-path" x="4" y="4" width="24" height="24" rx="4" ry="4" stroke-width="1.2"/>
             <line class="draw-path" x1="4" y1="12" x2="28" y2="12" stroke-width="1.2"/>
@@ -284,7 +342,7 @@
           </g>
         </svg>
       </div>
-      
+
       <h1 class="splash-title">الحجازي</h1>
       <div class="splash-subtitle-row">
         <span class="splash-subtitle">ELHEGAZI RETAILER</span>
@@ -292,124 +350,192 @@
         <span class="splash-percentage" id="splash-percentage">0%</span>
       </div>
 
+      <div class="splash-version-row">
+        <span class="splash-version-badge" id="splash-version-badge"></span>
+      </div>
+
       <div class="splash-progress-track">
         <div class="splash-progress-fill" id="splash-progress-fill"></div>
       </div>
 
       <div class="splash-status" id="splash-status">جاري تهيئة ملفات النظام...</div>
+
+      <div class="splash-error-box" id="splash-error-box">
+        <div class="splash-error-title" id="splash-error-title"></div>
+        <div class="splash-error-detail" id="splash-error-detail"></div>
+      </div>
     </div>
   </div>
 
   <script>
     (function() {
-      const percentTxt   = document.getElementById('splash-percentage');
-      const statusTxt    = document.getElementById('splash-status');
-      const progressFill = document.getElementById('splash-progress-fill');
+      var percentTxt   = document.getElementById('splash-percentage');
+      var statusTxt    = document.getElementById('splash-status');
+      var progressFill = document.getElementById('splash-progress-fill');
+      var versionBadge = document.getElementById('splash-version-badge');
+      var errorBox     = document.getElementById('splash-error-box');
+      var errorTitle   = document.getElementById('splash-error-title');
+      var errorDetail  = document.getElementById('splash-error-detail');
+      var container    = document.getElementById('splash-container');
 
-      const steps = [
+      var steps = [
         { target: 25,  ar: "الخطوة ٠١ // جاري تهيئة ملفات النظام...",          groupId: "g-files" },
         { target: 60,  ar: "الخطوة ٠٢ // الاتصال بقاعدة البيانات المحلية...",  groupId: "g-db"    },
         { target: 85,  ar: "الخطوة ٠٣ // التحقق من ترخيص التشغيل والأمان...", groupId: "g-sec"   },
         { target: 100, ar: "الخطوة ٠٤ // جاري تشغيل واجهة المعاملات...",       groupId: "g-logo"  }
       ];
 
-      let currentPercent = 0;
-      let currentStepIdx = 0;
-      let isPaused = false;
+      var currentPercent = 0;
+      var currentStepIdx = 0;
+      var isPaused = false;
+      var isInstallMode = false;
+      var isErrorMode = false;
+      var installTimeout = null;
 
-      // Orbit is now CSS-only (orbit-spin keyframe on .orbit-path::after)
-
-      // 2. High-performance dynamic SVG blueprint drawing engine
       function drawGroupSVG(groupId) {
-        const group = document.getElementById(groupId);
+        var group = document.getElementById(groupId);
         if (!group) return;
-        
-        const paths = group.querySelectorAll('.draw-path');
-        paths.forEach(p => {
-          // Measure or fallback — getTotalLength throws on non-rendered elements
-          let length = 80;
+
+        var paths = group.querySelectorAll('.draw-path');
+        paths.forEach(function(p) {
+          var length = 80;
           try {
             if (p.getTotalLength) length = p.getTotalLength();
           } catch (_) {
-            const tag = p.tagName.toLowerCase();
+            var tag = p.tagName.toLowerCase();
             if (tag === 'rect')    length = 96;
             else if (tag === 'ellipse') length = 38;
             else if (tag === 'circle')  length = 32;
             else if (tag === 'line')    length = 30;
           }
-          
+
           p.style.strokeDasharray = length;
           p.style.strokeDashoffset = length;
-          
-          p.getBoundingClientRect(); // force layout reflow
-          
+
+          p.getBoundingClientRect();
+
           p.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.1, 0.8, 0.2, 1)';
           p.style.strokeDashoffset = '0';
         });
       }
 
-      // Initialize first group SVG laser drawing
       drawGroupSVG('g-files');
 
       function changeStatusText(newText) {
         if (!statusTxt) return;
         statusTxt.style.opacity = 0;
-        setTimeout(() => {
+        setTimeout(function() {
           statusTxt.textContent = newText;
           statusTxt.style.opacity = 1;
         }, 200);
       }
       window.updateStatus = changeStatusText;
 
-      function switchBlueprintGroup(oldIdx, newIdx) {
-        const oldGroup = document.getElementById(steps[oldIdx].groupId);
-        const newGroup = document.getElementById(steps[newIdx].groupId);
-        
+      // Switch splash to "post-update" mode — shows install-specific message
+      // and version badge instead of the normal animation sequence.
+      window.setInstallMode = function(version) {
+        isInstallMode = true;
+        if (version && versionBadge) {
+          versionBadge.textContent = version;
+          versionBadge.classList.add('visible');
+        }
+        currentPercent = 0;
+        progressFill.style.width = '0%';
+        percentTxt.textContent = '0%';
+
+        // Switch to database blueprint to indicate schema work
+        var oldGroup = document.getElementById(steps[0].groupId);
         if (oldGroup) oldGroup.classList.remove('active');
-        
-        setTimeout(() => {
+        setTimeout(function() {
+          var dbGroup = document.getElementById('g-db');
+          if (dbGroup) {
+            dbGroup.classList.add('active');
+            drawGroupSVG('g-db');
+          }
+        }, 300);
+        currentStepIdx = 1;
+
+        // Start the animation ticking slowly
+        if (!installTimeout) {
+          installTimeout = setTimeout(function tick() {
+            if (currentPercent < 85) {
+              currentPercent += 2;
+              if (percentTxt) percentTxt.textContent = currentPercent + '%';
+              if (progressFill) progressFill.style.width = currentPercent + '%';
+              installTimeout = setTimeout(tick, 1800);
+            }
+          }, 500);
+        }
+
+        changeStatusText("جاري استكمال التثبيت وتحديث قاعدة البيانات...");
+      };
+
+      // Show error on splash — called from main.js when migration or DB fails
+      window.showSplashError = function(title, detail) {
+        isErrorMode = true;
+        container.classList.add('error-mode');
+
+        if (errorBox && errorTitle && errorDetail) {
+          errorTitle.textContent = title || 'حدث خطأ';
+          errorDetail.textContent = detail || 'تعذّر إكمال التثبيت. يرجى استخدام النسخ الاحتياطي.';
+          errorBox.classList.add('visible');
+        }
+
+        changeStatusText(title || 'حدث خطأ أثناء التثبيت');
+
+        if (percentTxt) percentTxt.textContent = '';
+        if (progressFill) progressFill.style.width = '0%';
+
+        if (installTimeout) {
+          clearTimeout(installTimeout);
+          installTimeout = null;
+        }
+      };
+
+      function switchBlueprintGroup(oldIdx, newIdx) {
+        var oldGroup = document.getElementById(steps[oldIdx].groupId);
+        var newGroup = document.getElementById(steps[newIdx].groupId);
+
+        if (oldGroup) oldGroup.classList.remove('active');
+
+        setTimeout(function() {
           if (newGroup) {
             newGroup.classList.add('active');
             drawGroupSVG(steps[newIdx].groupId);
           }
-        }, 300); // smooth crossfade scale stagger
+        }, 300);
       }
 
       function update() {
-        if (currentPercent >= 100) {
-          orbitSpeed = 0.08;
-          return;
-        }
-
+        if (isInstallMode || isErrorMode) return;
+        if (currentPercent >= 100) return;
         if (isPaused) return;
 
-        const currentStep = steps[currentStepIdx];
+        var currentStep = steps[currentStepIdx];
         if (currentPercent >= currentStep.target && currentStepIdx < steps.length - 1) {
           isPaused = true;
-          orbitSpeed = 0.01; // slow down orbit while processing milestone
 
-          const oldIdx = currentStepIdx;
+          var oldIdx = currentStepIdx;
           currentStepIdx++;
-          const nextStep = steps[currentStepIdx];
-          
-          setTimeout(() => {
+          var nextStep = steps[currentStepIdx];
+
+          setTimeout(function() {
             isPaused = false;
-            orbitSpeed = 0.045; // recover speed
             changeStatusText(nextStep.ar);
             switchBlueprintGroup(oldIdx, currentStepIdx);
             tick();
           }, 300);
-          
+
           return;
         }
 
-        const increment = Math.floor(Math.random() * 2) + 1;
+        var increment = Math.floor(Math.random() * 2) + 1;
         currentPercent = Math.min(100, currentPercent + increment);
-        
+
         if (percentTxt) percentTxt.textContent = currentPercent + '%';
         if (progressFill) progressFill.style.width = currentPercent + '%';
 
-        const tickTime = Math.floor(Math.random() * 25) + 30; // variable tick
+        var tickTime = Math.floor(Math.random() * 25) + 30;
         setTimeout(update, tickTime);
       }
 

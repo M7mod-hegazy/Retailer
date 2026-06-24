@@ -30,6 +30,11 @@ export const useUpdateStore = create((set) => ({
   downloadUrl: null,
   fileSize: null,
 
+  // Install progress state (used during the install handoff)
+  installPhase: 'idle', // 'idle' | 'closing-db' | 'installing' | 'done' | 'error'
+  installError: null,
+  installVersion: null,
+
   bannerDismissed: getStoredDismissed(),
 
   // Auto update actions
@@ -67,6 +72,15 @@ export const useUpdateStore = create((set) => ({
   setCanceled: () => set({ progress: null, downloaded: false, checking: false, phase: 'available' }),
   setPhase: (phase) => set({ phase }),
 
+  // Install progress actions
+  setInstallPhase: (phase, extra) => set((state) => ({
+    installPhase: phase,
+    ...(extra?.version ? { installVersion: extra.version } : {}),
+    ...(phase === 'done' ? { installError: null } : {}),
+  })),
+  setInstallError: (err) => set({ installPhase: 'error', installError: err }),
+  clearInstallState: () => set({ installPhase: 'idle', installError: null, installVersion: null }),
+
   // Manual download actions
   setManualInfo: (d) => set({ manualAvailable: true, downloadUrl: d.downloadUrl, fileSize: d.fileSize }),
   setManualProgress: (p) => set({ manualProgress: p, manualDownloading: true, manualError: null }),
@@ -88,5 +102,6 @@ export const useUpdateStore = create((set) => ({
     error: null, checking: false, phase: 'idle', lastCheckedAt: null,
     manualAvailable: false, manualDownloading: false, manualProgress: null,
     manualFilePath: null, manualError: null, downloadUrl: null, fileSize: null,
+    installPhase: 'idle', installError: null, installVersion: null,
   }),
 }))

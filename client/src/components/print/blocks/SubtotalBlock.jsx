@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
+import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
 
 export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
   if (g(s, "show_subtotal") === false) return null;
@@ -9,7 +9,7 @@ export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>الإجمالي الفرعي</span>
-        <span style={{ fontWeight: 700 }}>{currency} {subtotal.toFixed(2)}</span>
+        <span style={{ fontWeight: 700 }}>{currency} {smartFormat(subtotal)}</span>
       </div>
     );
   }
@@ -18,7 +18,7 @@ export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
   if (Math.abs(subtotal - grandTotal) < 0.01) return null;
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>الإجمالي:</span><span style={HEAVY_VAL}>{currency} {subtotal.toFixed(2)}</span>
+      <span style={{ fontWeight: 700 }}>الإجمالي:</span><span style={HEAVY_VAL}>{currency} {smartFormat(subtotal)}</span>
     </div>
   );
 }

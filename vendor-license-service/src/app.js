@@ -15,6 +15,9 @@ const {
   setLicenseStatus,
   updateLicense,
 } = require("./licenseVendorService");
+const { defaultProvider } = require("./aiProvider");
+const { bucketFromReq, consume } = require("./aiUsage");
+const { registerCommsRoutes } = require("./commsRoutes");
 
 const OWNER_EMAIL = String(process.env.OWNER_EMAIL || "m7mod");
 const OWNER_PASSWORD = String(process.env.OWNER_PASSWORD || "275757");
@@ -62,8 +65,12 @@ function verifyOwnerToken(token) {
 }
 
 function authOwner(req, _res, next) {
+  // Accept a bearer token (used by the desktop app cross-origin, where the
+  // SameSite=Strict cookie can't be sent) OR the dashboard's owner cookie.
+  const header = String(req.headers.authorization || "");
+  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   const cookies = parseCookies(req);
-  const token = cookies.owner_session;
+  const token = bearer || cookies.owner_session;
   if (!verifyOwnerToken(token)) {
     const err = new Error("Owner authentication required");
     err.status = 401;
@@ -101,7 +108,7 @@ function createVendorApp() {
         "Set-Cookie",
         `owner_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${OWNER_SESSION_TTL_HOURS * 60 * 60}${secure ? "; Secure" : ""}`,
       );
-      res.json({ success: true, data: { owner: OWNER_EMAIL } });
+      res.json({ success: true, data: { owner: OWNER_EMAIL, token } });
     } catch (error) {
       next(error);
     }
@@ -641,6 +648,31 @@ function createVendorApp() {
     }
   });
 
+  // Optional, provider-agnostic help-assistant fallback. Inert until an AI
+  // provider is configured via env (see aiProvider.js). Store-side auth.
+  app.post("/ai/help", authApp, async (req, res, next) => {
+    try {
+      if (!defaultProvider.isConfigured()) {
+        return res.status(503).json({ success: false, code: "ai_unavailable", message: "AI fallback not configured" });
+      }
+      const question = String(req.body?.question || "").trim();
+      if (!question) {
+        const err = new Error("question is required");
+        err.status = 400;
+        throw err;
+      }
+      const bucket = bucketFromReq(req);
+      const quota = consume(bucket);
+      if (!quota.allowed) {
+        return res.status(429).json({ success: false, code: "ai_daily_limit", message: "Daily AI limit reached", data: quota });
+      }
+      const result = await defaultProvider.ask(question, req.body?.context);
+      res.json({ success: true, data: { ...result, usage: quota } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/activations", authApp, (req, res, next) => {
     try {
       const data = activateLicense(req.body?.signed_license, req.body?.device_id, "app");
@@ -667,6 +699,9 @@ function createVendorApp() {
       next(error);
     }
   });
+
+  // Phase 2 dev↔store communication routes (store via authApp, dev via authOwner).
+  registerCommsRoutes(app, { authApp, authOwner, verifyOwnerToken });
 
   app.use((err, _req, res, _next) => {
     res.status(err.status || 500).json({

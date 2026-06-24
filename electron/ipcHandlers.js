@@ -8,6 +8,7 @@ const { createModalWindow, getModalState, closeChildWindows } = require("./modal
 const { firstWritableDir } = require("../server/src/config/paths");
 const { resolveLogDir, getLogPath } = require("./crashLogger");
 const { runStartupDiagnostics, readReport } = require("./startupDiagnostics");
+const { getInstallStatus, clearInstallStatus } = require("./installProgress");
 
 
 function safeDbPath() {
@@ -260,16 +261,24 @@ function setupIpc(window) {
         deviceName: deviceName || undefined,
         copies: Math.max(1, Number(copies) || 1),
         margins: { marginType: "none" },
+        headerFooter: { header: "", footer: "" },
       };
       // Thermal rolls: explicit width + measured height (auto-height paper).
       // A4/A5: a named size Electron understands. If the height couldn't be
-      // measured we leave pageSize unset so the driver's own default applies,
-      // rather than forcing a tiny page that would clip the receipt.
-      if (rollWidthMm && contentHeightPx > 0) {
-        printOptions.pageSize = {
-          width: rollWidthMm * MM,
-          height: Math.ceil(contentHeightPx * PX),
-        };
+      // measured we fall back to ~300mm continuous roll so the content doesn't
+      // get clipped on a tiny default page.
+      if (rollWidthMm) {
+        if (contentHeightPx > 0) {
+          printOptions.pageSize = {
+            width: rollWidthMm * MM,
+            height: Math.ceil(contentHeightPx * PX),
+          };
+        } else {
+          printOptions.pageSize = {
+            width: rollWidthMm * MM,
+            height: 300 * MM,
+          };
+        }
       } else if (/^148mm/.test(pageSizeStr)) {
         printOptions.pageSize = "A5";
       } else if (!rollWidthMm && pageSizeStr) {
@@ -477,6 +486,16 @@ function setupIpc(window) {
     const version = String(payload.version || "").trim();
     if (!version) return { success: false, error: "no_version" };
     updater.downloadVersion(version);
+    return { success: true };
+  });
+
+  // ─── Install progress status (used by renderer to show post-update state) ─
+  ipcMain.handle("install:status", () => {
+    return getInstallStatus() || { status: "idle" };
+  });
+
+  ipcMain.handle("install:clear", () => {
+    clearInstallStatus();
     return { success: true };
   });
 

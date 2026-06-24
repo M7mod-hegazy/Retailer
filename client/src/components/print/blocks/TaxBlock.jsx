@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals, HEAVY_VAL } from "./blockUtils";
+import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
 
 export default function TaxBlock({ invoice = {}, settings: s, family }) {
   if (g(s, "show_tax") === false) return null;
@@ -13,13 +13,13 @@ export default function TaxBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>الضريبة ({taxRate}%{inclusive ? " شاملة" : ""})</span>
-        <span style={{ fontWeight: 700 }}>{currency} {taxAmount.toFixed(2)}</span>
+        <span style={{ fontWeight: 700 }}>{currency} {smartFormat(taxAmount)}</span>
       </div>
     );
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>ضريبة ({taxRate}%{inclusive ? " شاملة" : ""}):</span><span style={HEAVY_VAL}>{currency} {taxAmount.toFixed(2)}</span>
+      <span style={{ fontWeight: 700 }}>ضريبة ({taxRate}%{inclusive ? " شاملة" : ""}):</span><span style={HEAVY_VAL}>{currency} {smartFormat(taxAmount)}</span>
     </div>
   );
 }

@@ -493,7 +493,8 @@ export default function StockLevelsPage() {
       {/* Header & Stats Strip */}
       <div className="flex flex-wrap items-center justify-between gap-4">
          <div className="flex flex-col gap-1">
-            <h1 className="text-[24px] font-black text-slate-900 flex items-center gap-2">
+             <h1 data-help="st-form-header"
+               className="text-[24px] font-black text-slate-900 flex items-center gap-2">
                <Warehouse className="h-6 w-6 text-slate-800" />
                أرصدة وحركات المخزون
             </h1>
@@ -752,8 +753,9 @@ export default function StockLevelsPage() {
             <div className="flex flex-wrap items-end gap-x-6 gap-y-4 px-6 py-4 border-b border-slate-200 bg-white">
               <div className="w-52 space-y-1.5 relative group">
                 <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">من مخزن (المصدر)</span>
-                <select ref={txFromRef} value={fromWH} onChange={(e) => { setFromWH(e.target.value); setToWH(""); }}
-                  className="w-full appearance-none rounded-sm border border-slate-200 bg-slate-50/50 py-2 pl-8 pr-3 text-sm font-black text-slate-800 outline-none focus:border-slate-800 focus:bg-white shadow-sm transition-colors" onKeyDown={e => handleKeyDown(e, { nextRef: txToRef })}>
+                 <select ref={txFromRef} data-help="st-form-source"
+                   value={fromWH} onChange={(e) => { setFromWH(e.target.value); setToWH(""); }}
+                   className="w-full appearance-none rounded-sm border border-slate-200 bg-slate-50/50 py-2 pl-8 pr-3 text-sm font-black text-slate-800 outline-none focus:border-slate-800 focus:bg-white shadow-sm transition-colors" onKeyDown={e => handleKeyDown(e, { nextRef: txToRef })}>
                   <option value="">اختر المخزن المصدر...</option>
                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
@@ -761,8 +763,9 @@ export default function StockLevelsPage() {
               </div>
               <div className="w-52 space-y-1.5 relative group">
                 <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">إلى مخزن (الوجهة)</span>
-                <select ref={txToRef} value={toWH} onChange={(e) => setToWH(e.target.value)}
-                  className={`w-full appearance-none rounded-sm border py-2 pl-8 pr-3 text-sm font-black outline-none transition-colors shadow-sm
+                 <select ref={txToRef} data-help="st-form-destination"
+                   value={toWH} onChange={(e) => setToWH(e.target.value)}
+                   className={`w-full appearance-none rounded-sm border py-2 pl-8 pr-3 text-sm font-black outline-none transition-colors shadow-sm
                     ${fromWH && !toWH ? "border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-600 focus:bg-white" : "border-slate-200 bg-slate-50/50 text-slate-800 focus:border-slate-800 focus:bg-white"}`} onKeyDown={e => handleKeyDown(e, { nextRef: txNotesRef, prevRef: txFromRef })}>
                   <option value="">اختر المخزن الوجهة...</option>
                   {warehouses.filter(w => String(w.id) !== String(fromWH)).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -772,8 +775,9 @@ export default function StockLevelsPage() {
               </div>
               <div className="flex-1 min-w-[200px] space-y-1.5">
                 <span className="text-[11px] font-black tracking-widest uppercase text-slate-500">ملاحظات (اختياري)</span>
-                <input ref={txNotesRef} type="text" value={txNotes} onChange={(e) => setTxNotes(e.target.value)} placeholder="سبب التحويل أو رقم الإذن..."
-                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: txSubmitRef, prevRef: txToRef })} />
+                 <input ref={txNotesRef} data-help="st-form-notes"
+                   type="text" value={txNotes} onChange={(e) => setTxNotes(e.target.value)} placeholder="سبب التحويل أو رقم الإذن..."
+                   className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" onKeyDown={e => handleKeyDown(e, { nextRef: txSubmitRef, prevRef: txToRef })} />
               </div>
             </div>
 
@@ -825,9 +829,10 @@ export default function StockLevelsPage() {
                 <div className="flex items-center justify-between px-6 py-3 bg-slate-50/70 border-b border-slate-200">
                   <div className="relative w-72 group">
                     <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                    <input type="text" value={txSearch} onChange={(e) => setTxSearch(e.target.value)}
-                      placeholder="ابحث بالاسم أو الكود أو الباركود..."
-                      className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-3 pr-9 text-2sm font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
+                     <input data-help="st-form-search"
+                       type="text" value={txSearch} onChange={(e) => setTxSearch(e.target.value)}
+                       placeholder="ابحث بالاسم أو الكود أو الباركود..."
+                       className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-3 pr-9 text-2sm font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-2sm font-black text-slate-500 uppercase tracking-widest">{filteredTxItems.length} صنف متاح</span>
@@ -841,7 +846,8 @@ export default function StockLevelsPage() {
                 </div>
 
                 {/* Table */}
-                <div className="border border-slate-200 rounded-sm scrollbar-thin" style={{ maxHeight: '55vh', overflow: 'auto' }}>
+                 <div data-help="st-form-items"
+                   className="border border-slate-200 rounded-sm scrollbar-thin" style={{ maxHeight: '55vh', overflow: 'auto' }}>
                   <div className="pb-4">
                   <table className="w-full text-sm border-collapse min-w-max">
                     {/* Grouped Header Row */}
@@ -880,7 +886,8 @@ export default function StockLevelsPage() {
                         <th className="w-[220px] py-2 text-right px-3 text-[11px] font-black border-l border-slate-100">الصنف</th>
                         <th className="py-2 text-center text-[11px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[90px]">قبل</th>
                         <th className="py-2 text-center text-[11px] font-black text-blue-600 border-l border-slate-100 bg-blue-50/30 w-[80px]">بعد</th>
-                        <th className="py-2 text-center text-[11px] font-black text-amber-700 border-l border-slate-100 bg-amber-50/30 w-[130px]">الكمية</th>
+                         <th data-help="st-form-qty"
+                           className="py-2 text-center text-[11px] font-black text-amber-700 border-l border-slate-100 bg-amber-50/30 w-[130px]">الكمية</th>
                         <th className="py-2 text-center text-[11px] font-black text-emerald-600 border-l border-slate-100 bg-emerald-50/30 w-[80px]">قبل</th>
                         <th className="py-2 text-center text-[11px] font-black text-emerald-600 bg-emerald-50/30 w-[80px]">بعد</th>
                       </tr>
@@ -1045,8 +1052,9 @@ export default function StockLevelsPage() {
                     </button>
                   </div>
                   <PermissionGate page="stock" action="transfer">
-                    <button ref={txSubmitRef} onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
-                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-sm shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
+                     <button ref={txSubmitRef} data-help="st-form-submit"
+                       onClick={handleTransferSubmit} disabled={txSubmitting || !canTransfer}
+                       className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-sm font-black text-sm shadow-sm disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors">
                       <CheckCircle2 className="h-4 w-4" />
                       {txSubmitting ? "جاري التحويل..." : "تنفيذ التحويل"}
                     </button>

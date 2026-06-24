@@ -28,6 +28,11 @@ asar: true
 asarUnpack:
   - "**/*.node"
 
+# Hard gate: fail the build if a packed better_sqlite3.node does not match the
+# architecture being built. This is the guard that prevents shipping a 32-bit
+# installer with a 64-bit DB driver (the "database corrupted" crash on old PCs).
+afterPack: electron/scripts/afterpack-verify.js
+
 win:
   icon: electron/assets/icon.ico
   target:
@@ -68,4 +73,10 @@ nsis:
 # Use prebuilt native binaries (better-sqlite3) instead of compiling from source.
 # Compiling would require Visual Studio Build Tools; prebuilds exist for both x64 and ia32.
 buildDependenciesFromSource: false
-npmRebuild: true
+# Native binaries are swapped + verified PER ARCH by electron/scripts/build-dist.js
+# before each electron-builder run. Letting electron-builder rebuild here would
+# (a) be a redundant compile and (b) historically left BOTH arches with the same
+# (x64) binary — the bug that shipped a 64-bit DB driver in the 32-bit installer.
+# Always build via `npm run dist` / `npm run release` (which call build-dist.js),
+# never `electron-builder --win` directly for a multi-arch run.
+npmRebuild: false

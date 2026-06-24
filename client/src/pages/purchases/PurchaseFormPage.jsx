@@ -870,7 +870,8 @@ export default function PurchaseFormPage() {
                 <TrendingUp className="h-4 w-4" />
               </button>
             )}
-            <DocumentActionButton variant="today" icon={Receipt} onClick={() => setTodayPurchOpen(true)} title="مشتريات اليوم" className="!px-0 w-9 justify-center" />
+            <DocumentActionButton variant="today" icon={Receipt} onClick={() => setTodayPurchOpen(true)} title="مشتريات اليوم" className="!px-0 w-9 justify-center"
+              data-help="purchases-today-btn" />
             <PermissionGate page="purchases" action="delete">
               <DocumentActionButton variant="delete" icon={Trash2} onClick={() => setDeleteConfirmOpen(true)}>
                 {isEditMode ? "حذف" : "مسح"}
@@ -984,7 +985,8 @@ export default function PurchaseFormPage() {
                         stagingLocks.purchase
                           ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
                           : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}>
+                      }`}
+                      data-help="purchases-cost-toggle">
                       {stagingLocks.purchase ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
                       {stagingLocks.purchase ? "يحدّث" : "للفاتورة"}
                     </button>
@@ -1835,7 +1837,7 @@ export default function PurchaseFormPage() {
 
           {/* Bottom Action Buttons */}
           {!isLocked && (
-            <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm flex flex-col gap-2">
+            <div data-help="purchases-save-area" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm flex flex-col gap-2">
               <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
                 <button onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
                   className="w-full flex items-center justify-center gap-2 rounded-sm bg-[var(--primary)] px-3 py-3 text-sm font-black text-white hover:bg-[var(--primary-600)] transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
