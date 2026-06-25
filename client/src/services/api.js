@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "../stores/authStore";
 import { getApiBaseUrl, getApiBaseUrlSync, resetApiBaseUrl } from "./apiBase";
 import { reportClientDiag } from "./diag";
+import { classifyConnectionError, buildErrorReport } from "./connection";
 
 const api = axios.create({
   baseURL: getApiBaseUrlSync(),
@@ -45,17 +46,22 @@ api.interceptors.request.use((config) => {
 // failures and (b) require two consecutive connection failures before showing the
 // overlay. A single transient blip no longer triggers it.
 
-function classifyError(error) {
-  if (error?.response) return "http"; // server answered (4xx/5xx) — it is up
-  const code = error?.code || "";
-  if (code === "ECONNABORTED" || code === "ETIMEDOUT" || /timeout/i.test(error?.message || "")) {
-    return "timeout"; // request aborted by our own timeout — server is busy, not down
-  }
-  return "disconnect"; // ERR_NETWORK / ECONNREFUSED / ECONNRESET / ENOTFOUND ...
-}
+// classifyError lives in ./connection now so api.js, the POS banner and the settings
+// page all share one definition. Re-exposed here under the old name for readability.
+const classifyError = classifyConnectionError;
 
 let consecutiveDisconnects = 0;
 let overlayDispatched = false;
+
+// Last connection-level failure, kept so any "نسخ تفاصيل الخطأ" (copy error details)
+// button — including the global disconnect overlay — can report the real cause even when
+// it did not catch the error itself. Updated on every disconnect/timeout.
+let lastConnectionError = null;
+export function getLastConnectionErrorReport() {
+  return lastConnectionError
+    ? buildErrorReport(lastConnectionError, { context: "global" })
+    : null;
+}
 
 api.interceptors.response.use(
   (response) => {
@@ -67,6 +73,10 @@ api.interceptors.response.use(
   (error) => {
     const kind = classifyError(error);
     const reqUrl = String(error?.config?.url || "");
+
+    if (kind === "disconnect" || kind === "timeout") {
+      lastConnectionError = error; // remember the real cause for the copy-details button
+    }
 
     if (kind === "disconnect") {
       consecutiveDisconnects += 1;

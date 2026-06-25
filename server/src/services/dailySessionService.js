@@ -700,6 +700,7 @@ module.exports = {
   ensureCashCountSchema,
   ensureSessionForDate,
   getSession,
+  liveOpeningBalance,
   localDate,
   normalizeDate,
   listCashCounts,

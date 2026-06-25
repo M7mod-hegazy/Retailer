@@ -7,6 +7,7 @@ import {
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
+import CategorySearchField from "../../components/ui/CategorySearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
@@ -246,7 +247,9 @@ export default function SalesReturnFormPage() {
   const [stagingUnitId, setStagingUnitId] = useState("");
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-
+  const [listCategoryFilter, setListCategoryFilter] = useState(null);
+  const [listCategoryQuery, setListCategoryQuery] = useState("");
+  const [categories, setCategories] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [units, setUnits] = useState([]);
   const [stockLevels, setStockLevels] = useState({});
@@ -538,7 +541,9 @@ export default function SalesReturnFormPage() {
     if (!itemQuery.trim() || stagingItem) { setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); itemSearchActiveRef.current = false; return; }
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(itemQuery)}&limit=${ITEM_PAGE}&offset=0`)
+      const params = { search: itemQuery, limit: ITEM_PAGE, offset: 0 };
+      if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+      api.get("/api/items", { params })
         .then(r => {
           const rows = r.data.data || [];
           setItemResults(rows);
@@ -557,11 +562,15 @@ export default function SalesReturnFormPage() {
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
-  }, [itemQuery, stagingItem]);
+  }, [itemQuery, stagingItem, listCategoryFilter]);
 
   useEffect(() => {
     if (itemQuery) setAllItemsMode(false);
   }, [itemQuery]);
+
+  useEffect(() => {
+    api.get("/api/categories").then(r => setCategories(r.data?.data || [])).catch(() => {});
+  }, []);
 
   function loadMoreItems() {
     if (!itemHasMore || isLoadingMoreItems) return;
@@ -569,7 +578,9 @@ export default function SalesReturnFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+    api.get("/api/items", { params })
       .then(r => {
         const rows = r.data.data || [];
         setItemResults(prev => [...prev, ...rows]);
@@ -589,6 +600,18 @@ export default function SalesReturnFormPage() {
     setItemOffset(0);
     setItemHasMore(true);
     setIsLoadingMoreItems(true);
+
+    if (listCategoryFilter?.id) {
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+        .then(r => {
+          const rows = (r.data.data || []).map(fmt);
+          setItemResults(sortByProximity(rows, anchor));
+          setItemOffset(rows.length);
+          setItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === SHOW_ALL_LIMIT));
+        }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+      return;
+    }
+
     const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
     const catCall = anchor?.category_id
       ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
@@ -649,6 +672,10 @@ export default function SalesReturnFormPage() {
     setItemResults([]);
     setLookupOpen(false);
     setActiveIndex(-1);
+    const cat = categories.find(c => c.id === item.category_id) || categories.find(c => c.name === item.category_name) || null;
+    const skuPrefix = cat?.sku_prefix ?? item?.sku_prefix ?? null;
+    setListCategoryFilter(cat ? { id: cat.id, name: cat.name, sku_prefix: skuPrefix } : null);
+    setListCategoryQuery("");
     setTimeout(() => stagingWHRef.current?.focus(), 30);
   }
 
@@ -700,6 +727,7 @@ export default function SalesReturnFormPage() {
       }];
     });
     setStagingItem(null); setStagingQty("1"); setStagingPrice(""); setStagingPurchasePrice("");
+    setListCategoryFilter(null); setListCategoryQuery("");
     setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); setActiveIndex(-1);
     setTimeout(() => itemInputRef.current?.focus(), 30);
   }
@@ -728,7 +756,7 @@ export default function SalesReturnFormPage() {
     setMode(null); setCart([]); setInvoiceLines([]); setLoadedInvoice(null);
     setCustomer(null); setCustomerLockedFromInvoice(false); setReason("other"); setReasonOther("");
     setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setStagingItem(null); setStagingQty("1");
-    setStagingPrice(""); setStagingPurchasePrice(""); setInvoicePickerOpen(false); resetActivation();
+    setStagingPrice(""); setStagingPurchasePrice(""); setListCategoryFilter(null); setListCategoryQuery(""); setInvoicePickerOpen(false); resetActivation();
     setHeaderDiscount(0); setHeaderIncrease(0); setAdjustmentTouched(false); setSupervisorOverride(false);
   }
 
@@ -1014,7 +1042,7 @@ export default function SalesReturnFormPage() {
       />
 
       <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
-        <aside className={`shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
+        <aside className={`shrink-0 flex flex-col border-l border-slate-200 bg-white overflow-y-auto ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
           <div className="flex flex-col gap-5 p-5">
             <button onClick={handleTodayInvoicesClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-600 transition-all shadow-sm active:scale-[0.98]">
               <Clock className="h-4 w-4" /> فواتير المبيعات
@@ -1428,12 +1456,30 @@ export default function SalesReturnFormPage() {
           {mode === "direct" && (
             <div className="flex flex-1 flex-col gap-4 overflow-hidden">
               {!isLocked && (
-                <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
+                <div className="rounded-2xl border p-3 shadow-sm shrink-0" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
                   <div className="entry-bar">
                     <EntryItemThumb item={stagingItem} />
                     {/* Item search */}
                     <div className="entry-field entry-field--item">
                       <label className="entry-label">الصنف</label>
+                      <CategorySearchField
+                        categories={categories}
+                        value={listCategoryFilter}
+                        query={listCategoryQuery}
+                        onQueryChange={setListCategoryQuery}
+                        onChange={(cat) => {
+                          setListCategoryFilter(cat);
+                          setListCategoryQuery("");
+                          setStagingItem(null);
+                          setItemQuery("");
+                        }}
+                        onPickDone={(catId) => {
+                          setTimeout(() => {
+                            itemInputRef.current?.focus();
+                            showAllItems();
+                          }, 50);
+                        }}
+                      />
                       <ProductSearchField
                         ref={itemInputRef}
                               onNavigateNext={() => { stagingQtyRef.current?.focus(); stagingQtyRef.current?.select?.(); }}
@@ -1444,6 +1490,7 @@ export default function SalesReturnFormPage() {
                         onEnterNoResults={() => { if (itemSearchActiveRef.current) pendingPickRef.current = true; }}
                         onClear={() => { setStagingItem(null); setStagingPrice(""); setStagingPurchasePrice(""); setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setTimeout(() => itemInputRef.current?.focus(), 30); }}
                         selectedItem={stagingItem}
+                        showChip={false}
                         placeholder="ابحث عن صنف بالاسم أو الكود..."
                         onLoadMore={loadMoreItems}
                         hasMore={itemHasMore}
@@ -1549,7 +1596,8 @@ export default function SalesReturnFormPage() {
                     <span className="text-2sm font-bold text-slate-500">الأصناف ({cart.length})</span>
                     <ShortcutKbd id="grid.editLast" />
                   </div>
-                  <div ref={gridNavRef} className="flex-1 overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <div className="rounded-2xl border p-2 shadow-sm flex flex-1 flex-col overflow-hidden" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
+                  <div ref={gridNavRef} className="flex-1 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                     <table className="w-full text-right">
                     <thead className="border-b-2 border-slate-300 bg-slate-50 sticky top-0">
                       <tr className="[&>*+*]:border-r [&>*+*]:border-slate-200">
@@ -1666,6 +1714,7 @@ export default function SalesReturnFormPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
                 </div>
               ) : (

@@ -86,6 +86,17 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
   const { handleDetach } = useDetach("advanced-search", {
     onClose,
     getState: () => ({ search, categoryFilter, warehouseFilter, priceMin, priceMax, qtyMin, qtyMax, hideZero }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
     actions: {},
   });
 

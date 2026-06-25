@@ -109,7 +109,7 @@ export default function PosStickyTotalBar({
   // ─── Empty state: no products yet ───
   if (!itemCount) {
     return (
-      <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]">
+      <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] border-t shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
         <div className="flex items-center gap-2 px-3 py-1.5">
           {/* Customer search */}
           <div ref={searchRef} className="relative shrink-0">
@@ -217,11 +217,11 @@ export default function PosStickyTotalBar({
       : "الرصيد بعد الفاتورة";
 
   return (
-    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]">
+    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] border-t shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
       <div className="flex flex-col">
 
         {/* ═══════════════ Row 1: Customer + Summary + Discount/Increase ═══════════════ */}
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 border-b border-zinc-100 bg-white">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 border-b border-zinc-100">
 
           {/* ─── Customer search (moved up) ─── */}
           <div ref={searchRef} className="relative shrink-0">
@@ -381,7 +381,7 @@ export default function PosStickyTotalBar({
         </div>
 
         {/* ═══════════════ Rows 2+3: Payment buttons + inputs (single wrapping row) ═══════════════ */}
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 border-b border-zinc-100">
           <div className="flex items-center gap-0.5 shrink-0">
             {paymentTypes.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon: _Icon }) => {
               const isDisabled = isPaymentDisabled(type);
@@ -523,7 +523,7 @@ export default function PosStickyTotalBar({
         </div>
 
         {/* ═══════════════ Row 3: Actions ═══════════════ */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-1 bg-white">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           {heldInvoices.length > 0 && onHeldToggle && (
             <div className="relative shrink-0">
               <button type="button" onClick={onHeldToggle}

@@ -30,9 +30,9 @@ import POSTodayModal from "../../components/pos/POSTodayModal";
 import InvoicePreviewModal from "../../components/pos/InvoicePreviewModal";
 import TodayPurchasesModal, { PurchasePreviewModal } from "../../components/purchases/TodayPurchasesModal";
 import PurchasePickerTodayModal from "../../components/purchases/PurchasePickerTodayModal";
-import PurchaseReturnTodayModal from "../../components/purchases/PurchaseReturnTodayModal";
+import PurchaseReturnTodayModal, { ReturnPreviewModal as PurchaseReturnPreviewModal } from "../../components/purchases/PurchaseReturnTodayModal";
 import InvoicePickerTodayModal from "../../components/sales/InvoicePickerTodayModal";
-import SalesReturnTodayModal from "../../components/sales/SalesReturnTodayModal";
+import SalesReturnTodayModal, { ReturnPreviewModal as SalesReturnPreviewModal } from "../../components/sales/SalesReturnTodayModal";
 import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
 import ShiftOpenModal from "../../pages/pos/ShiftOpenModal";
@@ -425,6 +425,18 @@ registerModal(
 // ── purchase-return-today ──────────────────────────────────────────────────
 registerModal("purchase-return-today", PurchaseReturnTodayModal);
 
+// ── purchase-return-preview ────────────────────────────────────────────────
+registerModal(
+  "purchase-return-preview",
+  PurchaseReturnPreviewModal,
+  undefined,
+  (state) => ({
+    ret: state.ret,
+    onClose: () => window.electronAPI?.closeModalWindow?.(),
+    onNavigate: (path) => window.electronAPI?.navigateParent?.(path),
+  }),
+);
+
 // ── invoice-picker-today ───────────────────────────────────────────────────
 registerModal(
   "invoice-picker-today",
@@ -441,6 +453,18 @@ registerModal(
 
 // ── sales-return-today ─────────────────────────────────────────────────────
 registerModal("sales-return-today", SalesReturnTodayModal);
+
+// ── sales-return-preview ───────────────────────────────────────────────────
+registerModal(
+  "sales-return-preview",
+  SalesReturnPreviewModal,
+  undefined,
+  (state) => ({
+    ret: state.ret,
+    onClose: () => window.electronAPI?.closeModalWindow?.(),
+    onNavigate: (path) => window.electronAPI?.navigateParent?.(path),
+  }),
+);
 
 // ── branch-transfer-today ──────────────────────────────────────────────────
 registerModal("branch-transfer-today", BranchTransferTodayModal);

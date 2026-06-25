@@ -156,6 +156,13 @@ function initDb() {
     db.exec("ALTER TABLE customers ADD COLUMN phone TEXT");
   }
 
+  const hasActiveCol = db
+    .prepare("SELECT COUNT(1) as total FROM pragma_table_info('announcements') WHERE name = 'active'")
+    .get()?.total;
+  if (!Number(hasActiveCol)) {
+    db.exec("ALTER TABLE announcements ADD COLUMN active INTEGER NOT NULL DEFAULT 1");
+  }
+
   dbInstance = db;
   return dbInstance;
 }

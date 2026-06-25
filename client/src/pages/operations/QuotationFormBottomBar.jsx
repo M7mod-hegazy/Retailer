@@ -69,13 +69,12 @@ export default function QuotationFormBottomBar({
     ["credit", "installments", "bank_transfer"].includes(type) && !hasCustomer;
 
   return (
-    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]">
+    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]" style={{ backgroundColor: "var(--primary-100)" }}>
       <div className="flex flex-col">
-        {/* Row 1: Customer + counts + subtotal */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 border-b border-zinc-100 bg-white">
-          {/* Customer search */}
-          <div ref={searchRef} className="relative shrink-0">
-            <div className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+        {/* Row 1: Customer + Increase/Decrease + Tax + Total */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 border-b border-zinc-100" style={{ backgroundColor: "var(--primary-200)" }}>
+          <div ref={searchRef} className="relative shrink-0 z-[70]">
+            <div className="flex items-center gap-0.5 rounded-lg bg-white/80 border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -100,42 +99,27 @@ export default function QuotationFormBottomBar({
               )}
             </div>
             {showCustomerList && filteredCustomers.length > 0 && (
-              <div className="absolute right-0 bottom-full mb-1 z-[70] min-w-[220px]">
+              <div className="absolute right-0 bottom-full mb-1 z-50 min-w-[220px]">
                 <SearchDropdown
                   items={filteredCustomers}
                   onPick={(c) => { onCustomerPick?.(c); onShowCustomerListChange?.(false); }}
                   activeIndex={0}
                   query={customerQuery || ""}
                   emptyLabel="لم يتم العثور على عميل"
+                  dropUp
                 />
               </div>
             )}
           </div>
 
-          <span className="h-5 w-px bg-zinc-200 shrink-0" />
-
-          <div className="flex items-center gap-1 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100">
+          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
             <ShoppingCart className="h-3 w-3 text-zinc-400" />
             <span className="text-2sm font-black text-zinc-800">{itemCount}</span>
             <span className="text-[10px] font-bold text-zinc-500">أصناف</span>
           </div>
-          {quantityCount > 0 && (
-            <div className="flex items-center gap-1 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100">
-              <span className="text-2sm font-black text-zinc-800">{quantityCount}</span>
-              <span className="text-[10px] font-bold text-zinc-500">كمية</span>
-            </div>
-          )}
 
           <span className="h-5 w-px bg-zinc-200 shrink-0" />
 
-          <div className="flex items-baseline gap-1">
-            <span className="text-2sm font-bold text-zinc-400">الفرعي</span>
-            <span className="font-mono text-sm font-black text-zinc-600">{formatMoney(totals.subtotal)}</span>
-          </div>
-        </div>
-
-        {/* Row 2: Increase/Decrease + Tax + Total */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
           <label className="flex items-center gap-1 shrink-0 bg-blue-50/50 rounded-lg px-1.5 py-0.5 border border-blue-100/50">
             <input type="number" min="0"
               value={increaseMode === 'pct' && totals.subtotal > 0
@@ -205,69 +189,70 @@ export default function QuotationFormBottomBar({
           </div>
         </div>
 
-        {/* Row 3: Payment method pills */}
-        <div className="flex flex-wrap items-center gap-x-0.5 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
-          {PAYMENT_TYPES.map(({ value, label, Icon: _Icon }) => {
-            const isDisabled = isPaymentDisabled(value);
-            const isActive = paymentType === value;
-            const c = COLOR_MAP[value] || COLOR_MAP.cash;
-            return (
-              <button key={value} type="button"
-                onClick={() => !isDisabled && onPaymentChange?.(value)}
-                disabled={isDisabled}
-                title={isDisabled ? "متاح للعملاء المسجلين فقط" : label}
-                className={`rounded-lg border px-1 py-0.5 text-[10px] font-bold transition-all shrink-0
-                  ${isActive
-                    ? `${c.activeBg} text-white border-transparent shadow-sm`
-                    : isDisabled
-                      ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
-                      : `${c.bg} ${c.text} ${c.border} hover:shadow-sm bg-white`
-                  }`}>
-                <span className="whitespace-nowrap">{label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Row 2: Payment pills + sub-forms */}
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 border-b border-zinc-100" style={{ backgroundColor: "var(--primary-200)" }}>
+          <div className="flex items-center gap-0.5 shrink-0">
+            {PAYMENT_TYPES.map(({ value, label, Icon: _Icon }) => {
+              const isDisabled = isPaymentDisabled(value);
+              const isActive = paymentType === value;
+              const c = COLOR_MAP[value] || COLOR_MAP.cash;
+              return (
+                <button key={value} type="button"
+                  onClick={() => !isDisabled && onPaymentChange?.(value)}
+                  disabled={isDisabled}
+                  title={isDisabled ? "متاح للعملاء المسجلين فقط" : label}
+                  className={`rounded-lg border px-1 py-0.5 text-[10px] font-bold transition-all shrink-0
+                    ${isActive
+                      ? `${c.activeBg} text-white border-transparent shadow-sm`
+                      : isDisabled
+                        ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
+                        : `${c.bg} ${c.text} ${c.border} hover:shadow-sm bg-white`
+                    }`}>
+                  <span className="whitespace-nowrap">{label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Payment sub-forms */}
-        {paymentType === "bank_transfer" && (
-          <div className="flex items-center gap-2 px-3 py-1 bg-blue-50/30 border-b border-blue-100/50">
-            <CreditCard className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-            <select value={selectedBankId} onChange={e => onBankChange?.(e.target.value)}
-              className="rounded border border-blue-200 bg-white px-2 py-0.5 text-2sm font-bold text-slate-700 outline-none focus:border-blue-500">
-              <option value="">اختر البنك / البطاقة</option>
-              {banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-        )}
-        {paymentType === "credit" && selectedCustomer && (
-          <div className="flex items-center gap-2 px-3 py-1 bg-amber-50/30 border-b border-amber-100/50">
-            <Wallet className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-            <span className="text-2sm font-bold text-amber-800">سيتم إضافة {formatMoney(totals.total)} إلى رصيد {selectedCustomer.name}</span>
-          </div>
-        )}
-        {paymentType === "installments" && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 bg-violet-50/30 border-b border-violet-100/50">
-            <label className="flex items-center gap-1 shrink-0">
-              <span className="text-2sm font-bold text-slate-600">دفعة مقدم</span>
-              <input type="number" min="0" value={amountPaid} onChange={e => onAmountPaidChange?.(e.target.value)}
-                className="w-20 rounded border border-violet-200 bg-white px-1 py-0.5 text-center font-mono text-2sm font-black text-slate-800 outline-none focus:border-violet-500" />
-            </label>
-            <label className="flex items-center gap-1 shrink-0">
-              <span className="text-2sm font-bold text-slate-600">تاريخ الاستحقاق</span>
-              <input type="date" value={installmentDueDate} onChange={e => onInstallmentDueDateChange?.(e.target.value)}
-                className="w-28 rounded border border-violet-200 bg-white px-1 py-0.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-500" />
-            </label>
-            {selectedCustomer && (
-              <span className="text-2sm font-black text-violet-800">
-                المتبقي: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))} على {selectedCustomer.name}
-              </span>
-            )}
-          </div>
-        )}
-        {paymentType === "multi" && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 bg-slate-50/60 border-b border-slate-100">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="h-4 w-px bg-zinc-200 shrink-0" />
+
+          {paymentType === "bank_transfer" && (
+            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
+              <CreditCard className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <select value={selectedBankId} onChange={e => onBankChange?.(e.target.value)}
+                className="max-w-[100px] rounded border border-blue-200 bg-white px-1 py-0.5 text-2sm font-bold text-slate-700 outline-none focus:border-blue-500">
+                <option value="">اختر البنك / البطاقة</option>
+                {banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+          )}
+          {paymentType === "credit" && selectedCustomer && (
+            <div className="flex items-center gap-1 bg-amber-50 rounded-lg border border-amber-200 px-1.5 py-0.5 shadow-sm shrink-0">
+              <Wallet className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+              <span className="text-2sm font-bold text-amber-800 whitespace-nowrap">سيتم إضافة {formatMoney(totals.total)} إلى رصيد {selectedCustomer.name}</span>
+            </div>
+          )}
+          {paymentType === "installments" && (
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white rounded-lg border border-zinc-200 px-2 py-0.5 shadow-sm">
+              <label className="flex items-center gap-1 shrink-0">
+                <span className="text-2sm font-bold text-slate-600">دفعة مقدم</span>
+                <input type="number" min="0" value={amountPaid} onChange={e => onAmountPaidChange?.(e.target.value)}
+                  className="w-16 rounded border border-violet-200 bg-white px-1 py-0.5 text-center font-mono text-2sm font-black text-slate-800 outline-none focus:border-violet-500" />
+              </label>
+              <label className="flex items-center gap-1 shrink-0">
+                <span className="text-2sm font-bold text-slate-600">تاريخ الاستحقاق</span>
+                <input type="date" value={installmentDueDate} onChange={e => onInstallmentDueDateChange?.(e.target.value)}
+                  className="w-24 rounded border border-violet-200 bg-white px-1 py-0.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-500" />
+              </label>
+              {selectedCustomer && (
+                <span className="text-2sm font-black text-violet-800 whitespace-nowrap">
+                  المتبقي: {formatMoney(Math.max(0, totals.total - Number(amountPaid || 0)))} على {selectedCustomer.name}
+                </span>
+              )}
+            </div>
+          )}
+          {paymentType === "multi" && (
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
               <label className="flex items-center gap-1 shrink-0">
                 <span className="text-2sm font-bold text-slate-600">💵 نقدي</span>
                 <input type="number" min="0" value={multiCash} onChange={e => onMultiCashChange?.(e.target.value)} placeholder="0"
@@ -298,24 +283,24 @@ export default function QuotationFormBottomBar({
                   <Wand2 className="h-2.5 w-2.5" />
                 </button>
               </label>
+              {(() => {
+                const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0);
+                const entered = (Number(multiCash)||0) + c + (Number(multiCredit)||0);
+                return (
+                  <span className={`text-2sm font-black ${Math.abs(entered - totals.total) < 0.01 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {formatMoney(entered)} / {formatMoney(totals.total)}
+                  </span>
+                );
+              })()}
             </div>
-            {(() => {
-              const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0);
-              const entered = (Number(multiCash)||0) + c + (Number(multiCredit)||0);
-              return (
-                <span className={`text-2sm font-black ${Math.abs(entered - totals.total) < 0.01 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                  {formatMoney(entered)} / {formatMoney(totals.total)}
-                </span>
-              );
-            })()}
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Row 4: Actions */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-1 bg-white">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           <PermissionGate page="quotations" action="print">
             <button onClick={onPrint}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> معاينة
             </button>
           </PermissionGate>

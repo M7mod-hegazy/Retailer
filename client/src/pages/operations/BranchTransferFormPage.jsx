@@ -14,6 +14,7 @@ import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import SearchInput from "../../components/ui/SearchInput";
 import ProductSearchField from "../../components/ui/ProductSearchField";
+import CategorySearchField from "../../components/ui/CategorySearchField";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -91,6 +92,9 @@ export default function BranchTransferFormPage() {
   const [itemHasMore, setItemHasMore] = useState(false);
   const [isLoadingMoreItems, setIsLoadingMoreItems] = useState(false);
   const [allItemsMode, setAllItemsMode] = useState(false);
+  const [listCategoryFilter, setListCategoryFilter] = useState(null);
+  const [listCategoryQuery, setListCategoryQuery] = useState("");
+  const [categories, setCategories] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: "" });
   const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
@@ -177,6 +181,10 @@ export default function BranchTransferFormPage() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    api.get("/api/categories").then(r => setCategories(r.data?.data || [])).catch(() => {});
+  }, []);
+
   // Edit mode: load existing document
   useEffect(() => {
     if (!isEditMode) return;
@@ -227,7 +235,9 @@ export default function BranchTransferFormPage() {
     if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+      const params = { search: q, limit: ITEM_PAGE, offset: 0 };
+      if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+      api.get("/api/items", { params })
         .then(r => {
           const rows = r.data.data || [];
           setFilteredItems(rows);
@@ -243,7 +253,7 @@ export default function BranchTransferFormPage() {
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
-  }, [itemQuery]);
+  }, [itemQuery, listCategoryFilter]);
 
   useEffect(() => {
     if (itemQuery) setAllItemsMode(false);
@@ -255,7 +265,9 @@ export default function BranchTransferFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+    api.get("/api/items", { params })
       .then(r => {
         const rows = r.data.data || [];
         setFilteredItems(prev => [...prev, ...rows]);
@@ -273,6 +285,18 @@ export default function BranchTransferFormPage() {
     setItemOffset(0);
     setItemHasMore(true);
     setIsLoadingMoreItems(true);
+
+    if (listCategoryFilter?.id) {
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+        .then(r => {
+          const rows = (r.data.data || []).map(fmt);
+          setFilteredItems(listCategoryFilter?.id ? sortByProximity(rows, anchor) : rows);
+          setItemOffset(rows.length);
+          setItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === SHOW_ALL_LIMIT));
+        }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+      return;
+    }
+
     const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
     const catCall = anchor?.category_id
       ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
@@ -317,6 +341,9 @@ export default function BranchTransferFormPage() {
       unitId: String(item.unit_id || ""),
       warehouseId: bestWhId || s.warehouseId,
     }));
+    const cat = categories.find(c => c.id === item.category_id) || categories.find(c => c.name === item.category_name) || null;
+    setListCategoryFilter(cat ? { id: cat.id, name: cat.name } : null);
+    setListCategoryQuery("");
     setTimeout(() => {
       if (warehouseTableRef.current) warehouseTableRef.current.focus();
     }, 50);
@@ -392,6 +419,8 @@ export default function BranchTransferFormPage() {
 
     setSelectedItem(null);
     setItemQuery("");
+    setListCategoryFilter(null);
+    setListCategoryQuery("");
     setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: s.warehouseId }));
     setLookupOpen(false);
     setTimeout(() => itemInputRef.current?.focus(), 50);
@@ -886,7 +915,7 @@ export default function BranchTransferFormPage() {
         }
       /></div>
 
-      <div className="print:hidden flex gap-6 items-start" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
+      <div className="print:hidden flex gap-6 items-stretch" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
 
         {/* Sidebar */}
         <div className={`flex flex-col gap-5 ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
@@ -970,7 +999,7 @@ export default function BranchTransferFormPage() {
                 </span>
               </div>
             </div>
-
+               <div className="flex-1" />
           </div>
         </div>
 
@@ -981,7 +1010,7 @@ export default function BranchTransferFormPage() {
         <div className="flex flex-col gap-5 min-w-0 flex-1">
 
           {/* Item entry bar */}
-          <section className="bg-white border border-slate-200 rounded-[16px] p-5 shadow-[0_5px_20px_rgba(0,0,0,0.03)] relative z-40">
+          <section className="rounded-2xl border p-3 shadow-sm relative z-40" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
             <div className="flex flex-col gap-5">
               
               {/* Row 1: Product Selection & Warehouse */}
@@ -1008,9 +1037,27 @@ export default function BranchTransferFormPage() {
                   </div>
                 )}
 
-                {/* Item search */}
+                  {/* Item search */}
                 <div className="relative flex-1 min-w-[240px] flex flex-col text-right">
                   <label className="text-[11px] font-bold text-slate-500 mb-1.5 block">المادة / الصنف (بحث)</label>
+                  <CategorySearchField
+                    categories={categories}
+                    value={listCategoryFilter}
+                    query={listCategoryQuery}
+                    onQueryChange={setListCategoryQuery}
+                    onChange={(cat) => {
+                      setListCategoryFilter(cat);
+                      setListCategoryQuery("");
+                      setSelectedItem(null);
+                      setItemQuery("");
+                    }}
+                    onPickDone={(catId) => {
+                      setTimeout(() => {
+                        itemInputRef.current?.focus();
+                        showAllItems();
+                      }, 50);
+                    }}
+                  />
                   <ProductSearchField
                     ref={itemInputRef}
                     onNavigateNext={() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select?.(); }}
@@ -1023,6 +1070,7 @@ export default function BranchTransferFormPage() {
                     hasMore={itemHasMore}
                     isLoadingMore={isLoadingMoreItems}
                     onShowAll={showAllItems}
+                    showChip={false}
                     hideZeroStock={false}
                     placeholder="ابحث بالاسم أو كود SKU..."
                   />
@@ -1291,7 +1339,7 @@ export default function BranchTransferFormPage() {
             </div>
           )}
 
-          <div data-help="bt-form-items">
+          <div data-help="bt-form-items" className="rounded-2xl border p-3 shadow-sm" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
           <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
             <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
             <div ref={colSettingsRef} className="relative">
@@ -1327,7 +1375,7 @@ export default function BranchTransferFormPage() {
             emptyMessage="لا يوجد أصناف في مسودة المستند"
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2 text-slate-300" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-[16px] border border-slate-200 shadow-[0_5px_20px_rgba(0,0,0,0.03)] max-h-[440px]"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-xl border border-slate-200 shadow-sm max-h-[440px]"
             rowClass={isReceive ? (l) => {
               const anyUnlocked = l.update_master_purchase_price === false || l.update_master_purchase_price === 0 ||
                                   l.update_master_sale_price === false || l.update_master_sale_price === 0 ||

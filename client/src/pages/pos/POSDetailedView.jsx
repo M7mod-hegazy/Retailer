@@ -5,7 +5,7 @@ import {
   ListTodo, Loader2, Minus, PackageCheck, PauseCircle, Plus, Printer,
   Receipt, RefreshCw, RotateCcw, Search, ShieldCheck, ShoppingCart,
   Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText,
-  Wand2, Settings2,
+  Wand2, Settings2, Copy,
 } from "lucide-react";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
@@ -53,7 +53,7 @@ export default function POSDetailedView({ vm }) {
     taxEnabled, setTaxEnabled, taxRate, setTaxRate, canEditTaxRate,
     heldDropdownOpen, setHeldDropdownOpen,
     staleHeldAlert, setStaleHeldAlert,
-    isOffline, user,
+    isOffline, copyConnectionError, user,
     viewMode, setViewMode,
     pendingViewMode, setPendingViewMode,
     showSetDefaultModal, setShowSetDefaultModal,
@@ -311,13 +311,17 @@ export default function POSDetailedView({ vm }) {
       )}
       {isOffline && (
         <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-2sm font-black tracking-wide text-white shrink-0 z-50">
-          تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
-        </div>
-      )}
-      {isOffline && (
-        <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-2sm font-black tracking-wide text-white shrink-0 z-50">
           <AlertTriangle className="h-3.5 w-3.5" />
           تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
+          <button
+            type="button"
+            onClick={copyConnectionError}
+            className="ms-2 inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-2xs font-bold hover:bg-white/30 active:scale-95"
+            title="نسخ تفاصيل الخطأ"
+          >
+            <Copy className="h-3 w-3" />
+            نسخ التفاصيل
+          </button>
         </div>
       )}
 
@@ -753,7 +757,7 @@ export default function POSDetailedView({ vm }) {
 
             {/* Customer Select */}
             <div data-help="customer-select" className="flex items-center gap-2">
-              <div className="relative flex-1">
+              <div className="relative z-[70] flex-1">
                 <div className={`pointer-events-none absolute inset-y-0 right-2.5 flex items-center ${hasCustomerBalance ? "text-amber-500" : "text-slate-400"}`}>
                   <User className="h-4 w-4" />
                 </div>
@@ -777,7 +781,9 @@ export default function POSDetailedView({ vm }) {
                   }`}
                 />
                 {customerLookupOpen && (
-                  <SearchDropdown items={customerResults} activeIndex={activeCustomerIndex} emptyLabel="ابحث عن عميل..." onPick={(c) => { setCustomer(c); setCustomerQuery(c.name); setCustomerLookupOpen(false); }} />
+                  <div className="absolute left-0 right-0 z-50" style={{ top: "calc(100% + 4px)" }}>
+                    <SearchDropdown items={customerResults} activeIndex={activeCustomerIndex} emptyLabel="ابحث عن عميل..." onPick={(c) => { setCustomer(c); setCustomerQuery(c.name); setCustomerLookupOpen(false); }} />
+                  </div>
                 )}
               </div>
               <button onClick={() => setQuickAddOpen(true)} title="إضافة رقم واتساب سريع" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-green-300 bg-green-50 text-green-600 hover:border-green-500 hover:bg-green-100 transition-colors shadow-sm text-base">
@@ -1284,6 +1290,7 @@ export default function POSDetailedView({ vm }) {
                 )}
               </div>
             </div>
+               <div className="flex-1" />
           </div>
         </div>
       </div>

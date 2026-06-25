@@ -19,7 +19,7 @@ import { Maximize2, Printer as PrinterIcon } from "lucide-react";
 import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap } from "../../services/printService";
 import { getHint as fmHint } from "../../utils/fieldMeta";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
-import { smartFormat } from "../../components/print/blocks/blockUtils";
+import { smartFormat, resolveThermalColumns } from "../../components/print/blocks/blockUtils";
 
 // Mock invoice for the live preview of invoice-style docs — rendered through the
 // shared block library so the preview matches print AND the Designer layout.
@@ -300,7 +300,227 @@ function PaperPicker({ value, onChange }) {
   );
 }
 
+// ─── Thermal Columns Section ────────────────────────────────────────────────────
+
+const THERMAL_COLUMNS = [
+  { key: "name", label: "المنتج", priority: 0 },
+  { key: "unit", label: "الوحدة", priority: 4 },
+  { key: "qty", label: "الكمية", priority: 1 },
+  { key: "price", label: "السعر", priority: 3 },
+  { key: "discount", label: "الخصم", priority: 5 },
+  { key: "total", label: "الإجمالي", priority: 2 },
+];
+
+const THERMAL_COL_LIMITS = { "58mm": 3, "80mm": 4 };
+
+function ThermalColumnsSection({ settings: s, onChange }) {
+  const paperWidth = get(s, "receipt_width");
+  const maxCols = THERMAL_COL_LIMITS[paperWidth] || 4;
+  const raw = s.thermal_print_column_keys;
+  const activeKeys = Array.isArray(raw) && raw.length > 0 ? raw : null;
+
+  const currentKeys = activeKeys || ["name", "qty", "price", "total"];
+
+  const setKeys = (keys) => {
+    const trimmed = keys.filter(k => k !== "code");
+    onChange("thermal_print_column_keys", trimmed.length > 0 ? trimmed : null);
+  };
+
+  const isActive = (key) => currentKeys.includes(key);
+  const toggleColumn = (key) => {
+    if (isActive(key)) {
+      setKeys(currentKeys.filter(k => k !== key));
+    } else {
+      if (currentKeys.length >= maxCols) {
+        const sorted = [...currentKeys, key].sort((a, b) => {
+          const pa = THERMAL_COLUMNS.find(c => c.key === a)?.priority ?? 99;
+          const pb = THERMAL_COLUMNS.find(c => c.key === b)?.priority ?? 99;
+          return pa - pb;
+        });
+        setKeys(sorted.slice(0, maxCols));
+        toast("تم استبدال العميل الأقل أولوية تلقائياً", { icon: "📐", duration: 2000 });
+      } else {
+        setKeys([...currentKeys, key]);
+      }
+    }
+  };
+
+  const moveUp = (key) => {
+    const idx = currentKeys.indexOf(key);
+    if (idx <= 0) return;
+    const next = [...currentKeys];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    setKeys(next);
+  };
+  const moveDown = (key) => {
+    const idx = currentKeys.indexOf(key);
+    if (idx === -1 || idx >= currentKeys.length - 1) return;
+    const next = [...currentKeys];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    setKeys(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
+        <span className="text-[11px] font-bold text-slate-500">
+          <span className="text-slate-800 font-black ml-1">{currentKeys.length}</span>
+          من <span className="font-black mx-0.5">{maxCols}</span> عمود متاح لـ {paperWidth}
+        </span>
+        <div className="flex items-center gap-1">
+          <div className="h-1.5 w-16 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${currentKeys.length > maxCols ? "bg-red-500" : "bg-emerald-500"}`}
+              style={{ width: `${Math.min(100, (currentKeys.length / maxCols) * 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {THERMAL_COLUMNS.map((col) => {
+          const active = isActive(col.key);
+          const atMax = currentKeys.length >= maxCols && !active;
+          return (
+            <div
+              key={col.key}
+              className={`flex items-center gap-1.5 rounded-sm border px-3 py-2 transition-all ${
+                active
+                  ? "border-primary bg-primary/5 border-primary/30"
+                  : "border-slate-200 bg-white"
+              } ${atMax ? "opacity-50" : ""}`}
+            >
+              <button
+                type="button"
+                onClick={() => toggleColumn(col.key)}
+                className={`flex items-center gap-2 flex-1 min-w-0 text-right ${
+                  active ? "cursor-pointer" : "cursor-pointer"
+                }`}
+              >
+                <div
+                  className={`h-4 w-4 shrink-0 rounded-sm border-2 flex items-center justify-center transition-all ${
+                    active
+                      ? "border-primary bg-primary"
+                      : "border-slate-300"
+                  }`}
+                >
+                  {active && (
+                    <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-[11px] font-black ${active ? "text-slate-800" : "text-slate-500"}`}>
+                  {col.label}
+                </span>
+              </button>
+
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => moveUp(col.key)}
+                  disabled={!active || currentKeys.indexOf(col.key) === 0}
+                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-20 disabled:cursor-default transition-all"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveDown(col.key)}
+                  disabled={!active || currentKeys.indexOf(col.key) >= currentKeys.length - 1}
+                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-20 disabled:cursor-default transition-all"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Thermal Preview ────────────────────────────────────────────────────────────
+
+const THERMAL_MOCK_LINES = [
+  { code: "SKU-001", item_name: "قميص قطني L", quantity: 2, unit_price: 60 },
+  { code: "SKU-002", item_name: "بنطلون جينز", quantity: 1, unit_price: 110 },
+];
+
+function ThermalPreviewItemsTable({ settings: s, itemFontSize, accent }) {
+  const keys = resolveThermalColumns(s);
+  const columns = keys.map(k => {
+    const headerMap = { name: "الصنف", unit: "الوحدة", qty: "كمية", price: "سعر", discount: "الخصم", total: "إجمالي" };
+    return { key: k, label: headerMap[k] || k };
+  });
+  const displayCols = columns.filter(c => c.key !== "code");
+
+  const mergedName = (line) => {
+    const code = line.code || line.sku || "";
+    const name = line.item_name || "";
+    return code ? `${code} - ${name}` : name;
+  };
+  const lineTotal = (line) => ((Number(line.unit_price) || 0) * Number(line.quantity));
+
+  if (displayCols.length === 0) return null;
+
+  const cellBorder = "1px solid #d1d5db";
+
+  return (
+    <table style={{ width: "100%", fontSize: itemFontSize, borderCollapse: "collapse", fontWeight: 700, border: cellBorder }}>
+      <thead>
+        <tr style={{ background: "#000" }}>
+          {displayCols.map((c, ci) => (
+            <th key={c.key} style={{
+              textAlign: c.key === "name" ? "right" : "center",
+              padding: "3px 5px", fontWeight: 700, color: "#fff",
+              fontSize: "10px",
+              ...(c.key === "name" ? { width: "60%" } : {}),
+              borderBottom: "2px solid #555",
+              borderLeft: ci > 0 ? cellBorder : "none",
+            }}>
+              {c.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {THERMAL_MOCK_LINES.map((line, i) => (
+          <tr key={i}>
+            {displayCols.map((c, ci) => {
+              let val;
+              switch (c.key) {
+                case "name": val = mergedName(line); break;
+                case "qty": val = line.quantity; break;
+                case "price": val = smartFormat(line.unit_price); break;
+                case "total": val = smartFormat(lineTotal(line)); break;
+                case "unit": val = "قطعة"; break;
+                case "discount": val = "0.00"; break;
+                default: val = "";
+              }
+              return (
+                <td key={c.key} style={{
+                  textAlign: c.key === "qty" ? "center" : c.key === "total" ? "center" : "right",
+                  padding: "3px 5px", fontWeight: 700,
+                  ...(c.key === "name" ? { width: "60%", wordBreak: "break-word" } : { whiteSpace: "nowrap" }),
+                  borderBottom: cellBorder,
+                  borderLeft: ci > 0 ? cellBorder : "none",
+                }}>
+                  {val}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [] }) {
   const currency = get(s, "currency_symbol");
@@ -378,25 +598,7 @@ function ThermalPreview({ settings: s, hovered, onElementClick, customBlocks = [
       <div style={{ borderTop: solid, margin: "5px 0" }} />
       <BlockRenderer blocks={customBlocks} position="before_items" paperSize={w} accentColor={accent} hovered={hovered} onElementClick={onElementClick} />
 
-      <table style={{ width: "100%", fontSize: `${get(s,"item_font_size")}px`, borderCollapse: "collapse", fontWeight: 700 }}>
-        <thead><tr style={{ background: "#000" }}>
-          <th style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700, color: "#fff", width: "60%" }}>الصنف</th>
-          <th style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, color: "#fff" }}>كمية</th>
-          <th style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, color: "#fff" }}>إجمالي</th>
-        </tr></thead>
-        <tbody>
-          <tr>
-            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700, width: "60%", wordBreak: "break-word" }}>{get(s,"show_item_code") !== false ? "SKU-001 - قميص قطني L" : "قميص قطني L"}</td>
-            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>2</td>
-            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>120.00</td>
-          </tr>
-          <tr>
-            <td style={{ textAlign: "right", padding: "3px 5px", fontWeight: 700, width: "60%", wordBreak: "break-word" }}>{get(s,"show_item_code") !== false ? "SKU-002 - بنطلون جينز" : "بنطلون جينز"}</td>
-            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>1</td>
-            <td style={{ textAlign: "center", padding: "3px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>110.00</td>
-          </tr>
-        </tbody>
-      </table>
+      <ThermalPreviewItemsTable settings={s} itemFontSize={`${get(s,"item_font_size")}px`} accent={accent} />
 
       <div style={{ borderTop: solid, margin: "5px 0" }} />
 
@@ -1629,6 +1831,12 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
               {tog("logo_on_reports", "تقارير", "شعار الشركة في رأس التقارير")}
             </div>
           </div>
+        </section>
+
+        {/* Thermal Columns */}
+        <section>
+          <SectionLabel icon={ListChecks} title="أعمدة الطباعة الحرارية (58mm / 80mm)" hint="اختر الأعمدة التي تظهر في جدول الأصناف للإيصالات الحرارية" />
+          <ThermalColumnsSection settings={s} onChange={onChange} />
         </section>
 
         {/* QR Code */}

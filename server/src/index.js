@@ -100,26 +100,43 @@ async function startServer() {
       // renderer can reach the API over the retailer:// protocol WITHOUT any TCP
       // loopback socket — making it immune to antivirus/firewall software that
       // blocks 127.0.0.1 (the persistent "connection error" some hardened PCs hit).
-      // Best-effort: a failure here never blocks startup; TCP remains the fallback.
-      // A fresh, unique pipe name per start avoids EADDRINUSE on auto-restart.
-      try {
-        const os = require("os");
-        const nodePath = require("path");
-        const stamp = `${process.pid}-${Date.now()}`;
-        const pipePath =
-          process.platform === "win32"
-            ? `\\\\.\\pipe\\elhegazi-retailer-${stamp}`
-            : nodePath.join(os.tmpdir(), `elhegazi-retailer-${stamp}.sock`);
-        const pipeServer = app.listen(pipePath, () => {
-          process.env.RETAILER_PIPE = pipePath;
-          logger.info({ message: "Server pipe listening", pipe: pipePath });
-        });
-        pipeServer.on("error", (e) =>
-          logger.error({ message: "Server pipe listen failed", error: e.message }),
-        );
-      } catch (e) {
-        logger.error({ message: "Server pipe setup failed", error: e.message });
-      }
+      // This is the PRIMARY transport for the packaged app, so we AWAIT it (with a
+      // hard cap) before returning: otherwise the renderer can fire retailer://
+      // requests in the gap before RETAILER_PIPE is set and hit a transient bridge
+      // 503 ("pipe not ready") that surfaces as a false disconnect. A pipe failure
+      // still never blocks startup — TCP remains as the fallback. A fresh, unique
+      // pipe name per start avoids EADDRINUSE on auto-restart.
+      await new Promise((resolvePipe) => {
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          resolvePipe();
+        };
+        try {
+          const os = require("os");
+          const nodePath = require("path");
+          const stamp = `${process.pid}-${Date.now()}`;
+          const pipePath =
+            process.platform === "win32"
+              ? `\\\\.\\pipe\\elhegazi-retailer-${stamp}`
+              : nodePath.join(os.tmpdir(), `elhegazi-retailer-${stamp}.sock`);
+          const pipeServer = app.listen(pipePath, () => {
+            process.env.RETAILER_PIPE = pipePath;
+            logger.info({ message: "Server pipe listening", pipe: pipePath });
+            done();
+          });
+          pipeServer.on("error", (e) => {
+            logger.error({ message: "Server pipe listen failed", error: e.message });
+            done(); // fall through to TCP fallback, never strand startup
+          });
+          // Safety cap: never let a slow/stuck pipe bind delay the whole app.
+          setTimeout(done, 3000);
+        } catch (e) {
+          logger.error({ message: "Server pipe setup failed", error: e.message });
+          done();
+        }
+      });
 
       startAutoBackupJob();
       startNotificationJobs();

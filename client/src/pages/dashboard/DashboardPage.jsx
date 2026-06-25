@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2 } from "lucide-react";
+import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useInstallmentAlertStore } from "../../stores/installmentAlertStore";
@@ -8,6 +8,7 @@ import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import { motion, AnimatePresence, LayoutGroup, useMotionValue, useSpring } from "framer-motion";
 import api from "../../services/api";
+import { createDisconnectTracker } from "../../services/connection";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { useShortcut } from "../../shortcuts/useShortcut";
@@ -15,6 +16,7 @@ import { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useElectron } from "../../hooks/useElectron";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
+import AnnouncementBanner from "../../components/assistant/AnnouncementBanner";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
 
 // ─── Tooltips ────────────────────────────────────────────────────────────────
@@ -457,11 +459,20 @@ export default function DashboardPage() {
   const [checkingEmpty, setCheckingEmpty] = useState(true);
   const [settings, setSettings] = useState({});
   const missingCritical = findMissingCritical(settings, "ar");
-  const showBanner = !checkingEmpty && (missingCritical.length > 0 || noItems);
+  const initialLoadDone = useRef(false);
+
+  const [settingsWarningDismissed, setSettingsWarningDismissed] = useState(() => {
+    try { return localStorage.getItem('retailer:settings-warning-dismissed') === 'true'; } catch { return false; }
+  });
+  const [noItemsDismissed, setNoItemsDismissed] = useState(() => {
+    try { return localStorage.getItem('retailer:no-items-dismissed') === 'true'; } catch { return false; }
+  });
 
   const fetchDashboardData = useCallback(() => {
     let cancelled = false;
-    setCheckingEmpty(true);
+    if (!initialLoadDone.current) {
+      setCheckingEmpty(true);
+    }
     Promise.all([
       api.get("/api/categories"),
       api.get("/api/items"),
@@ -484,7 +495,10 @@ export default function DashboardPage() {
     }).catch(() => {
       if (!cancelled) setNoItems(false);
     }).finally(() => {
-      if (!cancelled) setCheckingEmpty(false);
+      if (!cancelled) {
+        initialLoadDone.current = true;
+        setCheckingEmpty(false);
+      }
     });
     return () => { cancelled = true; };
   }, []);
@@ -501,6 +515,39 @@ export default function DashboardPage() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchDashboardData]);
+
+  // ── Server connectivity health check ──────────────────────────────────
+  const [isServerOnline, setIsServerOnline] = useState(true);
+  const wasOfflineRef = useRef(false);
+  const [showReconnectedMsg, setShowReconnectedMsg] = useState(false);
+
+  useEffect(() => {
+    const tracker = createDisconnectTracker({ threshold: 2 });
+    let mounted = true;
+
+    const check = async () => {
+      try {
+        await api.get("/api/health", { timeout: 8000 });
+        const result = tracker.success();
+        if (!mounted) return;
+        setIsServerOnline(true);
+        if (wasOfflineRef.current) {
+          setShowReconnectedMsg(true);
+          wasOfflineRef.current = false;
+        }
+      } catch (err) {
+        const result = tracker.record(err);
+        if (!mounted) return;
+        const offline = result.offline;
+        setIsServerOnline(!offline);
+        if (offline) wasOfflineRef.current = true;
+      }
+    };
+
+    check();
+    const id = setInterval(check, 30000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
 
   const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey, item.featureKey));
   const visibleModules = NAV_MODULES.map((module) => ({
@@ -581,7 +628,15 @@ export default function DashboardPage() {
           {/* Live Clock + version */}
           <div className="flex items-center gap-3" dir="ltr">
             {appVersion && appVersion !== "web" && (
-              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl">
+              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
+                {isServerOnline ? (
+                  <Wifi className="w-3 h-3 text-emerald-400" />
+                ) : (
+                  <WifiOff className="w-3 h-3 text-red-400" />
+                )}
+                <span className={`text-[10px] font-black tracking-widest ${isServerOnline ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {isServerOnline ? 'متصل' : 'غير متصل'}
+                </span>
                 <span className="text-[10px] font-black text-[var(--on-feature-muted)] tracking-widest">{String(appVersion).replace(/^v/i, "")}</span>
               </div>
             )}
@@ -655,6 +710,37 @@ export default function DashboardPage() {
           })}
         </motion.div>
       </div>
+
+      {/* Reconnected banner */}
+      <AnimatePresence>
+        {showReconnectedMsg && (
+          <motion.div
+            variants={FADE_UP}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20"
+          >
+            <div className="relative rounded-[2rem] border-2 border-emerald-200 bg-emerald-50/80 p-4 md:p-5 flex items-center justify-between gap-4 shadow-lg shadow-emerald-200/20 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                  <Wifi className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-emerald-900">تمت استعادة الاتصال بالخادم</p>
+                  <p className="text-[11px] font-bold text-emerald-700">النظام متصل ويعمل بشكل طبيعي</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReconnectedMsg(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Update available banner */}
       <AnimatePresence>
@@ -739,21 +825,41 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Critical settings warning */}
-      {!checkingEmpty && (
+      {/* Critical settings warning — dismissible */}
+      {(initialLoadDone.current || !checkingEmpty) && missingCritical.length > 0 && !settingsWarningDismissed && (
         <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
-          <CriticalSettingsWarning
-            settings={settings}
-            onNavigate={(key) => navigate(`/settings?tab=${fieldKeyToTab(key)}&field=${key}`)}
-            lang="ar"
-          />
+          <div className="relative">
+            <button
+              onClick={() => {
+                try { localStorage.setItem('retailer:settings-warning-dismissed', 'true'); } catch {}
+                setSettingsWarningDismissed(true);
+              }}
+              className="absolute top-4 left-4 z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-200 text-amber-700 hover:bg-amber-300 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <CriticalSettingsWarning
+              settings={settings}
+              onNavigate={(key) => navigate(`/settings?tab=${fieldKeyToTab(key)}&field=${key}`)}
+              lang="ar"
+            />
+          </div>
         </div>
       )}
 
-      {/* Empty items banner */}
-      {!checkingEmpty && noItems && (
+      {/* Empty items banner — dismissible */}
+      {(initialLoadDone.current || !checkingEmpty) && noItems && !noItemsDismissed && (
         <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
-          <div className="rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-amber-200/20 backdrop-blur-sm">
+          <div className="relative rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-amber-200/20 backdrop-blur-sm">
+            <button
+              onClick={() => {
+                try { localStorage.setItem('retailer:no-items-dismissed', 'true'); } catch {}
+                setNoItemsDismissed(true);
+              }}
+              className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-200 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <div className="flex items-center gap-5">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
                 <Package className="h-7 w-7" />
@@ -773,6 +879,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <AnnouncementBanner />
 
       {/* Command center */}
       <div className="max-w-7xl mx-auto w-full px-6 md:px-12 relative z-20 pb-20 mt-6">

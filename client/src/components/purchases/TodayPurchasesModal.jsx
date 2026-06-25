@@ -3,7 +3,7 @@ import { X, RefreshCw, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
-import { useDetach } from "../../hooks/useDetach";
+import { useDetach, openDetachedModal } from "../../hooks/useDetach";
 import DataGrid from "../ui/DataGrid";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import SearchDropdown from "../ui/SearchDropdown";
@@ -530,6 +530,10 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
               emptyMessage={loading ? "جاري التحميل..." : "لا توجد نتائج في هذه الفترة"}
               className="border-0"
               onRowClick={r => {
+                if (propNavigate && (r.purchase_id || r.id)) {
+                  openDetachedModal("purchase-preview", { purchase: r });
+                  return;
+                }
                 if (itemSearch.trim()) {
                   if (r.purchase_id) { setPreviewInvoice({ id: r.purchase_id, purchase_id: r.purchase_id, doc_no: r.doc_no, supplier_name: r.supplier_name, total: Number(r.unit_cost) * Number(r.quantity), created_at: r.created_at }); setPreviewOpen(true); }
                 } else {
@@ -542,9 +546,11 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
         </div>
       </Modal>
 
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة الفاتورة" maxWidth="max-w-4xl" onDetach={handlePreviewDetach} showDetach={true}>
-        {previewInvoice ? <PurchasePreviewModal purchase={previewInvoice} onClose={() => setPreviewOpen(false)} onNavigate={propNavigate} /> : null}
-      </Modal>
+      {!propNavigate && (
+        <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة الفاتورة" maxWidth="max-w-4xl" onDetach={handlePreviewDetach} showDetach={true}>
+          {previewInvoice ? <PurchasePreviewModal purchase={previewInvoice} onClose={() => setPreviewOpen(false)} onNavigate={propNavigate} /> : null}
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={voidOpen}

@@ -16,7 +16,6 @@ export default function DetachedCustomerForm({ initialState, sendAction, token }
     window.addEventListener("beforeunload", onUnload);
     return () => {
       window.removeEventListener("beforeunload", onUnload);
-      sendAction?.("cancel");
     };
   }, [sendAction]);
   const [form, setForm] = useState(initialState || EMPTY_FORM);

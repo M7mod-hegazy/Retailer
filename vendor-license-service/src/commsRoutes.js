@@ -319,6 +319,40 @@ function registerCommsRoutes(app, { authApp, authOwner, verifyOwnerToken }) {
       next(error);
     }
   });
+
+  app.patch("/comms/dev/announcements/:id", authOwner, (req, res, next) => {
+    try {
+      const ann = comms.updateAnnouncement(Number(req.params.id), {
+        title: req.body?.title,
+        body: req.body?.body,
+        type: req.body?.type,
+      });
+      if (!ann) return res.status(404).json({ success: false, message: "not_found" });
+      res.json({ success: true, data: ann });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/comms/dev/announcements/:id", authOwner, (req, res, next) => {
+    try {
+      const ann = comms.deleteAnnouncement(Number(req.params.id));
+      if (!ann) return res.status(404).json({ success: false, message: "not_found" });
+      res.json({ success: true, data: ann });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/comms/dev/announcements/:id/toggle", authOwner, (req, res, next) => {
+    try {
+      const ann = comms.toggleAnnouncement(Number(req.params.id));
+      if (!ann) return res.status(404).json({ success: false, message: "not_found" });
+      res.json({ success: true, data: ann });
+    } catch (error) {
+      next(error);
+    }
+  });
 }
 
 module.exports = { registerCommsRoutes };

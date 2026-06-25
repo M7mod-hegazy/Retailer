@@ -34,6 +34,7 @@ export const SHORTCUTS = [
   { id: "global.help",     defaultKeys: ["?"],         scope: SCOPES.GLOBAL, group: "عام", label: "عرض كل الاختصارات", pages: ["كل الصفحات"] },
   { id: "global.minimize", defaultKeys: ["Ctrl", "M"], scope: SCOPES.GLOBAL, group: "عام", label: "تصغير التطبيق", pages: ["كل الصفحات"] },
   { id: "global.quit",     defaultKeys: ["Ctrl", "Q"], scope: SCOPES.GLOBAL, group: "عام", label: "إغلاق التطبيق بالكامل", pages: ["كل الصفحات"] },
+  { id: "global.assistant", defaultKeys: ["Ctrl", "/"], scope: SCOPES.GLOBAL, group: "عام", label: "فتح المساعد الذكي", allowInInput: true, pages: ["كل الصفحات"] },
 
   // ── Point of sale ─────────────────────────────────────────────────────────
   { id: "pos.focusCustomer", defaultKeys: ["F1"],  scope: SCOPES.POS, group: "نقطة البيع", label: "البحث عن عميل", pages: ["نقطة البيع"] },
@@ -78,6 +79,7 @@ export const SHORTCUT_DESC = {
   "global.help": "يعرض هذه القائمة بكل الاختصارات وأماكن عملها.",
   "global.minimize": "يُصغّر التطبيق إلى شريط المهام.",
   "global.quit": "يُغلق التطبيق بالكامل فوراً.",
+  "global.assistant": "يفتح نافذة المساعد الذكي من أي مكان في البرنامج.",
   "pos.focusCustomer": "ينقل المؤشر إلى خانة البحث عن العميل في شاشة البيع.",
   "pos.focusItem": "ينقل المؤشر إلى خانة البحث عن الصنف / الباركود في شاشة البيع.",
   "pos.cashCheckout": "يفتح نافذة الدفع النقدي لإدخال المبلغ المستلم وحساب الباقي ثم الحفظ والطباعة (للدفع النقدي الكامل فقط).",

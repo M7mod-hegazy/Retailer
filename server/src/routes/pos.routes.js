@@ -32,9 +32,9 @@ function loadPaymentMethods(db) {
 
 function loadCategories(db) {
   try {
-    return db.prepare("SELECT id, name FROM item_categories ORDER BY sort_order ASC, name ASC").all();
+    return db.prepare("SELECT id, name, sku_prefix FROM item_categories ORDER BY CAST(COALESCE(sku_prefix, '0') AS INTEGER) ASC, id ASC").all();
   } catch {
-    return allSafe(db, "SELECT id, name FROM item_categories ORDER BY name ASC");
+    return allSafe(db, "SELECT id, name, sku_prefix FROM item_categories ORDER BY name ASC");
   }
 }
 

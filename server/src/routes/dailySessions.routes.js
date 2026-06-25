@@ -8,6 +8,7 @@ const {
   ensureCashCountSchema,
   ensureSessionForDate,
   getSession,
+  liveOpeningBalance,
   localDate,
   normalizeDate,
   listCashCounts,
@@ -844,7 +845,11 @@ router.get("/", requirePagePermission("daily_treasury", "view"), (req, res) => {
       ORDER BY date DESC
       LIMIT ?
     `).all(...params, Number(limit));
-    res.json({ success: true, data: rows });
+    const data = rows.map(s => ({
+      ...s,
+      previous_balance: liveOpeningBalance(db, s.date),
+    }));
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

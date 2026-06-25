@@ -20,6 +20,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
+import CategorySearchField from "../../components/ui/CategorySearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import { sortByProximity } from "../../utils/itemSort";
@@ -145,6 +146,11 @@ export default function PurchaseFormPage() {
   const [profitDisplayMode, setProfitDisplayMode] = useState("pct");
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  // Category filter for product search
+  const [listCategoryFilter, setListCategoryFilter] = useState(null);
+  const [listCategoryQuery, setListCategoryQuery] = useState("");
+  const [categories, setCategories] = useState([]);
 
   const [supplierQuery, setSupplierQuery] = useState("");
   const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
@@ -356,6 +362,10 @@ export default function PurchaseFormPage() {
     if (!selectedItem) setStaging(s => ({ ...s, warehouseId: defaultWarehouseId }));
   }, [defaultWarehouseId]);
 
+  useEffect(() => {
+    api.get("/api/categories").then(r => setCategories(r.data?.data || [])).catch(() => {});
+  }, []);
+
   const ITEM_PAGE = 20;
 
   useEffect(() => {
@@ -364,7 +374,9 @@ export default function PurchaseFormPage() {
     if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+      const params = { search: q, limit: ITEM_PAGE, offset: 0 };
+      if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+      api.get("/api/items", { params })
         .then(r => {
           const rows = (r.data.data || []).map(i => ({
             ...i,
@@ -383,7 +395,7 @@ export default function PurchaseFormPage() {
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
-  }, [itemQuery]);
+  }, [itemQuery, listCategoryFilter]);
 
   useEffect(() => {
     if (itemQuery) setAllItemsMode(false);
@@ -395,7 +407,9 @@ export default function PurchaseFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+    api.get("/api/items", { params })
       .then(r => {
         const rows = (r.data.data || []).map(i => ({
           ...i,
@@ -416,6 +430,18 @@ export default function PurchaseFormPage() {
     setItemOffset(0);
     setItemHasMore(true);
     setIsLoadingMoreItems(true);
+
+    if (listCategoryFilter?.id) {
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+        .then(r => {
+          const rows = (r.data.data || []).map(fmt);
+          setFilteredItems(listCategoryFilter?.id ? sortByProximity(rows, anchor) : rows);
+          setItemOffset(rows.length);
+          setItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === SHOW_ALL_LIMIT));
+        }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+      return;
+    }
+
     const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
     const catCall = anchor?.category_id
       ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
@@ -457,6 +483,10 @@ export default function PurchaseFormPage() {
       unitId: String(item.unit_id || prev.unitId),
     }));
     setLookupOpen(false);
+    const cat = categories.find(c => c.id === item.category_id) || categories.find(c => c.name === item.category_name) || null;
+    const skuPrefix = cat?.sku_prefix ?? item?.sku_prefix ?? null;
+    setListCategoryFilter(cat ? { id: cat.id, name: cat.name, sku_prefix: skuPrefix } : null);
+    setListCategoryQuery("");
     setTimeout(() => qtyInputRef.current?.focus(), 50);
   }
 
@@ -526,6 +556,8 @@ export default function PurchaseFormPage() {
     });
     setSelectedItem(null);
     setItemQuery("");
+    setListCategoryFilter(null);
+    setListCategoryQuery("");
     setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: s.warehouseId, unitId: "", expiryDate: "", batchNo: "" }));
     setTimeout(() => { itemInputRef.current?.focus(); itemInputRef.current?.select(); }, 50);
   }
@@ -910,12 +942,30 @@ export default function PurchaseFormPage() {
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden p-4">
           {/* Quick Entry Bar — hidden in locked mode */}
           {!isLocked && (
-            <section data-help="items-section" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
+            <section data-help="items-section" className="rounded-2xl border p-3 shadow-sm shrink-0" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
               <div className="entry-bar">
                 <EntryItemThumb item={selectedItem} onView={(imgs) => { const u = resolveImageUrl(imgs[0]); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }} />
                 {/* Item search */}
                 <div data-help="search-bar" className="entry-field entry-field--item">
-                  <label className="entry-label">الصنف</label>
+                  <label className="entry-label">الصنف <span className="text-[9px] font-mono text-slate-400">(F1)</span></label>
+                  <CategorySearchField
+                    categories={categories}
+                    value={listCategoryFilter}
+                    query={listCategoryQuery}
+                    onQueryChange={setListCategoryQuery}
+                    onChange={(cat) => {
+                      setListCategoryFilter(cat);
+                      setListCategoryQuery("");
+                      setSelectedItem(null);
+                      setItemQuery("");
+                    }}
+                    onPickDone={(catId) => {
+                      setTimeout(() => {
+                        itemInputRef.current?.focus();
+                        showAllItems();
+                      }, 50);
+                    }}
+                  />
                   <ProductSearchField
                     ref={itemInputRef}
                     onNavigateNext={() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select?.(); }}
@@ -926,6 +976,7 @@ export default function PurchaseFormPage() {
                     onEnterNoResults={() => { if (itemSearchActiveRef.current) pendingPickRef.current = true; }}
                     selectedItem={selectedItem}
                     chipCode={(it) => it.code || it.barcode || `#${it.id}`}
+                    showChip={false}
                     onLoadMore={loadMoreItems}
                     hasMore={itemHasMore}
                     isLoadingMore={isLoadingMoreItems}
@@ -1192,7 +1243,7 @@ export default function PurchaseFormPage() {
           </div>
 
           {/* Lines DataGrid */}
-          <div ref={gridNavRef} className="contents">
+          <div ref={gridNavRef} className="rounded-2xl border p-2" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
           <DataGrid
             data-help="main-table"
             data={lines}
@@ -1785,13 +1836,14 @@ export default function PurchaseFormPage() {
                 </div>
                 {paymentMethods.map(m => {
                   const amount = multiAmounts[m.id] || "";
+                  const isCreditMethod = m.type === "credit" || m.category === "credit";
                   return (
                     <div key={m.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
                       <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-slate-50 text-slate-500 shrink-0">
                         {m.type === "cash" ? <Banknote className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
                       </div>
                       <span className="flex-1 min-w-0 text-2sm font-bold text-slate-700 leading-snug break-words">{m.name}</span>
-                      <input type="number" value={amount} placeholder="0.00" min="0" step="0.01" disabled={isLocked}
+                      <input type="number" value={amount} placeholder="0.00" min="0" step="0.01" disabled={isLocked || (isCreditMethod && !supplier)}
                         onChange={(e) => setMultiAmounts(prev => ({ ...prev, [m.id]: e.target.value }))}
                         className="w-28 shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left number-fmt-primary text-2sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:cursor-not-allowed transition-all" />
                     </div>
@@ -1864,9 +1916,10 @@ export default function PurchaseFormPage() {
                 </button>
               </div>
             </div>
-          )}
-        </aside>
-      </div>
+           )}
+               <div className="flex-1" />
+         </aside>
+       </div>
 
       <PurchaseFormBottomBar
         forceShow={panelEffectiveCollapsed}

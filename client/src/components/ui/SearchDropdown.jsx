@@ -91,11 +91,11 @@ export default function SearchDropdown({
     }
   }, [isLoadingMore, sentinelVisible, serverMode, hasMoreFromServer]);
 
-  const posClass = dropUp ? "bottom-[calc(100%+4px)]" : "top-[calc(100%+4px)]";
+  const posStyle = dropUp ? { bottom: "100%", marginBottom: "4px" } : { top: "calc(100% + 4px)" };
 
   if (!items.length && !showRaw) {
     return (
-      <div className={`absolute left-0 right-0 ${posClass} z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]`}>
+      <div className="rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {isLoadingMore ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
@@ -109,7 +109,7 @@ export default function SearchDropdown({
   }
 
   return (
-    <div className={`absolute left-0 right-0 ${posClass} z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]`}>
+    <div className="rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
       <div
         ref={listRef}
         className="overflow-y-auto p-1 custom-scrollbar"

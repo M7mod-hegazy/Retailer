@@ -34,11 +34,11 @@ export default function BranchTransferFormBottomBar({
     : { primary: "indigo", gradient: "from-indigo-600 to-blue-700" };
 
   return (
-    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]">
+    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]" style={{ backgroundColor: "var(--primary-100)" }}>
       <div className="flex flex-col">
         {/* Row 1: Totals + Branch */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 border-b border-zinc-100 bg-white">
-          <div className="flex items-center gap-1.5 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 border-b border-zinc-100">
+          <div className="flex items-center gap-1.5 rounded-lg px-1.5 py-0.5 border border-white/40">
             <Package className="h-3 w-3 text-zinc-400" />
             <span className="text-2sm font-black text-zinc-800">{formatNumber(totalQty, { decimals: 0 })}</span>
             <span className="text-[10px] font-bold text-zinc-500">إجمالي الكميات</span>
@@ -68,7 +68,7 @@ export default function BranchTransferFormBottomBar({
               <select
                 value={partnerBranch}
                 onChange={e => onPartnerBranchChange?.(e.target.value)}
-                className="w-full appearance-none rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-2sm font-bold text-zinc-700 outline-none focus:border-indigo-400 focus:bg-white cursor-pointer truncate"
+                className="w-full appearance-none rounded-md border border-zinc-200 bg-white/70 px-2 py-0.5 text-2sm font-bold text-zinc-700 outline-none focus:border-indigo-400 focus:bg-white cursor-pointer truncate"
               >
                 <option value="">اختر...</option>
                 {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
@@ -80,7 +80,7 @@ export default function BranchTransferFormBottomBar({
                 type="button"
                 onClick={onManageBranches}
                 title="إدارة الفروع"
-                className="flex shrink-0 items-center justify-center w-5 h-5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-colors"
+                className="flex shrink-0 items-center justify-center w-5 h-5 rounded border border-zinc-200 bg-white/70 hover:bg-white transition-colors"
               >
                 <Settings className="w-2.5 h-2.5 text-zinc-500" />
               </button>
@@ -89,11 +89,11 @@ export default function BranchTransferFormBottomBar({
         </div>
 
         {/* Row 2: Actions */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-1 bg-white">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           <PermissionGate page="branch_transfer" action="print">
             <button onClick={onPrint}
               disabled={isSaving || !linesLength || !partnerBranch || hasErrors}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> طباعة
             </button>
           </PermissionGate>

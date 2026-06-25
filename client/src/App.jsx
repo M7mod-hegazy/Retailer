@@ -21,7 +21,8 @@ import QuitOrLogoutModal from "./components/ui/QuitOrLogoutModal";
 import DetachedModalHost from "./components/detached/DetachedModalHost";
 import AssistantDrawer from "./components/assistant/AssistantDrawer";
 import AssistantLauncher from "./components/assistant/AssistantLauncher";
-import AnnouncementBanner from "./components/assistant/AnnouncementBanner";
+import { useAssistantStore } from "./stores/assistantStore";
+
 import api from "./services/api";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallbackPage from "./pages/error/ErrorFallbackPage";
@@ -331,6 +332,10 @@ export default function App() {
     window.electronAPI?.invoke?.('app:quit');
   });
 
+  useShortcut('global.assistant', () => {
+    useAssistantStore.getState().toggle();
+  });
+
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
     {/* Top-level safety net: catches crashes in the gates, AppShell, and the
@@ -348,7 +353,6 @@ export default function App() {
       <DetachedModalHost />
       <AssistantDrawer />
       <AssistantLauncher />
-      <AnnouncementBanner />
       {showWelcome && <WelcomeWizard onClose={() => setShowWelcome(false)} />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />

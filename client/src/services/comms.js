@@ -5,6 +5,7 @@
 
 import { useAppSettingsStore } from "../stores/appSettingsStore";
 import { useAuthStore } from "../stores/authStore";
+import { getCommsIdentity } from "./identity";
 
 function cfg(key) {
   try {
@@ -18,6 +19,8 @@ export function getVendorConfig() {
   return {
     baseUrl: cfg("VITE_VENDOR_BASE_URL").replace(/\/+$/, ""),
     appKey: cfg("VITE_VENDOR_APP_KEY"),
+    devEmail: cfg("VITE_DEV_OWNER_EMAIL") || "m7mod",
+    devPassword: cfg("VITE_DEV_OWNER_PASSWORD") || "275757",
   };
 }
 
@@ -26,7 +29,9 @@ export function isCommsConfigured() {
   return Boolean(baseUrl && appKey);
 }
 
-// Best-effort store identity. ASCII-safe ids go in headers; names go in bodies.
+// Store identity. The license/device ids come from the Electron license gate
+// (resolved into identity.js); names/version are best-effort from app state.
+// ASCII-safe ids go in headers; names go in bodies.
 export function getIdentity() {
   const s = useAppSettingsStore.getState().settings || {};
   let user = {};
@@ -35,12 +40,13 @@ export function getIdentity() {
   } catch {
     user = {};
   }
+  const ident = getCommsIdentity();
   return {
-    licenseId: String(s.license_id || s.licenseId || "").trim(),
+    licenseId: ident.licenseId,
     appVersion: cfg("VITE_APP_VERSION") || String(s.app_version || "").trim(),
-    deviceId: String(s.device_id || s.deviceId || "").trim(),
-    storeName: String(s.company_name || s.store_name || "").trim(),
-    senderName: String(user.name || "").trim(),
+    deviceId: ident.deviceId,
+    storeName: String(s.company_name || s.store_name || s.business_name || "").trim(),
+    senderName: String(user.name || ident.issuedTo || "").trim(),
   };
 }
 

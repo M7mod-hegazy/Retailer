@@ -91,6 +91,22 @@ function authApp(req, _res, next) {
 
 function createVendorApp() {
   const app = express();
+
+  // Allow cross-origin resource sharing for client requests
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-App-Key, x-app-key, X-License-Id, x-license-id, X-App-Version, x-app-version, X-Device-Id, x-device-id");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+
   app.use(express.json({ limit: "1mb" }));
 
   app.post("/owner/login", (req, res, next) => {

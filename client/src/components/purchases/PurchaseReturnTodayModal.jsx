@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../ui/Modal";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
-import { useDetach } from "../../hooks/useDetach";
+import { useDetach, openDetachedModal } from "../../hooks/useDetach";
 import DataGrid from "../ui/DataGrid";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import Highlight from "../ui/Highlight";
@@ -71,7 +71,7 @@ const STATUS_STYLES = {
   cancelled: { label: "ملغي", cls: "bg-slate-100 text-slate-500 border-slate-200" },
 };
 
-function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
+export function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -168,7 +168,7 @@ function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
   );
 }
 
-export default function PurchaseReturnTodayModal({ open, onClose, initialFilters }) {
+export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: propNavigate, initialFilters }) {
   const navigate = useNavigate();
   const gotoTarget = (path) => {
     if (window.location.search.includes("detachedModal=1") && window.electronAPI?.navigateParent) {
@@ -220,6 +220,21 @@ export default function PurchaseReturnTodayModal({ open, onClose, initialFilters
       };
     },
     actions: { navigate: (path) => navigate(path) },
+  });
+  const { handleDetach: handlePurchaseReturnPreviewDetach } = useDetach("purchase-return-preview", {
+    onClose: () => setPreviewOpen(false),
+    getState: () => ({ ret: previewItem }),
+    getBounds: () => {
+      const el = document.querySelector('[data-modal-content]');
+      if (!el) return undefined;
+      const panel = el.parentElement;
+      if (!panel) return undefined;
+      const rect = panel.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x), y: Math.round(rect.y),
+        width: Math.round(rect.width), height: Math.round(rect.height),
+      };
+    },
   });
   const docSearchRef = useRef(null);
   const itemSearchRef = useRef(null);
@@ -527,6 +542,10 @@ export default function PurchaseReturnTodayModal({ open, onClose, initialFilters
               emptyMessage={loading ? "جاري التحميل..." : "لا توجد نتائج في هذه الفترة"}
               className="border-0"
               onRowClick={r => {
+                if (propNavigate && (r.return_id || r.id)) {
+                  openDetachedModal("purchase-return-preview", { ret: r });
+                  return;
+                }
                 if (itemSearch.trim()) {
                   if (r.return_id || r.id) { setPreviewItem({ id: r.return_id || r.id, doc_no: r.doc_no, supplier_name: r.supplier_name, total: Number(r.unit_cost) * Number(r.quantity), created_at: r.created_at }); setPreviewOpen(true); }
                 } else {
@@ -539,9 +558,11 @@ export default function PurchaseReturnTodayModal({ open, onClose, initialFilters
         </div>
       </Modal>
       {/* Preview Modal */}
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة المرتجع">
-        {previewItem ? <ReturnPreviewModal ret={previewItem} onClose={() => setPreviewOpen(false)} onNavigate={gotoTarget} /> : null}
-      </Modal>
+      {!propNavigate && (
+        <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="معاينة المرتجع" onDetach={handlePurchaseReturnPreviewDetach} showDetach={true}>
+          {previewItem ? <ReturnPreviewModal ret={previewItem} onClose={() => setPreviewOpen(false)} onNavigate={gotoTarget} /> : null}
+        </Modal>
+      )}
       {/* Cancel Confirmation */}
       <ConfirmDialog
         open={cancelOpen}

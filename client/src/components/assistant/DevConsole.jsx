@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldCheck, ArrowRight, LogOut, Megaphone, Send, ThumbsUp, Trash2 } from "lucide-react";
+import { ShieldCheck, ArrowRight, Megaphone, Send, ThumbsUp, Trash2, List } from "lucide-react";
 import { useDevStore } from "../../stores/devStore";
 import Attachments from "./Attachments";
 
@@ -179,26 +179,35 @@ function DevThread({ t }) {
   );
 }
 
-function AnnouncementComposer({ t, onDone }) {
+function AnnouncementComposer({ t, onDone, editAnnouncement }) {
   const postAnnouncement = useDevStore((s) => s.postAnnouncement);
-  const selected = useDevStore((s) => s.selected);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [type, setType] = useState("info");
-  const [audience, setAudience] = useState("all");
+  const updateAnnouncement = useDevStore((s) => s.updateAnnouncement);
+  const loadAnnouncementsList = useDevStore((s) => s.loadAnnouncementsList);
+  const [title, setTitle] = useState(editAnnouncement?.title || "");
+  const [body, setBody] = useState(editAnnouncement?.body || "");
+  const [type, setType] = useState(editAnnouncement?.type || "info");
   const [busy, setBusy] = useState(false);
+  const isEdit = Boolean(editAnnouncement);
 
   const publish = async () => {
     if (!body.trim()) return;
     setBusy(true);
     try {
-      await postAnnouncement({
-        title: title.trim() || null,
-        body: body.trim(),
-        type,
-        targetKind: audience === "license" ? "license" : "all",
-        targetLicenseId: audience === "license" ? selected : null,
-      });
+      if (isEdit) {
+        await updateAnnouncement(editAnnouncement.id, {
+          title: title.trim() || null,
+          body: body.trim(),
+          type,
+        });
+      } else {
+        await postAnnouncement({
+          title: title.trim() || null,
+          body: body.trim(),
+          type,
+          targetKind: "all",
+        });
+      }
+      loadAnnouncementsList();
       onDone(true);
     } catch {
       setBusy(false);
@@ -222,20 +231,95 @@ function AnnouncementComposer({ t, onDone }) {
           ))}
         </div>
       </div>
-      <div>
-        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>{t("dev.audience")}</span>
-        <div className="flex gap-1.5">
-          <button onClick={() => setAudience("all")} className={`flex-1 rounded-xl px-2 py-1.5 text-[11px] font-black ${audience === "all" ? "bg-primary text-white" : "border"}`}
-            style={audience === "all" ? undefined : { borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>{t("dev.audienceAll")}</button>
-          {selected && (
-            <button onClick={() => setAudience("license")} className={`flex-1 rounded-xl px-2 py-1.5 text-[11px] font-black ${audience === "license" ? "bg-primary text-white" : "border"}`}
-              style={audience === "license" ? undefined : { borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>{t("dev.audienceLicense")}</button>
-          )}
-        </div>
-      </div>
       <button onClick={publish} disabled={busy || !body.trim()} className="w-full rounded-xl bg-primary py-2.5 text-[13px] font-black text-white shadow-sm disabled:opacity-40">
-        {t("dev.announce")}
+        {isEdit ? t("dev.update") : t("dev.announce")}
       </button>
+    </div>
+  );
+}
+
+function ToggleSwitch({ checked, onChange }) {
+  const [optimistic, setOptimistic] = useState(checked);
+  useEffect(() => setOptimistic(checked), [checked]);
+
+  return (
+    <button
+      onClick={() => { setOptimistic(!optimistic); onChange(); }}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${optimistic ? "bg-primary" : "bg-zinc-300"}`}
+    >
+      <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${optimistic ? "translate-x-4" : "translate-x-0"}`} />
+    </button>
+  );
+}
+
+function AnnouncementList({ t }) {
+  const announcementsList = useDevStore((s) => s.announcementsList);
+  const loadAnnouncementsList = useDevStore((s) => s.loadAnnouncementsList);
+  const toggleAnnouncement = useDevStore((s) => s.toggleAnnouncement);
+  const deleteAnnouncement = useDevStore((s) => s.deleteAnnouncement);
+  const [editingId, setEditingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    loadAnnouncementsList();
+  }, [loadAnnouncementsList]);
+
+  if (editingId) {
+    const item = announcementsList.find((a) => a.id === editingId);
+    if (item) {
+      return <AnnouncementComposer t={t} onDone={() => setEditingId(null)} editAnnouncement={item} />;
+    }
+  }
+
+  const TYPE_BADGE = {
+    info: { bg: "bg-blue-100", text: "text-blue-700" },
+    critical: { bg: "bg-red-100", text: "text-red-700" },
+    update: { bg: "bg-amber-100", text: "text-amber-700" },
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+      {deletingId && (
+        <div className="rounded-2xl border p-4 mb-3" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
+          <p className="text-[13px] font-bold mb-3" style={{ color: "var(--text-primary)" }}>{t("dev.confirmDelete")}</p>
+          <div className="flex gap-2">
+            <button onClick={async () => { await deleteAnnouncement(deletingId); loadAnnouncementsList(); setDeletingId(null); }}
+              className="flex-1 rounded-xl bg-red-600 py-2 text-[12px] font-black text-white">{t("dev.deleteConfirm")}</button>
+            <button onClick={() => setDeletingId(null)}
+              className="flex-1 rounded-xl border py-2 text-[12px] font-black" style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>{t("dev.cancel")}</button>
+          </div>
+        </div>
+      )}
+      {announcementsList.length === 0 ? (
+        <p className="py-8 text-center text-[13px] font-bold" style={{ color: "var(--text-muted)" }}>{t("dev.noAnnouncements")}</p>
+      ) : (
+        announcementsList.map((a) => {
+          const badge = TYPE_BADGE[a.type] || TYPE_BADGE.info;
+          return (
+            <div key={a.id} className="rounded-2xl border p-3" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${badge.bg} ${badge.text}`}>
+                    {a.type === "info" ? t("dev.typeInfo") : a.type === "critical" ? t("dev.typeCritical") : t("dev.typeUpdate")}
+                  </span>
+                  {a.title && <span className="truncate text-[13px] font-black" style={{ color: "var(--text-primary)" }}>{a.title}</span>}
+                </div>
+                <ToggleSwitch checked={Boolean(a.active)} onChange={() => toggleAnnouncement(a.id)} />
+              </div>
+              <p className="text-[12px] font-bold leading-relaxed line-clamp-2 mb-2" style={{ color: "var(--text-secondary)" }}>{a.body}</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setEditingId(a.id)}
+                  className="rounded-xl bg-primary/10 px-3 py-1.5 text-[11px] font-black text-primary transition-colors hover:bg-primary/20">{t("dev.edit")}</button>
+                <button onClick={() => setDeletingId(a.id)}
+                  className="rounded-xl bg-red-50 px-3 py-1.5 text-[11px] font-black text-red-600 transition-colors hover:bg-red-100">{t("assistant.delete")}</button>
+                <span className="mr-auto text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>
+                  {a.created_at ? new Date(a.created_at).toLocaleDateString("ar-EG") : ""}
+                </span>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
@@ -243,9 +327,8 @@ function AnnouncementComposer({ t, onDone }) {
 export default function DevConsole() {
   const { t } = useTranslation();
   const selected = useDevStore((s) => s.selected);
-  const logout = useDevStore((s) => s.logout);
   const [composing, setComposing] = useState(false);
-
+  const [viewList, setViewList] = useState(false);
 
   return (
     <>
@@ -255,16 +338,18 @@ export default function DevConsole() {
           <span className="text-[12px] font-black" style={{ color: "var(--text-primary)" }}>{t("dev.title")}</span>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setComposing((c) => !c)} title={t("dev.newAnnouncement")} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5" style={{ color: composing ? "var(--primary)" : "var(--text-muted)" }}>
-            <Megaphone className="h-4 w-4" />
+          <button onClick={() => { setComposing(false); setViewList((v) => !v); }} title={t("dev.announcementsList")} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5" style={{ color: viewList ? "var(--primary)" : "var(--text-muted)" }}>
+            <List className="h-4 w-4" />
           </button>
-          <button onClick={logout} title={t("dev.logout")} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5" style={{ color: "var(--text-muted)" }}>
-            <LogOut className="h-4 w-4" />
+          <button onClick={() => { setViewList(false); setComposing((c) => !c); }} title={t("dev.newAnnouncement")} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5" style={{ color: composing ? "var(--primary)" : "var(--text-muted)" }}>
+            <Megaphone className="h-4 w-4" />
           </button>
         </div>
       </div>
       {composing ? (
         <AnnouncementComposer t={t} onDone={() => setComposing(false)} />
+      ) : viewList ? (
+        <AnnouncementList t={t} />
       ) : selected ? (
         <DevThread t={t} />
       ) : (

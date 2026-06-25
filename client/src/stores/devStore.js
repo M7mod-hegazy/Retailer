@@ -11,7 +11,12 @@ import {
   devEdit,
   devDelete,
   devCreateAnnouncement,
+  devListAnnouncements,
+  devUpdateAnnouncement,
+  devDeleteAnnouncement,
+  devToggleAnnouncement,
 } from "../services/devComms";
+import { getVendorConfig } from "../services/comms";
 
 /**
  * Developer-mode state: owner auth + the all-stores console (conversation list,
@@ -45,7 +50,20 @@ export const useDevStore = create((set, get) => ({
   },
 
   loadConversations: async () => {
-    if (!isDevAuthed()) return;
+    if (!isDevAuthed()) {
+      const { devEmail, devPassword } = getVendorConfig();
+      if (devEmail && devPassword) {
+        try {
+          await devLogin(devEmail, devPassword);
+          set({ authed: true });
+        } catch {
+          set({ error: "load_failed" });
+          return;
+        }
+      } else {
+        return;
+      }
+    }
     try {
       const conversations = await devListConversations();
       set({ conversations, error: "" });
@@ -109,5 +127,30 @@ export const useDevStore = create((set, get) => ({
 
   postAnnouncement: async (payload) => {
     await devCreateAnnouncement(payload);
+  },
+
+  announcementsList: [],
+
+  loadAnnouncementsList: async () => {
+    try {
+      const list = await devListAnnouncements();
+      set({ announcementsList: list });
+    } catch {
+      /* silent */
+    }
+  },
+
+  updateAnnouncement: async (id, payload) => {
+    await devUpdateAnnouncement(id, payload);
+  },
+
+  deleteAnnouncement: async (id) => {
+    await devDeleteAnnouncement(id);
+    set((s) => ({ announcementsList: s.announcementsList.filter((a) => a.id !== id) }));
+  },
+
+  toggleAnnouncement: async (id) => {
+    const updated = await devToggleAnnouncement(id);
+    set((s) => ({ announcementsList: s.announcementsList.map((a) => (a.id === id ? { ...a, ...updated } : a)) }));
   },
 }));

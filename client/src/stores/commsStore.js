@@ -10,6 +10,7 @@ import {
   fetchAnnouncements,
   markAnnouncementRead,
 } from "../services/comms";
+import { resolveCommsIdentity } from "../services/identity";
 
 // ── Local offline cache for announcements (local-first) ───────────────
 // Once pulled while online, announcements render from this cache even with no
@@ -57,6 +58,7 @@ export const useCommsStore = create((set, get) => ({
   // ── Support thread ──────────────────────────────────────────────────
   syncSupport: async () => {
     if (!isCommsConfigured()) return;
+    await resolveCommsIdentity();
     try {
       const { messages, cursor } = await fetchMessages(0);
       set({ messages, supportCursor: cursor || 0, supportError: false });
@@ -73,6 +75,7 @@ export const useCommsStore = create((set, get) => ({
   sendSupport: async (body, channel = "support") => {
     const text = String(body || "").trim();
     if (!text || !isCommsConfigured()) return;
+    await resolveCommsIdentity();
     const msg = await sendMessage({ body: text, channel });
     set((s) => ({ messages: [...s.messages.filter((m) => m.id !== msg.id), msg] }));
   },
@@ -99,6 +102,7 @@ export const useCommsStore = create((set, get) => ({
   // ── Announcements ───────────────────────────────────────────────────
   syncAnnouncements: async () => {
     if (!isCommsConfigured()) return;
+    await resolveCommsIdentity();
     try {
       const { announcements: incoming } = await fetchAnnouncements(0);
       const merged = mergeAnnouncements(get().announcements, incoming);

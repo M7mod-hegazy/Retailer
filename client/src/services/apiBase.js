@@ -14,7 +14,22 @@
 // main process bridges retailer:// to the server over a local named pipe.
 const CUSTOM_PROTOCOL_BASE = "retailer://local";
 
+// The Electron main process injects the authoritative base via preload
+// (window.__API_BASE__). This is the ONLY trustworthy signal of the real transport —
+// window.location.protocol is a guess that has been wrong in the field (a packaged build
+// resolving to http://127.0.0.1:5000 and getting blocked by antivirus). Always prefer it.
+function injectedBase() {
+  if (typeof window !== "undefined" && typeof window.__API_BASE__ === "string" && window.__API_BASE__) {
+    return window.__API_BASE__;
+  }
+  return null;
+}
+
 function isPackagedElectron() {
+  // The injected base is authoritative; the protocol check is only a fallback for older
+  // renderers / the brief window before preload runs.
+  const injected = injectedBase();
+  if (injected) return injected === CUSTOM_PROTOCOL_BASE;
   return (
     typeof window !== "undefined" &&
     window.location &&
@@ -23,6 +38,8 @@ function isPackagedElectron() {
 }
 
 function staticFallback() {
+  const injected = injectedBase();
+  if (injected) return injected;
   if (isPackagedElectron()) return CUSTOM_PROTOCOL_BASE;
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   // Dev / web mode runs over http(s) — use the page origin so the Vite proxy /
@@ -39,6 +56,12 @@ let inflight = null;
 // Async resolver — preferred for any code path that can await (API calls, image URLs).
 export async function getApiBaseUrl() {
   if (resolvedBaseUrl) return resolvedBaseUrl;
+  // Authoritative base injected by the main process — trust it above all else.
+  const injected = injectedBase();
+  if (injected) {
+    resolvedBaseUrl = injected;
+    return resolvedBaseUrl;
+  }
   // Packaged Electron → custom protocol, no IPC round-trip / no TCP loopback.
   if (isPackagedElectron()) {
     resolvedBaseUrl = CUSTOM_PROTOCOL_BASE;

@@ -12,6 +12,7 @@ import Modal from "../../components/ui/Modal";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
+import CategorySearchField from "../../components/ui/CategorySearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
@@ -118,7 +119,11 @@ export default function QuotationFormPage() {
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const currentUser = useAuthStore(s => s.user);
+  const currentUser = useAuthStore((s) => s.user);
+  const [listCategoryFilter, setListCategoryFilter] = useState(null);
+  const [listCategoryQuery, setListCategoryQuery] = useState("");
+  const [categories, setCategories] = useState([]);
+
   const [editActivation, setEditActivation] = useState(null);
   const { docNo, createdAt: invoiceCreatedAt, isActive: invoiceIsActive, activate: activateInvoice, reset: resetActivation } =
     useInvoiceActivation("quotation", editActivation);
@@ -349,7 +354,9 @@ export default function QuotationFormPage() {
     const q = searchItem.trim();
     if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); return; }
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+      const params = { search: q, limit: ITEM_PAGE, offset: 0 };
+      if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+      api.get("/api/items", { params })
         .then(r => {
           const rows = r.data.data || [];
           setFilteredItems(rows);
@@ -358,7 +365,11 @@ export default function QuotationFormPage() {
         }).catch(() => {});
     }, 250);
     return () => clearTimeout(t);
-  }, [searchItem]);
+  }, [searchItem, listCategoryFilter]);
+
+  useEffect(() => {
+    api.get("/api/categories").then(r => setCategories(r.data?.data || [])).catch(() => {});
+  }, []);
 
   function loadMoreItems() {
     if (!itemHasMore || isLoadingMoreItems) return;
@@ -366,7 +377,9 @@ export default function QuotationFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+    api.get("/api/items", { params })
       .then(r => {
         const rows = r.data.data || [];
         setFilteredItems(prev => [...prev, ...rows]);
@@ -384,6 +397,18 @@ export default function QuotationFormPage() {
     setItemOffset(0);
     setItemHasMore(true);
     setIsLoadingMoreItems(true);
+
+    if (listCategoryFilter?.id) {
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+        .then(r => {
+          const rows = (r.data.data || []).map(fmt);
+          setFilteredItems(listCategoryFilter?.id ? sortByProximity(rows, anchor) : rows);
+          setItemOffset(rows.length);
+          setItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === SHOW_ALL_LIMIT));
+        }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+      return;
+    }
+
     const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
     const catCall = anchor?.category_id
       ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
@@ -431,6 +456,8 @@ export default function QuotationFormPage() {
     setFilteredItems([]);
     setItemOffset(0);
     setItemHasMore(false);
+    setListCategoryFilter(null);
+    setListCategoryQuery("");
     setSelectedItem(null);
     setStaging({ qty: 1, price: 0, discount: 0 });
     setTimeout(() => searchRef.current?.focus(), 50);
@@ -461,6 +488,8 @@ export default function QuotationFormPage() {
     setFilteredItems([]);
     setItemOffset(0);
     setItemHasMore(false);
+    setListCategoryFilter(null);
+    setListCategoryQuery("");
   }
 
   async function loadBrowseItems(p = 1) {
@@ -632,17 +661,31 @@ export default function QuotationFormPage() {
       <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
              <div className="flex flex-1 flex-col p-4 gap-4 min-w-0">
              {/* Entry Bar — Quotation */}
-              <section className="rounded-md border border-amber-200 bg-white shadow-sm shrink-0">
-                <div className="bg-amber-50 border-b border-amber-200 px-2 py-[1px]">
-                  <span className="bg-amber-600 text-white text-[9px] rounded-sm px-1 py-[1px] font-bold">عرض سعر</span>
-                </div>
-                <div className="p-2.5">
+               <section data-help="items-section" className="rounded-2xl border p-3 shadow-sm shrink-0" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
                 <div className="entry-bar">
                  {/* 1. Image thumbnail */}
                  <EntryItemThumb item={selectedItem} onView={(imgs) => { const u = resolveImageUrl(imgs[0]); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }} />
                  {/* 2. Search field + barcode + browse */}
                  <div className="entry-field entry-field--item">
                    <label className="entry-label">الصنف</label>
+                   <CategorySearchField
+                     categories={categories}
+                     value={listCategoryFilter}
+                     query={listCategoryQuery}
+                     onQueryChange={setListCategoryQuery}
+                     onChange={(cat) => {
+                       setListCategoryFilter(cat);
+                       setListCategoryQuery("");
+                       setSelectedItem(null);
+                       setSearchItem("");
+                     }}
+                     onPickDone={(catId) => {
+                       setTimeout(() => {
+                         searchRef.current?.focus();
+                         showAllItems();
+                       }, 50);
+                     }}
+                   />
                    <ProductSearchField
                      ref={searchRef}
                      onNavigateNext={() => { qtyRef.current?.focus(); qtyRef.current?.select?.(); }}
@@ -652,22 +695,27 @@ export default function QuotationFormPage() {
                      emptyLabel="الصنف غير موجود"
                      selectedItem={selectedItem}
                      chipCode={(it) => it.code || it.barcode || `#${it.id}`}
+                     showChip={false}
                      onLoadMore={loadMoreItems}
                      hasMore={itemHasMore}
                      isLoadingMore={isLoadingMoreItems}
                      onShowAll={showAllItems}
                      hideZeroStock={false}
-                     onPick={(item) => {
-                       let suggestedPrice = item.sale_price;
-                       if (selectedCustomer) {
-                         const key = `${selectedCustomer.id}_${item.id}`;
-                         if (recentPrices[key]) suggestedPrice = recentPrices[key];
-                       }
-                       setSelectedItem(item);
-                       setStaging({ qty: 1, price: suggestedPrice, discount: 0, warehouse_id: warehouses.length > 0 ? warehouses[0].id : null });
-                       setPriceType('retail');
-                       setTimeout(() => qtyRef.current?.focus(), 50);
-                     }}
+                      onPick={(item) => {
+                        let suggestedPrice = item.sale_price;
+                        if (selectedCustomer) {
+                          const key = `${selectedCustomer.id}_${item.id}`;
+                          if (recentPrices[key]) suggestedPrice = recentPrices[key];
+                        }
+                        setSelectedItem(item);
+                        setStaging({ qty: 1, price: suggestedPrice, discount: 0, warehouse_id: warehouses.length > 0 ? warehouses[0].id : null });
+                        setPriceType('retail');
+                        const cat = categories.find(c => c.id === item.category_id) || categories.find(c => c.name === item.category_name) || null;
+                        const skuPrefix = cat?.sku_prefix ?? item?.sku_prefix ?? null;
+                        setListCategoryFilter(cat ? { id: cat.id, name: cat.name, sku_prefix: skuPrefix } : null);
+                        setListCategoryQuery("");
+                        setTimeout(() => qtyRef.current?.focus(), 50);
+                      }}
                    />
                    <span className="text-[10px] font-bold mt-1" style={{ color: "var(--text-muted)" }}>يمكنك مسح الباركود مباشرة بالScanner</span>
                  </div>
@@ -809,12 +857,11 @@ export default function QuotationFormPage() {
                      )}
                    </>
                  );
-                })()}
-                </div>
-              </section>
+                 })()}
+               </section>
 
-              {/* Cart Table */}
-               <div data-help="quote-form-items" className="flex flex-1 flex-col overflow-x-auto rounded-md border border-amber-200/60 bg-white shadow-sm">
+               {/* Cart Table */}
+                <div data-help="quote-form-items" className="rounded-2xl border p-2 flex flex-1 flex-col overflow-x-auto" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
                 <div style={{ gridTemplateColumns: gridTemplate }} className="grid items-center border-b border-slate-300 bg-slate-50 text-[11px] font-black uppercase text-slate-500">
                     {effectiveVisible.includes("index") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">#</div>}
                     {effectiveVisible.includes("code") && <div className="px-1 py-2.5 border-l border-slate-200 text-center">الكود</div>}

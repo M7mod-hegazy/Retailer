@@ -33,28 +33,10 @@ export default function PurchaseOrderFormBottomBar({
   if (!forceShow) return null;
 
   return (
-    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]">
+    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]" style={{ backgroundColor: "var(--primary-100)" }}>
       <div className="flex flex-col">
-        {/* Row 1: Counts + subtotal */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 border-b border-zinc-100 bg-white">
-          <div className="flex items-center gap-1.5 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100">
-            <Package className="h-3 w-3 text-zinc-400" />
-            <span className="text-2sm font-black text-zinc-800">{itemCount}</span>
-            <span className="text-[10px] font-bold text-zinc-500">أصناف</span>
-          </div>
-          {quantityCount > 0 && (
-            <div className="flex items-center gap-1.5 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100">
-              <span className="text-2sm font-black text-zinc-800">{quantityCount}</span>
-              <span className="text-[10px] font-bold text-zinc-500">كمية</span>
-            </div>
-          )}
-          <span className="h-5 w-px bg-zinc-200" />
-          <span className="text-2sm font-bold text-zinc-400">المجموع الفرعي</span>
-          <span className="font-mono text-sm font-black text-zinc-700">{formatMoney(totals.sub)}</span>
-        </div>
-
-        {/* Row 2: Discount/Increase + total */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 bg-zinc-50/60 border-b border-zinc-100">
+        {/* Row 1: Counts + Discount/Increase + Total */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 border-b border-zinc-100" style={{ backgroundColor: "var(--primary-200)" }}>
           <label className="flex items-center gap-1 shrink-0 bg-amber-50/50 rounded-lg px-1.5 py-0.5 border border-amber-100/50">
             <input type="number" min="0"
               value={discount || ""}
@@ -83,10 +65,10 @@ export default function PurchaseOrderFormBottomBar({
         </div>
 
         {/* Row 3: Actions */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-1 bg-white">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           <PermissionGate page="purchase_orders" action="print">
             <button onClick={onPrint} disabled={!linesLength}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> طباعة
             </button>
           </PermissionGate>

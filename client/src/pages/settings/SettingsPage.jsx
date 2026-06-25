@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock, ChevronDown } from "lucide-react";
+import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock, ChevronDown, Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { classifyConnectionError, buildSupportReport, copyToClipboard } from "../../services/connection";
 import { HelpSettingsTab } from "./HelpSettingsTab";
 import { AppIdentityTab } from "./AppIdentityTab";
 import BackupSettingsTab from "./BackupSettingsTab";
@@ -280,6 +281,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const fetchErrorRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [isRTL, setIsRTL] = useState(document.documentElement.dir === "rtl");
   const [printPreview, setPrintPreview] = useState(false);
@@ -361,32 +363,62 @@ export default function SettingsPage() {
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     setFetchError(false);
-    try {
-      const response = await api.get("/api/settings");
-      const data = response.data?.data;
-      let mapped = {};
-      if (data && typeof data === "object" && !Array.isArray(data)) {
-        mapped = normalizeSettings(data);
-      } else if (Array.isArray(data)) {
-        data.forEach((item) => {
-          let val = item.setting_value;
-          if (val === "true") val = true;
-          if (val === "false") val = false;
-          if (!isNaN(val) && val !== "" && typeof val === "string") val = Number(val);
-          mapped[item.setting_key] = val;
-        });
+    // The local server blips for a second or two during startup/restart, and a heavy
+    // synchronous DB op can make it momentarily unreachable. Don't punish the user with a
+    // hard error screen for that — retry a few times with backoff first, and only surface
+    // the error UI once it is genuinely, persistently unreachable.
+    const delays = [600, 1200, 2400];
+    let lastErr = null;
+    for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+      try {
+        const response = await api.get("/api/settings");
+        const data = response.data?.data;
+        let mapped = {};
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          mapped = normalizeSettings(data);
+        } else if (Array.isArray(data)) {
+          data.forEach((item) => {
+            let val = item.setting_value;
+            if (val === "true") val = true;
+            if (val === "false") val = false;
+            if (!isNaN(val) && val !== "" && typeof val === "string") val = Number(val);
+            mapped[item.setting_key] = val;
+          });
+        }
+        setSettings(mapped);
+        originalRef.current = JSON.parse(JSON.stringify(mapped));
+        settingsRef.current = mapped;
+        fetchErrorRef.current = null;
+        setLoading(false);
+        return;
+      } catch (err) {
+        lastErr = err;
+        // A 4xx (e.g. 401/403) is a real, non-transient answer from the server — retrying
+        // won't help, so stop early. Only retry transient transport failures.
+        const status = err?.response?.status;
+        const transient =
+          classifyConnectionError(err) !== "http" || (status >= 500 && status < 600);
+        if (!transient || attempt === delays.length) break;
+        await new Promise((r) => setTimeout(r, delays[attempt]));
       }
-      setSettings(mapped);
-      originalRef.current = JSON.parse(JSON.stringify(mapped));
-      settingsRef.current = mapped;
-    } catch (err) {
-      console.error("Failed to load settings:", err);
-      setFetchError(true);
-      toast.error(isRTL ? "تعذر تحميل الإعدادات" : "Failed to load settings");
-    } finally {
-      setLoading(false);
     }
+    console.error("Failed to load settings:", lastErr);
+    fetchErrorRef.current = lastErr;
+    setFetchError(true);
+    setLoading(false);
+    toast.error(isRTL ? "تعذر تحميل الإعدادات" : "Failed to load settings");
   }, [isRTL]);
+
+  const copySettingsError = useCallback(async () => {
+    const err = fetchErrorRef.current;
+    const report = await buildSupportReport(err || { message: "no captured request error" }, {
+      context: "Settings /api/settings",
+    });
+    const ok = await copyToClipboard(report);
+    toast[ok ? "success" : "error"](
+      ok ? "تم نسخ تفاصيل الخطأ" : "تعذّر النسخ — انسخ يدوياً",
+    );
+  }, []);
 
   const handleChange = (key, value) => {
     const updated = { ...settings, [key]: value };
@@ -474,13 +506,23 @@ export default function SettingsPage() {
           <span className="text-sm font-bold text-slate-500">
             {isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings"}
           </span>
-          <button
-            onClick={fetchSettings}
-            className="flex items-center gap-2 rounded-sm bg-primary px-5 py-2.5 text-sm font-black text-white shadow-md transition-all hover:bg-primary-600 active:scale-95"
-          >
-            <RefreshCw className="h-4 w-4" />
-            {isRTL ? "إعادة المحاولة" : "Retry"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchSettings}
+              className="flex items-center gap-2 rounded-sm bg-primary px-5 py-2.5 text-sm font-black text-white shadow-md transition-all hover:bg-primary-600 active:scale-95"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {isRTL ? "إعادة المحاولة" : "Retry"}
+            </button>
+            <button
+              onClick={copySettingsError}
+              className="flex items-center gap-2 rounded-sm border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500 transition-all hover:bg-slate-100 active:scale-95"
+              title={isRTL ? "نسخ تفاصيل الخطأ" : "Copy error details"}
+            >
+              <Copy className="h-4 w-4" />
+              {isRTL ? "نسخ تفاصيل الخطأ" : "Copy error details"}
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Banknote, CreditCard, Wallet, Calendar, Layers } from "lucide-react";
 import api from "../../services/api";
+import { createDisconnectTracker, buildSupportReport, copyToClipboard } from "../../services/connection";
 import { scoredFilterRows, scoreItem } from "../../utils/search";
 import { sortByProximity } from "../../utils/itemSort";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -154,6 +155,10 @@ export default function POSPage() {
   const [allItemsTargetCategory, setAllItemsTargetCategory] = useState(null);
   const ITEM_PAGE = 20;
 
+  // List-view category filter (separate from detailed-view category)
+  const [listCategoryFilter, setListCategoryFilter] = useState(null); // { id, name } | null
+  const [listCategoryQuery, setListCategoryQuery]   = useState("");
+
   // Detailed search
   const [detailedSearchOpen, setDetailedSearchOpen]   = useState(false);
   const [detailedSearchQuery, setDetailedSearchQuery] = useState("");
@@ -299,6 +304,9 @@ export default function POSPage() {
   // The app is local-first (Express + SQLite on this machine), so navigator.onLine
   // is irrelevant; what actually breaks the POS is the local server being down.
   const [isOffline, setIsOffline] = useState(false);
+  // The actual error behind the latest offline state, kept so the banner can offer a
+  // "copy full error details" button for support.
+  const healthErrorRef = useRef(null);
 
   // Refs
   const codeInputRef     = useRef(null);
@@ -325,15 +333,28 @@ export default function POSPage() {
     if (!healthCheckInterval) return;
     let alive = true;
     let id = null;
+    // A single failed ping is NOT a disconnect — the local server blips for a second or
+    // two during startup/restart, and a synchronous heavy DB op (better-sqlite3) makes a
+    // busy-but-alive server time out. Only flip the banner after several consecutive REAL
+    // failures (timeouts excluded), and clear it instantly on the first success.
+    const tracker = createDisconnectTracker({ threshold: 3 });
     const check = async () => {
       try {
         // Generous timeout: better-sqlite3 is synchronous, so a busy-but-alive server
         // can take several seconds to answer. A short timeout here used to surface a
         // false disconnect overlay during heavy operations.
         await api.get("/api/health", { timeout: 8000 });
-        if (alive) setIsOffline(false);
-      } catch {
-        if (alive) setIsOffline(true);
+        tracker.success();
+        if (alive) {
+          healthErrorRef.current = null;
+          setIsOffline(false);
+        }
+      } catch (err) {
+        const { offline } = tracker.record(err);
+        if (alive) {
+          if (offline) healthErrorRef.current = err;
+          setIsOffline(offline);
+        }
       }
     };
     const start = () => { if (id == null) { check(); id = setInterval(check, healthCheckInterval); } };
@@ -343,6 +364,20 @@ export default function POSPage() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; stop(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [healthCheckInterval]);
+
+  // Copy the full technical details of the current disconnect to the clipboard so the
+  // cashier can send them to support. Falls back to the last global connection error if
+  // the health probe itself did not capture one.
+  const copyConnectionError = useCallback(async () => {
+    const err = healthErrorRef.current;
+    const report = await buildSupportReport(err || { message: "no captured request error" }, {
+      context: "POS /api/health",
+    });
+    const ok = await copyToClipboard(report);
+    toast[ok ? "success" : "error"](
+      ok ? "تم نسخ تفاصيل الخطأ" : "تعذّر النسخ — انسخ يدوياً",
+    );
+  }, []);
 
   useEffect(() => () => { if (rafRef.current) window.cancelAnimationFrame(rafRef.current); }, []);
 
@@ -833,7 +868,9 @@ export default function POSPage() {
     setIsSearchingItems(true);
     const controller = new AbortController();
     const t = setTimeout(() => {
-      api.get("/api/items", { params: { search: q, limit: ITEM_PAGE, offset: 0 }, signal: controller.signal })
+      const searchParams = { search: q, limit: ITEM_PAGE, offset: 0 };
+      if (listCategoryFilter?.id) searchParams.category_id = listCategoryFilter.id;
+      api.get("/api/items", { params: searchParams, signal: controller.signal })
         .then(r => {
           const rows = (r.data.data || []).map(item => ({
             ...item,
@@ -854,7 +891,7 @@ export default function POSPage() {
       clearTimeout(t);
       controller.abort();
     };
-  }, [itemNameQuery, itemCodeQuery, allItemsMode]);
+  }, [itemNameQuery, itemCodeQuery, allItemsMode, listCategoryFilter]);
 
   // When user types a new query, exit "show all" mode so loadMore uses the typed query
   useEffect(() => {
@@ -910,6 +947,7 @@ export default function POSPage() {
     const limit = allItemsMode ? SHOW_ALL_LIMIT : ITEM_PAGE;
     const params = { limit, offset: searchedItemOffset };
     if (!allItemsMode && q) params.search = q;
+    if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
     api.get("/api/items", { params })
       .then(r => {
         let rows = (r.data.data || []).map(item => ({
@@ -932,18 +970,34 @@ export default function POSPage() {
       }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
   }
 
-  function showAllPOSItems() {
+  function showAllPOSItems(categoryIdOverride) {
     setAllItemsMode(true);
     setSearchedItemOffset(0);
     setSearchedItemHasMore(true);
     setIsLoadingMoreItems(true);
-    setAllItemsTargetCategory(selectedItem?.category_name ?? null);
 
     const fmt = (item) => ({
       ...item,
       sub_label: `مخزون: ${Number(item.stock_quantity || item.stock || 0)}`,
       price_label: formatMoney(item.sale_price || item.price || 0),
     });
+
+    // categoryIdOverride bypasses stale closure when called right after setListCategoryFilter
+    const activeCategoryId = categoryIdOverride ?? listCategoryFilter?.id ?? null;
+    if (activeCategoryId) {
+      api.get("/api/items", { params: { category_id: activeCategoryId, limit: SHOW_ALL_LIMIT, offset: 0 } })
+        .then(r => {
+          const rows = (r.data.data || []).map(fmt);
+          setSearchedItemResults(rows);
+          setSearchedItemOffset(rows.length);
+          setSearchedItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === SHOW_ALL_LIMIT));
+        })
+        .catch(() => toast.error("تعذر تحميل قائمة الأصناف"))
+        .finally(() => setIsLoadingMoreItems(false));
+      return;
+    }
+
+    setAllItemsTargetCategory(selectedItem?.category_name ?? null);
 
     const catId = selectedItem?.category_id ?? null;
     const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
@@ -1056,6 +1110,8 @@ export default function POSPage() {
     setPendingBelowCostAdd(false);
     setPriceType("retail");
     setLastSalePrice(null);
+    setListCategoryFilter(null);
+    setListCategoryQuery("");
     rafRef.current = window.requestAnimationFrame(() => listItemInputRef.current?.focus());
   }
 
@@ -1093,6 +1149,16 @@ export default function POSPage() {
     setSearchedItemHasMore(false);
     setItemLookupOpen(false);
     setDetailedSearchOpen(false);
+    // Auto-populate list-view category filter from the selected item
+    const cat = item?.id && item.id !== -1
+      ? (itemCategories.find(c => c.id === item.category_id) ||
+         itemCategories.find(c => c.name === item.category_name) ||
+         null)
+      : null;
+    // sku_prefix may come from the item itself (JOIN) or from the looked-up category
+    const skuPrefix = cat?.sku_prefix ?? item?.sku_prefix ?? null;
+    setListCategoryFilter(cat ? { id: cat.id, name: cat.name, sku_prefix: skuPrefix } : null);
+    setListCategoryQuery("");
     // Focus next field depending on view mode
     if (viewMode === "list") {
       rafRef.current = window.requestAnimationFrame(() => { listWhRef.current?.focus(); });
@@ -1586,7 +1652,7 @@ export default function POSPage() {
     taxEnabled, setTaxEnabled, taxRate, setTaxRate, canEditTaxRate,
     heldDropdownOpen, setHeldDropdownOpen,
     staleHeldAlert, setStaleHeldAlert,
-    isOffline, user,
+    isOffline, copyConnectionError, user,
     viewMode, setViewMode,
     pendingViewMode, setPendingViewMode,
     showSetDefaultModal, setShowSetDefaultModal,
@@ -1650,6 +1716,9 @@ export default function POSPage() {
     activeLookupIndex, setActiveLookupIndex,
     itemResults,
     searchedItemHasMore, isLoadingMoreItems, isSearchingItems, loadMorePOSItems, showAllPOSItems,
+    listCategoryFilter, setListCategoryFilter,
+    listCategoryQuery, setListCategoryQuery,
+    itemCategories,
     listItemInputRef, listQtyRef, listPriceRef, listDiscRef, listWhRef, listAddBtnRef,
     customerInputRef,
     handleListFieldKeyDown, handleSelectItem, addCurrentLine, openGallery,
@@ -1696,3 +1765,4 @@ export default function POSPage() {
     </>
   );
 }
+

@@ -231,7 +231,7 @@ function announcementTargetsStore(a, licenseId, appVersion) {
 function listAnnouncementsForStore(licenseId, appVersion, sinceId = 0) {
   const db = getDb();
   const all = db
-    .prepare("SELECT * FROM announcements WHERE id > ? ORDER BY id ASC")
+    .prepare("SELECT * FROM announcements WHERE id > ? AND active = 1 ORDER BY id ASC")
     .all(Number(sinceId) || 0);
   const readRows = db
     .prepare("SELECT announcement_id FROM announcement_reads WHERE license_id = ?")
@@ -254,6 +254,35 @@ function markAnnouncementRead(announcementId, licenseId) {
     .run(announcementId, licenseId);
 }
 
+function updateAnnouncement(id, { title, body, type }) {
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
+  if (!existing) return null;
+  db.prepare("UPDATE announcements SET title = ?, body = ?, type = ? WHERE id = ?").run(
+    title ?? existing.title,
+    body ?? existing.body,
+    type ?? existing.type,
+    id,
+  );
+  return db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
+}
+
+function deleteAnnouncement(id) {
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
+  if (!existing) return null;
+  db.prepare("DELETE FROM announcements WHERE id = ?").run(id);
+  return existing;
+}
+
+function toggleAnnouncement(id) {
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
+  if (!existing) return null;
+  db.prepare("UPDATE announcements SET active = CASE WHEN active THEN 0 ELSE 1 END WHERE id = ?").run(id);
+  return db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
+}
+
 module.exports = {
   ensureConversation,
   setConversationStatus,
@@ -272,5 +301,8 @@ module.exports = {
   listAnnouncementsForStore,
   listAnnouncements,
   markAnnouncementRead,
+  updateAnnouncement,
+  deleteAnnouncement,
+  toggleAnnouncement,
   cmpVersion,
 };

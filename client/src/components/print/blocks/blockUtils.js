@@ -4,6 +4,7 @@ export const DEFAULTS = {
   header_font_size: 16, body_font_size: 12, footer_font_size: 10,
   item_font_size: 12, print_font: "Tahoma", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
+  thermal_print_column_keys: null,
   margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
   // Thermal print-head calibration. A real 80mm/58mm head can only print across a
   // band narrower than the paper (≈72mm/48mm) and that band is often offset from
@@ -31,6 +32,40 @@ export const g = (s, k) => {
   }
   return raw;
 };
+
+/** Priority order for thermal columns — highest first. Used for auto-hide when over limit. */
+const THERMAL_COL_PRIORITY = ["name", "qty", "total", "price", "unit", "discount"];
+
+/** Default visible columns for a given roll paper size. */
+export function defaultThermalKeys(paperMm) {
+  if (paperMm <= 58) return ["name", "qty", "total"];
+  return ["name", "qty", "price", "total"];
+}
+
+/** Max visible thermal columns for a given paper size. */
+export function maxThermalColumns(paperMm) {
+  return paperMm <= 58 ? 4 : 5;
+}
+
+/** Enforce column limit: drop lowest-priority columns when over max. */
+export function enforceThermalColumnLimit(keys, paperMm) {
+  const max = maxThermalColumns(paperMm);
+  if (!Array.isArray(keys) || keys.length <= max) return keys;
+  const priority = {};
+  THERMAL_COL_PRIORITY.forEach((k, i) => priority[k] = i);
+  const sorted = [...keys].sort((a, b) => (priority[a] ?? 999) - (priority[b] ?? 999));
+  return sorted.slice(0, max);
+}
+
+/** Resolve effective thermal columns for a settings object. */
+export function resolveThermalColumns(s) {
+  const paper = rollPaperWidthMm(s);
+  const raw = s?.thermal_print_column_keys;
+  if (Array.isArray(raw) && raw.length > 0) {
+    return enforceThermalColumnLimit(raw, paper);
+  }
+  return defaultThermalKeys(paper);
+}
 
 /** Physical roll paper width in mm for the active receipt size. */
 export function rollPaperWidthMm(s) {

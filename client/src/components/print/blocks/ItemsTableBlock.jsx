@@ -1,5 +1,5 @@
 import React from "react";
-import { g, smartFormat } from "./blockUtils";
+import { g, smartFormat, resolveThermalColumns, defaultThermalKeys, rollPaperWidthMm } from "./blockUtils";
 
 const lineTotalOf = (line) =>
   ((Number(line.unit_price) || Number(line.unit_cost) || 0) * Number(line.quantity)) - (Number(line.discount_amount) || 0);
@@ -46,17 +46,30 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   const designerCols = Array.isArray(props.columns) && props.columns.length
     ? props.columns.filter((c) => c.visible !== false && VALUE[c.key])
     : null;
-  const invoiceKeys = designerCols ? null : useInvoiceKeys(s);
-  const cols = designerCols || (invoiceKeys ? invoiceKeys.map(k => ({ key: k, label: HEADER[k] })) : null);
+  let cols = null;
+  if (designerCols) {
+    cols = designerCols;
+  } else if (family === "roll") {
+    const thermalKeys = resolveThermalColumns(s);
+    if (thermalKeys.length > 0) {
+      cols = thermalKeys.map(k => ({ key: k, label: HEADER[k] }));
+    }
+  } else {
+    const invoiceKeys = useInvoiceKeys(s);
+    if (invoiceKeys) {
+      cols = invoiceKeys.map(k => ({ key: k, label: HEADER[k] }));
+    }
+  }
   // Optional table styling (Designer): zebra rows + border style.
   const zebra = props.zebra !== false; // default on
   const border = props.tableBorder || "none"; // 'none' | 'lines' | 'grid'
   const cellBorder = border === "grid" ? { border: "1px solid #e2e8f0" } : border === "lines" ? { borderBottom: "1px solid #e2e8f0" } : {};
 
   if (family === "page") {
-    const showCode = designerCols ? designerCols.some((c) => c.key === "code") : (invoiceKeys ? invoiceKeys.includes("code") : g(s, "show_item_code") !== false);
+    const pageInvoiceKeys = !designerCols ? useInvoiceKeys(s) : null;
+    const showCode = designerCols ? designerCols.some((c) => c.key === "code") : (pageInvoiceKeys ? pageInvoiceKeys.includes("code") : g(s, "show_item_code") !== false);
     if (cols) {
-      const showRowNum = !invoiceKeys || invoiceKeys.length <= 5;
+      const showRowNum = !pageInvoiceKeys || pageInvoiceKeys.length <= 5;
       return (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize, marginBottom: "8px", fontWeight: 600 }}>
           <thead>
@@ -115,7 +128,7 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
 
   // Roll: merge code + name into a single "الصنف" column (~50% width).
   // "SKU - product name" on one line saves horizontal space on narrow thermal paper.
-  const showPrice = invoiceKeys ? invoiceKeys.includes("price") : false;
+  const showPrice = defaultThermalKeys(rollPaperWidthMm(s)).includes("price");
 
   const mergedItemName = (line) => {
     const code = codeOf(line);
@@ -124,21 +137,22 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   };
 
   const headCell = { padding: "0 4px 3px", fontWeight: 900, textAlign: "center", fontSize: "10px", color: "#fff" };
-  const rowSep = { paddingBottom: "3px", marginBottom: "3px", borderBottom: "1px solid #e2e8f0" };
   const cell = { padding: "2px 4px", fontWeight: 700 };
+  const rb = "1px solid #d1d5db";
 
   if (cols) {
-    // Drop the separate 'code' column — always inline it into 'name' as "SKU - name".
     const displayCols = cols.filter(c => c.key !== "code");
     return (
-      <table style={{ width: "100%", fontSize, borderCollapse: "collapse", marginTop: "2px" }}>
+      <table style={{ width: "100%", fontSize, borderCollapse: "collapse", marginTop: "2px", border: rb }}>
         <thead>
           <tr style={{ background: "#000" }}>
-            {displayCols.map((c) => (
+            {displayCols.map((c, ci) => (
               <th key={c.key} style={{
                 ...headCell,
                 textAlign: c.align || (c.key === "name" ? "right" : "center"),
                 ...(c.key === "name" ? { width: "60%" } : {}),
+                borderBottom: "2px solid #555",
+                borderLeft: ci > 0 ? rb : "none",
               }}>
                 {c.key === "name" ? "الصنف" : (c.label || HEADER[c.key])}
               </th>
@@ -147,12 +161,14 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
         </thead>
         <tbody>
           {lines.map((line, i) => (
-            <tr key={i} style={i < lines.length - 1 ? { ...rowSep } : {}}>
-              {displayCols.map((c) => (
+            <tr key={i}>
+              {displayCols.map((c, ci) => (
                 <td key={c.key} style={{
                   textAlign: c.align || (c.key === "qty" ? "center" : c.key === "total" ? "left" : "right"),
                   padding: "2px 4px", fontWeight: 700,
                   ...(c.key === "name" ? { width: "60%", wordBreak: "break-word" } : { whiteSpace: "nowrap" }),
+                  borderBottom: rb,
+                  borderLeft: ci > 0 ? rb : "none",
                 }}>
                   {c.key === "name" ? mergedItemName(line) : VALUE[c.key](line)}
                 </td>
@@ -165,22 +181,22 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   }
 
   return (
-    <table style={{ width: "100%", fontSize, borderCollapse: "collapse", marginTop: "2px" }}>
+    <table style={{ width: "100%", fontSize, borderCollapse: "collapse", marginTop: "2px", border: rb }}>
       <thead>
         <tr style={{ background: "#000" }}>
-          <th style={{ ...headCell, width: "60%", textAlign: "right" }}>الصنف</th>
-          <th style={headCell}>كمية</th>
-          {showPrice && <th style={headCell}>سعر</th>}
-          <th style={headCell}>إجمالي</th>
+          <th style={{ ...headCell, width: "60%", textAlign: "right", borderBottom: "2px solid #555", borderLeft: rb }}>الصنف</th>
+          <th style={{ ...headCell, borderBottom: "2px solid #555", borderLeft: rb }}>كمية</th>
+          {showPrice && <th style={{ ...headCell, borderBottom: "2px solid #555", borderLeft: rb }}>سعر</th>}
+          <th style={{ ...headCell, borderBottom: "2px solid #555", borderLeft: rb }}>إجمالي</th>
         </tr>
       </thead>
       <tbody>
         {lines.map((line, i) => (
-          <tr key={i} style={i < lines.length - 1 ? { ...rowSep } : {}}>
-            <td style={{ ...cell, textAlign: "right", width: "60%", wordBreak: "break-word" }}>{mergedItemName(line)}</td>
-            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{line.quantity}</td>
-            {showPrice && <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{smartFormat(priceOf(line))}</td>}
-            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap" }}>{smartFormat(lineTotalOf(line))}</td>
+          <tr key={i}>
+            <td style={{ ...cell, textAlign: "right", width: "60%", wordBreak: "break-word", borderBottom: rb, borderLeft: rb }}>{mergedItemName(line)}</td>
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{line.quantity}</td>
+            {showPrice && <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{smartFormat(priceOf(line))}</td>}
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{smartFormat(lineTotalOf(line))}</td>
           </tr>
         ))}
       </tbody>

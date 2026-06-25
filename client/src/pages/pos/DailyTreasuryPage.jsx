@@ -335,6 +335,7 @@ export default function DailyTreasuryPage() {
   const [quickAmount, setQuickAmount] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [quickCategoryId, setQuickCategoryId] = useState("");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [revenueCategories, setRevenueCategories] = useState([]);
 
@@ -344,6 +345,7 @@ export default function DailyTreasuryPage() {
   const [withdrawalNote, setWithdrawalNote] = useState("");
   const [withdrawalCategoryId, setWithdrawalCategoryId] = useState("");
   const [withdrawalPaymentMethod, setWithdrawalPaymentMethod] = useState("cash");
+  const [withdrawalSubmitting, setWithdrawalSubmitting] = useState(false);
   const [withdrawalCategories, setWithdrawalCategories] = useState([]);
 
   // Alerts
@@ -572,8 +574,9 @@ export default function DailyTreasuryPage() {
   const discrepancy = summary?.discrepancy;
 
   async function handleQuickSave() {
-    if (!quickAmount) return;
+    if (!quickAmount || quickSubmitting) return;
     if (!quickCategoryId) { toast.error("يرجى اختيار الفئة أولاً"); return; }
+    setQuickSubmitting(true);
     try {
       if (quickModal === "expense") {
         await api.post("/api/expenses", {
@@ -599,12 +602,15 @@ export default function DailyTreasuryPage() {
       loadTransactions();
     } catch (e) {
       toast.error(e.response?.data?.message || "خطأ");
+    } finally {
+      setQuickSubmitting(false);
     }
   }
 
   async function handleWithdrawalSave() {
-    if (!withdrawalAmount) return;
+    if (!withdrawalAmount || withdrawalSubmitting) return;
     if (!withdrawalCategoryId) { toast.error("يرجى اختيار التصنيف أولاً"); return; }
+    setWithdrawalSubmitting(true);
     try {
       await api.post("/api/withdrawals", {
         amount: Number(withdrawalAmount),
@@ -622,6 +628,8 @@ export default function DailyTreasuryPage() {
       loadTransactions();
     } catch (e) {
       toast.error(e.response?.data?.message || "خطأ");
+    } finally {
+      setWithdrawalSubmitting(false);
     }
   }
 
@@ -2358,16 +2366,13 @@ export default function DailyTreasuryPage() {
               </div>
               <div className="flex-1 overflow-auto p-4 bg-[var(--bg-base)]">
                 <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-right">
-                  <thead><tr className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">افتتاحي</th><th className="px-3 py-2">فعلي</th><th className="px-3 py-2">ختامي</th><th className="px-3 py-2">عجز / زيادة</th><th className="px-3 py-2">إجراءات</th></tr></thead>
+                  <thead><tr className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest"><th className="px-3 py-2">التاريخ</th><th className="px-3 py-2">الحالة</th><th className="px-3 py-2">رصيد سابق</th><th className="px-3 py-2">إجراءات</th></tr></thead>
                   <tbody>
                     {pastSessions.map((s) => (
                       <tr key={s.id} className="rounded-2xl bg-[var(--bg-surface)] shadow-sm ring-1 ring-slate-200/70">
                         <td className="rounded-r-2xl px-3 py-3 font-black text-[var(--text-primary)]">{s.date}</td>
                         <td className="px-3 py-3"><span className={"inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-black " + (s.status === "closed" ? "bg-[var(--bg-overlay)] text-[var(--text-secondary)]" : "bg-emerald-100 text-emerald-700")}>{s.status === "closed" ? <Lock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}{s.status === "closed" ? "مغلق" : "مفتوح"}</span></td>
-                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{fmt(s.opening_balance)}</td>
-                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{s.actual_cash == null ? "—" : fmt(s.actual_cash)}</td>
-                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{s.closing_balance == null ? "—" : fmt(s.closing_balance)}</td>
-                        <td className={"px-3 py-3 number-fmt text-2sm " + (Number(s.discrepancy || 0) < 0 ? "text-rose-600" : "text-emerald-600")}>{s.discrepancy == null ? "—" : fmt(s.discrepancy)}</td>
+                        <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{fmt(s.previous_balance)}</td>
                         <td className="rounded-l-2xl px-3 py-3"><button onClick={() => { setDate(s.date); setHistoryOpen(false); setActiveTab("all"); }} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600"><Eye className="h-3.5 w-3.5" /> معاينة</button></td>
                       </tr>
                     ))}
@@ -2387,7 +2392,7 @@ export default function DailyTreasuryPage() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-              onClick={() => setQuickModal(null)}
+              onClick={() => { setQuickSubmitting(false); setQuickModal(null); }}
             />
             <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
@@ -2405,7 +2410,7 @@ export default function DailyTreasuryPage() {
                     <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Quick Entry</p>
                   </div>
                 </div>
-                <button onClick={() => setQuickModal(null)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors">
+                <button onClick={() => { setQuickSubmitting(false); setQuickModal(null); }} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -2458,10 +2463,10 @@ export default function DailyTreasuryPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleQuickSave}
                     onKeyDown={e => handleKeyDown(e, { prevRef: quickCategoryRef, onEnter: handleQuickSave })}
-                    disabled={!quickAmount || !quickCategoryId}
+                    disabled={!quickAmount || !quickCategoryId || quickSubmitting}
                     className={"w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 " + (quickModal === "expense" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20")}
                   >
-                    <CheckCircle2 className="h-5 w-5" /> حفظ واعتماد
+                    <CheckCircle2 className="h-5 w-5" /> {quickSubmitting ? "جارٍ الحفظ..." : "حفظ واعتماد"}
                   </motion.button>
                 </div>
               </div>
@@ -2477,7 +2482,7 @@ export default function DailyTreasuryPage() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-              onClick={() => setWithdrawalOpen(false)}
+              onClick={() => { setWithdrawalSubmitting(false); setWithdrawalOpen(false); }}
             />
             <motion.div
               variants={modalVariants} initial="hidden" animate="show" exit="exit"
@@ -2493,7 +2498,7 @@ export default function DailyTreasuryPage() {
                     <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Cash Withdrawal</p>
                   </div>
                 </div>
-                <button onClick={() => setWithdrawalOpen(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors">
+                <button onClick={() => { setWithdrawalSubmitting(false); setWithdrawalOpen(false); }} className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] transition-colors">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -2560,10 +2565,10 @@ export default function DailyTreasuryPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleWithdrawalSave}
                     onKeyDown={e => handleKeyDown(e, { prevRef: withdrawalPaymentRef, onEnter: handleWithdrawalSave })}
-                    disabled={!withdrawalAmount || !withdrawalCategoryId}
+                    disabled={!withdrawalAmount || !withdrawalCategoryId || withdrawalSubmitting}
                     className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl text-[15px] font-black text-white transition-all shadow-xl disabled:opacity-40 bg-primary hover:bg-primary-600 shadow-slate-900/20"
                   >
-                    <CheckCircle2 className="h-5 w-5" /> حفظ واعتماد
+                    <CheckCircle2 className="h-5 w-5" /> {withdrawalSubmitting ? "جارٍ الحفظ..." : "حفظ واعتماد"}
                   </motion.button>
                 </div>
               </div>

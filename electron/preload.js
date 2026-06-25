@@ -81,3 +81,16 @@ const api = {
 
 contextBridge.exposeInMainWorld("electronAPI", api);
 contextBridge.exposeInMainWorld("retailerAPI", api);
+
+// Authoritative API base, resolved by the MAIN process (which alone knows whether the
+// app is packaged) and injected synchronously so the renderer never guesses its own
+// transport. Guessing from window.location.protocol is what allowed a packaged build to
+// silently fall back to the antivirus-blockable 127.0.0.1 socket. Degrades gracefully:
+// if the handler isn't ready, this is null and apiBase.js keeps its old detection.
+let resolvedApiBase = null;
+try {
+  resolvedApiBase = ipcRenderer.sendSync("get:api-url-sync") || null;
+} catch (_e) {
+  resolvedApiBase = null;
+}
+contextBridge.exposeInMainWorld("__API_BASE__", resolvedApiBase);

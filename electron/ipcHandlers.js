@@ -65,13 +65,25 @@ function setupIpc(window) {
     return false;
   });
 
-  ipcMain.handle("get:api-url", () => {
-    // Packaged app reaches the embedded server over the custom retailer:// protocol
-    // (no TCP loopback → immune to antivirus/firewall blocking 127.0.0.1). Dev still
-    // uses TCP since it loads the UI over http from the Vite dev server.
+  // The single source of truth for the renderer's API base. The packaged app reaches
+  // the embedded server over the custom retailer:// protocol (no TCP loopback → immune
+  // to antivirus/firewall blocking 127.0.0.1). Dev uses TCP since the UI loads over http
+  // from the Vite dev server.
+  const resolveApiBase = () => {
     if (app.isPackaged) return "retailer://local";
     const port = process.env.ACTUAL_PORT || "5000";
     return `http://127.0.0.1:${port}`;
+  };
+  ipcMain.handle("get:api-url", () => resolveApiBase());
+  // SYNCHRONOUS variant consumed by preload so the renderer is *told* its transport at
+  // load time and never has to guess from window.location.protocol. Guessing is exactly
+  // what let a packaged build silently fall back to the AV-blockable 127.0.0.1 socket.
+  ipcMain.on("get:api-url-sync", (event) => {
+    try {
+      event.returnValue = resolveApiBase();
+    } catch (_e) {
+      event.returnValue = null;
+    }
   });
 
   // ── Diagnostics (work even when the embedded server is down) ──────────────

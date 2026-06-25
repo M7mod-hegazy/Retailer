@@ -1,49 +1,78 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Send, LifeBuoy, Trash2, Loader2, Bot, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Sparkles, X, Send, LifeBuoy, Trash2, Loader2, Bot, ShieldCheck, ArrowLeft, ThumbsUp, ThumbsDown, Clock, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useAuthStore } from "../../stores/authStore";
 import { getIntentById } from "../../help/helpIndex";
 import SupportThread from "./SupportThread";
 import DevConsole from "./DevConsole";
 
-// Starter questions (Arabic domain phrases — the help corpus is Arabic-only).
-const SUGGESTIONS = [
+const SUGGESTIONS_BY_PAGE = {
+  "/pos": ["ازاي اعمل خصم على الفاتورة؟", "ازاي اطبع إيصال؟", "ازاي اقفل الوردية؟"],
+  "/pos/": ["ازاي اعمل خصم على الفاتورة؟", "ازاي اطبع إيصال؟", "ازاي اقفل الوردية؟"],
+  "/stock": ["ازاي انقل بضاعة بين المخازن؟", "ازاي اعمل جرد مخزون؟", "ازاي اشوف رصيد صنف؟"],
+  "/stock/": ["ازاي انقل بضاعة بين المخازن؟", "ازاي اعمل جرد مخزون؟", "ازاي اشوف رصيد صنف؟"],
+  "/purchases": ["ازاي اعمل أمر شراء؟", "ازاي استقبل شحنة؟", "ازاي اعمل مرتجع مشتريات؟"],
+  "/purchases/": ["ازاي اعمل أمر شراء؟", "ازاي استقبل شحنة؟", "ازاي اعمل مرتجع مشتريات؟"],
+  "/sales": ["ازاي اعمل مرتجع مبيعات؟", "ازاي اشوف تقرير مبيعات؟", "ازاي احسب عمولة كاشير؟"],
+  "/sales/": ["ازاي اعمل مرتجع مبيعات؟", "ازاي اشوف تقرير مبيعات؟", "ازاي احسب عمولة كاشير؟"],
+  "/reports": ["ازاي اشوف تقرير الأرباح؟", "ازاي اطلب تقرير شهرين؟", "ازاي اسحب تقرير اكسل؟"],
+  "/reports/": ["ازاي اشوف تقرير الأرباح؟", "ازاي اطلب تقرير شهرين؟", "ازاي اسحب تقرير اكسل؟"],
+};
+
+const DEFAULT_SUGGESTIONS = [
   "ازاي اقفل الوردية؟",
   "ازاي اعمل خصم على الفاتورة؟",
   "ازاي اعمل مرتجع مبيعات؟",
   "ازاي انقل بضاعة بين المخازن؟",
 ];
 
-function AnswerCard({ entry, onNavigate, onAsk, t }) {
+function RatingButtons({ messageId, currentRating, onRate, t }) {
+  return (
+    <div className="mt-1.5 flex items-center gap-2 px-1">
+      <span className="text-[9px] font-bold" style={{ color: "var(--text-muted)" }}>هل كان الرد مفيداً؟</span>
+      <button onClick={() => onRate(messageId, currentRating === "up" ? null : "up")}
+        className={`rounded-lg p-1 transition-colors ${currentRating === "up" ? "text-primary" : ""}`}
+        style={{ color: currentRating === "up" ? "var(--primary)" : "var(--text-muted)" }}>
+        <ThumbsUp className="h-3 w-3" />
+      </button>
+      <button onClick={() => onRate(messageId, currentRating === "down" ? null : "down")}
+        className={`rounded-lg p-1 transition-colors ${currentRating === "down" ? "text-red-500" : ""}`}
+        style={{ color: currentRating === "down" ? "var(--danger)" : "var(--text-muted)" }}>
+        <ThumbsDown className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+function RichCard({ entry, onNavigate, onAsk, t }) {
   const followups = (entry.followups || [])
     .map((id) => getIntentById(id))
     .filter(Boolean)
     .slice(0, 3);
+
+  if (entry.display === "guide" && entry.steps) {
+    return <GuideCard entry={entry} onNavigate={onNavigate} t={t} />;
+  }
+
   return (
-    <div
-      className="rounded-2xl border p-3.5"
-      style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
-    >
-      <p className="mb-1 text-[13px] font-black leading-tight" style={{ color: "var(--text-primary)" }}>
-        {entry.title}
-      </p>
+    <div className="rounded-2xl border p-3.5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
+      <div className="mb-1 flex items-center gap-1.5">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[10px] font-black text-primary">{entry.title}</span>
+      </div>
       <p className="whitespace-pre-wrap text-[12px] font-semibold leading-relaxed" style={{ color: "var(--text-secondary)" }}>
         {entry.answer}
       </p>
-
       {entry.route && (
-        <button
-          onClick={() => onNavigate(entry.route)}
-          className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-[12px] font-black text-white shadow-sm transition-transform hover:scale-[1.02]"
-        >
+        <button onClick={() => onNavigate(entry.route)}
+          className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-[12px] font-black text-white shadow-sm transition-transform hover:scale-[1.02]">
           <ArrowLeft strokeWidth={2.4} className="h-3.5 w-3.5" />
           {t("assistant.goToPage")}
         </button>
       )}
-
       {followups.length > 0 && (
         <div className="mt-3 border-t pt-2.5" style={{ borderColor: "var(--border-normal)" }}>
           <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
@@ -51,12 +80,9 @@ function AnswerCard({ entry, onNavigate, onAsk, t }) {
           </span>
           <div className="flex flex-wrap gap-1.5">
             {followups.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => onAsk(f.title)}
+              <button key={f.id} onClick={() => onAsk(f.title)}
                 className="rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors hover:border-primary"
-                style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
-              >
+                style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
                 {f.title}
               </button>
             ))}
@@ -67,12 +93,58 @@ function AnswerCard({ entry, onNavigate, onAsk, t }) {
   );
 }
 
-function AiMessage({ message, t }) {
+function GuideCard({ entry, onNavigate, t }) {
+  const [step, setStep] = useState(0);
+  const steps = entry.steps || [];
+
+  return (
+    <div className="rounded-2xl border p-3.5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
+      <div className="mb-2 flex items-center gap-1.5">
+        <ListChecks className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[10px] font-black text-primary">{entry.title}</span>
+      </div>
+      <div className="mb-2 flex gap-1">
+        {steps.map((_, i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-primary" : "bg-black/10"}`} />
+        ))}
+      </div>
+      <p className="text-[13px] font-black mb-1" style={{ color: "var(--text-primary)" }}>
+        {t("assistant.step")} {step + 1}/{steps.length}
+      </p>
+      <p className="whitespace-pre-wrap text-[12px] font-semibold leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>
+        {steps[step]}
+      </p>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}
+          className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-bold disabled:opacity-30"
+          style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
+          <ChevronRight className="h-3 w-3" /> {t("assistant.previous")}
+        </button>
+        <button onClick={() => setStep(Math.min(steps.length - 1, step + 1))} disabled={step === steps.length - 1}
+          className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-30">
+          {t("assistant.next")} <ChevronLeft className="h-3 w-3" />
+        </button>
+        {step === steps.length - 1 && entry.route && (
+          <button onClick={() => onNavigate(entry.route)}
+            className="mr-auto rounded-xl bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+            {t("assistant.goToPage")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AiMessage({ message, t, onRate }) {
   if (message.loading) {
     return (
       <div className="flex items-center gap-2 px-1 text-[12px] font-bold" style={{ color: "var(--text-muted)" }}>
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        {t("assistant.aiThinking")}
+        <div className="flex gap-0.5">
+          <motion.span className="h-1.5 w-1.5 rounded-full bg-primary" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0 }} />
+          <motion.span className="h-1.5 w-1.5 rounded-full bg-primary" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }} />
+          <motion.span className="h-1.5 w-1.5 rounded-full bg-primary" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }} />
+        </div>
+        <span>{t("assistant.aiThinking")}</span>
       </div>
     );
   }
@@ -84,10 +156,7 @@ function AiMessage({ message, t }) {
     );
   }
   return (
-    <div
-      className="rounded-2xl border p-3.5"
-      style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
-    >
+    <div className="rounded-2xl border p-3.5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
       <div className="mb-1.5 flex items-center gap-1.5">
         <Bot className="h-3.5 w-3.5 text-primary" />
         <span className="text-[10px] font-black uppercase tracking-widest text-primary">{t("assistant.aiBadge")}</span>
@@ -95,12 +164,13 @@ function AiMessage({ message, t }) {
       <p className="whitespace-pre-wrap text-[12px] font-semibold leading-relaxed" style={{ color: "var(--text-secondary)" }}>
         {message.text}
       </p>
+      {onRate && <RatingButtons messageId={message.id} currentRating={message.rating} onRate={onRate} t={t} />}
     </div>
   );
 }
 
-function BotMessage({ message, t, onNavigate, onAsk }) {
-  if (message.kind === "ai") return <AiMessage message={message} t={t} />;
+function BotMessage({ message, t, onNavigate, onAsk, onRate }) {
+  if (message.kind === "ai") return <AiMessage message={message} t={t} onRate={onRate} />;
 
   const results = message.results || [];
   if (results.length === 0) {
@@ -114,7 +184,8 @@ function BotMessage({ message, t, onNavigate, onAsk }) {
   const [top, ...rest] = results;
   return (
     <div className="flex flex-col gap-2">
-      <AnswerCard entry={top} onNavigate={onNavigate} onAsk={onAsk} t={t} />
+      <RichCard entry={top} onNavigate={onNavigate} onAsk={onAsk} t={t} />
+      {onRate && <RatingButtons messageId={message.id} currentRating={message.rating} onRate={onRate} t={t} />}
       {rest.length > 0 && (
         <div className="px-1">
           <span className="mb-1 block text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
@@ -122,12 +193,9 @@ function BotMessage({ message, t, onNavigate, onAsk }) {
           </span>
           <div className="flex flex-wrap gap-1.5">
             {rest.map((e) => (
-              <button
-                key={e.id}
-                onClick={() => onAsk(e.title)}
+              <button key={e.id} onClick={() => onAsk(e.title)}
                 className="rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors hover:border-primary"
-                style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
-              >
+                style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
                 {e.title}
               </button>
             ))}
@@ -144,10 +212,13 @@ export default function AssistantDrawer() {
   const isOpen = useAssistantStore((s) => s.isOpen);
   const activeTab = useAssistantStore((s) => s.activeTab);
   const messages = useAssistantStore((s) => s.messages);
+  const searchHistory = useAssistantStore((s) => s.searchHistory);
   const close = useAssistantStore((s) => s.close);
   const setTab = useAssistantStore((s) => s.setTab);
   const ask = useAssistantStore((s) => s.ask);
   const clearConversation = useAssistantStore((s) => s.clearConversation);
+  const clearHistory = useAssistantStore((s) => s.clearHistory);
+  const rateMessage = useAssistantStore((s) => s.rateMessage);
   const devMode = useAssistantStore((s) => s.devMode);
   const toggleDevMode = useAssistantStore((s) => s.toggleDevMode);
   const currentUser = useAuthStore((s) => s.user);
@@ -158,6 +229,11 @@ export default function AssistantDrawer() {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
+  const suggestions = useMemo(() => {
+    const path = Object.keys(SUGGESTIONS_BY_PAGE).find((p) => location.pathname.startsWith(p));
+    return path ? SUGGESTIONS_BY_PAGE[path] : DEFAULT_SUGGESTIONS;
+  }, [location.pathname]);
+
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 150);
   }, [isOpen]);
@@ -167,7 +243,6 @@ export default function AssistantDrawer() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Esc closes the drawer.
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e) => e.key === "Escape" && close();
@@ -191,7 +266,6 @@ export default function AssistantDrawer() {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Scrim */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -200,7 +274,6 @@ export default function AssistantDrawer() {
             className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-[2px]"
           />
 
-          {/* Drawer — slides from inline-start (left in RTL) */}
           <motion.aside
             dir="rtl"
             initial={{ x: "-105%" }}
@@ -282,11 +355,37 @@ export default function AssistantDrawer() {
                         <p className="px-1 text-[13px] font-bold leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           {t("assistant.greeting")}
                         </p>
+
+                        {/* Search history */}
+                        {searchHistory.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between px-1 mb-2">
+                              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                                <Clock className="inline h-3 w-3 ml-1" />
+                                {t("assistant.recent")}
+                              </span>
+                              <button onClick={clearHistory} className="text-[9px] font-bold text-primary hover:underline">
+                                {t("assistant.clear")}
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {searchHistory.slice(0, 5).map((q) => (
+                                <button key={q} onClick={() => submit(q)}
+                                  className="rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors hover:border-primary"
+                                  style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
+                                  {q}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Suggestions */}
                         <div className="flex flex-col gap-2">
                           <span className="px-1 text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                             {t("assistant.suggestionsTitle")}
                           </span>
-                          {SUGGESTIONS.map((q) => (
+                          {suggestions.map((q) => (
                             <button
                               key={q}
                               onClick={() => submit(q)}
@@ -309,7 +408,7 @@ export default function AssistantDrawer() {
                         ) : (
                           <div key={m.id} className="flex justify-end">
                             <div className="w-[92%]">
-                              <BotMessage message={m} t={t} onNavigate={handleNavigate} onAsk={submit} />
+                              <BotMessage message={m} t={t} onNavigate={handleNavigate} onAsk={submit} onRate={rateMessage} />
                             </div>
                           </div>
                         ),

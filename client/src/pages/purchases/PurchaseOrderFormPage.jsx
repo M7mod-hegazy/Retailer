@@ -31,6 +31,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
+import CategorySearchField from "../../components/ui/CategorySearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -111,7 +112,11 @@ export default function PurchaseOrderFormPage() {
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: "" });
   const [lookupOpen, setLookupOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  
+
+  const [listCategoryFilter, setListCategoryFilter] = useState(null);
+  const [listCategoryQuery, setListCategoryQuery] = useState("");
+  const [categories, setCategories] = useState([]);
+
   const [supplierQuery, setSupplierQuery] = useState("");
   const [supplierLookupOpen, setSupplierLookupOpen] = useState(false);
   const [activeSupplierIndex, setActiveSupplierIndex] = useState(0);
@@ -252,6 +257,10 @@ export default function PurchaseOrderFormPage() {
     }).catch(() => setMessage({ text: "فشل تحميل أمر التوريد", type: "error" }));
   }, [isEditMode, editId]);
 
+  useEffect(() => {
+    api.get("/api/categories").then(r => setCategories(r.data?.data || [])).catch(() => {});
+  }, []);
+
   // --- Item search ---
   useEffect(() => {
     const q = itemQuery.trim();
@@ -259,7 +268,9 @@ export default function PurchaseOrderFormPage() {
     if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+      const params = { search: q, limit: ITEM_PAGE, offset: 0 };
+      if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+      api.get("/api/items", { params })
         .then(r => {
           const rows = (r.data.data || []).map(i => ({
             ...i,
@@ -279,7 +290,7 @@ export default function PurchaseOrderFormPage() {
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
     return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
-  }, [itemQuery, stockLevels]);
+  }, [itemQuery, stockLevels, listCategoryFilter]);
 
   useEffect(() => {
     if (itemQuery) setAllItemsMode(false);
@@ -291,7 +302,9 @@ export default function PurchaseOrderFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
+    api.get("/api/items", { params })
       .then(r => {
         const rows = (r.data.data || []).map(i => ({
           ...i,
@@ -313,6 +326,18 @@ export default function PurchaseOrderFormPage() {
     setItemOffset(0);
     setItemHasMore(true);
     setIsLoadingMoreItems(true);
+
+    if (listCategoryFilter?.id) {
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+        .then(r => {
+          const rows = (r.data.data || []).map(fmt);
+          setFilteredItems(sortByProximity(rows, anchor));
+          setItemOffset(rows.length);
+          setItemHasMore(Boolean(r.data?.meta?.has_more ?? rows.length === SHOW_ALL_LIMIT));
+        }).catch(() => {}).finally(() => setIsLoadingMoreItems(false));
+      return;
+    }
+
     const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
     const catCall = anchor?.category_id
       ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
@@ -357,6 +382,10 @@ export default function PurchaseOrderFormPage() {
       unitId: String(item.unit_id || prev.unitId)
     }));
     setLookupOpen(false);
+    const cat = categories.find(c => c.id === item.category_id) || categories.find(c => c.name === item.category_name) || null;
+    const skuPrefix = cat?.sku_prefix ?? item?.sku_prefix ?? null;
+    setListCategoryFilter(cat ? { id: cat.id, name: cat.name, sku_prefix: skuPrefix } : null);
+    setListCategoryQuery("");
     setTimeout(() => {
       qtyInputRef.current?.focus();
       qtyInputRef.current?.select();
@@ -414,6 +443,8 @@ export default function PurchaseOrderFormPage() {
 
     setSelectedItem(null);
     setItemQuery("");
+    setListCategoryFilter(null);
+    setListCategoryQuery("");
     setStaging(s => ({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", unitId: "", warehouseId: s.warehouseId }));
     setTimeout(() => {
       itemInputRef.current?.focus();
@@ -566,11 +597,29 @@ export default function PurchaseOrderFormPage() {
             </section>
 
             {/* Quick Entry Bar */}
-            <section className="rounded-md border border-slate-300 bg-white p-3 shadow-sm shrink-0">
+            <section className="rounded-2xl border p-3 shadow-sm shrink-0" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
               <div className="entry-bar">
                 <EntryItemThumb item={selectedItem} onView={(imgs) => { const u = resolveImageUrl(imgs[0]); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }} />
                 <div className="entry-field entry-field--item">
                   <label className="entry-label">البحث عن صنف</label>
+                  <CategorySearchField
+                    categories={categories}
+                    value={listCategoryFilter}
+                    query={listCategoryQuery}
+                    onQueryChange={setListCategoryQuery}
+                    onChange={(cat) => {
+                      setListCategoryFilter(cat);
+                      setListCategoryQuery("");
+                      setSelectedItem(null);
+                      setItemQuery("");
+                    }}
+                    onPickDone={(catId) => {
+                      setTimeout(() => {
+                        itemInputRef.current?.focus();
+                        showAllItems();
+                      }, 50);
+                    }}
+                  />
                   <ProductSearchField
                     ref={itemInputRef}
                     onNavigateNext={() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select?.(); }}
@@ -581,6 +630,7 @@ export default function PurchaseOrderFormPage() {
                     onEnterNoResults={() => { if (itemSearchActiveRef.current) pendingPickRef.current = true; }}
                     selectedItem={selectedItem}
                     chipCode={(it) => it.code || it.barcode || `#${it.id}`}
+                    showChip={false}
                     emptyLabel="الصنف غير موجود"
                     onLoadMore={loadMoreItems}
                     hasMore={itemHasMore}
@@ -720,14 +770,14 @@ export default function PurchaseOrderFormPage() {
                   )}
                 </div>
               </div>
-              <div ref={gridNavRef} className="contents">
+              <div ref={gridNavRef} className="rounded-2xl border pt-2 px-2 pb-0 shadow-sm flex flex-1 flex-col overflow-hidden" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
               <DataGrid
                 data={lines}
                 rowKey={(row, i) => i}
                 emptyMessage="أمر الشراء فارغ حالياً"
                 emptyIcon={<FileSearch className="h-14 w-14 mb-4" />}
                 className="border-0"
-                containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent min-h-0"
+                containerClass="flex-1 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent min-h-0"
                 columns={[
                   {
                     id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center", cellClass: "text-center font-mono text-2sm text-slate-400 border-l border-slate-100",
@@ -821,8 +871,7 @@ export default function PurchaseOrderFormPage() {
                   }
                 ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
               />
-              </div>
-               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3">
+               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3 rounded-b-xl">
                   <div className="flex items-center gap-6">
                      <div className="flex items-center gap-2">
                         <span className="text-[11px] font-bold text-slate-400">إجمالي الأصناف:</span>
@@ -851,6 +900,7 @@ export default function PurchaseOrderFormPage() {
                      <span className="text-[11px] font-bold text-slate-400">ج.م</span>
                   </div>
                </div>
+              </div>
             </section>
           </div>
 
@@ -936,7 +986,8 @@ export default function PurchaseOrderFormPage() {
                    </button>
                  </PermissionGate>
              </div>
-           </aside>
+               <div className="flex-1" />
+            </aside>
          </div>
 
          {/* Sticky Bottom Bar (shown when sidebar collapsed) */}

@@ -105,3 +105,6 @@ export const devEdit = (id, body) => call(`/comms/dev/messages/${id}`, { method:
 export const devDelete = (id) => call(`/comms/dev/messages/${id}`, { method: "DELETE" });
 export const devListAnnouncements = () => call("/comms/dev/announcements");
 export const devCreateAnnouncement = (payload) => call("/comms/dev/announcements", { method: "POST", body: payload });
+export const devUpdateAnnouncement = (id, payload) => call(`/comms/dev/announcements/${id}`, { method: "PATCH", body: payload });
+export const devDeleteAnnouncement = (id) => call(`/comms/dev/announcements/${id}`, { method: "DELETE" });
+export const devToggleAnnouncement = (id) => call(`/comms/dev/announcements/${id}/toggle`, { method: "PATCH" });

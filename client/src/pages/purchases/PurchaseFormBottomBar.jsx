@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Printer, Loader2, Save, ShoppingCart, Banknote, Wallet, Layers, User, Plus, Building2, Lock } from "lucide-react";
+import { Printer, Loader2, Save, ShoppingCart, Banknote, Wallet, Layers, User, Plus, Building2, Lock, Wand2 } from "lucide-react";
 import { formatNumber } from "../../utils/currency";
 import PermissionGate from "../../components/ui/PermissionGate";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -63,15 +63,15 @@ export default function PurchaseFormBottomBar({
   const curBal = supplierBalanceAfter - creditEffect;
 
   return (
-    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] bg-white border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]">
+    <div ref={rootRef} dir="rtl" className="fixed inset-x-0 bottom-0 z-[60] border-t border-zinc-200/70 shadow-[0_-6px_30px_-10px_rgba(0,0,0,0.12)]" style={{ backgroundColor: "var(--primary-100)" }}>
       <div className="flex flex-col">
 
         {/* ═══════════ Row 1: Supplier (first) + total + counts + discount/increase ═══════════ */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 border-b border-zinc-100 bg-white">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 border-b border-zinc-100">
 
           {/* Supplier search — first on the line */}
           <div className="relative flex items-center gap-1.5 shrink-0">
-            <div className="relative">
+            <div className="relative z-[70]">
               <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
@@ -89,18 +89,20 @@ export default function PurchaseFormBottomBar({
                 }`}
               />
               {supplierLookupOpen && !isLocked && (
-                <SearchDropdown
-                  items={filteredSuppliers}
-                  onPick={onPickSupplier}
-                  activeIndex={activeSupplierIndex}
-                  emptyLabel="لم يتم العثور على مورد"
-                  dropUp
-                />
+                <div className="absolute right-0 bottom-full mb-1 z-50 min-w-[220px]">
+                  <SearchDropdown
+                    items={filteredSuppliers}
+                    onPick={onPickSupplier}
+                    activeIndex={activeSupplierIndex}
+                    emptyLabel="لم يتم العثور على مورد"
+                    dropUp
+                  />
+                </div>
               )}
             </div>
             {!isLocked && (
               <button onClick={onAddSupplier} title="إضافة مورد جديد"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100 transition-colors">
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white/70 text-zinc-600 hover:bg-white transition-colors">
                 <Plus className="h-3.5 w-3.5" />
               </button>
             )}
@@ -122,13 +124,13 @@ export default function PurchaseFormBottomBar({
           </div>
 
           {/* Counts */}
-          <div className="flex items-center gap-1 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100 shrink-0">
+          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
             <ShoppingCart className="h-3 w-3 text-zinc-400" />
             <span className="text-2sm font-black text-zinc-800">{itemCount}</span>
             <span className="text-[10px] font-bold text-zinc-500">صنف</span>
           </div>
           {quantityCount > 0 && (
-            <div className="flex items-center gap-1 bg-zinc-50 rounded-lg px-1.5 py-0.5 border border-zinc-100 shrink-0">
+            <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
               <span className="text-2sm font-black text-zinc-800">{quantityCount}</span>
               <span className="text-[10px] font-bold text-zinc-500">كمية</span>
             </div>
@@ -164,7 +166,7 @@ export default function PurchaseFormBottomBar({
         </div>
 
         {/* ═══════════ Row 2: Payment pills + per-mode inputs (single wrapping row) ═══════════ */}
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1.5 bg-zinc-50/60 border-b border-zinc-100">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1.5 border-b border-zinc-100" style={{ backgroundColor: "var(--primary-200)" }}>
 
           {/* Payment type pills */}
           <div className="flex items-center gap-0.5 shrink-0">
@@ -194,7 +196,7 @@ export default function PurchaseFormBottomBar({
 
           {/* ── Cash: immediate ── */}
           {paymentMode === "cash" && (
-            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-white/80 rounded-lg border border-zinc-200 px-2 py-1 shadow-sm shrink-0">
               <Banknote className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="text-[11px] font-bold text-zinc-600 whitespace-nowrap">سداد فوري — خصم من الخزينة</span>
             </div>
@@ -216,7 +218,7 @@ export default function PurchaseFormBottomBar({
 
           {/* ── Multi: per-method inputs + distribution check ── */}
           {paymentMode === "multi" && (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white/80 rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
               {paymentMethods.length === 0 ? (
                 <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">لا توجد وسائل دفع مُعرّفة</span>
               ) : (
@@ -224,10 +226,21 @@ export default function PurchaseFormBottomBar({
                   <div key={m.id} className="flex items-center gap-0.5 shrink-0">
                     <span className="text-[11px] font-bold text-zinc-600 whitespace-nowrap">{m.name}:</span>
                     <input type="number" min="0" step="0.01" value={multiAmounts[m.id] || ""}
-                      disabled={isLocked}
+                      disabled={isLocked || ((m.type === "credit" || m.category === "credit") && !supplier)}
                       onChange={(e) => onMultiAmountsChange?.(prev => ({ ...prev, [m.id]: e.target.value }))}
                       placeholder="0"
-                      className="w-[64px] rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-[var(--primary)] transition-colors" />
+                      className="w-[64px] rounded border border-zinc-200 bg-white/70 px-1 py-0.5 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-[var(--primary)] transition-colors" />
+                    <button type="button" title="املأ المتبقي"
+                      onClick={() => {
+                        const other = Object.entries(multiAmounts)
+                          .filter(([id]) => String(id) !== String(m.id))
+                          .reduce((s, [, v]) => s + Number(v || 0), 0);
+                        const fill = Math.max(0, totals.total - other);
+                        onMultiAmountsChange?.(prev => ({ ...prev, [m.id]: String(fill) }));
+                      }}
+                      className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 active:scale-90 transition-all">
+                      <Wand2 className="h-2.5 w-2.5" />
+                    </button>
                   </div>
                 ))
               )}
@@ -258,10 +271,10 @@ export default function PurchaseFormBottomBar({
         </div>
 
         {/* ═══════════ Row 3: Actions ═══════════ */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-white">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
           <PermissionGate page="purchases" action="print">
             <button onClick={onPrint} disabled={!lines.length}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 transition-all active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 transition-all active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> طباعة
             </button>
           </PermissionGate>

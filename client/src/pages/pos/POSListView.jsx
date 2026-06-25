@@ -9,13 +9,14 @@ import {
   Loader2, Minus, PackageCheck, PauseCircle, Plus, Printer,
   Receipt, RefreshCw, RotateCcw, Search, Settings2, ShieldCheck, ShoppingCart,
   Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText, Save,
-  Wand2,
+  Wand2, Copy,
 } from "lucide-react";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
+import CategorySearchField from "../../components/ui/CategorySearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import Modal from "../../components/ui/Modal";
@@ -55,7 +56,7 @@ export default function POSListView({ vm }) {
     taxEnabled, setTaxEnabled, taxRate, setTaxRate, canEditTaxRate,
     heldDropdownOpen, setHeldDropdownOpen,
     staleHeldAlert, setStaleHeldAlert,
-    isOffline, user,
+    isOffline, copyConnectionError, user,
     viewMode, setViewMode,
     pendingViewMode, setPendingViewMode,
     showSetDefaultModal, setShowSetDefaultModal,
@@ -119,6 +120,9 @@ export default function POSListView({ vm }) {
     activeLookupIndex, setActiveLookupIndex,
     itemResults,
     searchedItemHasMore, isLoadingMoreItems, isSearchingItems, loadMorePOSItems, showAllPOSItems,
+    listCategoryFilter, setListCategoryFilter,
+    listCategoryQuery, setListCategoryQuery,
+    itemCategories,
     listItemInputRef, listQtyRef, listPriceRef, listDiscRef, listWhRef, listAddBtnRef,
     customerInputRef,
     handleListFieldKeyDown, handleSelectItem,
@@ -367,6 +371,15 @@ export default function POSListView({ vm }) {
         <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-center text-2sm font-black tracking-wide text-white shrink-0 z-50">
           <AlertTriangle className="h-3.5 w-3.5" />
           تعذّر الاتصال بالخادم المحلي — بعض العمليات قد لا تعمل حتى يعود الاتصال
+          <button
+            type="button"
+            onClick={copyConnectionError}
+            className="ms-2 inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-2xs font-bold hover:bg-white/30 active:scale-95"
+            title="نسخ تفاصيل الخطأ"
+          >
+            <Copy className="h-3 w-3" />
+            نسخ التفاصيل
+          </button>
         </div>
       )}
 
@@ -489,7 +502,7 @@ export default function POSListView({ vm }) {
                 )}
               </div>
             </div>
-            <div className="relative">
+            <div className="relative z-[70]">
               <input ref={customerInputRef} type="text" value={customerQuery}
                 placeholder={customer?.id ? customer.name : `ابحث عن عميل... ${shortcutLabel("pos.focusCustomer")}`}
                 onChange={(e) => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); if (!e.target.value) { setCustomer(null); setPaymentType("cash"); } }}
@@ -499,10 +512,12 @@ export default function POSListView({ vm }) {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
               />
               {customerLookupOpen && (
-                <SearchDropdown items={customerResults} onPick={handlePickCustomer}
-                  activeIndex={activeCustomerIndex} query={customerQuery}
-                  emptyLabel="لم يتم العثور على عميل"
-                />
+                <div className="absolute left-0 right-0 z-50" style={{ top: "calc(100% + 4px)" }}>
+                  <SearchDropdown items={customerResults} onPick={handlePickCustomer}
+                    activeIndex={activeCustomerIndex} query={customerQuery}
+                    emptyLabel="لم يتم العثور على عميل"
+                  />
+                </div>
               )}
             </div>
             {customer?.id && (
@@ -1009,13 +1024,32 @@ export default function POSListView({ vm }) {
         {/* Main Content (Entry & Grid) */}
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
           {/* Quick Entry Bar */}
-          <section ref={entryBarRef} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm shrink-0">
+          <section ref={entryBarRef} className="rounded-2xl border p-3 shadow-sm shrink-0" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
             <div className="entry-bar">
               <EntryItemThumb item={selectedItem} onView={(imgs) => openGallery(imgs)} />
 
               {/* الصنف */}
               <div data-help="search-bar" className="entry-field entry-field--item">
                 <label className="entry-label">الصنف <span className="text-[9px] font-mono text-slate-400">({shortcutLabel("pos.focusItem")})</span></label>
+                <CategorySearchField
+                  categories={itemCategories}
+                  value={listCategoryFilter}
+                  query={listCategoryQuery}
+                  onQueryChange={setListCategoryQuery}
+                  onChange={(cat) => {
+                    setListCategoryFilter(cat);
+                    setListCategoryQuery("");
+                    setSelectedItem(null);
+                    setItemNameQuery("");
+                    setItemCodeQuery("");
+                  }}
+                  onPickDone={(catId) => {
+                    setTimeout(() => {
+                      listItemInputRef.current?.focus();
+                      showAllPOSItems(catId);
+                    }, 50);
+                  }}
+                />
                 <ProductSearchField
                   ref={listItemInputRef}
                   onNavigateNext={() => { listQtyRef.current?.focus(); listQtyRef.current?.select?.(); }}
@@ -1029,6 +1063,7 @@ export default function POSListView({ vm }) {
                   hasMore={searchedItemHasMore}
                   isLoadingMore={isLoadingMoreItems}
                   onShowAll={showAllPOSItems}
+                  showChip={false}
                 />
               </div>
 
@@ -1156,7 +1191,7 @@ export default function POSListView({ vm }) {
           </section>
 
           {/* Lines DataGrid */}
-          <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl border p-2" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
             <div ref={colSettingsRef} className="flex items-center justify-between px-1 py-1.5 shrink-0">
               <span className="flex items-center gap-1"><span className="text-[11px] font-bold text-slate-400">أصناف الفاتورة ({lines.length})</span><ShortcutKbd id="grid.editLast" /></span>
               {flashAdd && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />}
