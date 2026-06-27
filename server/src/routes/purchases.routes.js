@@ -84,6 +84,37 @@ function itemStillExists(db, itemId) {
   return !!db.prepare("SELECT 1 FROM items WHERE id = ?").get(itemId);
 }
 
+function warehouseExists(db, id) {
+  return id != null && id !== "" && !!db.prepare("SELECT 1 FROM warehouses WHERE id = ?").get(id);
+}
+
+// purchase_lines never stored warehouse_id, so void/edit/cancel used a hardcoded
+// fallback of warehouse 1 — which FK-fails on stock_levels/stock_movements when the
+// store's warehouse isn't id 1 (deleted or different id). Resolve a warehouse that
+// actually EXISTS: prefer the warehouse the original purchase movement used, then the
+// candidates passed, then the configured default, then any existing warehouse.
+function pickValidWarehouse(db, ...candidates) {
+  for (const c of candidates) {
+    const id = Number(c) || 0;
+    if (id && warehouseExists(db, id)) return id;
+  }
+  const def = db.prepare("SELECT default_warehouse_id FROM settings WHERE id = 1").get()?.default_warehouse_id;
+  if (warehouseExists(db, def)) return def;
+  return db.prepare("SELECT id FROM warehouses ORDER BY id ASC LIMIT 1").get()?.id || null;
+}
+
+// The warehouse the original purchase actually deposited stock into (recorded on the
+// stock_movement at create time) — the correct target to reverse against.
+function originalPurchaseWarehouse(db, purchaseId, itemId) {
+  return (
+    db
+      .prepare(
+        "SELECT warehouse_id FROM stock_movements WHERE reference_type = 'purchase' AND reference_id = ? AND item_id = ? AND warehouse_id IS NOT NULL ORDER BY id ASC LIMIT 1"
+      )
+      .get(purchaseId, itemId)?.warehouse_id || null
+  );
+}
+
 function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
   if (!hasTable(db, "cost_movements") || !line?.id) return;
   const quantity = Number(line.quantity || 0) * (options.reversal ? -1 : 1);
@@ -494,7 +525,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       for (const line of payload.lines || []) {
         const qty         = Number(line.quantity);
         const cost        = Number(line.unit_cost);
-        const warehouseId = Number(line.warehouse_id || payload.warehouse_id || 1);
+        const warehouseId = pickValidWarehouse(db, line.warehouse_id, payload.warehouse_id);
         const itemRow     = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
         const lockBuy     = line.update_master_purchase_price  !== false ? 1 : 0;
         const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
@@ -506,16 +537,16 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
           `INSERT INTO purchase_lines
             (purchase_id, item_id, quantity, unit_cost, line_total,
              item_name_ar, item_name_en, barcode, supplier_name,
-             unit_price, wholesale_price,
+             unit_price, wholesale_price, warehouse_id,
              update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           purchaseId, line.item_id, qty, cost, qty * cost,
           itemRow?.name    || null,
           itemRow?.name_en || null,
           itemRow?.barcode || null,
           supplier?.name   || null,
-          sellPrice, wholePrice,
+          sellPrice, wholePrice, warehouseId,
           lockBuy, lockSell, lockWhole,
         );
 
@@ -842,13 +873,16 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(newSupplierId)
         : null;
 
-      // 1. Reverse old stock (skip lines whose item was hard-deleted — FK-safe)
+      // 1. Reverse old stock (skip lines whose item was hard-deleted — FK-safe;
+      //    target the warehouse the original purchase used, never a hardcoded 1)
       for (const line of purchase.lines || []) {
         recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_reversal" });
         if (!itemStillExists(db, line.item_id)) continue;
+        const wh = pickValidWarehouse(db, originalPurchaseWarehouse(db, purchase.id, line.item_id), line.warehouse_id, purchase.warehouse_id);
+        if (!wh) continue;
         adjustStock({
           item_id: line.item_id,
-          warehouse_id: line.warehouse_id || 1,
+          warehouse_id: wh,
           quantityDelta: -line.quantity,
           movement_type: "purchase_void",
           reference_type: "purchase",
@@ -877,21 +911,22 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         const itemRow   = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
         const sellPrice  = Number(line.selling_price || line.unit_price || 0);
         const wholePrice = Number(line.wholesale_price || 0);
+        const newWh = pickValidWarehouse(db, line.warehouse_id, payload.warehouse_id, purchase.warehouse_id);
         const lr = db.prepare(
           `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total,
              item_name_ar, item_name_en, barcode, supplier_name,
-             unit_price, wholesale_price,
+             unit_price, wholesale_price, warehouse_id,
              update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(purchase.id, line.item_id, qty, cost, lineTotal,
               itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null,
               supplier?.name || null,
-              sellPrice, wholePrice,
+              sellPrice, wholePrice, newWh,
               lockBuy, lockSell, lockWhole);
         editInsertedLines.push({
           id: lr.lastInsertRowid,
           item_id: Number(line.item_id),
-          warehouse_id: line.warehouse_id || payload.warehouse_id || 1,
+          warehouse_id: newWh,
           quantity: qty,
           unit_cost: cost,
           unit_price: Number(line.selling_price || line.unit_price || 0),
@@ -903,18 +938,20 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         recordPurchaseLineCost(db, purchase.id, {
           id: lr.lastInsertRowid,
           item_id: Number(line.item_id),
-          warehouse_id: line.warehouse_id || payload.warehouse_id || 1,
+          warehouse_id: newWh,
           quantity: qty,
           unit_cost: cost,
         });
-        adjustStock({
-          item_id: line.item_id,
-          warehouse_id: line.warehouse_id || payload.warehouse_id || 1,
-          quantityDelta: qty,
-          movement_type: "purchase",
-          reference_type: "purchase",
-          reference_id: purchase.id,
-        });
+        if (itemStillExists(db, line.item_id) && newWh) {
+          adjustStock({
+            item_id: line.item_id,
+            warehouse_id: newWh,
+            quantityDelta: qty,
+            movement_type: "purchase",
+            reference_type: "purchase",
+            reference_id: purchase.id,
+          });
+        }
       }
 
       const newTotal = Math.max(0, lineSum - editDiscount + editIncrease);
@@ -976,13 +1013,16 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
 
   const now = nowSql();
 
-  // Reverse stock (skip lines whose item was hard-deleted — FK-safe)
+  // Reverse stock (skip lines whose item was hard-deleted — FK-safe;
+  // target the warehouse the original purchase used, never a hardcoded 1)
   for (const line of purchase.lines || []) {
     recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_cancel", occurred_at: now });
     if (!itemStillExists(db, line.item_id)) continue;
+    const wh = pickValidWarehouse(db, originalPurchaseWarehouse(db, purchase.id, line.item_id), line.warehouse_id, purchase.warehouse_id);
+    if (!wh) continue;
     adjustStock({
       item_id: line.item_id,
-      warehouse_id: line.warehouse_id || 1,
+      warehouse_id: wh,
       quantityDelta: -line.quantity,
       movement_type: "purchase_void",
       reference_type: "purchase",
@@ -1100,7 +1140,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
       for (const line of newLines) {
         const qty         = Number(line.quantity);
         const cost        = Number(line.unit_cost);
-        const warehouseId = Number(line.warehouse_id || 1);
+        const warehouseId = pickValidWarehouse(db, line.warehouse_id, payload.warehouse_id, original.warehouse_id);
         const itemRow     = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
         const lockBuy     = line.update_master_purchase_price  !== false ? 1 : 0;
         const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
@@ -1109,12 +1149,12 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
         const wholePrice = Number(line.wholesale_price || 0);
         const lr = db.prepare(
           `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total, item_name_ar, item_name_en, barcode, supplier_name,
-             unit_price, wholesale_price,
+             unit_price, wholesale_price, warehouse_id,
              update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(newPurchaseId, line.item_id, qty, cost, qty * cost,
               itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null, supplier?.name || null,
-              sellPrice, wholePrice,
+              sellPrice, wholePrice, warehouseId,
               lockBuy, lockSell, lockWhole);
         amendInsertedLines.push({
           id: lr.lastInsertRowid,
@@ -1198,9 +1238,11 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       for (const line of purchase.lines || []) {
         recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_void", occurred_at: now });
         if (!itemStillExists(db, line.item_id)) continue;
+        const wh = pickValidWarehouse(db, originalPurchaseWarehouse(db, purchase.id, line.item_id), line.warehouse_id, purchase.warehouse_id);
+        if (!wh) continue;
         adjustStock({
           item_id: line.item_id,
-          warehouse_id: line.warehouse_id || 1,
+          warehouse_id: wh,
           quantityDelta: -line.quantity,
           movement_type: "purchase_void",
           reference_type: "purchase",

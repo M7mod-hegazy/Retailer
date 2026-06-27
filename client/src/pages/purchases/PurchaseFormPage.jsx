@@ -15,6 +15,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import toast from "react-hot-toast";
+import { showApiError } from "../../services/showApiError";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
@@ -762,7 +763,7 @@ export default function PurchaseFormPage() {
         });
       }
     } catch (e) {
-      toast.error(e.response?.data?.message || "فشل حفظ الفاتورة");
+      showApiError(e, "فشل حفظ الفاتورة");
     } finally {
       setIsSaving(false);
       setSaveConfirmOpen(false);
@@ -789,7 +790,7 @@ export default function PurchaseFormPage() {
       toast.success("تم حذف الفاتورة بنجاح");
       navigate("/purchases");
     } catch (e) {
-      toast.error(e.response?.data?.message || "فشل حذف الفاتورة");
+      showApiError(e, "فشل حذف الفاتورة");
     }
   }
 
