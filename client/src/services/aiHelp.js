@@ -47,24 +47,38 @@ function identityHeaders() {
  * search's top candidates, so the model answers grounded in app help (RAG-lite).
  * @returns {Promise<{ answer: string }>}
  */
-export async function askAi(question, context = []) {
+export async function askAi(question, context = [], externalSignal) {
   const { baseUrl, appKey } = getAiConfig();
   if (!baseUrl || !appKey) throw new Error("ai_not_configured");
 
-  const res = await fetch(`${baseUrl}/ai/help`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-app-key": appKey,
-      ...identityHeaders(),
-    },
-    body: JSON.stringify({ question, context }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.success) {
-    const err = new Error(json.message || "ai_request_failed");
-    err.code = json.code || `http_${res.status}`;
-    throw err;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  // Forward caller cancellation (e.g. the drawer closing) to the live fetch so
+  // closing the assistant actually stops the request instead of leaking it.
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
   }
-  return { answer: json.data?.answer || "" };
+
+  try {
+    const res = await fetch(`${baseUrl}/ai/help`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-app-key": appKey,
+        ...identityHeaders(),
+      },
+      body: JSON.stringify({ question, context }),
+      signal: controller.signal,
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) {
+      const err = new Error(json.message || "ai_request_failed");
+      err.code = json.code || `http_${res.status}`;
+      throw err;
+    }
+    return { answer: json.data?.answer || "" };
+  } finally {
+    clearTimeout(timer);
+  }
 }

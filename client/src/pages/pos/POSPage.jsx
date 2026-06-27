@@ -868,7 +868,7 @@ export default function POSPage() {
     setIsSearchingItems(true);
     const controller = new AbortController();
     const t = setTimeout(() => {
-      const searchParams = { search: q, limit: ITEM_PAGE, offset: 0 };
+      const searchParams = { search: q, limit: ITEM_PAGE, offset: 0, in_stock_only: 1 };
       if (listCategoryFilter?.id) searchParams.category_id = listCategoryFilter.id;
       api.get("/api/items", { params: searchParams, signal: controller.signal })
         .then(r => {
@@ -945,7 +945,7 @@ export default function POSPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const limit = allItemsMode ? SHOW_ALL_LIMIT : ITEM_PAGE;
-    const params = { limit, offset: searchedItemOffset };
+    const params = { limit, offset: searchedItemOffset, in_stock_only: 1 };
     if (!allItemsMode && q) params.search = q;
     if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
     api.get("/api/items", { params })
@@ -985,7 +985,7 @@ export default function POSPage() {
     // categoryIdOverride bypasses stale closure when called right after setListCategoryFilter
     const activeCategoryId = categoryIdOverride ?? listCategoryFilter?.id ?? null;
     if (activeCategoryId) {
-      api.get("/api/items", { params: { category_id: activeCategoryId, limit: SHOW_ALL_LIMIT, offset: 0 } })
+      api.get("/api/items", { params: { category_id: activeCategoryId, limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } })
         .then(r => {
           const rows = (r.data.data || []).map(fmt);
           setSearchedItemResults(rows);
@@ -1000,9 +1000,9 @@ export default function POSPage() {
     setAllItemsTargetCategory(selectedItem?.category_name ?? null);
 
     const catId = selectedItem?.category_id ?? null;
-    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } });
     const catCall = catId
-      ? api.get("/api/items", { params: { category_id: catId, limit: 200 } })
+      ? api.get("/api/items", { params: { category_id: catId, limit: 200, in_stock_only: 1 } })
       : Promise.resolve({ data: { data: [] } });
 
     Promise.all([catCall, allCall])

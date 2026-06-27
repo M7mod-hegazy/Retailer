@@ -56,10 +56,11 @@ const ProductSearchField = forwardRef(function ProductSearchField({
   const [forceOpen, setForceOpen] = useState(false);
   const wrapperRef = useRef(null);
 
-  const hasActiveQuery = Boolean(query && query.trim());
-  // Browse mode (forceOpen): always filter zero-stock.
-  // Search mode (typed query): bypass filter so partial matches still show.
-  const displayResults = hideZeroStock && (!hasActiveQuery || forceOpen)
+  // When hideZeroStock is set (outflow contexts: POS, transfer-out, purchase
+  // return), zero-stock items are filtered out of the dropdown entirely —
+  // including while typing — since you cannot sell/move/return what you don't
+  // have. Inflow contexts (purchase, sales return) pass hideZeroStock={false}.
+  const displayResults = hideZeroStock
     ? results.filter(item => Number(item.stock_quantity || item.stock || 0) > 0)
     : results;
 

@@ -298,7 +298,7 @@ export default function PurchaseFormPage() {
       const loadedLines = (p.lines || []).map(l => ({
         item_id: l.item_id,
         name: l.item_name || l.name || "",
-        code: l.code || l.barcode || "",
+        code: l.item_code || l.code || l.barcode || "",
         quantity: l.quantity,
         unit_cost: l.unit_cost,
         original_unit_cost: l.unit_cost,
@@ -591,18 +591,6 @@ export default function PurchaseFormPage() {
       Number(l.wholesale_price) > 0 || Number(l.original_wholesale_price) > 0
     ),
     [priceChangedLines]);
-
-  function getFilteredWarehouses(itemId, currentId) {
-    if (!itemId) return warehouses;
-    const whStock = stockLevels[itemId] || {};
-    const filtered = warehouses.filter(w => (whStock[w.id] || 0) > 0);
-    if (!filtered.length) return warehouses;
-    if (currentId && !filtered.some(w => String(w.id) === String(currentId))) {
-      const current = warehouses.find(w => String(w.id) === String(currentId));
-      if (current) filtered.push(current);
-    }
-    return filtered;
-  }
 
   const multiTotal = useMemo(() =>
     Object.values(multiAmounts).reduce((s, v) => s + Number(v || 0), 0),
@@ -902,6 +890,8 @@ export default function PurchaseFormPage() {
                 <TrendingUp className="h-4 w-4" />
               </button>
             )}
+            <DocumentActionButton variant="ghost" icon={Filter} onClick={() => setAdvancedSearchOpen(true)} title="بحث متقدم في الأصناف" className="!px-0 w-9 justify-center"
+              data-help="purchases-advanced-search-btn" />
             <DocumentActionButton variant="today" icon={Receipt} onClick={() => setTodayPurchOpen(true)} title="مشتريات اليوم" className="!px-0 w-9 justify-center"
               data-help="purchases-today-btn" />
             <PermissionGate page="purchases" action="delete">
@@ -939,7 +929,7 @@ export default function PurchaseFormPage() {
 
       <div className="flex flex-1 min-h-0" style={{ paddingBottom: panelEffectiveCollapsed ? "var(--bottom-bar-h, 90px)" : undefined }}>
         {/* Main Content */}
-        <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden p-4">
+        <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-y-auto p-4">
           {/* Quick Entry Bar — hidden in locked mode */}
           {!isLocked && (
             <section data-help="items-section" className="rounded-2xl border p-3 shadow-sm shrink-0" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
@@ -1170,7 +1160,7 @@ export default function PurchaseFormPage() {
                       else if (e.key === "ArrowLeft") { e.preventDefault(); addBtnRef.current?.focus(); }
                       else if (e.key === "ArrowRight") { e.preventDefault(); wholesaleInputRef.current?.focus(); wholesaleInputRef.current?.select(); }
                     }}
-                    options={(selectedItem ? getFilteredWarehouses(selectedItem.id, staging.warehouseId) : warehouses).map(w => {
+                    options={warehouses.map(w => {
                       const dbQty = selectedItem && stockLevels[selectedItem.id] ? (stockLevels[selectedItem.id][w.id] || 0) : 0;
                       const inLines = selectedItem ? lines.filter(l => l.item_id === selectedItem.id && String(l.warehouse_id) === String(w.id)).reduce((s, l) => s + Number(l.quantity), 0) : 0;
                       const qty = dbQty + inLines;
@@ -1208,39 +1198,37 @@ export default function PurchaseFormPage() {
                   className="entry-add-btn">
                   <Plus className="h-4 w-4" /> إضافة
                 </button>
+
+                {/* Column visibility settings — kept inline with the entry bar to save vertical space */}
+                <div ref={colSettingsRef} className="relative shrink-0">
+                  <button onClick={() => setColSettingsOpen(p => !p)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all active:scale-90"
+                    title="تخصيص الأعمدة"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </button>
+                  {colSettingsOpen && (
+                    <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
+                      <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                      {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
+                        const labels = { code: "الكود", name: "البيان", quantity: "الكمية", unit_id: "الوحدة", unit_cost: "التكلفة", selling_price: "سعر البيع", profit_pct: "الربح", wholesale_price: "جملة", locks: "قفل", warehouse_id: "المخزن", expiry_date: "انتهاء", total: "الإجمالي" };
+                        return (
+                          <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                            <input type="checkbox" checked={visibleColumns.includes(cid)}
+                              onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                            />
+                            {labels[cid] || cid}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           )}
 
-          {/* Column visibility settings */}
-          <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
-            <div className="flex items-center gap-1"><div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div><ShortcutKbd id="grid.editLast" /></div>
-            <div ref={colSettingsRef} className="relative">
-              <button onClick={() => setColSettingsOpen(p => !p)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
-                title="تخصيص الأعمدة"
-              >
-                <Settings2 className="h-4 w-4" />
-              </button>
-              {colSettingsOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
-                  <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
-                  {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
-                    const labels = { code: "الكود", name: "البيان", quantity: "الكمية", unit_id: "الوحدة", unit_cost: "التكلفة", selling_price: "سعر البيع", profit_pct: "الربح", wholesale_price: "جملة", locks: "قفل", warehouse_id: "المخزن", expiry_date: "انتهاء", total: "الإجمالي" };
-                    return (
-                      <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
-                        <input type="checkbox" checked={visibleColumns.includes(cid)}
-                          onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
-                        />
-                        {labels[cid] || cid}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Lines DataGrid */}
           <div ref={gridNavRef} className="rounded-2xl border p-2" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
@@ -1417,7 +1405,7 @@ export default function PurchaseFormPage() {
                           isLocked ? "bg-transparent text-slate-500 cursor-not-allowed" :
                           !hasStockInSelected && l.warehouse_id ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"
                         }`}>
-                        {getFilteredWarehouses(l.item_id, l.warehouse_id).map(w => {
+                        {warehouses.map(w => {
                           const sqty = whStock[w.id] || 0;
                           return <option key={w.id} value={w.id}>{w.name} ({sqty})</option>;
                         })}

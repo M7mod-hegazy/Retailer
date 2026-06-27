@@ -482,7 +482,7 @@ export default function PurchaseReturnFormPage() {
     if (!itemQuery.trim() || stagingItem) { setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); itemSearchActiveRef.current = false; return; }
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      const params = { search: itemQuery, limit: ITEM_PAGE, offset: 0 };
+      const params = { search: itemQuery, limit: ITEM_PAGE, offset: 0, in_stock_only: 1 };
       if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
       api.get("/api/items", { params })
         .then(r => {
@@ -519,7 +519,7 @@ export default function PurchaseReturnFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset, in_stock_only: 1 };
     if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
     api.get("/api/items", { params })
       .then(r => {
@@ -543,7 +543,7 @@ export default function PurchaseReturnFormPage() {
     setIsLoadingMoreItems(true);
 
     if (listCategoryFilter?.id) {
-      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } })
         .then(r => {
           const rows = (r.data.data || []).map(fmt);
           setItemResults(sortByProximity(rows, anchor));
@@ -553,9 +553,9 @@ export default function PurchaseReturnFormPage() {
       return;
     }
 
-    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } });
     const catCall = anchor?.category_id
-      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200, in_stock_only: 1 } })
       : Promise.resolve({ data: { data: [] } });
     Promise.all([catCall, allCall])
       .then(([catRes, allRes]) => {
@@ -620,7 +620,7 @@ export default function PurchaseReturnFormPage() {
     const allowDecimal = selectedUnit?.allow_decimal !== 0;
     const finalQty = allowDecimal ? qty : Math.max(1, Math.round(qty));
     setCart(prev => {
-      const existingIdx = prev.findIndex(l => l.item_id === stagingItem.id && l.key?.startsWith("direct-"));
+      const existingIdx = prev.findIndex(l => l.item_id === stagingItem.id && String(l.warehouse_id) === String(stagingWarehouseId) && l.key?.startsWith("direct-"));
       if (existingIdx !== -1) {
         return prev.map((l, i) => i !== existingIdx ? l : {
           ...l,
@@ -1387,7 +1387,6 @@ export default function PurchaseReturnFormPage() {
                         hasMore={itemHasMore}
                         isLoadingMore={isLoadingMoreItems}
                         onShowAll={showAllItems}
-                        hideZeroStock={false}
                         trailing={(
                           <button onClick={() => setAdvancedSearchOpen(true)}
                             className="entry-control flex w-[38px] shrink-0 items-center justify-center !p-0"

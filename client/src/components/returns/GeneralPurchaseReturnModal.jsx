@@ -88,7 +88,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
     const q = itemQuery.trim();
     if (!q) { setItemResults([]); setItemOffset(0); setItemHasMore(false); return; }
     const t = setTimeout(() => {
-      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0`)
+      api.get(`/api/items?search=${encodeURIComponent(q)}&limit=${ITEM_PAGE}&offset=0&in_stock_only=1`)
         .then(r => {
           const rows = r.data.data || [];
           setItemResults(rows);
@@ -105,7 +105,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}`)
+    api.get(`/api/items?search=${encodeURIComponent(searchParam)}&limit=${ITEM_PAGE}&offset=${itemOffset}&in_stock_only=1`)
       .then(r => {
         const rows = r.data.data || [];
         setItemResults(prev => [...prev, ...rows]);
@@ -120,7 +120,7 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
     setItemOffset(0);
     setItemHasMore(true);
     setIsLoadingMoreItems(true);
-    api.get(`/api/items?limit=${ITEM_PAGE}&offset=0`)
+    api.get(`/api/items?limit=${ITEM_PAGE}&offset=0&in_stock_only=1`)
       .then(r => {
         const rows = r.data.data || [];
         setItemResults(rows);

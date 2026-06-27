@@ -261,6 +261,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
               isLoadingMore={isLoadingMoreItems}
               onShowAll={showAllItems}
               showChip={false}
+              hideZeroStock={false}
               placeholder="ابحث عن صنف بالاسم أو الباركود..."
             />
           </div>

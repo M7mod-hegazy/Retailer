@@ -235,7 +235,7 @@ export default function BranchTransferFormPage() {
     if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      const params = { search: q, limit: ITEM_PAGE, offset: 0 };
+      const params = { search: q, limit: ITEM_PAGE, offset: 0, in_stock_only: 1 };
       if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
       api.get("/api/items", { params })
         .then(r => {
@@ -265,7 +265,7 @@ export default function BranchTransferFormPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const searchParam = allItemsMode ? "" : q;
-    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset };
+    const params = { search: searchParam, limit: ITEM_PAGE, offset: itemOffset, in_stock_only: 1 };
     if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
     api.get("/api/items", { params })
       .then(r => {
@@ -287,7 +287,7 @@ export default function BranchTransferFormPage() {
     setIsLoadingMoreItems(true);
 
     if (listCategoryFilter?.id) {
-      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0 } })
+      api.get("/api/items", { params: { category_id: listCategoryFilter.id, limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } })
         .then(r => {
           const rows = (r.data.data || []).map(fmt);
           setFilteredItems(listCategoryFilter?.id ? sortByProximity(rows, anchor) : rows);
@@ -297,9 +297,9 @@ export default function BranchTransferFormPage() {
       return;
     }
 
-    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0 } });
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } });
     const catCall = anchor?.category_id
-      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200 } })
+      ? api.get("/api/items", { params: { category_id: anchor.category_id, limit: 200, in_stock_only: 1 } })
       : Promise.resolve({ data: { data: [] } });
     Promise.all([catCall, allCall])
       .then(([catRes, allRes]) => {
@@ -1071,7 +1071,6 @@ export default function BranchTransferFormPage() {
                     isLoadingMore={isLoadingMoreItems}
                     onShowAll={showAllItems}
                     showChip={false}
-                    hideZeroStock={false}
                     placeholder="ابحث بالاسم أو كود SKU..."
                   />
                 </div>

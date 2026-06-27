@@ -95,7 +95,7 @@ export default function SearchDropdown({
 
   if (!items.length && !showRaw) {
     return (
-      <div className="rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]" style={posStyle}>
         {isLoadingMore ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
@@ -109,7 +109,7 @@ export default function SearchDropdown({
   }
 
   return (
-    <div className="rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+    <div className="absolute left-0 right-0 z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]" style={posStyle}>
       <div
         ref={listRef}
         className="overflow-y-auto p-1 custom-scrollbar"

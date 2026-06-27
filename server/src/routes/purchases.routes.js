@@ -44,6 +44,8 @@ function getPurchaseWithLines(db, purchaseId) {
   if (!purchase) return null;
   const lines = db.prepare(`
     SELECT pl.*, i.name AS item_name, i.code AS item_code, i.barcode, i.purchase_price
+           ,COALESCE(NULLIF(pl.unit_price, 0), i.sale_price) AS selling_price
+           ,COALESCE(NULLIF(pl.wholesale_price, 0), i.wholesale_price) AS wholesale_price
            ,COALESCE((SELECT SUM(prl.quantity) FROM purchase_return_lines prl WHERE prl.purchase_line_id = pl.id), 0) AS returned_quantity
     FROM purchase_lines pl
     LEFT JOIN items i ON i.id = pl.item_id
@@ -71,6 +73,15 @@ function getPurchaseWithLines(db, purchaseId) {
     debt_remaining,
     payments,
   };
+}
+
+// A purchase line may reference an item that was later hard-deleted (e.g. via an
+// older item-import-undo). stock_movements/stock_levels have an item_id -> items(id)
+// foreign key, so the void/edit/cancel stock reversal must SKIP such lines instead of
+// crashing with "FOREIGN KEY constraint failed". Migration 150 restores stub items for
+// existing orphans; this guard protects against any future ones.
+function itemStillExists(db, itemId) {
+  return !!db.prepare("SELECT 1 FROM items WHERE id = ?").get(itemId);
 }
 
 function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
@@ -489,18 +500,22 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
         const lockWhole   = line.update_master_wholesale_price  !== false ? 1 : 0;
 
+        const sellPrice  = Number(line.selling_price || line.unit_price || 0);
+        const wholePrice = Number(line.wholesale_price || 0);
         const lineResult = db.prepare(
           `INSERT INTO purchase_lines
             (purchase_id, item_id, quantity, unit_cost, line_total,
              item_name_ar, item_name_en, barcode, supplier_name,
+             unit_price, wholesale_price,
              update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           purchaseId, line.item_id, qty, cost, qty * cost,
           itemRow?.name    || null,
           itemRow?.name_en || null,
           itemRow?.barcode || null,
           supplier?.name   || null,
+          sellPrice, wholePrice,
           lockBuy, lockSell, lockWhole,
         );
 
@@ -823,10 +838,14 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       if ((newPaymentMethod === "credit" || newPaymentMethod === "future_due") && !newSupplierId) {
         const e = new Error("طريقة الدفع الآجلة تتطلب تحديد المورد"); e.status = 400; throw e;
       }
+      const supplier = newSupplierId
+        ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(newSupplierId)
+        : null;
 
-      // 1. Reverse old stock
+      // 1. Reverse old stock (skip lines whose item was hard-deleted — FK-safe)
       for (const line of purchase.lines || []) {
         recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_reversal" });
+        if (!itemStillExists(db, line.item_id)) continue;
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id || 1,
@@ -855,11 +874,20 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
         const lockBuy   = line.update_master_purchase_price  !== false ? 1 : 0;
         const lockSell  = line.update_master_sale_price       !== false ? 1 : 0;
         const lockWhole = line.update_master_wholesale_price  !== false ? 1 : 0;
+        const itemRow   = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
+        const sellPrice  = Number(line.selling_price || line.unit_price || 0);
+        const wholePrice = Number(line.wholesale_price || 0);
         const lr = db.prepare(
           `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total,
+             item_name_ar, item_name_en, barcode, supplier_name,
+             unit_price, wholesale_price,
              update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(purchase.id, line.item_id, qty, cost, lineTotal, lockBuy, lockSell, lockWhole);
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(purchase.id, line.item_id, qty, cost, lineTotal,
+              itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null,
+              supplier?.name || null,
+              sellPrice, wholePrice,
+              lockBuy, lockSell, lockWhole);
         editInsertedLines.push({
           id: lr.lastInsertRowid,
           item_id: Number(line.item_id),
@@ -948,9 +976,10 @@ function cancelPurchaseFn(db, purchaseId, reason, userId) {
 
   const now = nowSql();
 
-  // Reverse stock
+  // Reverse stock (skip lines whose item was hard-deleted — FK-safe)
   for (const line of purchase.lines || []) {
     recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_cancel", occurred_at: now });
+    if (!itemStillExists(db, line.item_id)) continue;
     adjustStock({
       item_id: line.item_id,
       warehouse_id: line.warehouse_id || 1,
@@ -1076,12 +1105,16 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
         const lockBuy     = line.update_master_purchase_price  !== false ? 1 : 0;
         const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
         const lockWhole   = line.update_master_wholesale_price  !== false ? 1 : 0;
+        const sellPrice  = Number(line.selling_price || line.unit_price || 0);
+        const wholePrice = Number(line.wholesale_price || 0);
         const lr = db.prepare(
           `INSERT INTO purchase_lines (purchase_id, item_id, quantity, unit_cost, line_total, item_name_ar, item_name_en, barcode, supplier_name,
+             unit_price, wholesale_price,
              update_master_purchase_price, update_master_sale_price, update_master_wholesale_price)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(newPurchaseId, line.item_id, qty, cost, qty * cost,
               itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null, supplier?.name || null,
+              sellPrice, wholePrice,
               lockBuy, lockSell, lockWhole);
         amendInsertedLines.push({
           id: lr.lastInsertRowid,
@@ -1164,6 +1197,7 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       const now = nowSql();
       for (const line of purchase.lines || []) {
         recordPurchaseLineCost(db, purchase.id, line, { reversal: true, movement_type: "purchase_void", occurred_at: now });
+        if (!itemStillExists(db, line.item_id)) continue;
         adjustStock({
           item_id: line.item_id,
           warehouse_id: line.warehouse_id || 1,

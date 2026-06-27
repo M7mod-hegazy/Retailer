@@ -58,6 +58,7 @@ const repairOrdersRoutes = require("./routes/repairOrders.routes");
 const restaurantRoutes = require("./routes/restaurant.routes");
 const goldRoutes = require("./routes/gold.routes");
 const maintenanceRoutes = require("./routes/maintenance.routes");
+const assistantRoutes = require("./routes/assistant.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 const { licenseEnforce } = require("./middleware/licenseEnforce");
 const logger = require("./config/logger");
@@ -172,6 +173,7 @@ function createApp() {
   app.use("/api/restaurant", restaurantRoutes);
   app.use("/api/gold", goldRoutes);
   app.use("/api/maintenance", maintenanceRoutes);
+  app.use("/api/assistant", assistantRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");

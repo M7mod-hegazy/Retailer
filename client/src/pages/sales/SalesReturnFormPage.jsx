@@ -701,7 +701,7 @@ export default function SalesReturnFormPage() {
     const allowDecimal = selectedUnit?.allow_decimal !== 0;
     const finalQty = allowDecimal ? qty : Math.max(1, Math.round(qty));
     setCart(prev => {
-      const existingIdx = prev.findIndex(l => l.item_id === stagingItem.id && l.key?.startsWith("direct-"));
+      const existingIdx = prev.findIndex(l => l.item_id === stagingItem.id && String(l.warehouse_id) === String(stagingWarehouseId) && l.key?.startsWith("direct-"));
       if (existingIdx !== -1) {
         return prev.map((l, i) => i !== existingIdx ? l : {
           ...l,

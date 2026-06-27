@@ -174,7 +174,7 @@ function computeCodeAndSequence({ categoryId, incomingCode, currentCode }) {
   return { code: `${prefix}.${next}`, skuSequence: next };
 }
 
-function buildItemsWhere({ search = "", categoryId = null, includeDeleted = false } = {}) {
+function buildItemsWhere({ search = "", categoryId = null, includeDeleted = false, inStockOnly = false } = {}) {
   let where = " WHERE 1 = 1";
   const params = [];
 
@@ -190,18 +190,24 @@ function buildItemsWhere({ search = "", categoryId = null, includeDeleted = fals
     where += " AND i.category_id = ?";
     params.push(Number(categoryId));
   }
+  // Outflow contexts (POS, transfer-out, purchase return) request in-stock items
+  // only. Filtering here — before LIMIT — keeps pagination/totals correct, so a
+  // page is never emptied by client-side stock filtering after the fact.
+  if (inStockOnly) {
+    where += " AND (SELECT COALESCE(SUM(quantity), 0) FROM stock_levels sl WHERE sl.item_id = i.id) > 0";
+  }
 
   return { where, params };
 }
 
-function getItemsTotal(search = "", categoryId = null, includeDeleted = false) {
-  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted });
+function getItemsTotal(search = "", categoryId = null, includeDeleted = false, inStockOnly = false) {
+  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted, inStockOnly });
   const row = getDb().prepare(`SELECT COUNT(*) AS total FROM items i ${where}`).get(...params);
   return Number(row?.total || 0);
 }
 
-function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0 } = {}) {
-  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted });
+function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0, inStockOnly = false } = {}) {
+  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted, inStockOnly });
   let sql = `
     SELECT i.*, c.name AS category_name, c.sku_prefix, u.name AS unit_name,
            COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity,
@@ -244,10 +250,11 @@ router.get("/", requirePagePermission("items", "view"), (req, res) => {
   const search = String(req.query.search || "").trim();
   const categoryId = req.query.category_id ? Number(req.query.category_id) : null;
   const includeDeleted = req.query.include_deleted === "1" || req.query.include_deleted === "true";
+  const inStockOnly = req.query.in_stock_only === "1" || req.query.in_stock_only === "true";
   const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 200) : null;
   const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
-  const rows = getItemsList(search, categoryId, includeDeleted, { limit, offset });
-  const total = limit ? getItemsTotal(search, categoryId, includeDeleted) : rows.length;
+  const rows = getItemsList(search, categoryId, includeDeleted, { limit, offset, inStockOnly });
+  const total = limit ? getItemsTotal(search, categoryId, includeDeleted, inStockOnly) : rows.length;
   res.json({
     success: true,
     data: rows,

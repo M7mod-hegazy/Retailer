@@ -48,8 +48,13 @@ function setupAutoUpdater(mainWindow) {
 
   if (!autoUpdater) return;
 
+  // The UI now drives updates exclusively through the robust manual pipeline
+  // (integrity-checked download → clean DB close → installer launch). The
+  // electron-updater auto-download/auto-install path was unreliable, so keep it
+  // fully disabled: never auto-download, never auto-install on quit. We still
+  // use checkForUpdates() below purely to DETECT a new version (update:available).
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on("update-available", (info) => {
     _lastUpdateInfo = info;
