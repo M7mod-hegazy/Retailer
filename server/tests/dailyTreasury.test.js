@@ -653,4 +653,26 @@ describe("Cashflow ledger endpoint", function () {
     const afterVoid = await request(app).get(`/api/daily-sessions/${today}/cashflow`);
     expect((afterVoid.body.data.rows || []).some((r) => r.doc_no === docNo)).toBe(false);
   });
+
+  it("treats a non-cash withdrawal as non_cash and stays reconciled", async function () {
+    // A bank (non-cash) withdrawal — the summary excludes it from cash_out, so the
+    // ledger must label it non_cash with cash_effect 0 to keep closing == expected.
+    const uniqueAmount = 1234.56;
+    db.prepare(`
+      INSERT INTO withdrawals (amount, payment_method, note, created_at)
+      VALUES (?, 'bank', 'non-cash withdrawal regression', datetime('now'))
+    `).run(uniqueAmount);
+
+    const res = await request(app).get(`/api/daily-sessions/${today}/cashflow`);
+    expect(res.status).toBe(200);
+    const d = res.body.data;
+
+    const row = (d.rows || []).find(
+      (r) => r.doc_type === "withdrawal" && Math.abs(Number(r.amount) - uniqueAmount) < 0.01
+    );
+    expect(row).toBeDefined();
+    expect(row.direction).toBe("non_cash");
+    expect(row.cash_effect).toBe(0);
+    expect(d.reconciles).toBe(true);
+  });
 });

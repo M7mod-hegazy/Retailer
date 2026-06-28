@@ -550,7 +550,9 @@ function buildUnionParts(targetDate, search) {
         sql: `
           SELECT w.id, w.doc_no, w.amount, w.payment_method,
                  w.created_at, wc.name AS party, NULL AS status, w.note AS description,
-                 'withdrawal' AS doc_type, 'out' AS cash_direction, -w.amount AS cash_effect,
+                 'withdrawal' AS doc_type,
+                 CASE WHEN COALESCE(w.payment_method, 'cash') = 'cash' THEN 'out' ELSE 'account' END AS cash_direction,
+                 CASE WHEN COALESCE(w.payment_method, 'cash') = 'cash' THEN -w.amount ELSE 0 END AS cash_effect,
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
