@@ -263,9 +263,10 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
   `).get(...params);
   const purchases = db.prepare(`
     SELECT p.*, s.name AS supplier_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
-           (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count,
-           CASE
-             WHEN p.payment_method = 'multi' THEN (
+            (SELECT COUNT(*) FROM purchase_lines WHERE purchase_id = p.id) AS items_count,
+            (SELECT id FROM ajal_debts WHERE invoice_id = p.id AND source_type = 'purchase' AND status != 'voided' LIMIT 1) AS debt_id,
+            CASE
+              WHEN p.payment_method = 'multi' THEN (
                SELECT GROUP_CONCAT(
                   (CASE WHEN pm.type = 'credit' OR pm.category = 'credit' THEN 'credit' ELSE pm.name END)
                  || ':' || CAST(ROUND(pp.amount, 2) AS TEXT), '|||')

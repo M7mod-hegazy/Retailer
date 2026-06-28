@@ -70,6 +70,8 @@ const dispatcher = {
   "daily-owner-snapshot": accounts.dailyOwnerSnapshot,
   "ar-aging": accounts.arAging,
   "ap-aging": accounts.apAging,
+  "customer-balance-list": accounts.customerBalanceList,
+  "supplier-balance-list": accounts.supplierBalanceList,
 
   // Customers
   "top-customers": customers.topCustomers,

@@ -1,10 +1,10 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus, ShoppingCart, Trash2, User, Package, Calendar, FileText,
   Warehouse, ChevronDown, ArrowLeft, X, CreditCard, Wallet, Banknote,
   AlertTriangle, Clock, ExternalLink, TrendingUp, Building2, Phone,
   MapPin, ImageIcon, Printer, CheckCircle2, Layers, Lock, Pencil,
-  FilePlus, Sparkles, Receipt, Save,
+  FilePlus, Sparkles, Receipt, Save, Info,
   Loader2, Filter, ClipboardList, Settings2,
 } from "lucide-react";
 import api from "../../services/api";
@@ -142,6 +142,7 @@ export default function PurchaseFormPage() {
   const [staging, setStaging] = useState({ quantity: "1", unitCost: "", sellingPrice: "", wholesalePrice: "", warehouseId: "", unitId: "", expiryDate: "", batchNo: "" });
   // Lock toggles: true = update master price on save (🔒), false = this invoice only (🔓)
   const [stagingLocks, setStagingLocks] = useState({ purchase: true, sale: true, wholesale: true });
+  const [priceHelpOpen, setPriceHelpOpen] = useState(false);
   const [profitModalOpen, setProfitModalOpen] = useState(false);
   const [todayPurchOpen, setTodayPurchOpen] = useState(false);
   const [profitDisplayMode, setProfitDisplayMode] = useState("pct");
@@ -206,6 +207,8 @@ export default function PurchaseFormPage() {
   const dueDateRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
+  const searchAbortRef    = useRef(null);
+  const currentQueryRef   = useRef("");
 
   const handleKeyDown = useFieldNavigation();
   const gridNavRef = useRef(null);
@@ -372,13 +375,24 @@ export default function PurchaseFormPage() {
   useEffect(() => {
     const q = itemQuery.trim();
     pendingPickRef.current = false;
-    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
+    if (!q) {
+      setFilteredItems([]); setItemOffset(0); setItemHasMore(false);
+      itemSearchActiveRef.current = false;
+      searchAbortRef.current?.abort();
+      return;
+    }
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    currentQueryRef.current = q;
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
+      const capturedQ = q;
       const params = { search: q, limit: ITEM_PAGE, offset: 0 };
       if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
-      api.get("/api/items", { params })
+      api.get("/api/items", { params, signal: controller.signal })
         .then(r => {
+          if (currentQueryRef.current !== capturedQ) return;
           const rows = (r.data.data || []).map(i => ({
             ...i,
             price_label: formatMoney(i.purchase_price || 0),
@@ -392,10 +406,13 @@ export default function PurchaseFormPage() {
           } else {
             pendingPickRef.current = false;
           }
-        }).catch(() => { pendingPickRef.current = false; })
+        })
+        .catch((err) => {
+          if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") pendingPickRef.current = false;
+        })
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
+    return () => { clearTimeout(t); controller.abort(); itemSearchActiveRef.current = false; };
   }, [itemQuery, listCategoryFilter]);
 
   useEffect(() => {
@@ -472,7 +489,8 @@ export default function PurchaseFormPage() {
 
   function handlePickItem(item) {
     setSelectedItem(item);
-    setItemQuery(item.name);
+    const _sku = item.code || item.item_code || item.barcode || "";
+    setItemQuery(_sku ? `[${_sku}] ${item.name}` : item.name);
     setFilteredItems([]);
     setItemOffset(0);
     setItemHasMore(false);
@@ -838,6 +856,72 @@ export default function PurchaseFormPage() {
       {profitModalOpen && (
         <PurchaseProfitModal lines={lines} onClose={() => setProfitModalOpen(false)} />
       )}
+      {priceHelpOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setPriceHelpOpen(false)}>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <Info size={14} className="text-indigo-600" />
+                </div>
+                <span className="text-[13px] font-black text-slate-800">خيارات تحديث السعر</span>
+              </div>
+              <button onClick={() => setPriceHelpOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            {/* Two cards */}
+            <div className="p-5 flex flex-col gap-3">
+              {/* Card 1: Update master */}
+              <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 size={16} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-black text-emerald-800 mb-1">يحدّث السعر الأساسي للصنف</p>
+                    <p className="text-[11px] text-emerald-700 leading-relaxed">
+                      السعر هيتغير، وأي فاتورة جديدة هتشوف السعر ده تلقائي.
+                    </p>
+                    <p className="text-[10px] text-emerald-600 mt-1.5 bg-emerald-100 rounded px-2 py-1">
+                      ★ مثال: المورد رفع سعره — اختار دة عشان السعر الجديد يظهر في كل الفواتير الجاية.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Card 2: Invoice only */}
+              <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                    <Lock size={14} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-black text-amber-800 mb-1">للفاتورة دي بس</p>
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      السعر ده للفاتورة دي بس. مش هيتغير في أي تعامل تاني.
+                    </p>
+                    <p className="text-[10px] text-amber-600 mt-1.5 bg-amber-100 rounded px-2 py-1">
+                      ★ مثال: اتفقت مع المورد على سعر خاص للطلبية دي — اختار دة عشان السعر الأساسي ما يتغيرش.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Tip */}
+              <p className="text-[10px] text-slate-500 text-center">
+                تقدر تغيّر الخيار دة لكل سعر لوحده من خلال الزر الصغيّر جنب كل سعر
+              </p>
+            </div>
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
+              <button onClick={() => setPriceHelpOpen(false)}
+                className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-[12px] font-bold hover:bg-indigo-700 transition-colors">
+                فهمت
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <DocumentHeaderBar
         accent="emerald-strong"
@@ -879,10 +963,13 @@ export default function PurchaseFormPage() {
         actions={
           <>
             {priceChangedLines.length > 0 && !isLocked && (
-              <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+              <button
+                onClick={() => setPriceReportOpen(true)}
+                className="flex items-center gap-1.5 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700 hover:bg-amber-100 transition-colors"
+              >
                 <TrendingUp className="h-3.5 w-3.5" />
                 {priceChangedLines.length} أسعار ستتغير
-              </div>
+              </button>
             )}
             {/* Profit analysis — special to purchases (blue), icon-only */}
             {lines.length > 0 && (
@@ -1016,21 +1103,22 @@ export default function PurchaseFormPage() {
                   </div>
                 </div>
 
-                {/* Cost (with lock toggle) */}
+                {/* Cost */}
                 <div className="entry-field entry-field--money">
-                  <div className="flex items-center justify-between">
-                    <label className="entry-label">التكلفة</label>
-                    <button type="button"
-                      onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
-                      title={stagingLocks.purchase ? "يحدّث السعر الرئيسي عند الحفظ — اضغط لإلغاء" : "هذه الفاتورة فقط — اضغط للتحديث"}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold transition-all ${
-                        stagingLocks.purchase
-                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
-                          : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}
-                      data-help="purchases-cost-toggle">
-                      {stagingLocks.purchase ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
-                      {stagingLocks.purchase ? "يحدّث" : "للفاتورة"}
+                  <div className="flex items-center gap-1">
+                    <label className="entry-label flex-1 min-w-0 truncate">التكلفة</label>
+                    {selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
+                      <button type="button"
+                        onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
+                        title={stagingLocks.purchase ? "هيتحدّث سعر التكلفة ف بطاقة الصنف — اضغط عشان متغيرش" : "للفاتورة دي بس — اضغط عشان تحدّث بطاقة الصنف"}
+                        className={`shrink-0 text-[8px] font-black px-1 py-0.5 rounded border transition-all ${stagingLocks.purchase ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-amber-100 text-amber-700 border-amber-300"}`}>
+                        {stagingLocks.purchase ? "يحدّث" : "ثابت"}
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setPriceHelpOpen(true)}
+                      title="اعرف أكثر عن خيارات تحديث السعر"
+                      className="shrink-0 text-slate-400 hover:text-indigo-500 transition-colors">
+                      <Info size={11} />
                     </button>
                   </div>
                   <input ref={costInputRef} type="number" step="any" value={staging.unitCost}
@@ -1038,112 +1126,55 @@ export default function PurchaseFormPage() {
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: sellInputRef, prevRef: qtyInputRef })}
                     className={`entry-control text-center ${
-                      !stagingLocks.purchase ? "!border-amber-300 !bg-amber-50/60"
-                      : selectedItem && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && Number(staging.unitCost) > 0
-                        ? "!border-amber-400 !bg-amber-50"
-                        : ""
+                      selectedItem && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0
+                        ? "!border-amber-400 !bg-amber-50" : ""
                     }`} />
-                  {/* Cost before→after badge (parity with selling/wholesale) */}
-                  {selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
-                    <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
-                      <span className="text-slate-300 mx-1">→</span>
-                      <span className={`number-fmt ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>
-                        {Number(staging.unitCost).toFixed(2)}
-                      </span>
-                      <span className="text-slate-400 mr-1">
-                        ({(((Number(staging.unitCost) - Number(selectedItem.purchase_price)) / Number(selectedItem.purchase_price)) * 100).toFixed(1)}%)
-                      </span>
-                    </span>
-                  )}
-                  {/* آخر شراء hint */}
-                  {selectedItem && Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0) > 0 && (
-                    <span className="text-[9px] text-slate-400 text-center leading-tight">
-                      آخر شراء: <span className="number-fmt text-slate-500">
-                        {Number(selectedItem.last_purchase_cost || selectedItem.purchase_price || 0).toFixed(2)}
-                      </span>
-                    </span>
-                  )}
                 </div>
 
-                {/* Selling price (مستهلك — with lock toggle) */}
+                {/* Selling price */}
                 <div className="entry-field entry-field--money">
-                  <div className="flex items-center justify-between">
-                    <label className="entry-label flex items-center gap-1">
-                      مستهلك
-                    </label>
-                    <button type="button"
-                      onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
-                      title={stagingLocks.sale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold transition-all ${
-                        stagingLocks.sale
-                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
-                          : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}>
-                      {stagingLocks.sale ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
-                      {stagingLocks.sale ? "يحدّث" : "للفاتورة"}
-                    </button>
+                  <div className="flex items-center gap-1">
+                    <label className="entry-label flex-1 min-w-0 truncate">مستهلك</label>
+                    {selectedItem && Number(staging.sellingPrice) > 0 && Number(selectedItem.sale_price) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
+                      <button type="button"
+                        onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
+                        title={stagingLocks.sale ? "هيتحدّث سعر البيع ف بطاقة الصنف — اضغط عشان متغيرش" : "للفاتورة دي بس — اضغط عشان تحدّث بطاقة الصنف"}
+                        className={`shrink-0 text-[8px] font-black px-1 py-0.5 rounded border transition-all ${stagingLocks.sale ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-amber-100 text-amber-700 border-amber-300"}`}>
+                        {stagingLocks.sale ? "يحدّث" : "ثابت"}
+                      </button>
+                    )}
                   </div>
                   <input ref={sellInputRef} type="number" step="any" value={staging.sellingPrice}
                     onChange={(e) => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesaleInputRef, prevRef: costInputRef })}
                     className={`entry-control text-center ${
-                      !stagingLocks.sale ? "!border-amber-300 !bg-amber-50/60"
-                      : selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0
-                        ? "!border-amber-400 !bg-amber-50"
-                        : ""
+                      selectedItem && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && Number(staging.sellingPrice) > 0 && Number(selectedItem.sale_price) > 0
+                        ? "!border-amber-400 !bg-amber-50" : ""
                     }`} />
-                  {/* Before→after badge */}
-                  {selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
-                    <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price || 0).toFixed(2)}</span>
-                      <span className="text-slate-300 mx-1">→</span>
-                      <span className={`number-fmt ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
-                        {Number(staging.sellingPrice).toFixed(2)}
-                      </span>
-                    </span>
-                  )}
                 </div>
 
-                {/* Wholesale price (جملة — with lock toggle) */}
+                {/* Wholesale price */}
                 <div className="entry-field entry-field--money">
-                  <div className="flex items-center justify-between">
-                    <label className="entry-label flex items-center gap-1">
-                      جملة
-                    </label>
-                    <button type="button"
-                      onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
-                      title={stagingLocks.wholesale ? "يحدّث السعر الرئيسي — اضغط لإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold transition-all ${
-                        stagingLocks.wholesale
-                          ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
-                          : "bg-amber-100 text-amber-700 border border-amber-300"
-                      }`}>
-                      {stagingLocks.wholesale ? <Lock size={9} /> : <Lock size={9} className="opacity-50" />}
-                      {stagingLocks.wholesale ? "يحدّث" : "للفاتورة"}
-                    </button>
+                  <div className="flex items-center gap-1">
+                    <label className="entry-label flex-1 min-w-0 truncate">جملة</label>
+                    {selectedItem && Number(staging.wholesalePrice) > 0 && Number(selectedItem.wholesale_price) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                      <button type="button"
+                        onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
+                        title={stagingLocks.wholesale ? "هيتحدّث سعر الجملة ف بطاقة الصنف — اضغط عشان متغيرش" : "للفاتورة دي بس — اضغط عشان تحدّث بطاقة الصنف"}
+                        className={`shrink-0 text-[8px] font-black px-1 py-0.5 rounded border transition-all ${stagingLocks.wholesale ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-amber-100 text-amber-700 border-amber-300"}`}>
+                        {stagingLocks.wholesale ? "يحدّث" : "ثابت"}
+                      </button>
+                    )}
                   </div>
                   <input ref={wholesaleInputRef} type="number" step="any" value={staging.wholesalePrice}
                     onChange={(e) => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleKeyDown(e, { nextRef: warehouseTableRef, prevRef: sellInputRef })}
                     className={`entry-control text-center ${
-                      !stagingLocks.wholesale ? "!border-amber-300 !bg-amber-50/60"
-                      : selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0
-                        ? "!border-amber-400 !bg-amber-50"
-                        : ""
+                      selectedItem && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && Number(staging.wholesalePrice) > 0 && Number(selectedItem.wholesale_price) > 0
+                        ? "!border-amber-400 !bg-amber-50" : ""
                     }`} />
-                  {/* Before→after badge */}
-                  {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
-                    <span className="text-[9px] text-center leading-tight">
-                      <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price || 0).toFixed(2)}</span>
-                      <span className="text-slate-300 mx-1">→</span>
-                      <span className={`number-fmt ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
-                        {Number(staging.wholesalePrice).toFixed(2)}
-                      </span>
-                    </span>
-                  )}
                 </div>
 
                 {/* Warehouse */}
@@ -1287,20 +1318,34 @@ export default function PurchaseFormPage() {
                   const unitName = l.unit_id ? (units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية") : "أساسية";
                   return <UnitCell unitName={unitName} />;
                 } },
-              { id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+              {
+                id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => {
                   const costChanged = Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0 && Number(l.original_unit_cost) > 0;
+                  const willUpdate = l.update_master_purchase_price !== false;
                   return (
                     <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.unit_cost} disabled={isLocked} data-grid-cell data-row={i} data-col="unit_cost" onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
                         className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
                       {costChanged && (
-                        <span className="text-[9px] text-center leading-none pb-0.5">
+                        <span className="text-[9px] text-center leading-none pb-0.5 flex items-center justify-center gap-0.5">
                           <span className="text-slate-400 number-fmt">{Number(l.original_unit_cost).toFixed(2)}</span>
-                          <span className="text-slate-300 mx-0.5">→</span>
+                          <span className="text-slate-300">→</span>
                           <span className={`number-fmt ${Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-500" : "text-emerald-600"}`}>
                             {Number(l.unit_cost).toFixed(2)}
                           </span>
+                          {!isLocked && (
+                            <button
+                              type="button"
+                              title={willUpdate ? "يحدّث السعر الرئيسي — اضغط للإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
+                              onClick={() => updateLineField(i, "update_master_purchase_price", !willUpdate)}
+                              className={`shrink-0 flex items-center justify-center w-3.5 h-3.5 rounded transition-colors ${
+                                willUpdate ? "text-emerald-600 hover:text-emerald-800" : "text-amber-500 hover:text-amber-700"
+                              }`}
+                            >
+                              <Lock size={8} className={willUpdate ? "" : "opacity-60"} />
+                            </button>
+                          )}
                         </span>
                       )}
                     </div>
@@ -1309,17 +1354,38 @@ export default function PurchaseFormPage() {
               {
                 id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => {
-                  const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0;
+                  const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0 && Number(l.original_sale_price) > 0;
                   const minMargin = printSettings?.min_margin_percent ?? 15;
                   const cost = Number(l.unit_cost) || 0;
                   const price = Number(l.selling_price) || 0;
                   const marginPct = cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : null;
                   const belowMargin = marginPct != null && marginPct < minMargin;
+                  const willUpdate = l.update_master_sale_price !== false;
                   return (
                     <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.selling_price} disabled={isLocked} data-grid-cell data-row={i} data-col="selling_price" onChange={(e) => updateLineField(i, "selling_price", Number(e.target.value))}
                         className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${belowMargin ? "bg-rose-50 text-rose-800" : changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50"}`} />
-                      {changed && !belowMargin && <span title={`السعر الحالي: ${l.original_sale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+                      {changed && !belowMargin && (
+                        <span className="text-[9px] text-center leading-none pb-0.5 flex items-center justify-center gap-0.5">
+                          <span className="text-slate-400 number-fmt">{Number(l.original_sale_price).toFixed(2)}</span>
+                          <span className="text-slate-300">→</span>
+                          <span className={`number-fmt ${Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                            {Number(l.selling_price).toFixed(2)}
+                          </span>
+                          {!isLocked && (
+                            <button
+                              type="button"
+                              title={willUpdate ? "يحدّث سعر البيع الرئيسي — اضغط للإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
+                              onClick={() => updateLineField(i, "update_master_sale_price", !willUpdate)}
+                              className={`shrink-0 flex items-center justify-center w-3.5 h-3.5 rounded transition-colors ${
+                                willUpdate ? "text-emerald-600 hover:text-emerald-800" : "text-amber-500 hover:text-amber-700"
+                              }`}
+                            >
+                              <Lock size={8} className={willUpdate ? "" : "opacity-60"} />
+                            </button>
+                          )}
+                        </span>
+                      )}
                       {belowMargin && <span className="text-[9px] font-black text-rose-500 text-center leading-none pb-0.5">هامش {marginPct.toFixed(0)}%</span>}
                     </div>
                   );
@@ -1357,40 +1423,65 @@ export default function PurchaseFormPage() {
               {
                 id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => {
-                  const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0;
+                  const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0 && Number(l.original_wholesale_price) > 0;
+                  const willUpdate = l.update_master_wholesale_price !== false;
                   return (
-                    <div className="relative w-full h-full">
+                    <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.wholesale_price ?? 0} disabled={isLocked}
                         onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
-                        className={`w-full h-[40px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
-                      {changed && <span title={`السعر الحالي: ${l.original_wholesale_price}`} className="absolute top-1 left-1 h-2 w-2 rounded-full bg-amber-400" />}
+                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                      {changed && (
+                        <span className="text-[9px] text-center leading-none pb-0.5 flex items-center justify-center gap-0.5">
+                          <span className="text-slate-400 number-fmt">{Number(l.original_wholesale_price).toFixed(2)}</span>
+                          <span className="text-slate-300">→</span>
+                          <span className={`number-fmt ${Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
+                            {Number(l.wholesale_price).toFixed(2)}
+                          </span>
+                          {!isLocked && (
+                            <button
+                              type="button"
+                              title={willUpdate ? "يحدّث سعر الجملة الرئيسي — اضغط للإلغاء" : "للفاتورة فقط — اضغط للتحديث"}
+                              onClick={() => updateLineField(i, "update_master_wholesale_price", !willUpdate)}
+                              className={`shrink-0 flex items-center justify-center w-3.5 h-3.5 rounded transition-colors ${
+                                willUpdate ? "text-emerald-600 hover:text-emerald-800" : "text-amber-500 hover:text-amber-700"
+                              }`}
+                            >
+                              <Lock size={8} className={willUpdate ? "" : "opacity-60"} />
+                            </button>
+                          )}
+                        </span>
+                      )}
                     </div>
                   );
                 }
               },
               {
-                id: "locks", header: "قفل", width: 80, sortable: false, headerClass: "text-center px-1", cellClass: "p-0 border-l border-slate-100",
+                id: "locks", header: "تحديث السعر", width: 110, sortable: false, headerClass: "text-center px-1 text-[10px]", cellClass: "p-0 border-l border-slate-100",
                 render: (l, i) => {
                   if (isLocked) return null;
-                  const mk = (field, label, lockKey) => {
-                    const on = l[lockKey] !== false;
-                    return (
-                      <button
-                        title={on ? `${label}: يحدّث السعر الرئيسي` : `${label}: للفاتورة فقط`}
-                        onClick={() => updateLineField(i, lockKey, !on)}
-                        className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-all leading-none ${
-                          on ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-amber-100 text-amber-700 border border-amber-300"
-                        }`}>
-                        <Lock size={7} className={on ? "" : "opacity-50"} />
-                        {label}
-                      </button>
-                    );
-                  };
+                  const costChanged = Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0 && Number(l.original_unit_cost) > 0;
+                  const saleChanged = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0 && Number(l.original_sale_price) > 0;
+                  const whslChanged = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0 && Number(l.original_wholesale_price) > 0;
+                  if (!costChanged && !saleChanged && !whslChanged) return <div className="h-[40px]" />;
                   return (
-                    <div className="flex flex-col items-center gap-0.5 py-1 px-1">
-                      {mk("cost", "ش", "update_master_purchase_price")}
-                      {mk("sell", "ب", "update_master_sale_price")}
-                      {mk("whole", "ج", "update_master_wholesale_price")}
+                    <div className="flex flex-col gap-0.5 py-0.5 px-1">
+                      {[
+                        costChanged && { key: "update_master_purchase_price", label: "تكلفة", active: l.update_master_purchase_price !== false },
+                        saleChanged && { key: "update_master_sale_price",     label: "بيع",   active: l.update_master_sale_price !== false },
+                        whslChanged && { key: "update_master_wholesale_price", label: "جملة",  active: l.update_master_wholesale_price !== false },
+                      ].filter(Boolean).map(({ key, label, active }) => (
+                        <button key={key} type="button"
+                          title={active ? `${label}: هيتحدّث سعر بطاقة الصنف — اضغط عشان متغيرش` : `${label}: للفاتورة دي بس — اضغط عشان تحدّث بطاقة الصنف`}
+                          onClick={() => updateLineField(i, key, !active)}
+                          className={`flex items-center justify-between gap-1 w-full px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                            active ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                   : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                          }`}
+                        >
+                          <span>{label}</span>
+                          <span className="shrink-0">{active ? "يحدّث" : "فاتورة"}</span>
+                        </button>
+                      ))}
                     </div>
                   );
                 }
@@ -1442,12 +1533,15 @@ export default function PurchaseFormPage() {
           </div>
 
           {priceChangedLines.length > 0 && !isLocked && (
-            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 text-[11px] text-amber-700 font-bold shrink-0 mt-2 border border-amber-200 rounded-md">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              سيتم تحديث الأسعار لـ {priceChangedLines.map(l => l.name).join("، ")}
-              <Link to="/operations/bulk-price-update" className="mr-auto flex items-center gap-1 text-amber-600 hover:underline">
-                <ExternalLink className="h-3 w-3" /> سجل الأسعار
-              </Link>
+            <div className="flex items-center gap-2.5 bg-amber-50 px-4 py-2 text-[11px] font-bold text-amber-700 shrink-0 mt-2 border border-amber-200 rounded-md">
+              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+              <span>سيتم تحديث أسعار <strong>{priceChangedLines.length}</strong> صنف عند الحفظ</span>
+              <button
+                onClick={() => setPriceReportOpen(true)}
+                className="mr-auto flex items-center gap-1 text-amber-600 hover:text-amber-800 underline underline-offset-2 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> تفاصيل التغييرات
+              </button>
             </div>
           )}
         </div>
@@ -1989,6 +2083,18 @@ export default function PurchaseFormPage() {
               سيتم تحديث الأسعار التالية عند حفظ الفاتورة. راجع التغييرات قبل المتابعة.
             </p>
           </div>
+          {/* Badge legend */}
+          <div className="flex items-center gap-4 px-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide">دلالة الألوان:</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">يحدّث</span>
+              <span className="text-[10px] text-slate-500">السعر الجديد هيتغير لكل الفواتير الجاية</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">فاتورة بس</span>
+              <span className="text-[10px] text-slate-500">للفاتورة دي بس، السعر الأساسي ما يتغيرش</span>
+            </span>
+          </div>
           <div className="rounded-md border border-slate-200 overflow-x-auto">
             <table className="w-full text-2sm border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -2013,17 +2119,33 @@ export default function PurchaseFormPage() {
                     <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_unit_cost) > 0 ? Number(l.original_unit_cost).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                       {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_unit_cost) ? (
-                        <span className={Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-600" : "text-emerald-600"}>
-                          {Number(l.unit_cost).toFixed(2)}
-                        </span>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-600" : "text-emerald-600"}>
+                            {Number(l.unit_cost).toFixed(2)}
+                          </span>
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                            l.update_master_purchase_price !== false
+                              ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {l.update_master_purchase_price !== false ? "يحدّث" : "فاتورة بس"}
+                          </span>
+                        </div>
                       ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
                     </td>
                     <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                       {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
-                        <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
-                          {Number(l.selling_price).toFixed(2)}
-                        </span>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-600" : "text-emerald-600"}>
+                            {Number(l.selling_price).toFixed(2)}
+                          </span>
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                            l.update_master_sale_price !== false
+                              ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {l.update_master_sale_price !== false ? "يحدّث" : "فاتورة بس"}
+                          </span>
+                        </div>
                       ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
                     </td>
                     {priceReportWholesaleUsed && (
@@ -2031,9 +2153,17 @@ export default function PurchaseFormPage() {
                         <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
                         <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                           {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
-                            <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
-                              {Number(l.wholesale_price).toFixed(2)}
-                            </span>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className={Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-600" : "text-emerald-600"}>
+                                {Number(l.wholesale_price).toFixed(2)}
+                              </span>
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                                l.update_master_wholesale_price !== false
+                                  ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                              }`}>
+                                {l.update_master_wholesale_price !== false ? "يحدّث" : "فاتورة بس"}
+                              </span>
+                            </div>
                           ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
                         </td>
                       </>

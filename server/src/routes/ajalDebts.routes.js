@@ -1,11 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
-const { today } = require("../utils/datetime");
+const { today, nowSql } = require("../utils/datetime");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
+const { recordBankMovement } = require("../services/bankService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -204,16 +205,42 @@ router.get("/supplier/:supplierId", requirePagePermission("installments", "view"
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// GET /api/ajal-debts/customer/:customerId/payments — all ajal payments for a customer's debts
+router.get("/customer/:customerId/payments", requirePagePermission("installments", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT ap.id, ap.debt_id, ap.amount, ap.payment_date, ap.created_at,
+             pm.name AS method_name,
+             d.status AS debt_status,
+             d.invoice_id, d.original_amount, d.paid_amount,
+             inv.invoice_no AS invoice_no
+      FROM ajal_payments ap
+      JOIN ajal_debts d ON d.id = ap.debt_id
+      LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id
+      LEFT JOIN invoices inv ON inv.id = d.invoice_id
+      WHERE d.customer_id = ? AND COALESCE(d.party_type, 'customer') = 'customer'
+      ORDER BY ap.created_at DESC
+    `).all(req.params.customerId);
+    res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // GET /api/ajal-debts/supplier/:supplierId/payments — all ajal payments for a supplier's debts
 router.get("/supplier/:supplierId/payments", requirePagePermission("installments", "view"), (req, res) => {
   try {
     const db = getDb();
     const rows = db.prepare(`
       SELECT ap.id, ap.debt_id, ap.amount, ap.payment_date, ap.created_at,
-             pm.name AS method_name
+             pm.name AS method_name,
+             d.status AS debt_status,
+             d.invoice_id, d.original_amount, d.paid_amount,
+             COALESCE(inv.invoice_no, pur.doc_no) AS invoice_no
       FROM ajal_payments ap
       JOIN ajal_debts d ON d.id = ap.debt_id
       LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id
+      LEFT JOIN invoices inv ON inv.id = d.invoice_id AND d.source_type = 'invoice'
+      LEFT JOIN purchases pur ON pur.id = d.invoice_id AND d.source_type = 'purchase'
       WHERE d.supplier_id = ? AND COALESCE(d.party_type, 'customer') = 'supplier'
       ORDER BY ap.created_at DESC
     `).all(req.params.supplierId);
@@ -224,12 +251,38 @@ router.get("/supplier/:supplierId/payments", requirePagePermission("installments
 // GET /api/ajal-debts/:id
 router.get("/:id", requirePagePermission("installments", "view"), (req, res) => {
   try {
-    const db = getDb();
-    const debt = db.prepare(`
-      SELECT d.*, ${partySelect()},
-             COALESCE(i.invoice_no, p.doc_no) AS invoice_no,
-             i.total AS invoice_total, i.payment_splits, i.created_at AS invoice_date,
-             p.total AS purchase_total, p.created_at AS purchase_date,
+     const db = getDb();
+     const paymentSplitsExpr = `
+       CASE
+         WHEN i.payment_type = 'multi' THEN (
+           COALESCE((
+             SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
+             FROM payments p
+             JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+             WHERE p.method != 'credit'
+           ), '') ||
+           COALESCE((
+             SELECT '|||credit:' || CAST(ROUND(ad.original_amount, 2) AS TEXT)
+             FROM ajal_debts ad
+             WHERE ad.invoice_id = i.id AND ad.source_type = 'invoice'
+             LIMIT 1
+           ), '')
+         )
+         WHEN i.payment_type = 'installments' THEN (
+           SELECT 'cash:' || CAST(ROUND(COALESCE(SUM(pa.amount), 0), 2) AS TEXT) ||
+                  CASE WHEN i.total > COALESCE(SUM(pa.amount), 0)
+                    THEN '|||credit:' || CAST(ROUND(i.total - COALESCE(SUM(pa.amount), 0), 2) AS TEXT)
+                    ELSE ''
+                  END
+           FROM payment_allocations pa WHERE pa.invoice_id = i.id
+         )
+         ELSE NULL
+       END`;
+     const debt = db.prepare(`
+       SELECT d.*, ${partySelect()},
+              COALESCE(i.invoice_no, p.doc_no) AS invoice_no,
+              i.total AS invoice_total, ${paymentSplitsExpr} AS payment_splits, i.created_at AS invoice_date,
+              p.total AS purchase_total, p.created_at AS purchase_date,
              (d.original_amount - d.paid_amount) AS remaining
       FROM ajal_debts d
       LEFT JOIN customers c ON c.id = d.customer_id
@@ -271,14 +324,24 @@ router.post("/:id/pay", requirePagePermission("installments", "add"), (req, res)
 
     db.transaction(() => {
       for (const line of paymentLines) {
-        db.prepare(`INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))`)
-          .run(debt.id, line.amount, line.method_id || 1, createdDate, notes || null, req.user?.id || 1);
+        db.prepare(`INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+          .run(debt.id, line.amount, line.method_id || 1, createdDate, notes || null, req.user?.id || 1, nowSql());
 
-        const pm = db.prepare("SELECT type, category, name, excludes_from_treasury FROM payment_methods WHERE id = ?").get(line.method_id || 1);
-        const methodKind = pm ? (pm.type || pm.category || pm.name || "cash") : "cash";
-        if ((!pm || !pm.excludes_from_treasury) && methodKind === "cash") {
+        const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(line.method_id || 1);
+        const methodType = pm?.type || "cash";
+        if (!pm?.excludes_from_treasury) {
           const sign = normalizePartyType(debt.party_type) === "supplier" ? -1 : 1;
-          db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = 1").run(sign * line.amount);
+          if (methodType === "cash" && pm?.target_id) {
+            db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(sign * line.amount, pm.target_id);
+          } else if (methodType === "bank" && pm?.target_id) {
+            recordBankMovement(db, {
+              bankId: pm.target_id, type: sign > 0 ? "deposit" : "withdrawal", amount: line.amount,
+              reference: debt.invoice_id ? `فاتورة #${debt.invoice_id}` : null,
+              notes: `سداد قسط - ${notes || ""}`, userId: req.user?.id || 1, source: "ajal", refType: "ajal_debt", refId: debt.id,
+            });
+          } else if (methodType === "cash" && !pm?.target_id) {
+            db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = 1").run(sign * line.amount);
+          }
         }
       }
       db.prepare("UPDATE ajal_debts SET paid_amount = paid_amount + ? WHERE id = ?").run(totalAmount, debt.id);
@@ -352,19 +415,57 @@ router.post("/:id/schedule", requirePagePermission("installments", "add"), (req,
 router.get("/by-party/:partyType/:partyId", requirePagePermission("installments", "view"), (req, res) => {
   try {
     const db = getDb();
+    const paymentSplitsExpr = `
+      CASE
+        WHEN i.payment_type = 'multi' THEN (
+          COALESCE((
+            SELECT GROUP_CONCAT(p.method || ':' || CAST(ROUND(p.amount, 2) AS TEXT), '|||')
+            FROM payments p
+            JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+            WHERE p.method != 'credit'
+          ), '') ||
+          COALESCE((
+            SELECT '|||credit:' || CAST(ROUND(ad.original_amount, 2) AS TEXT)
+            FROM ajal_debts ad
+            WHERE ad.invoice_id = i.id AND ad.source_type = 'invoice'
+            LIMIT 1
+          ), '')
+        )
+        WHEN i.payment_type = 'installments' THEN (
+          SELECT 'cash:' || CAST(ROUND(COALESCE(SUM(pa.amount), 0), 2) AS TEXT) ||
+                 CASE WHEN i.total > COALESCE(SUM(pa.amount), 0)
+                   THEN '|||credit:' || CAST(ROUND(i.total - COALESCE(SUM(pa.amount), 0), 2) AS TEXT)
+                   ELSE ''
+                 END
+          FROM payment_allocations pa WHERE pa.invoice_id = i.id
+        )
+        ELSE NULL
+      END`;
     const partyType = normalizePartyType(req.params.partyType);
     const idCol = partyIdColumn(partyType);
     const rows = db.prepare(`
-      SELECT sch.*, d.id AS debt_id, d.original_amount, d.paid_amount, d.status AS debt_status,
-             COALESCE(i.invoice_no, p.doc_no) AS invoice_no,
-             i.total AS invoice_total, i.payment_splits, i.created_at AS invoice_date,
-             p.total AS purchase_total, p.created_at AS purchase_date
-      FROM ajal_schedules sch
-      JOIN ajal_debts d ON d.id = sch.debt_id
+      SELECT
+        COALESCE(sch.id, -d.id) AS id,
+        d.id AS debt_id,
+        COALESCE(sch.installment_no, 1) AS installment_no,
+        COALESCE(sch.due_date, d.due_date) AS due_date,
+        COALESCE(sch.amount, d.original_amount - d.paid_amount) AS amount,
+        COALESCE(sch.status, CASE WHEN d.paid_amount >= d.original_amount THEN 'paid' ELSE 'pending' END) AS status,
+        sch.paid_at,
+        COALESCE(sch.created_at, d.created_at) AS created_at,
+        d.original_amount, d.paid_amount, d.status AS debt_status,
+        COALESCE(i.invoice_no, p.doc_no) AS invoice_no,
+        i.total AS invoice_total, ${paymentSplitsExpr} AS payment_splits, i.created_at AS invoice_date,
+        p.total AS purchase_total, p.created_at AS purchase_date,
+        (SELECT COUNT(*) FROM ajal_schedules WHERE debt_id = d.id) AS schedule_count
+      FROM ajal_debts d
+      LEFT JOIN ajal_schedules sch ON sch.debt_id = d.id
       LEFT JOIN invoices i ON i.id = d.invoice_id AND d.source_type = 'invoice'
       LEFT JOIN purchases p ON p.id = d.invoice_id AND d.source_type = 'purchase'
-      WHERE d.${idCol} = ? AND d.status NOT IN ('paid','voided')
-      ORDER BY sch.due_date DESC, sch.installment_no ASC
+      WHERE d.${idCol} = ?
+        AND d.status NOT IN ('paid','voided')
+        AND (d.source_type != 'invoice' OR i.payment_type = 'installments')
+      ORDER BY COALESCE(sch.due_date, d.due_date) DESC, COALESCE(sch.installment_no, 1) ASC
     `).all(req.params.partyId);
     res.json({ success: true, data: rows });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
@@ -412,17 +513,27 @@ router.post("/schedules/:id/pay", requirePagePermission("installments", "add"), 
 
     db.transaction(() => {
       const pmId = payment_method_id || 1;
-      db.prepare("INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))")
-        .run(schedule.debt_id, payAmount, pmId, createdDate, notes || null, req.user?.id || 1);
-      db.prepare("UPDATE ajal_schedules SET status = 'paid', paid_at = datetime('now', 'localtime') WHERE id = ?").run(schedule.id);
+      db.prepare("INSERT INTO ajal_payments (debt_id, amount, payment_method_id, payment_date, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run(schedule.debt_id, payAmount, pmId, createdDate, notes || null, req.user?.id || 1, nowSql());
+      db.prepare("UPDATE ajal_schedules SET status = 'paid', paid_at = ? WHERE id = ?").run(nowSql(), schedule.id);
       db.prepare("UPDATE ajal_debts SET paid_amount = paid_amount + ? WHERE id = ?").run(payAmount, schedule.debt_id);
       recalcDebt(db, schedule.debt_id);
 
-      const pm = db.prepare("SELECT type, category, name, excludes_from_treasury FROM payment_methods WHERE id = ?").get(pmId);
-      const methodKind = pm ? (pm.type || pm.category || pm.name || "cash") : "cash";
-      if ((!pm || !pm.excludes_from_treasury) && methodKind === "cash") {
+      const pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(pmId);
+      const methodType = pm?.type || "cash";
+      if (!pm?.excludes_from_treasury) {
         const sign = normalizePartyType(debt.party_type) === "supplier" ? -1 : 1;
-        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = 1").run(sign * payAmount);
+        if (methodType === "cash" && pm?.target_id) {
+          db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(sign * payAmount, pm.target_id);
+        } else if (methodType === "bank" && pm?.target_id) {
+          recordBankMovement(db, {
+            bankId: pm.target_id, type: sign > 0 ? "deposit" : "withdrawal", amount: payAmount,
+            reference: `قسط #${schedule.installment_no}`,
+            notes: `سداد قسط - ${notes || ""}`, userId: req.user?.id || 1, source: "ajal", refType: "ajal_schedule", refId: schedule.id,
+          });
+        } else if (methodType === "cash" && !pm?.target_id) {
+          db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = 1").run(sign * payAmount);
+        }
       }
       if (normalizePartyType(debt.party_type) === "supplier") {
         db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(payAmount, debt.supplier_id);

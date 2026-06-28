@@ -61,7 +61,33 @@ export default function PosStickyTotalBar({
 }) {
   const narrow = useIsNarrowViewport(maxWidth);
   const searchRef = useRef(null);
+  const inputWrapRef = useRef(null);
+  const inputWrapRef2 = useRef(null);
   const rootRef = useRef(null);
+
+  // Anchor the customer dropdown at the TOP edge of the entire bottom bar so it
+  // always opens upward and escapes the fixed bar's stacking context.
+  // The wrapper is zero-height; dropUp={true} on SearchDropdown makes it grow upward via bottom:100%.
+  const getDropdownStyle = (wrapRef) => {
+    const inputEl = wrapRef?.current;
+    const barEl = rootRef?.current;
+    if (!inputEl || !barEl) return { display: "none" };
+    const inputRect = inputEl.getBoundingClientRect();
+    const barHeight = barEl.offsetHeight;
+    const dropWidth = Math.max(inputRect.width, 240);
+    // RTL: anchor to the RIGHT edge of the input so the dropdown
+    // aligns inward and never overflows the right side of the viewport.
+    const rightEdge = window.innerWidth - inputRect.right;
+    return {
+      position: "fixed",
+      bottom: barHeight + 4,
+      right: Math.max(0, rightEdge),
+      width: dropWidth,
+      height: 0,
+      overflow: "visible",
+      zIndex: 9999,
+    };
+  };
 
   // Publish the bar's live height as a CSS var so the product/cart scroll areas
   // can reserve matching bottom padding and never sit underneath the fixed bar.
@@ -113,7 +139,7 @@ export default function PosStickyTotalBar({
         <div className="flex items-center gap-2 px-3 py-1.5">
           {/* Customer search */}
           <div ref={searchRef} className="relative shrink-0">
-            <div className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+            <div ref={inputWrapRef} className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -145,8 +171,9 @@ export default function PosStickyTotalBar({
               )}
             </div>
             {customerLookupOpen && customerResults.length > 0 && (
-              <div className="absolute right-0 bottom-full mb-1 z-[70] min-w-[220px]">
+              <div style={getDropdownStyle(inputWrapRef)}>
                 <SearchDropdown
+                  dropUp={true}
                   items={customerResults}
                   onPick={(c) => { onCustomerPick?.(c); onCustomerLookupOpenChange?.(false); }}
                   activeIndex={activeCustomerIndex}
@@ -225,7 +252,7 @@ export default function PosStickyTotalBar({
 
           {/* ─── Customer search (moved up) ─── */}
           <div ref={searchRef} className="relative shrink-0">
-            <div className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+            <div ref={inputWrapRef2} className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -257,8 +284,9 @@ export default function PosStickyTotalBar({
               )}
             </div>
             {customerLookupOpen && customerResults.length > 0 && (
-              <div className="absolute right-0 bottom-full mb-1 z-[70] min-w-[220px]">
+              <div style={getDropdownStyle(inputWrapRef2)}>
                 <SearchDropdown
+                  dropUp={true}
                   items={customerResults}
                   onPick={(c) => { onCustomerPick?.(c); onCustomerLookupOpenChange?.(false); }}
                   activeIndex={activeCustomerIndex}

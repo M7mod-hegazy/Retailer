@@ -40,7 +40,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
     if (!party?.id) return;
     setLoading(true);
     try {
-      const r = await api.get(`/api/ajal-schedules/by-party/${partyType}/${party.id}`);
+      const r = await api.get(`/api/ajal-debts/by-party/${partyType}/${party.id}`);
       setSchedules(r.data.data || []);
     } catch { setSchedules([]); }
     finally { setLoading(false); }
@@ -72,6 +72,8 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
     return schedules.filter(s => (s.invoice_no || "").toLowerCase().includes(q));
   }, [schedules, search]);
 
+  const isVirtual = (s) => s.id < 0 || (s.schedule_count === 0);
+
   async function handleSelect(schedule) {
     setSelected(schedule);
     setEditMode(false);
@@ -83,10 +85,18 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
     if (!selected) return;
     setPaying(true);
     try {
-      await api.post(`/api/ajal-schedules/${selected.id}/pay`, {
-        payment_method_id: Number(payMethod) || 1,
-        payment_date: today,
-      });
+      if (isVirtual(selected)) {
+        await api.post(`/api/ajal-debts/${selected.debt_id}/pay`, {
+          amount: Number(selected.amount),
+          payment_method_id: Number(payMethod) || 1,
+          payment_date: today,
+        });
+      } else {
+        await api.post(`/api/ajal-debts/schedules/${selected.id}/pay`, {
+          payment_method_id: Number(payMethod) || 1,
+          payment_date: today,
+        });
+      }
       toast.success("تم تسديد القسط");
       setSelected(null);
       await loadSchedules();
@@ -104,7 +114,7 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       if (editForm.due_date) body.due_date = editForm.due_date;
       if (editForm.amount && Number(editForm.amount) > 0) body.amount = Number(editForm.amount);
       if (Object.keys(body).length === 0) { toast.error("لا توجد تغييرات"); setSaving(false); return; }
-      const r = await api.patch(`/api/ajal-schedules/${selected.id}`, body);
+      const r = await api.patch(`/api/ajal-debts/schedules/${selected.id}`, body);
       setSelected(r.data.data);
       setEditMode(false);
       await loadSchedules();

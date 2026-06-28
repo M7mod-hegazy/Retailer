@@ -27,8 +27,18 @@ module.exports = {
       db.prepare("SELECT id FROM warehouses ORDER BY id ASC LIMIT 1").get()?.id ||
       null;
 
+    // The purchases header may or may not have a warehouse_id column depending on
+    // the database's migration history — only reference it when it exists.
+    const purchasesHasWh = db
+      .prepare("PRAGMA table_info(purchases)")
+      .all()
+      .some((c) => c.name === "warehouse_id");
+    const headerTerm = purchasesHasWh
+      ? "(SELECT p.warehouse_id FROM purchases p WHERE p.id = purchase_lines.purchase_id),"
+      : "";
+
     // Backfill from the original purchase stock movement (most accurate), else the
-    // purchase header warehouse, else the system default.
+    // purchase header warehouse (when present), else the system default.
     const updated = db
       .prepare(
         `UPDATE purchase_lines
@@ -39,7 +49,7 @@ module.exports = {
                   AND sm.item_id = purchase_lines.item_id
                   AND sm.warehouse_id IS NOT NULL
                 ORDER BY sm.id ASC LIMIT 1),
-              (SELECT p.warehouse_id FROM purchases p WHERE p.id = purchase_lines.purchase_id),
+              ${headerTerm}
               ?
             )
           WHERE warehouse_id IS NULL`

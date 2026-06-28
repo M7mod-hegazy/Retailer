@@ -42,10 +42,10 @@ export default function AssistantLauncher() {
           <button
             onClick={dismissBubble}
             aria-label={t("assistant.dismiss")}
-            className="flex h-6 w-6 items-center justify-center rounded-full border bg-white text-zinc-500 shadow-sm transition-colors hover:text-zinc-900"
-            style={{ borderColor: "var(--border-normal)" }}
+            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-black/5"
+            style={{ color: "var(--text-muted)" }}
           >
-            <X strokeWidth={2.5} className="h-3 w-3" />
+            <X strokeWidth={2.5} className="h-3.5 w-3.5" />
           </button>
         </motion.div>
       )}

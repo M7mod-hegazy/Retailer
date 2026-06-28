@@ -74,9 +74,10 @@ function useBreadcrumbs(pathname, dynamicBreadcrumb) {
       }
     }
 
-    if (!best) return [root];
+    if (!best) return dynamicBreadcrumb ? [root, { label: dynamicBreadcrumb.label, path: dynamicBreadcrumb.path }] : [root];
     const crumbs = [root];
     crumbs.push({ label: best.label, path: best.path });
+    if (dynamicBreadcrumb) crumbs.push({ label: dynamicBreadcrumb.label, path: dynamicBreadcrumb.path });
     return crumbs;
   }, [pathname, dynamicBreadcrumb]);
 }

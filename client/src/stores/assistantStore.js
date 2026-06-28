@@ -36,7 +36,8 @@ export const useAssistantStore = create((set, get) => ({
   anomalies: [],
 
   open: (tab) => {
-    set((s) => ({ isOpen: true, activeTab: tab || s.activeTab }));
+    set((s) => ({ isOpen: true, activeTab: tab || s.activeTab, bubbleDismissed: true }));
+    try { sessionStorage.setItem(BUBBLE_KEY, "true"); } catch { /* ignore */ }
     get().refreshAnomalies();
   },
   close: () => {
@@ -47,7 +48,7 @@ export const useAssistantStore = create((set, get) => ({
       messages: s.messages.filter((m) => !(m.kind === "ai" && m.loading)),
     }));
   },
-  toggle: () => { const s = get(); if (s.isOpen) s.close(); else set({ isOpen: true }); },
+  toggle: () => { const s = get(); if (s.isOpen) s.close(); else { set({ isOpen: true, bubbleDismissed: true }); try { sessionStorage.setItem(BUBBLE_KEY, "true"); } catch { /* ignore */ } } },
   setTab: (tab) => set({ activeTab: tab }),
   toggleDevMode: () => set((s) => ({ devMode: !s.devMode })),
   dismissBubble: () => { try { sessionStorage.setItem(BUBBLE_KEY, "true"); } catch { /* ignore */ } set({ bubbleDismissed: true }); },

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Banknote, CreditCard, Wallet, Calendar, Layers } from "lucide-react";
 import api from "../../services/api";
 import { createDisconnectTracker, buildSupportReport, copyToClipboard } from "../../services/connection";
@@ -867,11 +867,14 @@ export default function POSPage() {
     }
     setIsSearchingItems(true);
     const controller = new AbortController();
+    const capturedQ = q;
     const t = setTimeout(() => {
       const searchParams = { search: q, limit: ITEM_PAGE, offset: 0, in_stock_only: 1 };
       if (listCategoryFilter?.id) searchParams.category_id = listCategoryFilter.id;
       api.get("/api/items", { params: searchParams, signal: controller.signal })
         .then(r => {
+          // Guard: discard if the user has typed something newer
+          if ((itemNameQuery || itemCodeQuery).trim() !== capturedQ) return;
           const rows = (r.data.data || []).map(item => ({
             ...item,
             sub_label: `\u0645\u062e\u0632\u0648\u0646: ${Number(item.stock_quantity || item.stock || 0)}`,
@@ -1142,8 +1145,10 @@ export default function POSPage() {
       setItems((prev) => prev.some((entry) => entry.id === item.id) ? prev : [item, ...prev]);
       fetchStockForItems([item.id]);
     }
-    setItemNameQuery(item.name || "");
-    setItemCodeQuery(item.code || item.item_code || item.barcode || "");
+    const sku = item.code || item.item_code || item.barcode || "";
+    // Show "SKU - Name" in the search input so the user can confirm which item was selected
+    setItemNameQuery(sku ? `[${sku}] ${item.name || ""}` : (item.name || ""));
+    setItemCodeQuery(sku);
     setSearchedItemResults([]);
     setSearchedItemOffset(0);
     setSearchedItemHasMore(false);

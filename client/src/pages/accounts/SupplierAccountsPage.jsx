@@ -5,7 +5,7 @@ import {
   Building, Search, Plus, X, Phone, SlidersHorizontal,
   MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
   ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
-  Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle, Upload, Download
+  Copy, Check, TrendingUp, TrendingDown, Info, AlertTriangle, Upload, Download
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -16,6 +16,7 @@ import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
 import { formatNumber } from "../../utils/currency";
 import AccountExportModal from "./AccountExportModal";
+import InstallmentsTab from "../../components/accounts/InstallmentsTab";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -23,11 +24,27 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "
 
 function Modal({ onClose, children, width = "480px" }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div style={{ width }} className="bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-[6px]"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        style={{ width }}
+        className="bg-white rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.18)] max-h-[90vh] overflow-y-auto border border-slate-200/60"
+        onClick={e => e.stopPropagation()}
+        dir="rtl"
+      >
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -121,16 +138,44 @@ function InstallmentsBadge({ debtId }) {
     } catch { setSchedules([]); setOpen(true); }
   }, [debtId, schedules]);
 
+  const stats = schedules
+    ? schedules.reduce((acc, s) => {
+        acc.total += Number(s.amount || 0);
+        if (s.status === "paid") acc.paid += Number(s.amount || 0);
+        else {
+          if (s.due_date < today) acc.overdue += 1;
+          else if (s.due_date === today) acc.dueToday += 1;
+        }
+        return acc;
+      }, { total: 0, paid: 0, overdue: 0, dueToday: 0 })
+    : null;
+
   const pending = schedules ? schedules.filter(s => s.status !== "paid").length : null;
+  const progressPct = stats && stats.total > 0 ? Math.round((stats.paid / stats.total) * 100) : 0;
+  const hasUrgency = stats && (stats.overdue > 0 || stats.dueToday > 0);
 
   return (
     <div className="mt-1.5">
-      <button onClick={load}
-        className="flex items-center gap-1 text-[11px] font-black text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-2 py-0.5 hover:bg-violet-100">
-        <Calendar className="h-3 w-3" />
-        {pending !== null ? `${pending} قسط متبقي` : "الأقساط"}
-        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      </button>
+      <div className="flex items-center gap-2">
+        <button onClick={load}
+          className="flex items-center gap-1 text-[11px] font-black text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-2 py-0.5 hover:bg-violet-100">
+          <Calendar className="h-3 w-3" />
+          {pending !== null ? `${pending} قسط متبقي` : "الأقساط"}
+          {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {stats && stats.total > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${
+                progressPct >= 100 ? "bg-emerald-500" : hasUrgency ? "bg-rose-500" : "bg-violet-500"
+              }`} style={{ width: `${Math.min(100, progressPct)}%` }} />
+            </div>
+            <span className={`text-[9px] font-black ${
+              progressPct >= 100 ? "text-emerald-600" : hasUrgency ? "text-rose-600" : "text-violet-600"
+            }`}>{progressPct}%</span>
+          </div>
+        )}
+      </div>
       {open && schedules?.length > 0 && (
         <div className="mt-1.5 space-y-1 pr-2 border-r-2 border-violet-200">
           {schedules.map(s => {
@@ -786,9 +831,9 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                   </div>
 
                   {/* ── Installments schedule expandable sub-section ── */}
-                  {isDocRow && isInstallments && ev.raw?.id && (
+                  {isDocRow && isInstallments && ev.raw?.debt_id && (
                     <div className="pt-3 border-t border-slate-100">
-                      <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
+                      <InstallmentsBadge debtId={ev.raw.debt_id} />
                     </div>
                   )}
                 </div>
@@ -826,6 +871,7 @@ export default function SupplierAccountsPage() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [netBalance, setNetBalance] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [installmentDue, setInstallmentDue] = useState({});
 
   const navigate = useNavigate();
   const [detailPurchase, setDetailPurchase] = useState(null);
@@ -887,8 +933,20 @@ export default function SupplierAccountsPage() {
     finally { setNotesLoading(false); }
   }, [selected]);
 
+  const loadInstallmentsDue = useCallback(async () => {
+    try {
+      const r = await api.get("/api/ajal-debts/due-parties?party_type=supplier");
+      const map = {};
+      (r.data.data || []).forEach((row) => {
+        map[row.party_id] = { overdue: Number(row.overdue || 0), due_today: Number(row.due_today || 0), upcoming: Number(row.upcoming || 0) };
+      });
+      setInstallmentDue(map);
+    } catch { setInstallmentDue({}); }
+  }, []);
+
   useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { loadInstallmentsDue(); }, [loadInstallmentsDue]);
   useEffect(() => { if (activeTab === "notes") loadNotes(); }, [activeTab, loadNotes]);
 
   useEffect(() => {
@@ -997,6 +1055,8 @@ export default function SupplierAccountsPage() {
   });
 
   const bal = Number(selected?.opening_balance || 0);
+  const instDue = selected ? installmentDue[selected.id] : null;
+  const instDueCount = instDue ? instDue.overdue + instDue.due_today + instDue.upcoming : 0;
 
   return (
     <div className="flex flex-1 min-h-0 bg-slate-100 overflow-hidden font-sans" dir="rtl">
@@ -1229,13 +1289,18 @@ export default function SupplierAccountsPage() {
                     </div>
                     <div>
                       <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
-                        {bal > 0 ? "له مستحق بذمتنا" : bal < 0 ? "عليه مستحق لنا" : "رصيد الحساب مسوّى"}
+                        {bal > 0 ? "اللي ليه عندنا" : bal < 0 ? "اللي عليه" : "الحساب مسوّى"}
                       </div>
-                      <div className="flex items-baseline gap-1 mt-1">
+                      <div className="flex items-center gap-1.5 mt-1">
                         <div className={`text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
                           {fmt(Math.abs(bal))}
                         </div>
                         <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-455" : bal < 0 ? "text-emerald-455" : "text-slate-455"}`}>ج.م</span>
+                        {bal > 0 ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">دائن</span>
+                        ) : bal < 0 ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">مديون</span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -1270,17 +1335,36 @@ export default function SupplierAccountsPage() {
               </div>
             </div>
 
-            <div className="flex gap-1 px-6 pt-3 bg-white border-b border-slate-200 shrink-0">
-              {[{ id: "movements", label: "الحركات" }, { id: "notes", label: "الملاحظات" }].map(t => (
+            <div className="flex gap-2 px-6 py-3 bg-surface border-b border-subtle shrink-0 relative">
+              {[
+                { id: "movements", label: "الحركات" },
+                { id: "installments", label: `الأقساط${instDueCount > 0 ? ` (${instDueCount})` : ""}` },
+                { id: "notes", label: `الملاحظات${notesData.length > 0 ? ` (${notesData.length})` : ""}` },
+              ].map(t => (
                 <button key={t.id} onClick={() => changeTab(t.id)}
-                  className={`pb-3 px-3 text-sm font-black transition-colors relative ${activeTab === t.id ? "text-orange-600" : "text-slate-500 hover:text-slate-800"}`}>
-                  {t.label}
-                  {activeTab === t.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t-full" />}
+                  className={`px-4 py-2 text-2sm font-bold rounded-xl relative z-10 transition-all duration-200 ${
+                    activeTab === t.id ? "shadow-sm" : "hover:bg-overlay/50"
+                  }`}
+                  style={{ color: activeTab === t.id ? "var(--primary)" : "var(--text-secondary)" }}
+                >
+                  {activeTab === t.id && (
+                    <motion.div
+                      layoutId="activeTabBg"
+                      className="absolute inset-0 bg-orange-50 rounded-xl -z-10 border border-orange-200/60"
+                      transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    />
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    {activeTab === t.id && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    )}
+                    {t.label}
+                  </span>
                 </button>
               ))}
             </div>
 
-            <div className="flex-1 overflow-auto p-6 bg-slate-50">
+            <div className="flex-1 overflow-auto p-6 bg-base">
               {activeTab === "movements" ? (
                 <MovementsTab
                   party={selected}
@@ -1288,6 +1372,8 @@ export default function SupplierAccountsPage() {
                   onOpenOriginalPurchase={(p) => { setDetailPurchaseIsOriginal(true); setDetailPurchase(p); }}
                   onOpenReturn={setDetailReturn}
                 />
+              ) : activeTab === "installments" ? (
+                <InstallmentsTab party={selected} partyType="supplier" accent="orange" onChanged={refreshSelected} />
               ) : (
                 <NotesTab notes={notesData} loading={notesLoading} onAdd={handleAddNote} />
               )}
@@ -1529,9 +1615,15 @@ export default function SupplierAccountsPage() {
         <Modal onClose={() => setShowPayment(false)} title="سداد دفعة للمورد" showDetach={false}>
           <div className="p-6">
             <p className="text-2sm text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
-            {bal > 0 && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 text-2sm font-bold text-rose-800">
-                له مستحق <span className="number-fmt-primary">{fmt(bal)} ج.م</span>
+            {bal !== 0 && (
+              <div className={`${bal > 0 ? "bg-rose-50 border-rose-200 text-rose-800" : "bg-emerald-50 border-emerald-200 text-emerald-800"} border rounded-xl p-3 mb-4 text-2sm font-bold flex items-center justify-between`}>
+                <span>{bal > 0 ? "اللي ليه عندنا:" : "اللي عليه:"}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="number-fmt-primary">{fmt(Math.abs(bal))} ج.م</span>
+                  <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md border ${bal > 0 ? "bg-rose-50 text-rose-700 border-rose-200/60" : "bg-emerald-50 text-emerald-700 border-emerald-200/60"}`}>
+                    {bal > 0 ? "دائن" : "مديون"}
+                  </span>
+                </span>
               </div>
             )}
             <div className="space-y-4">
@@ -1566,52 +1658,78 @@ export default function SupplierAccountsPage() {
       )}
 
       {/* Adjust Modal */}
+      <AnimatePresence>
       {showAdjust && selected && (
-        <Modal onClose={() => setShowAdjust(false)} title="تسوية رصيد يدوية" showDetach={false}>
+        <Modal onClose={() => setShowAdjust(false)} title="تسوية رصيد حساب المورد يدوياً" showDetach={false}>
           <div className="p-6">
-            <p className="text-2sm text-slate-500 font-bold mb-5">
-              المورد: <span className="text-slate-800">{selected.name}</span>
-              {" — "}الرصيد الحالي:
-              <span className={`number-fmt-primary ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
+            <p className="text-2sm text-slate-450 font-bold mb-4 flex items-center gap-1.5 flex-wrap">
+              المورد: <span className="text-slate-800 font-bold">{selected.name}</span>
+              <span className="text-slate-300">—</span>قبل التسوية:
+              <span className={`number-fmt ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}>{fmt(Math.abs(bal))} ج.م</span>
+              {bal > 0 ? (
+                <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">دائن</span>
+              ) : bal < 0 ? (
+                <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">مديون</span>
+              ) : null}
             </p>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
-              <p className="text-[11px] font-black text-amber-800">⚠️ التسوية اليدوية تعدّل رصيد المورد مباشرة بدون تأثير على الخزنة. تُسجَّل في الحركات.</p>
+            <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-3.5 mb-4">
+              <p className="text-[10.5px] font-semibold text-amber-800 leading-relaxed flex gap-1.5 items-start">
+                <AlertTriangle className="h-4.5 w-4.5 text-amber-600 shrink-0" />
+                <span>تنبيه هام: التسوية اليدوية تقوم بتعديل الرصيد الدفتري للمورد مباشرة دون إثبات أو قيد حركة نقدية في الخزنة. تستخدم لتصحيح الأرصدة أو في حالة الخصومات المتفق عليها خارج الحساب.</span>
+              </p>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setAdjForm(f => ({ ...f, direction: "subtract" }))}
-                  className={`p-3 rounded-xl border-2 text-2sm font-black transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
+                  className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
                   <div className="text-[18px] mb-1">↓</div>تخفيض المستحق للمورد
-                  <div className="text-[11px] font-bold mt-0.5 opacity-70">(خصم / تصحيح)</div>
+                  <div className="text-[11px] font-medium mt-0.5 opacity-70">(خصم / تصحيح)</div>
                 </button>
                 <button onClick={() => setAdjForm(f => ({ ...f, direction: "add" }))}
-                  className={`p-3 rounded-xl border-2 text-2sm font-black transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-500"}`}>
+                  className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
                   <div className="text-[18px] mb-1">↑</div>رفع المستحق للمورد
-                  <div className="text-[11px] font-bold mt-0.5 opacity-70">(إضافة مستحق / تصحيح)</div>
+                  <div className="text-[11px] font-medium mt-0.5 opacity-70">(إضافة مستحق / تصحيح)</div>
                 </button>
               </div>
               <div>
-                <label className="text-2sm font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
+                <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قيمة التسوية المطلوبة <span className="text-rose-500">*</span></label>
                 <input ref={adjAmountRef} type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
-                  className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] number-fmt-primary outline-none focus:border-orange-500" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
+                  className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] number-fmt outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
               </div>
+              {adjForm.amount > 0 && (() => {
+                const newBal = adjForm.direction === "subtract" ? bal - Number(adjForm.amount) : bal + Number(adjForm.amount);
+                return (
+                  <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
+                    <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع لحساب المورد بعد الحفظ:</p>
+                    <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"} flex items-center gap-1.5`}>
+                      {fmt(Math.abs(newBal))} ج.م
+                      {newBal > 0 ? (
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">دائن</span>
+                      ) : newBal < 0 ? (
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">مديون</span>
+                      ) : null}
+                    </p>
+                  </div>
+                );
+              })()}
               <div>
-                <label className="text-2sm font-black text-slate-600 mb-1.5 block">سبب التسوية</label>
+                <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">سبب وقيد التسوية اليدوية (مطلوب) <span className="text-rose-500">*</span></label>
                 <input ref={adjReasonRef} value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
-                  className="w-full h-10 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-orange-500"
-                  placeholder="مثال: خصم متفق عليه / تصحيح خطأ" onKeyDown={e => handleKeyDown(e, { nextRef: adjSubmitRef, prevRef: adjAmountRef })} />
+                  className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm outline-none focus:border-blue-500 font-semibold"
+                  placeholder="مثال: تسوية خصومات / تصحيح خطأ في الفواتير السابقة" onKeyDown={e => handleKeyDown(e, { nextRef: adjSubmitRef, prevRef: adjAmountRef })} />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button ref={adjSubmitRef} onClick={handleAdjust} disabled={saving || !adjForm.amount}
-                className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary-600 disabled:opacity-50">
-                {saving ? "جاري التسوية..." : "تأكيد التسوية وتسجيلها"}
+              <button ref={adjSubmitRef} onClick={handleAdjust} disabled={saving || !adjForm.amount || !adjForm.reason}
+                className="flex-1 h-11 rounded-2xl bg-primary text-white text-2sm font-bold hover:bg-primary-600 disabled:opacity-50 transition-colors">
+                {saving ? "جاري تنفيذ وحفظ التسوية..." : "تأكيد وقيد التسوية الآن"}
               </button>
-              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-xl btn-danger text-sm font-black">إلغاء</button>
+              <button onClick={() => setShowAdjust(false)} className="h-11 px-6 rounded-2xl btn-danger text-2sm font-bold">إلغاء</button>
             </div>
           </div>
         </Modal>
       )}
+      </AnimatePresence>
 
       {/* Export Modal */}
       <AccountExportModal
@@ -1636,36 +1754,39 @@ function NotesTab({ notes, loading, onAdd }) {
     setSaving(false);
   };
 
-  if (loading) return <div className="flex h-32 items-center justify-center text-2sm font-black text-slate-400 animate-pulse">جاري التحميل...</div>;
+  if (loading) return <div className="flex h-32 items-center justify-center text-2sm font-black text-secondary animate-pulse">جاري التحميل...</div>;
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-        <div className="text-[11px] font-black text-slate-500 mb-2">إضافة ملاحظة</div>
+      <div className="bg-surface rounded-xl border border-subtle p-4 shadow-sm">
+        <div className="text-[11px] font-black text-muted mb-2">إضافة ملاحظة</div>
         <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
-          className="w-full rounded-xl border border-slate-200 p-3 text-sm font-bold outline-none focus:border-amber-400 resize-none"
+          className="w-full rounded-xl border border-normal bg-bg-input p-3 text-sm font-bold outline-none focus:border-accent resize-none"
           placeholder="اكتب ملاحظتك هنا..." />
         <button onClick={submit} disabled={saving || !text.trim()}
-          className="mt-2 h-9 px-5 rounded-xl bg-amber-600 text-white text-2sm font-black hover:bg-amber-700 disabled:opacity-40">
+          className="mt-2 h-9 px-5 rounded-xl bg-primary text-white text-2sm font-black hover:bg-primary-600 disabled:opacity-40">
           {saving ? "جاري الحفظ..." : "حفظ الملاحظة"}
         </button>
       </div>
 
       {notes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-24 text-slate-300 gap-2">
+        <div className="flex flex-col items-center justify-center h-24 text-muted gap-2">
           <MessageSquare className="h-8 w-8 opacity-40" />
           <span className="font-black text-sm">لا توجد ملاحظات</span>
         </div>
       ) : notes.map(n => (
-        <div key={n.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div key={n.id} className="rounded-xl border border-subtle bg-surface p-4 shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[11px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">📝 ملاحظة</span>
+            <span className="text-[11px] font-black bg-primary-50 text-accent border border-accent/60 px-2 py-0.5 rounded-lg flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+              ملاحظة مسجلة
+            </span>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-400 font-bold">{n.user_name || "النظام"}</span>
-              <span className="text-[11px] text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
+              <span className="text-[11px] text-secondary font-bold">{n.user_name || "النظام"}</span>
+              <span className="text-[11px] text-secondary">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
             </div>
           </div>
-          <p className="text-sm font-bold leading-relaxed text-slate-800">{n.note}</p>
+          <p className="text-sm font-bold leading-relaxed text-primary">{n.note}</p>
         </div>
       ))}
     </div>

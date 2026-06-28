@@ -176,7 +176,7 @@ function customerStatementV2(startDate, endDate, opts = {}) {
       'invoice' AS type, SUM(ad.original_amount) AS amount, i.status, NULL AS note, NULL AS orig_ref,
       i.discount AS doc_discount, i.increase AS doc_increase, i.total AS doc_total
     FROM ajal_debts ad
-    JOIN invoices i ON i.id = ad.invoice_id
+    JOIN invoices i ON i.id = ad.invoice_id AND i.status != 'cancelled'
     WHERE ad.party_type = 'customer' AND ad.customer_id = ?
       AND ad.source_type = 'invoice' AND ad.status != 'voided'
     GROUP BY i.id
@@ -253,7 +253,7 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
       'purchase' AS type, SUM(ad.original_amount) AS amount, pur.status, NULL AS note, NULL AS orig_ref,
       pur.discount AS doc_discount, pur.increase AS doc_increase, pur.total AS doc_total
     FROM ajal_debts ad
-    JOIN purchases pur ON pur.id = ad.invoice_id
+    JOIN purchases pur ON pur.id = ad.invoice_id AND pur.status != 'cancelled'
     WHERE ad.party_type = 'supplier' AND ad.supplier_id = ?
       AND ad.source_type = 'purchase' AND ad.status != 'voided'
     GROUP BY pur.id
@@ -411,7 +411,7 @@ function arAging(startDate, endDate, opts = {}) {
         COALESCE(i.created_at, d.created_at) AS debt_date,
         MAX(0, COALESCE(d.original_amount, 0) - COALESCE(d.paid_amount, 0)) AS outstanding
       FROM ajal_debts d
-      LEFT JOIN invoices i ON i.id = d.invoice_id AND d.source_type = 'invoice'
+      LEFT JOIN invoices i ON i.id = d.invoice_id AND d.source_type = 'invoice' AND i.status != 'cancelled'
       WHERE d.source_type = 'invoice'
         AND COALESCE(d.party_type, 'customer') = 'customer'
         AND d.status != 'voided'
@@ -463,7 +463,7 @@ function apAging(startDate, endDate, opts = {}) {
         COALESCE(p.created_at, d.created_at) AS debt_date,
         MAX(0, COALESCE(d.original_amount, 0) - COALESCE(d.paid_amount, 0)) AS outstanding
       FROM ajal_debts d
-      LEFT JOIN purchases p ON p.id = d.invoice_id AND d.source_type = 'purchase'
+      LEFT JOIN purchases p ON p.id = d.invoice_id AND d.source_type = 'purchase' AND p.status != 'cancelled'
       WHERE d.source_type = 'purchase'
         AND COALESCE(d.party_type, 'supplier') = 'supplier'
         AND d.status != 'voided'
@@ -502,6 +502,44 @@ function apAging(startDate, endDate, opts = {}) {
   `).all(...params, ...(supplier_id ? [supplier_id] : []));
 }
 
+function customerBalanceList(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const { customer_id } = opts;
+  return db.prepare(`
+    SELECT id, name AS customer_name, phone, opening_balance AS balance,
+      CASE WHEN COALESCE(opening_balance, 0) > 0 THEN 'مديون' ELSE 'دائن' END AS balance_label
+    FROM customers
+    WHERE COALESCE(opening_balance, 0) != 0
+    ${customer_id ? " AND id = ?" : ""}
+    ORDER BY ABS(opening_balance) DESC
+  `).all(...(customer_id ? [customer_id] : []));
+}
+
+function supplierBalanceList(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const { supplier_id } = opts;
+  return db.prepare(`
+    SELECT id, name AS supplier_name, phone, opening_balance AS balance,
+      CASE WHEN COALESCE(opening_balance, 0) > 0 THEN 'دائن' ELSE 'مديون' END AS balance_label
+    FROM suppliers
+    WHERE COALESCE(opening_balance, 0) != 0
+    ${supplier_id ? " AND id = ?" : ""}
+    ORDER BY ABS(opening_balance) DESC
+  `).all(...(supplier_id ? [supplier_id] : []));
+}
+
+function arTotalBalance(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const row = db.prepare("SELECT COALESCE(SUM(opening_balance), 0) AS total FROM customers").get();
+  return Number(row?.total || 0);
+}
+
+function apTotalBalance(startDate, endDate, opts = {}) {
+  const db = getDb();
+  const row = db.prepare("SELECT COALESCE(SUM(opening_balance), 0) AS total FROM suppliers").get();
+  return Number(row?.total || 0);
+}
+
 module.exports = {
   arAging,
   apAging,
@@ -509,4 +547,8 @@ module.exports = {
   customerStatement: customerStatementV2,
   supplierStatement: supplierStatementV2,
   dailyOwnerSnapshot,
+  customerBalanceList,
+  supplierBalanceList,
+  arTotalBalance,
+  apTotalBalance,
 };

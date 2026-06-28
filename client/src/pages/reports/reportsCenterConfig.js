@@ -408,6 +408,7 @@ export const CLASSIFICATIONS = {
     { id: "by-customer", label_key: "cls_sreturn_by_customer", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
   ],
   suppliers: [
+    { id: "balance-list", label_key: "cls_supplier_balance_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
     { id: "statement", label_key: "cls_supplier_statement", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
     { id: "aging", label_key: "cls_supplier_aging", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
     { id: "purchases", label_key: "cls_supplier_purchases", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
@@ -415,6 +416,7 @@ export const CLASSIFICATIONS = {
     { id: "reliability", label_key: "cls_supplier_reliability", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
   ],
   customers: [
+    { id: "balance-list", label_key: "cls_customer_balance_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
     { id: "statement", label_key: "cls_customer_statement", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
     { id: "aging", label_key: "cls_customer_aging", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
     { id: "top-customers", label_key: "cls_top_customers", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"] },

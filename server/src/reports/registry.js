@@ -199,6 +199,9 @@ const REPORT_REGISTRY = {
     ],
     // ── الموردين (Suppliers) ──
     suppliers: [
+      { id: "balance-list", label_key: "cls_supplier_balance_list", detailedQuery: "supplier-balance-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
+        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+      ], multiSelectFilters: [] },
       { id: "statement", label_key: "cls_supplier_statement", detailedQuery: "supplier-statement", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
         { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier", required: true },
       ], multiSelectFilters: [] },
@@ -215,6 +218,9 @@ const REPORT_REGISTRY = {
     ],
     // ── العملاء (Customers) ──
     customers: [
+      { id: "balance-list", label_key: "cls_customer_balance_list", detailedQuery: "customer-balance-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
+        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
+      ], multiSelectFilters: [] },
       { id: "statement", label_key: "cls_customer_statement", detailedQuery: "customer-statement", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer", required: true },
       ], multiSelectFilters: [] },

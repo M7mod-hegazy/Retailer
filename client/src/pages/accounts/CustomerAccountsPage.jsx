@@ -16,9 +16,21 @@ import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import { formatNumber } from "../../utils/currency";
 import AccountExportModal from "./AccountExportModal";
+import InstallmentsTab from "../../components/accounts/InstallmentsTab";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
+function parseSqlDate(str) {
+  if (!str) return new Date();
+  const [datePart, timePart] = str.split(' ');
+  if (!datePart) return new Date(str);
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (timePart) {
+    const [hh, mm, ss] = timePart.split(':').map(Number);
+    return new Date(y, m - 1, d, hh || 0, mm || 0, ss || 0);
+  }
+  return new Date(y, m - 1, d);
+}
 
 const PAYMENT_METHOD_AR = {
   cash: "نقداً", card: "بطاقة", bank: "بنك", bank_transfer: "تحويل بنكي",
@@ -86,6 +98,7 @@ function Modal({ onClose, children, width = "480px" }) {
         style={{ width }}
         className="bg-white rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.18)] max-h-[90vh] overflow-y-auto border border-slate-200/60"
         onClick={e => e.stopPropagation()}
+        dir="rtl"
       >
         {children}
       </motion.div>
@@ -97,6 +110,7 @@ function Modal({ onClose, children, width = "480px" }) {
 const EVENT_TYPES = {
   invoice: { icon: ShoppingBag, label: "فاتورة مبيعات", color: "text-blue-600", bg: "bg-blue-50/80", border: "border-blue-100" },
   payment: { icon: CreditCard, label: "تحصيل دفعة", color: "text-emerald-600", bg: "bg-emerald-50/80", border: "border-emerald-100" },
+  ajal_payment: { icon: CreditCard, label: "سداد قسط آجل", color: "text-violet-600", bg: "bg-violet-50/80", border: "border-violet-100" },
   return: { icon: RotateCcw, label: "مرتجع مبيعات", color: "text-rose-600", bg: "bg-rose-50/80", border: "border-rose-100" },
   adjustment: { icon: Scale, label: "تسوية يدوية", color: "text-amber-600", bg: "bg-amber-50/80", border: "border-amber-100" },
 };
@@ -104,6 +118,7 @@ const EVENT_TYPES = {
 const TYPE_CARD_STYLE = {
   invoice: "border-slate-200/70 hover:border-blue-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
   payment: "border-slate-200/70 hover:border-emerald-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  ajal_payment: "border-slate-200/70 hover:border-violet-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
   return: "border-slate-200/70 hover:border-rose-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
   adjustment: "border-slate-200/70 hover:border-amber-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
   opening: "border-slate-200 border-dashed bg-slate-50/50",
@@ -147,16 +162,44 @@ function InstallmentsBadge({ debtId }) {
     } catch { setSchedules([]); setOpen(true); }
   }, [debtId, schedules]);
 
+  const stats = schedules
+    ? schedules.reduce((acc, s) => {
+        acc.total += Number(s.amount || 0);
+        if (s.status === "paid") acc.paid += Number(s.amount || 0);
+        else {
+          if (s.due_date < today) acc.overdue += 1;
+          else if (s.due_date === today) acc.dueToday += 1;
+        }
+        return acc;
+      }, { total: 0, paid: 0, overdue: 0, dueToday: 0 })
+    : null;
+
   const pending = schedules ? schedules.filter(s => s.status !== "paid").length : null;
+  const progressPct = stats && stats.total > 0 ? Math.round((stats.paid / stats.total) * 100) : 0;
+  const hasUrgency = stats && (stats.overdue > 0 || stats.dueToday > 0);
 
   return (
     <div className="mt-2">
-      <button onClick={load}
-        className="flex items-center gap-1.5 text-[11px] font-bold text-violet-650 bg-violet-50/80 border border-violet-200/60 rounded-xl px-3 py-1.5 hover:bg-violet-100/80 transition-colors">
-        <Calendar className="h-3.5 w-3.5" />
-        {pending !== null ? `${pending} أقساط متبقية` : "متابعة جدول الأقساط"}
-        {open ? <ChevronUp className="h-3.5 w-3.5 mr-1" /> : <ChevronDown className="h-3.5 w-3.5 mr-1" />}
-      </button>
+      <div className="flex items-center gap-2">
+        <button onClick={load}
+          className="flex items-center gap-1.5 text-[11px] font-bold text-violet-650 bg-violet-50/80 border border-violet-200/60 rounded-xl px-3 py-1.5 hover:bg-violet-100/80 transition-colors">
+          <Calendar className="h-3.5 w-3.5" />
+          {pending !== null ? `${pending} أقساط متبقية` : "متابعة جدول الأقساط"}
+          {open ? <ChevronUp className="h-3.5 w-3.5 mr-1" /> : <ChevronDown className="h-3.5 w-3.5 mr-1" />}
+        </button>
+        {stats && stats.total > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${
+                progressPct >= 100 ? "bg-emerald-500" : hasUrgency ? "bg-rose-500" : "bg-violet-500"
+              }`} style={{ width: `${Math.min(100, progressPct)}%` }} />
+            </div>
+            <span className={`text-[9px] font-black ${
+              progressPct >= 100 ? "text-emerald-600" : hasUrgency ? "text-rose-600" : "text-violet-600"
+            }`}>{progressPct}%</span>
+          </div>
+        )}
+      </div>
       <AnimatePresence>
         {open && schedules?.length > 0 && (
           <motion.div
@@ -208,7 +251,12 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
   const [endDate, setEndDate] = useState("");
 
   const filteredEvents = events.filter(ev => {
-    if (filterType !== "all" && ev.type !== filterType) return false;
+    if (filterType !== "all") {
+      const matches = filterType === "payment"
+        ? ev.type === "payment" || ev.type === "ajal_payment"
+        : ev.type === filterType;
+      if (!matches) return false;
+    }
     if (ev.date) {
       const d = new Date(ev.date);
       if (startDate) {
@@ -319,12 +367,16 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
       const adjEndpoint = partyType === "customer"
         ? `/api/customers/${party.id}/notes?type=adjustment`
         : `/api/suppliers/${party.id}/notes?type=adjustment`;
+      const ajalPayEndpoint = partyType === "customer"
+        ? `/api/ajal-debts/customer/${party.id}/payments`
+        : `/api/ajal-debts/supplier/${party.id}/payments`;
 
-      const [docsR, paysR, retsR, adjR] = await Promise.allSettled([
+      const [docsR, paysR, retsR, adjR, ajalPaysR] = await Promise.allSettled([
         api.get(docEndpoint),
         api.get(payEndpoint),
         api.get(retEndpoint),
         api.get(adjEndpoint),
+        api.get(ajalPayEndpoint),
       ]);
 
       const items = [];
@@ -409,6 +461,32 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
         });
       });
 
+      (ajalPaysR.value?.data?.data || []).forEach(ap => {
+        const amount = Number(ap.amount || 0);
+        if (amount <= 0) return;
+        const sortDate = parseSqlDate(ap.created_at || ap.payment_date);
+        const origAmt = Number(ap.original_amount || 0);
+        const paidAmt = Number(ap.paid_amount || 0);
+        items.push({
+          id: `ajalpay-${ap.id}`,
+          type: "ajal_payment",
+          date: sortDate,
+          dateLabel: ap.payment_date || ap.created_at,
+          ref: ap.invoice_no ? `فاتورة ${ap.invoice_no}` : `AJAL-${ap.debt_id}`,
+          methodLabel: ap.method_name || "آجل",
+          description: "سداد دين آجل",
+          debtStatus: ap.debt_status,
+          impactAmount: amount,
+          impactDir: "subtract",
+          invoiceId: ap.invoice_id,
+          invoiceNo: ap.invoice_no,
+          debtOriginal: origAmt,
+          debtPaid: paidAmt,
+          debtRemaining: Math.max(0, origAmt - paidAmt),
+          raw: ap,
+        });
+      });
+
       items.sort((a, b) => b.date - a.date);
 
       // ── Compute running balance (newest→oldest, display order) ──
@@ -436,7 +514,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
       }
 
       setEvents(items);
-    } catch { setEvents([]); }
+    } catch (e) { console.error('[DEBUG MovementsTab] load error:', e); setEvents([]); }
     finally { setLoading(false); }
   }, [party, partyType]);
 
@@ -534,6 +612,12 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
             badge: "bg-emerald-50 text-emerald-700 border-emerald-200/50",
             label: "تحصيل دفعة"
           },
+          ajal_payment: {
+            bezel: "bg-gradient-to-br from-violet-50/60 to-purple-50/20 border-violet-200/50 hover:border-violet-300/80",
+            borderRight: "border-r-violet-500",
+            badge: "bg-violet-50 text-violet-700 border-violet-200/50",
+            label: "قسط مدفوع"
+          },
           return: {
             bezel: "bg-gradient-to-br from-rose-50/60 to-pink-50/20 border-rose-200/50 hover:border-rose-300/80",
             borderRight: "border-r-rose-500",
@@ -569,7 +653,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
               }`} />
               
               {/* Date Squircle */}
-              <div className="w-16 h-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative">
+              <div className="w-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative py-2.5">
                 <span className={`absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-6.5 w-6.5 rounded-lg border ${cfg.bg} ${cfg.color} ${cfg.border} shadow-[0_2px_6px_rgba(0,0,0,0.04)] z-20 transition-transform duration-300 group-hover:scale-110`}>
                   <Icon className="h-3.5 w-3.5 stroke-[2.3px]" />
                 </span>
@@ -580,6 +664,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                     </span>
                     <span className="text-[20px] font-black text-slate-800 font-mono tracking-tighter leading-none mt-1">
                       {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { day: "2-digit" })}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight leading-none mt-1">
+                      {new Date(ev.date).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })}
                     </span>
                   </div>
                 ) : (
@@ -658,6 +745,11 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                             <span className={`inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full border shadow-sm ${theme.badge}`}>
                               {theme.label}
                             </span>
+                            {ev.type === "ajal_payment" && ev.debtStatus === "voided" && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full border shadow-sm bg-amber-50 text-amber-700 border-amber-200/50">
+                                تم تعديل الفاتورة الأصلية
+                              </span>
+                            )}
                           </div>
                           
                           <div className="mt-2.5 flex items-center gap-1">
@@ -732,7 +824,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                         {/* Metric 1: Total Transaction Value */}
                         <div className="flex flex-col items-end px-3 py-0.5 flex-1 min-w-0">
                           <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
-                            {isOpening ? "القيمة الافتتاحية" : isDocRow ? "إجمالي الفاتورة" : ev.type === "return" ? "إجمالي المرتجع" : ev.type === "payment" ? "المبلغ المسدد" : "قيمة التسوية"}
+                            {isOpening ? "القيمة الافتتاحية" : isDocRow ? "إجمالي الفاتورة" : ev.type === "return" ? "إجمالي المرتجع" : ev.type === "payment" || ev.type === "ajal_payment" ? "المبلغ المسدد" : "قيمة التسوية"}
                           </span>
                           <div className="text-[18px] number-fmt-primary text-slate-800 tracking-tight leading-none flex items-baseline gap-0.5 truncate">
                             <span>{fmt(isOpening ? ev.impactAmount : isDocRow ? ev.invoiceTotal : ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}</span>
@@ -807,9 +899,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                   </div>
 
                   {/* ── Installments expandable within invoice row ── */}
-                  {isDocRow && isInstallments && ev.raw?.id && (
+                  {isDocRow && isInstallments && ev.raw?.debt_id && (
                     <div className="px-1.5 pb-2.5 border-t border-slate-100 pt-3">
-                      <InstallmentsBadge debtId={ev.raw.debt_id || ev.raw.id} />
+                      <InstallmentsBadge debtId={ev.raw.debt_id} />
                     </div>
                   )}
                 </div>
@@ -874,9 +966,11 @@ export default function CustomerAccountsPage() {
   const [showExport, setShowExport] = useState(false);
 
   // Forms
-  const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "" });
+  const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "", schedule_id: "" });
   const [adjForm, setAdjForm] = useState({ amount: "", direction: "subtract", reason: "" });
   const [saving, setSaving] = useState(false);
+  const [customerSchedules, setCustomerSchedules] = useState([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
 
   // Copy badges state hook
   const [copiedBadge, setCopiedBadge] = useState(null);
@@ -915,6 +1009,18 @@ export default function CustomerAccountsPage() {
       });
       setInstallmentDue(map);
     } catch { setInstallmentDue({}); }
+  }, []);
+
+  const loadCustomerSchedules = useCallback(async (customerId) => {
+    if (!customerId) { setCustomerSchedules([]); return; }
+    setSchedulesLoading(true);
+    try {
+      const r = await api.get(`/api/ajal-debts/by-party/customer/${customerId}`);
+      const all = r.data.data || [];
+      const unpaid = all.filter(s => s.status !== "paid");
+      setCustomerSchedules(unpaid);
+    } catch { setCustomerSchedules([]); }
+    finally { setSchedulesLoading(false); }
   }, []);
 
   const loadNotes = useCallback(async () => {
@@ -959,11 +1065,17 @@ export default function CustomerAccountsPage() {
   }, [selected, setSearchParams]);
 
   const refreshSelected = async () => {
-    if (!selected) return;
-    const r = await api.get(`/api/customers/${selected.id}`);
-    setSelected(r.data.data);
-    loadCustomers();
-    loadSummary();
+    console.log('[DEBUG refreshSelected] selected=', selected?.id, selected?.name, 'opening_balance=', selected?.opening_balance);
+    if (!selected) { console.warn('[DEBUG refreshSelected] selected is null, skipping'); return; }
+    try {
+      const r = await api.get(`/api/customers/${selected.id}`);
+      console.log('[DEBUG refreshSelected] API response opening_balance=', r.data.data?.opening_balance, 'full=', JSON.stringify(r.data.data));
+      setSelected(r.data.data);
+      loadCustomers();
+      loadSummary();
+    } catch (e) {
+      console.error('[DEBUG refreshSelected] error:', e);
+    }
   };
 
   // ── Invoice detail ────────────────────────────────────────
@@ -996,16 +1108,34 @@ export default function CustomerAccountsPage() {
     if (!payForm.amount || !payForm.method_id) return toast.error("برجاء إدخال المبلغ وتحديد وسيلة الدفع");
     setSaving(true);
     try {
-      await api.post("/api/payments", {
-        party_type: "customer",
-        party_id: selected.id,
-        amount: Number(payForm.amount),
-        method_id: Number(payForm.method_id),
-        notes: payForm.notes || null,
-      });
+      if (payForm.schedule_id) {
+        const sched = customerSchedules.find(s => String(s.id) === payForm.schedule_id);
+        const isVirtual = Number(payForm.schedule_id) < 0;
+        if (isVirtual) {
+          await api.post(`/api/ajal-debts/${sched?.debt_id}/pay`, {
+            amount: Number(payForm.amount),
+            payment_method_id: Number(payForm.method_id),
+            payment_date: new Date().toISOString().slice(0, 10),
+          });
+        } else {
+          await api.post(`/api/ajal-debts/schedules/${payForm.schedule_id}/pay`, {
+            payment_method_id: Number(payForm.method_id),
+            payment_date: new Date().toISOString().slice(0, 10),
+          });
+        }
+      } else {
+        await api.post("/api/payments", {
+          party_type: "customer",
+          party_id: selected.id,
+          amount: Number(payForm.amount),
+          method_id: Number(payForm.method_id),
+          notes: payForm.notes || null,
+        });
+      }
       toast.success("تم تسجيل الدفعة بنجاح");
       setShowPayment(false);
-      setPayForm({ amount: "", method_id: "", notes: "" });
+      setPayForm({ amount: "", method_id: "", notes: "", schedule_id: "" });
+      setCustomerSchedules([]);
       await refreshSelected();
     } catch (e) { toast.error(e.response?.data?.message || "فشل تسجيل الدفعة"); }
     finally { setSaving(false); }
@@ -1052,16 +1182,14 @@ export default function CustomerAccountsPage() {
     if (!matchesSearch) return false;
     if (filter === "debtors") return Number(c.opening_balance) > 0;
     if (filter === "creditors") return Number(c.opening_balance) < 0;
-    if (filter === "installments") {
-      const d = installmentDue[c.id];
-      return d && (d.overdue > 0 || d.due_today > 0 || d.upcoming > 0);
-    }
     return true;
   });
 
   const bal = Number(selected?.opening_balance || 0);
   const creditLimit = Number(selected?.credit_limit || 0);
   const creditPct = creditLimit > 0 ? (bal / creditLimit) * 100 : 0;
+  const instDue = selected ? installmentDue[selected.id] : null;
+  const instDueCount = instDue ? instDue.overdue + instDue.due_today + instDue.upcoming : 0;
 
   return (
     <div className="flex flex-1 min-h-0 bg-slate-100 overflow-hidden font-sans" dir="rtl">
@@ -1118,7 +1246,7 @@ export default function CustomerAccountsPage() {
           </div>
 
           <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
-            {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }, { id: "installments", label: "أقساط مستحقة" }].map(f => (
+            {[{ id: "all", label: "الكل" }, { id: "debtors", label: "يدينون لنا" }, { id: "creditors", label: "ندين لهم" }].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className="flex-1 py-1.5 text-[11px] font-extrabold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer"
                 style={{ color: filter === f.id ? "var(--primary)" : "var(--text-secondary)" }}
@@ -1205,7 +1333,7 @@ export default function CustomerAccountsPage() {
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
               {viewMode === "fast" ? <span className="text-3xl opacity-70">📱</span> : <Users className="h-9 w-9 text-slate-300 opacity-60" />}
               <p className="text-2sm font-bold text-slate-400">
-                {search ? "لا يوجد نتائج مطابقة للبحث" : filter === "installments" ? "لا توجد أقساط مستحقة حالياً" : viewMode === "fast" ? "لا توجد جهات واتساب سريعة بعد" : "لا يوجد عملاء"}
+                {search ? "لا يوجد نتائج مطابقة للبحث" : viewMode === "fast" ? "لا توجد جهات واتساب سريعة بعد" : "لا يوجد عملاء"}
               </p>
               {viewMode === "fast" && !search && (
                 <p className="text-[11px] font-bold text-slate-350 max-w-[220px]">تُسجّل تلقائياً من زر واتساب السريع في نقطة البيع</p>
@@ -1233,7 +1361,7 @@ export default function CustomerAccountsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: Math.min(0.2, index * 0.015) }}
-                onClick={() => selectCustomer(c, filter === "installments" ? "installments" : activeTab)}
+                onClick={() => selectCustomer(c, activeTab)}
                 className={`py-3.5 px-4.5 cursor-pointer border-b border-slate-100/80 transition-all duration-200 relative group flex items-center justify-between gap-3 ${isSelected
                     ? "bg-blue-50/65 border-r-[4.5px] border-r-blue-600 border-b-blue-100/40"
                     : "bg-transparent border-r-[4.5px] border-r-transparent hover:bg-slate-100/40"
@@ -1359,13 +1487,18 @@ export default function CustomerAccountsPage() {
                     </div>
                     <div>
                       <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
-                        {bal > 0 ? "صافي الرصيد المستحق بذمته" : bal < 0 ? "الرصيد الدائن للعميل" : "رصيد الحساب مسوّى"}
+                        {bal > 0 ? "المبلغ اللي عليه" : bal < 0 ? "اللي ليه عندنا" : "الحساب مسوّى"}
                       </div>
-                      <div className="flex items-baseline gap-1 mt-1">
+                      <div className="flex items-center gap-1.5 mt-1">
                         <div className={`text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
                           {fmt(Math.abs(bal))}
                         </div>
                         <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
+                        {bal > 0 ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
+                        ) : bal < 0 ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -1394,7 +1527,7 @@ export default function CustomerAccountsPage() {
                       data-help="collect-button"
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                      onClick={() => { loadCustomerSchedules(selected?.id); setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "", schedule_id: "" }); setShowPayment(true); }}
                       className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
@@ -1417,29 +1550,37 @@ export default function CustomerAccountsPage() {
             </div>
 
             {/* Custom Tab Panel bar with Sliding Background */}
-            <div className="flex gap-2 px-6 py-3 bg-white border-b border-slate-200/50 shrink-0 relative">
+            <div className="flex gap-2 px-6 py-3 bg-surface border-b border-subtle shrink-0 relative">
               {[
                 { id: "movements", label: "سجل الحركات المالية" },
-                { id: "notes", label: "ملاحظات وتنبيهات العميل" },
+                { id: "installments", label: `الأقساط${instDueCount > 0 ? ` (${instDueCount})` : ""}` },
+                { id: "notes", label: `ملاحظات${notesData.length > 0 ? ` (${notesData.length})` : ""}` },
               ].map(t => (
                 <button key={t.id} onClick={() => changeTab(t.id)}
-                  className="px-4 py-2 text-2sm font-bold rounded-xl relative z-10 transition-colors duration-200"
+                  className={`px-4 py-2 text-2sm font-bold rounded-xl relative z-10 transition-all duration-200 ${
+                    activeTab === t.id ? "shadow-sm" : "hover:bg-overlay/50"
+                  }`}
                   style={{ color: activeTab === t.id ? "var(--primary)" : "var(--text-secondary)" }}
                 >
                   {activeTab === t.id && (
                     <motion.div
                       layoutId="activeTabBg"
-                      className="absolute inset-0 bg-slate-100 rounded-xl -z-10"
+                      className="absolute inset-0 bg-primary-50 rounded-xl -z-10 border border-primary-200/40"
                       transition={{ type: "spring", stiffness: 350, damping: 28 }}
                     />
                   )}
-                  {t.label}
+                  <span className="flex items-center gap-1.5">
+                    {activeTab === t.id && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    )}
+                    {t.label}
+                  </span>
                 </button>
               ))}
             </div>
 
             {/* Tab Container */}
-            <div className="flex-1 overflow-auto p-6 bg-slate-50/40">
+            <div className="flex-1 overflow-auto p-6 bg-base">
               {activeTab === "movements" ? (
                 <MovementsTab
                   party={selected}
@@ -1448,6 +1589,8 @@ export default function CustomerAccountsPage() {
                   onOpenOriginalInvoice={(inv) => { setDetailInvoiceIsOriginal(true); setDetailInvoice(inv); }}
                   onOpenReturn={setDetailReturn}
                 />
+              ) : activeTab === "installments" ? (
+                <InstallmentsTab party={selected} partyType="customer" onChanged={refreshSelected} />
               ) : (
                 <NotesTab
                   notes={notesData}
@@ -1721,22 +1864,51 @@ export default function CustomerAccountsPage() {
         <Modal onClose={() => setShowPayment(false)} title={bal < 0 ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"} showDetach={false}>
           <div className="p-6">
               <p className="text-2sm text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-slate-800 font-bold">{selected.name}</span></p>
-              {bal > 0 && (
-                <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 mb-4 text-2sm font-bold text-rose-800 flex justify-between items-center">
-                  <span>إجمالي الرصيد المستحق بذمته:</span>
-                  <span className="number-fmt text-sm">{fmt(bal)} ج.م</span>
+              {bal !== 0 && (
+                <div className={`${bal > 0 ? "bg-rose-50/40 border-rose-100 text-rose-800" : "bg-emerald-50/40 border-emerald-100 text-emerald-800"} border rounded-2xl p-3.5 mb-4 text-2sm font-bold flex justify-between items-center`}>
+                  <span>{bal > 0 ? "المبلغ اللي عليه:" : "اللي ليه عندنا:"}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="number-fmt text-sm">{fmt(Math.abs(bal))} ج.م</span>
+                    <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md border ${bal > 0 ? "bg-rose-50 text-rose-700 border-rose-200/60" : "bg-emerald-50 text-emerald-700 border-emerald-200/60"}`}>
+                      {bal > 0 ? "مديون" : "دائن"}
+                    </span>
+                  </span>
                 </div>
               )}
               <div className="space-y-4">
+                {customerSchedules.length > 0 && (
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">ربط الدفعة بمعاد قسط <span className="text-slate-300 font-normal">(اختياري)</span></label>
+                    <select ref={payAmountRef} autoFocus value={payForm.schedule_id} onChange={e => {
+                      const val = e.target.value;
+                      const sched = customerSchedules.find(s => String(s.id) === val);
+                      setPayForm(f => ({ ...f, schedule_id: val, amount: sched ? String(sched.amount) : f.amount }));
+                    }}
+                      className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-violet-500"
+                      onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })}>
+                      <option value="">-- دفعة عامة (بدون ربط) --</option>
+                      {customerSchedules.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.invoice_no || `AJAL-${s.debt_id}`} — قسط {s.installment_no} — {fmt(s.amount)} ج.م — {fmtDate(s.due_date)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">المبلغ المقبوض أو المسترد <span className="text-rose-500">*</span></label>
-                  <input ref={payAmountRef} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] number-fmt outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
+                  <input ref={!customerSchedules.length ? payAmountRef : undefined} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                    className={`w-full h-11.5 rounded-xl border px-4 text-[17px] number-fmt outline-none focus:shadow-sm ${payForm.schedule_id ? "bg-slate-50 border-violet-200 text-slate-500 cursor-not-allowed" : "border-slate-200 focus:border-blue-500 focus:shadow-sm"}`}
+                    placeholder="0.00" autoFocus={!customerSchedules.length} readOnly={!!payForm.schedule_id}
+                    onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
+                  {payForm.schedule_id && (
+                    <p className="text-[10px] font-bold text-violet-600 mt-1">تم تعيين المبلغ تلقائياً حسب القسط المحدد</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قناة استلام أو رد النقدية <span className="text-rose-500">*</span></label>
                   <select ref={payMethodRef} value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { nextRef: payNotesRef, prevRef: payAmountRef })}>
+                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { nextRef: payNotesRef, prevRef: customerSchedules.length ? payAmountRef : payAmountRef })}>
                     <option value="">-- اختر القناة المالية --</option>
                     {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
@@ -1764,10 +1936,15 @@ export default function CustomerAccountsPage() {
       {showAdjust && selected && (
         <Modal onClose={() => setShowAdjust(false)} title="تسوية رصيد حساب العميل يدوياً" showDetach={false}>
           <div className="p-6">
-              <p className="text-2sm text-slate-450 font-bold mb-4">
+                <p className="text-2sm text-slate-450 font-bold mb-4 flex items-center gap-1.5 flex-wrap">
                 العميل: <span className="text-slate-800 font-bold">{selected.name}</span>
-                {" — "}قبل التسوية:
-                <span className={`number-fmt ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}> {fmt(Math.abs(bal))} ج.م</span>
+                <span className="text-slate-300">—</span>قبل التسوية:
+                <span className={`number-fmt ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}>{fmt(Math.abs(bal))} ج.م</span>
+                {bal > 0 ? (
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
+                ) : bal < 0 ? (
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
+                ) : null}
               </p>
               <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-3.5 mb-4">
                 <p className="text-[10.5px] font-semibold text-amber-800 leading-relaxed flex gap-1.5 items-start">
@@ -1798,8 +1975,13 @@ export default function CustomerAccountsPage() {
                   return (
                     <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
                       <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع لحساب العميل بعد الحفظ:</p>
-                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"}`}>
+                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"} flex items-center gap-1.5`}>
                         {fmt(Math.abs(newBal))} ج.م
+                        {newBal > 0 ? (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
+                        ) : newBal < 0 ? (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
+                        ) : null}
                       </p>
                     </div>
                   );
@@ -1849,8 +2031,8 @@ function NotesTab({ notes, loading, onAdd }) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-        <RefreshCw className="h-7 w-7 animate-spin text-amber-600" />
+      <div className="flex flex-col items-center justify-center py-20 text-secondary gap-3">
+        <RefreshCw className="h-7 w-7 animate-spin text-accent" />
         <span className="text-2sm font-bold">جاري تحميل ملاحظات وتنبيهات العميل...</span>
       </div>
     );
@@ -1859,15 +2041,15 @@ function NotesTab({ notes, loading, onAdd }) {
   return (
     <div className="space-y-6 max-w-2xl select-none" dir="rtl">
       {/* Add note inline */}
-      <div className="p-[3px] rounded-[24px] bg-slate-200/40 border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.025)] transition-shadow duration-300">
-        <div className="bg-white rounded-[21px] p-5 border border-slate-200/20 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
-          <div className="text-[11px] font-black text-slate-400 mb-2.5 uppercase tracking-wider">إضافة ملاحظة أو تنبيه جديد لملف العميل</div>
+      <div className="p-[3px] rounded-[24px] bg-overlay border border-subtle shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.025)] transition-shadow duration-300">
+        <div className="bg-surface rounded-[21px] p-5 border border-subtle/20">
+          <div className="text-[11px] font-black text-muted mb-2.5 uppercase tracking-wider">إضافة ملاحظة أو تنبيه جديد لملف العميل</div>
           <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
-            className="w-full rounded-[14px] border border-slate-200 p-3 text-sm font-semibold outline-none focus:border-amber-500/60 focus:ring-4 focus:ring-amber-500/[0.05] resize-none transition-all"
+            className="w-full rounded-[14px] border border-normal bg-bg-input p-3 text-sm font-semibold outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 resize-none transition-all"
             placeholder="اكتب هنا أي ملاحظة هامة تتعلق بالتعامل المالي، المبيعات أو شروط التسوية..." />
           <div className="flex justify-end mt-3">
             <button onClick={submit} disabled={saving || !text.trim()}
-              className="h-10 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-2sm font-black disabled:opacity-40 transition-all shadow-sm shadow-amber-100 hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
+              className="h-10 px-6 rounded-xl bg-primary hover:bg-primary-600 text-white text-2sm font-black disabled:opacity-40 transition-all shadow-sm hover:scale-[1.015] active:scale-[0.985] cursor-pointer">
               {saving ? "جاري الحفظ..." : "حفظ الملاحظة الآن"}
             </button>
           </div>
@@ -1875,40 +2057,40 @@ function NotesTab({ notes, loading, onAdd }) {
       </div>
 
       {notes.length === 0 ? (
-        <div className="p-[3px] rounded-[24px] bg-slate-200/30 border border-slate-200/60">
-          <div className="flex flex-col items-center justify-center py-12 text-slate-350 gap-4 bg-white rounded-[21px] border border-slate-200/10 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
-            <div className="p-4 rounded-full bg-slate-50 border border-slate-200/60 shadow-sm">
-              <MessageSquare className="h-6 w-6 text-slate-400 stroke-[1.8px]" />
+        <div className="p-[3px] rounded-[24px] bg-overlay border border-subtle">
+          <div className="flex flex-col items-center justify-center py-12 text-muted gap-4 bg-surface rounded-[21px] border border-subtle/10">
+            <div className="p-4 rounded-full bg-overlay border border-subtle shadow-sm">
+              <MessageSquare className="h-6 w-6 text-muted stroke-[1.8px]" />
             </div>
-            <span className="font-extrabold text-[12.5px] text-slate-455 tracking-tight">لا توجد ملاحظات أو تنبيهات مسجلة لهذا العميل حالياً</span>
+            <span className="font-extrabold text-[12.5px] text-secondary tracking-tight">لا توجد ملاحظات أو تنبيهات مسجلة لهذا العميل حالياً</span>
           </div>
         </div>
       ) : (
-        <div className="relative pr-8 border-r border-slate-200/80 space-y-5">
+        <div className="relative pr-8 border-r border-subtle space-y-5">
           {notes.map((n, index) => (
             <motion.div
               key={n.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: Math.min(0.4, index * 0.03) }}
-              className="relative p-[3px] rounded-[22px] bg-slate-200/25 border border-slate-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.025)] transition-shadow duration-200"
+              className="relative p-[3px] rounded-[22px] bg-overlay border border-subtle shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.025)] transition-shadow duration-200"
             >
               {/* Glowing timeline marker squircle node */}
-              <div className="absolute right-[-37px] top-6.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm ring-4 ring-amber-100" />
+              <div className="absolute right-[-37px] top-6.5 w-3 h-3 rounded-full bg-primary border-2 border-surface shadow-sm ring-4 ring-primary-100" />
 
-              <div className="bg-white rounded-[19px] p-4.5 border border-slate-200/15 shadow-[inset_0_1.5px_3px_rgba(255,255,255,1)]">
-                <div className="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-100/60">
-                  <span className="text-[9.5px] font-black bg-amber-500/[0.08] text-amber-700 border border-amber-200/60 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
-                    <MessageSquare className="h-3.5 w-3.5 text-amber-600 stroke-[2px]" />
+              <div className="bg-surface rounded-[19px] p-4.5 border border-subtle/15">
+                <div className="flex justify-between items-center mb-2.5 pb-2 border-b border-subtle">
+                  <span className="text-[9.5px] font-black bg-primary-50 text-accent border border-accent/60 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5 text-accent stroke-[2px]" />
                     <span>ملاحظة مسجلة</span>
                   </span>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400 font-extrabold">
+                  <div className="flex items-center gap-2 text-[11px] text-secondary font-extrabold">
                     <span>بواسطة: {n.user_name || "النظام"}</span>
                     <span className="opacity-60">•</span>
                     <span className="font-mono">{n.created_at ? new Date(n.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}</span>
                   </div>
                 </div>
-                <p className="text-[12.5px] font-semibold leading-relaxed text-slate-700 whitespace-pre-wrap">{n.note}</p>
+                <p className="text-[12.5px] font-semibold leading-relaxed text-primary whitespace-pre-wrap">{n.note}</p>
               </div>
             </motion.div>
           ))}

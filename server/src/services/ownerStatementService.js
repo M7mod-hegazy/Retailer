@@ -1,5 +1,5 @@
 const { getDb } = require("../config/database");
-const { arAging, apAging } = require("../reports/queries/accounts");
+const { arTotalBalance, apTotalBalance, customerBalanceList, supplierBalanceList } = require("../reports/queries/accounts");
 const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin } = require("../reports/helpers");
 const { calculateDailySummary, localDate } = require("./dailySessionService");
 
@@ -329,8 +329,8 @@ function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
   const method = normalizeCostMethod(costMethod);
   const stockRows = getStockRows(startDate, endDate, method);
   const cashRows = getCashRows(db, endDate);
-  const arRows = arAging(startDate, endDate).map((row) => ({ ...row, total_due: valueOf(row.total_due) }));
-  const apRows = apAging(startDate, endDate).map((row) => ({ ...row, total_due: valueOf(row.total_due) }));
+  const arRows = customerBalanceList().map((row) => ({ ...row, balance: valueOf(row.balance) }));
+  const apRows = supplierBalanceList().map((row) => ({ ...row, balance: valueOf(row.balance) }));
   const expenseRows = getExpenseRows(db, startDate, endDate);
   const revenueRows = getRevenueRows(db, startDate, endDate);
   const withdrawalRows = getWithdrawalRows(db, startDate, endDate);
@@ -343,8 +343,8 @@ function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
   const values = {
     stock: rowsTotal(stockRows, "value"),
     cash: rowsTotal(cashRows, "balance"),
-    ar: rowsTotal(arRows, "total_due"),
-    ap: rowsTotal(apRows, "total_due"),
+    ar: rowsTotal(arRows, "balance"),
+    ap: rowsTotal(apRows, "balance"),
     expenses,
     revenues,
     withdrawals,

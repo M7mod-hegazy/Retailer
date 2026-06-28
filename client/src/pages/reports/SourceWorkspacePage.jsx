@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import PDFExportDialog from "../../components/print/PDFExportDialog";
 import { reportsApi } from "../../services/reports";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
+import { useUiStore } from "../../stores/uiStore";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ReportPrintTemplate from "./templates/ReportPrintTemplate";
 import AccountStatementLedger from "./templates/AccountStatementLedger";
@@ -47,11 +48,13 @@ const CLS_ARABIC = {
   "cls_sreturn_summary": "ملخص المرتجعات",
   "cls_sreturn_detailed": "مرتجعات تفصيلية",
   "cls_sreturn_by_customer": "حسب العميل",
+  "cls_supplier_balance_list": "قائمة أرصدة الموردين",
   "cls_supplier_statement": "كشف حساب المورد",
   "cls_supplier_aging": "تقادم ذمم الموردين",
   "cls_supplier_purchases": "سجل المشتريات",
   "cls_supplier_returns": "سجل المرتجعات",
   "cls_supplier_reliability": "موثوقية الموردين",
+  "cls_customer_balance_list": "قائمة أرصدة العملاء",
   "cls_customer_statement": "كشف حساب العميل",
   "cls_customer_aging": "تقادم ذمم العملاء",
   "cls_top_customers": "أفضل العملاء",
@@ -460,6 +463,15 @@ export default function SourceWorkspacePage() {
     setColumnOrderState([]);
     setShowAllColumns(false);
   }, [sourceKey, classificationId, dataMode]);
+
+  // Set topbar breadcrumb to show the current report name
+  const setDynamicBreadcrumb = useUiStore((s) => s.setDynamicBreadcrumb);
+  const clearDynamicBreadcrumb = useUiStore((s) => s.clearDynamicBreadcrumb);
+  const reportLabel = useMemo(() => a(classificationId), [classificationId]);
+  useEffect(() => {
+    setDynamicBreadcrumb({ label: reportLabel, path: `/reports/source/${sourceKey}/${classificationId}/${dataMode}` });
+    return () => clearDynamicBreadcrumb();
+  }, [sourceKey, classificationId, dataMode, reportLabel, setDynamicBreadcrumb, clearDynamicBreadcrumb]);
 
   const [appliedParams, setAppliedParams] = useState(() => {
     const params = {};

@@ -74,22 +74,6 @@ function getEquationRowAffects(tx) {
   const total = Number(tx.amount ?? 0);
   const affects = [];
 
-  const supplierSide = ["supplier_payment", "purchase", "purchase_return"].includes(tx.doc_type);
-  const methodDir = supplierSide ? "out" : "in";
-
-  function pushMethodAffects(splits) {
-    if (!splits) return;
-    splits.split("|||").forEach(s => {
-      const i = s.lastIndexOf(":");
-      const method = s.slice(0, i);
-      const amt = Number(s.slice(i + 1));
-      if (method !== "cash" && method !== "credit" && amt > 0) {
-        const mid = tx.__methodNameToId?.[method];
-        if (mid != null) affects.push({ id: `method_${mid}_${methodDir}`, amount: amt });
-      }
-    });
-  }
-
   switch (tx.doc_type) {
     case "pos_invoice":
       if (tx.payment_type === "cash") {
@@ -113,15 +97,10 @@ function getEquationRowAffects(tx) {
         if (cashAmt > 0) affects.push({ id: "pos_multi_cash", amount: cashAmt });
         if (nonCashAmt > 0) affects.push({ id: "non_cash_movements", amount: nonCashAmt });
         if (creditAmt > 0) affects.push({ id: "pos_credit_sales", amount: creditAmt });
-        pushMethodAffects(tx.payment_splits);
       } else if (tx.payment_type === "credit") {
         affects.push({ id: "pos_credit_sales", amount: total });
       } else {
         affects.push({ id: "non_cash_movements", amount: total });
-        if (tx.payment_splits) pushMethodAffects(tx.payment_splits);
-        else if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
-          affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_${methodDir}`, amount: total });
-        }
       }
       break;
     case "installment_invoice": {
@@ -137,60 +116,34 @@ function getEquationRowAffects(tx) {
     case "purchase": affects.push({ id: "purchases_payable", amount: total }); break;
     case "supplier_payment": affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) }); break;
     case "sales_return": {
-      const srCredit = Number(tx.credit_amount ?? 0);
+      const creditAmt = Number(tx.credit_amount ?? 0);
       if (ce !== 0) affects.push({ id: "sales_returns_cash", amount: Math.abs(ce) });
-      if (srCredit > 0) affects.push({ id: "sales_returns_account", amount: srCredit });
+      if (creditAmt > 0) affects.push({ id: "sales_returns_account", amount: creditAmt });
       else if (ce === 0) affects.push({ id: "sales_returns_account", amount: total });
-      if (tx.payment_splits) pushMethodAffects(tx.payment_splits);
       break;
     }
     case "purchase_return": {
-      const prCredit = Number(tx.credit_amount ?? 0);
+      const creditAmt = Number(tx.credit_amount ?? 0);
       if (ce !== 0) affects.push({ id: "purchase_returns_cash", amount: Math.abs(ce) });
-      if (prCredit > 0) affects.push({ id: "purchase_returns_payable", amount: prCredit });
+      if (creditAmt > 0) affects.push({ id: "purchase_returns_payable", amount: creditAmt });
       else if (ce === 0) affects.push({ id: "purchase_returns_payable", amount: total });
-      if (tx.payment_splits) pushMethodAffects(tx.payment_splits);
       break;
     }
-    case "ajal_payment": {
-      affects.push({ id: "customer_collections", amount: Math.abs(ce) });
-      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
-        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_in`, amount: Math.abs(ce || total) });
-      }
-      break;
-    }
-    case "customer_payment": {
-      affects.push({ id: "customer_collections", amount: Math.abs(ce) });
-      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
-        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_in`, amount: Math.abs(ce || total) });
-      }
-      break;
-    }
+    case "ajal_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
+    case "customer_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
     case "withdrawal": affects.push({ id: "withdrawals", amount: Math.abs(ce) }); break;
-    case "expense": {
-      affects.push({ id: "expenses_cash", amount: Math.abs(ce) });
-      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
-        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_out`, amount: Math.abs(ce || total) });
-      }
-      break;
-    }
-    case "revenue": {
-      affects.push({ id: "revenues_cash", amount: ce });
-      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
-        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_in`, amount: Math.abs(ce || total) });
-      }
-      break;
-    }
-    case "supplier_payment": {
-      affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) });
-      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
-        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_out`, amount: Math.abs(ce || total) });
-      }
-      break;
-    }
     default: break;
   }
   return affects;
+}
+
+function txMatchesMethod(t, methodFilter) {
+  if (!methodFilter) return false;
+  const { methodName } = methodFilter;
+  if (t.payment_splits && t.payment_splits.includes(methodName)) return true;
+  if (t.payment_method && t.payment_method === methodName) return true;
+  if (t.payment_method_name && t.payment_method_name === methodName) return true;
+  return false;
 }
 
 function AmountCell({ t }) {
@@ -380,9 +333,7 @@ export default function DailyTreasuryPage() {
   const [clickedTxId, setClickedTxId] = useState(null);
   const [txAffects, setTxAffects] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cashflow, setCashflow] = useState(null);
-  const [cashflowLoading, setCashflowLoading] = useState(false);
-  const [ledgerFilters, setLedgerFilters] = useState({ direction: "all", method: "all", docType: "all", min: "", max: "", cashOnly: false });
+  const [methodFilter, setMethodFilter] = useState(null);
   const ITEMS_PER_PAGE = 25;
 
   // Money count modal
@@ -424,7 +375,6 @@ export default function DailyTreasuryPage() {
 
   // Compare yesterday
   const [compareYesterday, setCompareYesterday] = useState(false);
-  const [printPayload, setPrintPayload] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
   const [actualCash, setActualCash] = useState("");
   const [closeNotes, setCloseNotes] = useState("");
@@ -525,16 +475,6 @@ export default function DailyTreasuryPage() {
     }
   }, [date, isToday]);
 
-  const loadCashflow = useCallback(async () => {
-    setCashflowLoading(true);
-    try {
-      const d = isToday ? todayStr() : date;
-      const r = await api.get(`/api/daily-sessions/${d}/cashflow`);
-      setCashflow(r.data.data);
-    } catch { setCashflow(null); }
-    finally { setCashflowLoading(false); }
-  }, [date, isToday]);
-
   const loadCashCounts = useCallback(async () => {
     try {
       const r = await api.get(`/api/daily-sessions/${date}/cash-counts`);
@@ -568,17 +508,10 @@ export default function DailyTreasuryPage() {
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
   useEffect(() => { loadMethodTotals(); }, [loadMethodTotals]);
-  useEffect(() => { loadCashflow(); }, [loadCashflow]);
   useEffect(() => { loadCashCounts(); }, [loadCashCounts]);
   useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
   useEffect(() => { setCurrentPage(1); }, [activeTab, globalAmountSearch, txSearch, txSort, showCancelled]);
-
-  const methodNameToId = useMemo(() => {
-    const map = {};
-    methodTotals.forEach((m) => { map[m.name] = m.id; });
-    return map;
-  }, [methodTotals]);
 
   // Load invoice/return details when viewing a transaction
   useEffect(() => {
@@ -678,7 +611,6 @@ export default function DailyTreasuryPage() {
       loadSummary();
       loadTransactions();
       loadMethodTotals();
-      loadCashflow();
     } catch (e) {
       toast.error(e.response?.data?.message || "خطأ");
     } finally {
@@ -706,7 +638,6 @@ export default function DailyTreasuryPage() {
       loadSummary();
       loadTransactions();
       loadMethodTotals();
-      loadCashflow();
     } catch (e) {
       toast.error(e.response?.data?.message || "خطأ");
     } finally {
@@ -876,7 +807,6 @@ export default function DailyTreasuryPage() {
     loadSummary();
     loadTransactions();
     loadMethodTotals();
-    loadCashflow();
     loadYesterdayAlert();
   }
 
@@ -956,7 +886,7 @@ export default function DailyTreasuryPage() {
 
   useEffect(() => {
     function onKeyDown(e) {
-      if (e.key === "Escape") { setActiveEquationRowId(null); setTxAffects(null); }
+      if (e.key === "Escape") { setActiveEquationRowId(null); setTxAffects(null); setMethodFilter(null); }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -971,18 +901,23 @@ export default function DailyTreasuryPage() {
     setTimeout(() => txSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
-  function handleMethodBucketClick(methodId, dir) {
-    const id = `method_${methodId}_${dir}`;
+  function handleMethodClick(methodId, methodName, direction) {
+    if (methodFilter?.methodId === methodId && methodFilter?.direction === direction) {
+      setMethodFilter(null);
+      return;
+    }
+    setMethodFilter({ methodId, methodName, direction });
+    setActiveEquationRowId(null);
+    setTxAffects(null);
     setActiveTab("all");
     setGlobalAmountSearch("");
-    setActiveEquationRowId(id);
-    setTxAffects(null);
     setTimeout(() => txSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   function handleTransactionClick(tx) {
-    const affects = getEquationRowAffects({ ...tx, __methodNameToId: methodNameToId });
+    const affects = getEquationRowAffects(tx);
     setActiveEquationRowId(null);
+    setMethodFilter(null);
     setTxAffects(affects.length > 0 ? affects : null);
     if (affects.length > 0) {
       setTimeout(() => equationRowRefs.current[affects[0].id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
@@ -1011,7 +946,7 @@ export default function DailyTreasuryPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl" onClick={() => { setActiveEquationRowId(null); setTxAffects(null); }}>
+    <div className="min-h-[100dvh] bg-[var(--bg-base)] flex flex-col font-sans overflow-x-hidden w-full max-w-full relative" dir="rtl" onClick={() => { setActiveEquationRowId(null); setTxAffects(null); setMethodFilter(null); }}>
       {/* Impeccable Animated Architectural Background */}
       <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden">
         {/* Base Grid */}
@@ -1051,7 +986,7 @@ export default function DailyTreasuryPage() {
                 type="date"
                 value={date}
                 max={todayStr()}
-                onChange={(e) => { setDate(e.target.value); setActiveTab("all"); }}
+                onChange={(e) => { setDate(e.target.value); setActiveTab("all"); setMethodFilter(null); }}
                 className="h-10 rounded-xl border border-[var(--border-normal)] bg-white/50 px-3 text-2sm font-bold text-[var(--text-secondary)] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer"
               />
             </div>
@@ -1719,17 +1654,12 @@ export default function DailyTreasuryPage() {
                                   methodTotals.map((m) => {
                                     const net = Number(m.net || 0);
                                     const hasMovement = Number(m.in || 0) !== 0 || Number(m.out || 0) !== 0;
-                                    const inAffect = txAffects?.find(a => a.id === `method_${m.id}_in`);
-                                    const outAffect = txAffects?.find(a => a.id === `method_${m.id}_out`);
-                                    const inActive = activeEquationRowId === `method_${m.id}_in`;
-                                    const outActive = activeEquationRowId === `method_${m.id}_out`;
-                                    const anyActive = inActive || outActive || !!inAffect || !!outAffect;
-                                    const isDimmed = txAffects && !inAffect && !outAffect && !inActive && !outActive;
+                                    const isInActive = methodFilter?.methodId === m.id && methodFilter?.direction === "in";
+                                    const isOutActive = methodFilter?.methodId === m.id && methodFilter?.direction === "out";
                                     return (
                                       <div
                                         key={m.id}
-                                        ref={el => { equationRowRefs.current[`method_${m.id}_in`] = el; equationRowRefs.current[`method_${m.id}_out`] = el; }}
-                                        className={`rounded-2xl border p-3 transition-all ${anyActive ? "bg-violet-50 border-violet-300 ring-2 ring-violet-400" : isDimmed ? "opacity-40 bg-[var(--bg-surface)] border-[var(--border-subtle)]" : hasMovement ? "bg-[var(--bg-surface)] border-[var(--border-normal)]" : "bg-slate-50/60 border-[var(--border-subtle)]"}`}
+                                        className={`rounded-2xl border p-3 transition-all ${isInActive || isOutActive ? "bg-indigo-50 border-indigo-300 ring-2 ring-indigo-400" : hasMovement ? "bg-[var(--bg-surface)] border-[var(--border-normal)]" : "bg-slate-50/60 border-[var(--border-subtle)]"}`}
                                       >
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-2 min-w-0">
@@ -1746,37 +1676,23 @@ export default function DailyTreasuryPage() {
                                         <div className="grid grid-cols-2 gap-2">
                                           <button
                                             type="button"
-                                            onClick={() => handleMethodBucketClick(m.id, "in")}
-                                            className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all text-right ${inActive ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.02]" : inAffect ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300" : "bg-emerald-50 border-emerald-100 hover:bg-emerald-100/80"}`}
+                                            onClick={(e) => { e.stopPropagation(); handleMethodClick(m.id, m.name, "in"); }}
+                                            className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all w-full ${isInActive ? "bg-emerald-100 border-emerald-400 ring-2 ring-emerald-400 scale-[1.02]" : "bg-emerald-50 border-emerald-100 hover:bg-emerald-100"}`}
                                           >
                                             <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600">
                                               <TrendingUp className="h-3 w-3" /> داخل
                                             </span>
-                                            <div className="flex flex-col items-end gap-0.5">
-                                              <span className={`number-fmt-primary text-2sm transition-all ${inActive || inAffect ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"}`}>{fmt(m.in)}</span>
-                                              {inAffect && (
-                                                <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
-                                                  ← هذه الحركة: {fmt(inAffect.amount)}
-                                                </span>
-                                              )}
-                                            </div>
+                                            <span className="number-fmt-primary text-2sm text-emerald-700">{fmt(m.in)}</span>
                                           </button>
                                           <button
                                             type="button"
-                                            onClick={() => handleMethodBucketClick(m.id, "out")}
-                                            className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all text-right ${outActive ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.02]" : outAffect ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300" : "bg-rose-50 border-rose-100 hover:bg-rose-100/80"}`}
+                                            onClick={(e) => { e.stopPropagation(); handleMethodClick(m.id, m.name, "out"); }}
+                                            className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all w-full ${isOutActive ? "bg-rose-100 border-rose-400 ring-2 ring-rose-400 scale-[1.02]" : "bg-rose-50 border-rose-100 hover:bg-rose-100"}`}
                                           >
                                             <span className="inline-flex items-center gap-1 text-[11px] font-black text-rose-600">
                                               <TrendingDown className="h-3 w-3" /> خارج
                                             </span>
-                                            <div className="flex flex-col items-end gap-0.5">
-                                              <span className={`number-fmt-primary text-2sm transition-all ${outActive || outAffect ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"}`}>{fmt(m.out)}</span>
-                                              {outAffect && (
-                                                <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
-                                                  ← هذه الحركة: {fmt(outAffect.amount)}
-                                                </span>
-                                              )}
-                                            </div>
+                                            <span className="number-fmt-primary text-2sm text-rose-700">{fmt(m.out)}</span>
                                           </button>
                                         </div>
                                       </div>
@@ -1802,7 +1718,7 @@ export default function DailyTreasuryPage() {
                     <Search className="absolute right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-muted)] group-focus-within:text-[var(--text-primary)] transition-colors" />
                     <input
                       value={globalAmountSearch}
-                      onChange={(e) => { setGlobalAmountSearch(e.target.value); if (e.target.value) setActiveEquationRowId(null); }}
+                      onChange={(e) => { setGlobalAmountSearch(e.target.value); if (e.target.value) setActiveTab("all"); }}
                       placeholder="البحث الشامل برقم الفاتورة، المبلغ، أو اسم العميل..."
                       className="w-full h-12 bg-white/80 backdrop-blur-xl rounded-2xl pr-12 pl-4 text-sm font-bold text-[var(--text-primary)] outline-none transition-all focus:bg-[var(--bg-surface)] focus:ring-2 focus:ring-zinc-900/5 shadow-sm border border-slate-200/60 placeholder:text-[var(--text-muted)]"
                     />
@@ -1811,209 +1727,222 @@ export default function DailyTreasuryPage() {
                         <X className="h-4 w-4" />
                       </button>
                     )}
+                    {methodFilter && (
+                      <div className="flex items-center gap-2 mt-2 px-1">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 border border-indigo-200 px-3 py-1 text-[11px] font-black text-indigo-700">
+                          {methodFilter.methodName} :: {methodFilter.direction === "in" ? "داخل" : "خارج"}
+                          <button onClick={() => setMethodFilter(null)} className="mr-1 text-indigo-400 hover:text-indigo-700">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Cashflow Ledger */}
+                  {/* Transaction Explorer */}
                   <div data-help="main-table" className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm flex flex-col overflow-hidden flex-1">
-                    {/* Reconciliation Badge + Toolbar */}
-                    <div className="flex items-center justify-between gap-3 border-b border-slate-100/80 px-4 py-3 bg-slate-50/80">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {cashflow && (
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black ${cashflow.reconciles ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-rose-100 text-rose-800 border border-rose-200"}`}>
-                            {cashflow.reconciles ? (
-                              <><CheckCircle2 className="h-3.5 w-3.5" /> مطابق للمعادلة</>
-                            ) : (
-                              <><AlertCircle className="h-3.5 w-3.5" /> فرق {fmt(cashflow.closing_balance - cashflow.expected_cash)} ج.م</>
-                            )}
-                          </div>
-                        )}
-                        {activeEquationRow && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-200 text-[11px] font-black">
-                            <Filter className="h-3 w-3" /> {activeEquationRow.label}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
+                    {/* Tab bar */}
+                    <div className="flex items-center gap-1.5 border-b border-slate-100/80 px-3 py-2 overflow-x-auto scrollbar-hide">
+                      {TABS.map((t) => (
                         <button
-                          onClick={() => { setPrintOpen(true); setPrintPayload(cashflow); }}
-                          className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-all"
+                          key={t.id}
+                          onClick={() => { setActiveTab(t.id); setGlobalAmountSearch(""); setActiveEquationRowId(null); setTxAffects(null); setMethodFilter(null); }}
+                          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all ${activeTab === t.id ? "bg-primary text-white shadow-md shadow-zinc-900/20" : "text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"
+                            }`}
                         >
-                          <Printer className="h-3.5 w-3.5" />
-                          طباعة
+                          {t.label}
                         </button>
-                      </div>
-                    </div>
-
-                    {/* Filter Bar */}
-                    <div className="flex items-center gap-2 border-b border-slate-100/80 px-3 py-2 overflow-x-auto scrollbar-hide flex-wrap">
-                      <div className="flex items-center gap-1 rounded-lg bg-[var(--bg-overlay)] p-0.5 border border-[var(--border-subtle)]">
-                        {["all", "in", "out", "non_cash"].map((dir) => (
-                          <button
-                            key={dir}
-                            onClick={() => setLedgerFilters(f => ({ ...f, direction: dir }))}
-                            className={`px-2.5 py-1 rounded-md text-[10px] font-black transition-all ${ledgerFilters.direction === dir ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-normal)]" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"}`}
+                      ))}
+                      <div className="flex items-center gap-2 mr-auto shrink-0 pr-3">
+                        <button
+                          onClick={() => { setShowCancelled(v => !v); setMethodFilter(null); }}
+                          className={`h-8 px-3 rounded-lg text-[11px] font-black border transition-colors ${showCancelled ? "bg-rose-50 border-rose-300 text-rose-700" : "bg-[var(--bg-overlay)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:border-slate-300"}`}
+                        >
+                          {showCancelled ? "إخفاء الملغيات" : "إظهار الملغيات"}
+                        </button>
+                        <div className="relative">
+                          <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[var(--text-muted)]" />
+                          <select
+                            value={txSort}
+                            onChange={(e) => { setTxSort(e.target.value); setMethodFilter(null); }}
+                            className="h-8 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border-normal)] pl-3 pr-8 text-[11px] font-black outline-none text-[var(--text-secondary)] focus:border-zinc-400 appearance-none cursor-pointer"
                           >
-                            {dir === "all" ? "الكل" : dir === "in" ? "داخل" : dir === "out" ? "خارج" : "غير نقدي"}
-                          </button>
-                        ))}
+                            <option value="time_desc">الأحدث أولاً</option>
+                            <option value="time_asc">الأقدم أولاً</option>
+                            <option value="amount_desc">المبلغ (تنازلي)</option>
+                            <option value="amount_asc">المبلغ (تصاعدي)</option>
+                          </select>
+                        </div>
                       </div>
-                      <select
-                        value={ledgerFilters.docType}
-                        onChange={(e) => setLedgerFilters(f => ({ ...f, docType: e.target.value }))}
-                        className="h-7 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border-subtle)] px-2 text-[10px] font-black outline-none text-[var(--text-secondary)]"
-                      >
-                        <option value="all">كل الأنواع</option>
-                        {Object.entries(DOC_TYPE_LABEL).map(([k, v]) => (
-                          <option key={k} value={k}>{v}</option>
-                        ))}
-                      </select>
-                      <div className="flex items-center gap-1">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={ledgerFilters.cashOnly}
-                            onChange={(e) => setLedgerFilters(f => ({ ...f, cashOnly: e.target.checked }))}
-                            className="h-3.5 w-3.5 rounded border-[var(--border-normal)] text-primary focus:ring-primary/30"
-                          />
-                          <span className="text-[10px] font-black text-[var(--text-secondary)]">نقدي فقط</span>
-                        </label>
-                      </div>
-                      <input
-                        type="number"
-                        value={ledgerFilters.min}
-                        onChange={(e) => setLedgerFilters(f => ({ ...f, min: e.target.value }))}
-                        placeholder="أقل مبلغ"
-                        className="h-7 w-20 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border-subtle)] px-2 text-[10px] font-bold outline-none text-[var(--text-secondary)] placeholder:text-[var(--text-muted)]"
-                      />
-                      <input
-                        type="number"
-                        value={ledgerFilters.max}
-                        onChange={(e) => setLedgerFilters(f => ({ ...f, max: e.target.value }))}
-                        placeholder="أقصى مبلغ"
-                        className="h-7 w-20 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border-subtle)] px-2 text-[10px] font-bold outline-none text-[var(--text-secondary)] placeholder:text-[var(--text-muted)]"
-                      />
                     </div>
 
-                    {/* Ledger Table */}
+                    {/* Table */}
                     <div className="flex-1 overflow-y-auto relative p-2">
-                      {cashflowLoading ? (
+                      {txLoading ? (
                         <div className="flex items-center justify-center h-full min-h-[300px]">
                           <RefreshCw className="h-6 w-6 animate-spin text-[var(--text-muted)]" />
                         </div>
-                      ) : !cashflow ? (
+                      ) : sortedTransactions.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-[var(--text-muted)] gap-3">
                           <FileText className="h-10 w-10 text-slate-200" />
-                          <span className="text-sm font-black">لا توجد حركات مسجلة</span>
+                          <span className="text-sm font-black">لا توجد حركات مسجلة في هذا التبويب</span>
                         </div>
                       ) : (
                         <>
                         <table className="w-full text-center border-collapse [&_td]:align-middle">
                           <thead className="sticky top-0 z-10 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
                             <tr className="border-b border-[var(--border-normal)]">
-                              <th className="px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70 rounded-tr-xl">الوقت</th>
-                              <th className="px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70">النوع / الكود</th>
-                              <th className="px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70">الطرف</th>
-                              <th className="px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70">داخل</th>
-                              <th className="px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70">خارج</th>
-                              <th className="px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center rounded-tl-xl">الرصيد التراكمي</th>
+                              {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
+                                <th key={h} className={`px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
+                                  {h}
+                                </th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200/70">
-                            {/* Opening balance row */}
-                            <tr className="bg-slate-50/80 font-black text-[var(--text-secondary)]">
-                              <td className="px-3 py-3 text-[11px] border-r border-slate-200/70" colSpan={2}>الرصيد الافتتاحي</td>
-                              <td className="px-3 py-3 text-[11px] border-r border-slate-200/70">—</td>
-                              <td className="px-3 py-3 border-r border-slate-200/70">—</td>
-                              <td className="px-3 py-3 border-r border-slate-200/70">—</td>
-                              <td className="px-3 py-3 number-fmt-primary text-sm text-[var(--text-primary)]">{fmt(cashflow.opening_balance)}</td>
-                            </tr>
-                            {/* Movement rows */}
-                            {(() => {
-                              const search = globalAmountSearch.toLowerCase();
-                              let rows = (cashflow?.rows || []).filter((r) => {
-                                if (search && !r.doc_no?.toLowerCase().includes(search) && !r.party?.toLowerCase().includes(search) && !String(r.amount).includes(search)) return false;
-                                const f = ledgerFilters;
-                                if (f.cashOnly && r.direction === "non_cash") return false;
-                                if (f.direction !== "all" && r.direction !== f.direction) return false;
-                                if (f.docType !== "all" && r.doc_type !== f.docType) return false;
-                                if (f.min !== "" && Math.abs(r.amount) < Number(f.min)) return false;
-                                if (f.max !== "" && Math.abs(r.amount) > Number(f.max)) return false;
-                                if (activeEquationRowId && r.bucket_id !== activeEquationRowId) return false;
-                                return true;
-                              });
-                              return rows.map((r, i) => {
-                                const isSelected = clickedTxId === r.id;
-                                const hasAffect = txAffects?.some(a => a.id === r.bucket_id);
-                                const dimmed = (activeEquationRowId || txAffects) && !hasAffect && !isSelected && activeEquationRowId !== r.bucket_id;
-                                const docLabel = DOC_TYPE_LABEL[r.doc_type] || r.doc_type;
-                                const colorClass = DOC_TYPE_COLOR[r.doc_type] || "text-[var(--text-secondary)] bg-[var(--bg-overlay)] border-[var(--border-normal)]";
-                                const flags = r.flags || [];
-                                return (
-                                  <motion.tr
-                                    key={r.id || `row-${i}`}
-                                    layout
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    whileHover={{ x: -2 }}
-                                    onClick={() => handleTransactionClick({ ...r, __methodNameToId: methodNameToId })}
-                                    className={`group transition-all relative cursor-pointer ${isSelected ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : dimmed ? "opacity-30" : hasAffect ? "bg-amber-50/60" : activeEquationRowId ? "bg-indigo-50 ring-1 ring-inset ring-indigo-300" : ""} ${r.direction === "in" ? "hover:bg-emerald-50/50" : r.direction === "out" ? "hover:bg-rose-50/50" : "hover:bg-slate-50/50"}`}
-                                  >
-                                    <td className="px-3 py-3 text-[11px] font-mono text-[var(--text-muted)] border-r border-slate-200/70">
-                                      {r.created_at
-                                        ? new Date(r.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
-                                        : "—"}
-                                    </td>
-                                    <td className="px-3 py-3 border-r border-slate-200/70">
-                                      <div className="flex flex-col items-center gap-1">
-                                        <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${colorClass}`}>{docLabel}</span>
-                                        <span className="text-[10px] font-mono font-black text-[var(--text-secondary)]">{r.doc_no || `#${r.id}`}</span>
-                                        <div className="flex items-center gap-1 flex-wrap justify-center">
-                                          {flags.includes("amended") && (
-                                            <span className="px-1 py-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-700 border border-amber-200">معدّل</span>
-                                          )}
-                                          {flags.includes("large") && (
-                                            <span className="px-1 py-0.5 rounded text-[8px] font-black bg-orange-100 text-orange-700 border border-orange-200">كبير</span>
-                                          )}
-                                        </div>
+                            <AnimatePresence>
+                              {paginatedTransactions.map((t) => (
+                                <motion.tr
+                                  key={t.id}
+                                  layout
+                                  initial={{ opacity: 0, x: 20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, scale: 0.95 }}
+                                  whileHover={{ x: -2 }}
+                                  onClick={() => handleTransactionClick(t)}
+                                  className={`group transition-all relative cursor-pointer ${clickedTxId === t.id
+                                      ? "bg-blue-50 ring-1 ring-inset ring-blue-300"
+                                      : methodFilter
+                                        ? txMatchesMethod(t, methodFilter)
+                                          ? "bg-indigo-50 ring-1 ring-inset ring-indigo-300"
+                                          : "opacity-30"
+                                        : txAffects
+                                          ? ""
+                                          : activeEquationRow
+                                            ? activeEquationRow.matchTx(t)
+                                              ? "bg-indigo-50 ring-1 ring-inset ring-indigo-300"
+                                              : "opacity-30"
+                                            : ""
+                                    }`}
+                                >
+                                  <td className={`px-3 py-3.5 font-black text-[11px] tracking-wider text-center border-r border-slate-200/70 ${t.is_cancelled ? "text-[var(--text-muted)] line-through" : "text-[var(--text-secondary)]"}`}>{t.doc_no || `#${t.id}`}</td>
+                                  <td className="px-3 py-3.5 border-r border-slate-200/70">
+                                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                                      <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${
+                                        (t.is_cancelled || t.doc_type === 'cancelled_invoice')
+                                          ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60"
+                                          : t.doc_type === "purchase"
+                                            ? ({ cash: "text-emerald-700 bg-emerald-50 border-emerald-200", credit: "text-amber-700 bg-amber-50 border-amber-200", future_due: "text-amber-700 bg-amber-50 border-amber-200", multi: "text-indigo-700 bg-indigo-50 border-indigo-200", bank_transfer: "text-blue-700 bg-blue-50 border-blue-200" }[t.payment_type] || "text-orange-700 bg-orange-50 border-orange-200")
+                                            : (DOC_TYPE_COLOR[t.doc_type] || "text-[var(--text-secondary)] bg-[var(--bg-overlay)] border-[var(--border-normal)]")
+                                      }`}>
+                                        {t.doc_type === "purchase"
+                                          ? ({ cash: "مشتريات نقدية", credit: "مشتريات آجلة", future_due: "مشتريات آجلة", multi: "مشتريات متعددة", bank_transfer: "مشتريات تحويل" }[t.payment_type] || "مشتريات")
+                                          : (DOC_TYPE_LABEL[t.doc_type] || t.doc_type)}
+                                      </span>
+                                      {(t.is_cancelled || t.doc_type === 'cancelled_invoice') && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-200">ملغي</span>
+                                      )}
+                                      {t.amended_by && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200" title={`عُدِّلت بواسطة: ${t.amended_by_no || t.amended_by}`}>
+                                          مُعدَّلة {t.amended_by_no ? `← ${t.amended_by_no}` : ""}
+                                        </span>
+                                      )}
+                                      {t.amendment_of && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-200" title={`تعديل على: ${t.amendment_of_no || t.amendment_of}`}>
+                                          تعديل {t.amendment_of_no ? `↑ ${t.amendment_of_no}` : "↑"}
+                                        </span>
+                                      )}
+                                      {t.payment_type === "installments" && !t.is_cancelled && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-violet-100 text-violet-700 border border-violet-200 animate-pulse">مقدم + قسط</span>
+                                      )}
+                                      {t.payment_type === "credit" && !t.is_cancelled && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200">كامل آجل</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2 min-w-[260px] w-[280px] border-r border-slate-200/70">
+                                    <div className="flex justify-center">
+                                      <div className="w-full max-w-[270px]">
+                                        <AmountCell t={t} />
                                       </div>
-                                    </td>
-                                    <td className="px-3 py-3 text-[11px] font-bold text-[var(--text-secondary)] max-w-[150px] truncate border-r border-slate-200/70">{r.party || "—"}</td>
-                                    <td className="px-3 py-3 border-r border-slate-200/70">
-                                      {r.direction === "in" ? (
-                                        <span className="number-fmt-primary text-sm text-emerald-700 font-black">{fmt(r.amount)}</span>
-                                      ) : r.direction === "non_cash" ? (
-                                        <span className="text-[9px] font-black text-[var(--text-muted)] bg-slate-100 px-1.5 py-0.5 rounded">لا يؤثر</span>
-                                      ) : "—"}
-                                    </td>
-                                    <td className="px-3 py-3 border-r border-slate-200/70">
-                                      {r.direction === "out" ? (
-                                        <span className="number-fmt-primary text-sm text-rose-700 font-black">{fmt(Math.abs(r.amount))}</span>
-                                      ) : "—"}
-                                    </td>
-                                    <td className="px-3 py-3">
-                                      <div className="flex flex-col items-center">
-                                        <span className={`number-fmt-primary text-sm font-black ${r.running_balance >= 0 ? "text-[var(--text-primary)]" : "text-rose-600"}`}>{fmt(r.running_balance)}</span>
-                                        {i === 0 && (
-                                          <span className="text-[8px] font-black text-[var(--text-muted)] mt-0.5">تراكمي</span>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </motion.tr>
-                                );
-                              });
-                            })()}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
+                                    {t.party || t.description || "—"}
+                                  </td>
+                                  <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
+                                    {t.seller_name || t.cancelled_by_name || "—"}
+                                  </td>
+                                  <td className="px-3 py-3.5 text-[var(--text-muted)] text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
+                                    {t.created_at
+                                      ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+                                      : "—"}
+                                  </td>
+                                  <td className="px-3 py-3.5 text-center">
+                                    <div className="flex items-center justify-center gap-1.5 opacity-100 transition-opacity">
+                                      <button
+                                        onClick={() => setSlideOver(t)}
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] shadow-sm transition-all"
+                                        title="عرض التفاصيل"
+                                      >
+                                        <Eye className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        onClick={handlePrint}
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 shadow-sm transition-all"
+                                        title="طباعة"
+                                      >
+                                        <Printer className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              ))}
+                            </AnimatePresence>
                           </tbody>
-                          {/* Closing footer */}
                           <tfoot className="sticky bottom-0 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_-1px_0_0_#f1f5f9]">
-                            <tr className="border-t-2 border-[var(--border-normal)]">
-                              <td className="px-3 py-3 font-black text-[var(--text-primary)] text-[11px]" colSpan={5}>الرصيد الختامي</td>
-                              <td className={`px-3 py-3 number-fmt-primary text-sm font-black ${cashflow.reconciles ? "text-emerald-700" : "text-rose-700"}`}>
-                                {fmt(cashflow.closing_balance)}
+                            <tr>
+                              <td className="px-3 py-3 font-black text-[var(--text-secondary)] uppercase tracking-widest text-[11px]" colSpan={2}>
+                                الإجمالي للتبويب الحالي
                               </td>
+                              <td className="number-fmt-primary text-zinc-950 text-sm">
+                                {fmt(txTotal)} ج.م
+                              </td>
+                              <td colSpan={3} />
                             </tr>
                           </tfoot>
                         </table>
-                        </>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-subtle)] bg-slate-50/50" dir="ltr">
+                            <div className="text-[11px] font-bold text-[var(--text-muted)]">
+                              {startIdx + 1}–{Math.min(startIdx + ITEMS_PER_PAGE, sortedTransactions.length)} من {sortedTransactions.length}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={safePage <= 1}
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                              >‹</button>
+                              {(() => {
+                                const pages = [];
+                                for (let i = Math.max(1, safePage - 2); i <= Math.min(totalPages, safePage + 2); i++) pages.push(i);
+                                return pages.map((p) => (
+                                  <button
+                                    key={p}
+                                    onClick={() => setCurrentPage(p)}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-primary text-white shadow-md" : "bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"}`}
+                                  >{p}</button>
+                                ));
+                              })()}
+                              <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={safePage >= totalPages}
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                              >›</button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                       )}
                     </div>
                   </div>

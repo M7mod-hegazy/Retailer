@@ -1,10 +1,9 @@
 {
   "name": "retailer",
-  "version": "1.0.24",
+  "version": "1.0.26",
   "main": "electron/main.js",
   "scripts": {
     "dev": "npm run kill:retailer-processes && concurrently -k \"npm:dev:server\" \"npm:dev:client\" \"npm:dev:electron\" \"npm:dev:vendor\"",
-
     "dev:web": "npm run kill:retailer-processes && concurrently -k \"npm:dev:server\" \"npm:dev:web:client\"",
     "dev:web:client": "npm run dev --prefix client -- --host 127.0.0.1 --port 5173 --strictPort --open",
     "dev:vendor": "node vendor-license-service/src/index.js",

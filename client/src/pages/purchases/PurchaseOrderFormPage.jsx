@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Search,
@@ -134,6 +134,8 @@ export default function PurchaseOrderFormPage() {
   const notesRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
+  const searchAbortRef    = useRef(null);
+  const currentQueryRef   = useRef("");
 
   // Column visibility
   const ALL_COLUMNS = ["index","code","name","quantity","unit_id","unit_cost","selling_price","wholesale_price","profit","warehouse_id","total_cost","actions"];
@@ -265,13 +267,24 @@ export default function PurchaseOrderFormPage() {
   useEffect(() => {
     const q = itemQuery.trim();
     pendingPickRef.current = false;
-    if (!q) { setFilteredItems([]); setItemOffset(0); setItemHasMore(false); itemSearchActiveRef.current = false; return; }
+    if (!q) {
+      setFilteredItems([]); setItemOffset(0); setItemHasMore(false);
+      itemSearchActiveRef.current = false;
+      searchAbortRef.current?.abort();
+      return;
+    }
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    currentQueryRef.current = q;
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
+      const capturedQ = q;
       const params = { search: q, limit: ITEM_PAGE, offset: 0 };
       if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
-      api.get("/api/items", { params })
+      api.get("/api/items", { params, signal: controller.signal })
         .then(r => {
+          if (currentQueryRef.current !== capturedQ) return;
           const rows = (r.data.data || []).map(i => ({
             ...i,
             sub_label: `مخزون: ${stockLevels[i.id] || 0}`,
@@ -286,10 +299,13 @@ export default function PurchaseOrderFormPage() {
           } else {
             pendingPickRef.current = false;
           }
-        }).catch(() => { pendingPickRef.current = false; })
+        })
+        .catch((err) => {
+          if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") pendingPickRef.current = false;
+        })
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
+    return () => { clearTimeout(t); controller.abort(); itemSearchActiveRef.current = false; };
   }, [itemQuery, stockLevels, listCategoryFilter]);
 
   useEffect(() => {
@@ -370,7 +386,8 @@ export default function PurchaseOrderFormPage() {
   function handlePickItem(item) {
     activateInvoice();
     setSelectedItem(item);
-    setItemQuery(item.name);
+    const _sku = item.code || item.item_code || item.barcode || "";
+    setItemQuery(_sku ? `[${_sku}] ${item.name}` : item.name);
     setFilteredItems([]);
     setItemOffset(0);
     setItemHasMore(false);

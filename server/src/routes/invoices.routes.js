@@ -74,7 +74,8 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
                  FROM payment_allocations pa WHERE pa.invoice_id = i.id
                )
                ELSE NULL
-             END AS payment_splits
+              END AS payment_splits,
+              (SELECT id FROM ajal_debts WHERE invoice_id = i.id AND source_type = 'invoice' AND status != 'voided' LIMIT 1) AS debt_id
       FROM invoices i
       LEFT JOIN customers  c ON c.id = i.customer_id
       LEFT JOIN employees  e ON e.id = i.seller_id

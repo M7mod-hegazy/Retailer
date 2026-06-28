@@ -55,7 +55,7 @@ function cashConsistency(startDate, endDate, opts = {}) {
       s.status
     FROM shifts s
     JOIN users u ON u.id = s.user_id
-    LEFT JOIN invoices i ON i.shift_id = s.id
+    LEFT JOIN invoices i ON i.shift_id = s.id AND i.status != 'cancelled'
     WHERE 1=1 ${addDateFilter("s.opened_at", startDate, endDate, params)}
     GROUP BY s.id
     ORDER BY s.opened_at DESC
@@ -137,7 +137,7 @@ function reconciliationExceptions(startDate, endDate, opts = {}) {
       s.status
     FROM shifts s
     JOIN users u ON u.id = s.user_id
-    LEFT JOIN invoices i ON i.shift_id = s.id
+    LEFT JOIN invoices i ON i.shift_id = s.id AND i.status != 'cancelled'
     WHERE 1=1
       ${addDateFilter("s.opened_at", startDate, endDate, params)}
     GROUP BY s.id
@@ -160,7 +160,7 @@ function dailySessionsReport(startDate, endDate, opts = {}) {
       s.status
     FROM shifts s
     JOIN users u ON u.id = s.user_id
-    LEFT JOIN invoices i ON i.shift_id = s.id
+    LEFT JOIN invoices i ON i.shift_id = s.id AND i.status != 'cancelled'
     WHERE 1=1 ${addDateFilter("s.opened_at", startDate, endDate, params)}
     GROUP BY s.id
     ORDER BY s.opened_at DESC

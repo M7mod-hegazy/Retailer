@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
@@ -316,6 +316,8 @@ export default function SalesReturnFormPage() {
   const addBtnRef = useRef(null);
   const pendingPickRef    = useRef(false);
   const itemSearchActiveRef = useRef(false);
+  const searchAbortRef    = useRef(null);
+  const currentQueryRef   = useRef("");
 
   // isDirty must be after all state declarations to avoid TDZ on `customer`
   const isDirty = isEditMode ? !isLocked : (cart.length > 0 || !!customer);
@@ -537,14 +539,26 @@ export default function SalesReturnFormPage() {
 
   const ITEM_PAGE = 20;
   useEffect(() => {
+    const q = itemQuery.trim();
     pendingPickRef.current = false;
-    if (!itemQuery.trim() || stagingItem) { setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false); itemSearchActiveRef.current = false; return; }
+    if (!q || stagingItem) {
+      setItemResults([]); setItemOffset(0); setItemHasMore(false); setLookupOpen(false);
+      itemSearchActiveRef.current = false;
+      searchAbortRef.current?.abort();
+      return;
+    }
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    currentQueryRef.current = q;
     itemSearchActiveRef.current = true;
     const t = setTimeout(() => {
-      const params = { search: itemQuery, limit: ITEM_PAGE, offset: 0 };
+      const capturedQ = q;
+      const params = { search: q, limit: ITEM_PAGE, offset: 0 };
       if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
-      api.get("/api/items", { params })
+      api.get("/api/items", { params, signal: controller.signal })
         .then(r => {
+          if (currentQueryRef.current !== capturedQ) return;
           const rows = r.data.data || [];
           setItemResults(rows);
           setItemOffset(rows.length);
@@ -558,10 +572,12 @@ export default function SalesReturnFormPage() {
             pendingPickRef.current = false;
           }
         })
-        .catch(() => { pendingPickRef.current = false; })
+        .catch((err) => {
+          if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") pendingPickRef.current = false;
+        })
         .finally(() => { itemSearchActiveRef.current = false; });
     }, 250);
-    return () => { clearTimeout(t); itemSearchActiveRef.current = false; };
+    return () => { clearTimeout(t); controller.abort(); itemSearchActiveRef.current = false; };
   }, [itemQuery, stagingItem, listCategoryFilter]);
 
   useEffect(() => {
@@ -668,7 +684,7 @@ export default function SalesReturnFormPage() {
     }
     const code = item.code || item.item_code;
     const displayName = item.name_ar || item.name;
-    setItemQuery(code ? `${code} - ${displayName}` : displayName);
+    setItemQuery(code ? `[${code}] ${displayName}` : displayName);
     setItemResults([]);
     setLookupOpen(false);
     setActiveIndex(-1);

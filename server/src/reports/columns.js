@@ -8,6 +8,8 @@ const REPORT_DESCRIPTIONS = {
   // ── تقارير الموردين ──
   "ap-aging": "يعرض توزيع الذمم الدائنة على الموردين حسب فترات التقادم (0-30، 31-60، 61-90، +90 يوماً) مع إجمالي المستحق، لإدارة السيولة النقدية وتحديد أولويات السداد.",
   "supplier-reliability": "يقيم موثوقية الموردين بناءً على نسبة المرتجعات ومتوسط أيام السداد وتشتت الأسعار وتكرار الطلبات، لاختيار الموردين الأفضل أداءً والأكثر استقراراً في التسعير.",
+  "customer-balance-list": "يعرض جميع العملاء مع أرصدتهم الحالية (مديون أو دائن) مرتبة تنازلياً حسب قيمة الرصيد. يتم إخفاء العملاء ذوي الرصيد الصفري.",
+  "supplier-balance-list": "يعرض جميع الموردين مع أرصدتهم الحالية (دائن أو مديون) مرتبة تنازلياً حسب قيمة الرصيد. يتم إخفاء الموردين ذوي الرصيد الصفري.",
 };
 
 const REPORT_TITLES = {
@@ -103,6 +105,8 @@ const REPORT_TITLES = {
   "collection-efficiency": "كفاءة التحصيل",
   "customer-loyalty": "ولاء العملاء",
   "supplier-reliability": "موثوقية الموردين",
+  "customer-balance-list": "قائمة أرصدة العملاء",
+  "supplier-balance-list": "قائمة أرصدة الموردين",
 };
 
 const AR_LABELS = {
@@ -223,6 +227,7 @@ const AR_LABELS = {
   user_id: "المستخدم",
   warehouse_id: "المخزن",
   balance: "الرصيد",
+  balance_label: "الاتجاه",
   opening_balance: "الرصيد الافتتاحي",
   closing_balance: "الرصيد الختامي",
   running_balance: "الرصيد الجاري",
@@ -752,10 +757,12 @@ const REPORT_COLUMN_KEYS = {
   "top-customers": ["customer_name", "total_sales", "net_sales", "gross_profit", "margin_percent", "avg_invoice_value", "invoice_count", "last_invoice_date", "phone", "returns_total", "total_cost"],
   "collection-efficiency": ["customer_name", "total_billed", "collected", "collection_rate", "outstanding", "invoice_count", "partially_paid_count", "fully_paid_count"],
   "customer-loyalty": ["customer_name", "total_sales", "invoice_count", "avg_invoice_value", "frequency_monthly", "items_per_invoice", "avg_discount_percent", "returns_total", "last_invoice_date", "phone", "first_invoice_date", "days_since_last_purchase"],
+  "customer-balance-list": ["customer_name", "phone", "balance", "balance_label"],
 
   // ── Supplier Reports ──
   "ap-aging": ["supplier_name", "total_due", "aging_0_30", "aging_31_60", "aging_61_90", "aging_90_plus", "overdue_amount", "last_purchase_date", "phone", "purchase_count"],
   "supplier-reliability": ["supplier_name", "total_purchases", "purchase_count", "return_rate_percent", "avg_payment_days", "avg_price_spread_percent", "total_returns", "return_count", "last_purchase_date", "phone", "repeat_items"],
+  "supplier-balance-list": ["supplier_name", "phone", "balance", "balance_label"],
 };
 
 // Extra analytics columns per report: shipped with the data and toggleable from the
@@ -793,6 +800,8 @@ const REPORT_EXTRA_KEYS = {
   "collection-efficiency": new Set(["partially_paid_count", "fully_paid_count"]),
   "supplier-reliability": new Set(["phone", "repeat_items"]),
   "customer-loyalty": new Set(["phone", "first_invoice_date", "days_since_last_purchase"]),
+  "customer-balance-list": new Set([]),
+  "supplier-balance-list": new Set([]),
 };
 
 const CODE_KEYS = new Set(["id", "item_code", "code", "sku", "barcode", "invoice_no", "purchase_no", "ref_no", "return_ref", "reference_id", "shift_id", "user_id", "warehouse_id", "batch_no", "section"]);

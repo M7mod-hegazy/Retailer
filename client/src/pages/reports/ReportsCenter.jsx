@@ -56,11 +56,13 @@ const CLS_ARABIC = {
   "cls_sreturn_summary": "ملخص المرتجعات",
   "cls_sreturn_detailed": "مرتجعات تفصيلية",
   "cls_sreturn_by_customer": "حسب العميل",
+  "cls_supplier_balance_list": "قائمة أرصدة الموردين",
   "cls_supplier_statement": "كشف حساب المورد",
   "cls_supplier_aging": "تقادم ذمم الموردين",
   "cls_supplier_purchases": "سجل المشتريات",
   "cls_supplier_returns": "سجل المرتجعات",
   "cls_supplier_reliability": "موثوقية الموردين",
+  "cls_customer_balance_list": "قائمة أرصدة العملاء",
   "cls_customer_statement": "كشف حساب العميل",
   "cls_customer_aging": "تقادم ذمم العملاء",
   "cls_top_customers": "أفضل العملاء",
@@ -267,17 +269,17 @@ export default function ReportsCenter() {
       {/* MIDDLE & TOP RAIL (Source Master Grid) */}
       <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-base)]">
         
-        {/* TOP RAIL (Categories) */}
-        <div className="shrink-0 border-b border-zinc-200 bg-white flex items-center px-6 py-3 gap-3 z-20 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-2 border-l border-zinc-200 pl-4 mr-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary text-white">
-              <LayoutTemplate size={20} strokeWidth={2.5} />
+        {/* TOP RAIL (Categories + Search) */}
+        <div className="shrink-0 border-b border-zinc-200 bg-white flex items-center px-4 py-1.5 gap-1 z-20 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-2.5 ml-1.5 shrink-0">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-white">
+              <LayoutTemplate size={14} strokeWidth={2.5} />
             </div>
-            <span className="text-sm font-black text-zinc-900 ml-2">التقارير</span>
+            <span className="text-[11px] font-black text-zinc-900">التقارير</span>
           </div>
           <button
             onClick={() => setActiveCat("all")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[10px] transition-all font-bold text-sm whitespace-nowrap ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all font-bold text-[11px] whitespace-nowrap shrink-0 ${
               activeCat === "all" ? "bg-zinc-100 text-zinc-900 shadow-sm border border-zinc-200" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
             }`}
           >
@@ -289,46 +291,40 @@ export default function ReportsCenter() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCat(cat.id)}
-                className={`group relative flex items-center gap-2 px-4 py-2 rounded-[10px] transition-all duration-300 font-bold text-sm whitespace-nowrap ${
+                className={`group relative flex items-center gap-1 px-2.5 py-1 rounded-md transition-all duration-300 font-bold text-[11px] whitespace-nowrap shrink-0 ${
                   active ? "bg-white shadow-sm border border-zinc-200" : "hover:bg-zinc-50 text-zinc-500 hover:text-zinc-700"
                 }`}
                 style={active ? { color: cat.color } : {}}
               >
-                <cat.icon size={16} strokeWidth={active ? 2.5 : 2} className={active ? "" : "group-hover:scale-110 transition-transform"} />
+                <cat.icon size={13} strokeWidth={active ? 2.5 : 2} className={active ? "" : "group-hover:scale-110 transition-transform"} />
                 {cat.label}
                 {active && (
-                  <motion.div layoutId="activeRailTop" className="absolute bottom-0 left-4 right-4 h-1 rounded-t-full" style={{ backgroundColor: cat.color }} />
+                  <motion.div layoutId="activeRailTop" className="absolute bottom-0 left-2 right-2 h-0.5 rounded-t-full" style={{ backgroundColor: cat.color }} />
                 )}
               </button>
             );
           })}
-        </div>
 
-        {/* Header / Search */}
-        <div className="shrink-0 px-8 py-8 flex flex-col gap-6 max-w-4xl mx-auto w-full">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-zinc-900">مركز التقارير</h1>
-            <p className="text-sm font-medium text-zinc-500 mt-1">الاستعلامات والتحليلات البيانية الذكية</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div data-help="search-bar" className="relative flex-1 group">
+          <div className="mr-auto flex items-center gap-1.5 shrink-0">
+            <div data-help="search-bar" className="relative group">
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث في مصادر التقارير..."
-                className="w-full h-12 rounded-2xl border border-zinc-200 bg-white pl-4 pr-12 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none"
+                placeholder="بحث..."
+                className="w-36 h-7 rounded-md border border-zinc-200 bg-white pl-2 pr-7 text-[11px] font-bold text-zinc-900 placeholder:text-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none"
               />
-              <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-emerald-500" />
+              <Search size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-emerald-500" />
             </div>
             <button
               data-help="favorite-button"
               onClick={() => setOnlyFavs(!onlyFavs)}
-              className={`flex h-12 items-center gap-2 rounded-2xl border px-5 text-sm font-bold transition-all shadow-sm ${
+              className={`flex h-7 w-7 items-center justify-center rounded-md border transition-all shadow-sm ${
                 onlyFavs ? "border-amber-400 bg-amber-50 text-amber-600" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
               }`}
+              title="المفضلة"
             >
-              <Star size={16} fill={onlyFavs ? "currentColor" : "none"} /> المفضلة
+              <Star size={12} fill={onlyFavs ? "currentColor" : "none"} />
             </button>
           </div>
         </div>

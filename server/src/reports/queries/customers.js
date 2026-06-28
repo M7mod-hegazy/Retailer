@@ -69,7 +69,7 @@ function collectionEfficiency(startDate, endDate, opts = {}) {
       COUNT(CASE WHEN ad.paid_amount > 0 THEN 1 END) AS partially_paid_count,
       COUNT(CASE WHEN ad.paid_amount >= ad.original_amount THEN 1 END) AS fully_paid_count
     FROM ajal_debts ad
-    JOIN invoices i ON i.id = ad.invoice_id
+    JOIN invoices i ON i.id = ad.invoice_id AND i.status != 'cancelled'
     LEFT JOIN customers c ON c.id = ad.customer_id
     WHERE ad.party_type = 'customer' AND ad.source_type = 'invoice' AND ad.status != 'voided'
       ${addDateFilter("i.created_at", startDate, endDate, params)}
