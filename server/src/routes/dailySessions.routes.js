@@ -222,17 +222,17 @@ router.get("/today/payment-methods", requirePagePermission("daily_treasury", "vi
   }
 });
 
-/** Get transactions by type (supports date param for historical) */
-router.get("/today/transactions", requirePagePermission("daily_treasury", "view"), (req, res) => {
-  try {
-    const db = getDb();
-    const { type = "pos", page = 1, limit = 100, search = "", date: queryDate, show_cancelled = "0" } = req.query;
-    const targetDate = normalizeDate(queryDate || localDate());
-    const offset = (Number(page) - 1) * Number(limit);
-    const like = `%${search}%`;
-    const pageArgs = [Number(limit), offset];
+// ── Shared helpers for cashflow union ─────────────────────────────────────
 
-    const unionParts = {
+/**
+ * Build per-type SQL union parts for the transaction explorer / cashflow ledger.
+ * Each part has { sql, params } that can be assembled as needed.
+ * @param {string} targetDate - YYYY-MM-DD
+ * @param {string} search - search string ('' = no filter)
+ */
+function buildUnionParts(targetDate, search) {
+  const like = `%${search}%`;
+  return {
       pos: {
         sql: `
            SELECT i.id, i.invoice_no AS doc_no, i.total AS amount, i.payment_type,
@@ -564,6 +564,68 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
         params: [targetDate, search, like, like, like, like],
       },
     };
+}
+
+/**
+ * Build a UNION ALL SQL + params covering all transaction types with no search filter
+ * and no cancellation reversals. Used by /:date/cashflow for a complete ledger.
+ * @param {string} targetDate - YYYY-MM-DD
+ * @returns {{ sql: string, params: any[] }}
+ */
+function buildCashflowUnion(targetDate) {
+  const parts = buildUnionParts(targetDate, "");
+  // Exclude alias-only entries; ajal_payments covers both customer and supplier
+  const types = Object.keys(parts).filter(
+    (k) => !["customer_ajal_payments", "supplier_ajal_payments"].includes(k)
+  );
+  const sql = types.map((k) => parts[k].sql).join("\nUNION ALL\n");
+  const params = types.flatMap((k) => parts[k].params);
+  return { sql, params };
+}
+
+/**
+ * Return the equation bucket id that mirrors the client's getEquationRowAffects mapping.
+ * Used by /:date/cashflow to tag each ledger row with its equation bucket.
+ * @param {object} tx - raw transaction row from the union query
+ * @returns {string}
+ */
+function bucketIdFor(tx) {
+  const ce = Number(tx.cash_effect ?? 0);
+  switch (tx.doc_type) {
+    case "pos_invoice":
+      if (tx.payment_type === "cash") return "pos_cash_sales";
+      if (tx.payment_type === "installments") return "pos_installments";
+      if (tx.payment_type === "multi") return "pos_multi_cash";
+      if (tx.payment_type === "credit") return "pos_credit_sales";
+      return "non_cash_movements";
+    case "installment_invoice": return "pos_installments";
+    case "credit_invoice": return "pos_credit_sales";
+    case "expense": return "expenses_cash";
+    case "revenue": return "revenues_cash";
+    case "purchase": return "purchases_payable";
+    case "supplier_payment": return "supplier_cash_payments";
+    case "sales_return":
+      return ce !== 0 ? "sales_returns_cash" : "sales_returns_account";
+    case "purchase_return":
+      return ce !== 0 ? "purchase_returns_cash" : "purchase_returns_payable";
+    case "ajal_payment": return "customer_collections";
+    case "customer_payment": return "customer_collections";
+    case "withdrawal": return "withdrawals";
+    default: return "non_cash_movements";
+  }
+}
+
+/** Get transactions by type (supports date param for historical) */
+router.get("/today/transactions", requirePagePermission("daily_treasury", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const { type = "pos", page = 1, limit = 100, search = "", date: queryDate, show_cancelled = "0" } = req.query;
+    const targetDate = normalizeDate(queryDate || localDate());
+    const offset = (Number(page) - 1) * Number(limit);
+    const like = `%${search}%`;
+    const pageArgs = [Number(limit), offset];
+
+    const unionParts = buildUnionParts(targetDate, search);
 
     const aliases = {
       customer_cash_collections: ["customer_payments", "customer_ajal_payments"],
@@ -870,6 +932,72 @@ router.get("/:date/summary", requirePagePermission("daily_treasury", "view"), (r
     const summary = calculateDailySummary(db, req.params.date);
     if (!summary) return res.status(404).json({ success: false, message: "لا توجد جلسة لهذا اليوم" });
     res.json({ success: true, data: summary });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** Unified, cancellation-correct, time-ordered cash-flow ledger with running balance. */
+router.get("/:date/cashflow", requirePagePermission("daily_treasury", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const targetDate = normalizeDate(req.params.date || localDate());
+
+    // Reuse the summary service so opening/expected match the equation exactly.
+    const summary = calculateDailySummary(db, targetDate);
+    const openingBalance = Number(summary?.previous_balance ?? summary?.opening_balance ?? 0);
+    const expectedCash = Number(summary?.expected_cash ?? 0);
+
+    // Build the same per-type union used by /today/transactions (empty search, no cancelled).
+    const { sql, params } = buildCashflowUnion(targetDate);
+    const raw = db.prepare(`
+      SELECT * FROM (${sql}) ORDER BY created_at ASC
+    `).all(...params);
+
+    const LARGE = 5000; // anomaly threshold (EGP); tune later if needed
+    let bal = openingBalance;
+    const rows = raw.map((t) => {
+      const cashEffect = Number(t.cash_effect ?? 0);
+      const direction = cashEffect > 0 ? "in" : cashEffect < 0 ? "out" : "non_cash";
+      const flags = [];
+      if (t.amended_by || t.amendment_of) flags.push("amended");
+      if (Math.abs(Number(t.amount ?? 0)) >= LARGE) flags.push("large");
+
+      let running_balance;
+      if (direction !== "non_cash") {
+        bal += cashEffect;
+        running_balance = bal;
+      } else {
+        running_balance = bal;
+      }
+
+      return {
+        id: t.id,
+        doc_type: t.doc_type,
+        doc_no: t.doc_no,
+        party: t.party,
+        created_at: t.created_at,
+        direction,
+        amount: cashEffect !== 0 ? cashEffect : Number(t.amount ?? 0),
+        cash_effect: cashEffect,
+        running_balance,
+        bucket_id: bucketIdFor(t),
+        flags,
+      };
+    });
+
+    const closingBalance = bal;
+
+    res.json({
+      success: true,
+      data: {
+        opening_balance: openingBalance,
+        expected_cash: expectedCash,
+        rows,
+        closing_balance: closingBalance,
+        reconciles: Math.abs(closingBalance - expectedCash) < 0.01,
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

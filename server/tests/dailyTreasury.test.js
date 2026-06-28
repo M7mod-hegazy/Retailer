@@ -612,3 +612,45 @@ describe("Payment-method movements exclude cancelled invoices", function () {
     expect(mAfter.in).toBe(0);
   });
 });
+
+// ==================== CASHFLOW LEDGER TESTS ====================
+describe("Cashflow ledger endpoint", function () {
+  it("returns time-ordered rows whose closing balance reconciles to expected cash", async function () {
+    const summaryRes = await request(app).get("/api/daily-sessions/today/summary");
+    const expected = summaryRes.body.data.expected_cash;
+
+    const res = await request(app).get(`/api/daily-sessions/${today}/cashflow`);
+    expect(res.status).toBe(200);
+    const d = res.body.data;
+    expect(Array.isArray(d.rows)).toBe(true);
+
+    // running_balance accumulates cash_effect from opening_balance, in created_at order.
+    const cashRows = d.rows.filter((r) => r.direction !== "non_cash");
+    let bal = d.opening_balance;
+    for (const r of cashRows) {
+      bal += r.cash_effect;
+      expect(Math.abs(r.running_balance - bal)).toBeLessThan(0.01);
+    }
+    expect(Math.abs(d.closing_balance - expected)).toBeLessThan(0.01);
+    expect(d.reconciles).toBe(true);
+  });
+
+  it("excludes a voided invoice from the ledger", async function () {
+    const inv = await request(app).post("/api/invoices").send({
+      customer_id: null,
+      lines: [{ item_id: itemId1, quantity: 1, unit_price: 100, warehouse_id: 1 }],
+      payment_type: "cash",
+      treasury_id: treasuryId,
+    });
+    const invoiceId = inv.body.data.id;
+    const docNo = inv.body.data.invoice_no;
+
+    const withInv = await request(app).get(`/api/daily-sessions/${today}/cashflow`);
+    expect((withInv.body.data.rows || []).some((r) => r.doc_no === docNo)).toBe(true);
+
+    await request(app).post(`/api/invoices/${invoiceId}/void`).send({ reason: "test" });
+
+    const afterVoid = await request(app).get(`/api/daily-sessions/${today}/cashflow`);
+    expect((afterVoid.body.data.rows || []).some((r) => r.doc_no === docNo)).toBe(false);
+  });
+});
