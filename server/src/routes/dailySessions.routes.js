@@ -128,19 +128,25 @@ router.get("/today/payment-methods", requirePagePermission("daily_treasury", "vi
     methods.forEach((m) => { agg[m.id] = { in: 0, out: 0 }; byName[m.name] = m.id; });
 
     // payments: matched by method name. Supplier-side = out, everything else = in.
+    // Exclude payments tied to a cancelled invoice (standalone payments have invoice_id NULL → kept).
     db.prepare(`
-      SELECT method,
-        SUM(CASE WHEN party_type = 'supplier' THEN 0 ELSE amount END) AS in_amt,
-        SUM(CASE WHEN party_type = 'supplier' THEN amount ELSE 0 END) AS out_amt
-      FROM payments
-      WHERE method IS NOT NULL AND date(created_at) = ?
-      GROUP BY method
+      SELECT p.method,
+        SUM(CASE WHEN p.party_type = 'supplier' THEN 0 ELSE p.amount END) AS in_amt,
+        SUM(CASE WHEN p.party_type = 'supplier' THEN p.amount ELSE 0 END) AS out_amt
+      FROM payments p
+      LEFT JOIN invoices i ON i.id = p.invoice_id
+      WHERE p.method IS NOT NULL AND date(p.created_at) = ?
+        AND COALESCE(i.status, '') != 'cancelled'
+      GROUP BY p.method
     `).all(targetDate).forEach((r) => {
       const id = byName[r.method];
       if (id != null) { agg[id].in += Number(r.in_amt || 0); agg[id].out += Number(r.out_amt || 0); }
     });
 
-    // ajal_payments: matched by FK. Supplier debt = out, customer debt = in.
+    // ajal_payments: settle debts, not invoices directly. Verified (Task 1 Step 6): debts ARE
+    // voided on invoice cancellation (voidInvoice sets status='voided'), but ajal_payments rows
+    // represent real money already collected — they are NOT reversed by the void. No guard added
+    // here; controller decision pending (see task-1-report.md).
     db.prepare(`
       SELECT ap.payment_method_id AS mid,
         SUM(CASE WHEN COALESCE(d.party_type, 'customer') = 'supplier' THEN 0 ELSE ap.amount END) AS in_amt,
@@ -176,12 +182,14 @@ router.get("/today/payment-methods", requirePagePermission("daily_treasury", "vi
       if (id != null) agg[id].in += Number(r.in_amt || 0);
     });
 
-    // purchase payments: matched by FK → always out (paying suppliers for goods).
+    // purchase payments: matched by FK → always out. Exclude voided/cancelled purchases.
     db.prepare(`
-      SELECT method_id AS mid, SUM(amount) AS out_amt
-      FROM purchase_payments
-      WHERE method_id IS NOT NULL AND date(created_at) = ?
-      GROUP BY method_id
+      SELECT pp.method_id AS mid, SUM(pp.amount) AS out_amt
+      FROM purchase_payments pp
+      LEFT JOIN purchases pu ON pu.id = pp.purchase_id
+      WHERE pp.method_id IS NOT NULL AND date(pp.created_at) = ?
+        AND COALESCE(pu.status, '') NOT IN ('voided', 'cancelled')
+      GROUP BY pp.method_id
     `).all(targetDate).forEach((r) => {
       if (agg[r.mid]) agg[r.mid].out += Number(r.out_amt || 0);
     });

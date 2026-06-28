@@ -576,3 +576,39 @@ describe("Non-Cash Calculations", function () {
     expect(summaryRes.body.summary.sales_returns_account).toBe(100);
   });
 });
+
+// ==================== CANCELLATION EXCLUSION TESTS ====================
+describe("Payment-method movements exclude cancelled invoices", function () {
+  it("drops a wallet movement when its invoice is voided", async function () {
+    // A non-system, active wallet method whose name we will store on the payment row.
+    db.exec(`INSERT OR IGNORE INTO payment_methods (id, name, type, is_system, is_active)
+             VALUES (5, 'محفظة فودافون', 'wallet', 0, 1)`);
+
+    // Create a real invoice via the API so void() has a valid target.
+    const inv = await request(app).post("/api/invoices").send({
+      customer_id: null,
+      lines: [{ item_id: itemId1, quantity: 1, unit_price: 100, warehouse_id: 1 }],
+      payment_type: "cash",
+      treasury_id: treasuryId,
+    });
+    const invoiceId = inv.body.data.id;
+
+    // Attach a wallet payment row to that invoice (matched by method NAME in the endpoint).
+    db.prepare(`INSERT INTO payments (party_type, party_id, amount, method, invoice_id, created_at)
+                VALUES ('customer', ?, 300, 'محفظة فودافون', ?, datetime('now'))`)
+      .run(customerId, invoiceId);
+
+    const before = await request(app).get("/api/daily-sessions/today/payment-methods");
+    const mBefore = (before.body.data || []).find((m) => m.id === 5);
+    expect(mBefore).toBeDefined();
+    expect(mBefore.in).toBe(300);
+
+    // Void the invoice (soft: sets status='cancelled').
+    const voided = await request(app).post(`/api/invoices/${invoiceId}/void`).send({ reason: "test" });
+    expect(voided.status).toBe(200);
+
+    const after = await request(app).get("/api/daily-sessions/today/payment-methods");
+    const mAfter = (after.body.data || []).find((m) => m.id === 5);
+    expect(mAfter.in).toBe(0);
+  });
+});
