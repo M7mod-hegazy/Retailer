@@ -74,6 +74,22 @@ function getEquationRowAffects(tx) {
   const total = Number(tx.amount ?? 0);
   const affects = [];
 
+  const supplierSide = ["supplier_payment", "purchase", "purchase_return"].includes(tx.doc_type);
+  const methodDir = supplierSide ? "out" : "in";
+
+  function pushMethodAffects(splits) {
+    if (!splits) return;
+    splits.split("|||").forEach(s => {
+      const i = s.lastIndexOf(":");
+      const method = s.slice(0, i);
+      const amt = Number(s.slice(i + 1));
+      if (method !== "cash" && method !== "credit" && amt > 0) {
+        const mid = tx.__methodNameToId?.[method];
+        if (mid != null) affects.push({ id: `method_${mid}_${methodDir}`, amount: amt });
+      }
+    });
+  }
+
   switch (tx.doc_type) {
     case "pos_invoice":
       if (tx.payment_type === "cash") {
@@ -97,10 +113,15 @@ function getEquationRowAffects(tx) {
         if (cashAmt > 0) affects.push({ id: "pos_multi_cash", amount: cashAmt });
         if (nonCashAmt > 0) affects.push({ id: "non_cash_movements", amount: nonCashAmt });
         if (creditAmt > 0) affects.push({ id: "pos_credit_sales", amount: creditAmt });
+        pushMethodAffects(tx.payment_splits);
       } else if (tx.payment_type === "credit") {
         affects.push({ id: "pos_credit_sales", amount: total });
       } else {
         affects.push({ id: "non_cash_movements", amount: total });
+        if (tx.payment_splits) pushMethodAffects(tx.payment_splits);
+        else if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
+          affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_${methodDir}`, amount: total });
+        }
       }
       break;
     case "installment_invoice": {
@@ -116,22 +137,57 @@ function getEquationRowAffects(tx) {
     case "purchase": affects.push({ id: "purchases_payable", amount: total }); break;
     case "supplier_payment": affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) }); break;
     case "sales_return": {
-      const creditAmt = Number(tx.credit_amount ?? 0);
+      const srCredit = Number(tx.credit_amount ?? 0);
       if (ce !== 0) affects.push({ id: "sales_returns_cash", amount: Math.abs(ce) });
-      if (creditAmt > 0) affects.push({ id: "sales_returns_account", amount: creditAmt });
+      if (srCredit > 0) affects.push({ id: "sales_returns_account", amount: srCredit });
       else if (ce === 0) affects.push({ id: "sales_returns_account", amount: total });
+      if (tx.payment_splits) pushMethodAffects(tx.payment_splits);
       break;
     }
     case "purchase_return": {
-      const creditAmt = Number(tx.credit_amount ?? 0);
+      const prCredit = Number(tx.credit_amount ?? 0);
       if (ce !== 0) affects.push({ id: "purchase_returns_cash", amount: Math.abs(ce) });
-      if (creditAmt > 0) affects.push({ id: "purchase_returns_payable", amount: creditAmt });
+      if (prCredit > 0) affects.push({ id: "purchase_returns_payable", amount: prCredit });
       else if (ce === 0) affects.push({ id: "purchase_returns_payable", amount: total });
+      if (tx.payment_splits) pushMethodAffects(tx.payment_splits);
       break;
     }
-    case "ajal_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
-    case "customer_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
+    case "ajal_payment": {
+      affects.push({ id: "customer_collections", amount: Math.abs(ce) });
+      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
+        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_in`, amount: Math.abs(ce || total) });
+      }
+      break;
+    }
+    case "customer_payment": {
+      affects.push({ id: "customer_collections", amount: Math.abs(ce) });
+      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
+        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_in`, amount: Math.abs(ce || total) });
+      }
+      break;
+    }
     case "withdrawal": affects.push({ id: "withdrawals", amount: Math.abs(ce) }); break;
+    case "expense": {
+      affects.push({ id: "expenses_cash", amount: Math.abs(ce) });
+      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
+        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_out`, amount: Math.abs(ce || total) });
+      }
+      break;
+    }
+    case "revenue": {
+      affects.push({ id: "revenues_cash", amount: ce });
+      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
+        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_in`, amount: Math.abs(ce || total) });
+      }
+      break;
+    }
+    case "supplier_payment": {
+      affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) });
+      if (tx.payment_method && tx.__methodNameToId?.[tx.payment_method]) {
+        affects.push({ id: `method_${tx.__methodNameToId[tx.payment_method]}_out`, amount: Math.abs(ce || total) });
+      }
+      break;
+    }
     default: break;
   }
   return affects;
@@ -502,6 +558,12 @@ export default function DailyTreasuryPage() {
   useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
   useEffect(() => { setCurrentPage(1); }, [activeTab, globalAmountSearch, txSearch, txSort, showCancelled]);
+
+  const methodNameToId = useMemo(() => {
+    const map = {};
+    methodTotals.forEach((m) => { map[m.name] = m.id; });
+    return map;
+  }, [methodTotals]);
 
   // Load invoice/return details when viewing a transaction
   useEffect(() => {
@@ -889,8 +951,17 @@ export default function DailyTreasuryPage() {
     setTimeout(() => txSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
+  function handleMethodBucketClick(methodId, dir) {
+    const id = `method_${methodId}_${dir}`;
+    setActiveTab("all");
+    setGlobalAmountSearch("");
+    setActiveEquationRowId(id);
+    setTxAffects(null);
+    setTimeout(() => txSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+
   function handleTransactionClick(tx) {
-    const affects = getEquationRowAffects(tx);
+    const affects = getEquationRowAffects({ ...tx, __methodNameToId: methodNameToId });
     setActiveEquationRowId(null);
     setTxAffects(affects.length > 0 ? affects : null);
     if (affects.length > 0) {
@@ -1628,10 +1699,17 @@ export default function DailyTreasuryPage() {
                                   methodTotals.map((m) => {
                                     const net = Number(m.net || 0);
                                     const hasMovement = Number(m.in || 0) !== 0 || Number(m.out || 0) !== 0;
+                                    const inAffect = txAffects?.find(a => a.id === `method_${m.id}_in`);
+                                    const outAffect = txAffects?.find(a => a.id === `method_${m.id}_out`);
+                                    const inActive = activeEquationRowId === `method_${m.id}_in`;
+                                    const outActive = activeEquationRowId === `method_${m.id}_out`;
+                                    const anyActive = inActive || outActive || !!inAffect || !!outAffect;
+                                    const isDimmed = txAffects && !inAffect && !outAffect && !inActive && !outActive;
                                     return (
                                       <div
                                         key={m.id}
-                                        className={`rounded-2xl border p-3 transition-all ${hasMovement ? "bg-[var(--bg-surface)] border-[var(--border-normal)]" : "bg-slate-50/60 border-[var(--border-subtle)]"}`}
+                                        ref={el => { equationRowRefs.current[`method_${m.id}_in`] = el; equationRowRefs.current[`method_${m.id}_out`] = el; }}
+                                        className={`rounded-2xl border p-3 transition-all ${anyActive ? "bg-violet-50 border-violet-300 ring-2 ring-violet-400" : isDimmed ? "opacity-40 bg-[var(--bg-surface)] border-[var(--border-subtle)]" : hasMovement ? "bg-[var(--bg-surface)] border-[var(--border-normal)]" : "bg-slate-50/60 border-[var(--border-subtle)]"}`}
                                       >
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-2 min-w-0">
@@ -1646,18 +1724,40 @@ export default function DailyTreasuryPage() {
                                           </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleMethodBucketClick(m.id, "in")}
+                                            className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all text-right ${inActive ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.02]" : inAffect ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300" : "bg-emerald-50 border-emerald-100 hover:bg-emerald-100/80"}`}
+                                          >
                                             <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600">
                                               <TrendingUp className="h-3 w-3" /> داخل
                                             </span>
-                                            <span className="number-fmt-primary text-2sm text-emerald-700">{fmt(m.in)}</span>
-                                          </div>
-                                          <div className="flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-1.5">
+                                            <div className="flex flex-col items-end gap-0.5">
+                                              <span className={`number-fmt-primary text-2sm transition-all ${inActive || inAffect ? "text-emerald-900 bg-emerald-200 ring-2 ring-emerald-500 rounded-lg px-2 py-0.5" : "text-emerald-700"}`}>{fmt(m.in)}</span>
+                                              {inAffect && (
+                                                <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                                  ← هذه الحركة: {fmt(inAffect.amount)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleMethodBucketClick(m.id, "out")}
+                                            className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 transition-all text-right ${outActive ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.02]" : outAffect ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300" : "bg-rose-50 border-rose-100 hover:bg-rose-100/80"}`}
+                                          >
                                             <span className="inline-flex items-center gap-1 text-[11px] font-black text-rose-600">
                                               <TrendingDown className="h-3 w-3" /> خارج
                                             </span>
-                                            <span className="number-fmt-primary text-2sm text-rose-700">{fmt(m.out)}</span>
-                                          </div>
+                                            <div className="flex flex-col items-end gap-0.5">
+                                              <span className={`number-fmt-primary text-2sm transition-all ${outActive || outAffect ? "text-rose-900 bg-rose-200 ring-2 ring-rose-500 rounded-lg px-2 py-0.5" : "text-rose-700"}`}>{fmt(m.out)}</span>
+                                              {outAffect && (
+                                                <span className="text-[10px] font-black bg-amber-100 text-amber-700 rounded-md px-1.5 py-0.5 border border-amber-300 whitespace-nowrap">
+                                                  ← هذه الحركة: {fmt(outAffect.amount)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </button>
                                         </div>
                                       </div>
                                     );
